@@ -63,7 +63,13 @@ func pairRandom(members *entity.UnpairedPoolMembers) ([]int, error) {
 	for i, _ := range members.PoolMembers {
 		playerIndexes = append(playerIndexes, i)
 	}
-	source := rand.NewPCG(members.Seed, 0)
+	// Unlike round robin (which derives each round's pairings by rotating a
+	// single seed-derived order, so it doesn't need the seed itself to vary)
+	// random pairing has no such structure to guarantee variety across
+	// rounds - it must fold the round number into the seed itself, or every
+	// round pairs identically whenever called with the same base seed (as
+	// happens when the same request is reused round after round).
+	source := rand.NewPCG(members.Seed, uint64(members.RoundControls.Round))
 	rng := rand.New(source)
 	rng.Shuffle(len(playerIndexes),
 		func(i, j int) {
@@ -388,34 +394,63 @@ func getInitialFontesPairings(numberOfPlayers int, numberOfNtiles int, round int
 	}
 
 	numberOfRemainingPlayers := numberOfPlayers - (sizeOfNtiles * numberOfNtiles)
-	remainderOffset := 0
-	remainderSpacing := 0
 
-	if numberOfRemainingPlayers != 0 {
-		remainderOffset = numberOfPlayers / (numberOfRemainingPlayers + 1)
-		remainderSpacing = numberOfPlayers / numberOfRemainingPlayers
+	pairings := make([]int, numberOfPlayers)
+	for i := range pairings {
+		pairings[i] = -2
 	}
 
-	log.Info().Int("remainderOffset", remainderOffset).Int("remainderSpacing", remainderSpacing).Msg("initial-fontes-remainder")
-
-	pairings := []int{}
 	groupings := [][]int{}
-
 	for i := 0; i < sizeOfNtiles; i++ {
 		groupings = append(groupings, []int{})
 	}
 
-	currentGroup := 0
-	for i := 0; i < numberOfPlayers; i++ {
-		if numberOfRemainingPlayers != 0 &&
-			i >= remainderOffset &&
-			(i-remainderOffset)%remainderSpacing == 0 {
-			groupings[sizeOfNtiles-1] = append(groupings[sizeOfNtiles-1], i)
-		} else {
+	if numberOfRemainingPlayers == 0 {
+		// Evenly divides into sizeOfNtiles standard-size groups; distribute
+		// players across them round robin.
+		currentGroup := 0
+		for i := 0; i < numberOfPlayers; i++ {
 			groupings[currentGroup] = append(groupings[currentGroup], i)
 			currentGroup = (currentGroup + 1) % sizeOfNtiles
 		}
-		pairings = append(pairings, -2)
+	} else {
+		// There's a remainder, so one group (the last) will be oversized by
+		// numberOfRemainingPlayers to absorb it, e.g. quartiles (numberOfNtiles=4)
+		// with a remainder of 2 produce a single oversized sextile (size 6).
+		//
+		// Rather than draw that oversized group's extra players from just the
+		// tail of the standings, spread them across the whole field: split the
+		// ranked player list into oversizedGroupSize evenly-sized mini-groups
+		// (any leftover from an uneven split is distributed across the first
+		// few mini-groups), and take the single worst-ranked player from each
+		// mini-group into the oversized group. The rest of each mini-group is
+		// distributed round robin across the other sizeOfNtiles-1 standard-size
+		// groups. E.g. 18 players, numberOfNtiles=4: 6 mini-groups of 3 ranks
+		// each (1-3, 4-6, ..., 16-18); the oversized group ends up with ranks
+		// 3, 6, 9, 12, 15, 18 - the bottom player of each mini-group.
+		oversizedGroupIdx := sizeOfNtiles - 1
+		oversizedGroupSize := numberOfNtiles + numberOfRemainingPlayers
+		numberOfMiniGroups := oversizedGroupSize
+		baseMiniGroupSize := numberOfPlayers / numberOfMiniGroups
+		extraMiniGroups := numberOfPlayers % numberOfMiniGroups
+
+		currentGroup := 0
+		playerIdx := 0
+		for m := 0; m < numberOfMiniGroups; m++ {
+			miniGroupSize := baseMiniGroupSize
+			if m < extraMiniGroups {
+				miniGroupSize++
+			}
+			for k := 0; k < miniGroupSize; k++ {
+				if k == miniGroupSize-1 {
+					groupings[oversizedGroupIdx] = append(groupings[oversizedGroupIdx], playerIdx)
+				} else {
+					groupings[currentGroup] = append(groupings[currentGroup], playerIdx)
+					currentGroup = (currentGroup + 1) % oversizedGroupIdx
+				}
+				playerIdx++
+			}
+		}
 	}
 
 	log.Info().Str("groupings", fmt.Sprint(groupings)).Msg("initial-fontes-groupings")
@@ -426,7 +461,29 @@ func getInitialFontesPairings(numberOfPlayers int, numberOfNtiles int, round int
 			return nil, fmt.Errorf("initial fontes pairing failure for %d players, "+
 				"have odd group size of %d", numberOfPlayers, groupSize)
 		}
-		groupPairings, err := GetRoundRobinPairings(groupSize, round, seed)
+
+		var groupPairings []int
+		var err error
+		if groupSize == numberOfNtiles {
+			// Standard-size N-tile group: pair with a normal round robin, as before.
+			groupPairings, err = GetRoundRobinPairings(groupSize, round, seed)
+		} else {
+			// Oversized remainder group (the leftover players folded in above via
+			// remainderOffset/remainderSpacing). Rather than a full round robin,
+			// use a fixed "shirts vs skins" cross pattern: split the group into
+			// two teams by local rank parity (odds vs evens) and rotate one team
+			// against the other each round. This only avoids repeats across all
+			// numberOfNtiles-1 fontes rounds if the group is big enough
+			// (half its size >= rounds needed); otherwise fall back to round
+			// robin, which is always safe.
+			k := groupSize / 2
+			roundsNeeded := numberOfNtiles - 1
+			if k >= roundsNeeded {
+				groupPairings = getShirtsVsSkinsPairings(groupSize, round)
+			} else {
+				groupPairings, err = GetRoundRobinPairings(groupSize, round, seed)
+			}
+		}
 		if err != nil {
 			return nil, err
 		}
@@ -454,6 +511,33 @@ func getInitialFontesPairings(numberOfPlayers int, numberOfNtiles int, round int
 		}
 	}
 	return pairings, nil
+}
+
+// getShirtsVsSkinsPairings pairs an oversized Initial Fontes remainder group
+// using a fixed cross pattern instead of a round robin. Local player indices
+// are assumed to already be in rank order (0 = best local seed). Team A is
+// the even local indices (local ranks 1, 3, 5, ...) and Team B is the odd
+// local indices (local ranks 2, 4, 6, ...). Each round, Team A is paired
+// against Team B rotated by `round` positions, e.g. for a group of 6
+// (local ranks 1-6):
+//
+//	Round 0: 1v2  3v4  5v6
+//	Round 1: 1v4  3v6  5v2
+//	Round 2: 1v6  3v2  5v4
+//
+// This only avoids repeating a pairing across all of the fontes rounds if
+// groupSize/2 >= the number of rounds needed; the caller is responsible for
+// checking that before calling this function.
+func getShirtsVsSkinsPairings(groupSize int, round int) []int {
+	k := groupSize / 2
+	pairings := make([]int, groupSize)
+	for x := 0; x < k; x++ {
+		a := 2 * x
+		b := 2*((x+round)%k) + 1
+		pairings[a] = b
+		pairings[b] = a
+	}
+	return pairings
 }
 
 // GetRoundRobinPairings generates round-robin pairings for a given number of players and round

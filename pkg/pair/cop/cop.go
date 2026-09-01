@@ -5,6 +5,7 @@ import (
 	"hash/fnv"
 	"math"
 	"slices"
+	"strconv"
 
 	"golang.org/x/exp/rand"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -23,11 +24,27 @@ import (
 )
 
 const (
-	timeFormat                           = "2006-01-02T15:04:05.000Z"
-	majorPenalty                         = 1e9
-	minorPenalty                         = majorPenalty / 1e3
+	timeFormat   = "2006-01-02T15:04:05.000Z"
+	majorPenalty = 1e9
+	minorPenalty = majorPenalty / 1e3
+	// hopefulCasherByeWeight is the cost of giving a hopeful-to-cash
+	// contender the bye. It's set well above 2*majorPenalty so that when the
+	// matching must choose between that and a combination of two other
+	// major-penalty violations elsewhere (e.g. two repeat byes), it picks the
+	// latter instead. Top-down byes bypass this entirely (TB force-assigns
+	// the bye), so this only matters when byes aren't top-down.
+	hopefulCasherByeWeight               = 3e9
 	byePlayerName                        = "BYE"
 	controlLossLowestContenderOnlyRounds = 4
+	// f3MinWinChanceGain is the minimum win-outright-probability gain
+	// (finishing 1st overall, compared to the baseline non-factor-3 factor
+	// pairing) that at least one of 4th/5th/6th must get from factor-3
+	// pairings for F3 to fire. Without this, F3 can trigger purely because it
+	// helps the leader (and strips destiny control from the field below)
+	// while giving none of 4th/5th/6th a meaningful shot at actually winning
+	// outright - e.g. a real case where F3 only moved a trailing player's win
+	// chance from 0.05% to 0.1%.
+	f3MinWinChanceGain = 0.02
 )
 
 var pairingMethodMap = map[pb.PairMethod]pb.PairingMethod{
@@ -53,6 +70,406 @@ type policyArgs struct {
 	prepairedPlayerIndexes   map[int]int
 	lowestHopeOverride       map[int]int
 	factor3ForcedPairings    [][2]int
+	// topDownByePlayer is the player index chosen to receive the top-down bye,
+	// or -1 if top-down byes don't apply. It is computed once (see
+	// computeTopDownByePlayer) so that KH can avoid forcing a KOTH pairing
+	// that would conflict with it; top-down byes take precedence over KOTH.
+	topDownByePlayer int
+	// disallowedLeaderOpponent is the player index added to an odd hopeful
+	// contender group (for 1st place) who is barred from playing the leader,
+	// or -1 if no such player exists this round. It is computed once (see
+	// computeDisallowedLeaderOpponent) so that KH can avoid forcing a cash
+	// prize KOTH pairing that would conflict with it.
+	disallowedLeaderOpponent int
+	// forcedLeaderVsThird is the player index of "3rd" (rank index 2) when
+	// rank 2 is taking this round's bye while the leader's 1st-place
+	// contention has narrowed to at most rank 3 - leaving the leader
+	// without their strongest hopeful opponent this round. See
+	// computeForcedLeaderVsThird. -1 when this special case doesn't apply.
+	forcedLeaderVsThird int
+	// forcedContenderByePlayer is the player index forced to take the bye
+	// because PC (no bye for contenders) and BR (no repeat byes) would
+	// otherwise be in direct conflict this round, or -1 if there's no such
+	// clash. It is computed once (see computeForcedContenderBye).
+	forcedContenderByePlayer int
+	// top4LockActive reports whether the top-4-must-play-each-other policy
+	// (see computeTop4LockActive and the "T4" constraint policy) is in
+	// effect this round: exactly 4 players are still hopeful contenders for
+	// 1st in the 2nd-to-last round, and Factor 3 didn't fire.
+	top4LockActive bool
+}
+
+// computeForcedLeaderVsThird handles rank 2 receiving this round's bye while
+// the "hopeful for 1st" contender group is small - the leader alone, the
+// leader and rank 2, or the leader, rank 2, and rank 3 - ahead of, and
+// instead of, the general odd-group-parity rule in
+// computeDisallowedLeaderOpponent. In every one of those cases, rank 2
+// sitting out this round leaves the leader without the strongest hopeful
+// opponent actually available this round. Rather than let the general rule
+// promote rank 3 into the group and then bar the leader from playing them -
+// handing the leader an arbitrary weaker opponent instead - force the
+// leader onto rank 3 directly (see the "L3" constraint policy and the CC
+// weight policy's matching early-out).
+//
+// Like computeDisallowedLeaderOpponent, this defers entirely to Factor 3,
+// and must run after computeTopDownByePlayer and computeForcedContenderBye
+// so the definite bye recipient, if any, is known.
+func computeForcedLeaderVsThird(pargs *policyArgs) int {
+	if len(pargs.factor3ForcedPairings) > 0 {
+		return -1
+	}
+	// The hopeful-for-1st group must be small enough that rank 2 is either
+	// the group's last member or already outside it (i.e. the lowest-ranked
+	// hopeful player is rank 1, 2, or 3) - LowestPossibleHopeNth[0] is
+	// 0-indexed, so that's a boundary of at most 2.
+	if pargs.copdata.LowestPossibleHopeNth[0] > 2 {
+		return -1
+	}
+	// A gibsonized leader has already settled the race (see the doc comment
+	// on computeDisallowedLeaderOpponent), so rank 1 sitting out doesn't
+	// leave the leader without a hopeful opponent in the same sense - fall
+	// through to the general rule instead.
+	if pargs.copdata.GibsonizedPlayers[0] {
+		return -1
+	}
+	numPlayers := len(pargs.playerNodes)
+	// Do not consider the bye as a player in this case
+	if pargs.playerNodes[numPlayers-1] == pkgstnd.ByePlayerIndex {
+		numPlayers--
+	}
+	if numPlayers < 3 {
+		return -1
+	}
+	byeRecipient := -1
+	switch {
+	case pargs.topDownByePlayer >= 0:
+		byeRecipient = pargs.topDownByePlayer
+	case pargs.forcedContenderByePlayer >= 0:
+		byeRecipient = pargs.forcedContenderByePlayer
+	}
+	if byeRecipient < 0 || pargs.playerNodes[1] != byeRecipient {
+		return -1
+	}
+	return pargs.playerNodes[2]
+}
+
+// computeDisallowedLeaderOpponent implements the odd-hopeful-contender-group
+// rule: the group of players still hopeful to reach 1st is ranks
+// [0..LowestPossibleHopeNth[0]]. If that group's size is odd, the next player
+// down is pulled in to even it out, but is barred from playing the leader.
+//
+// Exception: if the raw group has exactly one player (only the leader
+// itself) and the leader isn't gibsonized, no player is added or barred -
+// 1st and 2nd are left to play each other via the usual weight policies.
+//
+// The leader (rank 0) doesn't count toward the group's pairable parity if
+// they're Gibsonized: GibsonizedPlayers[0] uniquely means "guaranteed to
+// finish 1st" (nothing beats 1st), so a Gibsonized leader has already
+// settled the race - unlike the hopeful-to-cash boundary's blanket
+// exclusion (any Gibsonized player, at whatever rank, is guaranteed to
+// cash), a Gibson lock at any other rank in this group only guarantees that
+// player won't fall below their current spot and says nothing about
+// whether they can still win outright, so only rank 0's own Gibson status
+// is excluded here, never anyone else's.
+//
+// This must run after computeTopDownByePlayer and computeForcedContenderBye
+// (both already computed by this point - see the call order in
+// copMinWeightMatching), so it can account for the definite bye recipient,
+// if any: unlike LowestPossibleHopeNth[PlacePrizes-1] (the hopeful-to-cash
+// boundary), GetPrecompData never pre-promotes LowestPossibleHopeNth[0] for
+// raw parity, so there's no earlier promotion to retract here - just check
+// parity against the bye-adjusted (and Gibson-adjusted) group size directly.
+func computeDisallowedLeaderOpponent(pargs *policyArgs) int {
+	// Factor 3 expansion already constrains the top-6 pairings (including the
+	// leader's); applying this rule on top of it would overconstrain the matching.
+	if len(pargs.factor3ForcedPairings) > 0 {
+		return -1
+	}
+	// computeForcedLeaderVsThird handles the narrower rank-2-bye case of
+	// this same group on its own terms - forcing the leader onto 3rd
+	// instead of barring 3rd from the leader - so defer to it entirely
+	// rather than competing over the same edge.
+	if pargs.forcedLeaderVsThird >= 0 {
+		return -1
+	}
+	numPlayers := len(pargs.playerNodes)
+	// Do not consider the bye as a player in this case
+	if pargs.playerNodes[numPlayers-1] == pkgstnd.ByePlayerIndex {
+		numPlayers--
+	}
+	if numPlayers < 1 {
+		return -1
+	}
+	contenderBoundary := pargs.copdata.LowestPossibleHopeNth[0]
+	rawGroupSize := contenderBoundary + 1
+	extraRankIdx := contenderBoundary + 1
+	// The size-1 case is handled entirely separately from the general
+	// parity check below, on purpose: even when the leader is Gibsonized, a
+	// lone raw contender (just the leader) still gets the next player
+	// pulled in and barred, to protect a genuine 2nd/3rd-place race even
+	// though 1st is already settled - it must not fall through to the
+	// general check, where subtracting the Gibsonized leader would turn
+	// this into an (incorrect) even/no-op case.
+	if rawGroupSize == 1 {
+		if !pargs.copdata.GibsonizedPlayers[0] {
+			return -1
+		}
+		if extraRankIdx >= numPlayers {
+			return -1
+		}
+		return pargs.playerNodes[extraRankIdx]
+	}
+
+	// The leader doesn't count toward the group's pairable parity if
+	// they're Gibsonized (see doc comment above).
+	groupSize := rawGroupSize
+	if pargs.copdata.GibsonizedPlayers[0] {
+		groupSize--
+	}
+
+	byeRecipient := -1
+	switch {
+	case pargs.topDownByePlayer >= 0:
+		byeRecipient = pargs.topDownByePlayer
+	case pargs.forcedContenderByePlayer >= 0:
+		byeRecipient = pargs.forcedContenderByePlayer
+	}
+	if byeRecipient >= 0 {
+		for pri := 0; pri <= contenderBoundary; pri++ {
+			if pargs.playerNodes[pri] == byeRecipient {
+				// The bye recipient won't need a pairing partner this round,
+				// so they don't count toward the group's pairable parity.
+				groupSize--
+				break
+			}
+		}
+	}
+
+	if groupSize%2 == 0 {
+		return -1
+	}
+	if extraRankIdx >= numPlayers {
+		return -1
+	}
+	return pargs.playerNodes[extraRankIdx]
+}
+
+// computeTop4LockActive implements the top-4-must-play-each-other policy: in
+// the 2nd-to-last round, if exactly 4 players are still hopeful contenders
+// for 1st (LowestPossibleHopeNth[0] == 3) and Factor 3 didn't fire, ranks
+// 0-3 are barred from playing anyone outside that group of four (see the
+// "T4" constraint policy below), forcing all four to play each other this
+// round. Which specific matchups result - 1v2 & 3v4, 1v3 & 2v4, or 1v4 &
+// 2v3 - is left entirely to the normal weight policies (RD, repeats, etc.)
+// to decide; this only restricts the pool they choose from.
+//
+// Like computeDisallowedLeaderOpponent, this defers entirely to Factor 3
+// when it fires: F3 already constrains the top-6 pairings (which include
+// all of the top 4), so layering this rule on top would overconstrain the
+// matching.
+//
+// This must run after computeTopDownByePlayer and computeForcedContenderBye
+// (both already computed by this point - see the call order in
+// copMinWeightMatching), so that a bye landing inside the top 4 - leaving
+// only 3 of them to pair off - can be detected and the policy skipped
+// rather than forcing an impossible 3-player group.
+func computeTop4LockActive(pargs *policyArgs) bool {
+	if len(pargs.factor3ForcedPairings) > 0 {
+		return false
+	}
+	if pargs.roundsRemaining != 2 {
+		return false
+	}
+	if pargs.copdata.LowestPossibleHopeNth[0] != 3 {
+		return false
+	}
+	numPlayers := len(pargs.playerNodes)
+	// Do not consider the bye as a player in this case
+	if numPlayers > 0 && pargs.playerNodes[numPlayers-1] == pkgstnd.ByePlayerIndex {
+		numPlayers--
+	}
+	if numPlayers < 4 {
+		return false
+	}
+	byeRecipient := -1
+	switch {
+	case pargs.topDownByePlayer >= 0:
+		byeRecipient = pargs.topDownByePlayer
+	case pargs.forcedContenderByePlayer >= 0:
+		byeRecipient = pargs.forcedContenderByePlayer
+	}
+	if byeRecipient >= 0 {
+		for pri := 0; pri <= 3; pri++ {
+			if pargs.playerNodes[pri] == byeRecipient {
+				// One of the top 4 is sitting out this round, leaving only 3
+				// to pair off - locking them together is impossible, so skip.
+				return false
+			}
+		}
+	}
+	return true
+}
+
+// computeTopDownByePlayer determines which player (if any) should receive the
+// top-down bye: the player with the fewest previous byes, scanning from the
+// top of the standings down (ties go to the higher-ranked player). Returns -1
+// if top-down byes don't apply in this round. Top-down byes take precedence
+// over the Gibson bye (see the "GB" policy below), so this does not defer to
+// pargs.gibsonGetsBye.
+//
+// This delegates to copdatapkg.ComputeTopDownByeRankIdx, which GetPrecompData
+// also calls (before this function ever runs) so the control-loss search can
+// exclude this same rank from being flagged as the destiny child - see that
+// function's doc comment. Both call sites must agree on who gets the bye, so
+// the computation lives in one place.
+func computeTopDownByePlayer(pargs *policyArgs) int {
+	byeRankIdx := copdatapkg.ComputeTopDownByeRankIdx(pargs.req, pargs.copdata.Standings, pargs.copdata.PairingCounts)
+	if byeRankIdx < 0 {
+		return -1
+	}
+	return pargs.copdata.Standings.GetPlayerIndex(byeRankIdx)
+}
+
+// computeForcedContenderBye detects when PC (which major-penalizes giving a
+// hopeful-to-cash contender the bye) and BR (which major-penalizes giving
+// anyone a repeat bye, when AllowRepeatByes is false) are in direct conflict:
+// every player who hasn't yet had a bye is a contender, so the bye must
+// either go to a contender (a PC violation) or repeat on someone (a BR
+// violation). When that's the case, this forces the bye onto the
+// lowest-ranked such contender with the fewest prior byes - the mirror image
+// of computeTopDownByePlayer's top-down scan. Returns -1 if there's no clash
+// this round (a bye-repeat-free non-contender is available, so PC and BR
+// don't conflict), or if repeats can't be avoided regardless of who gets the
+// bye (nobody, contender or not, is bye-repeat-free).
+func computeForcedContenderBye(pargs *policyArgs) int {
+	numPlayers := len(pargs.playerNodes)
+	if pargs.req.AllowRepeatByes || pargs.playerNodes[numPlayers-1] != pkgstnd.ByePlayerIndex ||
+		pargs.gibsonGetsBye || pargs.topDownByePlayer >= 0 {
+		return -1
+	}
+	byePlayer := -1
+	leastByes := int(pargs.req.Rounds + 1)
+	// Scan bottom-up, excluding the bye - the mirror of computeTopDownByePlayer's
+	// top-down scan, so ties favor the lower-ranked (bottom) contender.
+	for playerRankIdx := numPlayers - 2; playerRankIdx >= 0; playerRankIdx-- {
+		pi := pargs.playerNodes[playerRankIdx]
+		numByes := pargs.copdata.PairingCounts[copdatapkg.GetPairingKey(pi, pkgstnd.ByePlayerIndex)]
+		isContender := playerRankIdx <= pargs.lowestPossibleHopeCasher && !pargs.copdata.GibsonizedPlayers[playerRankIdx]
+		if numByes == 0 && !isContender {
+			// A non-contender is still bye-repeat-free; PC and BR don't conflict.
+			return -1
+		}
+		if isContender && numByes < leastByes {
+			leastByes = numByes
+			byePlayer = pi
+		}
+	}
+	// Only force the bye onto a contender if doing so actually avoids a
+	// repeat - if even the least-byed contender already has one, forcing it
+	// on them wouldn't help, so leave it to the weight policies.
+	if byePlayer < 0 || leastByes > 0 {
+		return -1
+	}
+	return byePlayer
+}
+
+// adjustLowestPossibleHopeCasherForBye corrects the hopeful-to-cash
+// contender-group boundary once a specific player has definitively been
+// assigned the bye this round (via a top-down bye or a forced-contender
+// bye - both computed before this point). GetPrecompData's odd/even parity
+// promotion guarantees the contender group's size is even *before* any bye
+// is known, so that everyone in it can pair off within the group. If the
+// bye recipient turns out to be inside that group, removing them from the
+// pairing pool (they're paired with BYE, not a contender) makes the
+// group's *remaining* pairable size odd again.
+//
+// How that's corrected depends on whether the bye recipient is the very
+// player GetPrecompData promoted to fix a raw odd count
+// (copdata.HopefulToCashPromotedPlayerRankIdx), or a genuine contender:
+//   - If the bye recipient is a genuine contender (ranked above the
+//     promoted player, or no promotion fired at all), extend the boundary
+//     by one more rank, promoting the next player down into the group -
+//     mirroring the promotion GetPrecompData already does for the raw
+//     odd-count case.
+//   - If the bye recipient is itself the artificially-promoted player, that
+//     promotion no longer serves its purpose (the promoted player isn't
+//     pairing with anyone this round either way), so extend past them too.
+//   - If a promotion fired AND the bye recipient is a genuine contender
+//     ranked *above* the promoted player, the promotion and the bye removal
+//     cancel out: the raw (pre-promotion) contender count was odd, the
+//     promotion made it even, and the bye now removes one, making it odd
+//     again - back to exactly the raw count minus one, which is even. No
+//     promotion is needed at all, so retract GetPrecompData's promotion
+//     instead of extending further; extending on top of it would promote
+//     two extra players for a group that needed zero.
+//
+// Pure Gibson byes are not handled here because a Gibsonized player is
+// never counted as a hopeful-to-cash contender in the first place (see PC,
+// CC, computeForcedContenderBye), so their removal never affects this
+// parity.
+func adjustLowestPossibleHopeCasherForBye(pargs *policyArgs, playerNodes []int, numPlayers int, logsb *strings.Builder) int {
+	byeRecipient := -1
+	switch {
+	case pargs.topDownByePlayer >= 0:
+		byeRecipient = pargs.topDownByePlayer
+	case pargs.forcedContenderByePlayer >= 0:
+		byeRecipient = pargs.forcedContenderByePlayer
+	default:
+		return pargs.lowestPossibleHopeCasher
+	}
+	byeRank := -1
+	for pri := 0; pri < numPlayers; pri++ {
+		if playerNodes[pri] == byeRecipient {
+			byeRank = pri
+			break
+		}
+	}
+	if byeRank < 0 || byeRank > pargs.lowestPossibleHopeCasher {
+		// Bye recipient isn't in the hopeful-to-cash contender group; no adjustment needed.
+		return pargs.lowestPossibleHopeCasher
+	}
+	if pargs.copdata.GibsonizedPlayers[byeRank] {
+		// The bye recipient is Gibsonized, so they were never counted toward
+		// the parity-relevant contender count in the first place (see the
+		// Gibson exclusion in GetPrecompData and PC/CC) - removing them from
+		// the pairing pool via a bye doesn't change that count, so no
+		// adjustment is needed even though their rank falls within the
+		// boundary.
+		return pargs.lowestPossibleHopeCasher
+	}
+
+	promotedRankIdx := pargs.copdata.HopefulToCashPromotedPlayerRankIdx
+	if promotedRankIdx >= 0 && byeRank < promotedRankIdx {
+		// The bye landed on a genuine contender, not the artificially
+		// promoted one - GetPrecompData's promotion is now redundant, so
+		// retract it instead of extending further (which would promote two
+		// extra players for a group that needed none).
+		newBoundary := promotedRankIdx - 1
+		logsb.WriteString(fmt.Sprintf(
+			"Contender group parity: %s (rank %d) is inside the hopeful-to-cash contender group "+
+				"(boundary rank %d) and is receiving the bye this round; this already restores parity "+
+				"for the raw (pre-promotion) contender count, so retracting the earlier promotion of %s, "+
+				"restoring the boundary to rank %d\n",
+			pargs.req.PlayerNames[byeRecipient], byeRank+1, pargs.lowestPossibleHopeCasher+1,
+			pargs.req.PlayerNames[playerNodes[promotedRankIdx]], newBoundary+1,
+		))
+		return newBoundary
+	}
+
+	newBoundary := pargs.lowestPossibleHopeCasher + 1
+	if newBoundary >= numPlayers {
+		// No player left to promote; leave the boundary as-is rather than
+		// running off the end of the standings.
+		return pargs.lowestPossibleHopeCasher
+	}
+	logsb.WriteString(fmt.Sprintf(
+		"Contender group parity: %s (rank %d) is inside the hopeful-to-cash contender group "+
+			"(boundary rank %d) and is receiving the bye this round, leaving an odd number of "+
+			"contenders needing an opponent; extending the boundary to rank %d (promoting %s) to restore parity\n",
+		pargs.req.PlayerNames[byeRecipient], byeRank+1, pargs.lowestPossibleHopeCasher+1,
+		newBoundary+1, pargs.req.PlayerNames[playerNodes[newBoundary]],
+	))
+	return newBoundary
 }
 
 type constraintPolicy struct {
@@ -95,26 +512,59 @@ var constraintPolicies = []constraintPolicy{
 
 			// First, compute the cash prize KOTH players
 
+			// Ranks are scanned as adjacent pairs below, and a rank that's
+			// skipped (rather than force-paired) is implicitly left for the
+			// *next* window to retry against its neighbor - which is correct
+			// for e.g. a Gibsonized player, who still plays a real game this
+			// round, just not a forced one. The top-down bye recipient is
+			// different: they have no opponent at all this round, so they
+			// must be removed from the scan entirely up front. Leaving them
+			// in would silently drop their neighbor from KOTH consideration
+			// too - e.g. rank 9 skipped against rank 10 (the bye recipient),
+			// then rank 10 skipped again against rank 11, forcing rank 11
+			// against rank 12 and leaving rank 9 unpaired by KOTH altogether,
+			// so they fall through to the general weighted matching and can
+			// end up paired with someone far outside contention.
+			rankIdxs := make([]int, 0, numPlayers)
+			for ri := 0; ri < numPlayers; ri++ {
+				if pargs.topDownByePlayer >= 0 && pargs.playerNodes[ri] == pargs.topDownByePlayer {
+					continue
+				}
+				rankIdxs = append(rankIdxs, ri)
+			}
+
 			var highestNoncontender int
-			for playerRankIdx := 0; playerRankIdx < numPlayers-1; playerRankIdx++ {
+			for k := 0; k < len(rankIdxs)-1; k++ {
+				playerRankIdx := rankIdxs[k]
 				if pargs.lowestPossibleAbsCasher < playerRankIdx {
 					highestNoncontender = playerRankIdx
 					break
 				}
+				nextRankIdx := rankIdxs[k+1]
 				pi := pargs.playerNodes[playerRankIdx]
-				pj := pargs.playerNodes[playerRankIdx+1]
+				pj := pargs.playerNodes[nextRankIdx]
 				if pi == pkgstnd.ByePlayerIndex || pj == pkgstnd.ByePlayerIndex {
 					continue
 				}
-				if pargs.copdata.GibsonizedPlayers[playerRankIdx] || pargs.copdata.GibsonizedPlayers[playerRankIdx+1] {
+				if pargs.copdata.GibsonizedPlayers[playerRankIdx] || pargs.copdata.GibsonizedPlayers[nextRankIdx] {
+					continue
+				}
+				// The odd-hopeful-contender-group rule also takes precedence over
+				// cash prize KOTH: don't force the leader to play the player barred
+				// from playing them. In practice this only matters if
+				// computeDisallowedLeaderOpponent's single-contender exception
+				// doesn't apply (i.e. the leader is gibsonized), in which case the
+				// gibsonized check above already skips this pairing - this guard is
+				// kept for defense in depth.
+				if playerRankIdx == 0 && (pi == pargs.disallowedLeaderOpponent || pj == pargs.disallowedLeaderOpponent) {
 					continue
 				}
 				forcedPairings = append(forcedPairings, [2]int{pi, pj})
 				// A pairing with pi and pj was forced, so we need to
 				// skip evaluation for player pj in the next iteration
-				// by incrementing playerRankIdx, which combined with
-				// this for loop effectively performs a playerRankIdx += 2
-				playerRankIdx++
+				// by incrementing k, which combined with this for loop
+				// effectively performs a k += 2
+				k++
 			}
 
 			// Then, compute the class prize KOTH players
@@ -140,11 +590,19 @@ var constraintPolicies = []constraintPolicy{
 				playerToCatch := -1
 				KOTHCumeGibsonSpread := int(pargs.req.GibsonSpread * 2)
 				for {
-					for ri < numPlayers && int(pargs.req.PlayerClasses[pargs.playerNodes[ri]]) != classIdx {
+					// Top-down byes take precedence over class prize KOTH: the bye
+					// recipient (if in this class) has no opponent at all this
+					// round, so they're skipped from the scan entirely - just like
+					// the cash-prize KOTH scan above - and the algorithm works
+					// around them, forcing the next two available class contenders
+					// together instead of dropping the forced pairing altogether.
+					for ri < numPlayers && (int(pargs.req.PlayerClasses[pargs.playerNodes[ri]]) != classIdx ||
+						pargs.playerNodes[ri] == pargs.topDownByePlayer) {
 						ri++
 					}
 					rj := ri + 1
-					for rj < numPlayers && int(pargs.req.PlayerClasses[pargs.playerNodes[rj]]) != classIdx {
+					for rj < numPlayers && (int(pargs.req.PlayerClasses[pargs.playerNodes[rj]]) != classIdx ||
+						pargs.playerNodes[rj] == pargs.topDownByePlayer) {
 						rj++
 					}
 					if rj >= numPlayers {
@@ -230,7 +688,10 @@ var constraintPolicies = []constraintPolicy{
 		// Gibson Bye
 		name: "GB",
 		handler: func(pargs *policyArgs) ([][2]int, [][2]int) {
-			if !pargs.gibsonGetsBye {
+			// Top-down byes take precedence over the Gibson bye: if TB has
+			// already claimed the bye for a specific player this round, don't
+			// also disallow it from everyone else here.
+			if !pargs.gibsonGetsBye || pargs.topDownByePlayer >= 0 {
 				return [][2]int{}, [][2]int{}
 			}
 			disallowedPairings := [][2]int{}
@@ -252,23 +713,22 @@ var constraintPolicies = []constraintPolicy{
 		// Top Down Byes
 		name: "TB",
 		handler: func(pargs *policyArgs) ([][2]int, [][2]int) {
-			numPlayers := len(pargs.playerNodes)
-			if !pargs.req.TopDownByes || pargs.playerNodes[numPlayers-1] != pkgstnd.ByePlayerIndex || pargs.gibsonGetsBye {
+			if pargs.topDownByePlayer < 0 {
 				return [][2]int{}, [][2]int{}
 			}
-			forcedBye := [][2]int{{-1, pkgstnd.ByePlayerIndex}}
-			leastByes := int(pargs.req.Rounds + 1)
-			// Use numPlayers - 1 to exclude the bye
-			for playerRankIdx := range numPlayers - 1 {
-				pi := pargs.playerNodes[playerRankIdx]
-				pairingKey := copdatapkg.GetPairingKey(pi, pkgstnd.ByePlayerIndex)
-				numByes := pargs.copdata.PairingCounts[pairingKey]
-				if numByes < leastByes {
-					leastByes = numByes
-					forcedBye[0][0] = pi
-				}
+			return [][2]int{{pargs.topDownByePlayer, pkgstnd.ByePlayerIndex}}, [][2]int{}
+		},
+	},
+	{
+		// Forced Contender Bye: PC (no bye for contenders) and BR (no repeat
+		// byes) are in direct conflict this round, so force the bye onto the
+		// contender it picks rather than letting a repeat bye happen instead.
+		name: "CB",
+		handler: func(pargs *policyArgs) ([][2]int, [][2]int) {
+			if pargs.forcedContenderByePlayer < 0 {
+				return [][2]int{}, [][2]int{}
 			}
-			return forcedBye, [][2]int{}
+			return [][2]int{{pargs.forcedContenderByePlayer, pkgstnd.ByePlayerIndex}}, [][2]int{}
 		},
 	},
 	{
@@ -281,6 +741,82 @@ var constraintPolicies = []constraintPolicy{
 			return pargs.factor3ForcedPairings, [][2]int{}
 		},
 	},
+	{
+		// Top 4 lock: in the 2nd-to-last round, when exactly 4 players are
+		// still hopeful contenders for 1st and Factor 3 didn't fire, bar all
+		// of them from playing anyone outside that group - see
+		// computeTop4LockActive.
+		name: "T4",
+		handler: func(pargs *policyArgs) ([][2]int, [][2]int) {
+			if !pargs.top4LockActive {
+				return [][2]int{}, [][2]int{}
+			}
+			disallowedPairings := [][2]int{}
+			numPlayers := len(pargs.playerNodes)
+			for pri := 0; pri <= 3; pri++ {
+				for prj := 4; prj < numPlayers; prj++ {
+					disallowedPairings = append(disallowedPairings, [2]int{pargs.playerNodes[pri], pargs.playerNodes[prj]})
+				}
+			}
+			return [][2]int{}, disallowedPairings
+		},
+	},
+	{
+		// Leader vs 3rd: when only the leader and one other player are
+		// still hopeful for 1st, and that other player is receiving this
+		// round's bye, force the leader to play 3rd instead of leaving it
+		// to the general odd-hopeful-contender-group bar - see
+		// computeForcedLeaderVsThird.
+		name: "L3",
+		handler: func(pargs *policyArgs) ([][2]int, [][2]int) {
+			if pargs.forcedLeaderVsThird < 0 {
+				return [][2]int{}, [][2]int{}
+			}
+			return [][2]int{{pargs.playerNodes[0], pargs.forcedLeaderVsThird}}, [][2]int{}
+		},
+	},
+}
+
+// isLastQuarter reports whether the tournament is in its last quarter of
+// rounds - the shared boundary the RD, PC, and CC weight policies all key off.
+func isLastQuarter(pargs *policyArgs) bool {
+	return copdatapkg.IsLastQuarter(pargs.roundPairingsRemaining, pargs.req.Rounds)
+}
+
+// isFinalRound reports whether this is the tournament's true final round -
+// distinct from isLastQuarter, which covers the whole last quarter of rounds.
+// In the final round, the fourth-quarter-only cash-contention weight logic in
+// PC/CC/RD is disabled, so those policies fall back to plain rank-diff KOTH
+// weighting for everyone (including Gibsonized players and hopeful cashers)
+// in whatever pool is left after KH's forced KOTH pairings.
+func isFinalRound(pargs *policyArgs) bool {
+	return pargs.roundsRemaining == 1
+}
+
+// hopeToCashBoundary returns the hopeful-to-cash rank boundary used by the CC
+// weight policy. In divisions of 12+ players it's clamped so the bottom 6
+// are never counted as hopeful to cash, even if the normal
+// lowestPossibleHopeCasher computation would reach that far down. Without
+// this clamp, a bottom-6 player who is still (barely) hopeful to cash would
+// have no non-major-penalty pairing available: CC's hopeful-vs-hopeful rule
+// would major-penalize pairing them with a non-hopeful player, and its
+// hopeful-vs-bottom-6 rule would major-penalize pairing them with a hopeful
+// one.
+func hopeToCashBoundary(pargs *policyArgs) int {
+	boundary := pargs.lowestPossibleHopeCasher
+	numPlayers := len(pargs.playerNodes)
+	// Do not consider the bye as a player in this case
+	if pargs.playerNodes[numPlayers-1] == pkgstnd.ByePlayerIndex {
+		numPlayers--
+	}
+	if numPlayers < 12 {
+		return boundary
+	}
+	maxBoundary := numPlayers - 6 - 1
+	if boundary > maxBoundary {
+		boundary = maxBoundary
+	}
+	return boundary
 }
 
 var weightPolicies = []weightPolicy{
@@ -294,8 +830,10 @@ var weightPolicies = []weightPolicy{
 			if rj < len(pargs.copdata.GibsonizedPlayers) {
 				rjGibsonized = pargs.copdata.GibsonizedPlayers[rj]
 			}
-			// In the fourth quarter, cashers use PC weight exclusively; zero out RD.
-			if pargs.roundPairingsRemaining*4 <= int(pargs.req.Rounds) &&
+			// In the fourth quarter (but not the final round), cashers use PC
+			// weight exclusively; zero out RD. In the final round, PC is
+			// disabled entirely (see below), so RD stays active for everyone.
+			if isLastQuarter(pargs) && !isFinalRound(pargs) &&
 				!pargs.copdata.GibsonizedPlayers[ri] &&
 				ri <= pargs.lowestPossibleHopeCasher {
 				return 0
@@ -318,6 +856,13 @@ var weightPolicies = []weightPolicy{
 		// Pair with Casher
 		name: "PC",
 		handler: func(pargs *policyArgs, ri int, rj int) int64 {
+			// In the final round, cash-contention weighting is disabled
+			// entirely (Gibsonized players get no special exemption from it
+			// either) - everyone falls back to plain RD/RE weighting for
+			// whatever pool KH's forced KOTH pairings leave behind.
+			if isFinalRound(pargs) {
+				return 0
+			}
 			// rj might be the Bye, which is out of range for this array
 			rjGibsonized := false
 			if rj < len(pargs.copdata.GibsonizedPlayers) {
@@ -326,6 +871,18 @@ var weightPolicies = []weightPolicy{
 			if pargs.copdata.GibsonizedPlayers[ri] || rjGibsonized || ri > pargs.lowestPossibleHopeCasher {
 				return 0
 			}
+			if pargs.playerNodes[rj] == pkgstnd.ByePlayerIndex {
+				// The TB constraint policy already forces this exact
+				// pairing (it disallows every other pairing for the
+				// top-down bye recipient), so this edge is the only one
+				// the matcher can pick regardless of its weight - major-
+				// penalizing it here would just trigger cop.go's Retry
+				// fallback for nothing.
+				if pargs.playerNodes[ri] == pargs.topDownByePlayer {
+					return 0
+				}
+				return hopefulCasherByeWeight
+			}
 			lowestContender := pargs.copdata.LowestPossibleHopeNth[ri]
 			if override, ok := pargs.lowestHopeOverride[ri]; ok {
 				lowestContender = override
@@ -333,7 +890,7 @@ var weightPolicies = []weightPolicy{
 			// Check if we should apply an inverse distance penalty
 			if rj <= lowestContender || (lowestContender == ri && ri == rj-1) {
 				// Only apply PC weight in the fourth quarter.
-				if pargs.roundPairingsRemaining*4 > int(pargs.req.Rounds) {
+				if !isLastQuarter(pargs) {
 					return 0
 				}
 				// Calculate the inverse distance penalty
@@ -343,8 +900,107 @@ var weightPolicies = []weightPolicy{
 				}
 				return int64(math.Pow(float64(casherDiff), 3) * 2)
 			}
-			// Apply a major penalty if the lower ranked player cannot catch the higher ranked player
+			// Apply a major penalty if the lower ranked player cannot catch
+			// the higher ranked player - except for the first rank just
+			// outside the contention window, which gets a halved major
+			// penalty instead. If COP is ever forced into a major-penalty
+			// pairing anyway (e.g. because every in-window opponent is
+			// otherwise taken), the halved weight makes it prefer reaching
+			// only one rank outside the window over reaching further.
+			if rj == lowestContender+1 {
+				return majorPenalty / 2
+			}
 			return majorPenalty
+		},
+	},
+	{
+		// Cash contention. This folds together three rules that all turn on
+		// who's still "hopeful" for something, so that they're expressed as
+		// one set of major-penalty weights instead of separate rules that
+		// could stack into a hard, unsatisfiable constraint for a player who
+		// straddles more than one boundary at once:
+		//
+		//   - Hopeful-to-cash vs hopeful-to-cash (4th quarter only): players
+		//     who are hopeful to cash should play other hopeful-to-cash
+		//     players, and players who aren't hopeful to cash should play
+		//     other players who aren't hopeful to cash.
+		//   - Hopeful-to-cash vs bottom 6 (divisions of 12+ players, 4th
+		//     quarter only): discourage hopeful-to-cash players from playing
+		//     players in the bottom 6 of the standings.
+		//   - Odd hopeful-contender-group for 1st (any round): when the
+		//     group of players still hopeful to reach 1st is odd-sized, the
+		//     extra player pulled in to even it out is barred from playing
+		//     the leader. This used to be a hard-disallowed pairing; folding
+		//     it in here as a major penalty instead means it can never
+		//     combine with the other two rules to leave a player with no
+		//     legal pairing at all.
+		//   - Leader vs 3rd (any round): the rank-2-bye exception to the
+		//     rule above - see computeForcedLeaderVsThird - is the mirror
+		//     image: that edge is forced, not barred, so it must be
+		//     exempted from every major penalty below (not just the
+		//     leader-opponent one) or the L3 constraint policy would force
+		//     an edge this policy then major-penalizes anyway.
+		name: "CC",
+		handler: func(pargs *policyArgs, ri int, rj int) int64 {
+			// Leader vs 3rd: this edge is forced by the L3 constraint
+			// policy, so it must never be penalized here.
+			if ri == 0 && pargs.forcedLeaderVsThird >= 0 &&
+				pargs.playerNodes[rj] == pargs.forcedLeaderVsThird {
+				return 0
+			}
+			// Odd hopeful-contender-group for 1st: bar the added player from
+			// playing the leader (rank 0). This applies in every round, not
+			// just the fourth quarter.
+			if ri == 0 && pargs.disallowedLeaderOpponent >= 0 &&
+				pargs.playerNodes[rj] == pargs.disallowedLeaderOpponent {
+				return majorPenalty
+			}
+			// The hopeful-vs-hopeful and hopeful-vs-bottom-6 rules below are
+			// fourth-quarter-only, and are further disabled in the final
+			// round specifically (see isFinalRound), where cash-contention
+			// grouping gives way to plain RD/RE weighting for the pool left
+			// over after KH's forced KOTH pairings.
+			if !isLastQuarter(pargs) || isFinalRound(pargs) {
+				return 0
+			}
+			// The bye is neither hopeful nor unhopeful to cash; leave it out
+			// of this policy so it doesn't get major-penalized against everyone.
+			if pargs.playerNodes[rj] == pkgstnd.ByePlayerIndex {
+				return 0
+			}
+			hopeCasherBoundary := hopeToCashBoundary(pargs)
+			riHopeful := ri <= hopeCasherBoundary && !pargs.copdata.GibsonizedPlayers[ri]
+			rjHopeful := rj <= hopeCasherBoundary && !pargs.copdata.GibsonizedPlayers[rj]
+			if riHopeful != rjHopeful {
+				// The first rank just outside the hopeful-to-cash boundary
+				// (ri < rj always, so this can only be rj) gets a halved
+				// major penalty instead of the full one - same rationale as
+				// PC's halved penalty for the first rank outside its
+				// contention window.
+				if rj == hopeCasherBoundary+1 {
+					return majorPenalty / 2
+				}
+				return majorPenalty
+			}
+			numPlayers := len(pargs.playerNodes)
+			// Do not consider the bye as a player in this case
+			if pargs.playerNodes[numPlayers-1] == pkgstnd.ByePlayerIndex {
+				numPlayers--
+			}
+			if numPlayers >= 12 {
+				bottomSixBoundary := numPlayers - 6
+				riBottomSix := ri >= bottomSixBoundary
+				rjBottomSix := rj >= bottomSixBoundary
+				if (riHopeful && rjBottomSix) || (rjHopeful && riBottomSix) {
+					// Same halving for the first rank of the bottom six -
+					// the closest to the rest of the field.
+					if ri == bottomSixBoundary || rj == bottomSixBoundary {
+						return majorPenalty / 2
+					}
+					return majorPenalty
+				}
+			}
+			return 0
 		},
 	},
 	{
@@ -400,7 +1056,16 @@ var weightPolicies = []weightPolicy{
 			if timesPlayed > 0 {
 				multiplier = (1 << timesPlayed) - 1
 			}
-			return int64(multiplier) * unitWeight
+			weight := int64(multiplier) * unitWeight
+			// 1st vs 2nd gets an unconditional extra tenth of a repeat's
+			// weight (regardless of timesPlayed), nudging the matching away
+			// from pairing them together unless doing so is otherwise
+			// favorable - without outright forbidding it the way a major
+			// penalty would.
+			if ri == 0 && rj == 1 {
+				weight += unitWeight / 10
+			}
+			return weight
 		},
 	},
 	{
@@ -515,7 +1180,9 @@ func copPairWithLog(req *pb.PairRequest, logsb *strings.Builder) *pb.PairRespons
 
 	switch req.PairMethod {
 	case pb.PairMethod_PAIR_SWISS:
-		return swissPair(req, logsb)
+		// Swiss is just COP: COP's weight policies (repeats, win/rank diff, etc.)
+		// subsume Swiss's simpler weighting, so there's no separate implementation.
+		return copMethodPair(req, logsb)
 	case pb.PairMethod_COP:
 		return copMethodPair(req, logsb)
 	case pb.PairMethod_PAIR_AUTO:
@@ -536,7 +1203,10 @@ func copMethodPair(req *pb.PairRequest, logsb *strings.Builder) *pb.PairResponse
 		}
 	}
 
-	factor3ForcedPairings := computeFactor3ForcedPairings(req, copdata, copRand, logsb)
+	factor3ForcedPairings, factor3FinalRanks, factor3TotalSims := computeFactor3ForcedPairings(req, copdata, copRand, logsb)
+	if factor3FinalRanks != nil {
+		copdata.ApplyFactor3Sim(req, factor3FinalRanks, factor3TotalSims, logsb)
+	}
 	pairings, resp := copMinWeightMatching(req, copdata, factor3ForcedPairings, logsb)
 
 	if resp != nil {
@@ -555,17 +1225,42 @@ func copMethodPair(req *pb.PairRequest, logsb *strings.Builder) *pb.PairResponse
 // would lose control of their destiny under factor-3 (compared to playing 1st
 // directly); if so, only the affected player is paired against 1st. Otherwise it
 // checks whether 4th/5th/6th can each reach 1st/2nd/3rd within the hopefulness
-// threshold, and if so returns the three factor-3 forced pairs. Returns nil when
-// no forced pairings are needed.
-func computeFactor3ForcedPairings(req *pb.PairRequest, copdata *copdatapkg.PrecompData, copRand *rand.Rand, logsb *strings.Builder) [][2]int {
+// threshold, and if so returns the three factor-3 forced pairs. Returns nil
+// forced pairings when none are needed.
+//
+// The second and third return values are the Factor-3 simulation's
+// FinalRanks/TotalSims, non-nil only when the full 1v4/2v5/3v6 expansion
+// actually fires (the last return statement below) - the caller should feed
+// these into copdata.ApplyFactor3Sim so the rest of the round's pairing
+// weights are computed against the pairing structure that's actually being
+// played, not the generic baseline one GetPrecompData started from. The
+// control-loss branch's single forced pair doesn't get this treatment: it
+// doesn't lock in the full factor-3 structure the simulation assumed, so
+// that simulation isn't an accurate stand-in for the rest of the field.
+func computeFactor3ForcedPairings(req *pb.PairRequest, copdata *copdatapkg.PrecompData, copRand *rand.Rand, logsb *strings.Builder) ([][2]int, [][]int, int) {
 	if pkgstnd.GetRoundsRemaining(req) != 2 {
 		logsb.WriteString("Factor 3 skipped: not 2 rounds remaining\n")
-		return nil
+		return nil, nil, 0
 	}
 	numPlayers := copdata.Standings.GetNumPlayers()
 	if numPlayers < 6 {
 		logsb.WriteString(fmt.Sprintf("Factor 3 skipped: fewer than 6 players (%d)\n", numPlayers))
-		return nil
+		return nil, nil, 0
+	}
+
+	// Top-down byes take precedence over Factor 3: if this round's bye
+	// recipient is one of the top 6 (the group F3 forces into 0v3/1v4/2v5
+	// pairings), F3 can't fire at all - the bye recipient can't be forced
+	// into one of those pairings (they're not playing anyone this round),
+	// and reshaping the structure around them would no longer be the
+	// 1v4/2v5/3v6 expansion the control-loss/hopefulness checks below
+	// actually simulated, so cancel F3 outright rather than patch around it.
+	if topDownByeRankIdx := copdatapkg.ComputeTopDownByeRankIdx(req, copdata.Standings, copdata.PairingCounts); topDownByeRankIdx >= 0 && topDownByeRankIdx < 6 {
+		logsb.WriteString(fmt.Sprintf(
+			"Factor 3 skipped: rank %d (%s) is in the top 6 and would receive this round's top-down bye, which takes precedence over Factor 3\n",
+			topDownByeRankIdx+1, req.PlayerNames[copdata.Standings.GetPlayerIndex(topDownByeRankIdx)],
+		))
+		return nil, nil, 0
 	}
 
 	// Build factor-3 pairings for the penultimate round (ranks 0v3, 1v4, 2v5,
@@ -603,11 +1298,11 @@ func computeFactor3ForcedPairings(req *pb.PairRequest, copdata *copdatapkg.Preco
 	factor3FinalRanks, totalSims, err := copdata.Standings.RunSimsWithPairings(copRand, int(req.DivisionSims), 2, f3Pairings)
 	if err != pb.PairError_SUCCESS {
 		logsb.WriteString(fmt.Sprintf("Factor 3 skipped: sim error %v\n", err))
-		return nil
+		return nil, nil, 0
 	}
 	if totalSims == 0 {
 		logsb.WriteString("Factor 3 skipped: zero sims completed\n")
-		return nil
+		return nil, nil, 0
 	}
 	copdatapkg.WriteFinalRankResultsToLog("Factor 3 Sim Results", factor3FinalRanks, copdata.Standings, req, logsb)
 
@@ -653,7 +1348,7 @@ func computeFactor3ForcedPairings(req *pb.PairRequest, copdata *copdatapkg.Preco
 				"Factor 3 control loss: rank %d %s loses control, forcing %s vs %s\n",
 				rankIdx+1, req.PlayerNames[pIdx], req.PlayerNames[p0], req.PlayerNames[pIdx],
 			))
-			return [][2]int{{p0, pIdx}}
+			return [][2]int{{p0, pIdx}}, nil, 0
 		}
 	}
 
@@ -661,21 +1356,69 @@ func computeFactor3ForcedPairings(req *pb.PairRequest, copdata *copdatapkg.Preco
 	// can each reach 1st/2nd/3rd respectively within the hopefulness threshold.
 	minWins := int(math.Round(float64(totalSims) * float64(req.HopefulnessThreshold)))
 
-	// 4th can get 1st, 5th can get 2nd, 6th can get 3rd.
+	// 4th can reach 1st-or-better, 5th can reach 2nd-or-better, 6th can reach
+	// 3rd-or-better. Use cumulative ("at least") sims rather than the exact-rank
+	// cell, since a sim where e.g. 6th finishes 1st or 2nd is a strictly better
+	// outcome than 3rd and must also count toward being hopeful for 3rd.
 	p3 := copdata.Standings.GetPlayerIndex(3)
 	p4 := copdata.Standings.GetPlayerIndex(4)
 	p5 := copdata.Standings.GetPlayerIndex(5)
-	if factor3FinalRanks[3][0] < minWins ||
-		factor3FinalRanks[4][1] < minWins ||
-		factor3FinalRanks[5][2] < minWins {
+	atLeast := func(finalRanks []int, targetRank int) int {
+		sum := 0
+		for rank := 0; rank <= targetRank; rank++ {
+			sum += finalRanks[rank]
+		}
+		return sum
+	}
+	p3AtLeast1st := atLeast(factor3FinalRanks[3], 0)
+	p4AtLeast2nd := atLeast(factor3FinalRanks[4], 1)
+	p5AtLeast3rd := atLeast(factor3FinalRanks[5], 2)
+	if p3AtLeast1st < minWins ||
+		p4AtLeast2nd < minWins ||
+		p5AtLeast3rd < minWins {
 		logsb.WriteString(fmt.Sprintf(
-			"Factor 3 skipped: hopefulness threshold not met (minWins=%d 4th=%s->1st:%d 5th=%s->2nd:%d 6th=%s->3rd:%d)\n",
+			"Factor 3 skipped: hopefulness threshold not met (minWins=%d 4th=%s->1st-or-better:%d 5th=%s->2nd-or-better:%d 6th=%s->3rd-or-better:%d)\n",
 			minWins,
-			req.PlayerNames[p3], factor3FinalRanks[3][0],
-			req.PlayerNames[p4], factor3FinalRanks[4][1],
-			req.PlayerNames[p5], factor3FinalRanks[5][2],
+			req.PlayerNames[p3], p3AtLeast1st,
+			req.PlayerNames[p4], p4AtLeast2nd,
+			req.PlayerNames[p5], p5AtLeast3rd,
 		))
-		return nil
+		return nil, nil, 0
+	}
+
+	// Even when the hopefulness threshold is met, F3 shouldn't fire if it
+	// only benefits the leader while taking destiny control away from the
+	// field: require that at least one of 4th/5th/6th gains a meaningful
+	// (>= f3MinWinChanceGain) shot at actually winning the tournament
+	// outright, compared to the baseline (non-F3) factor pairing.
+	// BaselineFinalRanks/factor3FinalRanks are both indexed by current player
+	// rank from the same standings snapshot within this pairing call, so
+	// ranks 3/4/5 line up between the two.
+	if copdata.BaselineTotalSims > 0 {
+		baseline3 := float64(copdata.BaselineFinalRanks[3][0]) / float64(copdata.BaselineTotalSims)
+		baseline4 := float64(copdata.BaselineFinalRanks[4][0]) / float64(copdata.BaselineTotalSims)
+		baseline5 := float64(copdata.BaselineFinalRanks[5][0]) / float64(copdata.BaselineTotalSims)
+		f3Win3 := float64(factor3FinalRanks[3][0]) / float64(totalSims)
+		f3Win4 := float64(factor3FinalRanks[4][0]) / float64(totalSims)
+		f3Win5 := float64(factor3FinalRanks[5][0]) / float64(totalSims)
+		gain3 := f3Win3 - baseline3
+		gain4 := f3Win4 - baseline4
+		gain5 := f3Win5 - baseline5
+		maxGain := math.Max(gain3, math.Max(gain4, gain5))
+		logsb.WriteString(fmt.Sprintf(
+			"Factor 3 win-chance gain check: %s %.2f%%->%.2f%% (%+.2fpp), %s %.2f%%->%.2f%% (%+.2fpp), %s %.2f%%->%.2f%% (%+.2fpp), min required=%.2fpp\n",
+			req.PlayerNames[p3], baseline3*100, f3Win3*100, gain3*100,
+			req.PlayerNames[p4], baseline4*100, f3Win4*100, gain4*100,
+			req.PlayerNames[p5], baseline5*100, f3Win5*100, gain5*100,
+			f3MinWinChanceGain*100,
+		))
+		if maxGain < f3MinWinChanceGain {
+			logsb.WriteString(fmt.Sprintf(
+				"Factor 3 skipped: no meaningful win-chance gain (max gain %.2fpp < required %.2fpp) - would primarily help %s while reducing the field's destiny control\n",
+				maxGain*100, f3MinWinChanceGain*100, req.PlayerNames[p0],
+			))
+			return nil, nil, 0
+		}
 	}
 
 	logsb.WriteString(fmt.Sprintf(
@@ -684,39 +1427,7 @@ func computeFactor3ForcedPairings(req *pb.PairRequest, copdata *copdatapkg.Preco
 		req.PlayerNames[p1], req.PlayerNames[p4],
 		req.PlayerNames[p2], req.PlayerNames[p5],
 	))
-	return [][2]int{{p0, p3}, {p1, p4}, {p2, p5}}
-}
-
-// extractPrepairedPlayers returns a map of playerIdx -> oppIdx for all prepaired players
-// (where oppIdx == playerIdx means bye), the count of forced byes, and the prepaired round index.
-// Players not in this map are unpaired and should be assigned by the pairing method.
-func extractPrepairedPlayers(req *pb.PairRequest) (map[int]int, int, int) {
-	prepairedPlayerIndexes := map[int]int{}
-	numForcedByes := 0
-	prepairedRoundIdx := -1
-	numDivPairings := len(req.DivisionPairings)
-	removedPlayersSet := map[int]bool{}
-	for _, idx := range req.RemovedPlayers {
-		removedPlayersSet[int(idx)] = true
-	}
-	if numDivPairings > 0 {
-		if slices.Contains(req.DivisionPairings[numDivPairings-1].Pairings, -1) {
-			prepairedRoundIdx = numDivPairings - 1
-		}
-		if prepairedRoundIdx >= 0 {
-			for playerIdx, oppIdx := range req.DivisionPairings[prepairedRoundIdx].Pairings {
-				if int(oppIdx) < playerIdx || removedPlayersSet[playerIdx] || removedPlayersSet[int(oppIdx)] {
-					continue
-				}
-				prepairedPlayerIndexes[playerIdx] = int(oppIdx)
-				prepairedPlayerIndexes[int(oppIdx)] = playerIdx
-				if playerIdx == int(oppIdx) {
-					numForcedByes++
-				}
-			}
-		}
-	}
-	return prepairedPlayerIndexes, numForcedByes, prepairedRoundIdx
+	return [][2]int{{p0, p3}, {p1, p4}, {p2, p5}}, factor3FinalRanks, totalSims
 }
 
 // currentRoundIndex returns the index of the round being paired.
@@ -728,27 +1439,6 @@ func currentRoundIndex(req *pb.PairRequest) int32 {
 		return int32(n - 1)
 	}
 	return int32(n)
-}
-
-// computePairingCounts returns a map from pairing key to number of times that pair has played,
-// counting only complete rounds (excluding any partially-prepaired last round).
-func computePairingCounts(req *pb.PairRequest) map[string]int {
-	counts := map[string]int{}
-	numDivPairings := len(req.DivisionPairings)
-	numComplete := numDivPairings
-	if numComplete > 0 && slices.Contains(req.DivisionPairings[numComplete-1].Pairings, -1) {
-		numComplete--
-	}
-	for roundIdx := range numComplete {
-		for playerIdx, oppIdx := range req.DivisionPairings[roundIdx].Pairings {
-			if int(oppIdx) > playerIdx {
-				continue
-			}
-			key := copdatapkg.GetPairingKey(playerIdx, int(oppIdx))
-			counts[key]++
-		}
-	}
-	return counts
 }
 
 // simplePairOnce runs a single round of a non-COP pairing method and returns
@@ -888,14 +1578,19 @@ func simplePair(req *pb.PairRequest, logsb *strings.Builder) *pb.PairResponse {
 	for rankIdx := range numStandingsPlayers {
 		pi := standings.GetPlayerIndex(rankIdx)
 		opp := int(allPlayerPairings[pi])
-		if opp < 0 {
+		// A bye is represented as either a negative opponent index or the
+		// player paired with themselves (the convention simplePairOnce uses
+		// above, matching how self-pairing is interpreted as a bye
+		// elsewhere, e.g. standings.go). Skip both so a byed player doesn't
+		// fall through and get displayed playing themselves.
+		if opp < 0 || opp == pi {
 			continue
 		}
 		oppRankIdx, oppInStandings := playerIndexToRankIdx[opp]
 		if !oppInStandings || oppRankIdx < rankIdx {
 			continue
 		}
-		pairingsLogMx = append(pairingsLogMx, getMatchupStrArray(divisionPlayerData, rankIdx, oppRankIdx))
+		pairingsLogMx = append(pairingsLogMx, getMatchupStrArray(divisionPlayerData, rankIdx, oppRankIdx, req.PlayerClasses))
 	}
 	copdatapkg.WriteStringDataToLog("Final Pairings", matchupHeader, pairingsLogMx, logsb)
 
@@ -927,241 +1622,6 @@ func simplePair(req *pb.PairRequest, logsb *strings.Builder) *pb.PairResponse {
 	}
 }
 
-// swissPair implements a minimum weight matching Swiss pairing where:
-//   - prepaired player requests are fulfilled
-//   - repeats and bye repeats get a major penalty
-//   - win differences of WD get a penalty of WD * minor penalty
-//   - spread diff is a bonus when both players have the same wins, otherwise a penalty
-func swissPair(req *pb.PairRequest, logsb *strings.Builder) *pb.PairResponse {
-	prepairedPlayerIndexes, _, _ := extractPrepairedPlayers(req)
-	pairingCounts := computePairingCounts(req)
-
-	removedPlayersSet := map[int]bool{}
-	for _, idx := range req.RemovedPlayers {
-		removedPlayersSet[int(idx)] = true
-	}
-
-	standings := pkgstnd.CreateInitialStandings(req)
-	standings.Sort()
-	numStandingsPlayers := standings.GetNumPlayers()
-
-	// Build a player-index-to-standings-rank lookup for O(1) access.
-	playerToRankIdx := make(map[int]int, numStandingsPlayers)
-	for rankIdx := range numStandingsPlayers {
-		playerToRankIdx[standings.GetPlayerIndex(rankIdx)] = rankIdx
-	}
-
-	// Build rank-ordered list of unpaired valid players.
-	playerOrder := []int{}
-	for rankIdx := range numStandingsPlayers {
-		pi := standings.GetPlayerIndex(rankIdx)
-		if !removedPlayersSet[pi] {
-			if _, isPrepaired := prepairedPlayerIndexes[pi]; !isPrepaired {
-				playerOrder = append(playerOrder, pi)
-			}
-		}
-	}
-
-	poolSize := len(playerOrder)
-	addBye := poolSize%2 == 1
-
-	type playerRecord struct {
-		wins   int // wins*2 + ties, so wins count 2 and ties count 1
-		spread int
-	}
-	records := make([]playerRecord, poolSize)
-	poolPlayerData := make([][]string, poolSize)
-	for poolIdx, pi := range playerOrder {
-		rankIdx := playerToRankIdx[pi]
-		poolPlayerData[poolIdx] = standings.StringDataForPlayer(req, rankIdx)
-		records[poolIdx] = playerRecord{
-			wins:   standings.GetPlayerWinsIntTimesTwo(rankIdx),
-			spread: standings.GetPlayerSpread(rankIdx),
-		}
-	}
-
-	// The bye is appended as an extra node at index byeIdx when addBye is true.
-	byeIdx := poolSize
-	numPoolNodes := poolSize
-	if addBye {
-		numPoolNodes++
-	}
-
-	swissWeightHeader := []string{"Player", "W", "S", "Player", "W", "S", "*", "PTP", "Total", "RP", "WD", "SD", "BR"}
-	pairingDetails := [][]string{}
-	edgeToDetailIdx := map[string]int{}
-
-	edges := []*matching.Edge{}
-	for poolIdxI := 0; poolIdxI < numPoolNodes; poolIdxI++ {
-		for poolIdxJ := poolIdxI + 1; poolIdxJ < numPoolNodes; poolIdxJ++ {
-			var repeatPenalty, winDiffPenalty, spreadComp, byeRepeatPenalty int64
-
-			iIsBye := addBye && poolIdxI == byeIdx
-			jIsBye := addBye && poolIdxJ == byeIdx
-
-			var iData, jData []string
-			if iIsBye {
-				iData = []string{byePlayerName, "", ""}
-			} else {
-				iData = getPlayerRecordStrArray(poolPlayerData[poolIdxI])
-			}
-			if jIsBye {
-				jData = []string{byePlayerName, "", ""}
-			} else {
-				jData = getPlayerRecordStrArray(poolPlayerData[poolIdxJ])
-			}
-
-			var timesPlayed int
-			if !iIsBye && !jIsBye {
-				pi := playerOrder[poolIdxI]
-				pj := playerOrder[poolIdxJ]
-
-				key := copdatapkg.GetPairingKey(pi, pj)
-				timesPlayed = pairingCounts[key]
-				if timesPlayed > 0 {
-					repeatPenalty = majorPenalty * int64(timesPlayed)
-				}
-
-				winDiff := records[poolIdxI].wins - records[poolIdxJ].wins
-				if winDiff < 0 {
-					winDiff = -winDiff
-				}
-				winDiffPenalty = int64(winDiff) * int64(winDiff) * int64(minorPenalty) / 2
-
-				spreadDiff := records[poolIdxI].spread - records[poolIdxJ].spread
-				if spreadDiff < 0 {
-					spreadDiff = -spreadDiff
-				}
-				// Spread diff is a bonus (reduces weight) when wins are equal,
-				// encouraging wide spread gaps, and a penalty otherwise.
-				if records[poolIdxI].wins == records[poolIdxJ].wins {
-					spreadComp = -int64(spreadDiff)
-				} else {
-					spreadComp = int64(spreadDiff)
-				}
-			} else {
-				var pi int
-				if iIsBye {
-					pi = playerOrder[poolIdxJ]
-				} else {
-					pi = playerOrder[poolIdxI]
-				}
-				byeKey := copdatapkg.GetPairingKey(pi, pi)
-				timesPlayed = pairingCounts[byeKey]
-				if timesPlayed > 0 {
-					byeRepeatPenalty = majorPenalty * int64(timesPlayed)
-				}
-			}
-
-			totalWeight := repeatPenalty + winDiffPenalty + spreadComp + byeRepeatPenalty
-
-			row := make([]string, 0, len(swissWeightHeader))
-			row = append(row, iData...)
-			row = append(row, jData...)
-			row = append(row, "")                                  // * placeholder
-			row = append(row, fmt.Sprintf("%d", timesPlayed))      // PTP
-			row = append(row, fmt.Sprintf("%d", totalWeight))      // Total
-			row = append(row, fmt.Sprintf("%d", repeatPenalty))    // RP
-			row = append(row, fmt.Sprintf("%d", winDiffPenalty))   // WD
-			row = append(row, fmt.Sprintf("%d", spreadComp))       // SD
-			row = append(row, fmt.Sprintf("%d", byeRepeatPenalty)) // BR
-
-			edgeKey := getRankPairingKey(poolIdxI, poolIdxJ)
-			edgeToDetailIdx[edgeKey] = len(pairingDetails)
-			pairingDetails = append(pairingDetails, row)
-
-			edges = append(edges, matching.NewEdge(poolIdxI, poolIdxJ, totalWeight))
-		}
-		if poolIdxI < numPoolNodes-2 {
-			pairingDetails = append(pairingDetails, make([]string, len(swissWeightHeader)))
-		}
-	}
-
-	poolPairings, _, err := matching.MinWeightMatching(edges, true)
-	if err != nil {
-		return &pb.PairResponse{
-			ErrorCode:    pb.PairError_MIN_WEIGHT_MATCHING,
-			ErrorMessage: fmt.Sprintf("swiss min weight matching error: %s", err.Error()),
-		}
-	}
-
-	if addBye {
-		poolPairings = poolPairings[:len(poolPairings)-1]
-	}
-
-	// Mark selected pairings in the weight table.
-	for poolIdx, poolOppIdx := range poolPairings {
-		if poolOppIdx < poolIdx {
-			continue
-		}
-		edgeKey := getRankPairingKey(poolIdx, poolOppIdx)
-		if detailIdx, ok := edgeToDetailIdx[edgeKey]; ok {
-			pairingDetails[detailIdx][6] = "*"
-		}
-	}
-
-	copdatapkg.WriteStringDataToLog("Swiss Pairing Weights", swissWeightHeader, pairingDetails, logsb)
-
-	allPlayerPairings := make([]int32, req.AllPlayers)
-	for idx := range allPlayerPairings {
-		allPlayerPairings[idx] = -1
-	}
-
-	for poolIdx, poolOppIdx := range poolPairings {
-		if poolIdx >= len(playerOrder) {
-			break
-		}
-		pi := playerOrder[poolIdx]
-		if poolOppIdx < 0 || (addBye && poolOppIdx == byeIdx) {
-			allPlayerPairings[pi] = int32(pi) // bye
-		} else if poolOppIdx < len(playerOrder) {
-			pj := playerOrder[poolOppIdx]
-			allPlayerPairings[pi] = int32(pj)
-		}
-	}
-
-	// Fill in prepaired players.
-	for pi, oppIdx := range prepairedPlayerIndexes {
-		allPlayerPairings[pi] = int32(oppIdx)
-	}
-
-	// Log the pairings array (player i plays allPlayerPairings[i]).
-	logsb.WriteString("Pairings: [")
-	for i, opp := range allPlayerPairings {
-		if i > 0 {
-			logsb.WriteString(" ")
-		}
-		logsb.WriteString(fmt.Sprintf("%d", opp))
-	}
-	logsb.WriteString("]\n")
-
-	// Log pairings by standings rank with player records.
-	playerIndexToPoolIdx := make(map[int]int, len(playerOrder))
-	for poolIdx, pi := range playerOrder {
-		playerIndexToPoolIdx[pi] = poolIdx
-	}
-	matchupHeader := []string{"Player", "W", "S", "Player", "W", "S"}
-	pairingsLogMx := [][]string{}
-	for poolIdx, pi := range playerOrder {
-		opp := int(allPlayerPairings[pi])
-		if opp < 0 {
-			continue
-		}
-		oppPoolIdx, oppInPool := playerIndexToPoolIdx[opp]
-		if !oppInPool || oppPoolIdx < poolIdx {
-			continue
-		}
-		pairingsLogMx = append(pairingsLogMx, getMatchupStrArray(poolPlayerData, poolIdx, oppPoolIdx))
-	}
-	copdatapkg.WriteStringDataToLog("Final Swiss Pairings", matchupHeader, pairingsLogMx, logsb)
-
-	logsb.WriteString("Method: SWISS\n")
-	return &pb.PairResponse{
-		ErrorCode: pb.PairError_SUCCESS,
-		Pairings:  allPlayerPairings,
-	}
-}
-
 // autoPair selects the most appropriate pairing method based on the tournament state.
 //
 // Compute rrRoundsTotal = floor(numRounds / (numValidPlayers-1)) * (numValidPlayers-1),
@@ -1172,8 +1632,7 @@ func swissPair(req *pb.PairRequest, logsb *strings.Builder) *pb.PairResponse {
 //
 // Otherwise (numRounds < numValidPlayers-1):
 //   - Rounds 0–2: Initial Fontes
-//   - Rounds 3 to numRounds/2-1: Swiss
-//   - Round numRounds/2 onward: COP
+//   - Round 3 onward: COP
 func autoPair(req *pb.PairRequest, logsb *strings.Builder) *pb.PairResponse {
 	origMethod := req.PairMethod
 	origInitialNonperfRounds := req.InitialNonperfRounds
@@ -1211,15 +1670,8 @@ func autoPairInner(req *pb.PairRequest, logsb *strings.Builder) *pb.PairResponse
 		return simplePair(req, logsb)
 	}
 
-	halfway := numRounds / 2
-	if currentRound < halfway {
-		req.PairMethod = pb.PairMethod_PAIR_SWISS
-		fmt.Fprintf(logsb, "Auto: round %d < halfway (%d), using Swiss\n", currentRound, halfway)
-		return swissPair(req, logsb)
-	}
-
 	req.PairMethod = pb.PairMethod_COP
-	fmt.Fprintf(logsb, "Auto: round %d >= halfway (%d), using COP\n", currentRound, halfway)
+	fmt.Fprintf(logsb, "Auto: round %d >= 3, using COP\n", currentRound)
 	return copMethodPair(req, logsb)
 }
 
@@ -1229,7 +1681,7 @@ func restoreAutoPairReqFields(req *pb.PairRequest, origMethod pb.PairMethod, ori
 }
 
 func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, factor3ForcedPairings [][2]int, logsb *strings.Builder) ([]int32, *pb.PairResponse) {
-	prepairedPlayerIndexes, numForcedByes, prepairedRoundIdx := extractPrepairedPlayers(req)
+	prepairedPlayerIndexes, numForcedByes, prepairedRoundIdx := copdatapkg.ExtractPrepairedPlayers(req)
 
 	for playerIdx, oppIdx := range prepairedPlayerIndexes {
 		if oppIdx < playerIdx {
@@ -1296,9 +1748,21 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 		prepairedPlayerIndexes:   prepairedPlayerIndexes,
 		factor3ForcedPairings:    factor3ForcedPairings,
 	}
+	pargs.topDownByePlayer = computeTopDownByePlayer(pargs)
+	pargs.forcedContenderByePlayer = computeForcedContenderBye(pargs)
+	pargs.forcedLeaderVsThird = computeForcedLeaderVsThird(pargs)
+	pargs.disallowedLeaderOpponent = computeDisallowedLeaderOpponent(pargs)
+	pargs.top4LockActive = computeTop4LockActive(pargs)
+
+	// Now that a specific bye recipient (if any) is known, correct the
+	// contender-group boundary for their removal from the pairing pool - see
+	// adjustLowestPossibleHopeCasherForBye. This must run after both
+	// computeTopDownByePlayer and computeForcedContenderBye, since they
+	// themselves rely on the pre-adjustment boundary to pick a bye recipient.
+	pargs.lowestPossibleHopeCasher = adjustLowestPossibleHopeCasherForBye(pargs, playerNodes, numPlayers, logsb)
 
 	logsb.WriteString(fmt.Sprintf("Control Loss Sims: %d\n", req.ControlLossSims))
-	logsb.WriteString(fmt.Sprintf("Lowest Hopeful Casher: %s\n", req.PlayerNames[playerNodes[lowestPossibleHopeCasher]]))
+	logsb.WriteString(fmt.Sprintf("Lowest Hopeful Casher: %s\n", req.PlayerNames[playerNodes[pargs.lowestPossibleHopeCasher]]))
 	logsb.WriteString(fmt.Sprintf("Lowest Absolute Casher: %s\n", req.PlayerNames[playerNodes[lowestPossibleAbsCasher]]))
 	logsb.WriteString(fmt.Sprintf("Number of Pairings (including prepaired): %d\n", len(req.DivisionPairings)))
 	logsb.WriteString(fmt.Sprintf("Number of Results: %d\n", len(req.DivisionResults)))
@@ -1306,6 +1770,28 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 	logsb.WriteString(fmt.Sprintf("Round Pairings Remaining: %d\n", pargs.roundPairingsRemaining))
 	logsb.WriteString(fmt.Sprintf("Using Unforced Bye: %t\n", addBye))
 	logsb.WriteString(fmt.Sprintf("Gibson Gets Bye: %t\n", pargs.gibsonGetsBye))
+	if pargs.forcedContenderByePlayer >= 0 {
+		logsb.WriteString(fmt.Sprintf(
+			"Forced Contender Bye: %s - every bye-repeat-free player is a hopeful-to-cash contender this round, "+
+				"so the bye is forced onto the lowest-ranked contender with the fewest prior byes instead of repeating "+
+				"a bye on someone else\n",
+			req.PlayerNames[pargs.forcedContenderByePlayer]))
+	}
+	if pargs.top4LockActive {
+		logsb.WriteString(fmt.Sprintf(
+			"Top 4 Lock: exactly 4 players are hopeful contenders for 1st (%s, %s, %s, %s) with 2 rounds remaining "+
+				"and Factor 3 did not fire - all 4 are barred from playing outside this group this round\n",
+			req.PlayerNames[playerNodes[0]], req.PlayerNames[playerNodes[1]],
+			req.PlayerNames[playerNodes[2]], req.PlayerNames[playerNodes[3]]))
+	}
+	if pargs.forcedLeaderVsThird >= 0 {
+		logsb.WriteString(fmt.Sprintf(
+			"Forced Leader vs 3rd: at most 3 players are hopeful for 1st, and %s is receiving this round's bye, "+
+				"leaving %s without their strongest hopeful opponent - forcing %s to play %s instead of barring "+
+				"the pairing\n",
+			req.PlayerNames[playerNodes[1]], req.PlayerNames[playerNodes[0]], req.PlayerNames[playerNodes[0]],
+			req.PlayerNames[pargs.forcedLeaderVsThird]))
+	}
 	logsb.WriteString(fmt.Sprintf("Prepaired Round (0 for none): %d\n", pargs.prepairedRoundIdx+1))
 	logsb.WriteString("Destinys Child: ")
 	if copdata.DestinysChild >= 0 {
@@ -1361,7 +1847,7 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 
 		for rankIdxI := 0; rankIdxI < numPlayerNodes; rankIdxI++ {
 			for rankIdxJ := rankIdxI + 1; rankIdxJ < numPlayerNodes; rankIdxJ++ {
-				pairingDataRow := getMatchupStrArray(divisionPlayerData, rankIdxI, rankIdxJ)
+				pairingDataRow := getMatchupStrArray(divisionPlayerData, rankIdxI, rankIdxJ, req.PlayerClasses)
 				pairKey := copdatapkg.GetPairingKey(playerNodes[rankIdxI], playerNodes[rankIdxJ])
 				disallowReason, disallowPair := disallowedPairs[pairKey]
 				// Pairing selected bool placeholder
@@ -1490,7 +1976,7 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 		if oppRankIdx < playerRankIdx {
 			continue
 		}
-		pairingsLogMxRow := getMatchupStrArray(divisionPlayerData, playerRankIdx, oppRankIdx)
+		pairingsLogMxRow := getMatchupStrArray(divisionPlayerData, playerRankIdx, oppRankIdx, req.PlayerClasses)
 		playerIdx := playerNodes[playerRankIdx]
 		oppIdx := playerNodes[oppRankIdx]
 		pairingsLogMxRow = append(pairingsLogMxRow, fmt.Sprintf("%d", copdata.PairingCounts[copdatapkg.GetPairingKey(playerIdx, oppIdx)]))
@@ -1574,15 +2060,34 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 	return allPlayerPairings, nil
 }
 
-func getPlayerRecordStrArray(playerData []string) []string {
+// classLetter renders a player's class (0-indexed: 0 is the top, unprized
+// class) as a letter - 0 is "A", 1 is "B", and so on - or "" if playerIdx is
+// out of range (e.g. the request has no PlayerClasses at all).
+func classLetter(playerClasses []int32, playerIdx int) string {
+	if playerIdx < 0 || playerIdx >= len(playerClasses) {
+		return ""
+	}
+	return string(rune('A') + rune(playerClasses[playerIdx]))
+}
+
+func getPlayerRecordStrArray(playerData []string, playerClasses []int32) []string {
 	if playerData[2] == byePlayerName {
 		return []string{byePlayerName, "", ""}
 	}
-	return []string{fmt.Sprintf("%s (#%s) %s", playerData[0], playerData[1], playerData[2]), playerData[3], playerData[4]}
+	// playerData[1] is the player's 1-indexed number (see
+	// standings.StringDataForPlayer); reuse it to look up their class
+	// rather than threading a separate player index through every caller.
+	classSuffix := ""
+	if playerNum, err := strconv.Atoi(playerData[1]); err == nil {
+		if letter := classLetter(playerClasses, playerNum-1); letter != "" {
+			classSuffix = "/" + letter
+		}
+	}
+	return []string{fmt.Sprintf("%s (#%s%s) %s", playerData[0], playerData[1], classSuffix, playerData[2]), playerData[3], playerData[4]}
 }
 
-func getMatchupStrArray(divisionPlayerData [][]string, i int, j int) []string {
-	return append(getPlayerRecordStrArray(divisionPlayerData[i]), getPlayerRecordStrArray(divisionPlayerData[j])...)
+func getMatchupStrArray(divisionPlayerData [][]string, i int, j int, playerClasses []int32) []string {
+	return append(getPlayerRecordStrArray(divisionPlayerData[i], playerClasses), getPlayerRecordStrArray(divisionPlayerData[j], playerClasses)...)
 }
 
 func setDisallowPairs(disallowedPairs map[string]string, playerIdx int, oppIdx int, policyName string) {
