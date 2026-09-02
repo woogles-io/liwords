@@ -43,6 +43,7 @@ QUERY_TIMEOUT_SECS=2700
 QUERIES=(
   "reporting/omgwords/games_per_month.sql"
   "reporting/reporting/mau_reporting.sql"
+  "reporting/new_user_funnel/new_user_funnel_monthly.sql"
 )
 
 mkdir -p "$RESULTS_DIR"
@@ -133,6 +134,7 @@ if [ "${#FAILED[@]}" -eq 0 ] && [ "${#ATTACHMENTS[@]}" -gt 0 ]; then
   HTML_FILE="$RESULTS_DIR/.monthly_report_body.html"
   HTML_ARGS=()
   INLINE_ARGS=()
+  PDF_ARGS=()
   if PNGS="$(python3 "$SCRIPT_DIR/render_report.py" \
       --out-html "$HTML_FILE" --out-dir "$RESULTS_DIR" \
       --heading "Woogles monthly reporting for $MONTH_NAME, generated $(date '+%Y-%m-%d %H:%M %Z'). Full history attached as CSV." \
@@ -141,6 +143,18 @@ if [ "${#FAILED[@]}" -eq 0 ] && [ "${#ATTACHMENTS[@]}" -gt 0 ]; then
     while IFS= read -r PNG; do
       [ -n "$PNG" ] && INLINE_ARGS+=(--inline "$PNG")
     done <<< "$PNGS"
+
+    # Same report as a self-contained PDF, for posting to Discord. Best-effort:
+    # it needs headless Chrome, and the email must still go out without it.
+    PDF_FILE="$RESULTS_DIR/woogles-monthly-report-$PERIOD.pdf"
+    if python3 "$SCRIPT_DIR/report_pdf.py" "$HTML_FILE" "$PDF_FILE" \
+        "Woogles monthly reporting for $MONTH_NAME, generated $(date '+%Y-%m-%d %H:%M %Z'). Full history in the attached CSVs." \
+        >> "$LOG_FILE" 2>&1 && [ -s "$PDF_FILE" ]; then
+      PDF_ARGS=(--attach "$PDF_FILE")
+      log "PDF written: $PDF_FILE"
+    else
+      log "WARNING: report_pdf.py failed; sending the email without the PDF"
+    fi
   else
     log "WARNING: render_report.py failed; sending plain-text email"
   fi
@@ -154,7 +168,7 @@ if [ "${#FAILED[@]}" -eq 0 ] && [ "${#ATTACHMENTS[@]}" -gt 0 ]; then
       --subject "Woogles Monthly Reporting - $MONTH_NAME" \
       --body-file "$BODY_FILE" \
       "${HTML_ARGS[@]}" "${INLINE_ARGS[@]}" \
-      "${ATTACH_ARGS[@]}" >> "$LOG_FILE" 2>&1; then
+      "${ATTACH_ARGS[@]}" "${PDF_ARGS[@]}" >> "$LOG_FILE" 2>&1; then
     echo "$PERIOD" > "$STAMP_FILE"
     log "Report for $PERIOD sent (${#ATTACHMENTS[@]} attachment(s))"
   else

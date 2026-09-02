@@ -105,6 +105,25 @@ game carries a corrupt position for weeks.
       prevents a duplicate game id. Needs a production duplicate check, then
       `CREATE UNIQUE INDEX CONCURRENTLY`.
 
+## Watch: WordSmog word validation
+
+macondo v0.13.5 changed how WordSmog decides validity. It no longer asks the
+gaddag for an anagram; it loads an *alpha dawg* -- a word graph of alphagrams,
+the `.kad` files in `data/lexica/gaddag` -- and validates and generates cross
+sets from that.
+
+`xwordgame.Lexicon` still asks for `HasAnagram`, which a plain `kwg.Lexicon`
+answers by walking the ordinary graph. The two agreed on all 226 verdicts the
+wordsmog differential produced against v0.13.5, so nothing is known to be wrong.
+But they are now different structures answering the same question, and agreement
+on 226 random tile arrangements is not agreement in general.
+
+- [ ] for WordSmog games, hand `Rules.Lexicon` macondo's alphadawg-backed
+      lexicon rather than a plain KWG, so both engines consult the same
+      structure. The interface already allows it; only the caller changes.
+- [ ] widen the wordsmog differential, which currently lands almost no accepted
+      plays because random tiles are rarely anagrams of anything.
+
 ## Improvements worth taking while nearby
 
 - [ ] pass `game_end_reason` into `ReplayHistory`. One 2020 game has a history

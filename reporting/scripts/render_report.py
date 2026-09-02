@@ -9,10 +9,11 @@ just no chart.
 Usage (called by monthly_report.sh):
     render_report.py --out-html body.html --out-dir _results csv [csv ...]
 
-Writes one <basename>.png per charted CSV into --out-dir, prints each PNG
-path on stdout (one per line), and writes the full HTML body to --out-html.
-The HTML references each chart as <img src="cid:<basename>"> — send_mail.py
-attaches the PNGs inline with matching Content-IDs.
+Writes one <basename>.png per charted CSV into --out-dir, prints each PNG path
+on stdout (one per line), and writes the full HTML body to --out-html. The HTML
+references each chart as <img src="cid:<basename>"> — send_mail.py attaches the
+PNGs inline with matching Content-IDs, and report_pdf.py inlines the sibling
+<basename>.png as a data: URI for the PDF.
 """
 import argparse
 import re
@@ -55,18 +56,44 @@ REPORTS = {
     },
     "mau_reporting": {
         "date_col": "month",
-        "chart_title": "Woogles monthly active users",
-        # Sitewide/OMGWords MAU (~15k) on top; puzzle and annotation MAU
-        # (hundreds to low thousands) below so they stay readable.
+        "chart_title": "Woogles monthly active users, and games per active user",
+        # Every MAU series shares the top panel - puzzle and annotation MAU are
+        # small enough to ride the same axis, and separating them implied an
+        # importance they don't have. The bottom panel is engagement depth
+        # against the same x-axis, which is the point of the pairing: the
+        # troughs in games per active user line up with the MAU spikes, because
+        # a wave of new or returning users arrives playing few games each.
         "chart_fields": [
             "mau",
             "mau_omgwords",
             "mau_omgwords_vs_human",
             "mau_puzzles",
             "mau_annotators",
+            "games_per_active_user",
         ],
-        "split": 3,
-        "ylabel": "active users",
+        "split": 5,
+        "ylabel": ["active users", "games per active user"],
+    },
+    "new_user_funnel_monthly": {
+        "date_col": "month_joined",
+        "chart_title": "Woogles new-user funnel by signup month",
+        # Cohort sizes on top, conversion rates below - different units, not
+        # just different magnitudes, hence the two-element ylabel. The
+        # annotation rate (~0.3%) is charted as a count only; on the percentage
+        # panel it sits on the axis and reads as missing. Both fracs are still
+        # in the table and the CSV.
+        "chart_fields": [
+            "new_user_count",
+            "played_at_least_one_game_count",
+            "played_at_least_one_human_count",
+            "played_at_least_two_different_people_count",
+            "annotated_at_least_one_game_count",
+            "played_at_least_one_game_frac",
+            "played_at_least_one_human_frac",
+            "played_at_least_two_different_people_frac",
+        ],
+        "split": 5,
+        "ylabel": ["new users", "% of cohort (verified users only)"],
     },
 }
 
@@ -118,6 +145,21 @@ def html_table(df, date_col):
             + "".join(cells) + "</table>")
 
 
+def label_last_point(ax, plot_df, date_col, field, color):
+    """Mark the most recent complete month and print its value beside it."""
+    series = plot_df[[date_col, field]].dropna()
+    if series.empty:
+        return
+    x, y = series.iloc[-1][date_col], series.iloc[-1][field]
+    ax.plot([x], [y], marker="o", markersize=8, color=color,
+            markeredgecolor="white", markeredgewidth=2, zorder=5)
+    # Text stays in ink, not the series color: the marker beside it already
+    # carries the identity.
+    ax.annotate(f"{y:,.1f}", xy=(x, y), xytext=(-6, 12),
+                textcoords="offset points", ha="right", fontsize=11,
+                fontweight="bold", color="#333")
+
+
 def render_chart(df, key, cfg, out_dir):
     date_col = cfg["date_col"]
     fields = cfg["chart_fields"]
@@ -136,10 +178,17 @@ def render_chart(df, key, cfg, out_dir):
     # per series across panels; cfg["split"] says where the big panel ends.
     # Missing columns (older CSVs) are skipped per panel, but each field keeps
     # the hue of its chart_fields position so colors are stable across runs.
+    # ylabel is either one string for both panels, or one per panel when the
+    # panels carry different units (counts vs percentages).
     split = cfg.get("split", 2)
+    ylabel = cfg.get("ylabel", "")
+    ylabels = list(ylabel) if isinstance(ylabel, (list, tuple)) else [ylabel, ylabel]
     big = [f for f in fields[:split] if f in df.columns]
     small = [f for f in fields[split:] if f in df.columns]
-    panel_fields_list = [p for p in (big, small) if p]
+    # Pair each panel with its own label before dropping empty ones, so a panel
+    # missing its columns can't shift the other's label onto it.
+    panel_specs = [(p, lab) for p, lab in zip((big, small), ylabels) if p]
+    panel_fields_list = [p for p, _ in panel_specs]
     sns.set_theme(style="whitegrid", context="notebook")
     if len(panel_fields_list) == 2:
         fig, axes = plt.subplots(
@@ -148,23 +197,31 @@ def render_chart(df, key, cfg, out_dir):
         fig, ax = plt.subplots(figsize=(11, 5.5))
         axes = [ax]
     ax_top = axes[0]
-    panels = list(zip(axes, panel_fields_list))
+    panels = [(ax, p, lab) for ax, (p, lab) in zip(axes, panel_specs)]
 
     # {:g} keeps 1.5k / drops 2.0k -> 2k; plain rounding would label both
-    # 1,500 and 2,000 as "2k" on low-magnitude axes.
+    # 1,500 and 2,000 as "2k" on low-magnitude axes. Below 1000 it also has to
+    # keep a decimal: a ratio axis running 0-30 would otherwise label 2.5 as 2.
     kfmt = mticker.FuncFormatter(
-        lambda v, _: f"{round(v/1000, 1):g}k" if v >= 1000 else f"{v:,.0f}")
-    for ax, panel_fields in panels:
+        lambda v, _: f"{round(v/1000, 1):g}k" if v >= 1000 else f"{round(v, 1):g}")
+    for ax, panel_fields, panel_ylabel in panels:
         for field in panel_fields:
             ax.plot(plot_df[date_col], plot_df[field],
                     color=PALETTE[fields.index(field) % len(PALETTE)],
                     linewidth=2, label=pretty_col(field))
         ax.yaxis.set_major_formatter(kfmt)
-        ax.set_ylabel(cfg.get("ylabel", ""))
+        ax.set_ylabel(panel_ylabel)
         ax.set_xlabel("")
         ax.margins(x=0.01)
         ax.set_ylim(bottom=0)
-        ax.legend(loc="upper left", frameon=True, framealpha=0.9)
+        # A lone series needs no legend - the title already names it - but it
+        # does deserve its latest value called out, since there is no second
+        # line to read it against.
+        if len(panel_fields) > 1:
+            ax.legend(loc="upper left", frameon=True, framealpha=0.9)
+        else:
+            label_last_point(ax, plot_df, date_col, panel_fields[0],
+                             PALETTE[fields.index(panel_fields[0]) % len(PALETTE)])
 
     last_full = plot_df[date_col].max()
     ax_top.set_title(
