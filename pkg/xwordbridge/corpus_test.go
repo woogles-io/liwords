@@ -242,6 +242,9 @@ func TestCorpusReplayMatchesMacondo(t *testing.T) {
 		totalEvents += res.Applied
 		totalChallenges += res.Challenges
 		zeroCumulative += res.EndRackZeroCumulative
+		if res.EndRackGameNotOver > 0 {
+			note(mismatches, "the log ended the game where today's rules would not have", cg.uuid)
+		}
 		if res.EndRackRackUnknown > 0 {
 			note(mismatches, "rack we charged was not the rack the log names (replay limit)", cg.uuid)
 		}

@@ -85,9 +85,16 @@ type ReplayResult struct {
 	// on exactly zero. Reading a proto zero as an absent field only goes wrong
 	// in that case, so this is how rare the trap is.
 	EndRackZeroCumulative int
-	// EndRackArithmeticWrong counts the ones where we knew the rack and still
-	// produced the wrong number. These are real defects -- live play would get
-	// them wrong too -- and the count is expected to be zero.
+	// EndRackGameNotOver counts end-of-game adjustments that arrived while our
+	// reconstruction still had the game in progress. That is a disagreement
+	// about *when* a game ended, not about arithmetic, and it happens on old
+	// games whose rules have since changed -- a 2021 game ended on six
+	// scoreless turns counting a zero-point tile placement as scoreless, where
+	// macondo today resets the counter on any placement.
+	EndRackGameNotOver int
+	// EndRackArithmeticWrong counts the ones where the game had ended, we knew
+	// the rack, and we still produced the wrong number. These are real defects
+	// -- live play would get them wrong too -- and the count must be zero.
 	EndRackArithmeticWrong int
 }
 
@@ -432,9 +439,18 @@ func applyEndRack(s *xwordgame.State, evt *macondopb.GameEvent, res *ReplayResul
 		res.EndRackZeroCumulative++
 	}
 	if s.Scores[p] != evt.Cumulative {
-		if evt.Rack != "" && !sameRack(s, p, evt.Rack, alph) {
+		switch {
+		case s.PlayState != xwordgame.GameOver || res.EndRackGameNotOver > 0:
+			// We had not ended the game yet, so no adjustment had been made to
+			// disagree with. The rules moved, not the arithmetic.
+			//
+			// Sticky for the rest of the game: a stalemate writes one end-rack
+			// event per player, and applyEndRack ends the game on the first, so
+			// without this the second would look like bad arithmetic.
+			res.EndRackGameNotOver++
+		case evt.Rack != "" && !sameRack(s, p, evt.Rack, alph):
 			res.EndRackRackUnknown++
-		} else {
+		default:
 			res.EndRackArithmeticWrong++
 		}
 	}
