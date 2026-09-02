@@ -1,115 +1,152 @@
 # xwordgame: what is left
 
-Companion to `xwordgame_review.md`, which describes what exists. This one is
-the list of what does not, written to be picked up cold.
+Companion to `xwordgame_review.md`, which describes what exists. This one is the
+list of what does not, written to be picked up cold.
 
-**Where things stand:** the engine and its storage are built and tested against
-113,010 real games. Nothing is wired into the live path. Both feature flags
-default off, and with them off no behaviour changes at all.
+**Where things stand:** the referee and the replay are built and tested against
+113,010 real games. Two shadow modes are wired into the live path, both behind
+flags that default off; with them off, no behaviour changes at all. Nothing is
+served from the new path yet.
 
-## What does not change, ever
+## The design changed: state is reconstructed, not stored
 
-Worth stating because it is the most common misreading of this work.
+An earlier version of this branch stored the position in `ongoing_games.state`
+and this document described rolling that out in phases A1–D. That is no longer
+the plan, and the phases are gone. Read `game_storage_v2.md` for the design and
+the plan file for the ordering; the short version:
 
-The event log is untouched. `game_turns` still stores `ipc.GameEvent`,
-`AppendTurns` still writes it, and the S3 `GameHistory` is still assembled from
-it. xwordgame emits no events: it returns a *description* of what happened
-(`ApplyResult`, `ChallengeOutcome`) and the caller writes the same events it
-writes today.
+A game's position is rebuilt from its event log plus four columns that already
+exist and are already written on every save. There is no snapshot, so there is
+no second record that can disagree with the first.
 
-The snapshot is an addition, not a replacement. Two records, each authoritative
-for a different question: the log for what happened, the position for where the
-game is now.
+| Position field | Source |
+|---|---|
+| board, scores, bingos, per-player turns, scoreless count | replay `game_turns` |
+| racks | `games.last_known_racks` |
+| bag | conservation: distribution − board − racks |
+| whose turn | derived; `games.player_on_turn` is a cross-check |
+| play state | `games.game_end_reason`, stated never inferred |
+| rules | `games.game_request` |
+| last words formed | recomputed from the board and the last placement |
 
-## Phase A1 — shadow, no writes
+**No event format change is needed, and that is the load-bearing finding.** The
+May 2026 failure was a derivation bug, not missing data: `ReplayHistory`
+reconstructs 113,009 of 113,010 production games to macondo's exact position
+using only what is stored today. So there are no new event types, no new fields,
+and nothing to do to the 10M+ archived games in S3.
 
-**This is the next deployable step, and it needs no migration.**
-`shadow-xword-state` derives a snapshot from the macondo game on every save and
-runs three checks: structural validation, tile conservation, and an
-encode/decode round trip. It writes nothing and reads nothing back.
+The one rule that must never be broken: **`PlayState` is set explicitly from
+`game_end_reason`, never left to a proto3 zero value.** That is the entire
+incident in one line. `db.go` reads `hist.GetPlayState()` and forces it onto the
+loaded game, so a history assembled without it silently reads as `PLAYING`.
 
-What it can catch that 113,010 games could not: board sizes, distributions,
-variants and game shapes that exist in production and not in the corpus sample,
-and anything about live games that archived histories do not show.
+## Done
 
-Ready. `pkg/stores/game/ongoing.go` hangs off `DBStore.Set`, cannot return an
-error, cannot panic (`safeGameID` plus a recover, because a panic raised inside
-a recover handler is not recovered — the first version did exactly that), and
-thins its logging after 50 occurrences of each kind so a systemic failure cannot
-flood.
+- `WithGameLock` (`pkg/stores/game/tx.go`) — `pg_advisory_xact_lock` around a
+  game's write path, with tests that fail if the lock is removed. Nothing calls
+  it yet.
+- `StateFromTurns` (`pkg/xwordbridge/fromturns.go`) — the production entry
+  point. Takes turns rows plus the `games` columns, states the ending, and
+  agrees with the history-based replay on all 8,023 corpus games that have one.
+- `RulesFor`/`RulesSpec` — one place that resolves a game's configuration, used
+  by both the corpus test and the load path, so the corpus is evidence about
+  production rather than about the test.
+- **Save-path shadow** (`-shadow-turns`) — after each `AppendTurns`, rebuild
+  from the rows just written and diff the whole position against the live game.
+  Replaces a comparison that checked only the turn number and the scores and
+  explicitly skipped the play state.
+- **Load-path shadow** (`-shadow-turns-load`) — on every cache-miss load of a
+  live game, rebuild from `game_turns` and diff against what is being served.
+  Detects the AppendTurns/Set torn read as a torn read.
+- `DivergencesVsReconstruction` — the exclusions a macondo history rebuild
+  cannot be held to, out of the test and into production, with
+  `PlayStateReliable` required rather than defaulted.
 
-- [ ] deploy with `-shadow-xword-state`, leave `-write-xword-state` off
-- [ ] watch for `xword-shadow-*` and `ongoing-game-*` at ERROR/WARN
-- [ ] the `occurrence` field on each line gives the true rate; the log is thinned
+## Next: deploy the shadows and read the numbers
 
-## Phase A2 — shadow the state machine
+- [ ] deploy with `-shadow-turns-load` (and `-shadow-turns`), serving nothing
+- [ ] watch `shadow-load-mismatch` and `shadow-turns-mismatch` at ERROR. Both
+      log every disagreeing field, so the shape of a failure is in the line.
+- [ ] watch `shadow-load-torn`. This is the *measurement* that decides how
+      urgent the writer serialization below is. If it is rare, the read path can
+      go on with a fallback; if it is common, serialize first.
+- [ ] watch `shadow-load-count-mismatch` — expected at WARN for games in flight
+      when dual-write was switched on, an ERROR if there are ever *more* rows
+      than events
 
-A1 only proves we can *read* macondo's position. A2 proves we can *maintain* our
-own: carry a `State` on `entity.Game`, apply every move to both engines, and
-compare after each one.
+## Then: serialize the writers
 
-- [ ] add a `State` field to `entity.Game`, seeded by `xwordbridge.StateFromGame`
-      on first touch — this is what makes the migration in-place, since a game
-      already running acquires one without a backfill
-- [ ] in `pkg/gameplay`, apply each move to both; call `xwordbridge.Compare`
-- [ ] challenges go through `AdjudicateChallenge`, which needs the *previous*
-      position — hold it on `entity.Game` alongside the current one
-- [ ] resync our racks from macondo after each move while macondo is still
-      authoritative, exactly as `bridge_test.go` does, since the two draw
-      replacement tiles from their own bags
+The race is the reason the read path was commented out. `AppendTurns` commits
+terminal events to `game_turns` before `Set` commits `game_end_reason` to
+`games`, so a load in between sees a finished log beside a row that says the
+game is live.
 
-Expect divergences here that A1 cannot surface, because A1 never runs our state
-machine at all.
+- [ ] wrap `AppendTurns` + `Set` in one transaction under `WithGameLock`. The
+      sequences are `pkg/gameplay/game.go:463/487`, `game.go:559/629` and
+      `pkg/gameplay/end.go:139/172/264`.
+- [ ] convert the other writers listed in `game_storage_v2.md` Phase 4
+- [ ] this also replaces `Cache.LockGame` (`cache.go:428`), a process-local
+      mutex map that does nothing across app servers
 
-## Phase B — write
+## Then: serve from turns
 
-- [ ] apply the migration (additive; note the brief lock on `users` from the
-      foreign keys)
-- [ ] enable `-write-xword-state`; the upsert is already written and already
-      handles the in-place migration through `ON CONFLICT`
-- [ ] confirm row sizes and HOT rate in production against the measured
-      expectation: 944 bytes typical, 1,544 worst case, ~95% HOT
+- [ ] replace the commented-out `buildHistoryFromTurns` (`db.go:335`) rather
+      than revive it. The old one assembled a `GameHistory` and lost
+      `PlayState`.
+- [ ] enable the read branch at `db.go:194`, keeping the bytea fallback
+- [ ] roll out correspondence games **last**. They bypass the cache entirely
+      (`cache.go:225-232`), so they exercise the new path hardest — but a bad
+      real-time game is over in twenty minutes and a bad correspondence game
+      carries a corrupt position for weeks.
 
-## Phase C — read and verify
+## Then: binary turns, dropped columns, metrics, cache
 
-- [ ] on load, read the stored snapshot *and* derive one from macondo; compare;
-      **prefer macondo** on disagreement
-- [ ] this is the phase that catches serialization bugs specifically: a snapshot
-      that encodes fine and decodes wrong looks perfect until it round-trips
-      through Postgres
+In plan order, and each depends on the one before:
 
-## Phase D — cut over
+- [ ] `game_turns.event` jsonb → `event_bin bytea`. ~7× faster to parse, ~4×
+      smaller, and **no backfill** — turn rows are deleted at archival. Write
+      both for one release, read `event_bin` when present, then drop `event`.
+      `DecodeTurn` already accepts either encoding. Add `cmd/decode-turn` so a
+      row can still be read during an incident.
+- [ ] drop `ongoing_games.state`, `prev_state`, `play_state`, `on_turn`, and
+      delete `pkg/stores/game/ongoing.go`, the `ShadowXwordState` and
+      `WriteXwordState` flags, and `State.Encode`/`Decode`. Keep `State.Digest`;
+      it is useful for comparing two reconstructions. **Keep the table** — its
+      purpose was never the snapshot, it was so 12M rows would not be scanned to
+      list live games.
+- [ ] re-enable the OTel meter provider (`cmd/liwords-api/otel.go:63-70`) with
+      delta temporality, deny-by-default views and OTLP export, then watch
+      `go.runtime.heap_alloc_bytes` for a full release before widening the
+      allowlist. Cumulative temporality retaining unbounded `http.route` values
+      is the leading hypothesis for the leak, not a reproduction.
+- [ ] remove the in-memory `Cache`. Loads go from ~1.5/sec to ~12/sec, which at
+      ~200 µs is ~0.24% of one core. Depends on `WithGameLock` replacing
+      `Cache.LockGame`. Keep or re-home the separate 5-second `activeGames` TTL
+      cache; it is a different thing.
 
-- [ ] xwordgame becomes authoritative for the position
-- [ ] macondo keeps running and keeps comparing for a while
-- [ ] then macondo leaves the live path and `pkg/xwordbridge` is deleted whole,
-      which is why it is a separate package
-
-**Order within the rollout:** shadow correspondence games *first* — they reload
-from storage constantly, which is exactly where `LastWordsFormed` not surviving
-a reload bites, and they are the population that was corrupted. Flip them
-*last*: a bad real-time game is over in twenty minutes, a bad correspondence
-game carries a corrupt position for weeks.
-
-## Blockers that must land before D
+## Blockers
 
 - [ ] **Cutover contract, as tests not prose.** The archived `GameHistory` must
       keep carrying `PlayState`, `FinalScores` and `Winner`, and end-rack events
       must keep their `rack` field. Replay depends on all four; today the
       guarantee lives only in a commit message. Assert it.
-- [ ] **Cross-server locking.** `LockGame` (`pkg/stores/game/cache.go:428`) is a
-      process-local mutex map and does nothing across app servers.
-      `LockOngoingGame` (`pg_advisory_xact_lock`) exists and nothing calls it. It
-      only protects anything once every writer takes it.
 - [ ] **`games.uuid` has no unique constraint.** Nothing in the database
       prevents a duplicate game id. Needs a production duplicate check, then
       `CREATE UNIQUE INDEX CONCURRENTLY`.
 
+## Guard rails to keep
+
+- `verifyHistory` (`s3.go:198-214`) deep-compares the turns-assembled history
+  against the bytea history at archival and refuses to archive on a mismatch.
+  That is already a two-record cross-check; keep it until the bytea column goes
+  away, and treat any `archive-verify-mismatch` as a stop signal.
+- Keep `history` bytea written throughout. It is the fallback and the reference.
+
 ## Watch: WordSmog word validation
 
 macondo v0.13.5 changed how WordSmog decides validity. It no longer asks the
-gaddag for an anagram; it loads an *alpha dawg* -- a word graph of alphagrams,
-the `.kad` files in `data/lexica/gaddag` -- and validates and generates cross
+gaddag for an anagram; it loads an *alpha dawg* — a word graph of alphagrams,
+the `.kad` files in `data/lexica/gaddag` — and validates and generates cross
 sets from that.
 
 `xwordgame.Lexicon` still asks for `HasAnagram`, which a plain `kwg.Lexicon`
@@ -124,17 +161,39 @@ on 226 random tile arrangements is not agreement in general.
 - [ ] widen the wordsmog differential, which currently lands almost no accepted
       plays because random tiles are rarely anagrams of anything.
 
+## Rules-era drift
+
+Three classes of old game were played under rules that no longer exist. All
+three load correctly, because the recorded outcome is read rather than
+recomputed; they are recorded here so nobody mistakes them for bugs.
+
+- Six scoreless turns counting a **zero-point tile placement** as scoreless.
+  macondo today resets the counter on any placement (`game.go:576-580`, "no
+  international rule counts a score of 0 as a scoreless turn if it's from tiles
+  being played on the board"). 3 games in the corpus, reported as
+  `EndRackGameNotOver`; e.g. `TzeCLa8q` (2021-10-26), which our path loads as
+  `GAME_OVER [61 29]` — matching its own recorded final scores — where macondo
+  loads it as `PLAYING` with player 1 on turn.
+- **One-letter opening plays**, accepted by Woogles in early 2021.
+- **Since-delisted words**, e.g. a 2021 ECWL game containing `SEZ`.
+
+`Rules.TrustRecordedPlays` is what waives re-deciding these. It must never be
+set for live play. `XWORDGAME_GAME=<id> go test ./pkg/xwordbridge/ -run
+TestInspectGame -v` prints one game through every path, which is the tool for
+answering "would this game load correctly".
+
 ## Improvements worth taking while nearby
 
-- [ ] pass `game_end_reason` into `ReplayHistory`. One 2020 game has a history
-      saying `PLAYING` and a games row saying it ended on a triple challenge;
-      the loader holds both and could reconcile them.
 - [ ] have macondo emit an event for a triple-challenge ending. It currently
       writes nothing at all, so the log cannot be told from a game in progress.
       Cosmetic now that the stored fields are read, but it would make the log
       self-describing for GCG export and third-party replay.
 - [ ] fuse `crossWordScore` and `formedCrossWord`, which walk the same geometry
       twice when `ScoreWords` is called.
+- [ ] macondo's `PlayTurn` increments per-player turn counts only in the
+      exchange branch, so a reconstructed game reports a turn count equal to its
+      number of exchanges. `DivergencesVsReconstruction` excludes the field;
+      fixing it upstream would let the comparison tighten.
 
 ## Unrelated bugs found along the way
 
@@ -147,7 +206,7 @@ Not part of this work; recorded so they are not lost.
 - [ ] 3 games are archived but still have turn rows, which `CommitArchival`
       should make impossible — probably a backfill using `SetHistoryS3Key`.
 - [ ] macondo cannot open games containing since-delisted words. Nine in a
-      113,010 sample, e.g. a 2021 ECWL game containing `SEZ`.
+      113,010 sample.
 
 ## Much later
 
@@ -160,10 +219,12 @@ Not part of this work; recorded so they are not lost.
 - Replaying an *archived* game cannot recompute an end-of-game rack adjustment
   when the triggering move changed the rack — the tiles drawn in a final
   exchange are revealed only by the end-rack event that arrives after the
-  penalty is due. 15 games in 113,010. The recorded value is read instead, and
-  `EndRackArithmeticWrong` fails the test if we ever knew the rack and still got
-  the number wrong. Live play has no such gap.
+  penalty is due. 10 games in 113,010, reported as `EndRackRackUnknown`. The
+  recorded value is read instead, and `EndRackArithmeticWrong` fails the test if
+  we ever knew the rack and still got the number wrong. It is zero. Live play
+  has no such gap.
 - Mid-game replay has partly-guessed opponent racks between their moves. macondo
   has the identical limitation.
-- One 2020 game's archived record contradicts itself. No replayer can reconcile
-  that.
+- One 2020 game's archived record contradicts itself: the history says `PLAYING`
+  and the games row says it ended on a triple challenge. No replayer can
+  reconcile that. `game_end_reason` is now read, so the games row wins.
