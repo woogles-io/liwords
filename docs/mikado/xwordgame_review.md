@@ -11,25 +11,37 @@ with them off not a single byte of behaviour changes.
 
 ## Why this exists
 
-In May 2026 roughly 944 correspondence games were corrupted because live game
-state was reconstructed by replaying an event log instead of being stored.
+In May 2026 roughly 944 correspondence games were corrupted.
 `buildHistoryFromTurns` produced a `GameHistory` with no `PlayState`; proto3's
 zero value for that field is `PLAYING`, which silently overwrote
 `WAITING_FOR_FINAL_PASS` and ended games with `CONSECUTIVE_ZEROES` and wrong
 scores. See `docs/mikado/liwords_referee.md`.
 
-The fix is not "replay more carefully". It is that a game has two authoritative
-records and neither is derivable from the other:
+**An earlier version of this document argued that the log cannot reconstruct
+the position, and that a game therefore needs two authoritative records. That
+argument was wrong, and the branch is what disproved it.** `ReplayHistory`
+rebuilds 113,009 of 113,010 production games to macondo's exact position using
+only what is already stored. The one that fails is a 2020 record that
+contradicts itself.
 
-- the **event log** is authoritative for *what happened*, and is what the S3
-  archive, GCG export, replay and analysis are all built from;
-- the **position** is authoritative for *where the game is now* — board, bag,
-  racks, scores, counters, whose turn, and what phase.
+What the log alone cannot supply is narrower than it looked, and every piece of
+it is already a column on `games`, written on every save:
 
-The log genuinely cannot reconstruct the position. Not as an implementation
-detail: `WAITING_FOR_FINAL_PASS`, the bag, the scoreless-turn counter and the
-words formed by the last play change without producing events. This branch
-stores the position instead of inferring it.
+- the **racks**, from `last_known_racks` — an event records the mover's rack
+  *before* their play and never the tiles they drew afterwards;
+- **whether the game ended**, from `game_end_reason` — several endings leave no
+  event at all, and a triple challenge the challenger lost writes nothing;
+- the **rules**, from `game_request`.
+
+Everything else — board, scores, bingos, per-player turn counts, the
+scoreless-turn counter, the bag by conservation, and the words available to
+challenge — is computed from the events.
+
+So the incident was a derivation bug, not missing data, and the fix is to
+derive correctly and state the ending rather than infer it. The consequence for
+review: `pkg/xwordgame` is a referee, and `pkg/xwordbridge` is a replay. There
+is no stored position, and the `ongoing_games.state` column that an earlier
+version of this branch added is on its way out — see `xwordgame_remaining.md`.
 
 ## Reading order
 
@@ -37,12 +49,14 @@ Start here; each part assumes the one before it.
 
 | # | Read | For |
 |---|---|---|
-| 1 | `pkg/xwordgame/state.go` (package comment) | the two-records argument, then the wire format |
+| 1 | `pkg/xwordgame/state.go` (package comment) | what a position is made of |
 | 2 | `pkg/xwordgame/apply.go`, `challenge.go` | the state machine and the referee |
 | 3 | `pkg/xwordbridge/bridge.go` | how a live macondo game becomes a `State` |
-| 4 | `pkg/xwordbridge/replay.go` | how an archived game becomes a `State` |
-| 5 | `pkg/stores/game/ongoing.go` | where it gets written, and why nothing can fail |
-| 6 | `db/migrations/202608040001_ongoing_games.up.sql` | the storage shape |
+| 4 | `pkg/xwordbridge/replay.go` | how an event log becomes a `State`, and the package comment on reading proto3 scalars |
+| 5 | `pkg/xwordbridge/fromturns.go` | the production entry point: turns rows in, position out, ending stated |
+| 6 | `pkg/xwordbridge/quirks.go` | which fields a macondo rebuild cannot be held to |
+| 7 | `pkg/stores/game/db.go` (`shadowLoadFromTurns`) | where it runs in production, and what it is watching for |
+| 8 | `pkg/stores/game/tx.go` | the cross-node lock the write path still needs to take |
 
 ## The decisions worth arguing with
 
@@ -187,10 +201,19 @@ Stated so they are not mistaken for oversights.
 
 ## Not done
 
-- nothing is wired into `pkg/gameplay`; the flags exist and do nothing
-- no read path — the snapshot is written and never read back
+- no read path — both shadows compare and log; nothing is ever served from the
+  reconstruction
+- the writers do not take `WithGameLock` yet, so `AppendTurns` and `Set` still
+  commit separately. The load shadow reports that torn read as
+  `shadow-load-torn` rather than as a divergence, which is how the frequency
+  gets measured before the move path is touched.
+- `ongoing_games.state`, `prev_state`, `play_state` and `on_turn`, plus
+  `ongoing.go` and the two `*XwordState` flags, are left over from the snapshot
+  design and are scheduled for deletion
+- `game_turns.event` is still protojson in jsonb; `DecodeTurn` already reads
+  either encoding
 - `pkg/cwgame` is untouched, and the annotator still uses it
-- the archival leak, the unique constraint and the process-local lock are all
+- the archival leak and the missing unique constraint on `games.uuid` are
   identified and unfixed
 
 ## Where the risk actually is
