@@ -399,82 +399,15 @@ func moveDrivenEnding(endReason int) bool {
 
 // lastMeaningfulEvent returns the type of the last event that moves a game
 // along, ignoring the end-of-game bookkeeping macondo appends.
-func lastMeaningfulEvent(hist *macondopb.GameHistory) macondopb.GameEvent_Type {
-	for i := len(hist.Events) - 1; i >= 0; i-- {
-		if t := hist.Events[i].Type; !isDerivedEvent(t) {
-			return t
-		}
-	}
-	return macondopb.GameEvent_TILE_PLACEMENT_MOVE
-}
-
-// comparableDivergences drops the fields a macondo *history reconstruction*
-// cannot be held to. Each exclusion is narrow and has a reason; none of them
-// apply to the live-game differential in bridge_test.go, which drives a real
-// macondo game and compares every field including these.
-//
-//   - turns[]: macondo maintains per-player turn counts during live play --
-//     playMove increments players[i].turns for placements, passes and exchanges
-//     alike -- but PlayTurn, the reconstruction path, increments it only in the
-//     exchange branch. A rebuilt game reports a turn count equal to its number
-//     of exchanges.
-//
-//   - lastWordsFormed, unless the last move was a tile placement: macondo
-//     clears this field on a phony return, a challenge bonus and game start,
-//     but never on a pass or an exchange, in either the live or the
-//     reconstruction path. So after a pass it still believes the play before it
-//     is challengeable -- and ChallengeEvent's only guard is that the list is
-//     non-empty, so it would adjudicate a challenge against a play from two
-//     turns ago. We clear it, which is what the rules say: only the
-//     immediately preceding play can be challenged.
-//
-//   - onTurn, when the last event was not a move: PlayToTurn advances the
-//     player on turn after every event it processes, including a time penalty,
-//     which is not a turn -- the penalised player still owes a move.
-//
-//   - lastWordsFormed once the game is over. Nothing can be challenged in a
-//     finished game, so we clear it; macondo ends a game in PlayToTurn without
-//     clearing, and reports a challengeable play in a position where no
-//     challenge is possible. Same bug as the pass/exchange case above.
-//
-//   - onTurn and scorelessTurns once the game is over. Neither means anything
-//     in a finished position -- nobody is on turn and no further turn can be
-//     scoreless -- and macondo's reconstruction disagrees with its own live
-//     play on both: PlayToTurn advances the player after the end-of-game events
-//     it appends, and PlayTurn increments the scoreless counter on the final
-//     pass where playMove deliberately does not.
-//
-//   - playState, always. macondo's reconstruction never runs end-of-game logic
-//     -- PlayTurn says so outright, relying on the end-rack events to carry the
-//     score changes -- so a game that ended on six scoreless turns comes back as
-//     PLAYING. That is the May 2026 bug almost exactly. Rather than compare
-//     against a reference that is known wrong here, the play state is checked
-//     directly against the database's game_end_reason, which is ground truth;
-//     see checkPlayState.
-//
-// The first three are macondo reconstruction bugs, all of the same shape as the
-// one that caused the May 2026 incident: state that live play maintains and
-// rebuilding silently does not.
+// comparableDivergences is the corpus test's view of the production filter in
+// quirks.go. The macondo side here is a bare NewFromHistory, so its play state
+// is not to be trusted; the play state is checked against the database's
+// game_end_reason instead, by checkPlayState.
 func comparableDivergences(ours, theirs *xwordgame.State, cg corpusGame) []Divergence {
-	lastEvt := lastMeaningfulEvent(cg.hist)
-	var out []Divergence
-	for _, d := range CompareStates(ours, theirs) {
-		switch {
-		case strings.HasPrefix(d.Field, "turns["):
-			continue
-		case d.Field == "lastWordsFormed" && lastEvt != macondopb.GameEvent_TILE_PLACEMENT_MOVE:
-			continue
-		case d.Field == "onTurn" && lastEvt == macondopb.GameEvent_TIME_PENALTY:
-			continue
-		case d.Field == "playState":
-			continue
-		case (d.Field == "onTurn" || d.Field == "scorelessTurns" ||
-			d.Field == "lastWordsFormed") && ours.PlayState == xwordgame.GameOver:
-			continue
-		}
-		out = append(out, d)
-	}
-	return out
+	return DivergencesVsReconstruction(ours, theirs, ReconstructionOpts{
+		LastEvent:         LastMeaningfulEvent(cg.hist.Events),
+		PlayStateReliable: false,
+	})
 }
 
 // checkPlayState holds the replayed play state against the database rather than

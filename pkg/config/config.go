@@ -70,6 +70,12 @@ type Config struct {
 	// Phase 2 migration flags
 	DualWriteTurns bool // write events to game_turns alongside history bytea
 	ShadowTurns    bool // shadow-compare turns-based reconstruction against history bytea on every Get
+	// ShadowTurnsLoad compares on the *load* path rather than the save path:
+	// every cache-miss load of a live game is rebuilt from game_turns as well
+	// and the two positions are diffed. Nothing is served from it. This is what
+	// says whether the turns read path could be turned on, and it also counts
+	// how often the AppendTurns/Set race actually tears a read.
+	ShadowTurnsLoad bool
 
 	// Phase 3 migration flags: moving live game state out of the history proto
 	// and into an xwordgame snapshot on ongoing_games. Each stage is
@@ -101,6 +107,7 @@ func (c *Config) Load(args []string) error {
 	fs.BoolVar(&c.RunMigrations, "run-migrations", false, "run database migrations on startup")
 	fs.BoolVar(&c.QuitAfterMigration, "quit-after-migration", false, "quit after running migrations (for dedicated migration tasks)")
 	fs.BoolVar(&c.DualWriteTurns, "dual-write-turns", false, "dual-write game events to game_turns alongside history bytea (migration phase 2)")
+	fs.BoolVar(&c.ShadowTurnsLoad, "shadow-turns-load", false, "on every live-game load, also rebuild from game_turns and compare; never served (migration phase 3)")
 	fs.BoolVar(&c.ShadowTurns, "shadow-turns", false, "shadow-compare turns-based reconstruction against history bytea on every Get (migration phase 2)")
 	fs.BoolVar(&c.ShadowXwordState, "shadow-xword-state", false, "derive an xwordgame snapshot on every save and compare it against macondo (migration phase 3)")
 	fs.BoolVar(&c.WriteXwordState, "write-xword-state", false, "persist the xwordgame snapshot to ongoing_games; never read back (migration phase 3)")

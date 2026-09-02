@@ -167,3 +167,31 @@ func DecodeTurns(rows [][]byte) ([]*macondopb.GameEvent, error) {
 	}
 	return events, nil
 }
+
+// IsTerminalEvent reports whether an event is only ever written when a game
+// concludes.
+//
+// This is what makes the torn read between AppendTurns and Set detectable. The
+// two commit separately, so a load landing between them sees a game_turns log
+// that has already ended next to a games row that still says the game is in
+// progress. That combination is impossible in a settled database, so seeing it
+// identifies the race rather than a defect in the reconstruction.
+func IsTerminalEvent(t macondopb.GameEvent_Type) bool {
+	switch t {
+	case macondopb.GameEvent_END_RACK_PTS,
+		macondopb.GameEvent_END_RACK_PENALTY,
+		macondopb.GameEvent_TIME_PENALTY:
+		return true
+	}
+	return false
+}
+
+// HasTerminalEvent reports whether any event in the log concludes the game.
+func HasTerminalEvent(events []*macondopb.GameEvent) bool {
+	for _, e := range events {
+		if IsTerminalEvent(e.Type) {
+			return true
+		}
+	}
+	return false
+}

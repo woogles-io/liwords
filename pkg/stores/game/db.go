@@ -328,7 +328,159 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Game, error) {
 
 	span.SetAttributes(attribute.Bool("game.started", entGame.Started))
 
+	s.spawnShadowLoadFromTurns(ctx, g, entGame)
+
 	return entGame, nil
+}
+
+// spawnShadowLoadFromTurns rebuilds this same game from game_turns and diffs
+// the two positions, on the load path, serving neither.
+//
+// The save-path shadow (SpawnShadowCompare) checks that the rows written for a
+// move reproduce that move. This checks the thing that actually has to be true
+// before the turns read path can be switched on: that a game loaded cold, from
+// nothing but its rows and the columns on `games`, is the game we would have
+// served. Those are different claims -- the first can hold on every individual
+// move while the accumulated log still fails to reconstruct the game, if
+// anything was ever written out of order, lost, or duplicated.
+//
+// It also measures the race that disabled this path in the first place, rather
+// than taking it on faith. AppendTurns commits terminal events before Set
+// commits game_end_reason, so a load in between sees an ended log beside a row
+// that says the game is live. That combination cannot occur in a settled
+// database, so it is reported as a torn read and counted -- which turns "we
+// must serialize the writers first" from an assumption into a number.
+func (s *DBStore) spawnShadowLoadFromTurns(ctx context.Context, g models.Game, entGame *entity.Game) {
+	work := s.shadowLoadWork(ctx, g, entGame)
+	if work == nil {
+		return
+	}
+	go work(zerolog.Ctx(ctx).WithContext(context.WithoutCancel(ctx)))
+}
+
+// shadowLoadWork prepares the comparison and returns it as a closure, or nil if
+// this game is not one to shadow.
+//
+// Split out from the goroutine so a test can run the whole thing -- guards
+// included -- and read the result, rather than racing a background goroutine
+// that only reports through logs.
+func (s *DBStore) shadowLoadWork(ctx context.Context, g models.Game, entGame *entity.Game) func(context.Context) {
+	cfg, cfgErr := config.Ctx(ctx)
+	if cfgErr != nil || !cfg.ShadowTurnsLoad {
+		return nil
+	}
+	// Finished games are served from S3 and archived out of game_turns; only
+	// live games would ever be loaded from turns.
+	if pb.GameEndReason(g.GameEndReason.Int32) != pb.GameEndReason_NONE {
+		return nil
+	}
+	if len(g.LastKnownRacks) != xwordgame.MaxPlayers {
+		return nil
+	}
+
+	hist := entGame.History()
+	spec := xwordbridge.SpecFromHistory(hist)
+	if spec.Lexicon == "" && entGame.GameReq != nil {
+		spec.Lexicon = entGame.GameReq.Lexicon
+	}
+	rules, err := xwordbridge.RulesFor(s.cfg.MacondoConfig(), spec)
+	if err != nil {
+		log.Warn().Err(err).Str("gid", g.Uuid.String).Msg("shadow-load-rules-error")
+		return nil
+	}
+	// Snapshot here, not in the goroutine: entGame is about to be handed to a
+	// caller who will play moves into it.
+	want, err := xwordbridge.StateFromGame(&entGame.Game)
+	if err != nil {
+		log.Warn().Err(err).Str("gid", g.Uuid.String).Msg("shadow-load-snapshot-skipped")
+		return nil
+	}
+	racks := append([]string(nil), g.LastKnownRacks...)
+	gid := g.Uuid.String
+	nevents := len(hist.Events)
+
+	return func(ctx context.Context) {
+		s.shadowLoadFromTurns(ctx, gid, rules, want, racks, nevents)
+	}
+}
+
+func (s *DBStore) shadowLoadFromTurns(
+	ctx context.Context,
+	gameID string,
+	rules *xwordgame.Rules,
+	want *xwordgame.State,
+	racks []string,
+	wantEventCount int,
+) {
+	log := zerolog.Ctx(ctx)
+
+	turns, err := s.queries.GetGameTurns(ctx, gameID)
+	if err != nil {
+		log.Err(err).Str("gid", gameID).Msg("shadow-load-turns-error")
+		return
+	}
+	if len(turns) == 0 {
+		return // predates dual-write, or no moves yet
+	}
+
+	raw := make([][]byte, len(turns))
+	for i, t := range turns {
+		raw[i] = t.Event
+	}
+	events, err := xwordbridge.DecodeTurns(raw)
+	if err != nil {
+		log.Err(err).Str("gid", gameID).Msg("shadow-load-decode-error")
+		return
+	}
+
+	// The game row said this game is live. A terminal event in the log
+	// contradicts that, and the only way both can be true at once is a read
+	// landing between the two commits.
+	if xwordbridge.HasTerminalEvent(events) {
+		log.Warn().Str("gid", gameID).Int("turns", len(events)).
+			Msg("shadow-load-torn: terminal event in turns while games row says live")
+		return
+	}
+	if len(turns) != wantEventCount {
+		// Also expected mid-write, and separately expected for games that were
+		// in flight when dual-write was switched on.
+		lvl := log.Warn()
+		if len(turns) > wantEventCount {
+			lvl = log.Error()
+		}
+		lvl.Str("gid", gameID).Int("want", wantEventCount).Int("got", len(turns)).
+			Msg("shadow-load-count-mismatch")
+		return
+	}
+
+	res, err := xwordbridge.StateFromTurns(xwordbridge.TurnsInput{
+		Events:         events,
+		LastKnownRacks: racks,
+		GameEnded:      false, // the games row said live, and no terminal event contradicts it
+	}, rules, nil)
+	if err != nil {
+		log.Err(err).Str("gid", gameID).Msg("shadow-load-rebuild-error")
+		return
+	}
+
+	// The served side is a macondo history reconstruction, so the fields its
+	// rebuild does not maintain are excluded -- but its play state is not one
+	// of them: DBStore.Get overwrites whatever the rebuild derived with the
+	// stored value, and that is exactly the field worth diffing.
+	divs := xwordbridge.DivergencesVsReconstruction(res.State, want,
+		xwordbridge.ReconstructionOpts{
+			LastEvent:         xwordbridge.LastMeaningfulEvent(events),
+			PlayStateReliable: true,
+		})
+	if len(divs) == 0 {
+		log.Debug().Str("gid", gameID).Int("turns", len(events)).Msg("shadow-load-ok")
+		return
+	}
+	ev := log.Error().Str("gid", gameID).Int("turns", len(events))
+	for _, d := range divs {
+		ev = ev.Str("from_turns."+d.Field, d.Ours).Str("served."+d.Field, d.Theirs)
+	}
+	ev.Msg("shadow-load-mismatch")
 }
 
 // TODO(cache-removal phase 4): uncomment buildHistoryFromTurns after
@@ -520,6 +672,8 @@ func (s *DBStore) shadowCompareTurns(
 		return
 	}
 
+	// No exclusions here: want came from the live macondo game, which does
+	// maintain the state its reconstruction path drops.
 	divs := xwordbridge.CompareStates(res.State, want)
 	if len(divs) == 0 {
 		log.Debug().Str("gameID", gameID).Int("turns", len(events)).Msg("shadow-turns-ok")
