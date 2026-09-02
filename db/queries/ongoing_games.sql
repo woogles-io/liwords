@@ -97,11 +97,6 @@ RETURNING ready_flag;
 -- name: DeleteOngoingGame :exec
 DELETE FROM ongoing_games WHERE game_uuid = @game_uuid;
 
--- Cross-node serialization for a single game's write path. Taken at the start
--- of every write transaction; released automatically on commit or rollback.
--- name: LockOngoingGame :exec
-SELECT pg_advisory_xact_lock(hashtextextended(@game_uuid::text, 0));
-
 -- All of the listings below scan a table holding a few thousand rows rather
 -- than filtering 12M by game_end_reason = 0.
 

@@ -469,17 +469,6 @@ func (q *Queries) ListOngoingTournamentGames(ctx context.Context, tournamentID s
 	return items, nil
 }
 
-const lockOngoingGame = `-- name: LockOngoingGame :exec
-SELECT pg_advisory_xact_lock(hashtextextended($1::text, 0))
-`
-
-// Cross-node serialization for a single game's write path. Taken at the start
-// of every write transaction; released automatically on commit or rollback.
-func (q *Queries) LockOngoingGame(ctx context.Context, gameUuid string) error {
-	_, err := q.db.Exec(ctx, lockOngoingGame, gameUuid)
-	return err
-}
-
 const setOngoingGameReady = `-- name: SetOngoingGameReady :one
 UPDATE ongoing_games
 SET ready_flag = ready_flag | (1 << $1::integer),
