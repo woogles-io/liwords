@@ -25,6 +25,8 @@ import (
 	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/stores/common"
 	"github.com/woogles-io/liwords/pkg/stores/models"
+	"github.com/woogles-io/liwords/pkg/xwordbridge"
+	"github.com/woogles-io/liwords/pkg/xwordgame"
 
 	macondogame "github.com/domino14/macondo/game"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
@@ -412,54 +414,63 @@ func (s *DBStore) SpawnShadowCompare(ctx context.Context, g *entity.Game) {
 	}
 
 	hist := g.History()
-	gamereq := g.GameReq
-
-	lexicon := hist.Lexicon
-	if lexicon == "" && gamereq != nil {
-		lexicon = gamereq.Lexicon
+	spec := xwordbridge.SpecFromHistory(hist)
+	if spec.Lexicon == "" && g.GameReq != nil {
+		spec.Lexicon = g.GameReq.Lexicon
 	}
-
-	var boardLayoutName, letterDistributionName, variantName string
-	if gamereq != nil && gamereq.Rules != nil {
-		boardLayoutName = gamereq.Rules.BoardLayoutName
-		letterDistributionName = gamereq.Rules.LetterDistributionName
-		variantName = gamereq.Rules.VariantName
-	} else {
-		boardLayoutName = board.CrosswordGameLayout
-		letterDistributionName = "english"
-		variantName = "classic"
-	}
-
-	rules, err := macondogame.NewBasicGameRules(
-		s.cfg.MacondoConfig(), lexicon, boardLayoutName,
-		letterDistributionName, macondogame.CrossScoreOnly,
-		macondogame.Variant(variantName))
+	rules, err := xwordbridge.RulesFor(s.cfg.MacondoConfig(), spec)
 	if err != nil {
 		log.Err(err).Str("gameID", g.GameID()).Msg("shadow-spawn-rules-error")
 		return
 	}
 
-	mcg := &g.Game
+	// Everything the goroutine needs is read here, on the caller's goroutine.
+	// g is about to keep being played; a shadow that reads it later would be
+	// comparing the turns table against a position that has moved on, and would
+	// report that as a divergence.
+	want, err := xwordbridge.StateFromGame(&g.Game)
+	if err != nil {
+		log.Warn().Err(err).Str("gameID", g.GameID()).Msg("shadow-spawn-snapshot-skipped")
+		return
+	}
+	// The racks come from the live game rather than from games.last_known_racks,
+	// which the production load path will use. Not because the column is
+	// doubted, but because Set has not committed yet at this point in the move
+	// path, so reading it here would compare against the previous move's racks.
+	// What this shadow is testing is the derivation -- board, scores, turn
+	// counts, the scoreless counter, and above all the play state -- from the
+	// events actually in the table.
+	racks := make([]string, xwordgame.MaxPlayers)
+	for p := range racks {
+		racks[p] = g.Game.RackLettersFor(p)
+	}
+
 	go s.shadowCompareTurns(
 		zerolog.Ctx(ctx).WithContext(context.WithoutCancel(ctx)),
-		g.GameID(), rules,
-		mcg.Turn(), mcg.PointsFor(0), mcg.PointsFor(1),
-		len(hist.Events), hist.Players, hist.Lexicon, hist.ChallengeRule,
+		g.GameID(), rules, want, racks, len(hist.Events),
 	)
 }
 
-// shadowCompareTurns rebuilds a game from game_turns rows and compares the
-// resulting state against the history-based reconstruction. Discrepancies are
-// logged at ERROR level. Runs in a goroutine; never modifies entGame.
+// shadowCompareTurns rebuilds a position from game_turns rows and compares it,
+// field by field, against the position macondo is actually serving.
+//
+// The comparison it replaced went through macondo on both sides and checked
+// only the turn number and the scores -- and explicitly gave up on the play
+// state, because NewFromHistory does not reconstruct it reliably. That is the
+// exact field the May 2026 incident corrupted, so a shadow that cannot see it
+// is not watching for the failure it exists to catch. Driving xwordgame instead
+// makes the play state comparable, along with the board, the bag and the
+// per-player counters.
+//
+// Runs in a goroutine, reads nothing that can still change, and modifies
+// nothing. Every disagreement is logged at ERROR.
 func (s *DBStore) shadowCompareTurns(
 	ctx context.Context,
 	gameID string,
-	rules *macondogame.GameRules,
-	wantTurn, wantP0, wantP1 int,
+	rules *xwordgame.Rules,
+	want *xwordgame.State,
+	racks []string,
 	wantEventCount int,
-	players []*macondopb.PlayerInfo,
-	lexicon string,
-	challengeRule macondopb.ChallengeRule,
 ) {
 	log := zerolog.Ctx(ctx)
 
@@ -474,7 +485,7 @@ func (s *DBStore) shadowCompareTurns(
 
 	if len(turns) != wantEventCount {
 		if len(turns) < wantEventCount {
-			// In-flight at dual-write cutover — partial rows, tolerated temporarily.
+			// In-flight at dual-write cutover -- partial rows, tolerated temporarily.
 			log.Warn().Str("gameID", gameID).
 				Int("want", wantEventCount).Int("got", len(turns)).
 				Msg("shadow-turns-skip: in-flight at dual-write cutover")
@@ -486,51 +497,39 @@ func (s *DBStore) shadowCompareTurns(
 		return
 	}
 
-	events := make([]*macondopb.GameEvent, len(turns))
+	raw := make([][]byte, len(turns))
 	for i, t := range turns {
-		evt := &macondopb.GameEvent{}
-		if err := protojson.Unmarshal(t.Event, evt); err != nil {
-			log.Err(err).Str("gameID", gameID).Msg("shadow-turns-unmarshal-error")
-			return
-		}
-		events[i] = evt
+		raw[i] = t.Event
+	}
+	events, err := xwordbridge.DecodeTurns(raw)
+	if err != nil {
+		log.Err(err).Str("gameID", gameID).Msg("shadow-turns-unmarshal-error")
+		return
 	}
 
-	shadowHist := &macondopb.GameHistory{
-		Players:       players,
-		Events:        events,
-		Lexicon:       lexicon,
-		ChallengeRule: challengeRule,
-	}
-	shadowMcg, err := macondogame.NewFromHistory(shadowHist, rules, len(events))
+	res, err := xwordbridge.StateFromTurns(xwordbridge.TurnsInput{
+		Events:         events,
+		LastKnownRacks: racks,
+		// Taken from the position being compared against rather than assumed:
+		// the caller skips finished games today, but a shadow that quietly
+		// depended on that would break the day it stopped being true.
+		GameEnded: want.PlayState == xwordgame.GameOver,
+	}, rules, nil)
 	if err != nil {
 		log.Err(err).Str("gameID", gameID).Msg("shadow-turns-rebuild-error")
 		return
 	}
 
-	ev := log.Error().Str("gameID", gameID)
-	mismatch := false
-
-	if shadowMcg.Turn() != wantTurn {
-		ev = ev.Int("want_turn", wantTurn).Int("got_turn", shadowMcg.Turn())
-		mismatch = true
-	}
-	if shadowMcg.PointsFor(0) != wantP0 || shadowMcg.PointsFor(1) != wantP1 {
-		ev = ev.Int("want_p0", wantP0).Int("got_p0", shadowMcg.PointsFor(0)).
-			Int("want_p1", wantP1).Int("got_p1", shadowMcg.PointsFor(1))
-		mismatch = true
-	}
-	// Note: Playing() is intentionally not compared here. NewFromHistory does
-	// not reliably reconstruct mid-game play states (e.g. it can return
-	// WAITING_FOR_FINAL_PASS when the first move is a PASS); the real game
-	// load works around this with an explicit SetPlaying override. The turn
-	// number and scores are sufficient to verify game_turns correctness.
-
-	if mismatch {
-		ev.Msg("shadow-turns-mismatch")
-	} else {
+	divs := xwordbridge.CompareStates(res.State, want)
+	if len(divs) == 0 {
 		log.Debug().Str("gameID", gameID).Int("turns", len(events)).Msg("shadow-turns-ok")
+		return
 	}
+	ev := log.Error().Str("gameID", gameID).Int("turns", len(events))
+	for _, d := range divs {
+		ev = ev.Str("from_turns."+d.Field, d.Ours).Str("live."+d.Field, d.Theirs)
+	}
+	ev.Msg("shadow-turns-mismatch")
 }
 
 // GetMetadata gets metadata about the game, but does not actually play the game.

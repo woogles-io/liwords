@@ -32,7 +32,7 @@ func playedOutGame(tb testing.TB) (*macondopb.GameHistory, *xwordgame.Rules) {
 		// a throwaway one.
 		t = &testing.T{}
 	}
-	g, s, r := newGamePair(t, pc)
+	g, s, r := newGamePair(t, pc, 1)
 	maxLtr := maxTile(r.LetterDistribution)
 	rng := rand.New(rand.NewPCG(1, 2))
 

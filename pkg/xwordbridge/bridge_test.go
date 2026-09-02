@@ -1,6 +1,7 @@
 package xwordbridge
 
 import (
+	"encoding/binary"
 	"math/rand/v2"
 	"os"
 	"strings"
@@ -144,7 +145,15 @@ func maxTile(ld *tilemapping.LetterDistribution) tilemapping.MachineLetter {
 }
 
 // newGamePair builds a macondo game and the xwordgame view of it.
-func newGamePair(t *testing.T, pc parityConfig) (*macondogame.Game, *xwordgame.State, *xwordgame.Rules) {
+// newGamePair builds a macondo game and an equivalent xwordgame state.
+//
+// seed fixes macondo's bag as well as ours. Without it the test's failure
+// messages lie: they report "seed N", but macondo's draws came from the global
+// RNG, so re-running with that seed reproduced a different game -- and a
+// differential test whose failures cannot be reproduced is very little use. It
+// also made the coverage floors below flap, since how many random plays get
+// rejected depends on what is on the racks.
+func newGamePair(t *testing.T, pc parityConfig, seed int) (*macondogame.Game, *xwordgame.State, *xwordgame.Rules) {
 	t.Helper()
 	cfg := testConfig(t)
 	mrules, err := macondogame.NewBasicGameRules(
@@ -160,6 +169,12 @@ func newGamePair(t *testing.T, pc parityConfig) (*macondogame.Game, *xwordgame.S
 	if err != nil {
 		t.Fatal(err)
 	}
+	// SeedBag, not Bag().SetRNG: StartGame throws the current bag away and
+	// builds a new one, so an RNG set on the bag beforehand is discarded and
+	// the draws quietly fall back to the global generator.
+	var bagSeed [32]byte
+	binary.LittleEndian.PutUint64(bagSeed[:], uint64(seed))
+	g.SeedBag(bagSeed)
 	g.StartGame()
 	g.SetChallengeRule(pc.rule)
 
@@ -201,7 +216,7 @@ var englishClassic = parityConfigs[0]
 // A freshly started game must translate exactly.
 func TestStateFromGameAtStart(t *testing.T) {
 	is := is.New(t)
-	g, s, r := newGamePair(t, englishClassic)
+	g, s, r := newGamePair(t, englishClassic, 1)
 
 	is.Equal(s.Dim(), 15)
 	is.True(s.IsBoardEmpty())
@@ -266,7 +281,7 @@ func TestEnumConversions(t *testing.T) {
 // refused rather than silently mistranslated.
 func TestTransposedBoardIsRefused(t *testing.T) {
 	is := is.New(t)
-	g, _, _ := newGamePair(t, englishClassic)
+	g, _, _ := newGamePair(t, englishClassic, 1)
 
 	g.Board().Transpose()
 	_, err := StateFromGame(g)
@@ -280,7 +295,7 @@ func TestTransposedBoardIsRefused(t *testing.T) {
 
 func TestCompareReportsEveryDivergence(t *testing.T) {
 	is := is.New(t)
-	g, s, _ := newGamePair(t, englishClassic)
+	g, s, _ := newGamePair(t, englishClassic, 1)
 
 	// Break several unrelated things at once. A real root cause usually shows
 	// up in more than one field, and the set is the diagnosis.
@@ -329,7 +344,7 @@ func TestStateMachineParityAgainstMacondo(t *testing.T) {
 
 			for seed := range pc.seeds {
 				rng := rand.New(rand.NewPCG(uint64(seed), 2024))
-				g, s, r := newGamePair(t, pc)
+				g, s, r := newGamePair(t, pc, seed)
 				alph := r.LetterDistribution.TileMapping()
 				maxLtr := maxTile(r.LetterDistribution)
 
@@ -465,6 +480,15 @@ func TestStateMachineParityAgainstMacondo(t *testing.T) {
 					games++
 				}
 			}
+			// Configurations sharing a board size and a bag size report
+			// identical play/reject/pass counts, and that is correct rather
+			// than a sign the distribution is being ignored: under DOUBLE the
+			// lexicon is not consulted at play time, so whether a random
+			// placement is legal is purely geometric. French and German have
+			// 102 tiles and land on one set of numbers; the 100-tile
+			// distributions land on another. What does differ per
+			// distribution is the scoring, and that is compared after every
+			// single move.
 			t.Logf("%s: %d/%d games finished (%d endgame adjustments verified); %d plays, %d rejected, %d exchanges, %d passes",
 				pc.name, games, pc.seeds, endings, plays, rejected, exchanges, passes)
 			if plays < pc.minPlays {

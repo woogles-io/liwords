@@ -52,11 +52,8 @@ import (
 	"strings"
 	"testing"
 
-	macondoboard "github.com/domino14/macondo/board"
 	macondogame "github.com/domino14/macondo/game"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
-	"github.com/domino14/word-golib/kwg"
-	"github.com/domino14/word-golib/tilemapping"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/woogles-io/liwords/pkg/xwordgame"
@@ -147,48 +144,20 @@ func readCorpusFile(t *testing.T, path string, games *[]corpusGame) int {
 func rulesForHistory(t *testing.T, hist *macondopb.GameHistory) (*xwordgame.Rules, *macondogame.GameRules, error) {
 	t.Helper()
 	cfg := testConfig(t)
+	spec := SpecFromHistory(hist)
 
-	layoutName := hist.BoardLayout
-	if layoutName == "" {
-		layoutName = macondoboard.CrosswordGameLayout
-	}
-	distName := hist.LetterDistribution
-	if distName == "" {
-		distName = "english"
-	}
-	variant := hist.Variant
-	if variant == "" {
-		variant = "classic"
-	}
-
-	mrules, err := macondogame.NewBasicGameRules(cfg, hist.Lexicon, layoutName, distName,
-		macondogame.CrossScoreOnly, macondogame.Variant(variant))
+	// Both sides of the comparison are built from the same resolved names, and
+	// the xwordgame side goes through the helper production uses, so the corpus
+	// is evidence about the real load path rather than about the test.
+	mrules, err := macondogame.NewBasicGameRules(cfg, spec.Lexicon, spec.BoardLayout,
+		spec.LetterDistribution, macondogame.CrossScoreOnly,
+		macondogame.Variant(spec.Variant))
 	if err != nil {
 		return nil, nil, err
 	}
-	layout, err := xwordgame.NamedLayout(layoutName)
+	r, err := RulesFor(cfg, spec)
 	if err != nil {
 		return nil, nil, err
-	}
-	ld, err := tilemapping.GetDistribution(cfg.WGLConfig(), distName)
-	if err != nil {
-		return nil, nil, err
-	}
-	cr, err := ChallengeRuleFromMacondo(hist.ChallengeRule)
-	if err != nil {
-		return nil, nil, err
-	}
-	r := &xwordgame.Rules{
-		Layout:             layout,
-		LetterDistribution: ld,
-		Variant:            xwordgame.Variant(variant),
-		ChallengeRule:      cr,
-		ExchangeLimit:      xwordgame.ExchangeLimitForLexicon(hist.Lexicon),
-	}
-	if hist.Lexicon != "" {
-		if k, err := kwg.GetKWG(cfg.WGLConfig(), hist.Lexicon, kwg.WithDistribution(distName)); err == nil {
-			r.Lexicon = kwg.Lexicon{KWG: *k}
-		}
 	}
 	return r, mrules, nil
 }
