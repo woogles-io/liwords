@@ -33,7 +33,9 @@ func shadowLoad(t *testing.T, gstore *DBStore, gameID string) []string {
 	t.Helper()
 	var buf bytes.Buffer
 	ctx := zerolog.New(&buf).Level(zerolog.DebugLevel).WithContext(context.Background())
-	cfg := DefaultConfig
+	// A copy: DefaultConfig is a process-wide singleton pointer, so setting a
+	// flag on it leaks into every test that follows.
+	cfg := *DefaultConfig
 	cfg.ShadowTurnsLoad = true
 	ctx = cfg.WithContext(ctx)
 
@@ -154,7 +156,7 @@ func TestShadowLoadSkipsFinishedGames(t *testing.T) {
 	defer ustore.(*user.DBStore).Disconnect()
 
 	const gid = "wJxURccCgSAPivUvj4QdYL"
-	cfg := DefaultConfig
+	cfg := *DefaultConfig
 	cfg.ShadowTurnsLoad = true
 	ctx := cfg.WithContext(context.Background())
 
