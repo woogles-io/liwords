@@ -1146,6 +1146,11 @@ func (s *DBStore) Set(ctx context.Context, g *entity.Game) error {
 
 	g.LastUpdatedAt = time.UnixMilli(g.TimerModule().Now())
 
+	writeOngoing := false
+	if cfg, cfgErr := config.Ctx(ctx); cfgErr == nil && cfg.WriteOngoingGames {
+		writeOngoing = true
+	}
+
 	pending := g.PendingTurns()
 	params := models.UpdateGameParams{
 		UpdatedAt:        pgtype.Timestamptz{Time: g.LastUpdatedAt, Valid: true},
@@ -1207,7 +1212,16 @@ func (s *DBStore) Set(ctx context.Context, g *entity.Game) error {
 				return fmt.Errorf("appending %d turns from %d: %w", len(raw), pending[0].Idx, err)
 			}
 		}
-		return q.UpdateGame(ctx, params)
+		if err := q.UpdateGame(ctx, params); err != nil {
+			return err
+		}
+		// In the same transaction, so the listings can never name a game whose
+		// row says something else. Nothing reads ongoing_games yet -- this
+		// populates it so it can be checked before anything does.
+		if writeOngoing {
+			return syncOngoingGame(ctx, q, g)
+		}
+		return nil
 	}); err != nil {
 		return err
 	}

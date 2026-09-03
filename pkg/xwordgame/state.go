@@ -101,7 +101,7 @@ func (p PlayState) String() string {
 // lives alongside the snapshot as plain columns and is resolved into shared,
 // cached objects at load time.
 //
-// The zero value is not usable; construct with NewState or Decode.
+// The zero value is not usable; construct with NewState.
 type State struct {
 	// dim is the board's side length. The board is stored row-major with a
 	// stride of dim, not MaxBoardDim, so the live region is contiguous and can
@@ -248,9 +248,8 @@ func (s *State) Clone() *State {
 	return &c
 }
 
-// Validate checks the State's structural invariants. It is called automatically
-// by Decode; call it directly after constructing a State by hand if you want
-// the same guarantees.
+// Validate checks the State's structural invariants. Call it after building a
+// State by hand -- a replay does, once it has finished.
 func (s *State) Validate() error {
 	if s.dim < 1 || s.dim > MaxBoardDim {
 		return fmt.Errorf("xwordgame: invalid board dimension %d", s.dim)
@@ -312,6 +311,13 @@ func (s *State) Equal(o *State) bool {
 // event log -- so it hashes the fields directly, which is the same thing
 // without a version byte, a length header and a forward-compatibility escape
 // hatch that existed only for storage.
+//
+// It is therefore NOT stable across builds. Adding a field here changes every
+// digest, which is harmless while digests are only ever compared between two
+// states in one process -- a reconstruction against what is being served, two
+// engines in the parity harness -- and would be a silent disaster if one were
+// ever written down and compared against a later build's. Do not persist it,
+// and do not send it anywhere that outlives the process.
 func (s *State) Digest() uint64 {
 	h := xxhash.New()
 	var scratch [4]byte

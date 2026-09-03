@@ -530,7 +530,13 @@ ON CONFLICT (game_uuid) DO UPDATE SET
     on_turn = EXCLUDED.on_turn,
     timers = EXCLUDED.timers,
     meta_events = EXCLUDED.meta_events,
-    ready_flag = EXCLUDED.ready_flag,
+    -- ready_flag is deliberately NOT updated here. It is owned by
+    -- SetOngoingGameReady, which ORs one bit per player into it, and a save
+    -- landing between the two players readying would otherwise wipe the first
+    -- one and make them ready up again. games.ready_flag has exactly this bug
+    -- today -- UpdateGame writes a literal 0 to it on every save -- and there is
+    -- no reason to carry it across. The value in the INSERT above therefore
+    -- applies only when the row is first created.
     started = EXCLUDED.started,
     updated_at = now()
 `

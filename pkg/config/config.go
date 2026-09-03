@@ -76,6 +76,12 @@ type Config struct {
 	// says whether the turns read path could be turned on, and it also counts
 	// how often the AppendTurns/Set race actually tears a read.
 	ShadowTurnsLoad bool
+
+	// WriteOngoingGames maintains the ongoing_games row for every live game,
+	// inside the same transaction that saves the game. Nothing reads the table
+	// yet; this exists so it can be populated and checked before the active-game
+	// listings are moved onto it. Off until the migration has been applied.
+	WriteOngoingGames bool
 }
 
 type ctxKey string
@@ -98,6 +104,7 @@ func (c *Config) Load(args []string) error {
 	fs.BoolVar(&c.RunMigrations, "run-migrations", false, "run database migrations on startup")
 	fs.BoolVar(&c.QuitAfterMigration, "quit-after-migration", false, "quit after running migrations (for dedicated migration tasks)")
 	fs.BoolVar(&c.DualWriteTurns, "dual-write-turns", false, "dual-write game events to game_turns alongside history bytea (migration phase 2)")
+	fs.BoolVar(&c.WriteOngoingGames, "write-ongoing-games", false, "maintain the ongoing_games row for each live game, in the same transaction as the save; nothing reads it yet")
 	fs.BoolVar(&c.ShadowTurnsLoad, "shadow-turns-load", false, "on every live-game load, also rebuild from game_turns and compare; never served (migration phase 3)")
 	fs.BoolVar(&c.ShadowTurns, "shadow-turns", false, "shadow-compare turns-based reconstruction against history bytea on every Get (migration phase 2)")
 
