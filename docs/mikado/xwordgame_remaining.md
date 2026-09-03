@@ -120,6 +120,66 @@ Ordered by what is safest to move.
   accumulates must never appear in a whole-row UPDATE built from in-memory
   state.
 
+### Indexes on `games` that nothing uses
+
+Separate from the column work, and independent of everything else on the
+branch: `games` carries about **2.4 GB of index the planner has essentially
+never chosen.** The statistics are trustworthy -- `pg_stat_database.stats_reset`
+is 2026-03-03 and the server has not restarted since, so these counts cover 184
+uninterrupted days.
+
+The cost is not mainly disk. This is the table rewritten on every move, so every
+index is maintained on every non-HOT update: it is write amplification on the
+hottest path in the application, and it inflates the backup that already takes
+~2 hours.
+
+| index | size | scans in 184d | verdict |
+|---|---|---|---|
+| `rematch_req_idx` | 534 MB | 0 | **dead** -- see below |
+| `idx_games_player0_filtered` | 517 MB | 0 | **dead** -- see below |
+| `idx_games_player1_filtered` | 516 MB | 0 | **dead** -- see below |
+| `idx_games_lexicon_created_at` | 562 MB | 10 | unexplained; find the query first |
+| `idx_games_deleted_at` | 126 MB | 3 | see below -- probably droppable outright |
+| `hastybot_games_index` | 118 MB | 0 | ad-hoc; `player_id = 230` is hard-coded into it |
+
+None is unique, none is a primary key, and none backs a constraint, so the scan
+count is the whole story -- there is no second job any of them is quietly doing.
+
+**Three are dead because the many-to-many migration moved their queries.**
+
+- `rematch_req_idx` is a hash index on `games.quickdata->>'o'`. `GetRematchStreak`
+  now reads `game_players.original_request_id`. Nothing queries the expression
+  the index covers.
+- `idx_games_player{0,1}_filtered` are `(playerN_id, id DESC) WHERE
+  game_end_reason NOT IN (0,5,7)` -- finished games for a player.
+  `GetRecentGamesByUserId` now goes through `game_players` as well, and the
+  `player0_id`/`player1_id` predicates left in `games.sql` are all for *ongoing*
+  correspondence games (`game_end_reason = 0`), which these indexes explicitly
+  exclude. They cannot serve the only queries that remain.
+
+That is 1,567 MB explained, and the explanation is the same one each time: the
+lookups moved to `game_players` and the old indexes were never dropped.
+
+**`idx_games_deleted_at` indexes 12.7M rows of which zero are soft-deleted.**
+If anything still needs the column, a partial index `WHERE deleted_at IS NOT
+NULL` would be kilobytes rather than 126 MB. If nothing does, drop it.
+
+**`hastybot_games_index`** has a user id baked into its predicate
+(`player0_id = 230 OR player1_id = 230`). That is an index built for one
+investigation; it should not outlive it.
+
+Do them one at a time with `DROP INDEX CONCURRENTLY`, and confirm the intent of
+the two with non-zero scans before touching those -- 10 scans in six months is a
+rare report, not nothing. Dropping is reversible, but rebuilding a 500 MB index
+on a live 12M-row table takes minutes, so it is not free.
+
+**Already done:** `idx_games_history_s3_key_pending` was **344 MB holding 28,781
+entries** -- it was built when every game matched `history_s3_key IS NULL` and
+the backfill then deleted 12.6M entries from it, which plain VACUUM makes
+reusable but never returns. Reindexed to **1136 kB**. Worth remembering as a
+shape: a partial index whose predicate goes from matching everything to matching
+almost nothing will not shrink on its own.
+
 ### Where meta events should live
 
 **Not in the live table, and not where they are now.** An append-only
