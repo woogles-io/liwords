@@ -34,7 +34,7 @@ const (
 // archiveStore is the subset of Cache methods that HistoryArchiver needs.
 type archiveStore interface {
 	GetTurns(ctx context.Context, gameUUID string) ([]models.GetGameTurnsRow, error)
-	CommitArchival(ctx context.Context, gameUUID string, s3Key string) error
+	CommitArchival(ctx context.Context, gameUUID string, s3Key string, archivedTurns int) error
 	DeleteTurns(ctx context.Context, gameUUID string) error
 	SetHistoryS3Key(ctx context.Context, gameUUID string, s3Key string) error
 }
@@ -107,7 +107,7 @@ func (h *HistoryArchiver) ArchiveAndCleanup(ctx context.Context, g *entity.Game)
 		return fmt.Errorf("archive-upload: %w", err)
 	}
 
-	if err := h.store.CommitArchival(ctx, g.GameID(), key); err != nil {
+	if err := h.store.CommitArchival(ctx, g.GameID(), key, len(turns)); err != nil {
 		// Upload succeeded but DB commit failed — the S3 object is orphaned but
 		// turns rows are still present, so the backfill script can retry.
 		return fmt.Errorf("archive-commit: %w", err)

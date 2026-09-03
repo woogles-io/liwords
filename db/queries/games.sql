@@ -9,6 +9,43 @@ SELECT
 FROM games
 WHERE uuid = @uuid; -- this is not even a uuid, sigh.
 
+-- Load a game and its event log in a single snapshot.
+--
+-- Two separate queries cannot do this. Under READ COMMITTED each statement
+-- takes its own snapshot, and pgxpool may even run them on different
+-- connections, so a load can read the games row from before a move committed
+-- and the turn rows from after it. That leaves the board one move ahead of
+-- last_known_racks, and the bag -- distribution minus board minus racks -- comes
+-- out wrong. A single statement runs against a single snapshot, which is the
+-- guarantee we need; a REPEATABLE READ transaction would give the same thing
+-- for four round trips instead of one (measured: 1300 us/load against 468).
+--
+-- NOT STANDARD SQL -- two things to know:
+--
+--  * the correlated subquery returns the whole log as one jsonb[] rather than
+--    as N rows, so the games row and its events arrive together in one row.
+--  * `CASE WHEN @with_turns THEN (...) END` skips the aggregate entirely when
+--    the caller does not want the log. Postgres does not evaluate an untaken
+--    CASE branch, so a plain game load costs what GetGame costs. turn_events
+--    is NULL in that case, which is distinguishable from a game with no events
+--    only by the flag the caller passed -- so do not read turn_events unless
+--    with_turns was true.
+-- name: GetGameWithTurns :one
+SELECT
+    g.id, g.created_at, g.updated_at, g.deleted_at, g.uuid,
+    g.player0_id, g.player1_id, g.timers, g.started, g.game_end_reason,
+    g.winner_idx, g.loser_idx, g.history, g.stats, g.quickdata,
+    g.tournament_data, g.tournament_id, g.ready_flag, g.meta_events, g.type,
+    g.game_request, g.player_on_turn, g.league_id, g.season_id, g.league_division_id,
+    g.history_s3_key, g.last_known_racks,
+    CASE WHEN @with_turns::boolean THEN (
+        SELECT array_agg(t.event ORDER BY t.turn_idx)
+        FROM game_turns t
+        WHERE t.game_uuid = g.uuid
+    ) END::jsonb[] AS turn_events
+FROM games g
+WHERE g.uuid = @uuid;
+
 -- name: GetGameOwner :one
 SELECT
     agm.creator_uuid,

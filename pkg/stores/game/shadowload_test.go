@@ -22,6 +22,7 @@ import (
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 
 	"github.com/woogles-io/liwords/pkg/stores/common"
+	"github.com/woogles-io/liwords/pkg/stores/models"
 	"github.com/woogles-io/liwords/pkg/stores/user"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
@@ -40,11 +41,13 @@ func shadowLoad(t *testing.T, gstore *DBStore, gameID string) []string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	row, err := gstore.queries.GetGame(ctx, common.ToPGTypeText(gameID))
+	row, err := gstore.queries.GetGameWithTurns(ctx, models.GetGameWithTurnsParams{
+		WithTurns: true, Uuid: common.ToPGTypeText(gameID),
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	work := gstore.shadowLoadWork(ctx, row, entGame)
+	work := gstore.shadowLoadWork(ctx, gameFromRow(row), row.TurnEvents, entGame)
 	if work == nil {
 		t.Fatal("shadow declined to run on a live game")
 	}
@@ -96,7 +99,7 @@ func TestShadowLoadMatchesAfterRealMoves(t *testing.T) {
 		_, err = entGame.PlayScoringMove(mv.coords, mv.word, true)
 		is.NoErr(err)
 		evts := entGame.History().Events[before:]
-		is.NoErr(gstore.AppendTurns(ctx, gid, before, evts))
+		is.NoErr(gstore.StageTurns(entGame, before, evts))
 		is.NoErr(gstore.Set(ctx, entGame))
 	}
 
@@ -124,7 +127,7 @@ func TestShadowLoadReportsTornRead(t *testing.T) {
 	before := len(entGame.History().Events)
 	_, err = entGame.PlayScoringMove("8E", "AGUE", true)
 	is.NoErr(err)
-	is.NoErr(gstore.AppendTurns(ctx, gid, before, entGame.History().Events[before:]))
+	is.NoErr(gstore.StageTurns(entGame, before, entGame.History().Events[before:]))
 	is.NoErr(gstore.Set(ctx, entGame))
 
 	// AppendTurns has committed the ending; Set has not yet been called with it.
@@ -161,7 +164,9 @@ func TestShadowLoadSkipsFinishedGames(t *testing.T) {
 	entGame.SetPlaying(macondopb.PlayState_GAME_OVER)
 	is.NoErr(gstore.Set(ctx, entGame))
 
-	row, err := gstore.queries.GetGame(ctx, common.ToPGTypeText(gid))
+	row, err := gstore.queries.GetGameWithTurns(ctx, models.GetGameWithTurnsParams{
+		WithTurns: true, Uuid: common.ToPGTypeText(gid),
+	})
 	is.NoErr(err)
-	is.Equal(gstore.shadowLoadWork(ctx, row, entGame), nil)
+	is.Equal(gstore.shadowLoadWork(ctx, gameFromRow(row), row.TurnEvents, entGame), nil)
 }
