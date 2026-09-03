@@ -120,9 +120,54 @@ In plan order, and each depends on the one before:
       allowlist. Cumulative temporality retaining unbounded `http.route` values
       is the leading hypothesis for the leak, not a reproduction.
 - [ ] remove the in-memory `Cache`. Loads go from ~1.5/sec to ~12/sec, which at
-      ~200 µs is ~0.24% of one core. Depends on `WithGameLock` replacing
-      `Cache.LockGame`. Keep or re-home the separate 5-second `activeGames` TTL
-      cache; it is a different thing.
+      ~200 µs is ~0.24% of one core. The cross-node lock that had to come first
+      is done. Keep the separate 5-second `activeGames` TTL cache; it is a
+      different thing and the listing may lag where a position may not.
+
+      **What removing it exposes.** The cache made every caller in a process
+      share one `*entity.Game`, so code could change a game in memory and have
+      a later `Get` return those changes. Without it, a store operation loads
+      its own copy, changes that, and writes it -- the caller's pointer never
+      sees any of it. Production does not rely on this (`bus.go:710` discards
+      the returned game, `TimedOut` takes an id and loads its own), but the
+      test harnesses did, in three distinct ways:
+
+      - configuring a game and expecting the store to hand it back:
+        `SetRacksForBoth`, `SetHistory`, `GameReq.RatingMode`,
+        `SetChallengeRule`. Each now has to be saved.
+      - asserting on the harness's own pointer after a store operation. Fixed
+        by using the returned game, or `gamesetup.reload(t)` where the helper
+        returns nothing.
+      - the fake clock. A reloaded game builds a timer module from the store's
+        factory, so `SetTimerModuleCreator` has to be registered rather than
+        just calling `SetTimerModule` on one copy.
+
+      Two things worth knowing that came out of this:
+
+      - `SetRackFor` does *not* update `history.LastKnownRacks`;
+        `SetRacksForBoth` does. A reload restores racks from the history, so a
+        rack set with the former does not survive one.
+      - the two racks must be a *possible* pair. `SetRacksForBoth` takes the
+        tiles out of the bag, and if the pair asks for more of a letter than
+        exists -- two Js in English -- it fails and leaves **both** players with
+        an empty rack, which surfaces later as "tile not in rack".
+
+- [ ] **`pkg/mod` TestNotoriety blocks the cache removal.** Its harness
+      (`playGame`) forces a game into states that cannot occur in a real game:
+      it sets `SetPlayerOnTurn(loserIndex)` and then times that player out.
+      Whose turn it is is derived by replaying the event log -- `DBStore.Get`
+      writes `games.player_on_turn` but never reads it back -- so a forced value
+      cannot survive a reload, and with the cache gone every call reloads. The
+      fixture plays 8 turns, after which player 0 is genuinely on turn, while
+      the test times out player 1.
+
+      So the test asserts on a position no real game reaches, and it only
+      worked because one game object was shared. Fixing it means making the
+      fixtures play legal games and re-baselining the expected notoriety
+      numbers, which needs a decision about what each case is meant to assert
+      -- the notoriety *logic* is untouched by any of this, only the fiction the
+      fixture was built on. Do not re-baseline by copying whatever the test
+      prints.
 
 ## Blockers
 
