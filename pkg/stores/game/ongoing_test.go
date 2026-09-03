@@ -131,3 +131,39 @@ func TestOngoingWriteIsOffByDefault(t *testing.T) {
 	is.NoErr(gstore.Set(ctx, entGame))
 	is.Equal(ongoingCount(t, gstore), 0)
 }
+
+// Readiness is accumulated by the database, one bit per player, so a save
+// between the two players readying must leave the first player's bit alone.
+//
+// UpdateGame used to write a literal 0 to games.ready_flag on every save --
+// entity.Game has no such field, so there was nothing else to write. A meta
+// event arriving while the first player waited was enough: the second player's
+// ready then returned 2 rather than 3, StartGame never fired, and the first
+// player had to ready up again.
+func TestSaveDoesNotClobberReadiness(t *testing.T) {
+	is := is.New(t)
+	ustore, gstore := recreateDB()
+	defer gstore.Disconnect()
+	defer ustore.(*user.DBStore).Disconnect()
+	ctx := context.Background()
+
+	entGame, err := gstore.Get(ctx, ongoingGID)
+	is.NoErr(err)
+
+	// The fixture arrives with bits already set; start from nobody ready.
+	_, err = gstore.dbPool.Exec(ctx, "UPDATE games SET ready_flag = 0 WHERE uuid = $1", ongoingGID)
+	is.NoErr(err)
+
+	// Player 0 is ready.
+	flag, err := gstore.SetReady(ctx, ongoingGID, 0)
+	is.NoErr(err)
+	is.Equal(flag, 1)
+
+	// Anything at all saves the game while player 1 is still deciding.
+	is.NoErr(gstore.Set(ctx, entGame))
+
+	// Player 1 is ready. Both bits must be set, or the game never starts.
+	flag, err = gstore.SetReady(ctx, ongoingGID, 1)
+	is.NoErr(err)
+	is.Equal(flag, 3)
+}

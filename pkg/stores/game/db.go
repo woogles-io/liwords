@@ -1166,7 +1166,6 @@ func (s *DBStore) Set(ctx context.Context, g *entity.Game) error {
 		Quickdata:        safeDerefQuickdata(g.Quickdata),
 		TournamentData:   safeDerefTournamentData(g.TournamentData),
 		TournamentID:     tourneyID,
-		ReadyFlag:        pgtype.Int8{Int64: 0, Valid: true}, // Default to 0
 		MetaEvents:       safeDerefMetaEvents(g.MetaEvents),
 		Uuid:             common.ToPGTypeText(g.GameID()),
 		GameRequest:      safeDerefGameRequest(g.GameReq),
