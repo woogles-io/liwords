@@ -213,12 +213,17 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Game, error) {
 		}
 	}
 
-	// TODO(cache-removal phase 4): re-enable after pg_advisory_xact_lock wraps
-	// AppendTurns+Set in a single transaction. The turns-read path races with the
-	// end-of-game write sequence: AppendTurns commits terminal events to game_turns
-	// before Set commits game_end_reason to the games row, so a load between those
-	// two commits sees GameEndReason==NONE + a terminal event in turns → broken
-	// PLAYING state. See docs/mikado/remove-game-caches.dot for context.
+	// Do not re-enable this yet. The race it was disabled for is fixed -- turn
+	// rows and the games row now commit together, and a load reads both in one
+	// statement -- so the blocker is no longer technical. What is missing is
+	// evidence: nothing serves a reconstructed position until -shadow-turns-load
+	// has been quiet on production traffic for a sustained period. Inferring a
+	// position from an event log without verifying it is what corrupted 944
+	// games in May 2026. See docs/mikado/xwordgame_remaining.md.
+	//
+	// The replacement is xwordbridge.StateFromTurns, not this; it states the
+	// ending from game_end_reason rather than letting PlayState default to
+	// proto3's zero value, which is what the code below did wrong.
 	//
 	// if hist == nil &&
 	// 	pb.GameEndReason(g.GameEndReason.Int32) == pb.GameEndReason_NONE &&
@@ -501,9 +506,10 @@ func (s *DBStore) shadowLoadFromTurns(
 	ev.Msg("shadow-load-mismatch")
 }
 
-// TODO(cache-removal phase 4): uncomment buildHistoryFromTurns after
-// pg_advisory_xact_lock wraps AppendTurns+Set in a single transaction.
-// See the commented-out call sites in Get() and GetHistory() above.
+// Kept only as the record of what went wrong: this assembled a GameHistory and
+// never set PlayState, so proto3's zero value -- PLAYING -- silently overwrote
+// WAITING_FOR_FINAL_PASS. Do not uncomment it. The replacement is
+// xwordbridge.StateFromTurns, which takes the ending as an explicit input.
 //
 // func (s *DBStore) buildHistoryFromTurns(
 // 	ctx context.Context,
@@ -1793,9 +1799,9 @@ func (s *DBStore) GetHistory(ctx context.Context, id string) (*macondopb.GameHis
 	}
 
 	// Finished games → S3; bytea is the transition fallback.
-	// TODO(cache-removal phase 4): re-enable the turns path for active games after
-	// pg_advisory_xact_lock wraps AppendTurns+Set. See Get() above for the race
-	// explanation. The commented-out branch below is the implementation to restore.
+	// Not yet -- see the note in Get(). The race is fixed; the evidence that a
+	// reconstruction matches what is being served is what is still being
+	// gathered, by -shadow-turns-load.
 	//
 	// if pb.GameEndReason(row.GameEndReason.Int32) == pb.GameEndReason_NONE {
 	// 	// Active game: reconstruct from game_turns.

@@ -4,10 +4,11 @@ This is a guide for reviewing `xwordgame-referee-state`, not a summary of it.
 It says what each piece is for, which decisions are judgment calls worth
 arguing with, and what is deliberately unfinished.
 
-**Scope:** 9,436 lines across 33 files. 3,889 lines of code and 4,273 of test in
-the two new packages, plus the store layer, two config flags and one migration.
-Nothing is wired into the live path yet: both feature flags default off, and
-with them off not a single byte of behaviour changes.
+**Scope:** two new packages (`pkg/xwordgame`, `pkg/xwordbridge`), the store
+layer, four migration flags and three migrations. Some of this *does* change
+behaviour with every flag off — the session lock, atomic saves, and the removal
+of the in-memory cache are unconditional. The flags gate only what is being
+gathered as evidence: the two shadows and the `ongoing_games` writer.
 
 ## Why this exists
 
@@ -56,7 +57,8 @@ Start here; each part assumes the one before it.
 | 5 | `pkg/xwordbridge/fromturns.go` | the production entry point: turns rows in, position out, ending stated |
 | 6 | `pkg/xwordbridge/quirks.go` | which fields a macondo rebuild cannot be held to |
 | 7 | `pkg/stores/game/db.go` (`shadowLoadFromTurns`) | where it runs in production, and what it is watching for |
-| 8 | `pkg/stores/game/tx.go` | the cross-node lock the write path still needs to take |
+| 8 | `pkg/stores/game/lock.go` | the cross-node lock, why it is session-scoped, and why holders are capped |
+| 9 | `pkg/stores/game/tx.go` | atomicity, and why it deliberately takes no lock |
 
 ## The decisions worth arguing with
 
@@ -201,33 +203,41 @@ Stated so they are not mistaken for oversights.
 
 ## Not done
 
-- no read path — both shadows compare and log; nothing is ever served from the
-  reconstruction
-- the writers do not take `WithGameLock` yet, so `AppendTurns` and `Set` still
-  commit separately. The load shadow reports that torn read as
-  `shadow-load-torn` rather than as a divergence, which is how the frequency
-  gets measured before the move path is touched.
-- `ongoing_games.state`, `prev_state`, `play_state` and `on_turn`, plus
-  `ongoing.go` and the two `*XwordState` flags, are left over from the snapshot
-  design and are scheduled for deletion
-- `game_turns.event` is still protojson in jsonb; `DecodeTurn` already reads
-  either encoding
-- `pkg/cwgame` is untouched, and the annotator still uses it
-- the archival leak and the missing unique constraint on `games.uuid` are
-  identified and unfixed
+- **No read path.** Both shadows compare and log; nothing is ever served from a
+  reconstruction. The race that originally disabled the turns path is fixed --
+  turn rows and the games row commit together, and a load reads both in one
+  statement -- so what is missing is not a mechanism but evidence. See the
+  deploy section of `xwordgame_remaining.md` for the bar.
+- **`game_turns.event` is still protojson in jsonb.** `DecodeTurn` already reads
+  either encoding, so the switch to `bytea` is a write-side change.
+- **`ongoing_games` has a writer but no reader.** `Set` maintains the row behind
+  `-write-ongoing-games`; the listing queries still have no Go callers, so
+  nothing yet benefits from the table existing.
+- **`pkg/cwgame` is untouched**, and the annotator still uses it.
+- **`games.uuid` still has no unique constraint.** Nothing in the database
+  prevents a duplicate game id.
+- **The league force-finish archival leak** is identified and unfixed
+  (`force_finish_games.go` never calls `ArchiveAndCleanup`).
 
 ## Where the risk actually is
 
-Not in the rules — those have 113,010 games of evidence. The risk is in the
-parts with the least evidence:
+Not in the rules — those have 113,010 games of evidence, and the referee itself
+serves nothing yet. The risk is in the parts that *do* run on every move.
 
-1. **`pkg/stores/game/ongoing.go`** has no test at all. It is guarded by flags
-   that default off and by a promise that it never returns an error, and both of
-   those should be verified by reading rather than assumed.
-2. **The migration and its indexes.** HOT-update behaviour was measured (95%,
-   and 0% with an indexed column, which is why the index list is what it is),
-   but the queries have no callers yet, so nothing has exercised them.
-3. **The cutover contract.** Several guarantees currently live in commit
+1. **The session lock** (`lock.go`). It puts a database round trip on the hot
+   path of every move and pins a pooled connection for the duration of one.
+   Holders are capped at half the pool, which is what stops a burst deadlocking
+   the process outright — read that argument and check it. The failure mode it
+   introduces, `ErrGameLockBusy` after ten seconds, did not exist before.
+2. **Atomic saves** (`tx.go`, `Set`). A `game_turns` write failure now fails the
+   move, where it used to be logged and swallowed. That is the right trade, but
+   it is player-visible and it is new.
+3. **Removing the cache.** Every load is now a database load. The cost was
+   measured and is small, but the coupling it exposed was real: several test
+   harnesses depended on one `*entity.Game` being shared, and production was
+   checked for the same dependency by reading rather than by test.
+4. **The cutover contract.** Several guarantees still live only in commit
    messages: that archived histories keep carrying `PlayState`, `FinalScores`
-   and `Winner`, and that end-rack events keep their `rack` field. Prose does
-   not survive; these need to become tests before the cutover, not after.
+   and `Winner`, and that end-rack events keep their `rack` field. Replay
+   depends on all four. Prose does not survive; these need to become tests
+   before the cutover, not after.
