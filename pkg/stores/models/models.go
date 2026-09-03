@@ -82,6 +82,13 @@ type AnnotatedGameMetadatum struct {
 	CreatedAt        pgtype.Timestamptz
 }
 
+type AutomodVerdict struct {
+	PlayerID  string
+	GameID    string
+	Verdict   int32
+	CreatedAt pgtype.Timestamptz
+}
+
 type Badge struct {
 	ID          int16
 	Code        string
