@@ -255,12 +255,12 @@ func TestFillBagSuperDistribution(t *testing.T) {
 	is.NoErr(s.FillBag(ld))
 	is.Equal(s.TilesRemaining(), int(ld.NumTotalLetters()))
 
-	// A full super bag still round-trips inside the size budget.
-	buf := s.Encode()
-	is.True(len(buf) < MaxEncodedSize)
-	var got State
-	is.NoErr(got.Decode(buf))
+	// A full super bag survives a clone with every tile intact. There used to
+	// be a byte-size assertion here too, back when a position was stored in a
+	// column; there is no stored form any more.
+	got := s.Clone()
 	is.Equal(got.TilesRemaining(), s.TilesRemaining())
+	is.True(got.Equal(s))
 }
 
 // Drawing the entire bag one tile at a time must yield exactly the starting

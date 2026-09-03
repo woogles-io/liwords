@@ -46,18 +46,14 @@ func (q *Queries) DeleteOngoingGame(ctx context.Context, gameUuid string) error 
 }
 
 const getOngoingGame = `-- name: GetOngoingGame :one
-SELECT game_uuid, state, prev_state, play_state, on_turn, lexicon, letter_distribution, board_layout, variant, challenge_rule, player0_id, player1_id, timers, meta_events, ready_flag, started, game_mode, game_type, tournament_id, league_id, season_id, league_division_id, created_at, updated_at FROM ongoing_games WHERE game_uuid = $1
+SELECT game_uuid, play_state, on_turn, lexicon, letter_distribution, board_layout, variant, challenge_rule, player0_id, player1_id, timers, meta_events, ready_flag, started, game_mode, game_type, tournament_id, league_id, season_id, league_division_id, created_at, updated_at FROM ongoing_games WHERE game_uuid = $1
 `
 
-// Loading a live game: one row, no join, no jsonb proto parsing. The rules
-// columns are denormalized precisely so this stays a single cheap read.
 func (q *Queries) GetOngoingGame(ctx context.Context, gameUuid string) (OngoingGame, error) {
 	row := q.db.QueryRow(ctx, getOngoingGame, gameUuid)
 	var i OngoingGame
 	err := row.Scan(
 		&i.GameUuid,
-		&i.State,
-		&i.PrevState,
 		&i.PlayState,
 		&i.OnTurn,
 		&i.Lexicon,
@@ -78,33 +74,6 @@ func (q *Queries) GetOngoingGame(ctx context.Context, gameUuid string) (OngoingG
 		&i.SeasonID,
 		&i.LeagueDivisionID,
 		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
-}
-
-const getOngoingGameState = `-- name: GetOngoingGameState :one
-SELECT state, prev_state, play_state, on_turn, updated_at
-FROM ongoing_games
-WHERE game_uuid = $1
-`
-
-type GetOngoingGameStateRow struct {
-	State     []byte
-	PrevState []byte
-	PlayState int16
-	OnTurn    pgtype.Int2
-	UpdatedAt pgtype.Timestamptz
-}
-
-func (q *Queries) GetOngoingGameState(ctx context.Context, gameUuid string) (GetOngoingGameStateRow, error) {
-	row := q.db.QueryRow(ctx, getOngoingGameState, gameUuid)
-	var i GetOngoingGameStateRow
-	err := row.Scan(
-		&i.State,
-		&i.PrevState,
-		&i.PlayState,
-		&i.OnTurn,
 		&i.UpdatedAt,
 	)
 	return i, err
@@ -540,7 +509,7 @@ func (q *Queries) UpdateOngoingGameTimers(ctx context.Context, arg UpdateOngoing
 
 const upsertOngoingGame = `-- name: UpsertOngoingGame :exec
 INSERT INTO ongoing_games (
-    game_uuid, state, prev_state, play_state, on_turn,
+    game_uuid, play_state, on_turn,
     lexicon, letter_distribution, board_layout, variant, challenge_rule,
     player0_id, player1_id,
     timers, meta_events, ready_flag, started,
@@ -548,34 +517,15 @@ INSERT INTO ongoing_games (
     league_id, season_id, league_division_id,
     created_at, updated_at
 ) VALUES (
-    $1, $2, NULL, $3, $4,
-    $5, $6, $7, $8, $9,
-    $10, $11,
-    $12, $13, $14, $15,
-    $16, $17, $18,
-    $19, $20, $21,
+    $1, $2, $3,
+    $4, $5, $6, $7, $8,
+    $9, $10,
+    $11, $12, $13, $14,
+    $15, $16, $17,
+    $18, $19, $20,
     now(), now()
 )
 ON CONFLICT (game_uuid) DO UPDATE SET
-    state = EXCLUDED.state,
-    -- Rotate the previous position in without an extra round trip:
-    -- ongoing_games.state here is the row as it stood before this statement,
-    -- which is exactly the position before the move being written.
-    --
-    -- Guarded on the state actually changing, because Set is called more than
-    -- once per move on some paths (meta events, timer writes, the pre-bot save
-    -- for correspondence games). A second identical write must not rotate the
-    -- post-move position into prev_state and destroy the real one.
-    --
-    -- has_challengeable_play is len(LastWordsFormed) > 0 read off the new
-    -- snapshot, so the caller does not have to know which move was played:
-    -- non-NULL prev_state and a non-empty words list mean the same thing.
-    prev_state = CASE
-        WHEN ongoing_games.state IS NOT DISTINCT FROM EXCLUDED.state
-            THEN ongoing_games.prev_state
-        WHEN $22::boolean THEN ongoing_games.state
-        ELSE NULL
-    END,
     play_state = EXCLUDED.play_state,
     on_turn = EXCLUDED.on_turn,
     timers = EXCLUDED.timers,
@@ -586,49 +536,46 @@ ON CONFLICT (game_uuid) DO UPDATE SET
 `
 
 type UpsertOngoingGameParams struct {
-	GameUuid             string
-	State                []byte
-	PlayState            int16
-	OnTurn               pgtype.Int2
-	Lexicon              string
-	LetterDistribution   string
-	BoardLayout          string
-	Variant              string
-	ChallengeRule        int16
-	Player0ID            int32
-	Player1ID            int32
-	Timers               []byte
-	MetaEvents           []byte
-	ReadyFlag            int64
-	Started              bool
-	GameMode             int16
-	GameType             int16
-	TournamentID         pgtype.Text
-	LeagueID             pgtype.UUID
-	SeasonID             pgtype.UUID
-	LeagueDivisionID     pgtype.UUID
-	HasChallengeablePlay bool
+	GameUuid           string
+	PlayState          int16
+	OnTurn             pgtype.Int2
+	Lexicon            string
+	LetterDistribution string
+	BoardLayout        string
+	Variant            string
+	ChallengeRule      int16
+	Player0ID          int32
+	Player1ID          int32
+	Timers             []byte
+	MetaEvents         []byte
+	ReadyFlag          int64
+	Started            bool
+	GameMode           int16
+	GameType           int16
+	TournamentID       pgtype.Text
+	LeagueID           pgtype.UUID
+	SeasonID           pgtype.UUID
+	LeagueDivisionID   pgtype.UUID
 }
 
-// The single write path for a live game's position. Everything a save changes
-// goes through this one statement, so there is no second query that could
-// manage prev_state differently -- or forget to.
+// The single write path for a live game's row.
 //
-// It is also the reason no backfill is needed.
-//
-// A game already in progress when this code deploys has no row here. Rather
-// than migrating 12M rows, the snapshot is derived from the in-memory macondo
-// game and upserted the first time the game is saved: new games and in-flight
-// games take the identical path, and a game that is never touched again never
-// needs converting.
+// It is the reason no backfill is needed. A game already in progress when this
+// code deploys has no row here; rather than migrating 12M rows, the row is
+// written the first time the game is saved, so new games and in-flight games
+// take the identical path and a game that is never touched again never needs
+// converting.
 //
 // The rules columns are immutable, so ON CONFLICT deliberately does not rewrite
 // them -- if they ever disagreed with the row that exists, the existing row is
 // the one the game has actually been played under.
+//
+// No position is stored here. play_state and on_turn are denormalized for the
+// listings and are derived from the event log on load, never read back into a
+// game.
 func (q *Queries) UpsertOngoingGame(ctx context.Context, arg UpsertOngoingGameParams) error {
 	_, err := q.db.Exec(ctx, upsertOngoingGame,
 		arg.GameUuid,
-		arg.State,
 		arg.PlayState,
 		arg.OnTurn,
 		arg.Lexicon,
@@ -648,7 +595,6 @@ func (q *Queries) UpsertOngoingGame(ctx context.Context, arg UpsertOngoingGamePa
 		arg.LeagueID,
 		arg.SeasonID,
 		arg.LeagueDivisionID,
-		arg.HasChallengeablePlay,
 	)
 	return err
 }

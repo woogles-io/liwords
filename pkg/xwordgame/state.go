@@ -159,11 +159,6 @@ type State struct {
 	// that "does not need to be backed up", which is only true for a process
 	// that never reloads a game mid-turn. liwords reloads constantly.
 	LastWordsFormed []tilemapping.MachineWord
-
-	// unknownTail holds trailing bytes written by a newer encoder that this
-	// build does not understand. See the note on forward compatibility in
-	// Decode.
-	unknownTail []byte
 }
 
 // NewState returns an empty State for a board of the given dimension.
@@ -239,7 +234,6 @@ func (s *State) Reset() {
 	s.OnTurn = 0
 	s.PlayState = Playing
 	s.LastWordsFormed = s.LastWordsFormed[:0]
-	s.unknownTail = nil
 }
 
 // Clone returns a deep copy of the State.
@@ -250,9 +244,6 @@ func (s *State) Clone() *State {
 		for i, w := range s.LastWordsFormed {
 			c.LastWordsFormed[i] = append(tilemapping.MachineWord(nil), w...)
 		}
-	}
-	if s.unknownTail != nil {
-		c.unknownTail = append([]byte(nil), s.unknownTail...)
 	}
 	return &c
 }
@@ -298,12 +289,6 @@ func (s *State) Validate() error {
 			return fmt.Errorf("xwordgame: last-words entry %d is %d tiles long", i, len(w))
 		}
 	}
-	// The total-length header is a uint16; a real snapshot is two orders of
-	// magnitude below that, but check rather than let AppendTo silently write a
-	// wrapped length.
-	if n := s.EncodedSize(); n > math.MaxUint16 {
-		return fmt.Errorf("xwordgame: encoded snapshot of %d bytes exceeds the format limit", n)
-	}
 	return nil
 }
 
@@ -315,247 +300,61 @@ func (s *State) Equal(o *State) bool {
 	return s.Digest() == o.Digest()
 }
 
-// -----------------------------------------------------------------------------
-// Wire format
-// -----------------------------------------------------------------------------
-
-// FormatVersion is the current snapshot wire format.
+// Digest returns a hash of the full state.
 //
-// Bump this ONLY for a breaking layout change; a decoder refuses any version it
-// does not recognise rather than guessing, because a misparsed snapshot is
-// exactly the failure mode this whole design exists to prevent.
+// Because the bag is a multiset and every field is written in a fixed order
+// with lengths where they are needed, the digest is canonical: two engines
+// agree if and only if their digests match, with no normalisation first. The
+// referee parity harness compares states this way, and Equal is built on it.
 //
-// Additive changes do not bump the version: append new fields after every
-// existing one, and have the decoder check for remaining bytes before reading
-// them. Older builds preserve what they do not understand (see unknownTail), so
-// a rolling deploy can run mixed versions against the same live games -- which
-// is mandatory, because correspondence games last weeks and can never be
-// drained for a cutover.
-const FormatVersion = 1
-
-// headerLen is the version byte plus the uint16 total-length field.
-const headerLen = 3
-
-// MaxEncodedSize is a generous upper bound on an encoded snapshot. A full 21x21
-// board with two full racks and eight formed words comes to well under 700
-// bytes. Staying under Postgres's ~2KB TOAST threshold keeps the snapshot
-// inline in the heap tuple, so reading or writing it never costs an extra table
-// access.
-const MaxEncodedSize = 1024
-
-// EncodedSize returns the exact number of bytes Encode will produce.
-func (s *State) EncodedSize() int {
-	n := headerLen
-	n += 1 + 1 + 2 + 1  // play state, on turn, turn num, scoreless turns
-	n += 4 * MaxPlayers // scores
-	n += 2 * MaxPlayers // bingos
-	n += 2 * MaxPlayers // player turns
-	n += 1 + int(s.dim)*int(s.dim)
-	for p := range s.rackLens {
-		n += 1 + int(s.rackLens[p])
-	}
-	n += AlphabetSize // bag counts
-	n++               // formed-word count
-	for _, w := range s.LastWordsFormed {
-		n += 1 + len(w)
-	}
-	n += len(s.unknownTail)
-	return n
-}
-
-// Encode serialises the State into a fresh buffer.
-func (s *State) Encode() []byte {
-	return s.AppendTo(make([]byte, 0, s.EncodedSize()))
-}
-
-// AppendTo serialises the State onto dst and returns the extended buffer,
-// letting callers reuse a scratch buffer across moves.
-func (s *State) AppendTo(dst []byte) []byte {
-	start := len(dst)
-
-	dst = append(dst, FormatVersion, 0, 0) // length is patched in below
-	dst = append(dst, byte(s.PlayState), s.OnTurn)
-	dst = binary.LittleEndian.AppendUint16(dst, s.TurnNum)
-	dst = append(dst, s.ScorelessTurns)
-	for p := range MaxPlayers {
-		dst = binary.LittleEndian.AppendUint32(dst, uint32(s.Scores[p]))
-	}
-	for p := range MaxPlayers {
-		dst = binary.LittleEndian.AppendUint16(dst, s.Bingos[p])
-	}
-	for p := range MaxPlayers {
-		dst = binary.LittleEndian.AppendUint16(dst, s.PlayerTurns[p])
-	}
-
-	dst = append(dst, s.dim)
-	dst = appendTiles(dst, s.Board())
-
-	for p := range MaxPlayers {
-		dst = append(dst, s.rackLens[p])
-		dst = appendTiles(dst, s.Rack(p))
-	}
-
-	dst = append(dst, s.bag[:]...)
-
-	dst = append(dst, uint8(len(s.LastWordsFormed)))
-	for _, w := range s.LastWordsFormed {
-		dst = append(dst, uint8(len(w)))
-		dst = appendTiles(dst, w)
-	}
-
-	dst = append(dst, s.unknownTail...)
-
-	binary.LittleEndian.PutUint16(dst[start+1:start+3], uint16(len(dst)-start))
-	return dst
-}
-
-func appendTiles(dst []byte, tiles []tilemapping.MachineLetter) []byte {
-	for _, ml := range tiles {
-		dst = append(dst, byte(ml))
-	}
-	return dst
-}
-
-// Decode parses a snapshot into s, replacing its current contents. The State
-// takes no reference to buf.
-//
-// Trailing bytes beyond the fields this build knows about are retained verbatim
-// and re-emitted by Encode, so that a node running an older binary does not
-// silently strip fields written by a newer one during a rolling deploy. Note
-// the corollary: any additive field whose value is coupled to the rest of the
-// state must NOT rely on this, since an old node will happily play a move and
-// write back a stale copy of it. Load-bearing additions require a version bump.
-func (s *State) Decode(buf []byte) error {
-	if len(buf) < headerLen {
-		return fmt.Errorf("xwordgame: snapshot too short: %d bytes", len(buf))
-	}
-	if v := buf[0]; v != FormatVersion {
-		return fmt.Errorf("xwordgame: unsupported snapshot format version %d (this build understands %d)", v, FormatVersion)
-	}
-	if total := int(binary.LittleEndian.Uint16(buf[1:3])); total != len(buf) {
-		return fmt.Errorf("xwordgame: snapshot length mismatch: header says %d, buffer is %d", total, len(buf))
-	}
-
-	s.Reset()
-	r := reader{buf: buf, pos: headerLen}
-
-	s.PlayState = PlayState(r.u8())
-	s.OnTurn = r.u8()
-	s.TurnNum = r.u16()
-	s.ScorelessTurns = r.u8()
-	for p := range MaxPlayers {
-		s.Scores[p] = int32(r.u32())
-	}
-	for p := range MaxPlayers {
-		s.Bingos[p] = r.u16()
-	}
-	for p := range MaxPlayers {
-		s.PlayerTurns[p] = r.u16()
-	}
-
-	dim := r.u8()
-	if r.err == nil && (dim < 1 || dim > MaxBoardDim) {
-		return fmt.Errorf("xwordgame: snapshot has invalid board dimension %d", dim)
-	}
-	s.dim = dim
-	r.tilesInto(s.board[:int(dim)*int(dim)])
-
-	for p := range MaxPlayers {
-		n := r.u8()
-		if r.err == nil && n > RackTileLimit {
-			return fmt.Errorf("xwordgame: snapshot has %d tiles on player %d's rack", n, p)
-		}
-		s.rackLens[p] = n
-		r.tilesInto(s.racks[p][:n])
-	}
-
-	if b := r.take(AlphabetSize); b != nil {
-		copy(s.bag[:], b)
-	}
-
-	nWords := int(r.u8())
-	if r.err == nil && nWords > 0 {
-		s.LastWordsFormed = make([]tilemapping.MachineWord, nWords)
-		for i := range nWords {
-			wl := int(r.u8())
-			if r.err != nil {
-				break
-			}
-			s.LastWordsFormed[i] = make(tilemapping.MachineWord, wl)
-			r.tilesInto(s.LastWordsFormed[i])
-		}
-	}
-
-	if r.err != nil {
-		return r.err
-	}
-	if r.remaining() > 0 {
-		s.unknownTail = append([]byte(nil), buf[r.pos:]...)
-	}
-	return s.Validate()
-}
-
-// reader is a bounds-checked sequential reader. Once it overruns it records an
-// error and returns zeroes, so callers can read a run of fields and check once.
-type reader struct {
-	buf []byte
-	pos int
-	err error
-}
-
-func (r *reader) remaining() int { return len(r.buf) - r.pos }
-
-func (r *reader) take(n int) []byte {
-	if r.err != nil {
-		return nil
-	}
-	if r.remaining() < n {
-		r.err = fmt.Errorf("xwordgame: snapshot truncated: wanted %d bytes at offset %d, have %d", n, r.pos, r.remaining())
-		return nil
-	}
-	b := r.buf[r.pos : r.pos+n]
-	r.pos += n
-	return b
-}
-
-func (r *reader) u8() uint8 {
-	b := r.take(1)
-	if b == nil {
-		return 0
-	}
-	return b[0]
-}
-
-func (r *reader) u16() uint16 {
-	b := r.take(2)
-	if b == nil {
-		return 0
-	}
-	return binary.LittleEndian.Uint16(b)
-}
-
-func (r *reader) u32() uint32 {
-	b := r.take(4)
-	if b == nil {
-		return 0
-	}
-	return binary.LittleEndian.Uint32(b)
-}
-
-func (r *reader) tilesInto(dst []tilemapping.MachineLetter) {
-	b := r.take(len(dst))
-	if b == nil {
-		return
-	}
-	for i, v := range b {
-		dst[i] = tilemapping.MachineLetter(v)
-	}
-}
-
-// Digest returns a hash of the full state. Because the bag is a multiset and
-// the encoding is otherwise dense and deterministic, the digest is canonical:
-// two engines agree if and only if their digests match, with no normalisation
-// needed first. The referee parity harness compares states this way.
+// This used to hash the wire format, back when a position was stored in a
+// column. There is no wire format any more -- a position is rebuilt from the
+// event log -- so it hashes the fields directly, which is the same thing
+// without a version byte, a length header and a forward-compatibility escape
+// hatch that existed only for storage.
 func (s *State) Digest() uint64 {
-	return xxhash.Sum64(s.Encode())
+	h := xxhash.New()
+	var scratch [4]byte
+	put8 := func(v uint8) { h.Write([]byte{v}) }
+	put16 := func(v uint16) {
+		binary.LittleEndian.PutUint16(scratch[:2], v)
+		h.Write(scratch[:2])
+	}
+	put32 := func(v uint32) {
+		binary.LittleEndian.PutUint32(scratch[:4], v)
+		h.Write(scratch[:4])
+	}
+	putTiles := func(tiles []tilemapping.MachineLetter) {
+		for _, ml := range tiles {
+			put8(uint8(ml))
+		}
+	}
+
+	put8(uint8(s.PlayState))
+	put8(s.OnTurn)
+	put16(s.TurnNum)
+	put8(s.ScorelessTurns)
+	for p := range MaxPlayers {
+		put32(uint32(s.Scores[p]))
+	}
+	for p := range MaxPlayers {
+		put16(s.Bingos[p])
+	}
+	for p := range MaxPlayers {
+		put16(s.PlayerTurns[p])
+	}
+	// dim first, so the board that follows has an unambiguous length.
+	put8(s.dim)
+	putTiles(s.Board())
+	for p := range MaxPlayers {
+		put8(s.rackLens[p])
+		putTiles(s.Rack(p))
+	}
+	h.Write(s.bag[:])
+	put8(uint8(len(s.LastWordsFormed)))
+	for _, w := range s.LastWordsFormed {
+		put8(uint8(len(w)))
+		putTiles(w)
+	}
+	return h.Sum64()
 }
