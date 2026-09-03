@@ -22,26 +22,28 @@ below depend on facts rather than intentions:
 | games with real meta events | **2.61%** (sampled), at most 10 per game |
 | `games.meta_events` total | 327 MB, of which ~97% is an empty `{"events":null}` |
 
-### Do this first, while it is still free
+### Already done, and worth knowing why
 
-`202608040001_ongoing_games` has never been applied anywhere but local test
-databases. Its `state`, `prev_state`, `play_state` and `on_turn` columns belong
-to the snapshot design that was abandoned, and the plan already says to drop
-them. **Amend the migration rather than apply it and drop them afterwards** --
-it costs one edit now and a table rewrite later. Delete `ongoing.go`, the
-`ShadowXwordState`/`WriteXwordState` flags and `State.Encode`/`Decode` in the
-same change. Check any staging database before editing a migration.
+`202608040001_ongoing_games` had never been applied anywhere but local test
+databases -- production is on `202607300001` -- so the columns that held a game
+position were removed from the migration rather than created and later dropped.
+`play_state` and `on_turn` stayed: they are not snapshot mirrors, they are what
+lets the active-game listings filter a small table instead of scanning 12M rows.
+Check any staging database before assuming the same is still true there.
 
 ### Deploy order
 
 Each stage is separately revertible, and nothing below serves a reconstructed
 position to a player. Do not collapse stages 3 and 4.
 
-1. **Migrations + automod.** `automod_verdicts`, the `notoriousgames` unique
-   index (production already has it, applied by hand), the automod split, and
-   filing notoriety after the save rather than before. Independent of everything
-   else and worth having on its own: it closes a hole that fired six times in
-   five years, four of them three weeks ago.
+1. **Migrations + automod + the ready_flag fix.** Three migrations run:
+   `ongoing_games` (now without any position in it), `automod_verdicts`, and the
+   `notoriousgames` unique index (a no-op -- production already has it, applied
+   by hand). With them, the automod split, filing notoriety after the save
+   rather than before, and taking `ready_flag` out of `UpdateGame`. All
+   independent of the rest and worth having on their own: between them they
+   close a hole that fired six times in five years, four of them three weeks
+   ago, and a bug that made a player ready up twice.
    *Watch:* `automod-already-applied` at DEBUG -- a steady trickle means
    something is still judging games twice and the guard is now catching it.
 
@@ -74,6 +76,14 @@ position to a player. Do not collapse stages 3 and 4.
    shadow rates from stage 2 -- which get much better coverage once every load
    is a real load.
 
+6. **`-write-ongoing-games`,** once stage 1's migration has created the table.
+   The row is written inside the save transaction, so a failure fails the move;
+   that is the price of the row never disagreeing with the game it names.
+   Nothing reads it, so this is purely so the table can be checked before the
+   listings are moved onto it.
+   *Watch:* move error rates again, and `SELECT count(*) FROM ongoing_games`
+   against the number of games `games` says are unfinished. They should track.
+
 ### Then stop, and let it run
 
 **Do not serve a reconstructed position until the shadows have been quiet for a
@@ -102,10 +112,13 @@ Ordered by what is safest to move.
   against it at archival and refuses to archive on a mismatch. That check is the
   best evidence available that the two agree; keep it until the reconstruction
   has been serving without incident.
-- **`ready_flag`** -> live only. Note in passing that `Set` writes a literal
-  `0` to it on every save (`db.go:1164`), so a ready handshake is wiped by any
-  save landing between the two players readying. Probably harmless because the
-  flag stops mattering once the game starts, but it is not deliberate.
+- **`ready_flag`** -> live only, eventually. The bug noted here -- `UpdateGame`
+  writing a literal `0` on every save, wiping a half-finished ready handshake --
+  is fixed: the column is out of that statement, because it is owned by
+  `SetReady`, which ORs one bit per player into it inside a single statement.
+  The rule that came out of it is worth keeping: a column the database
+  accumulates must never appear in a whole-row UPDATE built from in-memory
+  state.
 
 ### Where meta events should live
 
@@ -170,124 +183,72 @@ loaded game, so a history assembled without it silently reads as `PLAYING`.
 
 ## Done
 
-- `WithGameLock` (`pkg/stores/game/tx.go`) — `pg_advisory_xact_lock` around a
-  game's write path, with tests that fail if the lock is removed. Nothing calls
-  it yet.
-- `StateFromTurns` (`pkg/xwordbridge/fromturns.go`) — the production entry
-  point. Takes turns rows plus the `games` columns, states the ending, and
-  agrees with the history-based replay on all 8,023 corpus games that have one.
-- `RulesFor`/`RulesSpec` — one place that resolves a game's configuration, used
-  by both the corpus test and the load path, so the corpus is evidence about
+Referee and replay:
+
+- `pkg/xwordgame` and `pkg/xwordbridge` — the referee and the replay, validated
+  against 113,010 production games. `StateFromTurns` is the production entry
+  point: turns rows plus the `games` columns in, position out, ending *stated*
+  from `game_end_reason` rather than left to a proto3 zero value.
+- `RulesFor`/`RulesSpec` — one place resolving a game's configuration, used by
+  both the corpus test and the load path, so the corpus is evidence about
   production rather than about the test.
-- **Save-path shadow** (`-shadow-turns`) — after each `AppendTurns`, rebuild
-  from the rows just written and diff the whole position against the live game.
-  Replaces a comparison that checked only the turn number and the scores and
-  explicitly skipped the play state.
-- **Load-path shadow** (`-shadow-turns-load`) — on every cache-miss load of a
-  live game, rebuild from `game_turns` and diff against what is being served.
-  Detects the AppendTurns/Set torn read as a torn read.
-- `DivergencesVsReconstruction` — the exclusions a macondo history rebuild
-  cannot be held to, out of the test and into production, with
-  `PlayStateReliable` required rather than defaulted.
+- `DivergencesVsReconstruction` — the fields a macondo history rebuild cannot be
+  held to, with `PlayStateReliable` required rather than defaulted.
+- The stored position is gone entirely: no `state` column, no wire format.
+  `State.Digest` remains and hashes fields directly; it is **not** stable across
+  builds and must never be persisted.
 
-## Next: deploy the shadows and read the numbers
+Correctness on the live path (all unconditional, no flag):
 
-- [ ] deploy with `-shadow-turns-load` (and `-shadow-turns`), serving nothing
-- [ ] watch `shadow-load-mismatch` and `shadow-turns-mismatch` at ERROR. Both
-      log every disagreeing field, so the shape of a failure is in the line.
-- [ ] watch `shadow-load-torn`. This is the *measurement* that decides how
-      urgent the writer serialization below is. If it is rare, the read path can
-      go on with a fallback; if it is common, serialize first.
-- [ ] watch `shadow-load-count-mismatch` — expected at WARN for games in flight
-      when dual-write was switched on, an ERROR if there are ever *more* rows
-      than events
+- **A move is atomic.** Turn rows and the games row commit in one transaction,
+  so a reader can never see one without the other.
+- **A load is one snapshot.** `GetGameWithTurns` returns the games row and the
+  event log in a single statement.
+- **Writers serialize across app servers.** `Cache.LockGame` is a session-level
+  advisory lock, held across load-modify-save, with holders capped at half the
+  pool.
+- **The in-memory game cache is gone.**
+- **Automod is idempotent and correctly ordered** — `automod_verdicts`, and
+  notoriety filed after the save rather than before.
+- **`UpdateGame` no longer clobbers `ready_flag`.**
+- **Archival cannot delete turn rows that changed under it.**
 
-## Then: serialize the writers
+Evidence-gathering, behind flags, serving nothing:
 
-The race is the reason the read path was commented out. `AppendTurns` commits
-terminal events to `game_turns` before `Set` commits `game_end_reason` to
-`games`, so a load in between sees a finished log beside a row that says the
-game is live.
+- `-shadow-turns` — after each save, rebuild from the rows just written and diff
+  the whole position against the live game.
+- `-shadow-turns-load` — on every load of a live game, rebuild from `game_turns`
+  and diff against what is being served. Reports the AppendTurns/Set torn read
+  as a torn read.
+- `-write-ongoing-games` — maintain the `ongoing_games` row inside the save
+  transaction. Nothing reads the table yet.
 
-- [ ] wrap `AppendTurns` + `Set` in one transaction under `WithGameLock`. The
-      sequences are `pkg/gameplay/game.go:463/487`, `game.go:559/629` and
-      `pkg/gameplay/end.go:139/172/264`.
-- [ ] convert the other writers listed in `game_storage_v2.md` Phase 4
-- [ ] this also replaces `Cache.LockGame` (`cache.go:428`), a process-local
-      mutex map that does nothing across app servers
+## What is left, in order
 
-## Then: serve from turns
+The deploy sequence and the stop point are at the top of this document. What
+follows is the work after that.
 
-- [ ] replace the commented-out `buildHistoryFromTurns` (`db.go:335`) rather
-      than revive it. The old one assembled a `GameHistory` and lost
-      `PlayState`.
-- [ ] enable the read branch at `db.go:194`, keeping the bytea fallback
-- [ ] roll out correspondence games **last**. They bypass the cache entirely
-      (`cache.go:225-232`), so they exercise the new path hardest — but a bad
-      real-time game is over in twenty minutes and a bad correspondence game
-      carries a corrupt position for weeks.
-
-## Then: binary turns, dropped columns, metrics, cache
-
-In plan order, and each depends on the one before:
-
-- [ ] `game_turns.event` jsonb → `event_bin bytea`. ~7× faster to parse, ~4×
-      smaller, and **no backfill** — turn rows are deleted at archival. Write
+- [ ] **Serve from turns.** Only once the shadows have been quiet -- see the bar
+      above. Enable the branch in `DBStore.Get` (marked with a comment saying
+      not yet), using `xwordbridge.StateFromTurns`; do **not** revive the
+      commented-out `buildHistoryFromTurns`, which is kept only as the record of
+      what went wrong. Keep the bytea fallback. Roll out correspondence games
+      **last**: a bad real-time game is over in twenty minutes, a bad
+      correspondence game carries a corrupt position for weeks.
+- [ ] **`game_turns.event` jsonb → `event_bin bytea`.** ~7× faster to parse, ~4×
+      smaller, and **no backfill** -- turn rows are deleted at archival. Write
       both for one release, read `event_bin` when present, then drop `event`.
       `DecodeTurn` already accepts either encoding. Add `cmd/decode-turn` so a
       row can still be read during an incident.
-- [ ] drop `ongoing_games.state`, `prev_state`, `play_state`, `on_turn`, and
-      delete `pkg/stores/game/ongoing.go`, the `ShadowXwordState` and
-      `WriteXwordState` flags, and `State.Encode`/`Decode`. Keep `State.Digest`;
-      it is useful for comparing two reconstructions. **Keep the table** — its
-      purpose was never the snapshot, it was so 12M rows would not be scanned to
-      list live games.
-- [ ] re-enable the OTel meter provider (`cmd/liwords-api/otel.go:63-70`) with
-      delta temporality, deny-by-default views and OTLP export, then watch
+- [ ] **Move the listings onto `ongoing_games`.** The table has a writer and no
+      reader; the listing queries have no Go callers. Populate it in production
+      first, check it against the `games` filters, then switch the readers.
+- [ ] **Shrink `games`** -- see below.
+- [ ] **Re-enable the OTel meter provider** (`cmd/liwords-api/otel.go:63-70`)
+      with delta temporality, deny-by-default views and OTLP export, then watch
       `go.runtime.heap_alloc_bytes` for a full release before widening the
       allowlist. Cumulative temporality retaining unbounded `http.route` values
       is the leading hypothesis for the leak, not a reproduction.
-- [x] remove the in-memory `Cache`. **Done.** Loads go from ~1.5/sec to ~12/sec, which at
-      ~200 µs is ~0.24% of one core. The cross-node lock that had to come first
-      is done. Keep the separate 5-second `activeGames` TTL cache; it is a
-      different thing and the listing may lag where a position may not.
-
-      **What removing it exposes.** The cache made every caller in a process
-      share one `*entity.Game`, so code could change a game in memory and have
-      a later `Get` return those changes. Without it, a store operation loads
-      its own copy, changes that, and writes it -- the caller's pointer never
-      sees any of it. Production does not rely on this (`bus.go:710` discards
-      the returned game, `TimedOut` takes an id and loads its own), but the
-      test harnesses did, in three distinct ways:
-
-      - configuring a game and expecting the store to hand it back:
-        `SetRacksForBoth`, `SetHistory`, `GameReq.RatingMode`,
-        `SetChallengeRule`. Each now has to be saved.
-      - asserting on the harness's own pointer after a store operation. Fixed
-        by using the returned game, or `gamesetup.reload(t)` where the helper
-        returns nothing.
-      - the fake clock. A reloaded game builds a timer module from the store's
-        factory, so `SetTimerModuleCreator` has to be registered rather than
-        just calling `SetTimerModule` on one copy.
-
-      Two things worth knowing that came out of this:
-
-      - `SetRackFor` does *not* update `history.LastKnownRacks`;
-        `SetRacksForBoth` does. A reload restores racks from the history, so a
-        rack set with the former does not survive one.
-      - the two racks must be a *possible* pair. `SetRacksForBoth` takes the
-        tiles out of the bag, and if the pair asks for more of a letter than
-        exists -- two Js in English -- it fails and leaves **both** players with
-        an empty rack, which surfaces later as "tile not in rack".
-
-- [x] **`pkg/mod` TestNotoriety blocked the cache removal. Resolved.** Its
-      harness forced states no real game reaches -- `SetPlayerOnTurn(loserIdx)`
-      so a chosen player could be timed out when it was not their turn -- and
-      that only worked while one `*entity.Game` was shared between the test and
-      every store call. Fixing it properly meant separating automod's decision
-      from its effects: `Classify` is now a pure function of the finished game
-      and is covered by fixtures built directly, and accumulation is covered
-      separately. See the automod entry below.
 
 ## Blockers
 
