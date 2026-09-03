@@ -279,9 +279,25 @@ follows is the work after that.
 
       Aborted and cancelled games are exempt from `FinalScores` -- they never
       produced a score. All 21 exceptions in the corpus are aborts.
-- [ ] **`games.uuid` has no unique constraint.** Nothing in the database
-      prevents a duplicate game id. Needs a production duplicate check, then
-      `CREATE UNIQUE INDEX CONCURRENTLY`.
+- [ ] **`games.uuid` unique index — checked, migration written, not yet applied
+      to production.** Zero duplicates and zero NULLs across all 12,692,837
+      rows, so nothing needs cleaning up first. The migration
+      (`202609030001_games_uuid_unique`) is idempotent and covers fresh
+      databases; production wants these two by hand, because building a 705 MB
+      index inline would lock out writers on a 12M-row table:
+
+          CREATE UNIQUE INDEX CONCURRENTLY idx_games_uuid_unique ON games (uuid);
+          DROP INDEX CONCURRENTLY idx_games_uuid;
+
+      The drop is not optional housekeeping: `idx_games_uuid` is a plain btree
+      on the same column, so leaving it means 1.4 GB of index doing one job.
+      The partial index on `uuid` used by the pending-archival scan is a
+      different thing and stays.
+
+      Note the name is deliberately not `idx_games_uuid`: that name is taken by
+      the non-unique index from the initial migration, so reusing it with
+      `IF NOT EXISTS` would skip on a fresh database and leave it without the
+      constraint.
 
 ## Guard rails to keep
 
