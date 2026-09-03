@@ -8,6 +8,134 @@ list of what does not, written to be picked up cold.
 flags that default off; with them off, no behaviour changes at all. Nothing is
 served from the new path yet.
 
+## Deploying this branch
+
+**Measured against production on 2026-09-02**, because most of the decisions
+below depend on facts rather than intentions:
+
+| | |
+|---|---|
+| prod schema version | `202607300001` |
+| `ongoing_games` | **does not exist in production**; the migration has never run |
+| `game_turns` | live since 2026-05-06; 30,861 rows over 1,876 games right now |
+| `games` | 12,696,909 rows |
+| games with real meta events | **2.61%** (sampled), at most 10 per game |
+| `games.meta_events` total | 327 MB, of which ~97% is an empty `{"events":null}` |
+
+### Do this first, while it is still free
+
+`202608040001_ongoing_games` has never been applied anywhere but local test
+databases. Its `state`, `prev_state`, `play_state` and `on_turn` columns belong
+to the snapshot design that was abandoned, and the plan already says to drop
+them. **Amend the migration rather than apply it and drop them afterwards** --
+it costs one edit now and a table rewrite later. Delete `ongoing.go`, the
+`ShadowXwordState`/`WriteXwordState` flags and `State.Encode`/`Decode` in the
+same change. Check any staging database before editing a migration.
+
+### Deploy order
+
+Each stage is separately revertible, and nothing below serves a reconstructed
+position to a player. Do not collapse stages 3 and 4.
+
+1. **Migrations + automod.** `automod_verdicts`, the `notoriousgames` unique
+   index (production already has it, applied by hand), the automod split, and
+   filing notoriety after the save rather than before. Independent of everything
+   else and worth having on its own: it closes a hole that fired six times in
+   five years, four of them three weeks ago.
+   *Watch:* `automod-already-applied` at DEBUG -- a steady trickle means
+   something is still judging games twice and the guard is now catching it.
+
+2. **Shadows on, serving nothing.** `-shadow-turns` and `-shadow-turns-load`.
+   Both read-only, both goroutines, neither can change what a player sees. Turn
+   them on early: they cost nothing and every day they run is evidence.
+   *Watch:* `shadow-load-mismatch` and `shadow-turns-mismatch` at ERROR (each
+   line names every disagreeing field), `shadow-load-torn`, and
+   `shadow-load-count-mismatch`.
+
+3. **The write path: one transaction per move.** Turn rows and the games row now
+   commit together. **Behaviour change:** a `game_turns` write failure now fails
+   the move, where it used to be logged and swallowed. That is correct -- the
+   alternative is a permanently inconsistent log -- but it is player-visible.
+   *Watch:* move error rates, and `dual-write-turns-error` disappearing in
+   favour of failed moves rather than in addition to them.
+
+4. **The lock.** `Cache.LockGame` becomes a session-level advisory lock. This is
+   the riskiest single change on the branch: it puts a database round trip on
+   the hot path of every move, pins a pooled connection for the duration, and
+   introduces a failure mode that did not exist (`ErrGameLockBusy` after 10s).
+   Deploy it alone.
+   *Watch:* `ErrGameLockBusy`, `game-unlock-failed` (never thinned -- a lock
+   that leaks blocks that game for the life of the process), pool saturation,
+   and move latency. Concurrent holders are capped at half the pool; with
+   `MaxConns = 25` that is 12.
+
+5. **Remove the cache.** Loads go from ~1.5/sec to ~12/sec.
+   *Watch:* p99 load latency against the current 2.5 ms, database CPU, and the
+   shadow rates from stage 2 -- which get much better coverage once every load
+   is a real load.
+
+### Then stop, and let it run
+
+**Do not serve a reconstructed position until the shadows have been quiet for a
+sustained period on real traffic.** Inferring position from an event log without
+verifying it is exactly what corrupted 944 games in May 2026. The corpus says
+113,009 of 113,010 archived games reconstruct exactly; the shadows are what say
+the same of live ones, and they are cheap enough to leave on for as long as it
+takes.
+
+A useful bar before enabling the read path: zero `shadow-load-mismatch` across
+at least one full week including a weekend, and `shadow-load-torn` at a rate
+that is explainable rather than merely low.
+
+## Shrinking `games`
+
+Once the turns path is proven, the big table stops being where live state lives.
+Ordered by what is safest to move.
+
+- **`timers`** -> live only. The historical record already exists and is better:
+  every `GameEvent` carries `MillisRemaining`, so per-move timing is in the
+  event log. The blob is derived state, rewritten on every move of a 12M-row
+  table. The one reader at game end is automod's sit-and-resign check, which
+  runs while the game is still live.
+- **`history` bytea** -> last to go, not first. It is the fallback the read path
+  falls back *to*, and `verifyHistory` deep-compares the turns-assembled history
+  against it at archival and refuses to archive on a mismatch. That check is the
+  best evidence available that the two agree; keep it until the reconstruction
+  has been serving without incident.
+- **`ready_flag`** -> live only. Note in passing that `Set` writes a literal
+  `0` to it on every save (`db.go:1164`), so a ready handshake is wiped by any
+  save landing between the two players readying. Probably harmless because the
+  flag stops mattering once the game starts, but it is not deliberate.
+
+### Where meta events should live
+
+**Not in the live table, and not where they are now.** An append-only
+`game_meta_events (game_uuid, idx, event, created_at)` keyed on
+`(game_uuid, idx)`, never deleted.
+
+The reasoning, since this was the open question:
+
+- **Live-only loses the record**, which is the objection that matters. An abort
+  denial is evidence about a player's conduct -- automod reads it for
+  `NO_PLAY_DENIED_NUDGE` -- and a moderator may want it years later. Deleting
+  the row when the game ends destroys it.
+- **Staying on `games` is what we are trying to stop.** It is a mutable jsonb
+  blob on the 12M-row table, rewritten whenever a meta event arrives, and 327 MB
+  of it is ~97% empty: only 2.61% of games have any meta events at all, and
+  never more than 10. As rows, that is roughly 330k rows instead of 12.7M
+  mostly-empty values, and no rewrite of the games row.
+- **Not in `game_turns`.** They are a different type -- `ipc.GameMetaEvent`, not
+  macondo's `GameEvent` -- and `game_turns` feeds `assembleHistory`, which feeds
+  the S3 history, GCG export and stats. Worse, comments and puzzles are keyed on
+  absolute event index (`pkg/stores/comments/db.go:33`,
+  `pkg/stores/puzzles/db.go:167,387`), so inserting anything into that sequence
+  re-anchors every comment and moves every puzzle position.
+
+They are events, so they get an event table; they are a different kind of event,
+so they get their own. Keep the rows at archival rather than folding them into
+the S3 object -- they are small, and a moderator reviewing a player should not
+have to fetch from S3 to do it.
+
 ## The design changed: state is reconstructed, not stored
 
 An earlier version of this branch stored the position in `ongoing_games.state`
