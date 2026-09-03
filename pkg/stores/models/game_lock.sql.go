@@ -9,12 +9,12 @@ import (
 	"context"
 )
 
-const lockGameForWrite = `-- name: LockGameForWrite :exec
+const tryLockGameSession = `-- name: TryLockGameSession :one
 
-SELECT pg_advisory_xact_lock(hashtextextended($1::text, 0))
+SELECT pg_try_advisory_lock(hashtextextended($1::text, 0))
 `
 
-// Cross-node serialization for a single game's write path.
+// Cross-node serialization for a single game.
 //
 // Taken at the start of every write transaction that touches a game, and
 // released automatically on commit or rollback. This is what makes it safe to
@@ -23,12 +23,39 @@ SELECT pg_advisory_xact_lock(hashtextextended($1::text, 0))
 // a finished game that still claims to be in progress. That race is why the
 // turns read path was disabled.
 //
-// It also replaces Cache.LockGame, a process-local mutex map that serializes
-// nothing between app servers.
-//
 // Deliberately not tied to any one table: the lock is on the game id, and it
 // outlives whatever storage happens to hold the game.
-func (q *Queries) LockGameForWrite(ctx context.Context, gameUuid string) error {
-	_, err := q.db.Exec(ctx, lockGameForWrite, gameUuid)
-	return err
+//
+// These are SESSION-level, not transaction-level, and that is the whole point.
+// A move is a read-modify-write -- load the position, play into it, save -- and
+// the lock has to span all three or two servers will load the same position,
+// each play a legal move, and each save it. Both saves succeed, both are
+// internally consistent, and the second silently discards the first. A
+// transaction-scoped lock inside the save cannot prevent that, because by then
+// both have already read.
+//
+// Session scope means the lock lives on one connection until it is explicitly
+// released, so whoever takes it must hold that connection and must release it.
+// See pkg/stores/game/lock.go, which owns both halves.
+//
+// NOT STANDARD SQL: hashtextextended() maps the game id onto the int8 that
+// advisory locks key on. It is stable across servers and versions, which is
+// what matters here; it is not a security hash and a collision between two game
+// ids would only make them share a lock -- correct, just slower.
+func (q *Queries) TryLockGameSession(ctx context.Context, gameUuid string) (bool, error) {
+	row := q.db.QueryRow(ctx, tryLockGameSession, gameUuid)
+	var pg_try_advisory_lock bool
+	err := row.Scan(&pg_try_advisory_lock)
+	return pg_try_advisory_lock, err
+}
+
+const unlockGameSession = `-- name: UnlockGameSession :one
+SELECT pg_advisory_unlock(hashtextextended($1::text, 0))
+`
+
+func (q *Queries) UnlockGameSession(ctx context.Context, gameUuid string) (bool, error) {
+	row := q.db.QueryRow(ctx, unlockGameSession, gameUuid)
+	var pg_advisory_unlock bool
+	err := row.Scan(&pg_advisory_unlock)
+	return pg_advisory_unlock, err
 }

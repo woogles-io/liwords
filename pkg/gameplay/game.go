@@ -644,12 +644,18 @@ func HandleEvent(ctx context.Context, stores *stores.Stores, userID string, cge 
 	)
 	defer span.End()
 
-	// Lock at the cache level first. This is especially important for correspondence
-	// games which bypass the in-memory cache - each Get() returns a new object, so
-	// the game's internal Lock() would lock different mutexes. The cache-level lock
-	// ensures only one goroutine processes a given game ID at a time.
-	stores.GameStore.LockGame(cge.GameId)
-	defer stores.GameStore.UnlockGame(cge.GameId)
+	// Taken before the load, not after: a move is load-modify-save, and if the
+	// position is read outside the lock then two servers can read the same one,
+	// each play onto it, and each save -- the second silently discarding the
+	// first. It also covers correspondence games, which bypass the in-memory
+	// cache and so get a fresh object from every Get, making the game's own
+	// mutex useless for this.
+	gameLock, err := stores.GameStore.LockGame(ctx, cge.GameId)
+	if err != nil {
+		log.Err(err).Str("gid", cge.GameId).Msg("handle-event-lock-failed")
+		return nil, err
+	}
+	defer gameLock.Unlock(ctx)
 
 	entGame, err := stores.GameStore.Get(ctx, cge.GameId)
 	if err != nil {
@@ -808,9 +814,13 @@ func TimedOut(ctx context.Context, stores *stores.Stores, timedout string, gameI
 
 	log.Debug().Str("timedout", timedout).Msg("got-timed-out")
 
-	// Lock at the cache level first for correspondence game safety
-	stores.GameStore.LockGame(gameID)
-	defer stores.GameStore.UnlockGame(gameID)
+	// Serialize against any concurrent move on this game, on any app server.
+	gameLock, err := stores.GameStore.LockGame(ctx, gameID)
+	if err != nil {
+		log.Err(err).Str("gid", gameID).Msg("timed-out-lock-failed")
+		return err
+	}
+	defer gameLock.Unlock(ctx)
 
 	entGame, err := stores.GameStore.Get(ctx, gameID)
 	if err != nil {

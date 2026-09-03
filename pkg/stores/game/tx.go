@@ -1,50 +1,35 @@
 package game
 
-// Cross-node serialization for a game's write path.
+// Writing several tables as one unit.
 //
-// Every write that touches a game takes an advisory lock on its id for the
-// duration of one transaction. This exists for two reasons, both of which are
-// load-bearing.
+// Serialization between writers is not this file's job -- that is the session
+// lock in lock.go, held across the whole load-modify-save of a move. This is
+// only about atomicity: a move touches game_turns and games, and a reader must
+// never see one without the other.
 //
-// First, it is what makes reconstructing a position from game_turns safe. The
-// read path was disabled because AppendTurns commits a terminal event before
-// Set commits game_end_reason: a load landing between those two commits sees a
-// finished game that still claims to be in progress. Putting both writes in one
-// locked transaction closes the window rather than narrowing it.
-//
-// Second, it replaces Cache.LockGame, which is a process-local map of mutexes.
-// That serializes writers inside one process and nothing at all between app
-// servers, which was fine when there was one server and is not fine now.
-//
-// pg_advisory_xact_lock releases on commit or rollback, so there is no lock to
-// leak if a handler panics or a request is cancelled mid-transaction.
+// Deliberately no advisory lock here. An earlier version took
+// pg_advisory_xact_lock inside the save, and that is a deadlock rather than a
+// safety net once callers hold a session lock for the same game: the
+// transaction runs on a different pooled connection, which is a different
+// session, so it waits for a lock its own caller is holding and never gets it.
+// Verified: session lock on one connection, xact lock on another for the same
+// key, blocks until lock_timeout. See lock.go.
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/woogles-io/liwords/pkg/stores/models"
 )
 
-// WithGameLock runs fn inside a transaction holding the advisory lock for
-// gameUUID, and commits if fn returns nil.
+// withGameTx runs fn in a transaction and commits if it returns nil.
 //
 // fn receives queries bound to that transaction; anything it does through them
-// is covered by the lock, and anything it does outside them is not. Nested
-// calls for the same game on the same connection are safe -- advisory locks are
-// reentrant for the holder -- but a second call on a different connection will
-// block until the first transaction ends, which is the point.
-func WithGameLock(ctx context.Context, pool *pgxpool.Pool, gameUUID string,
+// commits or rolls back as one unit, and anything it does outside them does
+// not.
+func withGameTx(ctx context.Context, pool *pgxpool.Pool,
 	fn func(context.Context, *models.Queries) error) error {
-
-	if pool == nil {
-		return fmt.Errorf("game: WithGameLock needs a connection pool")
-	}
-	if gameUUID == "" {
-		return fmt.Errorf("game: WithGameLock needs a game id")
-	}
 
 	tx, err := pool.Begin(ctx)
 	if err != nil {
@@ -53,11 +38,7 @@ func WithGameLock(ctx context.Context, pool *pgxpool.Pool, gameUUID string,
 	// No-op once the transaction has been committed.
 	defer tx.Rollback(ctx)
 
-	qtx := models.New(tx)
-	if err := qtx.LockGameForWrite(ctx, gameUUID); err != nil {
-		return fmt.Errorf("game: locking %s: %w", gameUUID, err)
-	}
-	if err := fn(ctx, qtx); err != nil {
+	if err := fn(ctx, models.New(tx)); err != nil {
 		return err
 	}
 	return tx.Commit(ctx)

@@ -73,6 +73,7 @@ type backingStore interface {
 	// than AppendTurns; see DBStore.Set.
 	StageTurns(g *entity.Game, startIdx int, events []*macondopb.GameEvent) error
 	AppendTurns(ctx context.Context, gameUUID string, startIdx int, events []*macondopb.GameEvent) error
+	LockGame(ctx context.Context, gameID string) (*GameLock, error)
 	GetTurns(ctx context.Context, gameUUID string) ([]models.GetGameTurnsRow, error)
 	DeleteTurns(ctx context.Context, gameUUID string) error
 	CommitArchival(ctx context.Context, gameUUID string, s3Key string, archivedTurns int) error
@@ -96,16 +97,7 @@ const (
 	// GameLockExpiration is how long a game lock can be idle before cleanup.
 	// This should be longer than any possible request duration.
 	GameLockExpiration = 30 * time.Minute
-
-	// GameLockCleanupInterval is how often we check for expired locks.
-	GameLockCleanupInterval = 5 * time.Minute
 )
-
-// gameLock holds a mutex and tracks when it was last used.
-type gameLock struct {
-	mu         sync.Mutex
-	lastAccess time.Time
-}
 
 // Cache will reside in-memory, and will be per-node. If we add more nodes
 // we will need to make sure only the right nodes respond to game requests.
@@ -118,14 +110,6 @@ type Cache struct {
 	activeGamesLastUpdated time.Time
 
 	backing backingStore
-
-	// gameLocks provides per-game-ID locks for correspondence games.
-	// Since correspondence games bypass the cache and each Get() returns a new
-	// instance, the game's internal Lock() doesn't protect against concurrent
-	// access from multiple goroutines. This map ensures only one goroutine can
-	// work on a correspondence game at a time.
-	gameLocks   map[string]*gameLock
-	gameLocksMu sync.Mutex
 
 	// stopCleanup is used to signal the cleanup goroutine to stop.
 	stopCleanup chan struct{}
@@ -156,12 +140,10 @@ func NewCache(backing backingStore) *Cache {
 		// few things (especially game quickdata).
 		activeGamesTTL: time.Second * 5,
 
-		gameLocks:   make(map[string]*gameLock),
 		stopCleanup: make(chan struct{}),
 	}
 
 	// Start the cleanup goroutine
-	go c.cleanupExpiredLocks()
 
 	return c
 }
@@ -426,63 +408,17 @@ func (c *Cache) SetHistoryS3Key(ctx context.Context, gameUUID string, s3Key stri
 	return c.backing.SetHistoryS3Key(ctx, gameUUID, s3Key)
 }
 
-// LockGame acquires a lock for the given game ID.
-// This is used to serialize access to correspondence games which bypass the cache.
-// The caller MUST call UnlockGame when done.
-func (c *Cache) LockGame(gameID string) {
-	c.gameLocksMu.Lock()
-	gl, ok := c.gameLocks[gameID]
-	if !ok {
-		gl = &gameLock{}
-		c.gameLocks[gameID] = gl
-	}
-	c.gameLocksMu.Unlock()
-
-	gl.mu.Lock()
-
-	// Update last access time while holding the lock
-	c.gameLocksMu.Lock()
-	gl.lastAccess = time.Now()
-	c.gameLocksMu.Unlock()
-}
-
-// UnlockGame releases the lock for the given game ID.
-func (c *Cache) UnlockGame(gameID string) {
-	c.gameLocksMu.Lock()
-	gl, ok := c.gameLocks[gameID]
-	c.gameLocksMu.Unlock()
-
-	if ok {
-		gl.mu.Unlock()
-	}
-}
-
-// cleanupExpiredLocks periodically removes locks that haven't been accessed recently.
-// This prevents memory leaks from accumulating locks for games that are no longer active.
-func (c *Cache) cleanupExpiredLocks() {
-	ticker := time.NewTicker(GameLockCleanupInterval)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ticker.C:
-			c.gameLocksMu.Lock()
-			now := time.Now()
-			for gameID, gl := range c.gameLocks {
-				// Only remove if the lock is not currently held and has expired.
-				// TryLock returns true if we acquired the lock (meaning it wasn't held).
-				if gl.mu.TryLock() {
-					if now.Sub(gl.lastAccess) > GameLockExpiration {
-						delete(c.gameLocks, gameID)
-					}
-					gl.mu.Unlock()
-				}
-			}
-			c.gameLocksMu.Unlock()
-		case <-c.stopCleanup:
-			return
-		}
-	}
+// LockGame acquires the game's lock, serializing everything that plays a move
+// on it -- across app servers, not merely across goroutines here.
+//
+// It used to be a process-local map of mutexes, which was correct while there
+// was one server and became a liability the moment there might be two: two
+// processes would each take their own mutex, each load the same position, and
+// each save a move onto it, the second discarding the first.
+//
+// The caller MUST release it. See lock.go for what is being held.
+func (c *Cache) LockGame(ctx context.Context, gameID string) (*GameLock, error) {
+	return c.backing.LockGame(ctx, gameID)
 }
 
 // StopCleanup stops the background lock cleanup goroutine.

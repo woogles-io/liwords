@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -51,6 +52,12 @@ type DBStore struct {
 	cfg     *config.Config
 	dbPool  *pgxpool.Pool
 	queries *models.Queries
+
+	// Bounds how many game locks this process holds at once; see
+	// lockSemaphore. Lazily built so a DBStore assembled without the
+	// constructor is still bounded rather than unbounded.
+	lockSlotsOnce sync.Once
+	lockSlots     chan struct{}
 
 	userStore pkguser.Store
 
@@ -1165,8 +1172,7 @@ func (s *DBStore) Set(ctx context.Context, g *entity.Game) error {
 		LastKnownRacks:   g.History().LastKnownRacks,
 	}
 
-	// One transaction, holding this game's advisory lock, containing both the
-	// event rows and the games row.
+	// One transaction containing both the event rows and the games row.
 	//
 	// Splitting them is what made the turns read path unusable: the rows landed
 	// hundreds of milliseconds before game_end_reason did -- the end-of-game
@@ -1176,9 +1182,11 @@ func (s *DBStore) Set(ctx context.Context, g *entity.Game) error {
 	// ended as one in progress. Which is the May 2026 corruption reached by a
 	// different route.
 	//
-	// The lock is what makes it safe across app servers; a transaction alone
-	// would still let two nodes interleave their turn inserts.
-	if err := WithGameLock(ctx, s.dbPool, g.GameID(), func(ctx context.Context, q *models.Queries) error {
+	// Serialization between writers is a separate concern and lives a level up:
+	// callers hold the game's session lock across load, move and save. Taking an
+	// advisory lock here as well would deadlock against it -- this transaction
+	// runs on a different pooled connection, so a different session. See lock.go.
+	if err := withGameTx(ctx, s.dbPool, func(ctx context.Context, q *models.Queries) error {
 		if len(pending) > 0 {
 			raw := make([][]byte, len(pending))
 			for i, t := range pending {
@@ -1342,12 +1350,12 @@ func (s *DBStore) DeleteTurns(ctx context.Context, gameUUID string) error {
 // CommitArchival atomically sets history_s3_key on the games row and deletes
 // all game_turns rows for the game. Must only be called after a confirmed S3 upload.
 func (s *DBStore) CommitArchival(ctx context.Context, gameUUID string, s3Key string, archivedTurns int) error {
-	return WithGameLock(ctx, s.dbPool, gameUUID, func(ctx context.Context, q *models.Queries) error {
-		// The rows were read, assembled and uploaded before this lock was
-		// taken, and the upload is far too slow to hold a lock across. So
-		// check, now that writers are excluded, that the log is still the one
-		// that was archived. A move landing in that window would otherwise be
-		// deleted here and exist only in an S3 object written before it.
+	return withGameTx(ctx, s.dbPool, func(ctx context.Context, q *models.Queries) error {
+		// The rows were read, assembled and uploaded before this ran, and the
+		// upload is far too slow to hold a lock across. So check that the log is
+		// still the one that was archived. A move landing in that window would
+		// otherwise be deleted here and exist only in an S3 object written
+		// before it.
 		//
 		// This is the likeliest explanation for the three games in production
 		// that are archived and still have turn rows: the counts stopped
