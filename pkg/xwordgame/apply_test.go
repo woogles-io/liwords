@@ -482,11 +482,11 @@ func TestRandomGamesStayConsistent(t *testing.T) {
 			if s.PlayState == GameOver && !res.GameOver {
 				t.Fatalf("game %d move %d: state says over, result does not", game, move)
 			}
-			// A snapshot of any reachable position must survive a round trip.
-			var decoded State
-			is.NoErr(decoded.Decode(s.Encode()))
-			if !decoded.Equal(s) {
-				t.Fatalf("game %d move %d: snapshot did not round trip", game, move)
+			// A clone of any reachable position must be indistinguishable
+			// from it. That covers Clone's deep copies and the digest at the
+			// same time, at every position a real game passes through.
+			if c := s.Clone(); !c.Equal(s) {
+				t.Fatalf("game %d move %d: clone differs from its original", game, move)
 			}
 		}
 		if s.PlayState == GameOver {

@@ -1222,13 +1222,6 @@ func (s *DBStore) Set(ctx context.Context, g *entity.Game) error {
 	// that hole, so the check now covers the end of a game too, which is where
 	// the corruption happened.
 	s.SpawnShadowCompare(ctx, g)
-
-	// Mirror the live position into ongoing_games, after the write that
-	// actually matters has succeeded. Hung off Set rather than its twelve call
-	// sites so no write path can forget it, and it deliberately cannot return
-	// an error: macondo stays authoritative until the cutover, so a snapshot
-	// problem is a log line, never a failed move. See ongoing.go.
-	s.maybeWriteOngoingGame(ctx, g)
 	return nil
 }
 

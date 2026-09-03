@@ -388,8 +388,6 @@ type Notoriousgame struct {
 
 type OngoingGame struct {
 	GameUuid           string
-	State              []byte
-	PrevState          []byte
 	PlayState          int16
 	OnTurn             pgtype.Int2
 	Lexicon            string

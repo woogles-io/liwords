@@ -445,15 +445,12 @@ func TestStateMachineParityAgainstMacondo(t *testing.T) {
 					if err := s.ValidateTileConservation(r.LetterDistribution); err != nil {
 						t.Fatalf("seed %d turn %d: %v", seed, turn, err)
 					}
-					// Every reachable position must survive the wire format.
-					// This is the cheapest place to cover that across all nine
+					// Every reachable position must clone to something
+					// indistinguishable from itself. This is the cheapest place
+					// to cover Clone and the digest across all nine
 					// distributions and both board sizes at once.
-					var decoded xwordgame.State
-					if err := decoded.Decode(s.Encode()); err != nil {
-						t.Fatalf("seed %d turn %d: decoding our own snapshot: %v", seed, turn, err)
-					}
-					if !decoded.Equal(s) {
-						t.Fatalf("seed %d turn %d: snapshot did not round trip", seed, turn)
+					if c := s.Clone(); !c.Equal(s) {
+						t.Fatalf("seed %d turn %d: clone differs from its original", seed, turn)
 					}
 
 					if res.GameOver {
