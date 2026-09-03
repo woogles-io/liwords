@@ -119,7 +119,7 @@ In plan order, and each depends on the one before:
       `go.runtime.heap_alloc_bytes` for a full release before widening the
       allowlist. Cumulative temporality retaining unbounded `http.route` values
       is the leading hypothesis for the leak, not a reproduction.
-- [ ] remove the in-memory `Cache`. Loads go from ~1.5/sec to ~12/sec, which at
+- [x] remove the in-memory `Cache`. **Done.** Loads go from ~1.5/sec to ~12/sec, which at
       ~200 µs is ~0.24% of one core. The cross-node lock that had to come first
       is done. Keep the separate 5-second `activeGames` TTL cache; it is a
       different thing and the listing may lag where a position may not.
@@ -152,22 +152,14 @@ In plan order, and each depends on the one before:
         exists -- two Js in English -- it fails and leaves **both** players with
         an empty rack, which surfaces later as "tile not in rack".
 
-- [ ] **`pkg/mod` TestNotoriety blocks the cache removal.** Its harness
-      (`playGame`) forces a game into states that cannot occur in a real game:
-      it sets `SetPlayerOnTurn(loserIndex)` and then times that player out.
-      Whose turn it is is derived by replaying the event log -- `DBStore.Get`
-      writes `games.player_on_turn` but never reads it back -- so a forced value
-      cannot survive a reload, and with the cache gone every call reloads. The
-      fixture plays 8 turns, after which player 0 is genuinely on turn, while
-      the test times out player 1.
-
-      So the test asserts on a position no real game reaches, and it only
-      worked because one game object was shared. Fixing it means making the
-      fixtures play legal games and re-baselining the expected notoriety
-      numbers, which needs a decision about what each case is meant to assert
-      -- the notoriety *logic* is untouched by any of this, only the fiction the
-      fixture was built on. Do not re-baseline by copying whatever the test
-      prints.
+- [x] **`pkg/mod` TestNotoriety blocked the cache removal. Resolved.** Its
+      harness forced states no real game reaches -- `SetPlayerOnTurn(loserIdx)`
+      so a chosen player could be timed out when it was not their turn -- and
+      that only worked while one `*entity.Game` was shared between the test and
+      every store call. Fixing it properly meant separating automod's decision
+      from its effects: `Classify` is now a pure function of the finished game
+      and is covered by fixtures built directly, and accumulation is covered
+      separately. See the automod entry below.
 
 ## Blockers
 
@@ -245,6 +237,12 @@ answering "would this game load correctly".
 Not part of this work; recorded so they are not lost.
 
 - [ ] **League standings have no durable protection against double-counting.**
+      *Automod had the identical hole and has been fixed; copy that shape.*
+      `automod_verdicts` records the verdict per (player, game) before anything
+      is applied, with the effects skipped when the row already existed, and
+      GOOD verdicts are recorded too because a good game decrements. Standings
+      want the same: a row per counted game, and the increment conditional on
+      inserting it.
       `UpdateStandingsIncremental` (`pkg/league/standings.go:509`) applies
       deltas -- `+1` win, `+1` loss, `+spread` -- so running it twice for one
       game gives a player two wins. The guard against that is
