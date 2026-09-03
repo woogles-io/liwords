@@ -198,7 +198,17 @@ UPDATE games SET
     stats = @stats,
     tournament_data = @tournament_data,
     tournament_id = @tournament_id,
-    ready_flag = @ready_flag,
+    -- ready_flag is deliberately absent. It is owned by SetReady, which ORs one
+    -- bit per player into it inside a single statement, and this UPDATE is
+    -- built from the in-memory game -- which has no ready_flag field, so it had
+    -- nothing to write and wrote a literal 0. Any save landing between the two
+    -- players readying therefore wiped the first bit, and the second player
+    -- readying returned 2 rather than 3, so the game never started and the
+    -- first player had to ready up again.
+    --
+    -- The rule this is an instance of: a column the database accumulates -- an
+    -- OR, an increment, a counter -- must never appear in a whole-row UPDATE
+    -- built from in-memory state. One owner or the other, never both.
     game_request = @game_request,
     player_on_turn = @player_on_turn,
     league_id = @league_id,

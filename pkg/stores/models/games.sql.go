@@ -1453,14 +1453,24 @@ UPDATE games SET
     stats = $12,
     tournament_data = $13,
     tournament_id = $14,
-    ready_flag = $15,
-    game_request = $16,
-    player_on_turn = $17,
-    league_id = $18,
-    season_id = $19,
-    league_division_id = $20,
-    last_known_racks = $21
-WHERE uuid = $22
+    -- ready_flag is deliberately absent. It is owned by SetReady, which ORs one
+    -- bit per player into it inside a single statement, and this UPDATE is
+    -- built from the in-memory game -- which has no ready_flag field, so it had
+    -- nothing to write and wrote a literal 0. Any save landing between the two
+    -- players readying therefore wiped the first bit, and the second player
+    -- readying returned 2 rather than 3, so the game never started and the
+    -- first player had to ready up again.
+    --
+    -- The rule this is an instance of: a column the database accumulates -- an
+    -- OR, an increment, a counter -- must never appear in a whole-row UPDATE
+    -- built from in-memory state. One owner or the other, never both.
+    game_request = $15,
+    player_on_turn = $16,
+    league_id = $17,
+    season_id = $18,
+    league_division_id = $19,
+    last_known_racks = $20
+WHERE uuid = $21
 `
 
 type UpdateGameParams struct {
@@ -1478,7 +1488,6 @@ type UpdateGameParams struct {
 	Stats            entity.Stats
 	TournamentData   entity.TournamentData
 	TournamentID     pgtype.Text
-	ReadyFlag        pgtype.Int8
 	GameRequest      entity.GameRequest
 	PlayerOnTurn     pgtype.Int4
 	LeagueID         pgtype.UUID
@@ -1504,7 +1513,6 @@ func (q *Queries) UpdateGame(ctx context.Context, arg UpdateGameParams) error {
 		arg.Stats,
 		arg.TournamentData,
 		arg.TournamentID,
-		arg.ReadyFlag,
 		arg.GameRequest,
 		arg.PlayerOnTurn,
 		arg.LeagueID,
