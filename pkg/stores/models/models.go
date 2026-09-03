@@ -82,6 +82,13 @@ type AnnotatedGameMetadatum struct {
 	CreatedAt        pgtype.Timestamptz
 }
 
+type AutomodVerdict struct {
+	PlayerID  string
+	GameID    string
+	Verdict   int32
+	CreatedAt pgtype.Timestamptz
+}
+
 type Badge struct {
 	ID          int16
 	Code        string
@@ -377,6 +384,31 @@ type Notoriousgame struct {
 	PlayerID  pgtype.Text
 	Type      pgtype.Int4
 	Timestamp pgtype.Int8
+}
+
+type OngoingGame struct {
+	GameUuid           string
+	PlayState          int16
+	OnTurn             pgtype.Int2
+	Lexicon            string
+	LetterDistribution string
+	BoardLayout        string
+	Variant            string
+	ChallengeRule      int16
+	Player0ID          int32
+	Player1ID          int32
+	Timers             []byte
+	MetaEvents         []byte
+	ReadyFlag          int64
+	Started            bool
+	GameMode           int16
+	GameType           int16
+	TournamentID       pgtype.Text
+	LeagueID           pgtype.UUID
+	SeasonID           pgtype.UUID
+	LeagueDivisionID   pgtype.UUID
+	CreatedAt          pgtype.Timestamptz
+	UpdatedAt          pgtype.Timestamptz
 }
 
 type Permission struct {

@@ -459,11 +459,6 @@ func main() {
 		return fmt.Sprintf("%d", runtime.NumGoroutine())
 	}))
 
-	expvar.Publish("gameCacheSize", expvar.Func(func() interface{} {
-		ct := stores.GameStore.CachedCount(context.Background())
-		return fmt.Sprintf("%d", ct)
-	}))
-
 	expvar.Publish("userCacheSize", expvar.Func(func() interface{} {
 		ct := stores.UserStore.CachedCount(context.Background())
 		return fmt.Sprintf("%d", ct)

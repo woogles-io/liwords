@@ -1,0 +1,154 @@
+{
+  "users": [
+    {
+      "uuid": "LaEYDVyhGMuRiotC6Q9Rda",
+      "username": "league_test_user_01",
+      "email": "league_test_user_01@example.com"
+    },
+    {
+      "uuid": "JpZZMDHno47rUA3fSP4CH9",
+      "username": "league_test_user_02",
+      "email": "league_test_user_02@example.com"
+    },
+    {
+      "uuid": "Zs6sswfG8XSdktqYzvekxe",
+      "username": "league_test_user_03",
+      "email": "league_test_user_03@example.com"
+    },
+    {
+      "uuid": "o9r8jvquYueTDyskExi3XK",
+      "username": "league_test_user_04",
+      "email": "league_test_user_04@example.com"
+    },
+    {
+      "uuid": "HP7Y8Z4ju5Ws3Eczoadu42",
+      "username": "league_test_user_05",
+      "email": "league_test_user_05@example.com"
+    },
+    {
+      "uuid": "KD4zTBUZDCZh9o57y6Qa4S",
+      "username": "league_test_user_06",
+      "email": "league_test_user_06@example.com"
+    },
+    {
+      "uuid": "AFLAkCmndEjZHAUmxa2dUN",
+      "username": "league_test_user_07",
+      "email": "league_test_user_07@example.com"
+    },
+    {
+      "uuid": "Snm8Ybja37G8vfuMBzfWna",
+      "username": "league_test_user_08",
+      "email": "league_test_user_08@example.com"
+    },
+    {
+      "uuid": "eqgN9icvPQFYNseVUg2dji",
+      "username": "league_test_user_09",
+      "email": "league_test_user_09@example.com"
+    },
+    {
+      "uuid": "WvQLS5WWg4p228xa6kuxeL",
+      "username": "league_test_user_10",
+      "email": "league_test_user_10@example.com"
+    },
+    {
+      "uuid": "njJ5F9Tjt8LNPpZjniTNkG",
+      "username": "league_test_user_11",
+      "email": "league_test_user_11@example.com"
+    },
+    {
+      "uuid": "kUoBiu2XJadLoEW78iUHBq",
+      "username": "league_test_user_12",
+      "email": "league_test_user_12@example.com"
+    },
+    {
+      "uuid": "RQrSXKoxfxjjJ8ZFoGDcHb",
+      "username": "league_test_user_13",
+      "email": "league_test_user_13@example.com"
+    },
+    {
+      "uuid": "gKj8Xdywq2pq94dFEXYS4n",
+      "username": "league_test_user_14",
+      "email": "league_test_user_14@example.com"
+    },
+    {
+      "uuid": "EL6toMTAykFdMJrJgNQEz6",
+      "username": "league_test_user_15",
+      "email": "league_test_user_15@example.com"
+    },
+    {
+      "uuid": "RaoXr9WfYgkHT6SV8HPa8B",
+      "username": "league_test_user_16",
+      "email": "league_test_user_16@example.com"
+    },
+    {
+      "uuid": "PkfvwCTznBG7FqB2o9auKc",
+      "username": "league_test_user_17",
+      "email": "league_test_user_17@example.com"
+    },
+    {
+      "uuid": "9hPMVS73hN3atESLFNDxXN",
+      "username": "league_test_user_18",
+      "email": "league_test_user_18@example.com"
+    },
+    {
+      "uuid": "LPRcikDgsnhxxNNRk848Di",
+      "username": "league_test_user_19",
+      "email": "league_test_user_19@example.com"
+    },
+    {
+      "uuid": "M5edaRvNCVPCskHSpZBGi5",
+      "username": "league_test_user_20",
+      "email": "league_test_user_20@example.com"
+    },
+    {
+      "uuid": "VfEySQstk7yiYYkuw6VnHx",
+      "username": "league_test_user_21",
+      "email": "league_test_user_21@example.com"
+    },
+    {
+      "uuid": "dPXQ8CL77nwEC5KSnaLZsb",
+      "username": "league_test_user_22",
+      "email": "league_test_user_22@example.com"
+    },
+    {
+      "uuid": "nBeE2HJsn4RRkpGeRbMMgP",
+      "username": "league_test_user_23",
+      "email": "league_test_user_23@example.com"
+    },
+    {
+      "uuid": "VhMLYNVnv6zjcRFCM8DUhT",
+      "username": "league_test_user_24",
+      "email": "league_test_user_24@example.com"
+    },
+    {
+      "uuid": "EDYK6QfLFiSgLsFXVn8DsY",
+      "username": "league_test_user_25",
+      "email": "league_test_user_25@example.com"
+    },
+    {
+      "uuid": "XA6PX8M9aBf4jXfGwrwJVq",
+      "username": "league_test_user_26",
+      "email": "league_test_user_26@example.com"
+    },
+    {
+      "uuid": "2ncvy6MLPt93cpoVCsAk2d",
+      "username": "league_test_user_27",
+      "email": "league_test_user_27@example.com"
+    },
+    {
+      "uuid": "eaz6ECHAvby5QyGPvLBAZ8",
+      "username": "league_test_user_28",
+      "email": "league_test_user_28@example.com"
+    },
+    {
+      "uuid": "KQqQRnW8y8Eg9fH6HrJA2a",
+      "username": "league_test_user_29",
+      "email": "league_test_user_29@example.com"
+    },
+    {
+      "uuid": "4SHBVsp2TQDwU3XcKMEMg2",
+      "username": "league_test_user_30",
+      "email": "league_test_user_30@example.com"
+    }
+  ]
+}

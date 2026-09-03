@@ -58,7 +58,7 @@ func TestHandleAbort(t *testing.T) {
 	// game ended event, active game entry, abort accepted
 	log.Debug().Interface("evts", gsetup.consumer.evts).Msg("evts")
 	is.Equal(len(gsetup.consumer.evts), 6)
-	is.Equal(gsetup.g.Playing(), macondopb.PlayState_GAME_OVER)
+	is.Equal(gsetup.reload(t).Playing(), macondopb.PlayState_GAME_OVER)
 
 	teardownGame(gsetup)
 }
@@ -80,6 +80,9 @@ func TestHandleAbortTooManyTurns(t *testing.T) {
 	hist.Uid = gsetup.g.GameID()
 
 	gsetup.g.SetHistory(hist)
+	// Write it: HandleMetaEvent loads the game itself, and this history exists
+	// only in this copy until it is saved.
+	is.NoErr(gsetup.stores.GameStore.Set(context.Background(), gsetup.g))
 	// This test is a little broken in that the game is actually already over,
 	// but this wasn't changed in the gsetup.g -- it's ok, we're just measuring
 	// the length of the events for it, for now.
@@ -467,7 +470,7 @@ func TestHandleAbortDenyThenAccept(t *testing.T) {
 // 	// game ended event, abort accepted
 // 	log.Debug().Interface("evts", gsetup.consumer.evts).Msg("evts")
 // 	is.Equal(len(gsetup.consumer.evts), 6)
-// 	is.Equal(gsetup.g.Playing(), macondopb.PlayState_GAME_OVER)
+// 	is.Equal(gsetup.reload(t).Playing(), macondopb.PlayState_GAME_OVER)
 
 // 	teardownGame(gsetup)
 // }
@@ -631,7 +634,7 @@ func TestDisallowAbortAndAdjudication(t *testing.T) {
 	// expected events: game history, request abort
 	log.Debug().Interface("evts", gsetup.consumer.evts).Msg("evts")
 	is.Equal(len(gsetup.consumer.evts), 2)
-	is.Equal(gsetup.g.Playing(), macondopb.PlayState_PLAYING)
+	is.Equal(gsetup.reload(t).Playing(), macondopb.PlayState_PLAYING)
 
 	teardownGame(gsetup)
 }
@@ -658,7 +661,7 @@ func TestDisallowAnonymousAbortCreation(t *testing.T) {
 	gsetup.cancel()
 	<-gsetup.donechan
 
-	is.Equal(gsetup.g.Playing(), macondopb.PlayState_PLAYING)
+	is.Equal(gsetup.reload(t).Playing(), macondopb.PlayState_PLAYING)
 
 	// expected events: game history
 	log.Debug().Interface("evts", gsetup.consumer.evts).Msg("evts")
@@ -702,7 +705,7 @@ func TestDisallowAnonymousAbortAcceptance(t *testing.T) {
 	gsetup.cancel()
 	<-gsetup.donechan
 
-	is.Equal(gsetup.g.Playing(), macondopb.PlayState_PLAYING)
+	is.Equal(gsetup.reload(t).Playing(), macondopb.PlayState_PLAYING)
 
 	// expected events: game history, request abort
 	log.Debug().Interface("evts", gsetup.consumer.evts).Msg("evts")
@@ -746,7 +749,7 @@ func TestDisallowSamePlayerAbortAcceptance(t *testing.T) {
 	gsetup.cancel()
 	<-gsetup.donechan
 
-	is.Equal(gsetup.g.Playing(), macondopb.PlayState_PLAYING)
+	is.Equal(gsetup.reload(t).Playing(), macondopb.PlayState_PLAYING)
 
 	// expected events: game history, request abort
 	log.Debug().Interface("evts", gsetup.consumer.evts).Msg("evts")
@@ -761,6 +764,8 @@ func TestAddTimeDoesNotBroadcastRacksToGameChannel(t *testing.T) {
 	// Add-time is now gated to casual games, so make this one casual; otherwise
 	// the ADD_TIME event is rejected and no history refresher is broadcast.
 	gsetup.g.GameReq.RatingMode = pb.RatingMode_CASUAL
+	// And save it: HandleMetaEvent reads the game from the store, not from here.
+	is.NoErr(gsetup.stores.GameStore.Set(context.Background(), gsetup.g))
 
 	// Jesse adds time to their opponent.
 	opponentIdx := -1
@@ -786,7 +791,7 @@ func TestAddTimeDoesNotBroadcastRacksToGameChannel(t *testing.T) {
 	gsetup.cancel()
 	<-gsetup.donechan
 
-	is.Equal(gsetup.g.TimeRemaining(opponentIdx), opponentTimeBefore+15000)
+	is.Equal(gsetup.reload(t).TimeRemaining(opponentIdx), opponentTimeBefore+15000)
 
 	// History refreshers contain both players' racks. They must never be
 	// published to the plain game channel, which is unsanitized; they should

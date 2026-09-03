@@ -1,0 +1,34 @@
+{
+  "users": [
+    {
+      "uuid": "GRsvkoggqhurJ7Ru6AfGeH",
+      "username": "league_test_user_40",
+      "email": "league_test_user_40@example.com"
+    },
+    {
+      "uuid": "mkuNnfxufWRZiYuU2wUyHC",
+      "username": "league_test_user_41",
+      "email": "league_test_user_41@example.com"
+    },
+    {
+      "uuid": "hrrvykqZi3S3gnNbNqQhm7",
+      "username": "league_test_user_42",
+      "email": "league_test_user_42@example.com"
+    },
+    {
+      "uuid": "NEckgPmArxs4q97ftqcK7Z",
+      "username": "league_test_user_43",
+      "email": "league_test_user_43@example.com"
+    },
+    {
+      "uuid": "BvGmzCTqoJrRHWayVv93na",
+      "username": "league_test_user_44",
+      "email": "league_test_user_44@example.com"
+    },
+    {
+      "uuid": "HK3Y4YwcpHzPE6EdrDRScS",
+      "username": "league_test_user_45",
+      "email": "league_test_user_45@example.com"
+    }
+  ]
+}
