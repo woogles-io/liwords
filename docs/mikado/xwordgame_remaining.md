@@ -252,10 +252,33 @@ follows is the work after that.
 
 ## Blockers
 
-- [ ] **Cutover contract, as tests not prose.** The archived `GameHistory` must
-      keep carrying `PlayState`, `FinalScores` and `Winner`, and end-rack events
-      must keep their `rack` field. Replay depends on all four; today the
-      guarantee lives only in a commit message. Assert it.
+- [x] **Cutover contract, as a check not prose. Done.**
+      `archiveContractViolations` (`s3.go`) runs on every archival and logs
+      `archive-contract-violation` for anything a later reconstruction will
+      need and the object does not carry. It logs rather than blocks: refusing
+      an archival would leave turn rows behind and an orphaned S3 object, which
+      is worse than a log line for something that has never happened.
+
+      Note that `verifyHistory` cannot cover this. It compares the
+      turns-assembled history against the bytea one, so it is blind to a field
+      that *both* sides stop carrying -- which is exactly the failure being
+      guarded against.
+
+      What is required, and why each one, measured across 6,031 finished games:
+
+      | field | read by | if it goes missing |
+      |---|---|---|
+      | `PlayState` | `applyStoredEnding` | a finished game reconstructs as in progress -- the May 2026 bug |
+      | `FinalScores` | `applyStoredEnding` | the second witness that a game ended; `PlayState` becomes a single point of failure |
+      | `LastKnownRacks` | `assignFinalRacks` | racks cannot be restored, so the bag is wrong too |
+      | end-rack `Rack` | `sameRack` | not the position -- the *check* that would catch a wrong one |
+
+      `Winner` is deliberately not checked: nothing in `pkg/xwordbridge` reads
+      it. It matters because it is not derivable for adjudicated and forfeited
+      games, but losing it costs the outcome, not the position.
+
+      Aborted and cancelled games are exempt from `FinalScores` -- they never
+      produced a score. All 21 exceptions in the corpus are aborts.
 - [ ] **`games.uuid` has no unique constraint.** Nothing in the database
       prevents a duplicate game id. Needs a production duplicate check, then
       `CREATE UNIQUE INDEX CONCURRENTLY`.
