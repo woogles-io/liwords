@@ -199,6 +199,39 @@ answering "would this game load correctly".
 
 Not part of this work; recorded so they are not lost.
 
+- [ ] **League standings have no durable protection against double-counting.**
+      `UpdateStandingsIncremental` (`pkg/league/standings.go:509`) applies
+      deltas -- `+1` win, `+1` loss, `+spread` -- so running it twice for one
+      game gives a player two wins. The guard against that is
+      `entity.Game.LeagueStandingsProcessed`, an in-memory bool set at
+      `pkg/league/standings_updater.go:128` and checked at `:96`.
+
+      It is never persisted, and for league games it is never even *reused*:
+      league season games are created with `GameMode_CORRESPONDENCE`
+      (`pkg/league/season_start.go:331`), and correspondence games are
+      deliberately not cached (`pkg/stores/game/cache.go:218`), so every load
+      returns a fresh object with the flag `false`. The guard is inert for
+      exactly the games it was written for.
+
+      What actually prevents double-counting today is the callers of
+      `performEndgameDuties`, all of which check persisted state:
+      `AdjudicateGame`/`ForfeitGame`/`AbortGame` check
+      `GameEndReason != NONE`, `TimedOut` checks `Playing() == GAME_OVER`, and
+      the move path rejects moves on finished games. `performEndgameDuties`
+      itself has no guard (`pkg/gameplay/end.go:79-87`) -- it sets the end
+      reason if unset and runs everything unconditionally. So the protection is
+      a property of who calls it rather than of the operation, and any new path
+      that reaches it twice double-counts silently.
+
+      Fix: make it idempotent in the database. A row per counted game with a
+      unique constraint on the game id, with the increment conditional on
+      inserting that row, inside the same transaction. Then delete
+      `LeagueStandingsProcessed` rather than leave something that reads as
+      protection and is not.
+
+      Not a cache-removal blocker: these games already live in the no-cache
+      world, so removing the cache changes nothing here.
+
 - [ ] `pkg/league/force_finish_games.go` never calls `ArchiveAndCleanup`, so
       league-adjudicated games never reach S3 and their `game_turns` rows leak.
       27 of 71 adjudicated games. Forfeits are 93,021/93,021 clean, because
