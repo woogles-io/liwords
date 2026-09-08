@@ -14,6 +14,7 @@ import (
 	"context"
 	"encoding/json"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/matryer/is"
@@ -27,22 +28,54 @@ import (
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
+// syncBuffer is a bytes.Buffer safe to write from one goroutine while another
+// reads it.
+//
+// A plain bytes.Buffer is not, and the shadow is code whose whole purpose is to
+// run in the background: anything holding a context whose logger writes here
+// may log from a goroutine this test never sees. Costing a mutex to be immune
+// to that is cheaper than rediscovering it in CI.
+type syncBuffer struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
+
+func (b *syncBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.Write(p)
+}
+
+func (b *syncBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.String()
+}
+
 // shadowLoad runs the load-path shadow for a game and returns the messages it
 // logged, in order.
 func shadowLoad(t *testing.T, gstore *DBStore, gameID string) []string {
 	t.Helper()
-	var buf bytes.Buffer
-	ctx := zerolog.New(&buf).Level(zerolog.DebugLevel).WithContext(context.Background())
-	// A copy: DefaultConfig is a process-wide singleton pointer, so setting a
-	// flag on it leaks into every test that follows.
-	cfg := *DefaultConfig
-	cfg.ShadowTurnsLoad = true
-	ctx = cfg.WithContext(ctx)
+	var buf syncBuffer
+	logged := zerolog.New(&buf).Level(zerolog.DebugLevel).WithContext(context.Background())
 
-	entGame, err := gstore.Get(ctx, gameID)
+	// Load with the shadow flag OFF, so Get does not spawn a shadow of its own.
+	// This helper runs the work synchronously and reports what *it* logged; a
+	// background goroutine logging into the same buffer would be noise at best,
+	// and it is what the buffer used to be Reset() to discard.
+	//
+	// A copy of DefaultConfig each time: it is a process-wide singleton
+	// pointer, so setting a flag on it leaks into every test that follows.
+	plain := *DefaultConfig
+	entGame, err := gstore.Get(plain.WithContext(logged), gameID)
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	cfg := *DefaultConfig
+	cfg.ShadowTurnsLoad = true
+	ctx := cfg.WithContext(logged)
+
 	row, err := gstore.queries.GetGameWithTurns(ctx, models.GetGameWithTurnsParams{
 		WithTurns: true, Uuid: common.ToPGTypeText(gameID),
 	})
@@ -53,7 +86,8 @@ func shadowLoad(t *testing.T, gstore *DBStore, gameID string) []string {
 	if work == nil {
 		t.Fatal("shadow declined to run on a live game")
 	}
-	buf.Reset()
+	// On this goroutine, so everything it logs is in the buffer by the time we
+	// read it.
 	work(ctx)
 
 	var msgs []string
@@ -156,15 +190,22 @@ func TestShadowLoadSkipsFinishedGames(t *testing.T) {
 	defer ustore.(*user.DBStore).Disconnect()
 
 	const gid = "wJxURccCgSAPivUvj4QdYL"
+	// Load and save with the flag off: a Get with it on spawns a shadow
+	// goroutine that would still be running when the deferred Disconnect closes
+	// the pool underneath it. Only shadowLoadWork needs the flag, and it just
+	// decides whether to return work -- it starts nothing.
+	plain := *DefaultConfig
+	plainCtx := plain.WithContext(context.Background())
+
 	cfg := *DefaultConfig
 	cfg.ShadowTurnsLoad = true
 	ctx := cfg.WithContext(context.Background())
 
-	entGame, err := gstore.Get(ctx, gid)
+	entGame, err := gstore.Get(plainCtx, gid)
 	is.NoErr(err)
 	entGame.SetGameEndReason(pb.GameEndReason_STANDARD)
 	entGame.SetPlaying(macondopb.PlayState_GAME_OVER)
-	is.NoErr(gstore.Set(ctx, entGame))
+	is.NoErr(gstore.Set(plainCtx, entGame))
 
 	row, err := gstore.queries.GetGameWithTurns(ctx, models.GetGameWithTurnsParams{
 		WithTurns: true, Uuid: common.ToPGTypeText(gid),
