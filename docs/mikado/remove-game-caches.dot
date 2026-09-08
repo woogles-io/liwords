@@ -1,3 +1,13 @@
+// The mikado graph for the game-storage work.
+//
+// Checked against the code on 2026-09-02. Three nodes were marked done here and
+// were not: the turns read path (done, then reverted after it corrupted ~944
+// games in May 2026), building live state from turns, and the OTel meter
+// provider (still disabled for a heap leak). A graph that claims finished work
+// is worse than no graph, so if you change one of these, check it.
+//
+// Regenerate the SVG with:  dot -Tsvg remove-game-caches.dot -o remove-game-caches.svg
+
 digraph RedoGameModel {
     Goal [label = "Redo game model to support\n1) more simultaneous games\n2) less downtime between deploys\n3) make DB faster to back up and query";shape = oval;peripheries = 2;style = bold;];
 
@@ -14,16 +24,21 @@ digraph RedoGameModel {
     ActivateGameTurnsTable [label = "Activate game_turns table ✅\n(schema: game_uuid, turn_idx, event jsonb)";];
     DualWriteTurns [label = "Dual-write turns ✅\n(INSERT game_turns + keep history bytea;\nflag: DUAL_WRITE_TURNS)";];
     SplitDBWriters [label = "Split DB writers ✅\n(AppendTurn, UpdateTimers,\nAppendMetaEvent, SetReady, EndGame)";];
-    BuildLiveStateFromTurns [label = "Build live game state from turns ✅\n(shadow-compare after AppendTurns;\nread path now uses turns for active games)";];
     AssembleHistoryFromTurns [label = "Assemble GameHistory from game_turns ✅\n(assembleHistory() in pkg/stores/game/s3.go;\nverify via proto.Equal against history bytea)";];
     S3UploadPath [label = "S3 upload path ✅\n(gzipped protojson, games/<yyyy>/<mm>/<uuid>.json.gz;\ncreation-date partitioning; MinIO in dev)";];
     S3UrlColumnOnGames [label = "Add history_s3_key column to games ✅\n(partial index on NULL for pending-archival scan)";];
     S3ArchiveOnGameEnd [label = "Archive GameHistory to S3 on game end ✅\n(assemble → verify → upload → CommitArchival tx;\ncmd/upload-game-archive/ retry script)";];
     ByteaBackfill [label = "Bytea-fed S3 backfill ✅\n(cmd/bytea-backfill/; 11.3M historical games;\nparallel workers, keyset pagination, resumable)";];
-    OTelObservability [label = "OTel observability ✅\n(MeterProvider enabled; cache hit/miss counter;\ngame.load.duration_ms histogram; gameplay spans;\nruntime memstats gauge)";];
+    RefereePorted [label = "Port macondo referee ✅\n(pkg/xwordgame: rules, scoring, challenge,\nend-game; pkg/xwordbridge: replay + compare.\n113,009 of 113,010 production games reconstruct\nexactly. Not yet on the live path.)";];
+    AtomicMoveWrite [label = "A move is one transaction ✅\n(turn rows + games row commit together;\nstaged on entity.Game, flushed by Set)";];
+    SingleSnapshotRead [label = "A load is one snapshot ✅\n(GetGameWithTurns: games row + event log\nin one statement, so they cannot tear)";];
+    CrossNodeWriteLock [label = "Cross-node write lock ✅\n(SESSION-level pg_advisory_lock held across\nload-modify-save, not per-transaction;\nholders capped at half the pool)";];
+    GameCacheRemoved [label = "Remove game cache ✅\n(LRU gone; every load hits the DB.\nactiveGames listing TTL kept)";];
+    ShadowVerifyTurns [label = "Shadow-verify reconstruction ✅\n(-shadow-turns after each save,\n-shadow-turns-load on each load;\ncompare whole position, serve nothing)";];
+    OngoingGamesWriter [label = "ongoing_games written ✅\n(row maintained inside the save tx,\nflag -write-ongoing-games; no reader yet)";];
+    AuditRefereeGap [label = "Audit referee gap ✅\n(docs/mikado/referee_gap_audit.md:\nmacondo read function by function,\nport list produced)";];
     LastKnownRacksColumn [label = "last_known_racks column on games ✅\n(text[]; written by Set/Create from macondo\nHistory().LastKnownRacks; prereq for turns read path)";];
     S3LoadPath [label = "Load GameHistory from S3 ✅\n(Get + GetHistory route finished games to S3;\nbytea fallback for transition; game.load.source span attr)";];
-    ReadPathFromTurns [label = "Switch read path to game_turns ✅\n(buildHistoryFromTurns in Get + GetHistory;\nactive games: turns; finished games: S3;\nbytea fallback during transition)";];
 
     // ── Dropped nodes ❌ ──────────────────────────────────────────────────
     node [shape = box; color = lightgray; fontcolor = lightgray; style = "dashed,filled"; fillcolor = "#f0f0f0";];
@@ -39,15 +54,19 @@ digraph RedoGameModel {
     LessDowntimeBetweenDeploys [label = "Allow for less downtime between deploys";];
     MakeDBFaster [label = "Make DB faster to back up and query";];
 
-    RemoveGameCache [label = "Remove game cache";];
+    ReadPathFromTurns [label = "Serve a position rebuilt from game_turns\n(WAS done and REVERTED: buildHistoryFromTurns\nleft PlayState at proto3's zero value and\ncorrupted ~944 games in May 2026.\nBlocked on shadow evidence from production,\nnot on any missing mechanism.)";];
+
+    OTelObservability [label = "Re-enable the OTel meter provider\n(otel.go:63 — disabled for a heap leak.\nNeeds delta temporality + deny-by-default\nviews + OTLP. Traces are unaffected.)";];
+
+    ProdShadowEvidence [label = "Shadows quiet on production traffic\n(zero shadow-load-mismatch for a week\nincluding a weekend; torn reads explainable)";];
+
+    ListingsOnOngoingGames [label = "Move active-game listings onto ongoing_games\n(queries exist, no Go callers yet)";];
     EfficientTable [label = "Make game DB model more efficient";];
 
-    // ── RemoveGameCache prerequisites ─────────────────────────────────────
-    AdvisoryLockWriters [label = "Replace in-process locks with\npg_advisory_xact_lock per write tx";];
+    // ── Still open under the cache goal ───────────────────────────────────
+    CheapGameLoad [label = "Cheap per-move game load\n(still replays the full history through macondo\non every load — measured 378us p50)";];
 
-    CheapGameLoad [label = "Cheap per-move game load\n(no full-history replay per node)";];
-
-    GracefulCacheDrain [label = "Graceful cache drain on SIGTERM\n(refuse new moves; let txs drain)";];
+    DrainInFlightMoves [label = "Drain in-flight moves on SIGTERM\n(no cache left to drain, but a held game lock\nand an open transaction still need to finish)";];
 
     // ── MakeDBFaster prerequisites ────────────────────────────────────────
     ClearLargeFields [label = "Clear large fields in games table\n(history, stats, quickdata)";];
@@ -61,10 +80,9 @@ digraph RedoGameModel {
     MoveGameHistoryProto [label = "Move GameHistory proto into liwords\n(api/proto/ipc/game_history.proto)";];
     UpdateGoImports [label = "Update all Go imports to\nuse liwords GameHistory";];
 
-    PortMacondoReferee [label = "Port macondo referee into liwords\n(pkg/game/: validation, scoring,\nchallenge, end-game — NOT AI)";];
-    AuditRefereeGap [label = "Audit referee gap:\nlist macondo/game methods needed\n(timebox this)";];
 
-    MigrateNativeGamesToPkgGame [label = "Migrate native game path to pkg/game\n(entity.Game stops embedding macondogame.Game)";];
+
+    MigrateNativeGamesToPkgGame [label = "Put the referee on the live path\n(entity.Game stops embedding macondogame.Game;\nthe referee itself is done and validated —\nthis is wiring it in and deleting xwordbridge)";];
     MigrateAnnotatorToPkgGame [label = "Migrate annotator to pkg/game + game_turns\n(pkg/omgwords/* rewritten)";];
     DropGameDocumentsTable [label = "Drop game_documents table";];
     RetireCwgame [label = "Retire pkg/cwgame/*\n(move GCG/CGP to pkg/game/formats/)";];
@@ -75,22 +93,33 @@ digraph RedoGameModel {
     Goal -> LessDowntimeBetweenDeploys;
     Goal -> MakeDBFaster;
     Goal -> DeprecateGameDocument;
+    Goal -> OTelObservability;
 
-    // ── Edges: RemoveGameCache ────────────────────────────────────────────
-    MoreSimultaneousGames -> RemoveGameCache;
-    LessDowntimeBetweenDeploys -> RemoveGameCache;
+    // ── Edges: the cache goal ────────────────────────────────────────────
+    MoreSimultaneousGames -> GameCacheRemoved;
+    LessDowntimeBetweenDeploys -> GameCacheRemoved;
 
-    RemoveGameCache -> AdvisoryLockWriters;
-    RemoveGameCache -> SplitDBWriters;
-    RemoveGameCache -> CheapGameLoad;
-    RemoveGameCache -> GracefulCacheDrain;
-    RemoveGameCache -> OTelObservability;
+    GameCacheRemoved -> CrossNodeWriteLock;
+    GameCacheRemoved -> SplitDBWriters;
+    GameCacheRemoved -> DrainInFlightMoves;
+    CrossNodeWriteLock -> AtomicMoveWrite;
     SplitDBWriters -> SQLCOtherFuncs;
 
+    // Serving a rebuilt position is gated on evidence, not on mechanism. The
+    // mechanism it was originally blocked on -- turn rows and the games row
+    // committing separately, and a load reading them in two snapshots -- is
+    // fixed. What is missing is production telling us the rebuild matches.
+    MoreSimultaneousGames -> CheapGameLoad;
     CheapGameLoad -> ReadPathFromTurns;
+    ReadPathFromTurns -> ProdShadowEvidence;
+    ReadPathFromTurns -> RefereePorted;
+    ProdShadowEvidence -> ShadowVerifyTurns;
+    ShadowVerifyTurns -> AtomicMoveWrite;
+    ShadowVerifyTurns -> SingleSnapshotRead;
+    ShadowVerifyTurns -> RefereePorted;
+    RefereePorted -> AuditRefereeGap;
     ReadPathFromTurns -> LastKnownRacksColumn;
     ReadPathFromTurns -> DualWriteTurns;
-    ReadPathFromTurns -> BuildLiveStateFromTurns;
     ReadPathFromTurns -> S3LoadPath;
     S3LoadPath -> S3ArchiveOnGameEnd;
     S3LoadPath -> ByteaBackfill;
@@ -100,6 +129,8 @@ digraph RedoGameModel {
     // ── Edges: MakeDBFaster ───────────────────────────────────────────────
     MakeDBFaster -> EfficientTable;
     MakeDBFaster -> ClearLargeFields;
+    MakeDBFaster -> ListingsOnOngoingGames;
+    ListingsOnOngoingGames -> OngoingGamesWriter;
 
     EfficientTable -> ConsolidateRequestColumns;
     EfficientTable -> SQLCDBStore;
@@ -124,15 +155,14 @@ digraph RedoGameModel {
 
     // ── Edges: DeprecateGameDocument ──────────────────────────────────────
     DeprecateGameDocument -> MoveGameHistoryProto;
-    DeprecateGameDocument -> PortMacondoReferee;
+    DeprecateGameDocument -> RefereePorted;
     DeprecateGameDocument -> MigrateNativeGamesToPkgGame;
     DeprecateGameDocument -> MigrateAnnotatorToPkgGame;
     DeprecateGameDocument -> RemoveMacondoRuntimeDep;
 
     UpdateGoImports -> MoveGameHistoryProto;
-    PortMacondoReferee -> AuditRefereeGap;
-    MigrateNativeGamesToPkgGame -> PortMacondoReferee;
-    MigrateAnnotatorToPkgGame -> PortMacondoReferee;
+    MigrateNativeGamesToPkgGame -> RefereePorted;
+    MigrateAnnotatorToPkgGame -> RefereePorted;
     MigrateAnnotatorToPkgGame -> ActivateGameTurnsTable;
     DropGameDocumentsTable -> MigrateAnnotatorToPkgGame;
     RetireCwgame -> MigrateAnnotatorToPkgGame;

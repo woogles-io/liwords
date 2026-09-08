@@ -119,6 +119,29 @@ func (q *Queries) GetActionsBatch(ctx context.Context, userUuids []string) ([]Ge
 	return items, nil
 }
 
+const getAutomodVerdict = `-- name: GetAutomodVerdict :one
+SELECT player_id, game_id, verdict, created_at
+FROM automod_verdicts
+WHERE player_id = $1 AND game_id = $2
+`
+
+type GetAutomodVerdictParams struct {
+	PlayerID string
+	GameID   string
+}
+
+func (q *Queries) GetAutomodVerdict(ctx context.Context, arg GetAutomodVerdictParams) (AutomodVerdict, error) {
+	row := q.db.QueryRow(ctx, getAutomodVerdict, arg.PlayerID, arg.GameID)
+	var i AutomodVerdict
+	err := row.Scan(
+		&i.PlayerID,
+		&i.GameID,
+		&i.Verdict,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getNotoriousGames = `-- name: GetNotoriousGames :many
 SELECT game_id, type, timestamp FROM notoriousgames
 WHERE player_id = $1
@@ -154,4 +177,31 @@ func (q *Queries) GetNotoriousGames(ctx context.Context, arg GetNotoriousGamesPa
 		return nil, err
 	}
 	return items, nil
+}
+
+const recordAutomodVerdict = `-- name: RecordAutomodVerdict :execrows
+INSERT INTO automod_verdicts (player_id, game_id, verdict)
+VALUES ($1, $2, $3)
+ON CONFLICT (player_id, game_id) DO NOTHING
+`
+
+type RecordAutomodVerdictParams struct {
+	PlayerID string
+	GameID   string
+	Verdict  int32
+}
+
+// Record automod's verdict for one player in one game, and report whether this
+// call is the one that recorded it.
+//
+// Returns 1 when the row was inserted and 0 when it already existed. Zero means
+// automod has already judged this game for this player, and its effects --
+// which add to or subtract from a notoriety score, and are not idempotent --
+// must not be applied again.
+func (q *Queries) RecordAutomodVerdict(ctx context.Context, arg RecordAutomodVerdictParams) (int64, error) {
+	result, err := q.db.Exec(ctx, recordAutomodVerdict, arg.PlayerID, arg.GameID, arg.Verdict)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
