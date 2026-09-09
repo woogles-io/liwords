@@ -708,6 +708,20 @@ func handleEventAfterLockingGame(ctx context.Context, stores *stores.Stores, use
 		}
 	}
 
+	if cge.Type == pb.ClientGameplayEvent_EXCHANGE {
+		// Exchanges are a small fraction of moves, so this is cheap to log
+		// unconditionally -- and when a player reports that the wrong tiles
+		// went back into the bag, this is the only record of what their client
+		// actually submitted, as opposed to what we ended up recording.
+		log.Info().
+			Str("gid", cge.GameId).
+			Str("userID", userID).
+			Str("rack", entGame.Game.RackLettersFor(onTurn)).
+			Str("tiles", cge.Tiles).
+			Hex("machine-letters", cge.MachineLetters).
+			Msg("exchange-requested")
+	}
+
 	log.Debug().Msg("going to turn into a macondo gameevent")
 
 	// Turn the event into a macondo GameEvent.
