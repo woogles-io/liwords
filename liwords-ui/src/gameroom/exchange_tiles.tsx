@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import Rack from "./rack";
 import {
   useGameContextStoreContext,
@@ -9,7 +15,7 @@ import { singularCount } from "../utils/plural";
 import { Button } from "antd";
 import { Modal } from "../utils/focus_modal";
 import { Alphabet, getMachineLetterForKey } from "../constants/alphabets";
-import { MachineLetter, MachineWord } from "../utils/cwgame/common";
+import { MachineWord } from "../utils/cwgame/common";
 
 const doNothing = () => {};
 
@@ -24,17 +30,31 @@ type Props = {
   modalVisible: boolean;
 };
 
+// The set of selected rack positions is the single source of truth for both
+// what the modal draws and what we submit. Deriving the tiles during render
+// (rather than in an effect, into a second piece of state) is what keeps those
+// two in step: a tile that is drawn flipped up is always a tile we will send.
+const tilesForIndices = (
+  indices: Set<number>,
+  rack: MachineWord,
+): MachineWord => {
+  const sorted = Array.from(indices.keys()).sort((a, b) => a - b);
+  return sorted.map((idx) => rack[idx]);
+};
+
 export const ExchangeTiles = React.memo((props: Props) => {
   const [exchangedRackIndices, setExchangedRackIndices] = useState(
     new Set<number>(),
-  );
-  const [exchangedRack, setExchangedRack] = useState(
-    new Array<MachineLetter>(),
   );
 
   const [delayInput, setDelayInput] = useState(true);
 
   const propsOnOk = props.onOk;
+
+  const exchangedRack = useMemo(
+    () => tilesForIndices(exchangedRackIndices, props.rack),
+    [exchangedRackIndices, props.rack],
+  );
 
   // Temporary message until UI shows it.
   useEffect(() => {
@@ -66,88 +86,98 @@ export const ExchangeTiles = React.memo((props: Props) => {
       // Toggle all. To keep selected tiles, toggle just before exchanging.
       if (key === "-") {
         if (props.rack.length > 0) {
-          const tempToExchange = new Set<number>();
-          for (let i = 0; i < props.rack.length; ++i) {
-            if (!exchangedRackIndices.has(i)) {
-              tempToExchange.add(i);
+          setExchangedRackIndices((prev) => {
+            const tempToExchange = new Set<number>();
+            for (let i = 0; i < props.rack.length; ++i) {
+              if (!prev.has(i)) {
+                tempToExchange.add(i);
+              }
             }
-          }
-          setExchangedRackIndices(tempToExchange);
+            return tempToExchange;
+          });
         }
         return;
       }
 
-      // Select one more instance if any.
-      let canDeselect = false;
       const ml = getMachineLetterForKey(key, props.alphabet);
 
-      for (let i = 0; i < props.rack.length; ++i) {
-        if (props.rack[i] === ml) {
-          if (!exchangedRackIndices.has(i)) {
-            setExchangedRackIndices(new Set(exchangedRackIndices).add(i));
-            return;
+      setExchangedRackIndices((prev) => {
+        // Select one more instance if any.
+        let canDeselect = false;
+        for (let i = 0; i < props.rack.length; ++i) {
+          if (props.rack[i] === ml) {
+            if (!prev.has(i)) {
+              return new Set(prev).add(i);
+            }
+            canDeselect = true;
           }
-          canDeselect = true;
         }
-      }
-
-      if (canDeselect) {
+        if (!canDeselect) {
+          return prev;
+        }
         // Deselect all instances at once.
-        const tempToExchange = new Set(exchangedRackIndices);
+        const tempToExchange = new Set(prev);
         for (let i = 0; i < props.rack.length; ++i) {
           if (props.rack[i] === ml) {
             tempToExchange.delete(i);
           }
         }
-        setExchangedRackIndices(tempToExchange);
-      }
+        return tempToExchange;
+      });
     },
     [
       delayInput,
       exchangedRack,
-      exchangedRackIndices,
       props.modalVisible,
       props.rack,
       props.alphabet,
       propsOnOk,
     ],
   );
+  // Subscribe once and dispatch through a ref, so the listener that is actually
+  // attached to the window can never be an older closure than the last render.
+  // (Re-subscribing from an effect leaves a window, after a keystroke is
+  // committed but before effects flush, where the attached handler still holds
+  // the previous selection.)
+  const keydownRef = useRef(keydown);
+  keydownRef.current = keydown;
   useEffect(() => {
-    window.addEventListener("keydown", keydown);
+    const listener = (e: KeyboardEvent) => keydownRef.current(e);
+    window.addEventListener("keydown", listener);
     return () => {
-      window.removeEventListener("keydown", keydown);
+      window.removeEventListener("keydown", listener);
     };
-  }, [keydown]);
+  }, []);
   useEffect(() => {
-    // Wait to start taking keys so we don't "preselect" whatever key they
-    // hit to open the exchange modal.
-    // reset exchange rack when opening modal.
-
-    window.setTimeout(() => {
+    if (!props.modalVisible) {
+      return;
+    }
+    // Start from a clean selection every time the modal opens, then wait a beat
+    // before taking keys so we don't "preselect" whatever key they hit to open
+    // it. Only `delayInput` is deferred: clearing the selection on a timer used
+    // to wipe out any tile clicked during that first 100ms.
+    setExchangedRackIndices(new Set<number>());
+    setDelayInput(true);
+    const timeout = window.setTimeout(() => {
       setDelayInput(false);
-      setExchangedRackIndices(new Set<number>());
     }, 100);
+    return () => {
+      window.clearTimeout(timeout);
+    };
   }, [props.modalVisible]);
-  useEffect(() => {
-    const indices = Array.from(exchangedRackIndices.keys());
-    indices.sort();
-    const e = indices.map((idx) => props.rack[idx]);
-    setExchangedRack(e);
-  }, [exchangedRackIndices, props.rack]);
   const { gameContext } = useGameContextStoreContext();
   const { poolFormat, setPoolFormat } = usePoolFormatStoreContext();
-  const selectTileForExchange = useCallback(
-    (idx: number) => {
-      const newExchangedRackIndices = new Set(exchangedRackIndices);
+  const selectTileForExchange = useCallback((idx: number) => {
+    setExchangedRackIndices((prev) => {
+      const newExchangedRackIndices = new Set(prev);
       if (newExchangedRackIndices.has(idx)) {
         newExchangedRackIndices.delete(idx);
       } else {
         newExchangedRackIndices.add(idx);
       }
-      setExchangedRackIndices(newExchangedRackIndices);
-    },
-    [exchangedRackIndices],
-  );
+      return newExchangedRackIndices;
+    });
+  }, []);
   const handleOnOk = useCallback(() => {
     propsOnOk(exchangedRack);
   }, [propsOnOk, exchangedRack]);
