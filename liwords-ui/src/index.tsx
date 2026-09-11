@@ -10,6 +10,9 @@ import "@ant-design/v5-patch-for-react-19";
 // Must come first: declares the cascade layer order and pulls antd's reset into
 // @layer antd. Everything below is unlayered and therefore outranks it.
 import "./theme/layers.css";
+// Mantine's own styles, which self-wrap in @layer mantine. layers.css above
+// orders that layer above antd's and below our unlayered SCSS.
+import "@mantine/core/styles.layer.css";
 // Declares the --woogles-* design tokens on :root. Every stylesheet's m() and
 // d() calls resolve against these, so this must be loaded app-wide exactly once.
 import "./theme/tokens.scss";

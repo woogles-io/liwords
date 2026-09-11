@@ -2,6 +2,21 @@
 <html lang="en" translate="no">
   <head>
     <meta charset="utf-8" />
+    <!--
+      Cascade layer order, declared before any stylesheet loads.
+
+      Layered CSS always loses to unlayered CSS, so app SCSS beats both
+      libraries. This statement fixes the order *between* them: Mantine above
+      Ant Design. See src/theme/layers.css.
+
+      It lives here rather than in a stylesheet because the bundler splits CSS
+      into chunks, and a declaration inside one chunk is not guaranteed to load
+      before the @layer blocks in another. Without it the order falls back to
+      whichever layer the bundler happens to emit first.
+    -->
+    <style>
+      @layer antd, mantine;
+    </style>
     <link rel="icon" href="/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#000000" />
