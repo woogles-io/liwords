@@ -1,0 +1,43 @@
+/*
+ * Per-component styling for the Mantine theme, referenced from
+ * src/theme/components.ts via each component's `classNames`.
+ *
+ * Only properties Mantine does not expose as a CSS variable belong here --
+ * anything with a `--component-*` variable should go through `vars` instead,
+ * since those are part of Mantine's documented API and survive upgrades.
+ */
+
+/*
+ * Woogles buttons are flat and static: no transition, and hover/focus/active
+ * look identical to rest. That is deliberate in base.scss's @mixin button and
+ * predates the migration, so it is reproduced rather than modernised.
+ */
+.button {
+  font-weight: 800;
+  transition: none;
+  touch-action: manipulation;
+}
+
+.button:hover,
+.button:focus,
+.button:active {
+  transition: none;
+}
+
+/*
+ * Keyboard shortcut hint, revealed on hover of an enabled button. Rendered by
+ * game controls as <span class="key-command">. Carried over verbatim from
+ * @mixin button.
+ */
+.button :global(span.key-command) {
+  position: absolute;
+  top: 0;
+  right: 0;
+  padding: 0 4px;
+  font-size: 10px;
+  opacity: 0;
+}
+
+.button:not(:disabled):hover :global(span.key-command) {
+  opacity: 1;
+}
