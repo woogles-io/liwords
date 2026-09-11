@@ -1,3 +1,4 @@
+import { components } from "./components";
 import {
   createTheme,
   type CSSVariablesResolver,
@@ -38,6 +39,8 @@ export const wooglesTheme = createTheme({
   headings: { fontFamily: "Mulish, sans-serif" },
 
   colors: { woogles: wooglesBlue },
+
+  components,
   primaryColor: "woogles",
 
   // antd's Button token sets borderRadius: 0. Match it so Mantine buttons do
