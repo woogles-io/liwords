@@ -12,9 +12,10 @@
  * definition popup picked up antd's dark-mode border, for one. Layers fix the
  * whole category rather than the instances.
  *
- * `@layer antd, mantine;` also establishes the order for the Mantine migration:
- * Mantine's own styles (imported later as styles.layer.css) sit above antd's and
- * below ours.
+ * The layer ORDER is declared in index.html, not here: the bundler splits CSS
+ * into chunks, so a declaration in one chunk is not guaranteed to load before
+ * the @layer blocks in another. The <style> tag in the document head always
+ * wins that race.
  *
  * antd has two sources of CSS and both need layering:
  *   - this reset, imported below
@@ -27,6 +28,4 @@
  * warning, just unlayered CSS again. Installing a 2.x alongside antd's 1.x is
  * exactly how that happens. src/theme/layers.test.tsx guards this.
  */
-@layer antd, mantine;
-
 @import "antd/dist/reset.css" layer(antd);
