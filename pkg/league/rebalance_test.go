@@ -428,3 +428,81 @@ func TestNewRookieSplitting(t *testing.T) {
 		})
 	}
 }
+
+// TestDeutschSeason20_BottomDivisionRetention reproduces the Deutsch season 20
+// incident, which shipped a 3-player Division 5 on 2026-09-10.
+//
+// The maintenance task was running an image built before c817963c ("Don't pin
+// STAYED players to the previous season's bottom division"), so the deployed
+// ceilingForStatus had no bottom-division exemption for STAYED players. This
+// test pins the deployed-vs-fixed difference using the real production inputs,
+// so we know the deploy alone accounts for the outcome.
+//
+// Season 19 had 4 divisions, so highestPrevDivNumber was 4. Season 20 drew 73
+// registrations, needing round(73/15)=5 divisions, and priority bucketing put
+// these 13 players in the new bottom Division 5. Their (status, prevDiv) values
+// are taken verbatim from the division-preparation log at 2026-09-10T06:02:04Z.
+//
+// Division 5's final size is fully determined by these 13 players: enforcement
+// only ever moves a player to a LOWER-numbered division, so nobody can be moved
+// into the highest-numbered one. Retention is therefore exactly the count of
+// these players whose ceiling does not sit above Division 5.
+func TestDeutschSeason20_BottomDivisionRetention(t *testing.T) {
+	const (
+		bucketedDivision     = int32(5)
+		highestPrevDivNumber = int32(4) // season 19 had 4 divisions
+	)
+
+	// The 13 players bucketed into Division 5, from the production log.
+	div5 := []struct {
+		username string
+		status   ipc.PlacementStatus
+		prevDiv  int32
+	}{
+		{"aero", ipc.PlacementStatus_PLACEMENT_STAYED, 4},
+		{"MrsLollypop", ipc.PlacementStatus_PLACEMENT_STAYED, 4},
+		{"Anna12", ipc.PlacementStatus_PLACEMENT_STAYED, 4},
+		{"peperoth", ipc.PlacementStatus_PLACEMENT_STAYED, 4},
+		{"ANFAENGER", ipc.PlacementStatus_PLACEMENT_STAYED, 4},
+		{"farmerobama", ipc.PlacementStatus_PLACEMENT_STAYED, 4},
+		{"Claudine", ipc.PlacementStatus_PLACEMENT_STAYED, 4},
+		{"janonym", ipc.PlacementStatus_PLACEMENT_STAYED, 4},
+		{"Clodette", ipc.PlacementStatus_PLACEMENT_STAYED, 4},
+		{"Friedusch", ipc.PlacementStatus_PLACEMENT_STAYED, 4},
+		{"MarkusK", ipc.PlacementStatus_PLACEMENT_NEW, 4},
+		{"dundunPokert", ipc.PlacementStatus_PLACEMENT_NEW, 4},
+		{"AH1959", ipc.PlacementStatus_PLACEMENT_SHORT_HIATUS_RETURNING, 4},
+	}
+	require.Len(t, div5, 13, "production bucketed 13 players into Division 5")
+
+	// retained mirrors the enforceGuarantees decision: a player is pulled out of
+	// their bucketed division when they hold a ceiling above it.
+	retained := []string{}
+	for _, p := range div5 {
+		ceiling, hasGuarantee := ceilingForStatus(p.status, p.prevDiv, highestPrevDivNumber)
+		if hasGuarantee && bucketedDivision > ceiling {
+			continue // enforcement moves this player up and out
+		}
+		retained = append(retained, p.username)
+	}
+
+	// With c817963c the 10 STAYED players were already in the previous season's
+	// bottom division (prevDiv 4 == highestPrevDivNumber 4), so they carry no
+	// ceiling and stay put to seed the new division. NEW and hiatus returners
+	// never carry one. All 13 are retained -- a viable division.
+	//
+	// On the image actually deployed, those 10 got a ceiling of Division 4 and
+	// were pulled out, leaving only the 3 players production shipped with:
+	// MarkusK, dundunPokert and AH1959.
+	assert.Len(t, retained, 13,
+		"all 13 bucketed players should stay in Division 5; got %v", retained)
+
+	for _, p := range div5 {
+		t.Run(p.username, func(t *testing.T) {
+			_, hasGuarantee := ceilingForStatus(p.status, p.prevDiv, highestPrevDivNumber)
+			assert.False(t, hasGuarantee,
+				"%s (%s from div %d) must not carry a ceiling that empties the new bottom division",
+				p.username, p.status, p.prevDiv)
+		})
+	}
+}

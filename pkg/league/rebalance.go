@@ -135,23 +135,40 @@ func (rm *RebalanceManager) RebalanceDivisions(
 	result.DivisionsCreated = numDivisions
 	result.PlayersAssigned = len(playersWithPriority)
 
-	// Step 6: Merge undersized final division if needed
-	merged, err := rm.MergeUndersizedFinalDivision(ctx, newSeasonID, numDivisions)
-	if err != nil {
-		return nil, fmt.Errorf("failed to merge undersized final division: %w", err)
-	}
-	result.FinalDivMerged = merged
-	if merged {
-		result.DivisionsCreated--
-	}
-
-	// Step 6b: Enforce promotion/stay guarantees.
-	// Runs after the merge so it operates on the final division layout.
-	// Merge only ever moves players upward (lower-numbered divisions), so it
-	// cannot introduce guarantee violations; enforcement then fixes any that
-	// remain from the initial bucketing.
+	// Step 6: Enforce promotion/stay guarantees.
+	//
+	// This runs BEFORE the undersize merge. Enforcement only ever pulls players
+	// upward (into lower-numbered divisions), so it can drain the bottom
+	// division after bucketing has filled it. Sizing the bottom division first
+	// measures a distribution that enforcement is about to change: the check
+	// passes on the pre-enforcement count and nothing re-examines what is left.
+	//
+	// PROMOTED players are the live path into this. Their ceiling is
+	// prevDiv-1 with no bottom-division exemption (unlike STAYED, see
+	// ceilingForStatus), so promoted players from the previous season's bottom
+	// division can be bucketed into a newly created bottom division and then
+	// pulled straight back out of it.
 	if err := rm.enforceGuarantees(ctx, newSeasonID, playersWithPriority, highestPrevDivNumber); err != nil {
 		return nil, fmt.Errorf("failed to enforce placement guarantees: %w", err)
+	}
+
+	// Step 7: Merge the final division if enforcement (or bucketing) left it
+	// undersized. Merging moves players upward, into a lower-numbered division,
+	// so it can never violate the ceilings enforced above.
+	//
+	// Loop because absorbing one undersized division can leave the division that
+	// becomes the new bottom undersized in turn. numDivisions bounds the loop:
+	// each merge removes exactly one division.
+	for range numDivisions {
+		merged, err := rm.MergeUndersizedFinalDivision(ctx, newSeasonID, result.DivisionsCreated)
+		if err != nil {
+			return nil, fmt.Errorf("failed to merge undersized final division: %w", err)
+		}
+		if !merged {
+			break
+		}
+		result.FinalDivMerged = true
+		result.DivisionsCreated--
 	}
 
 	// Get final division assignments for result and correct placement statuses
@@ -231,13 +248,13 @@ func ceilingForStatus(status ipc.PlacementStatus, prevDiv int32, highestPrevDivN
 }
 
 // enforceGuarantees moves any PROMOTED or STAYED player whose final division
-// violates their earned outcome into their ceiling division.  This is called
-// after MergeUndersizedFinalDivision so that it operates on the final layout;
-// merge only ever moves players upward (into lower-numbered divisions) so it
-// cannot introduce guarantee violations.
+// violates their earned outcome into their ceiling division.
 //
-// Division sizing may drift slightly as a result; that is intentional and left
-// to be addressed separately.
+// This runs before MergeUndersizedFinalDivision. Enforcement only ever moves
+// players upward (into lower-numbered divisions), so it shrinks lower divisions
+// and can leave the bottom one undersized; the merge that follows is what
+// resizes it. Running the size check first instead would measure a distribution
+// that enforcement is about to change.
 func (rm *RebalanceManager) enforceGuarantees(
 	ctx context.Context,
 	seasonID uuid.UUID,
