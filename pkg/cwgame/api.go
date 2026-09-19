@@ -418,6 +418,19 @@ func ReplayEvents(ctx context.Context, cfg *wglconfig.Config, gdoc *ipc.GameDocu
 			gdoc.CurrentScores[evt.PlayerIndex] = evt.Cumulative
 			gdoc.Events = append(gdoc.Events, evt)
 
+			// An unsuccessful challenge of a play that went out ends the game,
+			// as in challengeEvent; there is no final pass to replay.
+			if evt.Type == ipc.GameEvent_CHALLENGE_BONUS &&
+				gdoc.PlayState == ipc.PlayState_WAITING_FOR_FINAL_PASS {
+				gdoc.PlayState = ipc.PlayState_GAME_OVER
+				gdoc.EndReason = ipc.GameEndReason_STANDARD
+				err = endRackCalcs(gdoc, dist, int(evt.PlayerIndex))
+				if err != nil {
+					return err
+				}
+				addWinnerToHistory(gdoc)
+			}
+
 			// XXX not handling 6-consecutive zeroes case
 		}
 	}

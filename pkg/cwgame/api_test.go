@@ -1616,3 +1616,49 @@ func TestInferRackForPlay(t *testing.T) {
 	// Should only contain T, S, T (3 tiles from rack, 2 through-tiles)
 	is.Equal(len(inferredRack), 3)
 }
+
+// A game whose final play survived a challenge must replay to GAME_OVER, not
+// stall waiting for a final pass (liwords#1350).
+func TestReplayEventsChallengedGoingOutPlay(t *testing.T) {
+	ctx := ctxForTests()
+
+	for _, chrule := range []ipc.ChallengeRule{
+		ipc.ChallengeRule_ChallengeRule_FIVE_POINT,
+		ipc.ChallengeRule_ChallengeRule_SINGLE,
+	} {
+		t.Run(ipc.ChallengeRule_name[int32(chrule)], func(t *testing.T) {
+			is := is.New(t)
+			gdoc := loadGDoc("document-game-almost-over.json")
+			globalNower = &FakeNower{
+				fakeMeow: gdoc.Timers.TimeOfLastUpdate + 5000}
+			defer restoreGlobalNower()
+			gdoc.ChallengeRule = chrule
+
+			err := ProcessGameplayEvent(ctx, DefaultConfig.WGLConfig(), &ipc.ClientGameplayEvent{
+				Type:           ipc.ClientGameplayEvent_TILE_PLACEMENT,
+				GameId:         "9zaaSuN5",
+				PositionCoords: "12F",
+				MachineLetters: englishBytes("TRIAlO..E"),
+			}, "2gJGaYnchL6LbQVTNQ6mjT", gdoc)
+			is.NoErr(err)
+			err = ProcessGameplayEvent(ctx, DefaultConfig.WGLConfig(), &ipc.ClientGameplayEvent{
+				Type:   ipc.ClientGameplayEvent_CHALLENGE_PLAY,
+				GameId: "9zaaSuN5",
+			}, "FDHvxexaC5QNMfiJnpcnUZ", gdoc)
+			is.NoErr(err)
+			is.Equal(gdoc.PlayState, ipc.PlayState_GAME_OVER)
+
+			replayed := loadGDoc("document-game-almost-over.json")
+			replayed.ChallengeRule = chrule
+			err = ReplayEvents(ctx, DefaultConfig.WGLConfig(), replayed, gdoc.Events, false)
+			is.NoErr(err)
+
+			is.Equal(replayed.PlayState, ipc.PlayState_GAME_OVER)
+			is.Equal(replayed.EndReason, ipc.GameEndReason_STANDARD)
+			is.Equal(replayed.CurrentScores, gdoc.CurrentScores)
+			is.Equal(replayed.Winner, int32(0))
+			is.Equal(len(replayed.Events), len(gdoc.Events))
+			is.Equal(replayed.Events[len(replayed.Events)-1].Type, ipc.GameEvent_END_RACK_PTS)
+		})
+	}
+}
