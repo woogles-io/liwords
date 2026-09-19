@@ -1662,3 +1662,33 @@ func TestReplayEventsChallengedGoingOutPlay(t *testing.T) {
 		})
 	}
 }
+
+// The player who went out must be recorded as the winner when their play
+// survives a challenge and puts them ahead.
+func TestChallengeGoodWordEndOfGameSetsWinner(t *testing.T) {
+	is := is.New(t)
+	ctx := ctxForTests()
+	gdoc := loadGDoc("document-game-almost-over.json")
+	globalNower = &FakeNower{
+		fakeMeow: gdoc.Timers.TimeOfLastUpdate + 5000}
+	defer restoreGlobalNower()
+	gdoc.ChallengeRule = ipc.ChallengeRule_ChallengeRule_FIVE_POINT
+	gdoc.CurrentScores[0] = 200
+
+	err := ProcessGameplayEvent(ctx, DefaultConfig.WGLConfig(), &ipc.ClientGameplayEvent{
+		Type:           ipc.ClientGameplayEvent_TILE_PLACEMENT,
+		GameId:         "9zaaSuN5",
+		PositionCoords: "12F",
+		MachineLetters: englishBytes("TRIAlO..E"),
+	}, "2gJGaYnchL6LbQVTNQ6mjT", gdoc)
+	is.NoErr(err)
+	err = ProcessGameplayEvent(ctx, DefaultConfig.WGLConfig(), &ipc.ClientGameplayEvent{
+		Type:   ipc.ClientGameplayEvent_CHALLENGE_PLAY,
+		GameId: "9zaaSuN5",
+	}, "FDHvxexaC5QNMfiJnpcnUZ", gdoc)
+	is.NoErr(err)
+
+	is.Equal(gdoc.PlayState, ipc.PlayState_GAME_OVER)
+	is.Equal(gdoc.CurrentScores, []int32{200, 328})
+	is.Equal(gdoc.Winner, int32(1))
+}
