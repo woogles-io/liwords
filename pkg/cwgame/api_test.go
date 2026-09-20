@@ -1653,12 +1653,45 @@ func TestReplayEventsChallengedGoingOutPlay(t *testing.T) {
 			err = ReplayEvents(ctx, DefaultConfig.WGLConfig(), replayed, gdoc.Events, false)
 			is.NoErr(err)
 
-			is.Equal(replayed.PlayState, ipc.PlayState_GAME_OVER)
-			is.Equal(replayed.EndReason, ipc.GameEndReason_STANDARD)
+			// The replay must land on the same game-over state as the live game.
+			is.Equal(replayed.PlayState, gdoc.PlayState)
+			is.Equal(replayed.EndReason, gdoc.EndReason)
 			is.Equal(replayed.CurrentScores, gdoc.CurrentScores)
-			is.Equal(replayed.Winner, int32(0))
+			is.Equal(replayed.Winner, gdoc.Winner)
+			is.Equal(replayed.PlayerOnTurn, gdoc.PlayerOnTurn)
 			is.Equal(len(replayed.Events), len(gdoc.Events))
-			is.Equal(replayed.Events[len(replayed.Events)-1].Type, ipc.GameEvent_END_RACK_PTS)
+
+			live := gdoc.Events[len(gdoc.Events)-1]
+			last := replayed.Events[len(replayed.Events)-1]
+			is.Equal(last.Type, ipc.GameEvent_END_RACK_PTS)
+			is.Equal(last.PlayerIndex, live.PlayerIndex)
+			is.Equal(last.EndRackPoints, live.EndRackPoints)
+			is.Equal(last.Cumulative, live.Cumulative)
+
+			// Replaying only up to the end-rack event is an editor amendment,
+			// not a finished game; it must not be ended early.
+			prefix := loadGDoc("document-game-almost-over.json")
+			prefix.ChallengeRule = chrule
+			err = ReplayEvents(ctx, DefaultConfig.WGLConfig(), prefix,
+				gdoc.Events[:len(gdoc.Events)-1], false)
+			is.NoErr(err)
+			is.Equal(prefix.PlayState, ipc.PlayState_WAITING_FOR_FINAL_PASS)
+			is.Equal(len(prefix.Events), len(gdoc.Events)-1)
+
+			// A GCG that misreports who was challenged must not quietly produce
+			// a finished game with the end-rack points on the wrong player.
+			hostile := proto.Clone(gdoc).(*ipc.GameDocument).Events
+			for _, evt := range hostile {
+				if evt.Type == ipc.GameEvent_CHALLENGE_BONUS {
+					evt.PlayerIndex = 1 - evt.PlayerIndex
+				}
+			}
+			tampered := loadGDoc("document-game-almost-over.json")
+			tampered.ChallengeRule = chrule
+			err = ReplayEvents(ctx, DefaultConfig.WGLConfig(), tampered, hostile, false)
+			if err == nil {
+				is.Equal(tampered.Events[len(tampered.Events)-1].PlayerIndex, live.PlayerIndex)
+			}
 		})
 	}
 }
