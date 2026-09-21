@@ -1967,6 +1967,23 @@ func TestTimePenaltyEditorModeRecomputesCumulative(t *testing.T) {
 	is.Equal(gdoc.Winner, int32(1))
 }
 
+// A saved penalty is dropped rather than applied mid-game when an earlier
+// amendment means the game is no longer over.
+func TestTimePenaltyEditorModeRequiresGameOver(t *testing.T) {
+	is := is.New(t)
+	ctx := ctxForTests()
+	gdoc := loadGDoc("document-earlygame.json")
+	gdoc.Type = ipc.GameType_ANNOTATED
+	before := proto.Clone(gdoc)
+	err := ApplyEventInEditorMode(ctx, DefaultConfig.WGLConfig(), gdoc, &ipc.GameEvent{
+		Type:        ipc.GameEvent_TIME_PENALTY,
+		PlayerIndex: 0,
+		LostScore:   10,
+	})
+	is.True(err != nil)
+	is.True(proto.Equal(before, gdoc))
+}
+
 func TestTimePenaltyRejected(t *testing.T) {
 	ctx := ctxForTests()
 	cases := []struct {

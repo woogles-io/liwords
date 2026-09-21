@@ -728,6 +728,11 @@ func ApplyEventInEditorMode(ctx context.Context, cfg *wglconfig.Config,
 		assignTurnToNextNonquitter(gdoc, gdoc.PlayerOnTurn)
 
 	case ipc.GameEvent_TIME_PENALTY:
+		// An earlier amendment may have un-ended the game; a penalty must not
+		// land mid-game, so fail and let the caller truncate from here.
+		if gdoc.PlayState != ipc.PlayState_GAME_OVER {
+			return errors.New("time penalty requires the game to be over")
+		}
 		applyTimePenalty(gdoc, gevt)
 
 	case ipc.GameEvent_TIMED_OUT,
