@@ -66,12 +66,12 @@ type DBStore struct {
 	historyFetcher HistoryFetcher
 }
 
-// SetHistoryFetcher wires the S3-backed history reader into the store.
-// Call once after NewDBStore, before any requests are served.
 // ErrAnnotatedGame is returned by Get for annotated games, which are stored as
 // GameDocuments and must be loaded via GetDocument instead.
 var ErrAnnotatedGame = errors.New("annotated game should be accessed via GetDocument, not Get")
 
+// SetHistoryFetcher wires the S3-backed history reader into the store.
+// Call once after NewDBStore, before any requests are served.
 func (s *DBStore) SetHistoryFetcher(f HistoryFetcher) {
 	s.historyFetcher = f
 }
