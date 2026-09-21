@@ -529,4 +529,8 @@ message GameDocument {
   // The index of the player on turn
   uint32 player_on_turn = 23;
   Timers timers         = 24;
+  // For annotated games: the tiles of each rack that the annotator entered
+  // (or that were inferred from a move), as opposed to random auto-filled
+  // tiles. Only these are recorded as the rack of a game event.
+  repeated bytes known_racks = 25;
 }

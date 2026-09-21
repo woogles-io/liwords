@@ -102,6 +102,7 @@ func NewGame(cfg *wglconfig.Config, rules *GameRules, playerinfo []*ipc.GameDocu
 		BoardLayout:        rules.boardLayout,
 		LetterDistribution: rules.distname,
 		Racks:              make([][]byte, len(playerinfo)),
+		KnownRacks:         make([][]byte, len(playerinfo)),
 		Type:               ipc.GameType_NATIVE,
 		CreatedAt:          timestamppb.Now(),
 		Board:              board.NewBoard(layout),
@@ -296,6 +297,11 @@ func AssignRacks(cfg *wglconfig.Config, gdoc *ipc.GameDocument, racks [][]byte, 
 	if err := inv.SetAllRacks(racks, allowBorrowing); err != nil {
 		return enhanceBagError(cfg, gdoc, err)
 	}
+	for i, r := range racks {
+		if len(r) > 0 || !allowBorrowing {
+			setKnownRack(gdoc, i, r)
+		}
+	}
 
 	// Track which racks are empty or partial
 	empties := []int{}
@@ -376,6 +382,9 @@ func ReplayEvents(ctx context.Context, cfg *wglconfig.Config, gdoc *ipc.GameDocu
 	}
 	savedTimers := proto.Clone(gdoc.Timers)
 	gdoc.Racks = make([][]byte, len(gdoc.Players))
+	if gdoc.Type == ipc.GameType_ANNOTATED {
+		gdoc.KnownRacks = make([][]byte, len(gdoc.Players))
+	}
 	// Replaying events is not as simple as just calling playMove with the event.
 	// Because of the randomness factor, the drawn tiles after each play/exchange
 	// etc won't be the same. We have to set the racks manually before each play.
@@ -570,9 +579,18 @@ func ProcessGameplayEvent(ctx context.Context, cfg *wglconfig.Config, evt *ipc.C
 		// the player's rack, but we haven't validated the play itself
 		// (adherence to rules, valid words if applicable, etc)
 
+		recorded, track := recordedRack(gdoc, gevt)
+		if track {
+			setKnownRack(gdoc, int(onTurn), recorded)
+		}
 		err = playMove(ctx, gdoc, gevt, tr)
 		if err != nil {
 			return err
+		}
+		if track {
+			// The move was made from the full rack; record only the tiles
+			// the annotator entered or that the move itself shows.
+			gevt.Rack = recorded
 		}
 	}
 

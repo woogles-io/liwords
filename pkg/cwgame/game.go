@@ -62,6 +62,7 @@ func playMove(ctx context.Context, gdoc *ipc.GameDocument, gevt *ipc.GameEvent, 
 
 	// register time before playing the move
 	recordTimeOfMove(gdoc, globalNower, gdoc.PlayerOnTurn, true)
+	defer clampKnownRacks(gdoc)
 
 	// Note: in case of error, anything that modifies gdoc should not save
 	// gdoc back to the store; this must be enforced.
@@ -75,7 +76,7 @@ func playMove(ctx context.Context, gdoc *ipc.GameDocument, gevt *ipc.GameEvent, 
 	case ipc.GameEvent_PASS, ipc.GameEvent_UNSUCCESSFUL_CHALLENGE_TURN_LOSS:
 		gevt.MillisRemaining = int32(tr)
 		gevt.Cumulative = gdoc.CurrentScores[gdoc.PlayerOnTurn]
-		gevt.Rack = gdoc.Racks[gdoc.PlayerOnTurn]
+		gevt.Rack = knownRack(gdoc, int(gdoc.PlayerOnTurn))
 		gdoc.Events = append(gdoc.Events, gevt)
 
 		if gdoc.PlayState == ipc.PlayState_WAITING_FOR_FINAL_PASS {
@@ -125,6 +126,7 @@ func playMove(ctx context.Context, gdoc *ipc.GameDocument, gevt *ipc.GameEvent, 
 		if err := inv.ExchangeTiles(int(gdoc.PlayerOnTurn), exchangedTiles); err != nil {
 			return err
 		}
+		removeKnownTiles(gdoc, int(gdoc.PlayerOnTurn), gevt.Exchanged, false)
 
 		log.Debug().
 			Interface("current_player_rack_after", gdoc.Racks[gdoc.PlayerOnTurn]).
@@ -233,6 +235,7 @@ func playTilePlacementMove(cfg *config.Config, gevt *ipc.GameEvent, gdoc *ipc.Ga
 	//   - board.PlayMove = game rules (word validation, scoring, board placement)
 	//   - TileInventory = tile accounting (conservation, validation)
 	gdoc.Racks[gdoc.PlayerOnTurn] = tilemapping.MachineWord(leave).ToByteArr()
+	removeKnownTiles(gdoc, int(gdoc.PlayerOnTurn), gevt.PlayedTiles, true)
 
 	// Use TileInventory to draw replacement tiles and validate tile conservation
 	inv := NewTileInventory(gdoc, cfg.WGLConfig())
@@ -730,6 +733,7 @@ func unplayLastMove(ctx context.Context, cfg *config.Config, gdoc *ipc.GameDocum
 	// The tiles from the board (mw) go directly back to the rack via originalEvent.Rack
 	tiles.PutBack(gdoc.Bag, drewPostPhony)
 	gdoc.Racks[offboardEvent.PlayerIndex] = originalEvent.Rack
+	setKnownRack(gdoc, int(offboardEvent.PlayerIndex), originalEvent.Rack)
 	gdoc.PlayState = ipc.PlayState_PLAYING
 	gdoc.CurrentScores[offboardEvent.PlayerIndex] = offboardEvent.Cumulative
 
