@@ -10,6 +10,22 @@ vi.mock("react-router", () => ({
   useNavigate: () => mockedUsedNavigate,
 }));
 
+const mockedGameOwner = vi.fn();
+
+vi.mock("@connectrpc/connect-query", () => ({
+  useQuery: () => ({ data: mockedGameOwner() }),
+}));
+
+vi.mock("../store/store", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../store/store")>();
+  return {
+    ...actual,
+    useLoginStateStoreContext: () => ({
+      loginState: { userID: "me", loggedIn: true },
+    }),
+  };
+});
+
 function renderGameControls(props: Partial<Props> = {}) {
   const dummyFunction = () => {
     return;
@@ -71,11 +87,35 @@ it("exits a finished game to the lobby or tournament", async () => {
   expect(mockedUsedNavigate).toHaveBeenCalledWith("/tournament/foo");
 });
 
-it("exits an annotated game back to the editor", async () => {
+it("exits an owned annotated game back to the editor", async () => {
   mockedUsedNavigate.mockClear();
+  mockedGameOwner.mockReturnValue({ found: true, creatorId: "me" });
   const { findByText } = renderGameControls({
     gameEndControls: true,
     annotated: true,
+  });
+  fireEvent.click(await findByText("Exit"));
+  expect(mockedUsedNavigate).toHaveBeenCalledWith("/editor");
+});
+
+it("exits someone else's annotated game to the lobby or tournament", async () => {
+  mockedUsedNavigate.mockClear();
+  mockedGameOwner.mockReturnValue({ found: true, creatorId: "someone-else" });
+  const { findByText } = renderGameControls({
+    gameEndControls: true,
+    annotated: true,
+    tournamentSlug: "/tournament/foo",
+  });
+  fireEvent.click(await findByText("Exit"));
+  expect(mockedUsedNavigate).toHaveBeenCalledWith("/tournament/foo");
+});
+
+it("exits board editing mode back to the editor", async () => {
+  mockedUsedNavigate.mockClear();
+  mockedGameOwner.mockReturnValue(undefined);
+  const { findByText } = renderGameControls({
+    gameEndControls: true,
+    boardEditingMode: true,
   });
   fireEvent.click(await findByText("Exit"));
   expect(mockedUsedNavigate).toHaveBeenCalledWith("/editor");
