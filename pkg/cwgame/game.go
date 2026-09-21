@@ -79,8 +79,6 @@ func playMove(ctx context.Context, gdoc *ipc.GameDocument, gevt *ipc.GameEvent, 
 		gdoc.Events = append(gdoc.Events, gevt)
 
 		if gdoc.PlayState == ipc.PlayState_WAITING_FOR_FINAL_PASS {
-			gdoc.PlayState = ipc.PlayState_GAME_OVER
-			gdoc.EndReason = ipc.GameEndReason_STANDARD
 			dist, err := tilemapping.GetDistribution(cfg.WGLConfig(), gdoc.LetterDistribution)
 			if err != nil {
 				return err
@@ -95,8 +93,9 @@ func playMove(ctx context.Context, gdoc *ipc.GameDocument, gevt *ipc.GameEvent, 
 			if wentout == -1 {
 				return errors.New("no empty rack but player went out")
 			}
-			endRackCalcs(gdoc, dist, wentout)
-			addWinnerToHistory(gdoc)
+			if err := endGameAfterGoingOut(gdoc, dist, wentout); err != nil {
+				return err
+			}
 		} else {
 			gdoc.ScorelessTurns += 1
 			// In annotated games, auto-assign or top off the next player's rack
@@ -274,13 +273,10 @@ func playTilePlacementMove(cfg *config.Config, gevt *ipc.GameEvent, gdoc *ipc.Ga
 		if gdoc.ChallengeRule != ipc.ChallengeRule_ChallengeRule_VOID {
 			gdoc.PlayState = ipc.PlayState_WAITING_FOR_FINAL_PASS
 		} else {
-			gdoc.PlayState = ipc.PlayState_GAME_OVER
-			gdoc.EndReason = ipc.GameEndReason_STANDARD
-			err = endRackCalcs(gdoc, dist, int(gdoc.PlayerOnTurn))
+			err = endGameAfterGoingOut(gdoc, dist, int(gdoc.PlayerOnTurn))
 			if err != nil {
 				return err
 			}
-			addWinnerToHistory(gdoc)
 		}
 	}
 	return nil
@@ -434,6 +430,18 @@ func RecalculateConsecutiveZeroesPenalties(gdoc *ipc.GameDocument, dist *tilemap
 		penaltyEvt := endRackPenaltyEvt(gdoc, uint32(p), ptsOnRack)
 		gdoc.Events = append(gdoc.Events, penaltyEvt)
 	}
+	return nil
+}
+
+// endGameAfterGoingOut ends the game normally once player wentout has played
+// out and no challenge remains: it awards end-rack points and sets the winner.
+func endGameAfterGoingOut(gdoc *ipc.GameDocument, dist *tilemapping.LetterDistribution, wentout int) error {
+	gdoc.PlayState = ipc.PlayState_GAME_OVER
+	gdoc.EndReason = ipc.GameEndReason_STANDARD
+	if err := endRackCalcs(gdoc, dist, wentout); err != nil {
+		return err
+	}
+	addWinnerToHistory(gdoc)
 	return nil
 }
 
@@ -655,11 +663,8 @@ func challengeEvent(ctx context.Context, cfg *config.Config, gdoc *ipc.GameDocum
 		}
 
 		if gdoc.PlayState == ipc.PlayState_WAITING_FOR_FINAL_PASS {
-			gdoc.PlayState = ipc.PlayState_GAME_OVER
-			gdoc.EndReason = ipc.GameEndReason_STANDARD
-
 			// Game is actually over now, after the failed challenge.
-			err = endRackCalcs(gdoc, dist, int(challengee))
+			err = endGameAfterGoingOut(gdoc, dist, int(challengee))
 			if err != nil {
 				return err
 			}

@@ -1616,3 +1616,112 @@ func TestInferRackForPlay(t *testing.T) {
 	// Should only contain T, S, T (3 tiles from rack, 2 through-tiles)
 	is.Equal(len(inferredRack), 3)
 }
+
+// A game whose final play survived a challenge must replay to GAME_OVER, not
+// stall waiting for a final pass (liwords#1350).
+func TestReplayEventsChallengedGoingOutPlay(t *testing.T) {
+	ctx := ctxForTests()
+
+	for _, chrule := range []ipc.ChallengeRule{
+		ipc.ChallengeRule_ChallengeRule_FIVE_POINT,
+		ipc.ChallengeRule_ChallengeRule_SINGLE,
+	} {
+		t.Run(ipc.ChallengeRule_name[int32(chrule)], func(t *testing.T) {
+			is := is.New(t)
+			gdoc := loadGDoc("document-game-almost-over.json")
+			globalNower = &FakeNower{
+				fakeMeow: gdoc.Timers.TimeOfLastUpdate + 5000}
+			defer restoreGlobalNower()
+			gdoc.ChallengeRule = chrule
+
+			err := ProcessGameplayEvent(ctx, DefaultConfig.WGLConfig(), &ipc.ClientGameplayEvent{
+				Type:           ipc.ClientGameplayEvent_TILE_PLACEMENT,
+				GameId:         "9zaaSuN5",
+				PositionCoords: "12F",
+				MachineLetters: englishBytes("TRIAlO..E"),
+			}, "2gJGaYnchL6LbQVTNQ6mjT", gdoc)
+			is.NoErr(err)
+			err = ProcessGameplayEvent(ctx, DefaultConfig.WGLConfig(), &ipc.ClientGameplayEvent{
+				Type:   ipc.ClientGameplayEvent_CHALLENGE_PLAY,
+				GameId: "9zaaSuN5",
+			}, "FDHvxexaC5QNMfiJnpcnUZ", gdoc)
+			is.NoErr(err)
+			is.Equal(gdoc.PlayState, ipc.PlayState_GAME_OVER)
+
+			replayed := loadGDoc("document-game-almost-over.json")
+			replayed.ChallengeRule = chrule
+			err = ReplayEvents(ctx, DefaultConfig.WGLConfig(), replayed, gdoc.Events, false)
+			is.NoErr(err)
+
+			// The replay must land on the same game-over state as the live game.
+			is.Equal(replayed.PlayState, gdoc.PlayState)
+			is.Equal(replayed.EndReason, gdoc.EndReason)
+			is.Equal(replayed.CurrentScores, gdoc.CurrentScores)
+			is.Equal(replayed.Winner, gdoc.Winner)
+			is.Equal(replayed.PlayerOnTurn, gdoc.PlayerOnTurn)
+			is.Equal(len(replayed.Events), len(gdoc.Events))
+
+			live := gdoc.Events[len(gdoc.Events)-1]
+			last := replayed.Events[len(replayed.Events)-1]
+			is.Equal(last.Type, ipc.GameEvent_END_RACK_PTS)
+			is.Equal(last.PlayerIndex, live.PlayerIndex)
+			is.Equal(last.EndRackPoints, live.EndRackPoints)
+			is.Equal(last.Cumulative, live.Cumulative)
+
+			// Replaying only up to the end-rack event is an editor amendment,
+			// not a finished game; it must not be ended early.
+			prefix := loadGDoc("document-game-almost-over.json")
+			prefix.ChallengeRule = chrule
+			err = ReplayEvents(ctx, DefaultConfig.WGLConfig(), prefix,
+				gdoc.Events[:len(gdoc.Events)-1], false)
+			is.NoErr(err)
+			is.Equal(prefix.PlayState, ipc.PlayState_WAITING_FOR_FINAL_PASS)
+			is.Equal(len(prefix.Events), len(gdoc.Events)-1)
+
+			// A GCG that misreports who was challenged must not quietly produce
+			// a finished game with the end-rack points on the wrong player.
+			hostile := proto.Clone(gdoc).(*ipc.GameDocument).Events
+			for _, evt := range hostile {
+				if evt.Type == ipc.GameEvent_CHALLENGE_BONUS {
+					evt.PlayerIndex = 1 - evt.PlayerIndex
+				}
+			}
+			tampered := loadGDoc("document-game-almost-over.json")
+			tampered.ChallengeRule = chrule
+			err = ReplayEvents(ctx, DefaultConfig.WGLConfig(), tampered, hostile, false)
+			if err == nil {
+				is.Equal(tampered.Events[len(tampered.Events)-1].PlayerIndex, live.PlayerIndex)
+			}
+		})
+	}
+}
+
+// The player who went out must be recorded as the winner when their play
+// survives a challenge and puts them ahead.
+func TestChallengeGoodWordEndOfGameSetsWinner(t *testing.T) {
+	is := is.New(t)
+	ctx := ctxForTests()
+	gdoc := loadGDoc("document-game-almost-over.json")
+	globalNower = &FakeNower{
+		fakeMeow: gdoc.Timers.TimeOfLastUpdate + 5000}
+	defer restoreGlobalNower()
+	gdoc.ChallengeRule = ipc.ChallengeRule_ChallengeRule_FIVE_POINT
+	gdoc.CurrentScores[0] = 200
+
+	err := ProcessGameplayEvent(ctx, DefaultConfig.WGLConfig(), &ipc.ClientGameplayEvent{
+		Type:           ipc.ClientGameplayEvent_TILE_PLACEMENT,
+		GameId:         "9zaaSuN5",
+		PositionCoords: "12F",
+		MachineLetters: englishBytes("TRIAlO..E"),
+	}, "2gJGaYnchL6LbQVTNQ6mjT", gdoc)
+	is.NoErr(err)
+	err = ProcessGameplayEvent(ctx, DefaultConfig.WGLConfig(), &ipc.ClientGameplayEvent{
+		Type:   ipc.ClientGameplayEvent_CHALLENGE_PLAY,
+		GameId: "9zaaSuN5",
+	}, "FDHvxexaC5QNMfiJnpcnUZ", gdoc)
+	is.NoErr(err)
+
+	is.Equal(gdoc.PlayState, ipc.PlayState_GAME_OVER)
+	is.Equal(gdoc.CurrentScores, []int32{200, 328})
+	is.Equal(gdoc.Winner, int32(1))
+}
