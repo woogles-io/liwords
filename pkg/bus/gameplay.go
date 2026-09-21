@@ -18,6 +18,7 @@ import (
 	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/gameplay"
 	"github.com/woogles-io/liwords/pkg/mod"
+	gamestore "github.com/woogles-io/liwords/pkg/stores/game"
 	"github.com/woogles-io/liwords/pkg/tournament"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
@@ -487,21 +488,17 @@ func (b *Bus) readyForTournamentGame(ctx context.Context, evt *pb.ReadyForTourna
 func (b *Bus) sendGameRefresher(ctx context.Context, gameID, connID, userID string) error {
 	// Get a game refresher event.
 	entGame, err := b.stores.GameStore.Get(ctx, string(gameID))
+	if errors.Is(err, gamestore.ErrAnnotatedGame) {
+		// Annotated games have no refresher; the front-end fetches their
+		// GameDocument instead.
+		return nil
+	}
 	if err != nil {
 		log.Err(err).Str("gid", gameID).Msg("send-game-refresher-get-failed")
 		return err
 	}
 	entGame.RLock()
 	defer entGame.RUnlock()
-
-	if entGame.Type == pb.GameType_ANNOTATED {
-		// Temporary solution for using a different game store to fetch these.
-		// In the future, we will use the same game store for all games,
-		// as all games will be GameDocuments.
-		// For now we will not send a game refresher for annotated games, but
-		// instead the front-end should request the GameDocument in this case.
-		return nil
-	}
 
 	var evt *entity.EventWrapper
 	log.Debug().Str("gameid", entGame.History().Uid).Msg("sent-refresher")

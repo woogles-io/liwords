@@ -68,6 +68,10 @@ type DBStore struct {
 
 // SetHistoryFetcher wires the S3-backed history reader into the store.
 // Call once after NewDBStore, before any requests are served.
+// ErrAnnotatedGame is returned by Get for annotated games, which are stored as
+// GameDocuments and must be loaded via GetDocument instead.
+var ErrAnnotatedGame = errors.New("annotated game should be accessed via GetDocument, not Get")
+
 func (s *DBStore) SetHistoryFetcher(f HistoryFetcher) {
 	s.historyFetcher = f
 }
@@ -171,7 +175,7 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Game, error) {
 	// Check if this is an annotated game first - they should not use this code path
 	// Annotated games are stored as GameDocuments and should be accessed via GetDocument
 	if entGame.Type == pb.GameType_ANNOTATED {
-		return nil, fmt.Errorf("annotated game %s should be accessed via GetDocument, not Get", id)
+		return nil, fmt.Errorf("%w: %s", ErrAnnotatedGame, id)
 	}
 
 	// Load history: S3 for finished games → turns for active games → bytea fallback.
