@@ -437,6 +437,9 @@ func ReplayEvents(ctx context.Context, cfg *wglconfig.Config, gdoc *ipc.GameDocu
 				wentOut = int(evt.PlayerIndex)
 			}
 
+		case ipc.GameEvent_TIME_PENALTY:
+			applyTimePenalty(gdoc, evt)
+
 		default:
 			// If it's another type of game event, all we care about is the cumulative
 			// score.
@@ -507,6 +510,12 @@ func ProcessGameplayEvent(ctx context.Context, cfg *wglconfig.Config, evt *ipc.C
 
 	log := zerolog.Ctx(ctx)
 
+	if evt.Type == ipc.ClientGameplayEvent_TIME_PENALTY {
+		if evt.GameId != gdoc.GetUid() {
+			return errUnmatchedGameId
+		}
+		return processTimePenalty(gdoc, evt)
+	}
 	if gdoc.PlayState == ipc.PlayState_GAME_OVER {
 		return errGameNotActive
 	}
@@ -718,8 +727,10 @@ func ApplyEventInEditorMode(ctx context.Context, cfg *wglconfig.Config,
 
 		assignTurnToNextNonquitter(gdoc, gdoc.PlayerOnTurn)
 
-	case ipc.GameEvent_TIME_PENALTY,
-		ipc.GameEvent_TIMED_OUT,
+	case ipc.GameEvent_TIME_PENALTY:
+		applyTimePenalty(gdoc, gevt)
+
+	case ipc.GameEvent_TIMED_OUT,
 		ipc.GameEvent_RESIGNED:
 		// These events just update scores, append to history
 		gdoc.CurrentScores[gevt.PlayerIndex] = gevt.Cumulative
@@ -736,6 +747,52 @@ func ApplyEventInEditorMode(ctx context.Context, cfg *wglconfig.Config,
 	}
 
 	return nil
+}
+
+// maxTimePenalty bounds a manually entered time penalty; anything larger is
+// almost certainly a typo.
+const maxTimePenalty = 1000
+
+// processTimePenalty adds an annotator-entered time penalty to a finished
+// annotated game. As in native games, penalties come after end-of-game rack
+// points, so the game must already be over.
+func processTimePenalty(gdoc *ipc.GameDocument, evt *ipc.ClientGameplayEvent) error {
+	if gdoc.Type != ipc.GameType_ANNOTATED {
+		return errors.New("time penalties can only be entered in annotated games")
+	}
+	if gdoc.PlayState != ipc.PlayState_GAME_OVER {
+		return errors.New("time penalties can only be entered after the game is over")
+	}
+	if evt.PenaltyPoints <= 0 || evt.PenaltyPoints > maxTimePenalty {
+		return fmt.Errorf("time penalty must be between 1 and %d points", maxTimePenalty)
+	}
+	pidx := evt.PenaltyPlayerIndex
+	if int(pidx) >= len(gdoc.Players) {
+		return errPlayerNotInGame
+	}
+	applyTimePenalty(gdoc, &ipc.GameEvent{
+		Type:        ipc.GameEvent_TIME_PENALTY,
+		PlayerIndex: pidx,
+		Rack:        gdoc.Racks[pidx],
+		LostScore:   evt.PenaltyPoints,
+	})
+	return nil
+}
+
+// applyTimePenalty deducts the penalty and appends the event. The cumulative
+// score is recomputed from LostScore so the event stays correct when earlier
+// events are amended; events without a LostScore keep their cumulative.
+func applyTimePenalty(gdoc *ipc.GameDocument, evt *ipc.GameEvent) {
+	if evt.LostScore > 0 {
+		gdoc.CurrentScores[evt.PlayerIndex] -= evt.LostScore
+		evt.Cumulative = gdoc.CurrentScores[evt.PlayerIndex]
+	} else {
+		gdoc.CurrentScores[evt.PlayerIndex] = evt.Cumulative
+	}
+	gdoc.Events = append(gdoc.Events, evt)
+	if gdoc.PlayState == ipc.PlayState_GAME_OVER {
+		addWinnerToHistory(gdoc)
+	}
 }
 
 // ToCGP converts the game to a CGP string.

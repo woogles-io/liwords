@@ -374,6 +374,8 @@ const (
 	ClientGameplayEvent_EXCHANGE       ClientGameplayEvent_EventType = 2
 	ClientGameplayEvent_CHALLENGE_PLAY ClientGameplayEvent_EventType = 3
 	ClientGameplayEvent_RESIGN         ClientGameplayEvent_EventType = 4
+	// Only valid for annotated games, after the game has ended.
+	ClientGameplayEvent_TIME_PENALTY ClientGameplayEvent_EventType = 5
 )
 
 // Enum value maps for ClientGameplayEvent_EventType.
@@ -384,6 +386,7 @@ var (
 		2: "EXCHANGE",
 		3: "CHALLENGE_PLAY",
 		4: "RESIGN",
+		5: "TIME_PENALTY",
 	}
 	ClientGameplayEvent_EventType_value = map[string]int32{
 		"TILE_PLACEMENT": 0,
@@ -391,6 +394,7 @@ var (
 		"EXCHANGE":       2,
 		"CHALLENGE_PLAY": 3,
 		"RESIGN":         4,
+		"TIME_PENALTY":   5,
 	}
 )
 
@@ -652,8 +656,12 @@ type ClientGameplayEvent struct {
 	// Indices correspond to the wordsFormed array from the last play.
 	// If empty or not set, challenges all words (default/backward compatible).
 	ChallengedWordIndices []uint32 `protobuf:"varint,6,rep,packed,name=challenged_word_indices,json=challengedWordIndices,proto3" json:"challenged_word_indices,omitempty"`
-	unknownFields         protoimpl.UnknownFields
-	sizeCache             protoimpl.SizeCache
+	// For TIME_PENALTY events: the points deducted, and the player (index into
+	// the game's players) they are deducted from.
+	PenaltyPoints      int32  `protobuf:"varint,7,opt,name=penalty_points,json=penaltyPoints,proto3" json:"penalty_points,omitempty"`
+	PenaltyPlayerIndex uint32 `protobuf:"varint,8,opt,name=penalty_player_index,json=penaltyPlayerIndex,proto3" json:"penalty_player_index,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *ClientGameplayEvent) Reset() {
@@ -727,6 +735,20 @@ func (x *ClientGameplayEvent) GetChallengedWordIndices() []uint32 {
 		return x.ChallengedWordIndices
 	}
 	return nil
+}
+
+func (x *ClientGameplayEvent) GetPenaltyPoints() int32 {
+	if x != nil {
+		return x.PenaltyPoints
+	}
+	return 0
+}
+
+func (x *ClientGameplayEvent) GetPenaltyPlayerIndex() uint32 {
+	if x != nil {
+		return x.PenaltyPlayerIndex
+	}
+	return 0
 }
 
 // A GameRules is just the name of a board layout + the name of a letter
@@ -3302,21 +3324,24 @@ var File_proto_ipc_omgwords_proto protoreflect.FileDescriptor
 
 const file_proto_ipc_omgwords_proto_rawDesc = "" +
 	"\n" +
-	"\x18proto/ipc/omgwords.proto\x12\x03ipc\x1a$proto/vendored/macondo/macondo.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xe3\x02\n" +
+	"\x18proto/ipc/omgwords.proto\x12\x03ipc\x1a$proto/vendored/macondo/macondo.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xce\x03\n" +
 	"\x13ClientGameplayEvent\x126\n" +
 	"\x04type\x18\x01 \x01(\x0e2\".ipc.ClientGameplayEvent.EventTypeR\x04type\x12\x17\n" +
 	"\agame_id\x18\x02 \x01(\tR\x06gameId\x12'\n" +
 	"\x0fposition_coords\x18\x03 \x01(\tR\x0epositionCoords\x12\x18\n" +
 	"\x05tiles\x18\x04 \x01(\tB\x02\x18\x01R\x05tiles\x12'\n" +
 	"\x0fmachine_letters\x18\x05 \x01(\fR\x0emachineLetters\x126\n" +
-	"\x17challenged_word_indices\x18\x06 \x03(\rR\x15challengedWordIndices\"W\n" +
+	"\x17challenged_word_indices\x18\x06 \x03(\rR\x15challengedWordIndices\x12%\n" +
+	"\x0epenalty_points\x18\a \x01(\x05R\rpenaltyPoints\x120\n" +
+	"\x14penalty_player_index\x18\b \x01(\rR\x12penaltyPlayerIndex\"i\n" +
 	"\tEventType\x12\x12\n" +
 	"\x0eTILE_PLACEMENT\x10\x00\x12\b\n" +
 	"\x04PASS\x10\x01\x12\f\n" +
 	"\bEXCHANGE\x10\x02\x12\x12\n" +
 	"\x0eCHALLENGE_PLAY\x10\x03\x12\n" +
 	"\n" +
-	"\x06RESIGN\x10\x04\"\x94\x01\n" +
+	"\x06RESIGN\x10\x04\x12\x10\n" +
+	"\fTIME_PENALTY\x10\x05\"\x94\x01\n" +
 	"\tGameRules\x12*\n" +
 	"\x11board_layout_name\x18\x01 \x01(\tR\x0fboardLayoutName\x128\n" +
 	"\x18letter_distribution_name\x18\x02 \x01(\tR\x16letterDistributionName\x12!\n" +
