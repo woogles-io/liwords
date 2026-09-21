@@ -606,7 +606,9 @@ export const Table = React.memo((props: Props) => {
           if (!props.annotated) {
             // A /game/<id> link to an annotated game; only /anno/ can load it.
             window.location.replace(
-              `/anno/${encodeURIComponent(gameID ?? "")}`,
+              `/anno/${encodeURIComponent(gameID ?? "")}` +
+                window.location.search +
+                window.location.hash,
             );
             return;
           }
