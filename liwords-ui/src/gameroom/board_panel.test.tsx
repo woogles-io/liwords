@@ -87,3 +87,17 @@ it("does not open the rack editor on Space outside the editor", () => {
   });
   expect(container.querySelector("input.rack")).toBeNull();
 });
+
+it("keeps Space advancing the placement arrow in board editing mode", () => {
+  const { container } = renderBoardPanel(true);
+  const spaces = () => Array.from(container.querySelectorAll(".board-space"));
+  fireEvent.click(spaces()[0]);
+  const selectedIndex = () =>
+    spaces().findIndex((el) => el.classList.contains("selected"));
+  expect(selectedIndex()).toBe(0);
+  fireEvent.keyDown(container.querySelector(".board-container")!, {
+    key: " ",
+  });
+  expect(container.querySelector("input.rack")).toBeNull();
+  expect(selectedIndex()).toBeGreaterThan(0);
+});
