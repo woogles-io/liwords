@@ -285,6 +285,7 @@ export type Props = {
   showAbort: boolean;
   exitableExaminer?: boolean;
   boardEditingMode?: boolean;
+  annotated?: boolean;
   // Correspondence-only: jump to the user's next on-turn game.
   // nextCorresGame is non-null only when such a game exists (set by table.tsx).
   hasNextCorresGame?: boolean;
@@ -330,8 +331,12 @@ const GameControls = React.memo((props: Props) => {
 
   const navigate = useNavigate();
   const handleExitToLobby = useCallback(() => {
-    navigate(props.tournamentSlug || "/");
-  }, [navigate, props.tournamentSlug]);
+    navigate(
+      props.annotated || props.boardEditingMode
+        ? "/editor"
+        : props.tournamentSlug || "/",
+    );
+  }, [navigate, props.annotated, props.boardEditingMode, props.tournamentSlug]);
 
   const {
     isExamining,

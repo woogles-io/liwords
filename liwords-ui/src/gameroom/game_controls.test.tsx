@@ -60,3 +60,23 @@ it("fires clicks on rematch only once", async () => {
   fireEvent.click(rematchButton);
   expect(onRematch).toHaveBeenCalledTimes(1);
 });
+
+it("exits a finished game to the lobby or tournament", async () => {
+  mockedUsedNavigate.mockClear();
+  const { findByText } = renderGameControls({
+    gameEndControls: true,
+    tournamentSlug: "/tournament/foo",
+  });
+  fireEvent.click(await findByText("Exit"));
+  expect(mockedUsedNavigate).toHaveBeenCalledWith("/tournament/foo");
+});
+
+it("exits an annotated game back to the editor", async () => {
+  mockedUsedNavigate.mockClear();
+  const { findByText } = renderGameControls({
+    gameEndControls: true,
+    annotated: true,
+  });
+  fireEvent.click(await findByText("Exit"));
+  expect(mockedUsedNavigate).toHaveBeenCalledWith("/editor");
+});
