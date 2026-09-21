@@ -310,7 +310,8 @@ func (gs *OMGWordsService) SendGameEvent(ctx context.Context, req *connect.Reque
 		return nil, err
 	}
 	// justEnded indicates if the handled event resulted in the game ending.
-	// Since this is an annotated game, we must mark it as done.
+	// Since this is an annotated game, we must mark it as done. Otherwise clear
+	// the flag, since an amendment or challenge can reopen a finished game.
 	if justEnded {
 		if err = gs.metadataStore.MarkAnnotatedGameDone(ctx, req.Msg.Event.GameId); err != nil {
 			return nil, err
@@ -318,6 +319,8 @@ func (gs *OMGWordsService) SendGameEvent(ctx context.Context, req *connect.Reque
 		if gs.onGameDone != nil {
 			gs.onGameDone(ctx, req.Msg.Event.GameId)
 		}
+	} else if err = gs.metadataStore.ClearAnnotatedGameDone(ctx, req.Msg.Event.GameId); err != nil {
+		return nil, err
 	}
 	gs.publishUserAnnoActivity(u.UUID)
 	return connect.NewResponse(&pb.GameEventResponse{}), nil
@@ -346,6 +349,11 @@ func (gs *OMGWordsService) ReplaceGameDocument(ctx context.Context, req *connect
 	err = gs.gameStore.UpdateDocument(ctx, req.Msg.Document)
 	if err != nil {
 		return nil, err
+	}
+	if req.Msg.Document.PlayState != ipc.PlayState_GAME_OVER {
+		if err = gs.metadataStore.ClearAnnotatedGameDone(ctx, gid); err != nil {
+			return nil, err
+		}
 	}
 	// And send an event.
 	evt := &ipc.GameDocumentEvent{
@@ -718,6 +726,11 @@ func (gs *OMGWordsService) SetRacks(ctx context.Context, req *connect.Request[pb
 	err = gs.gameStore.UpdateDocument(ctx, g)
 	if err != nil {
 		return nil, err
+	}
+	if g.PlayState != ipc.PlayState_GAME_OVER {
+		if err = gs.metadataStore.ClearAnnotatedGameDone(ctx, g.Uid); err != nil {
+			return nil, err
+		}
 	}
 
 	// And send an event.

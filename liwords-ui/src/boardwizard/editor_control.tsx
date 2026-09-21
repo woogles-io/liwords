@@ -12,11 +12,13 @@ import {
   Space,
   Divider,
   message,
+  Tooltip,
 } from "antd";
 import { BookOutlined, CloseOutlined, SwapOutlined } from "@ant-design/icons";
 import { Store } from "antd/lib/form/interface";
 import { useEffect, useState, useCallback } from "react";
 import { ChallengeRule } from "../gen/api/proto/ipc/omgwords_pb";
+import { PlayState } from "../gen/api/proto/vendored/macondo/macondo_pb";
 import { LexiconFormItem, historicalLexica } from "../shared/lexicon_display";
 import {
   useGameContextStoreContext,
@@ -52,6 +54,8 @@ type Props = {
 export const EditorControl = (props: Props) => {
   const navigate = useNavigate();
   const { loginState } = useLoginStateStoreContext();
+  const { gameContext } = useGameContextStoreContext();
+  const gameOver = gameContext.playState === PlayState.GAME_OVER;
 
   const gameURL = props.gameID ? `${baseURL}/anno/${props.gameID}` : "";
 
@@ -279,6 +283,12 @@ export const EditorControl = (props: Props) => {
               Unclaim this game
             </Button>
           </Popconfirm>
+        ) : !broadcastCtx && gameOver ? (
+          <Tooltip title="Finished games can't be deleted.">
+            <Button type="primary" danger disabled>
+              Delete this game
+            </Button>
+          </Tooltip>
         ) : !broadcastCtx ? (
           <Popconfirm
             title="Are you sure you wish to delete this game? This action can not be undone!"

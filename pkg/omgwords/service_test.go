@@ -382,6 +382,51 @@ func TestImportGCG(t *testing.T) {
 	is.Equal(len(gdoc.Msg.Racks[1]), 0)
 }
 
+func TestReopenedGameIsNotDone(t *testing.T) {
+	is := is.New(t)
+	svc := newService()
+	defer func() { cleanupConns(svc) }()
+	c := make(chan *entity.EventWrapper)
+	svc.SetEventChannel(c)
+	go func() {
+		for range c {
+		}
+	}()
+	apikey, err := svc.userStore.GetAPIKey(context.Background(), "someuser")
+	is.NoErr(err)
+	ctx := apiserver.StoreAPIKeyInContext(ctxForTests(), apikey)
+
+	bts, err := os.ReadFile("../puzzles/testdata/r8_puneet.gcg")
+	is.NoErr(err)
+	r, err := svc.ImportGCG(ctx, connect.NewRequest(&omgwords_service.ImportGCGRequest{
+		Gcg:           string(bts),
+		Lexicon:       "CSW21",
+		Rules:         &ipc.GameRules{BoardLayoutName: "CrosswordGame", LetterDistributionName: "english", VariantName: "classic"},
+		ChallengeRule: ipc.ChallengeRule_ChallengeRule_FIVE_POINT,
+	}))
+	is.NoErr(err)
+	gid := r.Msg.GameId
+
+	done, err := svc.metadataStore.GameIsDone(ctx, gid)
+	is.NoErr(err)
+	is.True(done)
+
+	gdoc, err := svc.GetGameDocument(ctx, connect.NewRequest(&omgwords_service.GetGameDocumentRequest{
+		GameId: gid,
+	}))
+	is.NoErr(err)
+	doc := gdoc.Msg
+	doc.PlayState = ipc.PlayState_PLAYING
+	_, err = svc.ReplaceGameDocument(ctx, connect.NewRequest(&omgwords_service.ReplaceDocumentRequest{
+		Document: doc,
+	}))
+	is.NoErr(err)
+
+	done, err = svc.metadataStore.GameIsDone(ctx, gid)
+	is.NoErr(err)
+	is.True(!done)
+}
+
 func TestImportAnotherGCG(t *testing.T) {
 	is := is.New(t)
 	svc := newService()

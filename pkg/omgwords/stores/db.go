@@ -269,6 +269,13 @@ func (s *DBStore) GamesForEditor(ctx context.Context, editorID string, unfinishe
 	return games, nil
 }
 
+// ClearAnnotatedGameDone unsets the done flag, for games reopened by an edit.
+func (s *DBStore) ClearAnnotatedGameDone(ctx context.Context, uuid string) error {
+	_, err := s.dbPool.Exec(ctx, `UPDATE annotated_game_metadata SET done = FALSE
+		WHERE game_uuid = $1 AND done`, uuid)
+	return err
+}
+
 func (s *DBStore) GameIsDone(ctx context.Context, gid string) (bool, error) {
 	var done bool
 	err := s.dbPool.QueryRow(ctx, `SELECT done FROM annotated_game_metadata
