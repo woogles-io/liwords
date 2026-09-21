@@ -1725,3 +1725,275 @@ func TestChallengeGoodWordEndOfGameSetsWinner(t *testing.T) {
 	is.Equal(gdoc.CurrentScores, []int32{200, 328})
 	is.Equal(gdoc.Winner, int32(1))
 }
+
+func newAnnotatedGameForTest(t *testing.T) *ipc.GameDocument {
+	rules := NewBasicGameRules("NWL20", "CrosswordGame", "english", ipc.ChallengeRule_ChallengeRule_FIVE_POINT,
+		"classic", []int{0, 0}, 0, 0, true)
+	g, err := NewGame(DefaultConfig.WGLConfig(), rules, []*ipc.GameDocument_MinimalPlayerInfo{
+		{Nickname: "a", UserId: "internal-a"}, {Nickname: "b", UserId: "internal-b"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	g.Type = ipc.GameType_ANNOTATED
+	if err := AssignRacks(DefaultConfig.WGLConfig(), g, [][]byte{nil, nil}, AlwaysAssignEmpty); err != nil {
+		t.Fatal(err)
+	}
+	g.PlayState = ipc.PlayState_PLAYING
+	return g
+}
+
+func sendAnnotatedEvent(t *testing.T, g *ipc.GameDocument, e *ipc.ClientGameplayEvent) {
+	e.GameId = g.Uid
+	if err := ProcessGameplayEvent(ctxForTests(), DefaultConfig.WGLConfig(), e, g.Players[g.PlayerOnTurn].UserId, g); err != nil {
+		t.Fatal(err)
+	}
+	if err := NewTileInventory(g, DefaultConfig.WGLConfig()).ValidateInvariants(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func sortedTiles(b []byte) []byte {
+	c := append([]byte{}, b...)
+	sort.Slice(c, func(i, j int) bool { return c[i] < c[j] })
+	return c
+}
+
+// An auto-filled opponent rack must not be recorded as the rack of an
+// exchange the annotator entered without typing a rack.
+func TestAnnotatedExchangeDoesNotRecordAutofill(t *testing.T) {
+	is := is.New(t)
+	g := newAnnotatedGameForTest(t)
+	is.NoErr(AssignRacks(DefaultConfig.WGLConfig(), g, [][]byte{englishBytes("AEINRST"), nil}, AssignEmptyIfUnambiguous))
+	sendAnnotatedEvent(t, g, &ipc.ClientGameplayEvent{Type: ipc.ClientGameplayEvent_TILE_PLACEMENT,
+		PositionCoords: "8D", MachineLetters: englishBytes("RETAINS")})
+	is.Equal(len(g.Racks[1]), RackTileLimit) // auto-filled
+
+	exch := append([]byte{}, g.Racks[1][:2]...)
+	sendAnnotatedEvent(t, g, &ipc.ClientGameplayEvent{Type: ipc.ClientGameplayEvent_EXCHANGE, MachineLetters: exch})
+	evt := g.Events[len(g.Events)-1]
+	is.Equal(evt.Type, ipc.GameEvent_EXCHANGE)
+	is.Equal(sortedTiles(evt.Rack), sortedTiles(exch))
+}
+
+// A play that happens to fit inside the auto-filled rack must record only the
+// tiles it used.
+func TestAnnotatedPlayDoesNotRecordAutofill(t *testing.T) {
+	is := is.New(t)
+	g := newAnnotatedGameForTest(t)
+	is.NoErr(AssignRacks(DefaultConfig.WGLConfig(), g, [][]byte{englishBytes("AEINRST"), nil}, AssignEmptyIfUnambiguous))
+	sendAnnotatedEvent(t, g, &ipc.ClientGameplayEvent{Type: ipc.ClientGameplayEvent_TILE_PLACEMENT,
+		PositionCoords: "8D", MachineLetters: englishBytes("RETAINS")})
+	// Simulate the random fill containing the played tiles.
+	is.NoErr(AssignRacks(DefaultConfig.WGLConfig(), g, [][]byte{nil, englishBytes("DOGXYZE")}, AssignEmptyIfUnambiguous))
+	g.KnownRacks[1] = nil
+
+	sendAnnotatedEvent(t, g, &ipc.ClientGameplayEvent{Type: ipc.ClientGameplayEvent_TILE_PLACEMENT,
+		PositionCoords: "E7", MachineLetters: englishBytes("D.G")})
+	evt := g.Events[len(g.Events)-1]
+	is.Equal(sortedTiles(evt.Rack), sortedTiles(englishBytes("DG")))
+
+	// The next pass by the same player records only the tiles still known,
+	// i.e. none, rather than the replacement draw.
+	sendAnnotatedEvent(t, g, &ipc.ClientGameplayEvent{Type: ipc.ClientGameplayEvent_PASS})
+	sendAnnotatedEvent(t, g, &ipc.ClientGameplayEvent{Type: ipc.ClientGameplayEvent_PASS})
+	evt = g.Events[len(g.Events)-1]
+	is.Equal(evt.PlayerIndex, uint32(1))
+	is.Equal(len(evt.Rack), 0)
+}
+
+// Tiles the annotator did enter are still recorded in full, and a partial
+// entry is recorded as entered rather than with its auto-filled remainder.
+func TestAnnotatedEnteredRackIsRecorded(t *testing.T) {
+	is := is.New(t)
+	g := newAnnotatedGameForTest(t)
+	is.NoErr(AssignRacks(DefaultConfig.WGLConfig(), g, [][]byte{englishBytes("AEINRST"), nil}, AssignEmptyIfUnambiguous))
+	sendAnnotatedEvent(t, g, &ipc.ClientGameplayEvent{Type: ipc.ClientGameplayEvent_TILE_PLACEMENT,
+		PositionCoords: "8D", MachineLetters: englishBytes("RETAINS")})
+
+	is.NoErr(AssignRacks(DefaultConfig.WGLConfig(), g, [][]byte{nil, englishBytes("QVW")}, AlwaysAssignEmpty))
+	is.Equal(len(g.Racks[1]), RackTileLimit)
+	sendAnnotatedEvent(t, g, &ipc.ClientGameplayEvent{Type: ipc.ClientGameplayEvent_EXCHANGE, MachineLetters: englishBytes("QV")})
+	evt := g.Events[len(g.Events)-1]
+	is.Equal(sortedTiles(evt.Rack), sortedTiles(englishBytes("QVW")))
+
+	is.NoErr(AssignRacks(DefaultConfig.WGLConfig(), g, [][]byte{englishBytes("BCDEFGH"), nil}, AlwaysAssignEmpty))
+	sendAnnotatedEvent(t, g, &ipc.ClientGameplayEvent{Type: ipc.ClientGameplayEvent_EXCHANGE, MachineLetters: englishBytes("B")})
+	evt = g.Events[len(g.Events)-1]
+	is.Equal(sortedTiles(evt.Rack), sortedTiles(englishBytes("BCDEFGH")))
+}
+
+// drainBagToBoard moves all but `leave` bag tiles onto the top and bottom
+// rows of the board, out of the way of plays through the centre, keeping
+// tile accounting valid.
+func drainBagToBoard(t *testing.T, g *ipc.GameDocument, leave int) {
+	squares := []int{}
+	cols := int(g.Board.NumCols)
+	for _, row := range []int{0, 1, 2, 3, 11, 12, 13, 14} {
+		for c := 0; c < cols; c++ {
+			squares = append(squares, row*cols+c)
+		}
+	}
+	n := len(g.Bag.Tiles) - leave
+	if n > len(squares) {
+		t.Fatalf("cannot drain %d tiles", n)
+	}
+	for i := 0; i < n; i++ {
+		tile := g.Bag.Tiles[i]
+		if tile == 0 {
+			tile = 0x81 // a blank on the board is stored designated
+		}
+		g.Board.Tiles[squares[i]] = tile
+	}
+	g.Bag.Tiles = g.Bag.Tiles[n:]
+}
+
+// With the bag empty, entering one rack fixes the other: it must hold the
+// remaining unseen tiles, so it is recorded in full.
+func TestAnnotatedEndgameOpponentRackIsForced(t *testing.T) {
+	is := is.New(t)
+	g := newAnnotatedGameForTest(t)
+	drainBagToBoard(t, g, 0)
+	is.NoErr(AssignRacks(DefaultConfig.WGLConfig(), g, [][]byte{append([]byte{}, g.Racks[0]...), nil}, AlwaysAssignEmpty))
+	opp := append([]byte{}, g.Racks[1]...)
+
+	sendAnnotatedEvent(t, g, &ipc.ClientGameplayEvent{Type: ipc.ClientGameplayEvent_PASS})
+	sendAnnotatedEvent(t, g, &ipc.ClientGameplayEvent{Type: ipc.ClientGameplayEvent_PASS})
+	evt := g.Events[len(g.Events)-1]
+	is.Equal(evt.PlayerIndex, uint32(1))
+	is.Equal(sortedTiles(evt.Rack), sortedTiles(opp))
+}
+
+// With the bag empty but no rack entered, the split of the unseen tiles is
+// the random fill and must not be recorded.
+func TestAnnotatedEndgameUnenteredRacksStayUnknown(t *testing.T) {
+	is := is.New(t)
+	g := newAnnotatedGameForTest(t)
+	drainBagToBoard(t, g, 0)
+	is.NoErr(AssignRacks(DefaultConfig.WGLConfig(), g, [][]byte{nil, nil}, AlwaysAssignEmpty))
+
+	sendAnnotatedEvent(t, g, &ipc.ClientGameplayEvent{Type: ipc.ClientGameplayEvent_PASS})
+	sendAnnotatedEvent(t, g, &ipc.ClientGameplayEvent{Type: ipc.ClientGameplayEvent_PASS})
+	for _, evt := range g.Events {
+		is.Equal(len(evt.Rack), 0)
+	}
+}
+
+// A play that draws the last tiles leaves that player's new rack forced when
+// the opponent's rack is fully known.
+func TestAnnotatedDrawEmptyingBagForcesRack(t *testing.T) {
+	is := is.New(t)
+	g := newAnnotatedGameForTest(t)
+	is.NoErr(AssignRacks(DefaultConfig.WGLConfig(), g, [][]byte{englishBytes("AEINRST"), nil}, AlwaysAssignEmpty))
+	is.NoErr(AssignRacks(DefaultConfig.WGLConfig(), g, [][]byte{englishBytes("AEINRST"), append([]byte{}, g.Racks[1]...)}, AlwaysAssignEmpty))
+	drainBagToBoard(t, g, 3)
+
+	sendAnnotatedEvent(t, g, &ipc.ClientGameplayEvent{Type: ipc.ClientGameplayEvent_TILE_PLACEMENT,
+		PositionCoords: "8D", MachineLetters: englishBytes("RETAINS")})
+	is.Equal(tiles.InBag(g.Bag), 0)
+	drawn := append([]byte{}, g.Racks[0]...)
+	is.Equal(len(drawn), 3)
+
+	sendAnnotatedEvent(t, g, &ipc.ClientGameplayEvent{Type: ipc.ClientGameplayEvent_PASS})
+	sendAnnotatedEvent(t, g, &ipc.ClientGameplayEvent{Type: ipc.ClientGameplayEvent_PASS})
+	evt := g.Events[len(g.Events)-1]
+	is.Equal(evt.PlayerIndex, uint32(0))
+	is.Equal(sortedTiles(evt.Rack), sortedTiles(drawn))
+}
+
+func timePenaltyEvt(pidx uint32, points int32) *ipc.ClientGameplayEvent {
+	return &ipc.ClientGameplayEvent{
+		Type:               ipc.ClientGameplayEvent_TIME_PENALTY,
+		GameId:             "9zaaSuN5",
+		PenaltyPoints:      points,
+		PenaltyPlayerIndex: pidx,
+	}
+}
+
+func TestTimePenalty(t *testing.T) {
+	is := is.New(t)
+	ctx := ctxForTests()
+	gdoc := loadGDoc("document-gameover.json")
+	gdoc.Type = ipc.GameType_ANNOTATED
+	onTurn := gdoc.PlayerOnTurn
+	numEvts := len(gdoc.Events)
+
+	err := ProcessGameplayEvent(ctx, DefaultConfig.WGLConfig(), timePenaltyEvt(1, 10), "", gdoc)
+	is.NoErr(err)
+	is.Equal(gdoc.CurrentScores, []int32{446, 312})
+	is.Equal(gdoc.Winner, int32(0))
+	is.Equal(gdoc.PlayerOnTurn, onTurn)
+	is.Equal(len(gdoc.Events), numEvts+1)
+	last := gdoc.Events[numEvts]
+	is.Equal(last.Type, ipc.GameEvent_TIME_PENALTY)
+	is.Equal(last.PlayerIndex, uint32(1))
+	is.Equal(last.LostScore, int32(10))
+	is.Equal(last.Cumulative, int32(312))
+
+	// A large enough penalty flips the winner.
+	err = ProcessGameplayEvent(ctx, DefaultConfig.WGLConfig(), timePenaltyEvt(0, 140), "", gdoc)
+	is.NoErr(err)
+	is.Equal(gdoc.CurrentScores, []int32{306, 312})
+	is.Equal(gdoc.Winner, int32(1))
+	is.Equal(gdoc.Events[len(gdoc.Events)-1].Rack, gdoc.Racks[0])
+
+	// Replaying the events reproduces the penalties and the winner.
+	replayed := loadGDoc("document-gameover.json")
+	replayed.Type = ipc.GameType_ANNOTATED
+	err = ReplayEvents(ctx, DefaultConfig.WGLConfig(), replayed, gdoc.Events, false)
+	is.NoErr(err)
+	is.Equal(replayed.PlayState, ipc.PlayState_GAME_OVER)
+	is.Equal(replayed.CurrentScores, gdoc.CurrentScores)
+	is.Equal(replayed.Winner, gdoc.Winner)
+	is.Equal(len(replayed.Events), len(gdoc.Events))
+}
+
+// Re-applying a penalty after an amendment recomputes its cumulative score
+// from the points lost rather than trusting the stale saved cumulative.
+func TestTimePenaltyEditorModeRecomputesCumulative(t *testing.T) {
+	is := is.New(t)
+	ctx := ctxForTests()
+	gdoc := loadGDoc("document-gameover.json")
+	gdoc.Type = ipc.GameType_ANNOTATED
+	gdoc.CurrentScores[1] = 400
+	err := ApplyEventInEditorMode(ctx, DefaultConfig.WGLConfig(), gdoc, &ipc.GameEvent{
+		Type:        ipc.GameEvent_TIME_PENALTY,
+		PlayerIndex: 0,
+		LostScore:   50,
+		Cumulative:  396,
+	})
+	is.NoErr(err)
+	is.Equal(gdoc.CurrentScores, []int32{396, 400})
+	is.Equal(gdoc.Events[len(gdoc.Events)-1].Cumulative, int32(396))
+	is.Equal(gdoc.Winner, int32(1))
+}
+
+func TestTimePenaltyRejected(t *testing.T) {
+	ctx := ctxForTests()
+	cases := []struct {
+		name   string
+		doc    string
+		native bool
+		evt    *ipc.ClientGameplayEvent
+	}{
+		{"not annotated", "document-gameover.json", true, timePenaltyEvt(0, 10)},
+		{"game not over", "document-earlygame.json", false, timePenaltyEvt(0, 10)},
+		{"zero points", "document-gameover.json", false, timePenaltyEvt(0, 0)},
+		{"negative points", "document-gameover.json", false, timePenaltyEvt(0, -10)},
+		{"too many points", "document-gameover.json", false, timePenaltyEvt(0, maxTimePenalty+1)},
+		{"bad player", "document-gameover.json", false, timePenaltyEvt(2, 10)},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			is := is.New(t)
+			gdoc := loadGDoc(tc.doc)
+			if !tc.native {
+				gdoc.Type = ipc.GameType_ANNOTATED
+			}
+			tc.evt.GameId = gdoc.Uid
+			before := proto.Clone(gdoc)
+			err := ProcessGameplayEvent(ctx, DefaultConfig.WGLConfig(), tc.evt, "", gdoc)
+			is.True(err != nil)
+			is.True(proto.Equal(before, gdoc))
+		})
+	}
+}

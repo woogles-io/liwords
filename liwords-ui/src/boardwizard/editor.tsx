@@ -18,6 +18,8 @@ import { GameInfo } from "../gameroom/game_info";
 
 import {
   ClientGameplayEvent,
+  ClientGameplayEvent_EventType,
+  ClientGameplayEventSchema,
   PlayerInfoSchema as OMGPlayerInfoSchema,
   ChallengeRule as OMGChallengeRule,
   GameDocumentSchema,
@@ -37,6 +39,7 @@ import {
 import { useClient, flashError } from "../utils/hooks/connect";
 import { useDefinitionAndPhonyChecker } from "../utils/hooks/definitions";
 import { EditorControl } from "./editor_control";
+import { TimePenaltyControl } from "./time_penalty";
 import { PlayState } from "../gen/api/proto/ipc/omgwords_pb";
 import { syntheticGameInfo } from "./synthetic_game_info";
 import { EditorLandingPage } from "./new_game";
@@ -336,6 +339,27 @@ export const BoardEditor = () => {
     }
   };
 
+  // Time penalties are always appended after the end of the game, never sent
+  // as amendments.
+  const addTimePenalty = async (playerIndex: number, points: number) => {
+    try {
+      await eventClient.sendGameEvent({
+        event: create(ClientGameplayEventSchema, {
+          type: ClientGameplayEvent_EventType.TIME_PENALTY,
+          gameId: gameContext.gameID,
+          penaltyPoints: points,
+          penaltyPlayerIndex: playerIndex,
+        }),
+        userId: gameContext.gameDocument.players[playerIndex].userId,
+        amendment: false,
+        eventNumber: gameContext.turns.length,
+      });
+      handleExamineLast();
+    } catch (e) {
+      flashError(e);
+    }
+  };
+
   const omgPlayerInfo = (pname: string, idx: number) => {
     const collapsed = pname.replaceAll(" ", "");
     return create(OMGPlayerInfoSchema, {
@@ -465,6 +489,20 @@ export const BoardEditor = () => {
               editGame={editGame}
             />
           </Card>
+          {gameContext.playState === PlayState.GAME_OVER && (
+            <Card
+              title="Time penalty"
+              className="editor-time-penalty"
+              style={{ marginTop: 12 }}
+            >
+              <TimePenaltyControl
+                playerNames={gameContext.gameDocument.players.map(
+                  (p) => p.realName || p.nickname,
+                )}
+                onSubmit={addTimePenalty}
+              />
+            </Card>
+          )}
         </div>
         <div className="sticky-player-card-container">
           <PlayerCards
