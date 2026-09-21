@@ -12,6 +12,7 @@ import { Board } from "./board";
 import {
   GameEvent,
   GameEvent_Direction,
+  GameEvent_Type,
 } from "../../gen/api/proto/vendored/macondo/macondo_pb";
 import {
   ClientGameplayEvent_EventType,
@@ -192,4 +193,32 @@ export const computeLeaveWithGaps = (tilesPlayed: string, rack: string) => {
 export const computeLeave = (tilesPlayed: string, rack: string): string => {
   const lwg = computeLeaveWithGaps(tilesPlayed, rack);
   return Array.from(lwg.replaceAll(" ", "")).sort().join("");
+};
+
+// The tiles a player kept after their most recent turn in `turns`, or "" if
+// they have not moved yet.
+export const retainedLeave = (
+  turns: Array<GameEvent>,
+  playerIndex: number,
+): string => {
+  let phonyReturned = false;
+  for (let i = turns.length - 1; i >= 0; i--) {
+    const evt = turns[i];
+    if (evt.playerIndex !== playerIndex) continue;
+    switch (evt.type) {
+      case GameEvent_Type.PHONY_TILES_RETURNED:
+        phonyReturned = true;
+        break;
+      case GameEvent_Type.TILE_PLACEMENT_MOVE:
+        return phonyReturned
+          ? computeLeave("", evt.rack)
+          : computeLeave(evt.playedTiles, evt.rack);
+      case GameEvent_Type.EXCHANGE:
+        return computeLeave(evt.exchanged, evt.rack);
+      case GameEvent_Type.PASS:
+      case GameEvent_Type.UNSUCCESSFUL_CHALLENGE_TURN_LOSS:
+        return computeLeave("", evt.rack);
+    }
+  }
+  return "";
 };
