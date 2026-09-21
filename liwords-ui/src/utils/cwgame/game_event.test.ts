@@ -1,5 +1,10 @@
 import { EphemeralTile } from "./common";
-import { computeLeave, tilesetToMoveEvent } from "./game_event";
+import { create } from "@bufbuild/protobuf";
+import {
+  GameEvent_Type,
+  GameEventSchema,
+} from "../../gen/api/proto/vendored/macondo/macondo_pb";
+import { computeLeave, retainedLeave, tilesetToMoveEvent } from "./game_event";
 import { Board } from "./board";
 import { englishLetterToML } from "../../constants/alphabets";
 
@@ -158,4 +163,46 @@ it("tests event with blank", () => {
 it("tests computeLeave", () => {
   expect(computeLeave("DOGS", "GOURDES")).toBe("ERU");
   expect(computeLeave("DOgS", "?OURDES")).toBe("ERU");
+});
+
+describe("retainedLeave", () => {
+  const evt = (fields: Parameters<typeof create<typeof GameEventSchema>>[1]) =>
+    create(GameEventSchema, fields);
+  const turns = [
+    evt({
+      playerIndex: 0,
+      type: GameEvent_Type.TILE_PLACEMENT_MOVE,
+      rack: "AEINRST",
+      playedTiles: "RAN.",
+    }),
+    evt({
+      playerIndex: 1,
+      type: GameEvent_Type.EXCHANGE,
+      rack: "?DEIUUV",
+      exchanged: "UUV",
+    }),
+  ];
+
+  it("returns the on-turn player's leave from their last move", () => {
+    expect(retainedLeave(turns, 0)).toBe("EIST");
+    expect(retainedLeave(turns, 1)).toBe("?DEI");
+  });
+
+  it("keeps the whole rack after a phony is returned", () => {
+    const withPhony = [
+      ...turns,
+      evt({
+        playerIndex: 0,
+        type: GameEvent_Type.TILE_PLACEMENT_MOVE,
+        rack: "EFISTXZ",
+        playedTiles: "ZEX",
+      }),
+      evt({ playerIndex: 0, type: GameEvent_Type.PHONY_TILES_RETURNED }),
+    ];
+    expect(retainedLeave(withPhony, 0)).toBe("EFISTXZ");
+  });
+
+  it("is empty before the player's first turn", () => {
+    expect(retainedLeave(turns.slice(0, 1), 1)).toBe("");
+  });
 });
