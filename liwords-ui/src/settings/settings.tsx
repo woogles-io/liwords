@@ -1,5 +1,5 @@
-import React, { useEffect, useCallback, useState } from "react";
-import { useParams } from "react-router";
+import React, { useEffect, useCallback, useRef, useState } from "react";
+import { useLocation, useParams } from "react-router";
 import { App } from "antd";
 import { TopBar } from "../navigation/topbar";
 import { ChangePassword } from "./change_password";
@@ -107,6 +107,15 @@ export const Settings = React.memo(() => {
   const [showClosedAccount, setShowClosedAccount] = useState(false);
   const [accountClosureError, setAccountClosureError] = useState("");
   const navigate = useNavigate();
+
+  // The top bar's Settings submenu links here while a settings page may
+  // already be mounted, so follow each navigation, not just the first load.
+  const location = useLocation();
+  const initialLocationKey = useRef(location.key);
+  useEffect(() => {
+    if (location.key === initialLocationKey.current) return;
+    setCategory(getInitialCategory(section, loggedIn));
+  }, [section, location.key, loggedIn]);
 
   const profileClient = useClient(ProfileService);
   const authClient = useClient(AuthenticationService);
