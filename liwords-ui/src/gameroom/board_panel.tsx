@@ -773,6 +773,7 @@ export const BoardPanel = React.memo((props: Props) => {
         if (
           key === " " &&
           props.boardEditingMode &&
+          !arrowProperties.show &&
           placedTiles.size === 0 &&
           !props.gameDone
         ) {
