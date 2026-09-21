@@ -33,3 +33,19 @@ WHERE users.uuid = ANY(@user_uuids::text[])
     AND user_actions.removed_time IS NULL
     AND (user_actions.end_time IS NULL OR user_actions.end_time > NOW())
 ORDER BY users.uuid, user_actions.action_type, user_actions.start_time DESC;
+-- Record automod's verdict for one player in one game, and report whether this
+-- call is the one that recorded it.
+--
+-- Returns 1 when the row was inserted and 0 when it already existed. Zero means
+-- automod has already judged this game for this player, and its effects --
+-- which add to or subtract from a notoriety score, and are not idempotent --
+-- must not be applied again.
+-- name: RecordAutomodVerdict :execrows
+INSERT INTO automod_verdicts (player_id, game_id, verdict)
+VALUES (@player_id, @game_id, @verdict)
+ON CONFLICT (player_id, game_id) DO NOTHING;
+
+-- name: GetAutomodVerdict :one
+SELECT player_id, game_id, verdict, created_at
+FROM automod_verdicts
+WHERE player_id = @player_id AND game_id = @game_id;

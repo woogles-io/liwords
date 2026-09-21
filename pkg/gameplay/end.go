@@ -136,7 +136,7 @@ func performEndgameDuties(ctx context.Context, g *entity.Game,
 	}
 	if cfg, cfgErr := config.Ctx(ctx); cfgErr == nil && cfg.DualWriteTurns {
 		if penaltyEvts := g.History().Events[evtIdxBeforePenalties:]; len(penaltyEvts) > 0 {
-			if dwtErr := stores.GameStore.AppendTurns(ctx, g.GameID(), evtIdxBeforePenalties, penaltyEvts); dwtErr != nil {
+			if dwtErr := stores.GameStore.StageTurns(g, evtIdxBeforePenalties, penaltyEvts); dwtErr != nil {
 				log.Err(dwtErr).Str("gameID", g.GameID()).Msg("dual-write-turns-error-penalty")
 			}
 		}
@@ -169,7 +169,7 @@ func performEndgameDuties(ctx context.Context, g *entity.Game,
 	}
 	if cfg, cfgErr := config.Ctx(ctx); cfgErr == nil && cfg.DualWriteTurns {
 		if finalScoreEvts := g.History().Events[evtIdxBeforeFinalScores:]; len(finalScoreEvts) > 0 {
-			if dwtErr := stores.GameStore.AppendTurns(ctx, g.GameID(), evtIdxBeforeFinalScores, finalScoreEvts); dwtErr != nil {
+			if dwtErr := stores.GameStore.StageTurns(g, evtIdxBeforeFinalScores, finalScoreEvts); dwtErr != nil {
 				log.Err(dwtErr).Str("gameID", g.GameID()).Msg("dual-write-turns-error-final-scores")
 			}
 		}
@@ -245,17 +245,11 @@ func performEndgameDuties(ctx context.Context, g *entity.Game,
 	wrapped.AddAudience(entity.AudLobby, "gameEnded")
 	g.SendChange(wrapped)
 
-	if g.TournamentData != nil && g.TournamentData.Id != "" {
+	isTournamentGame := g.TournamentData != nil && g.TournamentData.Id != ""
+	if isTournamentGame {
 		err := tournament.HandleTournamentGameEnded(ctx, stores.TournamentStore, stores.UserStore, g, stores.Queries)
 		if err != nil {
 			log.Err(err).Str("gid", g.GameID()).Msg("error-tourney-game-ended")
-		}
-	} else if g.GameReq.RatingMode == pb.RatingMode_RATED {
-		// Applies penalties to players who have misbehaved during the game
-		// Does not apply for tournament games
-		err = mod.Automod(ctx, stores.UserStore, stores.NotorietyStore, users[0], users[1], g)
-		if err != nil {
-			log.Err(err).Str("gid", g.GameID()).Msg("automod-error")
 		}
 	}
 
@@ -264,6 +258,37 @@ func performEndgameDuties(ctx context.Context, g *entity.Game,
 	err = stores.GameStore.Set(ctx, g)
 	if err != nil {
 		return err
+	}
+
+	// Applies penalties to players who have misbehaved during the game.
+	// Does not apply for tournament games.
+	//
+	// AFTER the save, deliberately. This used to run before it, which meant a
+	// player was penalised for a game the database still recorded as in
+	// progress -- and every guard against judging a game twice reads exactly
+	// that: AdjudicateGame, ForfeitGame and AbortGame check game_end_reason,
+	// TimedOut checks the play state. So for as long as the save had not
+	// landed, nothing stopped a second adjudication filing a second penalty.
+	//
+	// That window is not small. Everything above it -- two user mutexes, the
+	// ratings computation, ComputeGameStats, two NATS publishes -- sits between
+	// the game ending in memory and game_end_reason reaching the database. In
+	// production on 2026-08-07 it stayed open for 32 seconds while a 10-second
+	// adjudicator ticked, and four players were penalised twice for the same
+	// game. Six such rows exist in five years of data.
+	//
+	// automod_verdicts now makes this idempotent regardless of order, so this
+	// is no longer the thing standing between a player and a double penalty.
+	// It is here because penalising someone for a game that is not yet recorded
+	// as finished is the wrong way round, and because the failure modes are
+	// better this way: if the save fails now, nobody has been judged for a game
+	// that did not end, and if automod fails, a game ends without a penalty
+	// being filed. Losing a penalty beats inventing one.
+	if !isTournamentGame && g.GameReq.RatingMode == pb.RatingMode_RATED {
+		err = mod.Automod(ctx, stores.UserStore, stores.NotorietyStore, users[0], users[1], g)
+		if err != nil {
+			log.Err(err).Str("gid", g.GameID()).Msg("automod-error")
+		}
 	}
 
 	if stores.GameHistoryArchiver != nil {
