@@ -6,8 +6,7 @@ import React, {
   useState,
 } from "react";
 import { useNavigate } from "react-router";
-import { useQuery } from "@connectrpc/connect-query";
-import { getGameOwner } from "../gen/api/proto/omgwords_service/omgwords-GameEventService_connectquery";
+import { useOwnsAnnotatedGame } from "../utils/hooks/annotated_game_owner";
 import { Affix, App, Button, Dropdown, MenuProps, Popconfirm } from "antd";
 
 import {
@@ -332,17 +331,10 @@ const GameControls = React.memo((props: Props) => {
   );
 
   const navigate = useNavigate();
-  // Only the annotated game's owner goes back to the editor on exit.
-  const { data: gameOwner } = useQuery(
-    getGameOwner,
-    { gameId: gameContext.gameID },
-    { enabled: !!(props.annotated && gameContext.gameID && userID) },
+  const ownsAnnotatedGame = useOwnsAnnotatedGame(
+    gameContext.gameID,
+    props.annotated,
   );
-  const ownsAnnotatedGame =
-    !!props.annotated &&
-    !!userID &&
-    !!gameOwner?.found &&
-    gameOwner.creatorId === userID;
   const handleExitToLobby = useCallback(() => {
     navigate(
       props.boardEditingMode || ownsAnnotatedGame

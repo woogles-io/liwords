@@ -10,6 +10,7 @@ import { HomeOutlined, RightOutlined } from "@ant-design/icons";
 
 import { Link, useSearchParams, useParams } from "react-router";
 import { useFirefoxPatch } from "../utils/hooks/firefox";
+import { useOwnsAnnotatedGame } from "../utils/hooks/annotated_game_owner";
 import { useDefinitionAndPhonyChecker } from "../utils/hooks/definitions";
 import { BoardPanel } from "./board_panel";
 import { TopBar } from "../navigation/topbar";
@@ -330,6 +331,7 @@ const ChatIfVisible: React.FC<{ children: React.ReactNode }> = ({
 
 export const Table = React.memo((props: Props) => {
   const { gameID } = useParams();
+  const ownsAnnotatedGame = useOwnsAnnotatedGame(gameID, props.annotated);
   const { addChat } = useChatStoreContext();
 
   const { gameContext: examinableGameContext } =
@@ -1216,6 +1218,11 @@ export const Table = React.memo((props: Props) => {
               <HomeOutlined />
               Back to Broadcast
             </Link>
+          ) : ownsAnnotatedGame ? (
+            <Link to="/editor">
+              <HomeOutlined />
+              Back to editor
+            </Link>
           ) : (
             <Link to="/">
               <HomeOutlined />
@@ -1247,6 +1254,7 @@ export const Table = React.memo((props: Props) => {
       gameInfo.leagueId,
       gameInfo.leagueSlug,
       gameInfo.tournamentId,
+      ownsAnnotatedGame,
       tournamentContext.metadata,
       broadcastCtx,
       nextCorresGame,
