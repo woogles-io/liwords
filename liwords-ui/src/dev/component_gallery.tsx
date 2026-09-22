@@ -13,6 +13,7 @@ import {
   Tag as AntTag,
   Tooltip as AntTooltip,
 } from "antd";
+import { StyleDiffReport, useStyleDiff, type Measurable } from "./style_diff";
 import {
   Alert,
   Badge,
@@ -54,6 +55,8 @@ import {
 type SpecimenProps = {
   name: string;
   note?: string;
+  /** Selectors for the element to compare, if this row is measurable. */
+  measure?: Measurable;
   antd: React.ReactNode;
   mantine: React.ReactNode;
 };
@@ -65,11 +68,14 @@ type SpecimenProps = {
 const Pane = ({
   label,
   children,
+  rootRef,
 }: {
   label: string;
   children: React.ReactNode;
+  rootRef?: (el: HTMLDivElement | null) => void;
 }) => (
   <Box
+    ref={rootRef}
     style={{
       border: "1px dashed var(--woogles-color-gray-subtle)",
       borderRadius: 4,
@@ -92,29 +98,41 @@ const Pane = ({
   </Box>
 );
 
-const Specimen = ({ name, note, antd, mantine }: SpecimenProps) => (
-  <Box
-    style={{
-      display: "grid",
-      gridTemplateColumns: "160px 1fr 1fr",
-      gap: 16,
-      alignItems: "start",
-      padding: "20px 0",
-      borderTop: "1px solid var(--woogles-color-gray-subtle)",
-    }}
-  >
-    <Box pt={4}>
-      <Text fw={700}>{name}</Text>
-      {note && (
-        <Text size="xs" c="dimmed" mt={2}>
-          {note}
-        </Text>
-      )}
+const Specimen = ({ name, note, measure, antd, mantine }: SpecimenProps) => {
+  const diff = useStyleDiff(measure);
+  return (
+    <Box
+      style={{
+        display: "grid",
+        gridTemplateColumns: "160px 1fr 1fr",
+        gap: 16,
+        alignItems: "start",
+        padding: "20px 0",
+        borderTop: "1px solid var(--woogles-color-gray-subtle)",
+      }}
+    >
+      <Box pt={4}>
+        <Text fw={700}>{name}</Text>
+        {note && (
+          <Text size="xs" c="dimmed" mt={2}>
+            {note}
+          </Text>
+        )}
+      </Box>
+      <Box>
+        <Pane label="antd" rootRef={diff.setAntdRoot}>
+          {antd}
+        </Pane>
+      </Box>
+      <Box>
+        <Pane label="mantine" rootRef={diff.setMantineRoot}>
+          {mantine}
+        </Pane>
+        <StyleDiffReport {...diff} />
+      </Box>
     </Box>
-    <Pane label="antd">{antd}</Pane>
-    <Pane label="mantine">{mantine}</Pane>
-  </Box>
-);
+  );
+};
 
 const rows = [
   { key: "1", player: "cesar", rating: 1842, result: "Win" },
@@ -141,6 +159,7 @@ export const ComponentGallery = React.memo(() => {
 
       <Specimen
         name="Button"
+        measure={{ antd: "button.ant-btn-primary", mantine: "button" }}
         note="base.scss @mixin button, 104 lines"
         antd={
           <>
@@ -181,6 +200,7 @@ export const ComponentGallery = React.memo(() => {
 
       <Specimen
         name="Text inputs"
+        measure={{ antd: "input.ant-input", mantine: "input" }}
         antd={
           <>
             <AntInput placeholder="Text" />
@@ -201,6 +221,7 @@ export const ComponentGallery = React.memo(() => {
 
       <Specimen
         name="Select"
+        measure={{ antd: ".ant-select-selector", mantine: "input" }}
         note="184 Select.Option children to convert"
         antd={
           <AntSelect
@@ -252,6 +273,7 @@ export const ComponentGallery = React.memo(() => {
 
       <Specimen
         name="Tag / Badge"
+        measure={{ antd: ".ant-tag", mantine: ".mantine-Badge-root" }}
         note="custom 16-colour palette in App.scss"
         antd={
           <>
@@ -273,6 +295,7 @@ export const ComponentGallery = React.memo(() => {
 
       <Specimen
         name="Alert"
+        measure={{ antd: ".ant-alert", mantine: ".mantine-Alert-root" }}
         antd={
           <>
             <AntAlert message="Info message" type="info" />
@@ -331,6 +354,7 @@ export const ComponentGallery = React.memo(() => {
 
       <Specimen
         name="Table"
+        measure={{ antd: "th.ant-table-cell", mantine: "th" }}
         note="38 instances; Mantine's is presentational only"
         antd={
           <AntTable
