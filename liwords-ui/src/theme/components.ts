@@ -33,6 +33,12 @@ export const components = {
     }),
     vars: (_theme, props) => {
       const filled = isFilled(props.variant);
+
+      // An explicit `color` means the call site wants that colour, so only
+      // geometry is imposed. Without this guard every <Button color="red">
+      // in the app would be forced back to Woogles blue.
+      const themed = props.color === undefined;
+
       return {
         root: {
           "--button-fz": "12px",
@@ -44,21 +50,23 @@ export const components = {
           "--button-radius": filled ? "3px" : "0",
 
           // Hover and rest are identical on purpose -- see the CSS module.
-          ...(filled
-            ? {
-                "--button-bg": "var(--woogles-color-button)",
-                "--button-hover": "var(--woogles-color-button)",
-                "--button-color": "var(--woogles-color-button-text)",
-                "--button-hover-color": "var(--woogles-color-button-text)",
-                "--button-bd": "0",
-              }
-            : {
-                "--button-bg": "var(--woogles-color-background)",
-                "--button-hover": "var(--woogles-color-background)",
-                "--button-color": "var(--woogles-color-primary-dark)",
-                "--button-hover-color": "var(--woogles-color-primary-dark)",
-                "--button-bd": "1px solid var(--woogles-color-primary-dark)",
-              }),
+          ...(!themed
+            ? {}
+            : filled
+              ? {
+                  "--button-bg": "var(--woogles-color-button)",
+                  "--button-hover": "var(--woogles-color-button)",
+                  "--button-color": "var(--woogles-color-button-text)",
+                  "--button-hover-color": "var(--woogles-color-button-text)",
+                  "--button-bd": "0",
+                }
+              : {
+                  "--button-bg": "var(--woogles-color-background)",
+                  "--button-hover": "var(--woogles-color-background)",
+                  "--button-color": "var(--woogles-color-primary-dark)",
+                  "--button-hover-color": "var(--woogles-color-primary-dark)",
+                  "--button-bd": "1px solid var(--woogles-color-primary-dark)",
+                }),
         },
       };
     },

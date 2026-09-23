@@ -180,6 +180,11 @@ export const ComponentGallery = React.memo(() => {
             antd: '[data-cmp="disabled-filled"]',
             mantine: '[data-cmp="disabled-filled"]',
           },
+          {
+            label: "danger (filled)",
+            antd: '[data-cmp="danger"]',
+            mantine: '[data-cmp="danger"]',
+          },
         ]}
         note="base.scss @mixin button, 104 lines"
         antd={
@@ -194,7 +199,9 @@ export const ComponentGallery = React.memo(() => {
             <AntButton type="primary" disabled data-cmp="disabled-filled">
               Disabled filled
             </AntButton>
-            <AntButton danger>Danger</AntButton>
+            <AntButton type="primary" danger data-cmp="danger">
+              Danger
+            </AntButton>
           </>
         }
         mantine={
@@ -209,7 +216,9 @@ export const ComponentGallery = React.memo(() => {
             <Button disabled data-cmp="disabled-filled">
               Disabled filled
             </Button>
-            <Button color="red">Danger</Button>
+            <Button color="red" data-cmp="danger">
+              Danger
+            </Button>
           </>
         }
       />
