@@ -55,8 +55,8 @@ import {
 type SpecimenProps = {
   name: string;
   note?: string;
-  /** Selectors for the element to compare, if this row is measurable. */
-  measure?: Measurable;
+  /** Like-for-like comparisons, if this row is measurable. */
+  measure?: Measurable[];
   antd: React.ReactNode;
   mantine: React.ReactNode;
 };
@@ -159,21 +159,45 @@ export const ComponentGallery = React.memo(() => {
 
       <Specimen
         name="Button"
-        measure={{ antd: "button.ant-btn-primary", mantine: "button" }}
+        measure={[
+          {
+            label: "primary",
+            antd: '[data-cmp="primary"]',
+            mantine: '[data-cmp="primary"]',
+          },
+          {
+            label: "default",
+            antd: '[data-cmp="default"]',
+            mantine: '[data-cmp="default"]',
+          },
+          {
+            label: "disabled",
+            antd: '[data-cmp="disabled"]',
+            mantine: '[data-cmp="disabled"]',
+          },
+        ]}
         note="base.scss @mixin button, 104 lines"
         antd={
           <>
-            <AntButton>Default</AntButton>
-            <AntButton type="primary">Primary</AntButton>
-            <AntButton disabled>Disabled</AntButton>
+            <AntButton data-cmp="default">Default</AntButton>
+            <AntButton type="primary" data-cmp="primary">
+              Primary
+            </AntButton>
+            <AntButton disabled data-cmp="disabled">
+              Disabled
+            </AntButton>
             <AntButton danger>Danger</AntButton>
           </>
         }
         mantine={
           <>
-            <Button variant="default">Default</Button>
-            <Button>Primary</Button>
-            <Button disabled>Disabled</Button>
+            <Button variant="default" data-cmp="default">
+              Default
+            </Button>
+            <Button data-cmp="primary">Primary</Button>
+            <Button disabled data-cmp="disabled">
+              Disabled
+            </Button>
             <Button color="red">Danger</Button>
           </>
         }
@@ -200,7 +224,9 @@ export const ComponentGallery = React.memo(() => {
 
       <Specimen
         name="Text inputs"
-        measure={{ antd: "input.ant-input", mantine: "input" }}
+        measure={[
+          { label: "text input", antd: "input.ant-input", mantine: "input" },
+        ]}
         antd={
           <>
             <AntInput placeholder="Text" />
@@ -221,7 +247,13 @@ export const ComponentGallery = React.memo(() => {
 
       <Specimen
         name="Select"
-        measure={{ antd: ".ant-select-selector", mantine: "input" }}
+        measure={[
+          {
+            label: "select control",
+            antd: ".ant-select-selector",
+            mantine: "input",
+          },
+        ]}
         note="184 Select.Option children to convert"
         antd={
           <AntSelect
@@ -273,7 +305,9 @@ export const ComponentGallery = React.memo(() => {
 
       <Specimen
         name="Tag / Badge"
-        measure={{ antd: ".ant-tag", mantine: ".mantine-Badge-root" }}
+        measure={[
+          { label: "tag", antd: ".ant-tag", mantine: ".mantine-Badge-root" },
+        ]}
         note="custom 16-colour palette in App.scss"
         antd={
           <>
@@ -295,7 +329,13 @@ export const ComponentGallery = React.memo(() => {
 
       <Specimen
         name="Alert"
-        measure={{ antd: ".ant-alert", mantine: ".mantine-Alert-root" }}
+        measure={[
+          {
+            label: "alert",
+            antd: ".ant-alert",
+            mantine: ".mantine-Alert-root",
+          },
+        ]}
         antd={
           <>
             <AntAlert message="Info message" type="info" />
@@ -354,7 +394,9 @@ export const ComponentGallery = React.memo(() => {
 
       <Specimen
         name="Table"
-        measure={{ antd: "th.ant-table-cell", mantine: "th" }}
+        measure={[
+          { label: "header cell", antd: "th.ant-table-cell", mantine: "th" },
+        ]}
         note="38 instances; Mantine's is presentational only"
         antd={
           <AntTable
