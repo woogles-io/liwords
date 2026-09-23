@@ -64,6 +64,22 @@ type Diff = { prop: string; antd: string; mantine: string };
  */
 const EPSILON_PX = 0.05;
 
+/**
+ * Some properties cannot be seen given the rest of the box. A border colour on a
+ * zero-width border is the common one, and it would otherwise show up on every
+ * borderless component we compare.
+ */
+function invisible(
+  prop: string,
+  a: Record<string, string>,
+  m: Record<string, string>,
+) {
+  const side = /^border-(top|right|bottom|left)-color$/.exec(prop);
+  if (!side) return false;
+  const width = `border-${side[1]}-width`;
+  return Number.parseFloat(a[width]) === 0 && Number.parseFloat(m[width]) === 0;
+}
+
 function equivalent(a: string, b: string) {
   if (a === b) return true;
   const na = Number.parseFloat(a);
@@ -107,13 +123,13 @@ export function useStyleDiff(targets: Measurable[] | undefined) {
         return {
           label: t.label,
           missing: null,
-          diffs: TRACKED.filter((prop) => !equivalent(a[prop], m[prop])).map(
-            (prop) => ({
-              prop,
-              antd: a[prop],
-              mantine: m[prop],
-            }),
-          ),
+          diffs: TRACKED.filter(
+            (prop) => !equivalent(a[prop], m[prop]) && !invisible(prop, a, m),
+          ).map((prop) => ({
+            prop,
+            antd: a[prop],
+            mantine: m[prop],
+          })),
         };
       }),
     );

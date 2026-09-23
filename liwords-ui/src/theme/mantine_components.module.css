@@ -78,8 +78,18 @@
 }
 
 .buttonFilled {
-  box-shadow: 0 2px 0 rgba(5, 145, 255, 0.1);
   margin: 6px 3px;
+}
+
+/*
+ * antd's filled shadow is tinted per button colour -- blue for primary, red for
+ * dangerous. Reproducing that per colour is more machinery than a 0.1-alpha 2px
+ * shadow is worth, so it is applied only to the default-coloured filled button.
+ * A colour-specific button gets no shadow, which is a smaller error than a blue
+ * shadow under a red button.
+ */
+.buttonFilledThemed {
+  box-shadow: 0 2px 0 rgba(5, 145, 255, 0.1);
 }
 
 /*
