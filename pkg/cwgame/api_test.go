@@ -1947,6 +1947,21 @@ func TestTimePenalty(t *testing.T) {
 	is.Equal(len(replayed.Events), len(gdoc.Events))
 }
 
+// A penalty event records only the tiles the annotator knows, not the random
+// fill, like every other annotated event.
+func TestTimePenaltyRecordsKnownRack(t *testing.T) {
+	is := is.New(t)
+	ctx := ctxForTests()
+	gdoc := loadGDoc("document-gameover.json")
+	gdoc.Type = ipc.GameType_ANNOTATED
+	gdoc.KnownRacks = [][]byte{append([]byte{}, gdoc.Racks[0]...), {}}
+
+	is.NoErr(ProcessGameplayEvent(ctx, DefaultConfig.WGLConfig(), timePenaltyEvt(0, 10), "", gdoc))
+	is.Equal(gdoc.Events[len(gdoc.Events)-1].Rack, gdoc.Racks[0])
+	is.NoErr(ProcessGameplayEvent(ctx, DefaultConfig.WGLConfig(), timePenaltyEvt(1, 10), "", gdoc))
+	is.Equal(len(gdoc.Events[len(gdoc.Events)-1].Rack), 0)
+}
+
 // Re-applying a penalty after an amendment recomputes its cumulative score
 // from the points lost rather than trusting the stale saved cumulative.
 func TestTimePenaltyEditorModeRecomputesCumulative(t *testing.T) {
