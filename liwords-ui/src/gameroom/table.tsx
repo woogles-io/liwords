@@ -32,7 +32,7 @@ import { PlayerCards } from "./player_cards";
 import Pool from "./pool";
 import { encodeToSocketFmt } from "../utils/protobuf";
 import "./scss/gameroom.scss";
-import { ScoreCard } from "./scorecard";
+import { examineAndSeek, ScoreCard } from "./scorecard";
 import { CommentsDrawer } from "./CommentsDrawer";
 import { defaultGameInfo, GameInfo } from "./game_info";
 import { useComments } from "../utils/hooks/comments";
@@ -1036,6 +1036,13 @@ export const Table = React.memo((props: Props) => {
     searchedTurn,
     setSearchParams,
   ]);
+  const scorecardSeek = useMemo(
+    () =>
+      props.annotated || gameDone
+        ? examineAndSeek(handleExamineStart, handleExamineGoTo, gameDone)
+        : undefined,
+    [props.annotated, gameDone, handleExamineStart, handleExamineGoTo],
+  );
   const boardTheme = "board--" + tournamentContext.metadata.boardStyle || "";
   const tileTheme = "tile--" + tournamentContext.metadata.tileStyle || "";
   const alphabet = useMemo(
@@ -1452,6 +1459,7 @@ export const Table = React.memo((props: Props) => {
           />
           <ScoreCard
             isExamining={isExamining}
+            onSeek={scorecardSeek}
             isInMobileView={isInMobileView}
             events={examinableGameContext.turns}
             allEvents={gameContext.turns}
