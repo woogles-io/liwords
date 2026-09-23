@@ -131,6 +131,8 @@ func removeKnownTiles(gdoc *ipc.GameDocument, p int, tiles []byte, skipPlaythrou
 // rack but one is fully known, the last one holds exactly the remaining
 // unseen tiles, so it is known too. (If more than one rack is unknown, how
 // the unseen tiles split between them is still just the random fill.)
+// Written to be scalable to more than 2 players, if we ever decide to
+// implement that.
 func clampKnownRacks(gdoc *ipc.GameDocument) {
 	if !tracksKnownRacks(gdoc) {
 		return
