@@ -72,14 +72,12 @@ export const components = {
                   "--button-hover": "var(--woogles-color-button)",
                   "--button-color": "var(--woogles-color-button-text)",
                   "--button-hover-color": "var(--woogles-color-button-text)",
-                  "--button-bd": "0",
                 }
               : {
                   "--button-bg": "var(--woogles-color-background)",
                   "--button-hover": "var(--woogles-color-background)",
                   "--button-color": "var(--woogles-color-primary-dark)",
                   "--button-hover-color": "var(--woogles-color-primary-dark)",
-                  "--button-bd": "1px solid var(--woogles-color-primary-dark)",
                 }),
         },
       };
