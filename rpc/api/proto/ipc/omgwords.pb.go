@@ -3013,8 +3013,12 @@ type GameDocument struct {
 	Bag            *Bag   `protobuf:"bytes,21,opt,name=bag,proto3" json:"bag,omitempty"`
 	ScorelessTurns uint32 `protobuf:"varint,22,opt,name=scoreless_turns,json=scorelessTurns,proto3" json:"scoreless_turns,omitempty"`
 	// The index of the player on turn
-	PlayerOnTurn  uint32  `protobuf:"varint,23,opt,name=player_on_turn,json=playerOnTurn,proto3" json:"player_on_turn,omitempty"`
-	Timers        *Timers `protobuf:"bytes,24,opt,name=timers,proto3" json:"timers,omitempty"`
+	PlayerOnTurn uint32  `protobuf:"varint,23,opt,name=player_on_turn,json=playerOnTurn,proto3" json:"player_on_turn,omitempty"`
+	Timers       *Timers `protobuf:"bytes,24,opt,name=timers,proto3" json:"timers,omitempty"`
+	// For annotated games: the tiles of each rack that the annotator entered
+	// (or that were inferred from a move), as opposed to random auto-filled
+	// tiles. Only these are recorded as the rack of a game event.
+	KnownRacks    [][]byte `protobuf:"bytes,25,rep,name=known_racks,json=knownRacks,proto3" json:"known_racks,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3213,6 +3217,13 @@ func (x *GameDocument) GetPlayerOnTurn() uint32 {
 func (x *GameDocument) GetTimers() *Timers {
 	if x != nil {
 		return x.Timers
+	}
+	return nil
+}
+
+func (x *GameDocument) GetKnownRacks() [][]byte {
+	if x != nil {
+		return x.KnownRacks
 	}
 	return nil
 }
@@ -3537,7 +3548,7 @@ const file_proto_ipc_omgwords_proto_rawDesc = "" +
 	"\x05tiles\x18\x03 \x01(\fR\x05tiles\x12\x19\n" +
 	"\bis_empty\x18\x04 \x01(\bR\aisEmpty\"\x1b\n" +
 	"\x03Bag\x12\x14\n" +
-	"\x05tiles\x18\x01 \x01(\fR\x05tiles\"\xaf\b\n" +
+	"\x05tiles\x18\x01 \x01(\fR\x05tiles\"\xd0\b\n" +
 	"\fGameDocument\x12=\n" +
 	"\aplayers\x18\x01 \x03(\v2#.ipc.GameDocument.MinimalPlayerInfoR\aplayers\x12&\n" +
 	"\x06events\x18\x02 \x03(\v2\x0e.ipc.GameEventR\x06events\x12\x18\n" +
@@ -3566,7 +3577,9 @@ const file_proto_ipc_omgwords_proto_rawDesc = "" +
 	"\x03bag\x18\x15 \x01(\v2\b.ipc.BagR\x03bag\x12'\n" +
 	"\x0fscoreless_turns\x18\x16 \x01(\rR\x0escorelessTurns\x12$\n" +
 	"\x0eplayer_on_turn\x18\x17 \x01(\rR\fplayerOnTurn\x12#\n" +
-	"\x06timers\x18\x18 \x01(\v2\v.ipc.TimersR\x06timers\x1ay\n" +
+	"\x06timers\x18\x18 \x01(\v2\v.ipc.TimersR\x06timers\x12\x1f\n" +
+	"\vknown_racks\x18\x19 \x03(\fR\n" +
+	"knownRacks\x1ay\n" +
 	"\x11MinimalPlayerInfo\x12\x1a\n" +
 	"\bnickname\x18\x01 \x01(\tR\bnickname\x12\x1b\n" +
 	"\treal_name\x18\x02 \x01(\tR\brealName\x12\x17\n" +
