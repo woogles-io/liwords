@@ -46,6 +46,7 @@ func handleEvent(ctx context.Context, cfg *wglconfig.Config, userID string, evt 
 
 	// Save the old values
 	oldNumEvents := len(g.Events)
+	wasOver := g.PlayState == ipc.PlayState_GAME_OVER
 
 	err = cwgame.ProcessGameplayEvent(ctx, cfg, evt, userID, g)
 	if err != nil {
@@ -98,7 +99,9 @@ func handleEvent(ctx context.Context, cfg *wglconfig.Config, userID string, evt 
 	}
 
 	gameEnded := false
-	if g.PlayState == ipc.PlayState_GAME_OVER {
+	// A time penalty is added to a game that is already over; that must not
+	// count as the game ending again.
+	if g.PlayState == ipc.PlayState_GAME_OVER && !wasOver {
 		// rate the game and send such and such.
 		// performendgameduties
 		gameEnded = true
