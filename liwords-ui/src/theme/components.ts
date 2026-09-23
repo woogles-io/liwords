@@ -26,11 +26,19 @@ const isFilled = (variant: string | undefined) =>
 
 export const components = {
   Button: Button.extend({
-    classNames: (_theme, props) => ({
-      root: `${classes.button} ${
-        isFilled(props.variant) ? classes.buttonFilled : classes.buttonDefault
-      }`,
-    }),
+    classNames: (_theme, props) => {
+      const filled = isFilled(props.variant);
+      const themed = props.color === undefined;
+      return {
+        root: [
+          classes.button,
+          filled ? classes.buttonFilled : classes.buttonDefault,
+          filled && themed ? classes.buttonFilledThemed : "",
+        ]
+          .filter(Boolean)
+          .join(" "),
+      };
+    },
     vars: (_theme, props) => {
       const filled = isFilled(props.variant);
 
@@ -48,6 +56,12 @@ export const components = {
           // Primary is a solid fill with a small radius; everything else is an
           // outline in primary-dark on the page background, square-cornered.
           "--button-radius": filled ? "3px" : "0",
+
+          // Geometry, not colour: @mixin button gives the primary variant no
+          // border at all, regardless of what colour the call site asked for.
+          "--button-bd": filled
+            ? "0"
+            : "1px solid var(--woogles-color-primary-dark)",
 
           // Hover and rest are identical on purpose -- see the CSS module.
           ...(!themed
