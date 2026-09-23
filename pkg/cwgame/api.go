@@ -337,6 +337,7 @@ func AssignRacks(cfg *wglconfig.Config, gdoc *ipc.GameDocument, racks [][]byte, 
 			}
 		}
 	}
+	clampKnownRacks(gdoc)
 
 	return nil
 }

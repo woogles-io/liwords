@@ -1821,3 +1821,81 @@ func TestAnnotatedEnteredRackIsRecorded(t *testing.T) {
 	evt = g.Events[len(g.Events)-1]
 	is.Equal(sortedTiles(evt.Rack), sortedTiles(englishBytes("BCDEFGH")))
 }
+
+// drainBagToBoard moves all but `leave` bag tiles onto the top and bottom
+// rows of the board, out of the way of plays through the centre, keeping
+// tile accounting valid.
+func drainBagToBoard(t *testing.T, g *ipc.GameDocument, leave int) {
+	squares := []int{}
+	cols := int(g.Board.NumCols)
+	for _, row := range []int{0, 1, 2, 3, 11, 12, 13, 14} {
+		for c := 0; c < cols; c++ {
+			squares = append(squares, row*cols+c)
+		}
+	}
+	n := len(g.Bag.Tiles) - leave
+	if n > len(squares) {
+		t.Fatalf("cannot drain %d tiles", n)
+	}
+	for i := 0; i < n; i++ {
+		tile := g.Bag.Tiles[i]
+		if tile == 0 {
+			tile = 0x81 // a blank on the board is stored designated
+		}
+		g.Board.Tiles[squares[i]] = tile
+	}
+	g.Bag.Tiles = g.Bag.Tiles[n:]
+}
+
+// With the bag empty, entering one rack fixes the other: it must hold the
+// remaining unseen tiles, so it is recorded in full.
+func TestAnnotatedEndgameOpponentRackIsForced(t *testing.T) {
+	is := is.New(t)
+	g := newAnnotatedGameForTest(t)
+	drainBagToBoard(t, g, 0)
+	is.NoErr(AssignRacks(DefaultConfig.WGLConfig(), g, [][]byte{append([]byte{}, g.Racks[0]...), nil}, AlwaysAssignEmpty))
+	opp := append([]byte{}, g.Racks[1]...)
+
+	sendAnnotatedEvent(t, g, &ipc.ClientGameplayEvent{Type: ipc.ClientGameplayEvent_PASS})
+	sendAnnotatedEvent(t, g, &ipc.ClientGameplayEvent{Type: ipc.ClientGameplayEvent_PASS})
+	evt := g.Events[len(g.Events)-1]
+	is.Equal(evt.PlayerIndex, uint32(1))
+	is.Equal(sortedTiles(evt.Rack), sortedTiles(opp))
+}
+
+// With the bag empty but no rack entered, the split of the unseen tiles is
+// the random fill and must not be recorded.
+func TestAnnotatedEndgameUnenteredRacksStayUnknown(t *testing.T) {
+	is := is.New(t)
+	g := newAnnotatedGameForTest(t)
+	drainBagToBoard(t, g, 0)
+	is.NoErr(AssignRacks(DefaultConfig.WGLConfig(), g, [][]byte{nil, nil}, AlwaysAssignEmpty))
+
+	sendAnnotatedEvent(t, g, &ipc.ClientGameplayEvent{Type: ipc.ClientGameplayEvent_PASS})
+	sendAnnotatedEvent(t, g, &ipc.ClientGameplayEvent{Type: ipc.ClientGameplayEvent_PASS})
+	for _, evt := range g.Events {
+		is.Equal(len(evt.Rack), 0)
+	}
+}
+
+// A play that draws the last tiles leaves that player's new rack forced when
+// the opponent's rack is fully known.
+func TestAnnotatedDrawEmptyingBagForcesRack(t *testing.T) {
+	is := is.New(t)
+	g := newAnnotatedGameForTest(t)
+	is.NoErr(AssignRacks(DefaultConfig.WGLConfig(), g, [][]byte{englishBytes("AEINRST"), nil}, AlwaysAssignEmpty))
+	is.NoErr(AssignRacks(DefaultConfig.WGLConfig(), g, [][]byte{englishBytes("AEINRST"), append([]byte{}, g.Racks[1]...)}, AlwaysAssignEmpty))
+	drainBagToBoard(t, g, 3)
+
+	sendAnnotatedEvent(t, g, &ipc.ClientGameplayEvent{Type: ipc.ClientGameplayEvent_TILE_PLACEMENT,
+		PositionCoords: "8D", MachineLetters: englishBytes("RETAINS")})
+	is.Equal(tiles.InBag(g.Bag), 0)
+	drawn := append([]byte{}, g.Racks[0]...)
+	is.Equal(len(drawn), 3)
+
+	sendAnnotatedEvent(t, g, &ipc.ClientGameplayEvent{Type: ipc.ClientGameplayEvent_PASS})
+	sendAnnotatedEvent(t, g, &ipc.ClientGameplayEvent{Type: ipc.ClientGameplayEvent_PASS})
+	evt := g.Events[len(g.Events)-1]
+	is.Equal(evt.PlayerIndex, uint32(0))
+	is.Equal(sortedTiles(evt.Rack), sortedTiles(drawn))
+}

@@ -3,6 +3,7 @@ package cwgame
 import (
 	"github.com/domino14/word-golib/tilemapping"
 
+	"github.com/woogles-io/liwords/pkg/cwgame/tiles"
 	"github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
@@ -126,12 +127,23 @@ func removeKnownTiles(gdoc *ipc.GameDocument, p int, tiles []byte, skipPlaythrou
 }
 
 // clampKnownRacks keeps each known rack a subset of the actual rack, e.g.
-// after tiles were borrowed from the opponent.
+// after tiles were borrowed from the opponent. With the bag empty, if every
+// rack but one is fully known, the last one holds exactly the remaining
+// unseen tiles, so it is known too. (If more than one rack is unknown, how
+// the unseen tiles split between them is still just the random fill.)
 func clampKnownRacks(gdoc *ipc.GameDocument) {
 	if !tracksKnownRacks(gdoc) {
 		return
 	}
+	unknown := []int{}
 	for p := range gdoc.KnownRacks {
 		gdoc.KnownRacks[p] = intersectTiles(gdoc.KnownRacks[p], gdoc.Racks[p])
+		if len(gdoc.KnownRacks[p]) < len(gdoc.Racks[p]) {
+			unknown = append(unknown, p)
+		}
+	}
+	if len(unknown) == 1 && tiles.InBag(gdoc.Bag) == 0 {
+		p := unknown[0]
+		gdoc.KnownRacks[p] = append([]byte{}, gdoc.Racks[p]...)
 	}
 }
