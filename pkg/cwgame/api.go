@@ -778,7 +778,7 @@ func processTimePenalty(gdoc *ipc.GameDocument, evt *ipc.ClientGameplayEvent) er
 	applyTimePenalty(gdoc, &ipc.GameEvent{
 		Type:        ipc.GameEvent_TIME_PENALTY,
 		PlayerIndex: pidx,
-		Rack:        gdoc.Racks[pidx],
+		Rack:        knownRack(gdoc, int(pidx)),
 		LostScore:   evt.PenaltyPoints,
 	})
 	return nil
