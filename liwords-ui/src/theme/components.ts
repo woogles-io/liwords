@@ -27,9 +27,9 @@ const isFilled = (variant: string | undefined) =>
 export const components = {
   Button: Button.extend({
     classNames: (_theme, props) => ({
-      root: isFilled(props.variant)
-        ? `${classes.button} ${classes.buttonFilled}`
-        : classes.button,
+      root: `${classes.button} ${
+        isFilled(props.variant) ? classes.buttonFilled : classes.buttonDefault
+      }`,
     }),
     vars: (_theme, props) => {
       const filled = isFilled(props.variant);

@@ -56,6 +56,24 @@ export type Measurable = {
 
 type Diff = { prop: string; antd: string; mantine: string };
 
+/**
+ * Sub-pixel differences are not differences. A line-height expressed as a ratio
+ * lands on 18.8571px one side and 18.8572px the other purely from how the
+ * minifier rounded the fraction; reporting that forever would train us to ignore
+ * the report. Anything at or above a twentieth of a pixel still shows.
+ */
+const EPSILON_PX = 0.05;
+
+function equivalent(a: string, b: string) {
+  if (a === b) return true;
+  const na = Number.parseFloat(a);
+  const nb = Number.parseFloat(b);
+  if (Number.isNaN(na) || Number.isNaN(nb)) return false;
+  // Only treat as numeric if the value is a bare length, not e.g. a shadow.
+  if (!/^-?[\d.]+px$/.test(a) || !/^-?[\d.]+px$/.test(b)) return false;
+  return Math.abs(na - nb) < EPSILON_PX;
+}
+
 function measure(root: HTMLElement | null, selector: string) {
   if (!root) return null;
   const el = root.querySelector(selector);
@@ -89,11 +107,13 @@ export function useStyleDiff(targets: Measurable[] | undefined) {
         return {
           label: t.label,
           missing: null,
-          diffs: TRACKED.filter((prop) => a[prop] !== m[prop]).map((prop) => ({
-            prop,
-            antd: a[prop],
-            mantine: m[prop],
-          })),
+          diffs: TRACKED.filter((prop) => !equivalent(a[prop], m[prop])).map(
+            (prop) => ({
+              prop,
+              antd: a[prop],
+              mantine: m[prop],
+            }),
+          ),
         };
       }),
     );
