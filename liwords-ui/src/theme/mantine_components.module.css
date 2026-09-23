@@ -5,6 +5,10 @@
  * Only properties Mantine does not expose as a CSS variable belong here --
  * anything with a `--component-*` variable should go through `vars` instead,
  * since those are part of Mantine's documented API and survive upgrades.
+ *
+ * Every value here was reached by measuring the antd equivalent at
+ * /dev/components and closing the gap, not by eye. Re-measure after changing
+ * anything.
  */
 
 /*
@@ -18,11 +22,12 @@
   touch-action: manipulation;
 
   /*
-   * Mantine's Button sets line-height: 1; antd inherits its 1.5714 base ratio,
-   * which at 12px is the 18.86px the gallery measured. Matching it keeps the
-   * label sitting where it does today inside the 36px box.
+   * antd's base line-height is 11/7. Mantine's Button sets 1. At 12px that is
+   * the difference between the 18.857px antd computes and 12px, and it decides
+   * where the label sits inside the 36px box. Written as a fraction because
+   * 1.5714 truncates to 18.8568px and shows up as a diff.
    */
-  line-height: 1.5714;
+  line-height: calc(11 / 7);
 
   /* @mixin button: `padding: 3px 18px`. The inline axis goes through
      --button-padding-x; there is no variable for the block axis. */
@@ -54,11 +59,37 @@
 }
 
 /*
- * antd's primary button carries this shadow by default (its boxShadowPrimary
- * token); the reskin mixin never removed it, so it is part of how Woogles
- * buttons currently look. Reproduced for fidelity -- at 0.1 alpha it is nearly
- * invisible, and it would be a reasonable thing to drop deliberately later.
+ * Both shadows come from antd's own tokens rather than from any Woogles design
+ * decision -- the reskin mixin never removed them, so they are part of how these
+ * buttons look today. Reproduced for fidelity; dropping them would be a
+ * reasonable deliberate change later.
  */
+.buttonDefault {
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.02);
+}
+
 .buttonFilled {
   box-shadow: 0 2px 0 rgba(5, 145, 255, 0.1);
+}
+
+/*
+ * Disabled. @mixin button greys the border and text but keeps the page
+ * background; the primary variant instead fills grey with background-coloured
+ * text. antd drops the shadow in both cases. Mantine's defaults are its own
+ * greys, so all of it needs stating.
+ */
+.buttonDefault:disabled,
+.buttonDefault[data-disabled] {
+  background-color: var(--woogles-color-background);
+  border-color: var(--woogles-color-gray-subtle);
+  color: var(--woogles-color-gray-subtle);
+  box-shadow: none;
+}
+
+.buttonFilled:disabled,
+.buttonFilled[data-disabled] {
+  background-color: var(--woogles-color-gray-subtle);
+  border-color: var(--woogles-color-gray-subtle);
+  color: var(--woogles-color-background);
+  box-shadow: none;
 }
