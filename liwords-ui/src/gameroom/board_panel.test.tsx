@@ -1,4 +1,4 @@
-import { cleanup, render } from "@testing-library/react";
+import { cleanup, fireEvent, render } from "@testing-library/react";
 import { BoardPanel } from "./board_panel";
 import { ChallengeRule } from "../gen/api/proto/vendored/macondo/macondo_pb";
 import { CrosswordGameGridLayout } from "../constants/board_layout";
@@ -9,7 +9,7 @@ import { BrowserRouter } from "react-router";
 import { waitFor } from "@testing-library/react";
 import { create } from "@bufbuild/protobuf";
 
-function renderBoardPanel() {
+function renderBoardPanel(boardEditingMode = false) {
   const dummyFunction = () => {};
 
   const rack = [0, 1, 5, 9, 14, 19, 20];
@@ -45,6 +45,7 @@ function renderBoardPanel() {
         handleAcceptRematch={dummyFunction}
         handleAcceptAbort={dummyFunction}
         vsBot={false}
+        boardEditingMode={boardEditingMode}
       />
     </BrowserRouter>,
   );
@@ -66,4 +67,37 @@ it.skip("renders a game board panel", async () => {
 
   // Take a single snapshot after the component is stable
   expect(container).toMatchSnapshot();
+});
+
+it("opens the rack editor on Space in board editing mode", () => {
+  const { container } = renderBoardPanel(true);
+  expect(container.querySelector("input.rack")).toBeNull();
+  const panel = container.querySelector(".board-container")!;
+  fireEvent.keyDown(panel, { key: " " });
+  const input = container.querySelector("input.rack") as HTMLInputElement;
+  expect(input).toBeTruthy();
+  // No previous turn, so the editor opens empty.
+  expect(input.value).toBe("");
+});
+
+it("does not open the rack editor on Space outside the editor", () => {
+  const { container } = renderBoardPanel();
+  fireEvent.keyDown(container.querySelector(".board-container")!, {
+    key: " ",
+  });
+  expect(container.querySelector("input.rack")).toBeNull();
+});
+
+it("keeps Space advancing the placement arrow in board editing mode", () => {
+  const { container } = renderBoardPanel(true);
+  const spaces = () => Array.from(container.querySelectorAll(".board-space"));
+  fireEvent.click(spaces()[0]);
+  const selectedIndex = () =>
+    spaces().findIndex((el) => el.classList.contains("selected"));
+  expect(selectedIndex()).toBe(0);
+  fireEvent.keyDown(container.querySelector(".board-container")!, {
+    key: " ",
+  });
+  expect(container.querySelector("input.rack")).toBeNull();
+  expect(selectedIndex()).toBeGreaterThan(0);
 });

@@ -46,6 +46,7 @@ import {
   resignMoveEvent,
   challengeMoveEvent,
   nicknameFromEvt,
+  retainedLeave,
 } from "../utils/cwgame/game_event";
 import { Board } from "../utils/cwgame/board";
 import { encodeToSocketFmt } from "../utils/protobuf";
@@ -59,7 +60,7 @@ import {
   PlayState,
 } from "../gen/api/proto/vendored/macondo/macondo_pb";
 import { TilePreview } from "./tile";
-import { Alphabet } from "../constants/alphabets";
+import { Alphabet, runesToMachineWord } from "../constants/alphabets";
 import { MessageType } from "../gen/api/proto/ipc/ipc_pb";
 import {
   MatchUserSchema,
@@ -665,6 +666,9 @@ export const BoardPanel = React.memo((props: Props) => {
   ]);
 
   const numTurns = examinableGameContext.turns.length;
+  // Rack editor prefill when opened with Space; null shows the current rack.
+  const [rackEditorPrefill, setRackEditorPrefill] =
+    useState<MachineWord | null>(null);
 
   useEffect(() => {
     // Set the current mode to "NORMAL" if we are editing the board,
@@ -766,6 +770,31 @@ export const BoardPanel = React.memo((props: Props) => {
             return;
           }
         }
+        if (
+          key === " " &&
+          props.boardEditingMode &&
+          !arrowProperties.show &&
+          placedTiles.size === 0 &&
+          !props.gameDone
+        ) {
+          // Space opens the rack editor with the on-turn player's leave.
+          evt.preventDefault();
+          let leave: MachineWord = [];
+          try {
+            leave = runesToMachineWord(
+              retainedLeave(
+                examinableGameContext.turns,
+                examinableGameContext.onturn,
+              ),
+              props.alphabet,
+            );
+          } catch {
+            // Fall back to an empty rack.
+          }
+          setRackEditorPrefill(leave);
+          setCurrentMode("EDITING_RACK");
+          return;
+        }
         if (key === "ArrowLeft" || key === "ArrowRight") {
           evt.preventDefault();
           setArrowProperties({
@@ -825,6 +854,8 @@ export const BoardPanel = React.memo((props: Props) => {
       examinableTimerContext.p0,
       examinableTimerContext.p1,
       examinableGameContext.pool,
+      examinableGameContext.turns,
+      examinableGameContext.onturn,
       gameContext.pool,
       gameContext.board,
       gameContext.players,
@@ -1355,7 +1386,7 @@ export const BoardPanel = React.memo((props: Props) => {
             </Tooltip>
             {props.boardEditingMode && (
               <Tooltip
-                title="Edit Rack"
+                title="Edit Rack (Space)"
                 placement="bottomRight"
                 mouseEnterDelay={0.1}
                 mouseLeaveDelay={0.01}
@@ -1366,6 +1397,7 @@ export const BoardPanel = React.memo((props: Props) => {
                   icon={<EditOutlined />}
                   type="primary"
                   onClick={() => {
+                    setRackEditorPrefill(null);
                     setCurrentMode("EDITING_RACK");
                   }}
                 />
@@ -1373,7 +1405,7 @@ export const BoardPanel = React.memo((props: Props) => {
             )}
             {currentMode === "EDITING_RACK" ? (
               <RackEditor
-                currentRack={displayedRack}
+                currentRack={rackEditorPrefill ?? displayedRack}
                 alphabet={props.alphabet}
                 rackCallback={(rack: MachineWord) => {
                   if (props.changeCurrentRack) {
