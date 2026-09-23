@@ -20,11 +20,19 @@ import classes from "./mantine_components.module.css";
  * Mantine's idiom is an explicit <Group gap>. Each area that migrates buttons
  * needs to add spacing at the call site; expect to notice it there.
  */
+/** Mantine's Button defaults to the filled variant when none is given. */
+const isFilled = (variant: string | undefined) =>
+  variant === undefined || variant === "filled";
+
 export const components = {
   Button: Button.extend({
-    classNames: { root: classes.button },
+    classNames: (_theme, props) => ({
+      root: isFilled(props.variant)
+        ? `${classes.button} ${classes.buttonFilled}`
+        : classes.button,
+    }),
     vars: (_theme, props) => {
-      const filled = props.variant === undefined || props.variant === "filled";
+      const filled = isFilled(props.variant);
       return {
         root: {
           "--button-fz": "12px",
