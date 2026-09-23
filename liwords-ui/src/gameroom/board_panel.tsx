@@ -1296,6 +1296,7 @@ export const BoardPanel = React.memo((props: Props) => {
         exitableExaminer={props.exitableExaminer}
         puzzleMode={props.puzzleMode}
         boardEditingMode={props.boardEditingMode}
+        annotated={props.annotated}
         hasNextCorresGame={props.hasNextCorresGame}
         corresGamesWaiting={props.corresGamesWaiting}
         onNextCorresGame={props.onNextCorresGame}

@@ -6,6 +6,7 @@ import React, {
   useState,
 } from "react";
 import { useNavigate } from "react-router";
+import { useOwnsAnnotatedGame } from "../utils/hooks/annotated_game_owner";
 import { Affix, App, Button, Dropdown, MenuProps, Popconfirm } from "antd";
 
 import {
@@ -285,6 +286,7 @@ export type Props = {
   showAbort: boolean;
   exitableExaminer?: boolean;
   boardEditingMode?: boolean;
+  annotated?: boolean;
   // Correspondence-only: jump to the user's next on-turn game.
   // nextCorresGame is non-null only when such a game exists (set by table.tsx).
   hasNextCorresGame?: boolean;
@@ -329,9 +331,22 @@ const GameControls = React.memo((props: Props) => {
   );
 
   const navigate = useNavigate();
+  const ownsAnnotatedGame = useOwnsAnnotatedGame(
+    gameContext.gameID,
+    props.annotated,
+  );
   const handleExitToLobby = useCallback(() => {
-    navigate(props.tournamentSlug || "/");
-  }, [navigate, props.tournamentSlug]);
+    navigate(
+      props.boardEditingMode || ownsAnnotatedGame
+        ? "/editor"
+        : props.tournamentSlug || "/",
+    );
+  }, [
+    navigate,
+    ownsAnnotatedGame,
+    props.boardEditingMode,
+    props.tournamentSlug,
+  ]);
 
   const {
     isExamining,
