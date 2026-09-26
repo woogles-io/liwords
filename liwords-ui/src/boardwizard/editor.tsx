@@ -1,8 +1,8 @@
 // boardwizard is our board editor
 
 import { HomeOutlined } from "@ant-design/icons";
-import { App, Card } from "antd";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { App, Button, Card } from "antd";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@connectrpc/connect-query";
 import { getBroadcastGameContext } from "../gen/api/proto/broadcast_service/broadcast_service-BroadcastService_connectquery";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router";
@@ -39,7 +39,7 @@ import {
 import { useClient, flashError } from "../utils/hooks/connect";
 import { useDefinitionAndPhonyChecker } from "../utils/hooks/definitions";
 import { EditorControl } from "./editor_control";
-import { TimePenaltyControl } from "./time_penalty";
+import { EndOfGameModal } from "./time_penalty";
 import { PlayState } from "../gen/api/proto/ipc/omgwords_pb";
 import { syntheticGameInfo } from "./synthetic_game_info";
 import { EditorLandingPage } from "./new_game";
@@ -271,6 +271,32 @@ export const BoardEditor = () => {
     }
   }, [gameContext.playState, notification]);
 
+  // Pop up the end-of-game modal when the game ends while annotating, not
+  // when an already-finished game is opened.
+  const [endOfGameOpen, setEndOfGameOpen] = useState(false);
+  const prevPlayState = useRef(gameContext.playState);
+  const prevGameID = useRef(gameContext.gameID);
+  useEffect(() => {
+    if (
+      prevGameID.current === gameContext.gameID &&
+      prevPlayState.current !== PlayState.GAME_OVER &&
+      gameContext.playState === PlayState.GAME_OVER
+    ) {
+      setEndOfGameOpen(true);
+    }
+    prevPlayState.current = gameContext.playState;
+    prevGameID.current = gameContext.gameID;
+  }, [gameContext.playState, gameContext.gameID]);
+
+  const endOfGamePlayers = useMemo(
+    () =>
+      gameContext.gameDocument.players.map((p, idx) => ({
+        name: p.realName || p.nickname,
+        score: gameContext.players[idx]?.score ?? 0,
+      })),
+    [gameContext.gameDocument.players, gameContext.players],
+  );
+
   const sortedRack = useMemo(() => {
     const rack =
       examinableGameContext.players.find((p) => p.onturn)?.currentRack ??
@@ -357,6 +383,8 @@ export const BoardEditor = () => {
       handleExamineLast();
     } catch (e) {
       flashError(e);
+      // Keep the end-of-game modal open so the annotator can retry.
+      throw e;
     }
   };
 
@@ -491,18 +519,21 @@ export const BoardEditor = () => {
           </Card>
           {gameContext.playState === PlayState.GAME_OVER && (
             <Card
-              title="Time penalty"
-              className="editor-time-penalty"
+              title="Game over"
+              className="editor-game-over"
               style={{ marginTop: 12 }}
             >
-              <TimePenaltyControl
-                playerNames={gameContext.gameDocument.players.map(
-                  (p) => p.realName || p.nickname,
-                )}
-                onSubmit={addTimePenalty}
-              />
+              <Button onClick={() => setEndOfGameOpen(true)}>
+                Final score and time penalties
+              </Button>
             </Card>
           )}
+          <EndOfGameModal
+            open={endOfGameOpen}
+            players={endOfGamePlayers}
+            onClose={() => setEndOfGameOpen(false)}
+            onSubmit={addTimePenalty}
+          />
         </div>
         <div className="sticky-player-card-container">
           <PlayerCards
