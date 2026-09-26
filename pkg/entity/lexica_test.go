@@ -23,7 +23,7 @@ func TestHistoricalLexicaCannotStartGames(t *testing.T) {
 	is := is.New(t)
 	ctx := context.Background()
 	is.NoErr(ValidateGameRequest(ctx, newGameRequest("CSW24")))
-	for _, lexicon := range []string{"CSW15", "CSW19", "CSW21", "NWL20"} {
+	for _, lexicon := range []string{"CSW15", "CSW19", "CSW21", "NSF25", "NWL20"} {
 		err := ValidateGameRequest(ctx, newGameRequest(lexicon))
 		is.True(err != nil)
 		is.Equal(err.Error(), lexicon+" is not a supported lexicon")
