@@ -98,16 +98,6 @@ func playMove(ctx context.Context, gdoc *ipc.GameDocument, gevt *ipc.GameEvent, 
 			}
 		} else {
 			gdoc.ScorelessTurns += 1
-			// In annotated games, auto-assign or top off the next player's rack
-			// This ensures the opponent always has a full rack after a pass
-			if gdoc.Type == ipc.GameType_ANNOTATED {
-				inv := NewTileInventory(gdoc, cfg.WGLConfig())
-				nextPlayer := 1 - gdoc.PlayerOnTurn
-				_, err := inv.DrawToFillRack(int(nextPlayer))
-				if err != nil {
-					return err
-				}
-			}
 		}
 
 	case ipc.GameEvent_EXCHANGE:
@@ -130,20 +120,6 @@ func playMove(ctx context.Context, gdoc *ipc.GameDocument, gevt *ipc.GameEvent, 
 			Interface("current_player_rack_after", gdoc.Racks[gdoc.PlayerOnTurn]).
 			Interface("opponent_rack_after", gdoc.Racks[1-gdoc.PlayerOnTurn]).
 			Msg("exchange-after-exchange")
-
-		// In annotated games, auto-assign or top off the next player's rack
-		// This ensures the opponent always has a full rack after an exchange
-		if gdoc.Type == ipc.GameType_ANNOTATED {
-			nextPlayer := 1 - gdoc.PlayerOnTurn
-			tilesDrawn, err := inv.DrawToFillRack(int(nextPlayer))
-			if err != nil {
-				return err
-			}
-			log.Debug().
-				Int("tiles_drawn", tilesDrawn).
-				Interface("opponent_rack_final", gdoc.Racks[nextPlayer]).
-				Msg("exchange-after-fill-opponent")
-		}
 
 		gdoc.ScorelessTurns += 1
 		gevt.MillisRemaining = int32(tr)
@@ -191,7 +167,7 @@ func playTilePlacementMove(cfg *config.Config, gevt *ipc.GameEvent, gdoc *ipc.Ga
 	// This prevents tile corruption where board.PlayMove creates tiles on the board even if
 	// they're not in the rack. Without this check, tiles get placed on the board (creating extras),
 	// then the Leave validation fails, leaving us with a corrupted game state.
-	rackTiles := tilemapping.FromByteArr(gevt.Rack)
+	rackTiles := tilemapping.FromByteArr(gdoc.Racks[gdoc.PlayerOnTurn])
 	_, err = tilemapping.Leave(rackTiles, tilesUsed, true)
 	if err != nil {
 		return fmt.Errorf("rack doesn't contain tiles needed for move: %w", err)
@@ -220,7 +196,7 @@ func playTilePlacementMove(cfg *config.Config, gevt *ipc.GameEvent, gdoc *ipc.Ga
 
 	// Calculate leave (tiles remaining in rack after playing)
 	// zeroIsPlaythrough=true: playing on board, tile 0 in tilesUsed represents play-through markers
-	leave, err := tilemapping.Leave(tilemapping.FromByteArr(gevt.Rack), tilesUsed, true)
+	leave, err := tilemapping.Leave(rackTiles, tilesUsed, true)
 	if err != nil {
 		return err
 	}
@@ -247,16 +223,6 @@ func playTilePlacementMove(cfg *config.Config, gevt *ipc.GameEvent, gdoc *ipc.Ga
 	gevt.Score = score
 	gevt.IsBingo = tilesPlayed == RackTileLimit
 	gevt.MillisRemaining = int32(tr)
-
-	// In annotated games, auto-assign or top off the next player's rack
-	// This ensures the opponent always has a full rack after a play
-	if gdoc.Type == ipc.GameType_ANNOTATED {
-		nextPlayer := 1 - gdoc.PlayerOnTurn
-		_, err := inv.DrawToFillRack(int(nextPlayer))
-		if err != nil {
-			return err
-		}
-	}
 
 	gevt.WordsFormed = make([][]byte, len(wordsFormed))
 	gevt.WordsFormedFriendly = make([]string, len(wordsFormed))
