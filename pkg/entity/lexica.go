@@ -15,7 +15,7 @@ func init() {
 		"ECWL",
 		"FILE2017",
 		"FRA24",
-		"NSF25",
+		"NSF26",
 		"NSWL23",
 		"NWL23",
 		"RD29",
