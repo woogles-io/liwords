@@ -39,6 +39,8 @@ message ClientGameplayEvent {
     EXCHANGE       = 2;
     CHALLENGE_PLAY = 3;
     RESIGN         = 4;
+    // Only valid for annotated games, after the game has ended.
+    TIME_PENALTY   = 5;
   }
 
   EventType type    = 1;
@@ -55,6 +57,11 @@ message ClientGameplayEvent {
   // Indices correspond to the wordsFormed array from the last play.
   // If empty or not set, challenges all words (default/backward compatible).
   repeated uint32 challenged_word_indices = 6;
+
+  // For TIME_PENALTY events: the points deducted, and the player (index into
+  // the game's players) they are deducted from.
+  int32 penalty_points = 7;
+  uint32 penalty_player_index = 8;
 }
 
 // A GameRules is just the name of a board layout + the name of a letter

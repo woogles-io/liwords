@@ -437,6 +437,9 @@ func ReplayEvents(ctx context.Context, cfg *wglconfig.Config, gdoc *ipc.GameDocu
 				wentOut = int(evt.PlayerIndex)
 			}
 
+		case ipc.GameEvent_TIME_PENALTY:
+			applyTimePenalty(gdoc, evt)
+
 		default:
 			// If it's another type of game event, all we care about is the cumulative
 			// score.
@@ -507,6 +510,12 @@ func ProcessGameplayEvent(ctx context.Context, cfg *wglconfig.Config, evt *ipc.C
 
 	log := zerolog.Ctx(ctx)
 
+	if evt.Type == ipc.ClientGameplayEvent_TIME_PENALTY {
+		if evt.GameId != gdoc.GetUid() {
+			return errUnmatchedGameId
+		}
+		return processTimePenalty(gdoc, evt)
+	}
 	if gdoc.PlayState == ipc.PlayState_GAME_OVER {
 		return errGameNotActive
 	}
@@ -718,8 +727,15 @@ func ApplyEventInEditorMode(ctx context.Context, cfg *wglconfig.Config,
 
 		assignTurnToNextNonquitter(gdoc, gdoc.PlayerOnTurn)
 
-	case ipc.GameEvent_TIME_PENALTY,
-		ipc.GameEvent_TIMED_OUT,
+	case ipc.GameEvent_TIME_PENALTY:
+		// An earlier amendment may have un-ended the game; a penalty must not
+		// land mid-game, so fail and let the caller truncate from here.
+		if gdoc.PlayState != ipc.PlayState_GAME_OVER {
+			return errors.New("time penalty requires the game to be over")
+		}
+		applyTimePenalty(gdoc, gevt)
+
+	case ipc.GameEvent_TIMED_OUT,
 		ipc.GameEvent_RESIGNED:
 		// These events just update scores, append to history
 		gdoc.CurrentScores[gevt.PlayerIndex] = gevt.Cumulative
@@ -736,6 +752,81 @@ func ApplyEventInEditorMode(ctx context.Context, cfg *wglconfig.Config,
 	}
 
 	return nil
+}
+
+// maxTimePenalty bounds a manually entered time penalty; anything larger is
+// almost certainly a typo.
+const maxTimePenalty = 1000
+
+// processTimePenalty sets a player's time penalty in a finished annotated
+// game: it replaces any penalty that player already has, and zero removes it.
+// As in native games, penalties come after end-of-game rack points, so the
+// game must already be over.
+func processTimePenalty(gdoc *ipc.GameDocument, evt *ipc.ClientGameplayEvent) error {
+	if gdoc.Type != ipc.GameType_ANNOTATED {
+		return errors.New("time penalties can only be entered in annotated games")
+	}
+	if gdoc.PlayState != ipc.PlayState_GAME_OVER {
+		return errors.New("time penalties can only be entered after the game is over")
+	}
+	if evt.PenaltyPoints < 0 || evt.PenaltyPoints > maxTimePenalty {
+		return fmt.Errorf("time penalty must be between 0 and %d points", maxTimePenalty)
+	}
+	pidx := evt.PenaltyPlayerIndex
+	if int(pidx) >= len(gdoc.Players) {
+		return errPlayerNotInGame
+	}
+	removeTimePenalties(gdoc, pidx)
+	if evt.PenaltyPoints == 0 {
+		addWinnerToHistory(gdoc)
+		return nil
+	}
+	applyTimePenalty(gdoc, &ipc.GameEvent{
+		Type:        ipc.GameEvent_TIME_PENALTY,
+		PlayerIndex: pidx,
+		Rack:        knownRack(gdoc, int(pidx)),
+		LostScore:   evt.PenaltyPoints,
+	})
+	return nil
+}
+
+// removeTimePenalties drops a player's time penalty events and gives the
+// points back. Penalties only follow the end of the game, so no later event
+// depends on them.
+func removeTimePenalties(gdoc *ipc.GameDocument, pidx uint32) {
+	kept := gdoc.Events[:0]
+	prevCumulative := int32(0)
+	for _, e := range gdoc.Events {
+		if e.PlayerIndex == pidx && e.Type == ipc.GameEvent_TIME_PENALTY {
+			lost := e.LostScore
+			if lost <= 0 {
+				lost = prevCumulative - e.Cumulative
+			}
+			gdoc.CurrentScores[pidx] += lost
+			continue
+		}
+		if e.PlayerIndex == pidx {
+			prevCumulative = e.Cumulative
+		}
+		kept = append(kept, e)
+	}
+	gdoc.Events = kept
+}
+
+// applyTimePenalty deducts the penalty and appends the event. The cumulative
+// score is recomputed from LostScore so the event stays correct when earlier
+// events are amended; events without a LostScore keep their cumulative.
+func applyTimePenalty(gdoc *ipc.GameDocument, evt *ipc.GameEvent) {
+	if evt.LostScore > 0 {
+		gdoc.CurrentScores[evt.PlayerIndex] -= evt.LostScore
+		evt.Cumulative = gdoc.CurrentScores[evt.PlayerIndex]
+	} else {
+		gdoc.CurrentScores[evt.PlayerIndex] = evt.Cumulative
+	}
+	gdoc.Events = append(gdoc.Events, evt)
+	if gdoc.PlayState == ipc.PlayState_GAME_OVER {
+		addWinnerToHistory(gdoc)
+	}
 }
 
 // ToCGP converts the game to a CGP string.

@@ -16,6 +16,7 @@ import (
 	macondoconfig "github.com/domino14/macondo/config"
 	"github.com/domino14/macondo/gcgio"
 	"github.com/domino14/macondo/gen/api/proto/macondo"
+	wglconfig "github.com/domino14/word-golib/config"
 	"github.com/domino14/word-golib/tilemapping"
 
 	"github.com/woogles-io/liwords/pkg/apiserver"
@@ -827,6 +828,32 @@ func (gs *OMGWordsService) ImportGCG(ctx context.Context, req *connect.Request[p
 		return nil, err
 	}
 
+	err = replayImportedHistory(ctx, cfgCopy.WGLConfig(), gdoc, gh, letterdist)
+	if err != nil {
+		return nil, err
+	}
+
+	if gdoc.PlayState == ipc.PlayState_GAME_OVER {
+		if err = gs.metadataStore.MarkAnnotatedGameDone(ctx, gdoc.Uid); err != nil {
+			return nil, err
+		}
+		if gs.onGameDone != nil {
+			gs.onGameDone(ctx, gdoc.Uid)
+		}
+	}
+
+	err = gs.gameStore.UpdateDocument(ctx, gdoc)
+	if err != nil {
+		return nil, err
+	}
+
+	return connect.NewResponse(&pb.ImportGCGResponse{GameId: gdoc.Uid}), nil
+}
+
+// replayImportedHistory replays a parsed GCG's events onto a fresh annotated
+// game document.
+func replayImportedHistory(ctx context.Context, cfg *wglconfig.Config, gdoc *ipc.GameDocument,
+	gh *macondo.GameHistory, letterdist *tilemapping.LetterDistribution) error {
 	// Add a dummy pass event at the end. GameHistory does not have this.
 	foundEndRack := -1
 	eventOwner := -1
@@ -853,28 +880,9 @@ func (gs *OMGWordsService) ImportGCG(ctx context.Context, req *connect.Request[p
 	}
 
 	// Then replay events.
-	err = cwgame.ReplayEvents(ctx, cfgCopy.WGLConfig(), gdoc, lo.Map(gh.Events, func(evt *macondo.GameEvent, index int) *ipc.GameEvent {
+	return cwgame.ReplayEvents(ctx, cfg, gdoc, lo.Map(gh.Events, func(evt *macondo.GameEvent, index int) *ipc.GameEvent {
 		return utilities.MacondoEvtToOMGEvt(evt, index, letterdist)
 	}), false)
-	if err != nil {
-		return nil, err
-	}
-
-	if gdoc.PlayState == ipc.PlayState_GAME_OVER {
-		if err = gs.metadataStore.MarkAnnotatedGameDone(ctx, gdoc.Uid); err != nil {
-			return nil, err
-		}
-		if gs.onGameDone != nil {
-			gs.onGameDone(ctx, gdoc.Uid)
-		}
-	}
-
-	err = gs.gameStore.UpdateDocument(ctx, gdoc)
-	if err != nil {
-		return nil, err
-	}
-
-	return connect.NewResponse(&pb.ImportGCGResponse{GameId: gdoc.Uid}), nil
 }
 
 func (gs *OMGWordsService) GetGameOwner(ctx context.Context, req *connect.Request[pb.GetGameOwnerRequest]) (

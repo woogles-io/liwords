@@ -2,7 +2,7 @@
 
 import { HomeOutlined } from "@ant-design/icons";
 import { App, Card } from "antd";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@connectrpc/connect-query";
 import { getBroadcastGameContext } from "../gen/api/proto/broadcast_service/broadcast_service-BroadcastService_connectquery";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router";
@@ -18,6 +18,8 @@ import { GameInfo } from "../gameroom/game_info";
 
 import {
   ClientGameplayEvent,
+  ClientGameplayEvent_EventType,
+  ClientGameplayEventSchema,
   PlayerInfoSchema as OMGPlayerInfoSchema,
   ChallengeRule as OMGChallengeRule,
   GameDocumentSchema,
@@ -37,6 +39,7 @@ import {
 import { useClient, flashError } from "../utils/hooks/connect";
 import { useDefinitionAndPhonyChecker } from "../utils/hooks/definitions";
 import { EditorControl } from "./editor_control";
+import { EndOfGameModal } from "./time_penalty";
 import { PlayState } from "../gen/api/proto/ipc/omgwords_pb";
 import { syntheticGameInfo } from "./synthetic_game_info";
 import { EditorLandingPage } from "./new_game";
@@ -45,6 +48,7 @@ import { create } from "@bufbuild/protobuf";
 import { useComments } from "../utils/hooks/comments";
 import { GameCommentService } from "../gen/api/proto/comments_service/comments_service_pb";
 import { gameEventsToTurns } from "../store/reducers/turns";
+import { GameEvent_Type } from "../gen/api/proto/vendored/macondo/macondo_pb";
 
 const doNothing = () => {};
 
@@ -268,6 +272,59 @@ export const BoardEditor = () => {
     }
   }, [gameContext.playState, notification]);
 
+  // Pop up the end-of-game modal whenever the annotator arrives at the final
+  // position of a finished game. Appending a time penalty moves the end, so
+  // it does not count as arriving there.
+  const [endOfGameOpen, setEndOfGameOpen] = useState(false);
+  const atEnd =
+    gameContext.playState === PlayState.GAME_OVER &&
+    examinableGameContext.turns.length === gameContext.turns.length;
+  const prevAtEnd = useRef(false);
+  const prevOver = useRef(false);
+  const prevTurnCount = useRef(gameContext.turns.length);
+  const prevGameID = useRef(gameContext.gameID);
+  useEffect(() => {
+    const sameGame = prevGameID.current === gameContext.gameID;
+    const over = gameContext.playState === PlayState.GAME_OVER;
+    const justEnded = sameGame && !prevOver.current && over;
+    const turnsAppended =
+      sameGame && prevTurnCount.current !== gameContext.turns.length;
+    if (
+      atEnd &&
+      gameContext.gameID &&
+      (!sameGame || justEnded || (!prevAtEnd.current && !turnsAppended))
+    ) {
+      setEndOfGameOpen(true);
+    }
+    prevAtEnd.current = atEnd;
+    prevOver.current = over;
+    prevTurnCount.current = gameContext.turns.length;
+    prevGameID.current = gameContext.gameID;
+  }, [
+    atEnd,
+    gameContext.playState,
+    gameContext.gameID,
+    gameContext.turns.length,
+  ]);
+
+  const endOfGamePlayers = useMemo(() => {
+    const penalties = gameContext.gameDocument.players.map(() => 0);
+    gameContext.turns.forEach((evt) => {
+      if (evt.type === GameEvent_Type.TIME_PENALTY) {
+        penalties[evt.playerIndex] += evt.lostScore;
+      }
+    });
+    return gameContext.gameDocument.players.map((p, idx) => ({
+      name: p.realName || p.nickname,
+      score: gameContext.players[idx]?.score ?? 0,
+      penalty: penalties[idx],
+    }));
+  }, [
+    gameContext.gameDocument.players,
+    gameContext.players,
+    gameContext.turns,
+  ]);
+
   const sortedRack = useMemo(() => {
     const rack =
       examinableGameContext.players.find((p) => p.onturn)?.currentRack ??
@@ -333,6 +390,29 @@ export const BoardEditor = () => {
       handleExamineLast();
     } catch (e) {
       flashError(e);
+    }
+  };
+
+  // A time penalty sets the player's total penalty (zero removes it). It is
+  // never sent as an amendment.
+  const addTimePenalty = async (playerIndex: number, points: number) => {
+    try {
+      await eventClient.sendGameEvent({
+        event: create(ClientGameplayEventSchema, {
+          type: ClientGameplayEvent_EventType.TIME_PENALTY,
+          gameId: gameContext.gameID,
+          penaltyPoints: points,
+          penaltyPlayerIndex: playerIndex,
+        }),
+        userId: gameContext.gameDocument.players[playerIndex].userId,
+        amendment: false,
+        eventNumber: gameContext.turns.length,
+      });
+      handleExamineLast();
+    } catch (e) {
+      flashError(e);
+      // Keep the end-of-game modal open so the annotator can retry.
+      throw e;
     }
   };
 
@@ -465,6 +545,12 @@ export const BoardEditor = () => {
               editGame={editGame}
             />
           </Card>
+          <EndOfGameModal
+            open={endOfGameOpen}
+            players={endOfGamePlayers}
+            onClose={() => setEndOfGameOpen(false)}
+            onSubmit={addTimePenalty}
+          />
         </div>
         <div className="sticky-player-card-container">
           <PlayerCards
