@@ -1,67 +1,101 @@
-import { Button, Form, InputNumber, Select } from "antd";
-import { useState } from "react";
+import { InputNumber, Modal } from "antd";
+import { useEffect, useState } from "react";
 
 // Mirrors maxTimePenalty in pkg/cwgame.
 export const maxTimePenalty = 1000;
 
+export type EndOfGamePlayer = {
+  name: string;
+  score: number;
+};
+
 type Props = {
-  playerNames: string[];
+  open: boolean;
+  players: EndOfGamePlayer[];
+  onClose: () => void;
+  // Called once per player with a penalty, in player order.
   onSubmit: (playerIndex: number, points: number) => Promise<void> | void;
 };
 
-// Enter an over-time penalty for a finished annotated game.
-export const TimePenaltyControl = (props: Props) => {
-  const [playerIndex, setPlayerIndex] = useState(0);
-  const [points, setPoints] = useState<number | null>(10);
+// Shown when an annotated game ends: the final scores, and an optional
+// over-time penalty for either or both players.
+export const EndOfGameModal = (props: Props) => {
+  const [penalties, setPenalties] = useState<Array<number | null>>([]);
   const [submitting, setSubmitting] = useState(false);
 
-  const submit = async () => {
-    if (!points) {
-      return;
+  const { open, players } = props;
+  useEffect(() => {
+    if (open) {
+      setPenalties(players.map(() => null));
     }
+  }, [open, players.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const hasPenalty = penalties.some((p) => !!p);
+
+  const submit = async () => {
     setSubmitting(true);
     try {
-      await props.onSubmit(playerIndex, points);
+      for (let idx = 0; idx < penalties.length; idx++) {
+        const points = penalties[idx];
+        if (points) {
+          await props.onSubmit(idx, points);
+        }
+      }
+      props.onClose();
+    } catch {
+      // The caller has already reported the error; stay open for a retry.
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <Form layout="inline" className="time-penalty-control">
-      <Form.Item label="Player">
-        <Select
-          aria-label="Time penalty player"
-          value={playerIndex}
-          onChange={setPlayerIndex}
-          options={props.playerNames.map((name, idx) => ({
-            value: idx,
-            label: name,
-          }))}
-          style={{ minWidth: 120 }}
-        />
-      </Form.Item>
-      <Form.Item label="Points">
-        <InputNumber
-          aria-label="Time penalty points"
-          min={1}
-          max={maxTimePenalty}
-          step={10}
-          precision={0}
-          value={points}
-          onChange={setPoints}
-        />
-      </Form.Item>
-      <Form.Item>
-        <Button
-          onClick={submit}
-          disabled={!points}
-          loading={submitting}
-          data-testid="time-penalty-submit"
-        >
-          Add time penalty
-        </Button>
-      </Form.Item>
-    </Form>
+    <Modal
+      title="Game over"
+      className="end-of-game-modal"
+      open={open}
+      onCancel={props.onClose}
+      onOk={submit}
+      okText="Apply time penalties"
+      okButtonProps={{
+        disabled: !hasPenalty,
+        loading: submitting,
+      }}
+      cancelText="Close"
+    >
+      <table className="end-of-game-scores">
+        <thead>
+          <tr>
+            <th>Player</th>
+            <th>Score</th>
+            <th>Time penalty</th>
+          </tr>
+        </thead>
+        <tbody>
+          {players.map((p, idx) => (
+            <tr key={idx}>
+              <td>{p.name}</td>
+              <td>{p.score}</td>
+              <td>
+                <InputNumber
+                  aria-label={`Time penalty for ${p.name}`}
+                  min={1}
+                  max={maxTimePenalty}
+                  step={10}
+                  precision={0}
+                  placeholder="0"
+                  value={penalties[idx] ?? null}
+                  onChange={(v) =>
+                    setPenalties((prev) =>
+                      prev.map((old, i) => (i === idx ? v : old)),
+                    )
+                  }
+                />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </Modal>
   );
 };
