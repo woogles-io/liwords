@@ -1,7 +1,7 @@
 // boardwizard is our board editor
 
 import { HomeOutlined } from "@ant-design/icons";
-import { App, Button, Card } from "antd";
+import { App, Card } from "antd";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@connectrpc/connect-query";
 import { getBroadcastGameContext } from "../gen/api/proto/broadcast_service/broadcast_service-BroadcastService_connectquery";
@@ -48,6 +48,7 @@ import { create } from "@bufbuild/protobuf";
 import { useComments } from "../utils/hooks/comments";
 import { GameCommentService } from "../gen/api/proto/comments_service/comments_service_pb";
 import { gameEventsToTurns } from "../store/reducers/turns";
+import { GameEvent_Type } from "../gen/api/proto/vendored/macondo/macondo_pb";
 
 const doNothing = () => {};
 
@@ -271,31 +272,58 @@ export const BoardEditor = () => {
     }
   }, [gameContext.playState, notification]);
 
-  // Pop up the end-of-game modal when the game ends while annotating, not
-  // when an already-finished game is opened.
+  // Pop up the end-of-game modal whenever the annotator arrives at the final
+  // position of a finished game. Appending a time penalty moves the end, so
+  // it does not count as arriving there.
   const [endOfGameOpen, setEndOfGameOpen] = useState(false);
-  const prevPlayState = useRef(gameContext.playState);
+  const atEnd =
+    gameContext.playState === PlayState.GAME_OVER &&
+    examinableGameContext.turns.length === gameContext.turns.length;
+  const prevAtEnd = useRef(false);
+  const prevOver = useRef(false);
+  const prevTurnCount = useRef(gameContext.turns.length);
   const prevGameID = useRef(gameContext.gameID);
   useEffect(() => {
+    const sameGame = prevGameID.current === gameContext.gameID;
+    const over = gameContext.playState === PlayState.GAME_OVER;
+    const justEnded = sameGame && !prevOver.current && over;
+    const turnsAppended =
+      sameGame && prevTurnCount.current !== gameContext.turns.length;
     if (
-      prevGameID.current === gameContext.gameID &&
-      prevPlayState.current !== PlayState.GAME_OVER &&
-      gameContext.playState === PlayState.GAME_OVER
+      atEnd &&
+      gameContext.gameID &&
+      (!sameGame || justEnded || (!prevAtEnd.current && !turnsAppended))
     ) {
       setEndOfGameOpen(true);
     }
-    prevPlayState.current = gameContext.playState;
+    prevAtEnd.current = atEnd;
+    prevOver.current = over;
+    prevTurnCount.current = gameContext.turns.length;
     prevGameID.current = gameContext.gameID;
-  }, [gameContext.playState, gameContext.gameID]);
+  }, [
+    atEnd,
+    gameContext.playState,
+    gameContext.gameID,
+    gameContext.turns.length,
+  ]);
 
-  const endOfGamePlayers = useMemo(
-    () =>
-      gameContext.gameDocument.players.map((p, idx) => ({
-        name: p.realName || p.nickname,
-        score: gameContext.players[idx]?.score ?? 0,
-      })),
-    [gameContext.gameDocument.players, gameContext.players],
-  );
+  const endOfGamePlayers = useMemo(() => {
+    const penalties = gameContext.gameDocument.players.map(() => 0);
+    gameContext.turns.forEach((evt) => {
+      if (evt.type === GameEvent_Type.TIME_PENALTY) {
+        penalties[evt.playerIndex] += evt.lostScore;
+      }
+    });
+    return gameContext.gameDocument.players.map((p, idx) => ({
+      name: p.realName || p.nickname,
+      score: gameContext.players[idx]?.score ?? 0,
+      penalty: penalties[idx],
+    }));
+  }, [
+    gameContext.gameDocument.players,
+    gameContext.players,
+    gameContext.turns,
+  ]);
 
   const sortedRack = useMemo(() => {
     const rack =
@@ -365,8 +393,8 @@ export const BoardEditor = () => {
     }
   };
 
-  // Time penalties are always appended after the end of the game, never sent
-  // as amendments.
+  // A time penalty sets the player's total penalty (zero removes it). It is
+  // never sent as an amendment.
   const addTimePenalty = async (playerIndex: number, points: number) => {
     try {
       await eventClient.sendGameEvent({
@@ -517,17 +545,6 @@ export const BoardEditor = () => {
               editGame={editGame}
             />
           </Card>
-          {gameContext.playState === PlayState.GAME_OVER && (
-            <Card
-              title="Game over"
-              className="editor-game-over"
-              style={{ marginTop: 12 }}
-            >
-              <Button onClick={() => setEndOfGameOpen(true)}>
-                Final score and time penalties
-              </Button>
-            </Card>
-          )}
           <EndOfGameModal
             open={endOfGameOpen}
             players={endOfGamePlayers}
