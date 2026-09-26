@@ -1947,6 +1947,41 @@ func TestTimePenalty(t *testing.T) {
 	is.Equal(len(replayed.Events), len(gdoc.Events))
 }
 
+// Entering a penalty for a player replaces the one they already have, and
+// zero removes it, so the annotator can correct a penalty later.
+func TestTimePenaltyReplaceAndRemove(t *testing.T) {
+	is := is.New(t)
+	ctx := ctxForTests()
+	gdoc := loadGDoc("document-gameover.json")
+	gdoc.Type = ipc.GameType_ANNOTATED
+	numEvts := len(gdoc.Events)
+	cfg := DefaultConfig.WGLConfig()
+
+	is.NoErr(ProcessGameplayEvent(ctx, cfg, timePenaltyEvt(1, 10), "", gdoc))
+	is.NoErr(ProcessGameplayEvent(ctx, cfg, timePenaltyEvt(0, 20), "", gdoc))
+	is.Equal(gdoc.CurrentScores, []int32{426, 312})
+
+	is.NoErr(ProcessGameplayEvent(ctx, cfg, timePenaltyEvt(1, 30), "", gdoc))
+	is.Equal(gdoc.CurrentScores, []int32{426, 292})
+	is.Equal(len(gdoc.Events), numEvts+2)
+
+	// Removing the other player's penalty leaves this one untouched.
+	is.NoErr(ProcessGameplayEvent(ctx, cfg, timePenaltyEvt(0, 0), "", gdoc))
+	is.Equal(gdoc.CurrentScores, []int32{446, 292})
+	is.Equal(len(gdoc.Events), numEvts+1)
+	last := gdoc.Events[numEvts]
+	is.Equal(last.PlayerIndex, uint32(1))
+	is.Equal(last.LostScore, int32(30))
+	is.Equal(last.Cumulative, int32(292))
+
+	// A large penalty flips the winner and removing it flips it back.
+	is.NoErr(ProcessGameplayEvent(ctx, cfg, timePenaltyEvt(0, 200), "", gdoc))
+	is.Equal(gdoc.Winner, int32(1))
+	is.NoErr(ProcessGameplayEvent(ctx, cfg, timePenaltyEvt(0, 0), "", gdoc))
+	is.Equal(gdoc.Winner, int32(0))
+	is.Equal(gdoc.CurrentScores, []int32{446, 292})
+}
+
 // A penalty event records only the tiles the annotator knows, not the random
 // fill, like every other annotated event.
 func TestTimePenaltyRecordsKnownRack(t *testing.T) {
@@ -2009,7 +2044,6 @@ func TestTimePenaltyRejected(t *testing.T) {
 	}{
 		{"not annotated", "document-gameover.json", true, timePenaltyEvt(0, 10)},
 		{"game not over", "document-earlygame.json", false, timePenaltyEvt(0, 10)},
-		{"zero points", "document-gameover.json", false, timePenaltyEvt(0, 0)},
 		{"negative points", "document-gameover.json", false, timePenaltyEvt(0, -10)},
 		{"too many points", "document-gameover.json", false, timePenaltyEvt(0, maxTimePenalty+1)},
 		{"bad player", "document-gameover.json", false, timePenaltyEvt(2, 10)},
