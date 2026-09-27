@@ -310,8 +310,9 @@ func (gs *OMGWordsService) SendGameEvent(ctx context.Context, req *connect.Reque
 	if err != nil {
 		return nil, err
 	}
-	// justEnded indicates if the handled event resulted in the game ending.
-	// Since this is an annotated game, we must mark it as done.
+	// justEnded indicates the game is over after the handled event (it just
+	// ended, or a time penalty changed its result). Since this is an annotated
+	// game, we must mark it as done and refresh anything derived from it.
 	if justEnded {
 		if err = gs.metadataStore.MarkAnnotatedGameDone(ctx, req.Msg.Event.GameId); err != nil {
 			return nil, err
