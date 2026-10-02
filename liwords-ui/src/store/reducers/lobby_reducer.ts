@@ -342,13 +342,13 @@ export function LobbyReducer(state: LobbyState, action: Action): LobbyState {
       const p = action.payload as {
         activeGames: Array<ActiveGame>;
       };
-      // Route games based on game mode
+      // ONGOING_GAMES never contains correspondence games (the backend
+      // excludes them; they arrive via OUR_CORRESPONDENCE_GAMES), so leave
+      // state.correspondenceGames alone rather than wiping it.
       const realTimeGames = p.activeGames.filter((g) => g.gameMode !== 1);
-      const correspondenceGames = p.activeGames.filter((g) => g.gameMode === 1);
       return {
         ...state,
         activeGames: realTimeGames,
-        correspondenceGames,
       };
     }
 
