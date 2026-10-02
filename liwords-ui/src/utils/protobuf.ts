@@ -20,13 +20,30 @@ export const encodeToSocketFmt = (
   return newArr;
 };
 
+// FileReader completions are not guaranteed to fire in the order the reads
+// were started (a large frame can finish after a small one that arrived
+// later), so chain them to process socket frames strictly in arrival order.
+let decodeQueue: Promise<void> = Promise.resolve();
+
 export const decodeToMsg = (
   data: Blob,
   onload: (reader: FileReader) => void,
 ) => {
-  const reader = new FileReader();
-  reader.onload = () => onload(reader);
-  reader.readAsArrayBuffer(data);
+  decodeQueue = decodeQueue.then(
+    () =>
+      new Promise<void>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            onload(reader);
+          } finally {
+            resolve();
+          }
+        };
+        reader.onerror = () => resolve();
+        reader.readAsArrayBuffer(data);
+      }),
+  );
 };
 
 type EnumOption = { label: string; value: number | string };
