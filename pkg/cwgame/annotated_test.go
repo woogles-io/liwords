@@ -1,0 +1,127 @@
+package cwgame
+
+import (
+	"sort"
+	"testing"
+
+	"github.com/matryer/is"
+
+	"github.com/woogles-io/liwords/rpc/api/proto/ipc"
+)
+
+func newAnnotatedGameForTest(t *testing.T, racks ...[]byte) *ipc.GameDocument {
+	rules := NewBasicGameRules("NWL20", "CrosswordGame", "english", ipc.ChallengeRule_ChallengeRule_FIVE_POINT,
+		"classic", []int{0, 0}, 0, 0, true)
+	g, err := NewGame(DefaultConfig.WGLConfig(), rules, []*ipc.GameDocument_MinimalPlayerInfo{
+		{Nickname: "a", UserId: "internal-a"}, {Nickname: "b", UserId: "internal-b"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	g.Type = ipc.GameType_ANNOTATED
+	g.PlayState = ipc.PlayState_PLAYING
+	if len(racks) > 0 {
+		enterRacks(t, g, racks...)
+	}
+	return g
+}
+
+func enterRacks(t *testing.T, g *ipc.GameDocument, racks ...[]byte) {
+	if err := AssignRacks(DefaultConfig.WGLConfig(), g, racks, AlwaysAssignEmpty); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// annotate sends a move, or a pass if tiles is empty, and returns the rack
+// it recorded.
+func annotate(t *testing.T, g *ipc.GameDocument, typ ipc.ClientGameplayEvent_EventType, pos, tiles string) []byte {
+	e := &ipc.ClientGameplayEvent{Type: typ, GameId: g.Uid, PositionCoords: pos}
+	if tiles != "" {
+		e.MachineLetters = englishBytes(tiles)
+	}
+	if err := ProcessGameplayEvent(ctxForTests(), DefaultConfig.WGLConfig(), e, g.Players[g.PlayerOnTurn].UserId, g); err != nil {
+		t.Fatal(err)
+	}
+	if err := NewTileInventory(g, DefaultConfig.WGLConfig()).ValidateInvariants(); err != nil {
+		t.Fatal(err)
+	}
+	return sorted(g.Events[len(g.Events)-1].Rack)
+}
+
+func pass(t *testing.T, g *ipc.GameDocument) []byte {
+	return annotate(t, g, ipc.ClientGameplayEvent_PASS, "", "")
+}
+
+func sorted(b []byte) []byte {
+	c := append([]byte{}, b...)
+	sort.Slice(c, func(i, j int) bool { return c[i] < c[j] })
+	return c
+}
+
+// drainPoolToBoard leaves `leave` tiles in the pool by moving the rest to
+// rows away from the centre.
+func drainPoolToBoard(g *ipc.GameDocument, leave int) {
+	cols := int(g.Board.NumCols)
+	sq := 0
+	for _, tile := range g.Bag.Tiles[leave:] {
+		if tile == 0 {
+			tile = 0x81 // blanks on the board are designated
+		}
+		g.Board.Tiles[sq] = tile
+		if sq++; sq == 4*cols {
+			sq = 11 * cols
+		}
+	}
+	g.Bag.Tiles = g.Bag.Tiles[:leave]
+}
+
+func TestAnnotatedRecordsOnlyKnownTiles(t *testing.T) {
+	is := is.New(t)
+	g := newAnnotatedGameForTest(t, englishBytes("AEINRST"), nil)
+	is.Equal(annotate(t, g, ipc.ClientGameplayEvent_TILE_PLACEMENT, "8D", "RETAINS"), sorted(englishBytes("AEINRST")))
+	is.Equal(len(g.Racks[0])+len(g.Racks[1]), 0) // nothing random is stored
+
+	// No rack entered: only the tiles the move shows.
+	is.Equal(annotate(t, g, ipc.ClientGameplayEvent_EXCHANGE, "", "QV"), sorted(englishBytes("QV")))
+	is.Equal(annotate(t, g, ipc.ClientGameplayEvent_TILE_PLACEMENT, "E7", "D.G"), sorted(englishBytes("DG")))
+
+	// A partial rack is recorded as entered, and its leave stays known.
+	enterRacks(t, g, nil, englishBytes("QVW"))
+	is.Equal(annotate(t, g, ipc.ClientGameplayEvent_EXCHANGE, "", "QV"), sorted(englishBytes("QVW")))
+	pass(t, g)
+	is.Equal(pass(t, g), englishBytes("W"))
+}
+
+func TestAnnotatedPhonyRestoresKnownRack(t *testing.T) {
+	is := is.New(t)
+	g := newAnnotatedGameForTest(t, englishBytes("AEINRST"), nil)
+	annotate(t, g, ipc.ClientGameplayEvent_TILE_PLACEMENT, "8D", "NTRSAIE")
+	annotate(t, g, ipc.ClientGameplayEvent_CHALLENGE_PLAY, "", "")
+	is.Equal(g.Events[len(g.Events)-1].Type, ipc.GameEvent_PHONY_TILES_RETURNED)
+	is.Equal(sorted(g.Racks[0]), sorted(englishBytes("AEINRST")))
+	is.Equal(len(g.Racks[1]), 0)
+}
+
+// Once the bag is empty, a rack is known if it is the only unknown one.
+func TestAnnotatedEndgameRacks(t *testing.T) {
+	is := is.New(t)
+
+	g := newAnnotatedGameForTest(t)
+	drainPoolToBoard(g, 2*RackTileLimit)
+	pass(t, g)
+	is.Equal(len(pass(t, g)), 0) // both unknown: the split stays unknown
+
+	g = newAnnotatedGameForTest(t)
+	drainPoolToBoard(g, 2*RackTileLimit)
+	opp := sorted(g.Bag.Tiles[RackTileLimit:])
+	enterRacks(t, g, append([]byte{}, g.Bag.Tiles[:RackTileLimit]...), nil)
+	pass(t, g)
+	is.Equal(pass(t, g), opp)
+
+	// The play that empties the bag leaves its player's rack known.
+	g = newAnnotatedGameForTest(t, englishBytes("AEINRST"), englishBytes("BCDFGHL"))
+	drainPoolToBoard(g, 3)
+	last := sorted(g.Bag.Tiles)
+	annotate(t, g, ipc.ClientGameplayEvent_TILE_PLACEMENT, "8D", "RETAINS")
+	is.Equal(sorted(g.Racks[0]), last)
+	is.Equal(len(g.Bag.Tiles), 0)
+}
