@@ -1257,11 +1257,12 @@ func dbTournamentToTournamentMetadataResponse(ctx context.Context, t *entity.Tou
 		}
 		controls := division.DivisionManager.GetDivisionControls()
 		summary := &pb.TournamentDivisionSummary{
-			Name: divName,
+			Name:             divName,
+			RoundControls:    division.DivisionManager.GetRoundControls(),
+			DivisionControls: controls,
 		}
 		if controls != nil {
 			summary.GameRequest = controls.GameRequest
-			summary.RoundControls = division.DivisionManager.GetRoundControls()
 		}
 		divisionSummaries = append(divisionSummaries, summary)
 	}

@@ -96,6 +96,8 @@ message TournamentDivisionSummary {
   string name = 1;
   ipc.GameRequest game_request = 2;
   repeated ipc.RoundControl round_controls = 3;
+  // Used to copy a tournament's settings (gibsonization, spread cap, etc).
+  ipc.DivisionControls division_controls = 4;
 }
 
 message SetTournamentMetadataRequest {
