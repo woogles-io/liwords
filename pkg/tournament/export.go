@@ -122,6 +122,9 @@ func exportToTSH(ctx context.Context, t *entity.Tournament, us user.Store) (stri
 				pairing := biggerMap[key]
 				if pairing == nil {
 					log.Info().Int32("rd", rd).Int("p", pidx).Msg("nil-pairing")
+					// Still write an opponent so the opponent and score
+					// columns stay aligned.
+					sb.WriteString(" 0")
 					continue
 				}
 				if pairing.Players[0] == pairing.Players[1] {
@@ -141,10 +144,25 @@ func exportToTSH(ctx context.Context, t *entity.Tournament, us user.Store) (stri
 					for idx, opp := range pairing.Players {
 						if int(opp) != pidx {
 							// This is the opponent.
-							// Player-indexes are 1-indexed:
-							fmt.Fprintf(&sb, " %d", opp+1)
-							// This assumes 2 players per game but we've already made our bed:
-							score = int(pairing.Games[0].Scores[1-idx])
+							// tsh only rates a game if it has an opponent, so a
+							// forfeit or void must be written as unpaired
+							// (opponent 0), with the forfeit as the score.
+							switch pairing.Outcomes[1-idx] {
+							case ipc.TournamentGameResult_FORFEIT_WIN:
+								sb.WriteString(" 0")
+								score = 50
+							case ipc.TournamentGameResult_FORFEIT_LOSS:
+								sb.WriteString(" 0")
+								score = -50
+							case ipc.TournamentGameResult_VOID:
+								sb.WriteString(" 0")
+								score = 0
+							default:
+								// Player-indexes are 1-indexed:
+								fmt.Fprintf(&sb, " %d", opp+1)
+								// This assumes 2 players per game but we've already made our bed:
+								score = int(pairing.Games[0].Scores[1-idx])
+							}
 						}
 					}
 				}
