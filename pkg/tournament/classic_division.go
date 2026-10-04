@@ -1290,6 +1290,30 @@ func (t *ClassicDivision) SetPlayerRating(playerID string, rating int32) error {
 	return nil
 }
 
+// RenamePlayer changes a player's ID in place. Pairings, the pairing
+// matrix and ready states all refer to players by index, so only the
+// player list, the index map and the stored standings need updating.
+func (t *ClassicDivision) RenamePlayer(oldID, newID string) error {
+	idx, ok := t.PlayerIndexMap[oldID]
+	if !ok {
+		return entity.NewWooglesError(pb.WooglesError_TOURNAMENT_NONEXISTENT_PLAYER, t.TournamentName, t.DivisionName, strconv.Itoa(int(t.CurrentRound)+1), oldID, "RenamePlayer")
+	}
+	if _, exists := t.PlayerIndexMap[newID]; exists {
+		return entity.NewWooglesError(pb.WooglesError_TOURNAMENT_PLAYER_ALREADY_EXISTS, t.TournamentName, t.DivisionName, newID)
+	}
+	t.Players.Persons[idx].Id = newID
+	delete(t.PlayerIndexMap, oldID)
+	t.PlayerIndexMap[newID] = idx
+	for _, rs := range t.Standings {
+		for _, ps := range rs.Standings {
+			if ps.PlayerId == oldID {
+				ps.PlayerId = newID
+			}
+		}
+	}
+	return nil
+}
+
 func (t *ClassicDivision) RemovePlayers(persons *pb.TournamentPersons) (*pb.DivisionPairingsResponse, error) {
 	for _, player := range persons.Persons {
 		playerIndex, ok := t.PlayerIndexMap[player.Id]

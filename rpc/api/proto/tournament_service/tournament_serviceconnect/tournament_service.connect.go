@@ -193,7 +193,7 @@ type TournamentServiceClient interface {
 	RemovePlayers(context.Context, *connect.Request[ipc.TournamentPersons]) (*connect.Response[tournament_service.TournamentResponse], error)
 	// MovePlayer moves a player from one division to another
 	MovePlayer(context.Context, *connect.Request[tournament_service.MovePlayerRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
-	// EditPlayer changes an existing player's rating.
+	// EditPlayer changes an existing player's rating, or (in IRL mode) name.
 	EditPlayer(context.Context, *connect.Request[tournament_service.EditPlayerRequest]) (*connect.Response[tournament_service.EditPlayerResponse], error)
 	SetPairing(context.Context, *connect.Request[tournament_service.TournamentPairingsRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
 	SetResult(context.Context, *connect.Request[tournament_service.TournamentResultOverrideRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
@@ -810,7 +810,7 @@ type TournamentServiceHandler interface {
 	RemovePlayers(context.Context, *connect.Request[ipc.TournamentPersons]) (*connect.Response[tournament_service.TournamentResponse], error)
 	// MovePlayer moves a player from one division to another
 	MovePlayer(context.Context, *connect.Request[tournament_service.MovePlayerRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
-	// EditPlayer changes an existing player's rating.
+	// EditPlayer changes an existing player's rating, or (in IRL mode) name.
 	EditPlayer(context.Context, *connect.Request[tournament_service.EditPlayerRequest]) (*connect.Response[tournament_service.EditPlayerResponse], error)
 	SetPairing(context.Context, *connect.Request[tournament_service.TournamentPairingsRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
 	SetResult(context.Context, *connect.Request[tournament_service.TournamentResultOverrideRequest]) (*connect.Response[tournament_service.TournamentResponse], error)

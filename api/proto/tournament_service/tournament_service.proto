@@ -156,6 +156,8 @@ message EditPlayerRequest {
   // RemovePlayers.
   string player_id = 3;
   optional int32 rating = 4;
+  // Only supported in IRL mode, where a player is identified by their name.
+  optional string new_name = 5;
 }
 
 message EditPlayerResponse {}
@@ -330,7 +332,7 @@ service TournamentService {
   rpc RemovePlayers(ipc.TournamentPersons) returns (TournamentResponse);
   // MovePlayer moves a player from one division to another
   rpc MovePlayer(MovePlayerRequest) returns (TournamentResponse);
-  // EditPlayer changes an existing player's rating.
+  // EditPlayer changes an existing player's rating, or (in IRL mode) name.
   rpc EditPlayer(EditPlayerRequest) returns (EditPlayerResponse);
   rpc SetPairing(TournamentPairingsRequest) returns (TournamentResponse);
   rpc SetResult(TournamentResultOverrideRequest) returns (TournamentResponse);

@@ -185,19 +185,26 @@ export const EditPlayer = (props: { tournamentID: string }) => {
     }
   };
 
+  const irlMode = tournamentContext.metadata.irlMode;
+
   const onFinish = async (vals: Store) => {
+    const newName = vals.newName?.trim() || undefined;
     const obj = {
       id: props.tournamentID,
       division: vals.division,
       playerId: vals.username,
       rating: vals.rating,
+      newName,
     };
     try {
       await tClient.editPlayer(obj);
       message.info({
-        content: "Player updated",
-        duration: 3,
+        content: newName
+          ? "Player renamed. Their scorecard QR code still works; reprint scorecards if you want the new name on it."
+          : "Player updated",
+        duration: newName ? 8 : 3,
       });
+      form.resetFields(["username", "newName"]);
     } catch (e) {
       flashError(e);
     }
@@ -222,6 +229,16 @@ export const EditPlayer = (props: { tournamentID: string }) => {
       >
         <InputNumber min={0} />
       </Form.Item>
+
+      {irlMode && (
+        <Form.Item
+          name="newName"
+          label="New name"
+          extra="Leave blank to keep the current name. Use this if someone takes over a player's spot."
+        >
+          <Input />
+        </Form.Item>
+      )}
 
       <Form.Item>
         <Button type="primary" htmlType="submit">

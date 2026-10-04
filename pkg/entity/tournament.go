@@ -25,6 +25,7 @@ type DivisionManager interface {
 	AddPlayers(*pb.TournamentPersons) (*pb.DivisionPairingsResponse, error)
 	RemovePlayers(*pb.TournamentPersons) (*pb.DivisionPairingsResponse, error)
 	SetPlayerRating(string, int32) error
+	RenamePlayer(oldID, newID string) error
 	IsRoundReady(int) error
 	IsRoundComplete(int) (bool, error)
 	IsStarted() bool

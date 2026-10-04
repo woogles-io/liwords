@@ -698,14 +698,29 @@ func AddPlayers(ctx context.Context, ts TournamentStore, us user.Store, id strin
 
 	// Only perform the add operation if all persons can be added.
 
+	// IDs picked for earlier players in this request, so that later ones
+	// avoid their QR code prefixes too.
+	newIRLIDs := []string{}
 	for _, player := range players.Persons {
-		var UUID string
 		var fullID string
 		var err error
 		if t.ExtraMeta.IRLMode {
-			// Use a deterministic "uuid"
-			UUID = md5hash(player.Id)
-			fullID = UUID + ":" + player.Id
+			if existing, dname, ok := findIRLPlayerID(t, "", player.Id); ok {
+				if dname != division {
+					return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_PLAYER_ALREADY_EXISTS, t.Name, dname, existing)
+				}
+				// The division manager decides whether this is a
+				// duplicate or a removed player coming back.
+				fullID = existing
+			} else {
+				for _, id := range newIRLIDs {
+					if irlPlayerName(id) == player.Id {
+						return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_PLAYER_ALREADY_EXISTS, t.Name, division, id)
+					}
+				}
+				fullID = newIRLPlayerID(t, newIRLIDs, player.Id)
+				newIRLIDs = append(newIRLIDs, fullID)
+			}
 		} else {
 			fullID, _, err = constructFullID(t.Name, division, ctx, us, player.Id)
 			if err != nil {
@@ -773,12 +788,10 @@ func RemovePlayers(ctx context.Context, ts TournamentStore, us user.Store, id st
 
 	// Only perform the remove operation if all persons can be removed.
 	for _, player := range players.Persons {
-		var UUID string
 		var fullID string
 		var err error
 		if t.ExtraMeta.IRLMode {
-			UUID = md5hash(player.Id)
-			fullID = UUID + ":" + player.Id
+			fullID = irlPlayerIDOrDefault(t, division, player.Id)
 		} else {
 			fullID, _, err = constructFullID(t.Name, division, ctx, us, player.Id)
 			if err != nil {
@@ -822,7 +835,7 @@ func RemovePlayers(ctx context.Context, ts TournamentStore, us user.Store, id st
 // EditPlayer changes an existing player's details. playerID is the
 // username (or name, in IRL mode), as with RemovePlayers. Any nil field is
 // left unchanged.
-func EditPlayer(ctx context.Context, ts TournamentStore, us user.Store, id string, division string, playerID string, rating *int32) error {
+func EditPlayer(ctx context.Context, ts TournamentStore, us user.Store, id string, division string, playerID string, rating *int32, newName *string) error {
 	t, err := ts.Get(ctx, id)
 	if err != nil {
 		return err
@@ -831,9 +844,9 @@ func EditPlayer(ctx context.Context, ts TournamentStore, us user.Store, id strin
 	t.Lock()
 	defer t.Unlock()
 
-	if t.IsFinished {
-		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_FINISHED, t.Name, division)
-	}
+	// Edits are allowed on finished tournaments so directors can fix names
+	// and ratings after the fact.
+	// TODO: maybe disallow edits on finished tournaments again.
 	divisionObject, ok := t.Divisions[division]
 	if !ok {
 		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, division)
@@ -844,7 +857,7 @@ func EditPlayer(ctx context.Context, ts TournamentStore, us user.Store, id strin
 
 	var fullID string
 	if t.ExtraMeta.IRLMode {
-		fullID = md5hash(playerID) + ":" + playerID
+		fullID = irlPlayerIDOrDefault(t, division, playerID)
 	} else {
 		fullID, _, err = constructFullID(t.Name, division, ctx, us, playerID)
 		if err != nil {
@@ -852,8 +865,41 @@ func EditPlayer(ctx context.Context, ts TournamentStore, us user.Store, id strin
 		}
 	}
 
+	// Validate the rename before changing anything, so a rejected edit
+	// doesn't leave a half-applied change on the cached tournament.
+	newID := ""
+	if newName != nil {
+		// Online, a player's ID is their Woogles user, so a "rename" would
+		// really be swapping in a different account. Only IRL mode, where
+		// the ID is just a token and a name, supports renaming.
+		if !t.ExtraMeta.IRLMode {
+			return errors.New("renaming players is only supported in IRL tournaments")
+		}
+		name := strings.TrimSpace(*newName)
+		if name == "" {
+			return errors.New("new name must not be empty")
+		}
+		if strings.Contains(name, ":") {
+			return errors.New("new name must not contain a colon")
+		}
+		if existing, dname, ok := findIRLPlayerID(t, "", name); ok {
+			return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_PLAYER_ALREADY_EXISTS, t.Name, dname, existing)
+		}
+		// Keep the token. The printed scorecard QR code is a prefix of the
+		// ID, so it keeps working for whoever now holds this spot, and it
+		// can't clash with anyone else's.
+		token, _, _ := strings.Cut(fullID, ":")
+		newID = token + ":" + name
+	}
+
 	if rating != nil {
 		err = divisionObject.DivisionManager.SetPlayerRating(fullID, *rating)
+		if err != nil {
+			return err
+		}
+	}
+	if newID != "" {
+		err = divisionObject.DivisionManager.RenamePlayer(fullID, newID)
 		if err != nil {
 			return err
 		}
@@ -864,7 +910,8 @@ func EditPlayer(ctx context.Context, ts TournamentStore, us user.Store, id strin
 		return err
 	}
 
-	// Send the whole division, since a re-seed can change every pairing.
+	// Send the whole division: a re-seed can change every pairing, and a
+	// rename changes the player in every pairing and standing.
 	tdevt, err := divisionObject.DivisionManager.GetXHRResponse()
 	if err != nil {
 		return err
@@ -873,6 +920,71 @@ func EditPlayer(ctx context.Context, ts TournamentStore, us user.Store, id strin
 	tdevt.Division = division
 	wrapped := entity.WrapEvent(tdevt, ipc.MessageType_TOURNAMENT_DIVISION_MESSAGE)
 	return SendTournamentMessage(ctx, ts, id, wrapped)
+}
+
+// IRL players have no Woogles account, so their ID is token:name. The
+// token starts out as md5(name), but a rename keeps the old token (so the
+// player's printed scorecard keeps working), and newIRLPlayerID may pick
+// another one. So never recompute it from the name: look players up by
+// name instead.
+
+func irlPlayerName(id string) string {
+	_, name, _ := strings.Cut(id, ":")
+	return name
+}
+
+// findIRLPlayerID returns the ID and division of the player with the given
+// name, searching only the given division unless it is empty.
+func findIRLPlayerID(t *entity.Tournament, division string, name string) (string, string, bool) {
+	for dname, div := range t.Divisions {
+		if (division != "" && dname != division) || div.DivisionManager == nil {
+			continue
+		}
+		for _, p := range div.DivisionManager.GetPlayers().Persons {
+			if irlPlayerName(p.Id) == name {
+				return p.Id, dname, true
+			}
+		}
+	}
+	return "", "", false
+}
+
+// irlPlayerIDOrDefault returns the ID of the named player in the division,
+// or the ID they would have had if they were never renamed. The latter
+// matches nobody, so callers get their usual "nonexistent player" error.
+func irlPlayerIDOrDefault(t *entity.Tournament, division string, name string) string {
+	if id, _, ok := findIRLPlayerID(t, division, name); ok {
+		return id
+	}
+	return md5hash(name) + ":" + name
+}
+
+// newIRLPlayerID picks the ID for a player being added to an IRL
+// tournament. The token is md5(name) unless another player already holds
+// it, which happens when a renamed player kept their old name's token.
+// Two players must never share a token: scorecard links and IRL score
+// entry identify players by it. pending holds IDs picked earlier in the
+// same request.
+func newIRLPlayerID(t *entity.Tournament, pending []string, name string) string {
+	taken := map[string]bool{}
+	for _, id := range pending {
+		token, _, _ := strings.Cut(id, ":")
+		taken[token] = true
+	}
+	for _, div := range t.Divisions {
+		if div.DivisionManager == nil {
+			continue
+		}
+		for _, p := range div.DivisionManager.GetPlayers().Persons {
+			token, _, _ := strings.Cut(p.Id, ":")
+			taken[token] = true
+		}
+	}
+	token := md5hash(name)
+	for n := 1; taken[token]; n++ {
+		token = md5hash(name + "\n" + strconv.Itoa(n))
+	}
+	return token + ":" + name
 }
 
 func MovePlayer(ctx context.Context, ts TournamentStore, us user.Store, id string, sourceDivision string, targetDivision string, playerID string) error {
@@ -920,8 +1032,7 @@ func MovePlayer(ctx context.Context, ts TournamentStore, us user.Store, id strin
 	// Construct full player ID
 	var fullID string
 	if t.ExtraMeta.IRLMode {
-		UUID := md5hash(playerID)
-		fullID = UUID + ":" + playerID
+		fullID = irlPlayerIDOrDefault(t, sourceDivision, playerID)
 	} else {
 		fullID, _, err = constructFullID(t.Name, sourceDivision, ctx, us, playerID)
 		if err != nil {

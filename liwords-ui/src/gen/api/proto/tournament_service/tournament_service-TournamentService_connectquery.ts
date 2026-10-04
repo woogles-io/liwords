@@ -105,7 +105,7 @@ export const removePlayers = TournamentService.method.removePlayers;
 export const movePlayer = TournamentService.method.movePlayer;
 
 /**
- * EditPlayer changes an existing player's rating.
+ * EditPlayer changes an existing player's rating, or (in IRL mode) name.
  *
  * @generated from rpc tournament_service.TournamentService.EditPlayer
  */

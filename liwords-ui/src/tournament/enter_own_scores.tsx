@@ -16,21 +16,21 @@ type Props = {
   truncatedID: string;
 };
 
-function findPlayerByTruncatedId(data: TournamentState, truncatedId: string) {
-  // Loop through each division
+function findPlayersByTruncatedId(data: TournamentState, truncatedId: string) {
+  // Scorecard QR codes hold the shortest player-ID prefix that was unique
+  // when they were printed. A player added after printing can share that
+  // prefix, and a removed player's code matches nobody, so return every
+  // match rather than assuming there is exactly one.
+  const matches = [];
   for (const [divisionName, division] of Object.entries(data.divisions)) {
-    // Loop through each player in the division
     for (let idx = 0; idx < division.players.length; idx++) {
       const player = division.players[idx];
-      // Check if the player's ID starts with the truncated ID
       if (player.id.startsWith(truncatedId)) {
-        // Return the division name and player's index if a match is found
-        return { division: divisionName, index: idx };
+        matches.push({ division: divisionName, index: idx });
       }
     }
   }
-  // Return null if no match is found
-  return null;
+  return matches;
 }
 
 type ShowResultsProps = {
@@ -216,17 +216,26 @@ const ScoreForm = (props: ScoreFormProps) => {
 export const OwnScoreEnterer = (props: Props) => {
   const { tournamentContext } = useTournamentStoreContext();
 
-  const player = useMemo(() => {
-    const p = findPlayerByTruncatedId(tournamentContext, props.truncatedID);
-    return p;
-  }, [tournamentContext, props.truncatedID]);
+  const matches = useMemo(
+    () => findPlayersByTruncatedId(tournamentContext, props.truncatedID),
+    [tournamentContext, props.truncatedID],
+  );
 
-  if (player == null) {
-    if (Object.keys(tournamentContext.divisions).length > 0) {
-      throw new Error("unexpected truncated ID: " + props.truncatedID);
-    }
+  if (Object.keys(tournamentContext.divisions).length === 0) {
+    // Still loading.
     return <></>;
   }
+  if (matches.length !== 1) {
+    return (
+      <h4 className="readable-text-color" style={{ marginLeft: 20 }}>
+        {matches.length === 0
+          ? "This scorecard link is no longer valid."
+          : "This scorecard link matches more than one player."}{" "}
+        Please ask a director for a new scorecard.
+      </h4>
+    );
+  }
+  const player = matches[0];
   const division = tournamentContext.divisions[player.division];
   const foundPlayer = division.players[player.index];
   const fullName = foundPlayer.id.split(":")[1];

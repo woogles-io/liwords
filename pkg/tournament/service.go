@@ -467,7 +467,7 @@ func (ts *TournamentService) EditPlayer(ctx context.Context, req *connect.Reques
 		return nil, err
 	}
 
-	err = EditPlayer(ctx, ts.tournamentStore, ts.userStore, req.Msg.Id, req.Msg.Division, req.Msg.PlayerId, req.Msg.Rating)
+	err = EditPlayer(ctx, ts.tournamentStore, ts.userStore, req.Msg.Id, req.Msg.Division, req.Msg.PlayerId, req.Msg.Rating, req.Msg.NewName)
 	if err != nil {
 		return nil, apiserver.InvalidArg(err.Error())
 	}
