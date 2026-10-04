@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/matryer/is"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
@@ -124,4 +125,32 @@ func TestAnnotatedEndgameRacks(t *testing.T) {
 	annotate(t, g, ipc.ClientGameplayEvent_TILE_PLACEMENT, "8D", "RETAINS")
 	is.Equal(sorted(g.Racks[0]), last)
 	is.Equal(len(g.Bag.Tiles), 0)
+}
+
+// Correcting a play in the endgame must not leave a player more tiles than
+// they really hold.
+func TestAnnotatedEndgameCorrectionGoesOut(t *testing.T) {
+	is := is.New(t)
+	g := newAnnotatedGameForTest(t, englishBytes("AEINRST"), englishBytes("BCDFGHL"))
+	drainPoolToBoard(g, 0)
+	annotate(t, g, ipc.ClientGameplayEvent_TILE_PLACEMENT, "8D", "TRAIN") // A keeps ES
+	pass(t, g)
+	// The entered ES must have been wrong: A had only 2 tiles and played B and C.
+	annotate(t, g, ipc.ClientGameplayEvent_TILE_PLACEMENT, "E7", "B.C")
+	is.Equal(g.PlayState, ipc.PlayState_WAITING_FOR_FINAL_PASS)
+	is.Equal(sorted(g.Racks[1]), sorted(englishBytes("DEFGHLS")))
+}
+
+// Replaying the events, as amendments do, keeps both players' known tiles.
+func TestAnnotatedReplayKeepsKnownTiles(t *testing.T) {
+	is := is.New(t)
+	g := newAnnotatedGameForTest(t, englishBytes("AEINRST"), nil)
+	annotate(t, g, ipc.ClientGameplayEvent_TILE_PLACEMENT, "8D", "RETAINS")
+	enterRacks(t, g, nil, englishBytes("QVW"))
+	annotate(t, g, ipc.ClientGameplayEvent_EXCHANGE, "", "QV")
+	pass(t, g)
+
+	r := proto.Clone(g).(*ipc.GameDocument)
+	is.NoErr(ReplayEvents(ctxForTests(), DefaultConfig.WGLConfig(), r, r.Events, false))
+	is.Equal(r.Racks[1], englishBytes("W"))
 }

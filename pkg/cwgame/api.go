@@ -290,9 +290,10 @@ func AssignRacks(cfg *wglconfig.Config, gdoc *ipc.GameDocument, racks [][]byte, 
 	// Create TileInventory to manage all tile movements
 	inv := NewTileInventory(gdoc, cfg)
 
-	// Set all racks at once (puts back current racks, assigns new ones)
-	// Only allow borrowing in editor mode (AlwaysAssignEmpty)
-	allowBorrowing := (assignEmpty == AlwaysAssignEmpty)
+	// Set all racks at once. Borrowing also keeps the racks not being set.
+	// Annotated racks hold only known tiles, so they are always kept, even in
+	// replay; other games keep putting every rack back, as a safeguard.
+	allowBorrowing := assignEmpty == AlwaysAssignEmpty || gdoc.Type == ipc.GameType_ANNOTATED
 	if err := inv.SetAllRacks(racks, allowBorrowing); err != nil {
 		return enhanceBagError(cfg, gdoc, err)
 	}

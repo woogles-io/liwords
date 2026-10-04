@@ -104,7 +104,7 @@ func rackSizes(gdoc *ipc.GameDocument) []int {
 }
 
 // revealTiles adds the tiles a move uses to player p's known rack, or makes
-// them the whole known rack if the entered rack can't have held them.
+// them the whole known rack if that would hold more tiles than p really has.
 func revealTiles(cfg *wglconfig.Config, gdoc *ipc.GameDocument, p int, used []tilemapping.MachineLetter) ([]byte, error) {
 	counts := map[tilemapping.MachineLetter]int{}
 	for _, t := range gdoc.Racks[p] {
@@ -121,7 +121,7 @@ func revealTiles(cfg *wglconfig.Config, gdoc *ipc.GameDocument, p int, used []ti
 	if len(rack) == len(gdoc.Racks[p]) {
 		return gdoc.Racks[p], nil
 	}
-	if len(rack) > RackTileLimit {
+	if len(rack) > rackSizes(gdoc)[p] {
 		rack = used
 	}
 	err := NewTileInventory(gdoc, cfg).SetRack(p, rack.ToByteArr())
