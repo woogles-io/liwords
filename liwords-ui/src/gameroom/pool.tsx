@@ -176,7 +176,7 @@ const ActualPool = React.memo((props: Props & { hidePool: boolean }) => {
     a.letters.map((l, idx) => idx),
   );
   // Both racks hold 7 while the bag has tiles. An annotated rack can be
-  // shorter; its unknown tiles are in the pool, not the bag.
+  // shorter; its unknown tiles are in the unseen pool, not the bag.
   const inbag = Math.max(unseen + props.currentRack.length - 14, 0);
 
   let title: string;

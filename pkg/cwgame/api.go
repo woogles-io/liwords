@@ -298,7 +298,7 @@ func AssignRacks(cfg *wglconfig.Config, gdoc *ipc.GameDocument, racks [][]byte, 
 		return enhanceBagError(cfg, gdoc, err)
 	}
 	if gdoc.Type == ipc.GameType_ANNOTATED {
-		// Unknown tiles stay in the pool; see annotated.go.
+		// Unknown tiles stay in the unseen pool; see annotated.go.
 		return resolveKnownRacks(cfg, gdoc)
 	}
 

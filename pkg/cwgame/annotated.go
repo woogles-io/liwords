@@ -12,7 +12,8 @@ import (
 
 // In an annotated game a rack holds only the tiles known to be on it; the
 // unknown ones stay in the bag, which is therefore the unseen pool. A move is
-// played on racks topped up from the pool, and the top-up goes back after.
+// played on racks topped up from the unseen pool, and the top-up goes back
+// after.
 func withFilledRacks(cfg *wglconfig.Config, gdoc *ipc.GameDocument, fn func() error) error {
 	if gdoc.Type != ipc.GameType_ANNOTATED {
 		return fn()

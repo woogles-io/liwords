@@ -58,9 +58,9 @@ func sorted(b []byte) []byte {
 	return c
 }
 
-// drainPoolToBoard leaves `leave` tiles in the pool by moving the rest to
-// rows away from the centre.
-func drainPoolToBoard(g *ipc.GameDocument, leave int) {
+// drainUnseenPoolToBoard leaves `leave` tiles in the unseen pool by moving
+// the rest to rows away from the centre.
+func drainUnseenPoolToBoard(g *ipc.GameDocument, leave int) {
 	cols := int(g.Board.NumCols)
 	sq := 0
 	for _, tile := range g.Bag.Tiles[leave:] {
@@ -107,12 +107,12 @@ func TestAnnotatedEndgameRacks(t *testing.T) {
 	is := is.New(t)
 
 	g := newAnnotatedGameForTest(t)
-	drainPoolToBoard(g, 2*RackTileLimit)
+	drainUnseenPoolToBoard(g, 2*RackTileLimit)
 	pass(t, g)
 	is.Equal(len(pass(t, g)), 0) // both unknown: the split stays unknown
 
 	g = newAnnotatedGameForTest(t)
-	drainPoolToBoard(g, 2*RackTileLimit)
+	drainUnseenPoolToBoard(g, 2*RackTileLimit)
 	opp := sorted(g.Bag.Tiles[RackTileLimit:])
 	enterRacks(t, g, append([]byte{}, g.Bag.Tiles[:RackTileLimit]...), nil)
 	pass(t, g)
@@ -120,7 +120,7 @@ func TestAnnotatedEndgameRacks(t *testing.T) {
 
 	// The play that empties the bag leaves its player's rack known.
 	g = newAnnotatedGameForTest(t, englishBytes("AEINRST"), englishBytes("BCDFGHL"))
-	drainPoolToBoard(g, 3)
+	drainUnseenPoolToBoard(g, 3)
 	last := sorted(g.Bag.Tiles)
 	annotate(t, g, ipc.ClientGameplayEvent_TILE_PLACEMENT, "8D", "RETAINS")
 	is.Equal(sorted(g.Racks[0]), last)
@@ -132,7 +132,7 @@ func TestAnnotatedEndgameRacks(t *testing.T) {
 func TestAnnotatedEndgameCorrectionGoesOut(t *testing.T) {
 	is := is.New(t)
 	g := newAnnotatedGameForTest(t, englishBytes("AEINRST"), englishBytes("BCDFGHL"))
-	drainPoolToBoard(g, 0)
+	drainUnseenPoolToBoard(g, 0)
 	annotate(t, g, ipc.ClientGameplayEvent_TILE_PLACEMENT, "8D", "TRAIN") // A keeps ES
 	pass(t, g)
 	// The entered ES must have been wrong: A had only 2 tiles and played B and C.
