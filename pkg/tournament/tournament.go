@@ -819,6 +819,62 @@ func RemovePlayers(ctx context.Context, ts TournamentStore, us user.Store, id st
 	return SendTournamentMessage(ctx, ts, id, wrapped)
 }
 
+// EditPlayer changes an existing player's details. playerID is the
+// username (or name, in IRL mode), as with RemovePlayers. Any nil field is
+// left unchanged.
+func EditPlayer(ctx context.Context, ts TournamentStore, us user.Store, id string, division string, playerID string, rating *int32) error {
+	t, err := ts.Get(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	t.Lock()
+	defer t.Unlock()
+
+	if t.IsFinished {
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_FINISHED, t.Name, division)
+	}
+	divisionObject, ok := t.Divisions[division]
+	if !ok {
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, division)
+	}
+	if divisionObject.DivisionManager == nil {
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NIL_DIVISION_MANAGER, t.Name, division)
+	}
+
+	var fullID string
+	if t.ExtraMeta.IRLMode {
+		fullID = md5hash(playerID) + ":" + playerID
+	} else {
+		fullID, _, err = constructFullID(t.Name, division, ctx, us, playerID)
+		if err != nil {
+			return err
+		}
+	}
+
+	if rating != nil {
+		err = divisionObject.DivisionManager.SetPlayerRating(fullID, *rating)
+		if err != nil {
+			return err
+		}
+	}
+
+	err = ts.Set(ctx, t)
+	if err != nil {
+		return err
+	}
+
+	// Send the whole division, since a re-seed can change every pairing.
+	tdevt, err := divisionObject.DivisionManager.GetXHRResponse()
+	if err != nil {
+		return err
+	}
+	tdevt.Id = id
+	tdevt.Division = division
+	wrapped := entity.WrapEvent(tdevt, ipc.MessageType_TOURNAMENT_DIVISION_MESSAGE)
+	return SendTournamentMessage(ctx, ts, id, wrapped)
+}
+
 func MovePlayer(ctx context.Context, ts TournamentStore, us user.Store, id string, sourceDivision string, targetDivision string, playerID string) error {
 	t, err := ts.Get(ctx, id)
 	if err != nil {

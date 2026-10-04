@@ -147,6 +147,17 @@ message MovePlayerRequest {
   string player_id = 4;
 }
 
+message EditPlayerRequest {
+  string id = 1;
+  string division = 2;
+  // The player's username (or name, for IRL tournaments), as with
+  // RemovePlayers.
+  string player_id = 3;
+  optional int32 rating = 4;
+}
+
+message EditPlayerResponse {}
+
 message TournamentPairingsRequest {
   string id = 1;
   string division = 2;
@@ -317,6 +328,8 @@ service TournamentService {
   rpc RemovePlayers(ipc.TournamentPersons) returns (TournamentResponse);
   // MovePlayer moves a player from one division to another
   rpc MovePlayer(MovePlayerRequest) returns (TournamentResponse);
+  // EditPlayer changes an existing player's rating.
+  rpc EditPlayer(EditPlayerRequest) returns (EditPlayerResponse);
   rpc SetPairing(TournamentPairingsRequest) returns (TournamentResponse);
   rpc SetResult(TournamentResultOverrideRequest) returns (TournamentResponse);
   rpc StartRoundCountdown(TournamentStartRoundCountdownRequest)

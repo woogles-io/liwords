@@ -7,7 +7,7 @@ import { useTournamentStoreContext } from "../../../store/store";
 import { Modal } from "../../../utils/focus_modal";
 import { lowerAndJoin } from "./shared";
 import { AddDivision, RemoveDivision, RenameDivision } from "./divisions";
-import { AddPlayers, RemovePlayer, MovePlayer } from "./players";
+import { AddPlayers, EditPlayer, RemovePlayer, MovePlayer } from "./players";
 import { PairRound, SetPairing, SetResult, UnpairRound } from "./pairings";
 import {
   SetDivisionRoundControls,
@@ -40,6 +40,7 @@ const FormModal = (props: ModalProps) => {
     "remove-division": <RemoveDivision tournamentID={props.tournamentID} />,
     "add-players": <AddPlayers tournamentID={props.tournamentID} />,
     "remove-player": <RemovePlayer tournamentID={props.tournamentID} />,
+    "edit-player": <EditPlayer tournamentID={props.tournamentID} />,
     "move-player-to-division": <MovePlayer tournamentID={props.tournamentID} />,
     "set-single-pairing": <SetPairing tournamentID={props.tournamentID} />,
     "set-game-result": <SetResult tournamentID={props.tournamentID} />,
@@ -183,6 +184,7 @@ export const GhettoTools = (props: Props) => {
           {makeButtonGroup([
             "Add players",
             "Remove player",
+            "Edit player",
             "Move player to division",
           ])}
 

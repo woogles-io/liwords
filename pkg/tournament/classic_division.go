@@ -1184,10 +1184,7 @@ func (t *ClassicDivision) AddPlayers(players *pb.TournamentPersons) (*pb.Divisio
 
 	if t.CurrentRound < 0 {
 		t.Players.Persons = append(t.Players.Persons, players.Persons...)
-		sort.Sort(PlayerSorter(t.Players.Persons))
-		t.PlayerIndexMap = newPlayerIndexMap(t.Players.Persons)
-		t.Matrix = newPairingMatrix(len(t.RoundControls), len(t.Players.Persons))
-		newpmessage, err := t.prepair()
+		newpmessage, err := t.reseed()
 		if err != nil {
 			return nil, err
 		}
@@ -1258,6 +1255,39 @@ func (t *ClassicDivision) AddPlayers(players *pb.TournamentPersons) (*pb.Divisio
 		pmessage = combinePairingMessages(pmessage, pairingsResponse)
 	}
 	return pmessage, nil
+}
+
+// reseed sorts the players by rating and rebuilds everything that depends
+// on player order. It must only be called before the tournament starts.
+func (t *ClassicDivision) reseed() (*pb.DivisionPairingsResponse, error) {
+	sort.Sort(PlayerSorter(t.Players.Persons))
+	t.PlayerIndexMap = newPlayerIndexMap(t.Players.Persons)
+	t.Matrix = newPairingMatrix(len(t.RoundControls), len(t.Players.Persons))
+	return t.prepair()
+}
+
+// SetPlayerRating changes a player's rating. Before the tournament starts
+// this re-seeds the division; afterwards the seeds stay fixed, since past
+// pairings and standings tiebreaks refer to them.
+func (t *ClassicDivision) SetPlayerRating(playerID string, rating int32) error {
+	if rating < 0 {
+		return fmt.Errorf("rating must not be negative: %d", rating)
+	}
+	idx, ok := t.PlayerIndexMap[playerID]
+	if !ok {
+		return entity.NewWooglesError(pb.WooglesError_TOURNAMENT_NONEXISTENT_PLAYER, t.TournamentName, t.DivisionName, strconv.Itoa(int(t.CurrentRound)+1), playerID, "SetPlayerRating")
+	}
+	if t.Players.Persons[idx].Rating == rating {
+		// Re-seeding isn't a stable sort, so don't shuffle tied players
+		// for nothing.
+		return nil
+	}
+	t.Players.Persons[idx].Rating = rating
+	if t.CurrentRound < 0 {
+		_, err := t.reseed()
+		return err
+	}
+	return nil
 }
 
 func (t *ClassicDivision) RemovePlayers(persons *pb.TournamentPersons) (*pb.DivisionPairingsResponse, error) {
