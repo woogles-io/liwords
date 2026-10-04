@@ -128,3 +128,27 @@ func revealTiles(cfg *wglconfig.Config, gdoc *ipc.GameDocument, p int, used []ti
 	err := NewTileInventory(gdoc, cfg).SetRack(p, rack.ToByteArr())
 	return gdoc.Racks[p], err
 }
+
+// RestoreRackForAmendment gives the player of an event being amended its
+// recorded rack, minus the tiles its move used: those may only have been known
+// through the move being replaced. Other remembered tiles are kept.
+func RestoreRackForAmendment(cfg *wglconfig.Config, gdoc *ipc.GameDocument, evt *ipc.GameEvent) error {
+	rack := tilemapping.FromByteArr(evt.Rack)
+	var left tilemapping.MachineWord
+	var err error
+	switch evt.Type {
+	case ipc.GameEvent_TILE_PLACEMENT_MOVE:
+		left, err = tilemapping.Leave(rack, tilemapping.FromByteArr(evt.PlayedTiles), true)
+	case ipc.GameEvent_EXCHANGE:
+		left, err = tilemapping.Leave(rack, tilemapping.FromByteArr(evt.Exchanged), false)
+	default:
+		left = rack
+	}
+	if err != nil {
+		left = rack
+	}
+	if err := NewTileInventory(gdoc, cfg).SetRack(int(evt.PlayerIndex), left.ToByteArr()); err != nil {
+		return err
+	}
+	return resolveKnownRacks(cfg, gdoc)
+}

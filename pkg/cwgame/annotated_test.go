@@ -154,3 +154,23 @@ func TestAnnotatedReplayKeepsKnownTiles(t *testing.T) {
 	is.NoErr(ReplayEvents(ctxForTests(), DefaultConfig.WGLConfig(), r, r.Events, false))
 	is.Equal(r.Racks[1], englishBytes("W"))
 }
+
+// Amending a move forgets the tiles only the old move showed, but keeps the
+// rest of a typed rack.
+func TestAnnotatedAmendmentForgetsOldMoveTiles(t *testing.T) {
+	is := is.New(t)
+	for _, tc := range []struct{ typed, want string }{{"", "CT"}, {"DGOXYZ", "COTXYZ"}} {
+		g := newAnnotatedGameForTest(t, englishBytes("AEINRST"), nil)
+		annotate(t, g, ipc.ClientGameplayEvent_TILE_PLACEMENT, "8D", "RETAINS")
+		if tc.typed != "" {
+			enterRacks(t, g, nil, englishBytes(tc.typed))
+		}
+		annotate(t, g, ipc.ClientGameplayEvent_TILE_PLACEMENT, "E7", "D.G")
+
+		old := g.Events[1]
+		is.NoErr(ReplayEvents(ctxForTests(), DefaultConfig.WGLConfig(), g, g.Events[:1], false))
+		is.NoErr(RestoreRackForAmendment(DefaultConfig.WGLConfig(), g, old))
+		got := annotate(t, g, ipc.ClientGameplayEvent_TILE_PLACEMENT, "D7", "C.T")
+		is.Equal(got, sorted(englishBytes(tc.want)))
+	}
+}
