@@ -129,25 +129,39 @@ func revealTiles(cfg *wglconfig.Config, gdoc *ipc.GameDocument, p int, used []ti
 	return gdoc.Racks[p], err
 }
 
-// RestoreRackForAmendment gives the player of an event being amended its
-// recorded rack, minus the tiles its move used: those may only have been known
-// through the move being replaced. Other remembered tiles are kept.
+// RestoreRackForAmendment sets up the rack for re-playing an amended event:
+// the player's known rack before it, plus any tiles its old rack held that its
+// old move didn't use. The old move's tiles are dropped, since they may only
+// have been known through the move being replaced.
 func RestoreRackForAmendment(cfg *wglconfig.Config, gdoc *ipc.GameDocument, evt *ipc.GameEvent) error {
-	rack := tilemapping.FromByteArr(evt.Rack)
-	var left tilemapping.MachineWord
+	p := int(evt.PlayerIndex)
+	unused := tilemapping.FromByteArr(evt.Rack)
 	var err error
 	switch evt.Type {
 	case ipc.GameEvent_TILE_PLACEMENT_MOVE:
-		left, err = tilemapping.Leave(rack, tilemapping.FromByteArr(evt.PlayedTiles), true)
+		unused, err = tilemapping.Leave(unused, tilemapping.FromByteArr(evt.PlayedTiles), true)
 	case ipc.GameEvent_EXCHANGE:
-		left, err = tilemapping.Leave(rack, tilemapping.FromByteArr(evt.Exchanged), false)
-	default:
-		left = rack
+		unused, err = tilemapping.Leave(unused, tilemapping.FromByteArr(evt.Exchanged), false)
 	}
 	if err != nil {
-		left = rack
+		unused = nil
 	}
-	if err := NewTileInventory(gdoc, cfg).SetRack(int(evt.PlayerIndex), left.ToByteArr()); err != nil {
+	rack := tilemapping.FromByteArr(gdoc.Racks[p])
+	counts := map[tilemapping.MachineLetter]int{}
+	for _, t := range rack {
+		counts[t]++
+	}
+	for _, t := range unused {
+		if counts[t] > 0 {
+			counts[t]--
+		} else {
+			rack = append(rack, t)
+		}
+	}
+	if len(rack) > rackSizes(gdoc)[p] {
+		return nil // keep the known rack from before the event
+	}
+	if err := NewTileInventory(gdoc, cfg).SetRack(p, rack.ToByteArr()); err != nil {
 		return err
 	}
 	return resolveKnownRacks(cfg, gdoc)

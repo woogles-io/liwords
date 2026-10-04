@@ -174,3 +174,19 @@ func TestAnnotatedAmendmentForgetsOldMoveTiles(t *testing.T) {
 		is.Equal(got, sorted(englishBytes(tc.want)))
 	}
 }
+
+// An amendment starts from the rack known before the amended move, so typed
+// tiles that an earlier, overfull version of the move discarded come back.
+func TestAnnotatedAmendmentKeepsEarlierKnownTiles(t *testing.T) {
+	is := is.New(t)
+	g := newAnnotatedGameForTest(t, englishBytes("AEINRST"), englishBytes("ABCDEFG"))
+	annotate(t, g, ipc.ClientGameplayEvent_TILE_PLACEMENT, "8D", "RETAINS")
+	annotate(t, g, ipc.ClientGameplayEvent_TILE_PLACEMENT, "E7", "G.") // b knows ABCDEF
+	pass(t, g)
+	is.Equal(annotate(t, g, ipc.ClientGameplayEvent_TILE_PLACEMENT, "K8", "OX"), sorted(englishBytes("OX")))
+
+	old := g.Events[3]
+	is.NoErr(ReplayEvents(ctxForTests(), DefaultConfig.WGLConfig(), g, g.Events[:3], false))
+	is.NoErr(RestoreRackForAmendment(DefaultConfig.WGLConfig(), g, old))
+	is.Equal(annotate(t, g, ipc.ClientGameplayEvent_TILE_PLACEMENT, "J7", "X."), sorted(englishBytes("ABCDEFX")))
+}
