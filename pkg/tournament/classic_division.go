@@ -1499,42 +1499,21 @@ func getRecords(t *ClassicDivision, round int) ([]*pb.PlayerStanding, error) {
 				}
 			})
 	} else {
+		// Rank by points (a win is 2, a draw is 1), then spread, then seed.
+		// This matches the COP pairing standings and canCatch's gibsonization
+		// check, which both assume the list is ordered by points.
 		sort.Slice(records,
 			func(i, j int) bool {
-				totalGames1 := records[i].Wins + records[i].Draws + records[i].Losses
-				totalGames2 := records[j].Wins + records[j].Draws + records[j].Losses
-
-				if totalGames1 == 0 && totalGames2 == 0 {
-					return t.PlayerIndexMap[records[j].PlayerId] > t.PlayerIndexMap[records[i].PlayerId]
+				points1 := records[i].Wins*2 + records[i].Draws
+				points2 := records[j].Wins*2 + records[j].Draws
+				if points1 != points2 {
+					return points1 > points2
 				}
-
-				n1d2 := (records[i].Wins*2 + records[i].Draws) * totalGames2
-				n2d1 := (records[j].Wins*2 + records[j].Draws) * totalGames1
-
-				if totalGames1 == 0 {
-					return !isPositiveRecord(records[j])
-				}
-
-				if totalGames2 == 0 {
-					return isPositiveRecord(records[i])
-				}
-
-				if n1d2 != n2d1 {
-					return n1d2 > n2d1
-				}
-				// Tiebreak with losses (more losses is bad)
-				if records[i].Losses != records[j].Losses {
-					return records[i].Losses < records[j].Losses
-				}
-
 				if records[i].Spread != records[j].Spread {
 					return records[i].Spread > records[j].Spread
 				}
-
-				// Otherwise they're all equal.
-				// Tiebreak by rank to ensure determinism
+				// Tiebreak by seed to ensure determinism
 				return t.PlayerIndexMap[records[j].PlayerId] > t.PlayerIndexMap[records[i].PlayerId]
-
 			})
 	}
 	return records, nil
@@ -2168,13 +2147,6 @@ func (t *ClassicDivision) clearPairingKey(playerIndex int32, round int) error {
 	delete(t.PairingMap, pairingKey)
 	t.Matrix[round][playerIndex] = ""
 	return nil
-}
-
-func isPositiveRecord(r *pb.PlayerStanding) bool {
-	if r.Wins*2+r.Draws == r.Losses*2 {
-		return r.Spread > 0
-	}
-	return r.Wins*2+r.Draws > r.Losses*2
 }
 
 func (t *ClassicDivision) pairingIsBye(player string, round int) (bool, error) {
