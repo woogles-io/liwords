@@ -20,6 +20,7 @@ import {
   requestAnalysis as requestBestBotAnalysis,
 } from "../gen/api/proto/analysis_service/analysis_service-AnalysisService_connectquery";
 import { PlayState } from "../gen/api/proto/vendored/macondo/macondo_pb";
+import { GameType } from "../gen/api/proto/ipc/omgwords_pb";
 import { ComputerAnalysis } from "./computer_analysis";
 import { defaultLetterDistribution } from "../lobby/sought_game_interactions";
 import {
@@ -1068,13 +1069,19 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
   const rackLength =
     examinableGameContext.players[examinableGameContext.onturn]?.currentRack
       .length ?? 0;
-  const note = rackNote(
-    rackLength,
-    Object.values(examinableGameContext.pool).reduce((a, b) => a + b, 0),
-    // The examined position's playState is not tracked, so use the game's,
-    // and only at its final position.
-    gameDone && examinableGameContext.turns.length === gameContext.turns.length,
-  );
+  // Only annotated racks can be partial; elsewhere a short rack is hidden or
+  // the endgame, and the analyzer behaves as before.
+  const note =
+    gameContext.gameDocument.type === GameType.ANNOTATED
+      ? rackNote(
+          rackLength,
+          Object.values(examinableGameContext.pool).reduce((a, b) => a + b, 0),
+          // The examined position's playState is not tracked, so use the
+          // game's, and only at its final position.
+          gameDone &&
+            examinableGameContext.turns.length === gameContext.turns.length,
+        )
+      : null;
   const analyzerContainer = (
     <div className="analyzer-container">
       {!examinerLoading ? (
