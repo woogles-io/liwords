@@ -629,6 +629,12 @@ export const BoardPanel = React.memo((props: Props) => {
     if (!props.events.length) {
       return;
     }
+    if (props.annotated) {
+      // These announce an opponent's move in a live game. In an annotated
+      // game they would only repeat the last move on load, before the
+      // synthetic player list exists ("undefined exchanged ...").
+      return;
+    }
     const evt = props.events[props.events.length - 1];
     const evtNickname = nicknameFromEvt(evt, props.playerMeta);
     if (evtNickname === props.username) {
@@ -661,6 +667,7 @@ export const BoardPanel = React.memo((props: Props) => {
     props.playerMeta,
     props.username,
     props.puzzleMode,
+    props.annotated,
     message,
   ]);
 
