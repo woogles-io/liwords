@@ -54,6 +54,8 @@ import {
 
 type AnalyzerProps = {
   includeCard?: boolean;
+  // In the board editor, Space opens the rack editor.
+  boardEditingMode?: boolean;
   style?: React.CSSProperties;
 };
 
@@ -612,14 +614,16 @@ export const rackNote = (
   rackLength: number,
   unseenLength: number,
   gameOver: boolean,
+  boardEditingMode = false,
 ): string | null => {
   if (gameOver || unseenLength - rackLength <= 7 || rackLength >= 7) {
     return null;
   }
+  const hint = boardEditingMode ? " Press Space to enter the rack." : "";
   if (rackLength === 0) {
-    return "No rack entered for this turn.";
+    return `No rack entered for this turn.${hint}`;
   }
-  return `Analyzing ${rackLength} known tile${rackLength === 1 ? "" : "s"}.`;
+  return `Analyzing ${rackLength} known tile${rackLength === 1 ? "" : "s"}.${hint}`;
 };
 
 export const Analyzer = React.memo((props: AnalyzerProps) => {
@@ -1080,6 +1084,7 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
           // game's, and only at its final position.
           gameDone &&
             examinableGameContext.turns.length === gameContext.turns.length,
+          props.boardEditingMode,
         )
       : null;
   const analyzerContainer = (
