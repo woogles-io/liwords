@@ -8,8 +8,19 @@ import { StandardEnglishAlphabet } from "../constants/alphabets";
 import { BrowserRouter } from "react-router";
 import { waitFor } from "@testing-library/react";
 import { create } from "@bufbuild/protobuf";
+import {
+  GameEventSchema,
+  GameEvent_Type,
+} from "../gen/api/proto/vendored/macondo/macondo_pb";
+import { App } from "antd";
 
-function renderBoardPanel() {
+vi.mock("@connectrpc/connect-query", () => ({
+  useQuery: () => ({ data: undefined }),
+}));
+
+function renderBoardPanel(
+  extra: Partial<React.ComponentProps<typeof BoardPanel>> = {},
+) {
   const dummyFunction = () => {};
 
   const rack = [0, 1, 5, 9, 14, 19, 20];
@@ -45,12 +56,16 @@ function renderBoardPanel() {
         handleAcceptRematch={dummyFunction}
         handleAcceptAbort={dummyFunction}
         vsBot={false}
+        {...extra}
       />
     </BrowserRouter>,
   );
 }
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+});
 
 // skip because snapshot comparison isn't working anymore. it's failing due
 // to the auto-generated CSS classes with antdesign.
@@ -66,4 +81,45 @@ it.skip("renders a game board panel", async () => {
 
   // Take a single snapshot after the component is stable
   expect(container).toMatchSnapshot();
+});
+
+const oppExchange = [
+  create(GameEventSchema, {
+    type: GameEvent_Type.EXCHANGE,
+    playerIndex: 1,
+    exchanged: "ABCD",
+  }),
+];
+
+function spyOnMessages() {
+  const info = vi.fn();
+  const api = {
+    message: { info, error: vi.fn(), success: vi.fn(), warning: vi.fn() },
+    notification: { info: vi.fn(), error: vi.fn(), open: vi.fn() },
+    modal: {},
+  };
+  vi.spyOn(App, "useApp").mockReturnValue(
+    api as unknown as ReturnType<typeof App.useApp>,
+  );
+  return info;
+}
+
+it("announces an opponent's exchange in a live game", () => {
+  const info = spyOnMessages();
+  renderBoardPanel({ events: oppExchange });
+  expect(info).toHaveBeenCalledWith(
+    expect.objectContaining({ content: "opp exchanged ABCD" }),
+    3,
+    undefined,
+  );
+});
+
+it("does not announce the last move in an annotated game", () => {
+  const info = spyOnMessages();
+  renderBoardPanel({ events: oppExchange, annotated: true });
+  expect(info).not.toHaveBeenCalledWith(
+    expect.objectContaining({ content: expect.stringContaining("exchanged") }),
+    expect.anything(),
+    undefined,
+  );
 });
