@@ -603,6 +603,24 @@ export const usePlaceMoveCallback = () => {
   return placeMove;
 };
 
+// In an annotated game a rack holds only the tiles entered or shown by a
+// move, so it can be empty or partial. A full rack is 7 tiles whenever more
+// than an opponent's rack is unseen besides it; past that point a short rack
+// may just be the endgame.
+export const rackNote = (
+  rackLength: number,
+  unseenLength: number,
+  gameOver: boolean,
+): string | null => {
+  if (gameOver || unseenLength - rackLength <= 7 || rackLength >= 7) {
+    return null;
+  }
+  if (rackLength === 0) {
+    return "No rack entered for this turn.";
+  }
+  return `Analyzing ${rackLength} known tile${rackLength === 1 ? "" : "s"}.`;
+};
+
 export const Analyzer = React.memo((props: AnalyzerProps) => {
   const {
     autoMode,
@@ -1047,13 +1065,24 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
     );
   }
 
+  const rackLength =
+    examinableGameContext.players[examinableGameContext.onturn]?.currentRack
+      .length ?? 0;
+  const note = rackNote(
+    rackLength,
+    Object.values(examinableGameContext.pool).reduce((a, b) => a + b, 0),
+    examinableGameContext.playState === PlayState.GAME_OVER,
+  );
   const analyzerContainer = (
     <div className="analyzer-container">
       {!examinerLoading ? (
         <div className="suggestions" style={props.style}>
-          <table>
-            <tbody>{renderAnalyzerMoves}</tbody>
-          </table>
+          {note && <p className="rack-note">{note}</p>}
+          {rackLength > 0 || !note ? (
+            <table>
+              <tbody>{renderAnalyzerMoves}</tbody>
+            </table>
+          ) : null}
         </div>
       ) : (
         <div className="suggestions" style={props.style}>
