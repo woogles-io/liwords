@@ -32,6 +32,7 @@ import {
 import { getLeaveKey, getLexiconKey, getWolges } from "../wasm/loader";
 import { RedoOutlined } from "@ant-design/icons";
 import {
+  hasTouchPrimaryInput,
   EmptyBoardSpaceMachineLetter,
   EmptyRackSpaceMachineLetter,
   EphemeralTile,
@@ -614,12 +615,17 @@ export const rackNote = (
   rackLength: number,
   unseenLength: number,
   gameOver: boolean,
-  boardEditingMode = false,
+  editorInput: "keyboard" | "touch" | null = null,
 ): string | null => {
   if (gameOver || unseenLength - rackLength <= 7 || rackLength >= 7) {
     return null;
   }
-  const hint = boardEditingMode ? " Press Space to enter the rack." : "";
+  const hint =
+    editorInput === "keyboard"
+      ? " Press Space to enter the rack."
+      : editorInput === "touch"
+        ? " Tap the pencil to enter the rack."
+        : "";
   if (rackLength === 0) {
     return `No rack entered for this turn.${hint}`;
   }
@@ -1084,7 +1090,11 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
           // game's, and only at its final position.
           gameDone &&
             examinableGameContext.turns.length === gameContext.turns.length,
-          props.boardEditingMode,
+          props.boardEditingMode
+            ? hasTouchPrimaryInput()
+              ? "touch"
+              : "keyboard"
+            : null,
         )
       : null;
   const analyzerContainer = (
