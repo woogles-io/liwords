@@ -190,3 +190,16 @@ func TestAnnotatedAmendmentKeepsEarlierKnownTiles(t *testing.T) {
 	is.NoErr(RestoreRackForAmendment(DefaultConfig.WGLConfig(), g, old))
 	is.Equal(annotate(t, g, ipc.ClientGameplayEvent_TILE_PLACEMENT, "J7", "X."), sorted(englishBytes("ABCDEFX")))
 }
+
+// A failed move must still put the top-up back: an amendment that can't
+// re-apply a later move keeps the document as it is at that point.
+func TestAnnotatedFailedMoveReturnsFill(t *testing.T) {
+	is := is.New(t)
+	g := newAnnotatedGameForTest(t, englishBytes("FAH"), nil)
+	e := &ipc.ClientGameplayEvent{Type: ipc.ClientGameplayEvent_TILE_PLACEMENT, GameId: g.Uid,
+		PositionCoords: "1A", MachineLetters: englishBytes("FAH")} // misses the centre square
+	is.True(ProcessGameplayEvent(ctxForTests(), DefaultConfig.WGLConfig(), e, g.Players[0].UserId, g) != nil)
+	is.Equal(g.Racks[0], englishBytes("FAH"))
+	is.Equal(len(g.Racks[1]), 0)
+	is.NoErr(NewTileInventory(g, DefaultConfig.WGLConfig()).ValidateInvariants())
+}

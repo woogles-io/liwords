@@ -30,6 +30,11 @@ func withFilledRacks(cfg *wglconfig.Config, gdoc *ipc.GameDocument, fn func() er
 		}
 	}
 	if err := fn(); err != nil {
+		// A caller may keep the document after a failed move (an amendment
+		// truncates there), so the top-up must still go back.
+		if perr := returnFill(gdoc, known); perr != nil {
+			return perr
+		}
 		return err
 	}
 
@@ -50,6 +55,15 @@ func withFilledRacks(cfg *wglconfig.Config, gdoc *ipc.GameDocument, fn func() er
 			return err
 		}
 	}
+	if err := returnFill(gdoc, known); err != nil {
+		return err
+	}
+	return resolveKnownRacks(cfg, gdoc)
+}
+
+// returnFill puts every tile of each rack that isn't known back in the unseen
+// pool.
+func returnFill(gdoc *ipc.GameDocument, known []tilemapping.MachineWord) error {
 	for i, rack := range gdoc.Racks {
 		unknown, err := tilemapping.Leave(tilemapping.FromByteArr(rack), known[i], false)
 		if err != nil {
@@ -58,7 +72,7 @@ func withFilledRacks(cfg *wglconfig.Config, gdoc *ipc.GameDocument, fn func() er
 		tiles.PutBack(gdoc.Bag, unknown)
 		gdoc.Racks[i] = known[i].ToByteArr()
 	}
-	return resolveKnownRacks(cfg, gdoc)
+	return nil
 }
 
 // resolveKnownRacks completes the only rack with unknown tiles once the bag is
