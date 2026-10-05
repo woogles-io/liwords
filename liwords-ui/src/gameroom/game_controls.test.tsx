@@ -1,5 +1,11 @@
 import React from "react";
-import { cleanup, fireEvent, render } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+} from "@testing-library/react";
 import GameControls, { Props } from "./game_controls";
 import { ChallengeRule } from "../gen/api/proto/vendored/macondo/macondo_pb";
 
@@ -119,4 +125,33 @@ it("exits board editing mode back to the editor", async () => {
   });
   fireEvent.click(await findByText("Exit"));
   expect(mockedUsedNavigate).toHaveBeenCalledWith("/editor");
+});
+
+function capturePassShortcut(props: Partial<Props>) {
+  let shortcut: (() => void) | null = null;
+  renderGameControls({
+    myTurn: true,
+    setHandlePassShortcut: (v) => {
+      shortcut = typeof v === "function" ? v(shortcut) : v;
+    },
+    ...props,
+  });
+  return () => act(() => shortcut?.());
+}
+
+it("opens the pass confirmation on 2 in the board editor", async () => {
+  const pressPass = capturePassShortcut({
+    isExamining: true,
+    boardEditingMode: true,
+  });
+  pressPass();
+  expect(
+    await screen.findByText("Are you sure you wish to pass?"),
+  ).toBeInTheDocument();
+});
+
+it("ignores 2 while examining a game outside the editor", () => {
+  const pressPass = capturePassShortcut({ isExamining: true });
+  pressPass();
+  expect(screen.queryByText("Are you sure you wish to pass?")).toBeNull();
 });
