@@ -9,6 +9,10 @@ import { BrowserRouter } from "react-router";
 import { waitFor } from "@testing-library/react";
 import { create } from "@bufbuild/protobuf";
 
+vi.mock("@connectrpc/connect-query", () => ({
+  useQuery: () => ({ data: undefined }),
+}));
+
 function renderBoardPanel(boardEditingMode = false) {
   const dummyFunction = () => {};
 
