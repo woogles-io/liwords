@@ -1071,7 +1071,9 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
   const note = rackNote(
     rackLength,
     Object.values(examinableGameContext.pool).reduce((a, b) => a + b, 0),
-    examinableGameContext.playState === PlayState.GAME_OVER,
+    // The examined position's playState is not tracked, so use the game's,
+    // and only at its final position.
+    gameDone && examinableGameContext.turns.length === gameContext.turns.length,
   );
   const analyzerContainer = (
     <div className="analyzer-container">
