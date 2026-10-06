@@ -461,6 +461,19 @@ func (ts *TournamentService) RemovePlayers(ctx context.Context, req *connect.Req
 	return connect.NewResponse(&pb.TournamentResponse{}), nil
 }
 
+func (ts *TournamentService) EditPlayer(ctx context.Context, req *connect.Request[pb.EditPlayerRequest]) (*connect.Response[pb.EditPlayerResponse], error) {
+	err := authenticateDirector(ctx, ts, req.Msg.Id, req.Msg, true)
+	if err != nil {
+		return nil, err
+	}
+
+	err = EditPlayer(ctx, ts.tournamentStore, ts.userStore, req.Msg.Id, req.Msg.Division, req.Msg.PlayerId, req.Msg.Rating, req.Msg.NewName)
+	if err != nil {
+		return nil, apiserver.InvalidArg(err.Error())
+	}
+	return connect.NewResponse(&pb.EditPlayerResponse{}), nil
+}
+
 func (ts *TournamentService) MovePlayer(ctx context.Context, req *connect.Request[pb.MovePlayerRequest]) (*connect.Response[pb.TournamentResponse], error) {
 	err := authenticateDirector(ctx, ts, req.Msg.Id, req.Msg, true)
 	if err != nil {
@@ -1244,11 +1257,12 @@ func dbTournamentToTournamentMetadataResponse(ctx context.Context, t *entity.Tou
 		}
 		controls := division.DivisionManager.GetDivisionControls()
 		summary := &pb.TournamentDivisionSummary{
-			Name: divName,
+			Name:             divName,
+			RoundControls:    division.DivisionManager.GetRoundControls(),
+			DivisionControls: controls,
 		}
 		if controls != nil {
 			summary.GameRequest = controls.GameRequest
-			summary.RoundControls = division.DivisionManager.GetRoundControls()
 		}
 		divisionSummaries = append(divisionSummaries, summary)
 	}

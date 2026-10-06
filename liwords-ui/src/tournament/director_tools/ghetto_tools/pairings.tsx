@@ -249,7 +249,11 @@ export const SetResult = (props: { tournamentID: string }) => {
         </Select>
       </Form.Item>
 
-      <Form.Item name="p2result" label="Player 2 result">
+      <Form.Item
+        name="p2result"
+        label="Player 2 result"
+        extra="For a forfeit, the scores only set the spread in the standings (e.g. 50 and 0 for a 50-point forfeit). The tsh export always writes a forfeit as an unrated game worth +50 / -50."
+      >
         <Select>
           <Select.Option value="VOID">VOID</Select.Option>
           <Select.Option value="WIN">WIN</Select.Option>

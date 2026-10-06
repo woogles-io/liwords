@@ -1184,10 +1184,7 @@ func (t *ClassicDivision) AddPlayers(players *pb.TournamentPersons) (*pb.Divisio
 
 	if t.CurrentRound < 0 {
 		t.Players.Persons = append(t.Players.Persons, players.Persons...)
-		sort.Sort(PlayerSorter(t.Players.Persons))
-		t.PlayerIndexMap = newPlayerIndexMap(t.Players.Persons)
-		t.Matrix = newPairingMatrix(len(t.RoundControls), len(t.Players.Persons))
-		newpmessage, err := t.prepair()
+		newpmessage, err := t.reseed()
 		if err != nil {
 			return nil, err
 		}
@@ -1258,6 +1255,63 @@ func (t *ClassicDivision) AddPlayers(players *pb.TournamentPersons) (*pb.Divisio
 		pmessage = combinePairingMessages(pmessage, pairingsResponse)
 	}
 	return pmessage, nil
+}
+
+// reseed sorts the players by rating and rebuilds everything that depends
+// on player order. It must only be called before the tournament starts.
+func (t *ClassicDivision) reseed() (*pb.DivisionPairingsResponse, error) {
+	sort.Sort(PlayerSorter(t.Players.Persons))
+	t.PlayerIndexMap = newPlayerIndexMap(t.Players.Persons)
+	t.Matrix = newPairingMatrix(len(t.RoundControls), len(t.Players.Persons))
+	return t.prepair()
+}
+
+// SetPlayerRating changes a player's rating. Before the tournament starts
+// this re-seeds the division; afterwards the seeds stay fixed, since past
+// pairings and standings tiebreaks refer to them.
+func (t *ClassicDivision) SetPlayerRating(playerID string, rating int32) error {
+	if rating < 0 {
+		return fmt.Errorf("rating must not be negative: %d", rating)
+	}
+	idx, ok := t.PlayerIndexMap[playerID]
+	if !ok {
+		return entity.NewWooglesError(pb.WooglesError_TOURNAMENT_NONEXISTENT_PLAYER, t.TournamentName, t.DivisionName, strconv.Itoa(int(t.CurrentRound)+1), playerID, "SetPlayerRating")
+	}
+	if t.Players.Persons[idx].Rating == rating {
+		// Re-seeding isn't a stable sort, so don't shuffle tied players
+		// for nothing.
+		return nil
+	}
+	t.Players.Persons[idx].Rating = rating
+	if t.CurrentRound < 0 {
+		_, err := t.reseed()
+		return err
+	}
+	return nil
+}
+
+// RenamePlayer changes a player's ID in place. Pairings, the pairing
+// matrix and ready states all refer to players by index, so only the
+// player list, the index map and the stored standings need updating.
+func (t *ClassicDivision) RenamePlayer(oldID, newID string) error {
+	idx, ok := t.PlayerIndexMap[oldID]
+	if !ok {
+		return entity.NewWooglesError(pb.WooglesError_TOURNAMENT_NONEXISTENT_PLAYER, t.TournamentName, t.DivisionName, strconv.Itoa(int(t.CurrentRound)+1), oldID, "RenamePlayer")
+	}
+	if _, exists := t.PlayerIndexMap[newID]; exists {
+		return entity.NewWooglesError(pb.WooglesError_TOURNAMENT_PLAYER_ALREADY_EXISTS, t.TournamentName, t.DivisionName, newID)
+	}
+	t.Players.Persons[idx].Id = newID
+	delete(t.PlayerIndexMap, oldID)
+	t.PlayerIndexMap[newID] = idx
+	for _, rs := range t.Standings {
+		for _, ps := range rs.Standings {
+			if ps.PlayerId == oldID {
+				ps.PlayerId = newID
+			}
+		}
+	}
+	return nil
 }
 
 func (t *ClassicDivision) RemovePlayers(persons *pb.TournamentPersons) (*pb.DivisionPairingsResponse, error) {
@@ -1445,42 +1499,21 @@ func getRecords(t *ClassicDivision, round int) ([]*pb.PlayerStanding, error) {
 				}
 			})
 	} else {
+		// Rank by points (a win is 2, a draw is 1), then spread, then seed.
+		// This matches the COP pairing standings and canCatch's gibsonization
+		// check, which both assume the list is ordered by points.
 		sort.Slice(records,
 			func(i, j int) bool {
-				totalGames1 := records[i].Wins + records[i].Draws + records[i].Losses
-				totalGames2 := records[j].Wins + records[j].Draws + records[j].Losses
-
-				if totalGames1 == 0 && totalGames2 == 0 {
-					return t.PlayerIndexMap[records[j].PlayerId] > t.PlayerIndexMap[records[i].PlayerId]
+				points1 := records[i].Wins*2 + records[i].Draws
+				points2 := records[j].Wins*2 + records[j].Draws
+				if points1 != points2 {
+					return points1 > points2
 				}
-
-				n1d2 := (records[i].Wins*2 + records[i].Draws) * totalGames2
-				n2d1 := (records[j].Wins*2 + records[j].Draws) * totalGames1
-
-				if totalGames1 == 0 {
-					return !isPositiveRecord(records[j])
-				}
-
-				if totalGames2 == 0 {
-					return isPositiveRecord(records[i])
-				}
-
-				if n1d2 != n2d1 {
-					return n1d2 > n2d1
-				}
-				// Tiebreak with losses (more losses is bad)
-				if records[i].Losses != records[j].Losses {
-					return records[i].Losses < records[j].Losses
-				}
-
 				if records[i].Spread != records[j].Spread {
 					return records[i].Spread > records[j].Spread
 				}
-
-				// Otherwise they're all equal.
-				// Tiebreak by rank to ensure determinism
+				// Tiebreak by seed to ensure determinism
 				return t.PlayerIndexMap[records[j].PlayerId] > t.PlayerIndexMap[records[i].PlayerId]
-
 			})
 	}
 	return records, nil
@@ -2114,13 +2147,6 @@ func (t *ClassicDivision) clearPairingKey(playerIndex int32, round int) error {
 	delete(t.PairingMap, pairingKey)
 	t.Matrix[round][playerIndex] = ""
 	return nil
-}
-
-func isPositiveRecord(r *pb.PlayerStanding) bool {
-	if r.Wins*2+r.Draws == r.Losses*2 {
-		return r.Spread > 0
-	}
-	return r.Wins*2+r.Draws > r.Losses*2
 }
 
 func (t *ClassicDivision) pairingIsBye(player string, round int) (bool, error) {

@@ -96,6 +96,8 @@ message TournamentDivisionSummary {
   string name = 1;
   ipc.GameRequest game_request = 2;
   repeated ipc.RoundControl round_controls = 3;
+  // Used to copy a tournament's settings (gibsonization, spread cap, etc).
+  ipc.DivisionControls division_controls = 4;
 }
 
 message SetTournamentMetadataRequest {
@@ -146,6 +148,19 @@ message MovePlayerRequest {
   string target_division = 3;
   string player_id = 4;
 }
+
+message EditPlayerRequest {
+  string id = 1;
+  string division = 2;
+  // The player's username (or name, for IRL tournaments), as with
+  // RemovePlayers.
+  string player_id = 3;
+  optional int32 rating = 4;
+  // Only supported in IRL mode, where a player is identified by their name.
+  optional string new_name = 5;
+}
+
+message EditPlayerResponse {}
 
 message TournamentPairingsRequest {
   string id = 1;
@@ -317,6 +332,8 @@ service TournamentService {
   rpc RemovePlayers(ipc.TournamentPersons) returns (TournamentResponse);
   // MovePlayer moves a player from one division to another
   rpc MovePlayer(MovePlayerRequest) returns (TournamentResponse);
+  // EditPlayer changes an existing player's rating, or (in IRL mode) name.
+  rpc EditPlayer(EditPlayerRequest) returns (EditPlayerResponse);
   rpc SetPairing(TournamentPairingsRequest) returns (TournamentResponse);
   rpc SetResult(TournamentResultOverrideRequest) returns (TournamentResponse);
   rpc StartRoundCountdown(TournamentStartRoundCountdownRequest)

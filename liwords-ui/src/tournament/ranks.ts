@@ -6,9 +6,9 @@ export type CompetitionRank = { rank: number; tied: boolean };
 // skips: 1=, 1=, 3.
 //
 // The tie is on what the row shows -- W, L and spread -- not on the comparator
-// the server sorts by, which is win rate, then losses, then spread. Those
-// disagree: equal rate with equal losses and equal spread admits 1-0 sitting
-// next to 2-0 once byes leave players on different game counts, and marking
+// the server sorts by, which is points (wins plus half a draw), then spread.
+// Those disagree: equal points and equal spread admits 2-0 sitting next to 2-1
+// once byes or voids leave players on different game counts, and marking
 // those two as sharing a place would read as a bug. The "=" is a claim about
 // the row in front of you.
 //

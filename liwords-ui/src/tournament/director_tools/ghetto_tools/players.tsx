@@ -1,13 +1,18 @@
 // Player management forms
 
 import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
-import { Button, Form, Input, message, Space, Switch } from "antd";
+import { Button, Form, Input, InputNumber, message, Space, Switch } from "antd";
 import { Store } from "rc-field-form/lib/interface";
 import React, { useState } from "react";
 import { TournamentService } from "../../../gen/api/proto/tournament_service/tournament_service_pb";
 import { useTournamentStoreContext } from "../../../store/store";
 import { flashError, useClient } from "../../../utils/hooks/connect";
-import { DivisionFormItem, PlayersFormItem, showError } from "./shared";
+import {
+  DivisionFormItem,
+  fullPlayerID,
+  PlayersFormItem,
+  showError,
+} from "./shared";
 
 export const AddPlayers = (props: { tournamentID: string }) => {
   const { tournamentContext } = useTournamentStoreContext();
@@ -152,6 +157,89 @@ export const RemovePlayer = (props: { tournamentID: string }) => {
         division={division}
         required
       />
+      <Form.Item>
+        <Button type="primary" htmlType="submit">
+          Submit
+        </Button>
+      </Form.Item>
+    </Form>
+  );
+};
+
+export const EditPlayer = (props: { tournamentID: string }) => {
+  const [division, setDivision] = useState("");
+  const { tournamentContext } = useTournamentStoreContext();
+  const tClient = useClient(TournamentService);
+  const [form] = Form.useForm();
+
+  const onValuesChange = (changed: Store) => {
+    if (changed.username === undefined) {
+      return;
+    }
+    // Fill in the current rating once the director picks a player.
+    const divobj = tournamentContext.divisions[division];
+    const fullID = fullPlayerID(changed.username, divobj);
+    const player = divobj?.players.find((p) => p.id === fullID);
+    if (player) {
+      form.setFieldsValue({ rating: player.rating });
+    }
+  };
+
+  const irlMode = tournamentContext.metadata.irlMode;
+
+  const onFinish = async (vals: Store) => {
+    const newName = vals.newName?.trim() || undefined;
+    const obj = {
+      id: props.tournamentID,
+      division: vals.division,
+      playerId: vals.username,
+      rating: vals.rating,
+      newName,
+    };
+    try {
+      await tClient.editPlayer(obj);
+      message.info({
+        content: newName
+          ? "Player renamed. Their scorecard QR code still works; reprint scorecards if you want the new name on it."
+          : "Player updated",
+        duration: newName ? 8 : 3,
+      });
+      form.resetFields(["username", "newName"]);
+    } catch (e) {
+      flashError(e);
+    }
+  };
+
+  return (
+    <Form form={form} onFinish={onFinish} onValuesChange={onValuesChange}>
+      <DivisionFormItem onChange={(div: string) => setDivision(div)} />
+
+      <PlayersFormItem
+        name="username"
+        label="Player to edit"
+        division={division}
+        required
+      />
+
+      <Form.Item
+        name="rating"
+        label="Rating"
+        extra="Changing a rating re-seeds the division if the tournament hasn't started yet."
+        rules={[{ required: true, message: "Missing rating" }]}
+      >
+        <InputNumber min={0} />
+      </Form.Item>
+
+      {irlMode && (
+        <Form.Item
+          name="newName"
+          label="New name"
+          extra="Leave blank to keep the current name. Use this if someone takes over a player's spot."
+        >
+          <Input />
+        </Form.Item>
+      )}
+
       <Form.Item>
         <Button type="primary" htmlType="submit">
           Submit
