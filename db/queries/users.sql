@@ -159,3 +159,19 @@ SELECT u0.uuid, u0.username FROM blockings JOIN users AS u0 ON u0.id = user_id W
 
 -- name: GetBlockedBy :many
 SELECT u0.uuid, u0.username FROM blockings JOIN users AS u0 ON u0.id = blocker_id WHERE user_id = @user_id;
+
+-- name: SetRegistrationClient :exec
+UPDATE users
+   SET registration_ip = (@ip::text)::inet,
+       registration_client_id = NULLIF(@client_id::text, '')
+ WHERE uuid = @uuid;
+
+-- name: UpsertUserClient :exec
+INSERT INTO user_clients (user_id, ip, client_id)
+SELECT u.id, (@ip::text)::inet, @client_id::text FROM users u WHERE u.uuid = @uuid
+ON CONFLICT (user_id, ip, client_id) DO UPDATE
+   SET last_seen = now()
+ WHERE user_clients.last_seen < now() - interval '1 hour';
+
+-- name: PruneUserClients :execrows
+DELETE FROM user_clients WHERE last_seen < @cutoff;

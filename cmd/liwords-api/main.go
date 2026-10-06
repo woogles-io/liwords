@@ -226,6 +226,7 @@ func main() {
 		WithTiming("exposeRW", apiserver.ExposeResponseWriterMiddleware),
 		WithTiming("auth", apiserver.AuthenticationMiddlewareGenerator(stores.SessionStore, cfg.SecureCookies)),
 		WithTiming("apikey", apiserver.APIKeyMiddlewareGenerator()),
+		WithTiming("clientInfo", apiserver.ClientInfoMiddlewareGenerator(cfg.SecureCookies)),
 		WithTiming("config", config.CtxMiddlewareGenerator(cfg)),
 		WithTiming("accessLog", hlog.AccessHandler(func(r *http.Request, status int, size int, d time.Duration) {
 			path := strings.Split(r.URL.Path, "/")
@@ -520,6 +521,7 @@ func main() {
 	go pubsubBus.ProcessMessages(ctx)
 	go vdoWebhookService.Start(ctx)
 	go analysisService.StartReclaimWorker(ctx)
+	go pruneClientRecords(ctx, stores.UserStore)
 	broadcastService.StartPoller(ctx)
 
 	go func() {

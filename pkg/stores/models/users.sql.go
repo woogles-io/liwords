@@ -702,6 +702,18 @@ func (q *Queries) ListAllUserIDs(ctx context.Context) ([]string, error) {
 	return items, nil
 }
 
+const pruneUserClients = `-- name: PruneUserClients :execrows
+DELETE FROM user_clients WHERE last_seen < $1
+`
+
+func (q *Queries) PruneUserClients(ctx context.Context, cutoff pgtype.Timestamptz) (int64, error) {
+	result, err := q.db.Exec(ctx, pruneUserClients, cutoff)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const removeBlock = `-- name: RemoveBlock :execrows
 DELETE FROM blockings WHERE user_id = $1 AND blocker_id = $2
 `
@@ -730,6 +742,24 @@ type RemoveFollowerParams struct {
 
 func (q *Queries) RemoveFollower(ctx context.Context, arg RemoveFollowerParams) error {
 	_, err := q.db.Exec(ctx, removeFollower, arg.TargetUser, arg.Follower)
+	return err
+}
+
+const setRegistrationClient = `-- name: SetRegistrationClient :exec
+UPDATE users
+   SET registration_ip = ($1::text)::inet,
+       registration_client_id = NULLIF($2::text, '')
+ WHERE uuid = $3
+`
+
+type SetRegistrationClientParams struct {
+	Ip       string
+	ClientID string
+	Uuid     string
+}
+
+func (q *Queries) SetRegistrationClient(ctx context.Context, arg SetRegistrationClientParams) error {
+	_, err := q.db.Exec(ctx, setRegistrationClient, arg.Ip, arg.ClientID, arg.Uuid)
 	return err
 }
 
@@ -822,6 +852,25 @@ type SetUserVerifiedParams struct {
 
 func (q *Queries) SetUserVerified(ctx context.Context, arg SetUserVerifiedParams) error {
 	_, err := q.db.Exec(ctx, setUserVerified, arg.Verified, arg.Uuid)
+	return err
+}
+
+const upsertUserClient = `-- name: UpsertUserClient :exec
+INSERT INTO user_clients (user_id, ip, client_id)
+SELECT u.id, ($1::text)::inet, $2::text FROM users u WHERE u.uuid = $3
+ON CONFLICT (user_id, ip, client_id) DO UPDATE
+   SET last_seen = now()
+ WHERE user_clients.last_seen < now() - interval '1 hour'
+`
+
+type UpsertUserClientParams struct {
+	Ip       string
+	ClientID string
+	Uuid     string
+}
+
+func (q *Queries) UpsertUserClient(ctx context.Context, arg UpsertUserClientParams) error {
+	_, err := q.db.Exec(ctx, upsertUserClient, arg.Ip, arg.ClientID, arg.Uuid)
 	return err
 }
 

@@ -134,6 +134,26 @@ func (s *DBStore) SetNotoriety(ctx context.Context, uuid string, notoriety int) 
 	})
 }
 
+func (s *DBStore) SetRegistrationClient(ctx context.Context, uuid string, ip string, clientID string) error {
+	return s.queries.SetRegistrationClient(ctx, models.SetRegistrationClientParams{
+		Ip:       ip,
+		ClientID: clientID,
+		Uuid:     uuid,
+	})
+}
+
+func (s *DBStore) RecordClient(ctx context.Context, uuid string, ip string, clientID string) error {
+	return s.queries.UpsertUserClient(ctx, models.UpsertUserClientParams{
+		Ip:       ip,
+		ClientID: clientID,
+		Uuid:     uuid,
+	})
+}
+
+func (s *DBStore) PruneClients(ctx context.Context, cutoff time.Time) (int64, error) {
+	return s.queries.PruneUserClients(ctx, pgtype.Timestamptz{Time: cutoff, Valid: true})
+}
+
 // GetByEmail gets the user by email. It does not try to get the profile.
 // We don't get the profile here because GetByEmail is only used for things
 // like password resets and there is no need.

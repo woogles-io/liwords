@@ -15,6 +15,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"google.golang.org/protobuf/proto"
 
+	"github.com/woogles-io/liwords/pkg/apiserver"
 	"github.com/woogles-io/liwords/pkg/entity"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
@@ -92,6 +93,7 @@ type Client struct {
 	connToken  string
 
 	forwardedFor string
+	clientID     string
 	pongCount    int
 	lastPingSent time.Time
 	// The round-trip lag; it is a sort of average.
@@ -156,6 +158,7 @@ func (c *Client) readPump() {
 				Str("username", c.username).
 				Int("pong-count", c.pongCount).
 				Str("ips", c.forwardedFor).
+				Str("clientID", c.clientID).
 				Str("connID", c.connID).
 				Msg("got-pong")
 
@@ -273,8 +276,12 @@ func closeMessage(ws *websocket.Conn, errStr string) {
 // goroutine.
 func ServeWS(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	fwd := r.Header.Values("X-Forwarded-For")
+	clientID := ""
+	if c, err := r.Cookie(apiserver.ClientIDCookie); err == nil && apiserver.ValidClientID(c.Value) {
+		clientID = c.Value
+	}
 	tokens, ok := r.URL.Query()["token"]
-	log.Debug().Interface("ips", fwd).Msg("servews-new-conn")
+	log.Debug().Interface("ips", fwd).Str("clientID", clientID).Msg("servews-new-conn")
 	if !ok || len(tokens[0]) < 1 {
 		log.Error().Msg("token is missing")
 		return
@@ -308,6 +315,7 @@ func ServeWS(hub *Hub, w http.ResponseWriter, r *http.Request) {
 		connID:       connID,
 		connToken:    token,
 		forwardedFor: strings.Join(fwd, ","),
+		clientID:     clientID,
 	}
 
 	// First, verify connection token

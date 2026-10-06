@@ -47,6 +47,7 @@ func (rs *RegistrationService) Register(ctx context.Context, r *connect.Request[
 	if err != nil {
 		return nil, apiserver.InvalidArg(err.Error())
 	}
+	rs.recordRegistrationClient(ctx, r.Msg.Username)
 	return connect.NewResponse(&pb.RegistrationResponse{}), nil
 }
 
@@ -82,4 +83,22 @@ func (rs *RegistrationService) ResendVerificationEmail(ctx context.Context, r *c
 	return connect.NewResponse(&pb.ResendVerificationEmailResponse{
 		Message: "Verification email sent. Please check your inbox.",
 	}), nil
+}
+
+// recordRegistrationClient stores where a new account was created from.
+// Best-effort: registration has already succeeded.
+func (rs *RegistrationService) recordRegistrationClient(ctx context.Context, username string) {
+	ip := apiserver.ClientIP(ctx)
+	if ip == "" {
+		return
+	}
+	u, err := rs.userStore.Get(ctx, username)
+	if err != nil {
+		zerolog.Ctx(ctx).Err(err).Msg("registration-client-lookup")
+		return
+	}
+	if err := rs.userStore.SetRegistrationClient(ctx, u.UUID, ip, apiserver.ClientID(ctx)); err != nil {
+		zerolog.Ctx(ctx).Err(err).Msg("set-registration-client")
+	}
+	apiserver.RecordClient(ctx, rs.userStore, u.UUID)
 }

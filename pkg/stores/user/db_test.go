@@ -743,3 +743,58 @@ func createDummyProfile(ctx context.Context, pool *pgxpool.Pool, userId int) err
 
 	return nil
 }
+
+func TestClientRecords(t *testing.T) {
+	is := is.New(t)
+	ustore, pool, ctx := recreateDB()
+	defer ustore.Disconnect()
+	const uuid = "mozEwaVMvTfUA2oxZfYN8k"
+
+	count := func() int {
+		var n int
+		err := pool.QueryRow(ctx, `SELECT count(*) FROM user_clients uc JOIN users u ON u.id = uc.user_id WHERE u.uuid = $1`, uuid).Scan(&n)
+		is.NoErr(err)
+		return n
+	}
+	lastSeen := func(ip, cid string) time.Time {
+		var ts time.Time
+		err := pool.QueryRow(ctx, `SELECT uc.last_seen FROM user_clients uc JOIN users u ON u.id = uc.user_id
+			WHERE u.uuid = $1 AND uc.ip = $2::inet AND uc.client_id = $3`, uuid, ip, cid).Scan(&ts)
+		is.NoErr(err)
+		return ts
+	}
+
+	is.NoErr(ustore.SetRegistrationClient(ctx, uuid, "203.0.113.7", "client-a"))
+	var regIP, regCID string
+	err := pool.QueryRow(ctx, `SELECT host(registration_ip), registration_client_id FROM users WHERE uuid = $1`, uuid).Scan(&regIP, &regCID)
+	is.NoErr(err)
+	is.Equal(regIP, "203.0.113.7")
+	is.Equal(regCID, "client-a")
+
+	// Repeat visits from the same IP and client collapse into one row, and
+	// last_seen isn't rewritten within the hour.
+	is.NoErr(ustore.RecordClient(ctx, uuid, "203.0.113.7", "client-a"))
+	first := lastSeen("203.0.113.7", "client-a")
+	is.NoErr(ustore.RecordClient(ctx, uuid, "203.0.113.7", "client-a"))
+	is.Equal(count(), 1)
+	is.True(lastSeen("203.0.113.7", "client-a").Equal(first))
+
+	// A second device or address is a separate row; a missing client ID is allowed.
+	is.NoErr(ustore.RecordClient(ctx, uuid, "198.51.100.9", "client-b"))
+	is.NoErr(ustore.RecordClient(ctx, uuid, "2001:db8::1", ""))
+	is.Equal(count(), 3)
+
+	// Stale rows are refreshed on the next visit.
+	_, err = pool.Exec(ctx, `UPDATE user_clients SET last_seen = now() - interval '2 hours' WHERE ip = '198.51.100.9'`)
+	is.NoErr(err)
+	is.NoErr(ustore.RecordClient(ctx, uuid, "198.51.100.9", "client-b"))
+	is.True(time.Since(lastSeen("198.51.100.9", "client-b")) < time.Minute)
+
+	// Pruning removes only rows last seen before the cutoff.
+	_, err = pool.Exec(ctx, `UPDATE user_clients SET last_seen = now() - interval '200 days' WHERE ip = '2001:db8::1'`)
+	is.NoErr(err)
+	n, err := ustore.PruneClients(ctx, time.Now().Add(-180*24*time.Hour))
+	is.NoErr(err)
+	is.Equal(n, int64(1))
+	is.Equal(count(), 2)
+}

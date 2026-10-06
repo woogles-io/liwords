@@ -142,6 +142,7 @@ func (as *AuthenticationService) Login(ctx context.Context, r *connect.Request[p
 	if err != nil {
 		return nil, apiserver.InternalErr(err)
 	}
+	apiserver.RecordClient(ctx, as.userStore, user.UUID)
 	return connect.NewResponse(&pb.LoginResponse{}), nil
 }
 
@@ -217,6 +218,8 @@ func (as *AuthenticationService) GetSocketToken(ctx context.Context, r *connect.
 	}
 	// create a random connection ID.
 	cid := shortuuid.New()[1:10]
+
+	apiserver.RecordClient(ctx, as.userStore, uuid)
 
 	log.Info().
 		Str("username", unn).
