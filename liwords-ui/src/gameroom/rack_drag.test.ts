@@ -125,3 +125,41 @@ describe("rack drag: gaps", () => {
     }
   });
 });
+
+describe("rack drag: short racks", () => {
+  // Three known tiles, centred in the rack (annotated games).
+  const geo3: RackGeometry = { ...geo, slotCenters: [200, 240, 280] };
+  const drive3 = (from: number, points: { x: number; y: number }[]) =>
+    points.reduce<RackDragState>(
+      (s, p) => nextRackDragState(s, p, geo3),
+      initialRackDragState(from),
+    );
+
+  it("slides within a three-tile rack and clamps at its ends", () => {
+    const s = drive3(2, [onRack(100)]);
+    expect(s.target).toBe(0);
+    expect(applyRackDrag(rack("ABC"), s)).toEqual(rack("CAB"));
+    expect(drive3(0, [onRack(900)]).target).toBe(2);
+  });
+
+  it("swaps within a three-tile rack, ignoring the empty rack area", () => {
+    const s = drive3(0, [{ x: 200, y: 400 }, onRack(280)]);
+    expect(applyRackDrag(rack("ABC"), s)).toEqual(rack("CBA"));
+    // Over the spacer to the left of the tiles: nothing to swap with.
+    expect(drive3(0, [{ x: 200, y: 400 }, onRack(120)]).target).toBeNull();
+  });
+
+  it("is a no-op for a single tile", () => {
+    const geo1: RackGeometry = { ...geo, slotCenters: [240] };
+    const s = [onRack(100), onRack(400)].reduce<RackDragState>(
+      (st, p) => nextRackDragState(st, p, geo1),
+      initialRackDragState(0),
+    );
+    expect(applyRackDrag(rack("A"), s)).toEqual(rack("A"));
+  });
+
+  it("leaves the rack alone if it shrank during the drag", () => {
+    const s = drive(6, [onRack(120)]);
+    expect(applyRackDrag(rack("ABC"), s)).toEqual(rack("ABC"));
+  });
+});
