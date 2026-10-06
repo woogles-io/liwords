@@ -620,8 +620,9 @@ export const rackNote = (
   if (gameOver || unseenLength - rackLength <= 7 || rackLength >= 7) {
     return null;
   }
+  // Space only enters a rack that is still empty.
   const hint =
-    editorInput === "keyboard"
+    editorInput === "keyboard" && rackLength === 0
       ? " Press Space to enter the rack."
       : editorInput === "touch"
         ? " Tap the pencil to enter the rack."
