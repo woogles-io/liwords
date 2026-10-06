@@ -17,8 +17,6 @@ import { Modal } from "../utils/focus_modal";
 import { Alphabet, getMachineLetterForKey } from "../constants/alphabets";
 import { MachineWord } from "../utils/cwgame/common";
 
-const doNothing = () => {};
-
 // Render an exchange widget.
 
 type Props = {
@@ -215,7 +213,6 @@ export const ExchangeTiles = React.memo((props: Props) => {
         letters={props.rack}
         grabbable={false}
         onTileClick={selectTileForExchange}
-        moveRackTile={doNothing}
         selected={exchangedRackIndices}
         alphabet={props.alphabet}
       />

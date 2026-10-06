@@ -121,8 +121,6 @@ export const PuzzlePreview = React.memo(() => {
           selected={false}
           grabbable={false}
           rackIndex={n}
-          returnToRack={noop}
-          moveRackTile={noop}
           onClick={noop}
         />,
       );

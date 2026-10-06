@@ -189,7 +189,7 @@ export const BoardPanel = React.memo((props: Props) => {
     boardEditingMode: props.boardEditingMode,
   });
 
-  const { recallTiles, shuffleTiles, moveRackTile } = useTilePlacement({
+  const { recallTiles, shuffleTiles, rearrangeRack } = useTilePlacement({
     arrowProperties,
     setArrowProperties,
     placedTiles,
@@ -1393,7 +1393,7 @@ export const BoardPanel = React.memo((props: Props) => {
                 grabbable
                 returnToRack={returnToRack}
                 onTileClick={clickToBoard}
-                moveRackTile={moveRackTile}
+                rearrangeRack={rearrangeRack}
                 alphabet={props.alphabet}
               />
             )}
