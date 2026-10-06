@@ -258,6 +258,12 @@ p.streak-loss {
       align-items: center;
       justify-content: center;
 
+      .rack-note {
+        margin: 4px 0;
+        font-style: italic;
+        color: m($gray-medium);
+      }
+
       table {
         width: 100%;
       }

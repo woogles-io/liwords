@@ -20,6 +20,7 @@ import {
   requestAnalysis as requestBestBotAnalysis,
 } from "../gen/api/proto/analysis_service/analysis_service-AnalysisService_connectquery";
 import { PlayState } from "../gen/api/proto/vendored/macondo/macondo_pb";
+import { GameType } from "../gen/api/proto/ipc/omgwords_pb";
 import { ComputerAnalysis } from "./computer_analysis";
 import { defaultLetterDistribution } from "../lobby/sought_game_interactions";
 import {
@@ -603,6 +604,24 @@ export const usePlaceMoveCallback = () => {
   return placeMove;
 };
 
+// In an annotated game a rack holds only the tiles entered or shown by a
+// move, so it can be empty or partial. A full rack is 7 tiles whenever more
+// than an opponent's rack is unseen besides it; past that point a short rack
+// may just be the endgame.
+export const rackNote = (
+  rackLength: number,
+  unseenLength: number,
+  gameOver: boolean,
+): string | null => {
+  if (gameOver || unseenLength - rackLength <= 7 || rackLength >= 7) {
+    return null;
+  }
+  if (rackLength === 0) {
+    return "No rack entered for this turn.";
+  }
+  return `Analyzing ${rackLength} known tile${rackLength === 1 ? "" : "s"}.`;
+};
+
 export const Analyzer = React.memo((props: AnalyzerProps) => {
   const {
     autoMode,
@@ -1047,13 +1066,32 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
     );
   }
 
+  const rackLength =
+    examinableGameContext.players[examinableGameContext.onturn]?.currentRack
+      .length ?? 0;
+  // Only annotated racks can be partial; elsewhere a short rack is hidden or
+  // the endgame, and the analyzer behaves as before.
+  const note =
+    gameContext.gameDocument.type === GameType.ANNOTATED
+      ? rackNote(
+          rackLength,
+          Object.values(examinableGameContext.pool).reduce((a, b) => a + b, 0),
+          // The examined position's playState is not tracked, so use the
+          // game's, and only at its final position.
+          gameDone &&
+            examinableGameContext.turns.length === gameContext.turns.length,
+        )
+      : null;
   const analyzerContainer = (
     <div className="analyzer-container">
       {!examinerLoading ? (
         <div className="suggestions" style={props.style}>
-          <table>
-            <tbody>{renderAnalyzerMoves}</tbody>
-          </table>
+          {note && <p className="rack-note">{note}</p>}
+          {rackLength > 0 || !note ? (
+            <table>
+              <tbody>{renderAnalyzerMoves}</tbody>
+            </table>
+          ) : null}
         </div>
       ) : (
         <div className="suggestions" style={props.style}>

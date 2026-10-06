@@ -122,9 +122,6 @@ func handleAmendment(ctx context.Context, cfg *wglconfig.Config, userID string,
 		return false, apiserver.InvalidArg("tried to amend a rack for a non-existing event")
 	}
 
-	rack := g.Events[evtIndex].Rack
-	pidx := g.Events[evtIndex].PlayerIndex
-
 	// Clone the document to work on - we'll only update the real document if everything succeeds
 	gdocClone := proto.Clone(g).(*ipc.GameDocument)
 
@@ -168,10 +165,7 @@ func handleAmendment(ctx context.Context, cfg *wglconfig.Config, userID string,
 		}
 		cwgame.LogTileState(gdocClone, "after-replay")
 
-		// Remember the rack we just saved. We need to re-assign it.
-		racks := make([][]byte, len(g.Players))
-		racks[pidx] = rack
-		err = cwgame.AssignRacks(cfg, gdocClone, racks, cwgame.AssignEmptyIfUnambiguous)
+		err = cwgame.RestoreRackForAmendment(cfg, gdocClone, g.Events[evtIndex])
 		if err != nil {
 			return false, apiserver.InvalidArg(err.Error())
 		}

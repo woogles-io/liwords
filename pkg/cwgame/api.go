@@ -290,11 +290,16 @@ func AssignRacks(cfg *wglconfig.Config, gdoc *ipc.GameDocument, racks [][]byte, 
 	// Create TileInventory to manage all tile movements
 	inv := NewTileInventory(gdoc, cfg)
 
-	// Set all racks at once (puts back current racks, assigns new ones)
-	// Only allow borrowing in editor mode (AlwaysAssignEmpty)
-	allowBorrowing := (assignEmpty == AlwaysAssignEmpty)
+	// Set all racks at once. Borrowing also keeps the racks not being set.
+	// Annotated racks hold only known tiles, so they are always kept, even in
+	// replay; other games keep putting every rack back, as a safeguard.
+	allowBorrowing := assignEmpty == AlwaysAssignEmpty || gdoc.Type == ipc.GameType_ANNOTATED
 	if err := inv.SetAllRacks(racks, allowBorrowing); err != nil {
 		return enhanceBagError(cfg, gdoc, err)
+	}
+	if gdoc.Type == ipc.GameType_ANNOTATED {
+		// Unknown tiles stay in the unseen pool; see annotated.go.
+		return resolveKnownRacks(cfg, gdoc)
 	}
 
 	// Track which racks are empty or partial
@@ -419,7 +424,9 @@ func ReplayEvents(ctx context.Context, cfg *wglconfig.Config, gdoc *ipc.GameDocu
 			tr := evt.MillisRemaining
 			// Use playMove to just play the event. This should apply all relevant
 			// changes to the doc (scores, keeping track of scoreless turns, etc)
-			err = playMove(ctx, gdoc, evt, int64(tr))
+			err = withFilledRacks(cfg, gdoc, func() error {
+				return playMove(ctx, gdoc, evt, int64(tr))
+			})
 			if err != nil {
 				return err
 			}
@@ -570,7 +577,9 @@ func ProcessGameplayEvent(ctx context.Context, cfg *wglconfig.Config, evt *ipc.C
 		// the player's rack, but we haven't validated the play itself
 		// (adherence to rules, valid words if applicable, etc)
 
-		err = playMove(ctx, gdoc, gevt, tr)
+		err = withFilledRacks(cfg, gdoc, func() error {
+			return playMove(ctx, gdoc, gevt, tr)
+		})
 		if err != nil {
 			return err
 		}
@@ -629,7 +638,9 @@ func ApplyEventInEditorMode(ctx context.Context, cfg *wglconfig.Config,
 		ipc.GameEvent_UNSUCCESSFUL_CHALLENGE_TURN_LOSS,
 		ipc.GameEvent_EXCHANGE:
 		// Use playMove which handles these event types
-		err := playMove(ctx, gdoc, gevt, tr)
+		err := withFilledRacks(cfg, gdoc, func() error {
+			return playMove(ctx, gdoc, gevt, tr)
+		})
 		if err != nil {
 			return fmt.Errorf("playMove failed: %w", err)
 		}
@@ -684,7 +695,6 @@ func ApplyEventInEditorMode(ctx context.Context, cfg *wglconfig.Config,
 		// Recalculate cumulative score based on current score - lost score
 		gdoc.CurrentScores[gevt.PlayerIndex] -= gevt.LostScore
 		gevt.Cumulative = gdoc.CurrentScores[gevt.PlayerIndex]
-		gdoc.Events = append(gdoc.Events, gevt)
 
 		// Actually remove the phony tiles from the board and restore the rack
 		// This is critical to prevent tile duplication in the bag accounting
@@ -692,7 +702,10 @@ func ApplyEventInEditorMode(ctx context.Context, cfg *wglconfig.Config,
 		if err != nil {
 			return fmt.Errorf("get distribution failed: %w", err)
 		}
-		err = unplayLastMove(ctx, localCfg, gdoc, dist)
+		err = withFilledRacks(cfg, gdoc, func() error {
+			gdoc.Events = append(gdoc.Events, gevt)
+			return unplayLastMove(ctx, localCfg, gdoc, dist)
+		})
 		if err != nil {
 			return fmt.Errorf("unplayLastMove failed: %w", err)
 		}
@@ -707,7 +720,9 @@ func ApplyEventInEditorMode(ctx context.Context, cfg *wglconfig.Config,
 		gdoc.Events = append(gdoc.Events, gevt)
 
 	case ipc.GameEvent_CHALLENGE:
-		err := challengeEvent(ctx, localCfg, gdoc, tr, gevt.ChallengedWordIndices)
+		err := withFilledRacks(cfg, gdoc, func() error {
+			return challengeEvent(ctx, localCfg, gdoc, tr, gevt.ChallengedWordIndices)
+		})
 		if err != nil {
 			return fmt.Errorf("challenge failed: %w", err)
 		}
@@ -803,20 +818,19 @@ func clientEventToGameEvent(cfg *wglconfig.Config, evt *ipc.ClientGameplayEvent,
 		var rackToUse []byte
 		needsInference := len(gdoc.Racks[playerid]) == 0
 
-		if !needsInference {
+		if gdoc.Type == ipc.GameType_ANNOTATED {
+			rackToUse, err = revealTiles(cfg, gdoc, int(playerid), inferredMW)
+			if err != nil {
+				return nil, enhanceBagError(cfg, gdoc, err)
+			}
+			needsInference = false
+		} else if !needsInference {
 			// Check if the inferred rack is a subset of the current rack
 			_, err = tilemapping.Leave(rackmw, inferredMW, false)
-			if err == nil {
-				// Inferred rack is a subset of current rack - use the full rack
-				rackToUse = gdoc.Racks[playerid]
-			} else {
-				// Inferred rack doesn't match current rack
-				if gdoc.Type != ipc.GameType_ANNOTATED {
-					// In regular games, reject plays that don't match the rack
-					return nil, enhanceRackError(cfg, gdoc, err)
-				}
-				needsInference = true
+			if err != nil {
+				return nil, enhanceRackError(cfg, gdoc, err)
 			}
+			rackToUse = gdoc.Racks[playerid]
 		}
 
 		if needsInference {
@@ -857,9 +871,12 @@ func clientEventToGameEvent(cfg *wglconfig.Config, evt *ipc.ClientGameplayEvent,
 		} else {
 			mw = tilemapping.FromByteArr(evt.MachineLetters)
 		}
-		// zeroIsPlaythrough=false: validating exchange move, tiles (including blanks) must be in rack
-		_, err = tilemapping.Leave(rackmw, mw, false)
-		if err != nil {
+		if gdoc.Type == ipc.GameType_ANNOTATED {
+			if _, err = revealTiles(cfg, gdoc, int(playerid), mw); err != nil {
+				return nil, enhanceBagError(cfg, gdoc, err)
+			}
+		} else if _, err = tilemapping.Leave(rackmw, mw, false); err != nil {
+			// zeroIsPlaythrough=false: tiles (including blanks) must be in rack
 			return nil, enhanceRackError(cfg, gdoc, err)
 		}
 		return &ipc.GameEvent{

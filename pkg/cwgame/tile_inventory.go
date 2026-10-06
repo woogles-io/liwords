@@ -264,17 +264,6 @@ func (inv *TileInventory) SetRack(playerIdx int, desiredRack []byte) error {
 			return fmt.Errorf("failed to set rack even after borrowing: %w", err)
 		}
 
-		// Top off opponent's rack (they lost some tiles)
-		tilesDrawn, errFill := inv.DrawToFillRack(opponentIdx)
-		if errFill != nil {
-			return fmt.Errorf("failed to fill opponent's rack after borrowing: %w", errFill)
-		}
-
-		log.Debug().
-			Int("tiles_drawn", tilesDrawn).
-			Interface("opponent_rack_after", inv.gdoc.Racks[opponentIdx]).
-			Int("bag_size_after", len(inv.gdoc.Bag.Tiles)).
-			Msg("filled-opponent-rack-after-borrowing")
 	}
 
 	// Validate invariants after the operation
@@ -411,18 +400,6 @@ func (inv *TileInventory) borrowFromPreservedRacks(playerIdx int, desiredTiles [
 		if err != nil {
 			return fmt.Errorf("failed to set rack even after borrowing: %w", err)
 		}
-
-		// Top off opponent's rack (they lost some tiles)
-		tilesDrawn, errFill := inv.DrawToFillRack(opponentIdx)
-		if errFill != nil {
-			return fmt.Errorf("failed to fill opponent's rack after borrowing: %w", errFill)
-		}
-
-		log.Debug().
-			Int("tiles_drawn", tilesDrawn).
-			Interface("opponent_rack_after", inv.gdoc.Racks[opponentIdx]).
-			Int("bag_size_after", len(inv.gdoc.Bag.Tiles)).
-			Msg("filled-preserved-rack-after-borrowing")
 
 		return nil // Success
 	}
