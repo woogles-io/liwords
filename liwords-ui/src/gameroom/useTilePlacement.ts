@@ -6,7 +6,6 @@ import {
   EmptyRackSpaceMachineLetter,
 } from "../utils/cwgame/common";
 import { Board } from "../utils/cwgame/board";
-import { stableInsertRack } from "../utils/cwgame/tile_placement";
 
 type UseTilePlacementParams = {
   arrowProperties: {
@@ -178,35 +177,17 @@ export function useTilePlacement(params: UseTilePlacementParams) {
     );
   }, [displayedRack, setDisplayedRack]);
 
-  // Move a tile within the rack
-  const moveRackTile = useCallback(
-    (newIndex: number | undefined, oldIndex: number | undefined) => {
-      if (typeof newIndex === "number" && typeof oldIndex === "number") {
-        const leftIndex = Math.min(oldIndex, newIndex);
-        const rightIndex = Math.max(oldIndex, newIndex) + 1;
-        setDisplayedRack(
-          displayedRack
-            .slice(0, leftIndex)
-            .concat(
-              stableInsertRack(
-                displayedRack
-                  .slice(leftIndex, oldIndex)
-                  .concat(EmptyRackSpaceMachineLetter)
-                  .concat(displayedRack.slice(oldIndex + 1, rightIndex)),
-                newIndex - leftIndex,
-                displayedRack[oldIndex],
-              ),
-            )
-            .concat(displayedRack.slice(rightIndex)),
-        );
-      }
+  // Replace the rack order wholesale, e.g. after a drag within the rack.
+  const rearrangeRack = useCallback(
+    (newRack: Array<MachineLetter>) => {
+      setDisplayedRack(newRack);
     },
-    [displayedRack, setDisplayedRack],
+    [setDisplayedRack],
   );
 
   return {
     recallTiles,
     shuffleTiles,
-    moveRackTile,
+    rearrangeRack,
   };
 }
