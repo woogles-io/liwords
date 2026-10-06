@@ -613,7 +613,8 @@ SET status = 'pending',
 WHERE id = $1
 `
 
-// Resets job to pending but keeps result for JIT MI subtraction
+// Resets job to pending but keeps result, so league standings keep counting
+// the old analysis until the new one replaces it
 func (q *Queries) ResetAnalysisJobKeepResult(ctx context.Context, id uuid.UUID) error {
 	_, err := q.db.Exec(ctx, resetAnalysisJobKeepResult, id)
 	return err

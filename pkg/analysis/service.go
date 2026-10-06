@@ -277,16 +277,6 @@ func (s *AnalysisService) SubmitResult(
 		}), nil
 	}
 
-	// JIT MI subtraction: if this job has an existing result (reanalysis),
-	// subtract the old MI before storing the new result.
-	existingJob, err := s.queries.GetJobByID(ctx, jobID)
-	if err == nil && len(existingJob.Result) > 0 {
-		var oldResult macondo.GameAnalysisResult
-		if err := protojson.Unmarshal(existingJob.Result, &oldResult); err == nil {
-			applyLeagueMistakeIndex(ctx, s.queries, existingJob.GameID, &oldResult, true) // decrement
-		}
-	}
-
 	// Store result
 	userUUID := pgtype.Text{String: user.UUID, Valid: true}
 	completedJob, err := s.queries.CompleteJob(ctx, models.CompleteJobParams{
@@ -309,10 +299,12 @@ func (s *AnalysisService) SubmitResult(
 		Int32("duration_ms", completedJob.DurationMs).
 		Msg("result accepted")
 
-	// Update league standings with mistake index if this is a league game.
+	// Refresh league standings' mistake index if this is a league game. This runs
+	// only after CompleteJob has stored the result, and rebuilds the totals from
+	// stored results, so a rejected, duplicate or late submission can't skew them.
 	// context.WithoutCancel preserves the otel trace context while detaching from
 	// the request cancellation (which fires as soon as we return a response).
-	go s.updateLeagueMistakeIndex(context.WithoutCancel(ctx), completedJob.GameID, result)
+	go s.updateLeagueMistakeIndex(context.WithoutCancel(ctx), completedJob.GameID)
 
 	// Notify the requesting user via WebSocket if this was a user-requested analysis.
 	if s.natsconn != nil && completedJob.RequestedByUserUuid.Valid {
@@ -329,19 +321,20 @@ func (s *AnalysisService) SubmitResult(
 	}), nil
 }
 
-// updateLeagueMistakeIndex updates league standings with mistake index for a completed analysis.
-// Runs asynchronously (best-effort) so failures don't affect the SubmitResult response.
-func (s *AnalysisService) updateLeagueMistakeIndex(ctx context.Context, gameID string, result *macondo.GameAnalysisResult) {
+// updateLeagueMistakeIndex refreshes league standings' mistake index after an analysis completes.
+// Runs asynchronously (best-effort) so failures don't affect the SubmitResult response;
+// the next refresh of the division repairs anything a failure leaves behind.
+func (s *AnalysisService) updateLeagueMistakeIndex(ctx context.Context, gameID string) {
 	ctx, span := tracer.Start(ctx, "analysis.updateLeagueMistakeIndex",
 		trace.WithAttributes(attribute.String("game.id", gameID)),
 	)
 	defer span.End()
-	applyLeagueMistakeIndex(ctx, s.queries, gameID, result, false)
+	refreshLeagueMistakeIndex(ctx, s.queries, gameID)
 }
 
-// applyLeagueMistakeIndex adds (decrement=false) or subtracts (decrement=true) a game's
-// mistake index contribution from league standings.
-func applyLeagueMistakeIndex(ctx context.Context, queries *models.Queries, gameID string, result *macondo.GameAnalysisResult, decrement bool) {
+// refreshLeagueMistakeIndex rebuilds the mistake index totals of the division a game
+// belongs to from the stored analysis results. It is idempotent.
+func refreshLeagueMistakeIndex(ctx context.Context, queries *models.Queries, gameID string) {
 	gameInfo, err := queries.GetGameLeagueInfo(ctx, pgtype.Text{String: gameID, Valid: true})
 	if err != nil {
 		if err == pgx.ErrNoRows {
@@ -361,49 +354,18 @@ func applyLeagueMistakeIndex(ctx context.Context, queries *models.Queries, gameI
 		return
 	}
 
-	players := []struct {
-		playerID     pgtype.Int4
-		mistakeIndex float64
-	}{
-		{gameInfo.Player0ID, result.PlayerSummaries[0].GetMistakeIndex()},
-		{gameInfo.Player1ID, result.PlayerSummaries[1].GetMistakeIndex()},
+	if err := queries.RefreshDivisionMistakeIndex(ctx, divisionID); err != nil {
+		log.Error().Err(err).
+			Str("game_id", gameID).
+			Str("division_id", divisionID.String()).
+			Msg("failed to refresh league mistake index")
+		return
 	}
 
-	for _, p := range players {
-		if !p.playerID.Valid {
-			continue
-		}
-		mistakeIndex := pgtype.Float8{Float64: p.mistakeIndex, Valid: true}
-		if decrement {
-			err = queries.DecrementStandingMistakeIndex(ctx, models.DecrementStandingMistakeIndexParams{
-				DivisionID:        divisionID,
-				UserID:            p.playerID.Int32,
-				TotalMistakeIndex: mistakeIndex,
-			})
-		} else {
-			err = queries.IncrementStandingMistakeIndex(ctx, models.IncrementStandingMistakeIndexParams{
-				DivisionID:        divisionID,
-				UserID:            p.playerID.Int32,
-				TotalMistakeIndex: mistakeIndex,
-			})
-		}
-		if err != nil {
-			log.Error().Err(err).
-				Str("game_id", gameID).
-				Int32("user_id", p.playerID.Int32).
-				Bool("decrement", decrement).
-				Msg("failed to update league mistake index")
-		}
-	}
-
-	action := "incremented"
-	if decrement {
-		action = "decremented"
-	}
 	log.Info().
 		Str("game_id", gameID).
 		Str("division_id", divisionID.String()).
-		Msg(action + " league standings mistake index")
+		Msg("refreshed league standings mistake index")
 }
 
 const maxFailJobErrorLen = 1024
@@ -560,7 +522,7 @@ func (s *AnalysisService) RequestAnalysis(
 				}), nil
 			}
 			// Legacy result — reset the existing job back to pending (same as admin RequeueAnalysis)
-			// Don't subtract MI here - JIT subtraction happens in SubmitResult
+			// Keep the old result: standings keep counting it until the new analysis lands
 			if err := s.queries.ResetAnalysisJobKeepResult(ctx, existingJob.ID); err != nil {
 				log.Error().Err(err).Str("job_id", existingJob.ID.String()).Msg("failed to reset legacy job for re-analysis")
 				return nil, apiserver.InternalErr(fmt.Errorf("failed to reset legacy job: %w", err))

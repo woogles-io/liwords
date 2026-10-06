@@ -91,7 +91,7 @@ func (s *AnalysisAdminService) RequeueAnalysis(
 		return nil, connect.NewError(connect.CodeNotFound, fmt.Errorf("no analysis job found for game %s", req.Msg.GameId))
 	}
 
-	// Don't subtract MI here - JIT subtraction happens in SubmitResult
+	// Keep the old result: standings keep counting it until the new analysis lands
 	if err := s.queries.ResetAnalysisJobKeepResult(ctx, job.ID); err != nil {
 		return nil, apiserver.InternalErr(fmt.Errorf("failed to reset analysis job: %w", err))
 	}
@@ -175,14 +175,14 @@ func (s *AnalysisAdminService) ListAnalyzedGames(
 // This is a helper function for batch requeuing operations (e.g., requeueing all v0.12.3 analyses).
 // It performs the same logic as RequeueAnalysis RPC but without authentication.
 // The priority parameter allows setting custom priorities (e.g., -1 for low-priority batch requeues).
-// MI subtraction is handled just-in-time in SubmitResult when the new analysis completes.
+// League standings are refreshed from stored results when the new analysis completes.
 func RequeueJobByGameID(ctx context.Context, queries *models.Queries, gameID string, priority int) error {
 	job, err := queries.GetJobByGameID(ctx, gameID)
 	if err != nil {
 		return fmt.Errorf("no analysis job found for game %s: %w", gameID, err)
 	}
 
-	// Don't subtract MI here - JIT subtraction happens in SubmitResult
+	// Keep the old result: standings keep counting it until the new analysis lands
 
 	priorityPG := pgtype.Int4{Int32: int32(priority), Valid: true}
 	return queries.ResetAnalysisJobWithPriority(ctx, models.ResetAnalysisJobWithPriorityParams{
