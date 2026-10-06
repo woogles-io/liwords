@@ -65,6 +65,7 @@ import (
 	pkgprofile "github.com/woogles-io/liwords/pkg/profile"
 	"github.com/woogles-io/liwords/pkg/puzzles"
 	"github.com/woogles-io/liwords/pkg/registration"
+	"github.com/woogles-io/liwords/pkg/sessions"
 	"github.com/woogles-io/liwords/pkg/stores"
 	gamestore "github.com/woogles-io/liwords/pkg/stores/game"
 	"github.com/woogles-io/liwords/pkg/tournament"
@@ -477,6 +478,8 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
+	mod.SetSessionRevoker(sessions.NewRevoker(stores.SessionStore, natsconn))
 
 	// Handle bus.
 	pubsubBus, err := bus.NewBus(cfg, natsconn, stores, redisPool)

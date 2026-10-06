@@ -180,6 +180,21 @@ func (as *AuthenticationService) GetSocketToken(ctx context.Context, r *connect.
 	}
 
 	u, err := apiserver.AuthUser(ctx, as.userStore)
+	if err == nil {
+		if _, banErr := mod.ActionExists(ctx, as.userStore, u.UUID, false,
+			[]ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT}); banErr != nil {
+			// A suspended account can't keep using a session it had beforehand.
+			// End it and continue as a logged-out visitor.
+			log.Info().Err(banErr).Str("userID", u.UUID).Msg("socket-token-session-ended")
+			if sess, sessErr := apiserver.GetSession(ctx); sessErr == nil {
+				if delErr := as.sessionStore.Delete(ctx, sess); delErr != nil {
+					log.Err(delErr).Msg("delete-session")
+				}
+				apiserver.ExpireCookie(ctx, sess.ID, as.secureCookies)
+			}
+			err = banErr
+		}
+	}
 	if err != nil {
 		// Auth failed - log comprehensive details for debugging
 		log.Warn().
