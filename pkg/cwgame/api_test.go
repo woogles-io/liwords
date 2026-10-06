@@ -1725,3 +1725,208 @@ func TestChallengeGoodWordEndOfGameSetsWinner(t *testing.T) {
 	is.Equal(gdoc.CurrentScores, []int32{200, 328})
 	is.Equal(gdoc.Winner, int32(1))
 }
+
+func sendAnnotatedEvent(t *testing.T, g *ipc.GameDocument, e *ipc.ClientGameplayEvent) {
+	e.GameId = g.Uid
+	if err := ProcessGameplayEvent(ctxForTests(), DefaultConfig.WGLConfig(), e, g.Players[g.PlayerOnTurn].UserId, g); err != nil {
+		t.Fatal(err)
+	}
+	if err := NewTileInventory(g, DefaultConfig.WGLConfig()).ValidateInvariants(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func sortedTiles(b []byte) []byte {
+	c := append([]byte{}, b...)
+	sort.Slice(c, func(i, j int) bool { return c[i] < c[j] })
+	return c
+}
+
+// drainBagToBoard moves all but `leave` bag tiles onto the top and bottom
+// rows of the board, out of the way of plays through the centre, keeping
+// tile accounting valid.
+func drainBagToBoard(t *testing.T, g *ipc.GameDocument, leave int) {
+	squares := []int{}
+	cols := int(g.Board.NumCols)
+	for _, row := range []int{0, 1, 2, 3, 11, 12, 13, 14} {
+		for c := 0; c < cols; c++ {
+			squares = append(squares, row*cols+c)
+		}
+	}
+	n := len(g.Bag.Tiles) - leave
+	if n > len(squares) {
+		t.Fatalf("cannot drain %d tiles", n)
+	}
+	for i := 0; i < n; i++ {
+		tile := g.Bag.Tiles[i]
+		if tile == 0 {
+			tile = 0x81 // a blank on the board is stored designated
+		}
+		g.Board.Tiles[squares[i]] = tile
+	}
+	g.Bag.Tiles = g.Bag.Tiles[n:]
+}
+
+func timePenaltyEvt(pidx uint32, points int32) *ipc.ClientGameplayEvent {
+	return &ipc.ClientGameplayEvent{
+		Type:               ipc.ClientGameplayEvent_TIME_PENALTY,
+		GameId:             "9zaaSuN5",
+		PenaltyPoints:      points,
+		PenaltyPlayerIndex: pidx,
+	}
+}
+
+func TestTimePenalty(t *testing.T) {
+	is := is.New(t)
+	ctx := ctxForTests()
+	gdoc := loadGDoc("document-gameover.json")
+	gdoc.Type = ipc.GameType_ANNOTATED
+	onTurn := gdoc.PlayerOnTurn
+	numEvts := len(gdoc.Events)
+
+	err := ProcessGameplayEvent(ctx, DefaultConfig.WGLConfig(), timePenaltyEvt(1, 10), "", gdoc)
+	is.NoErr(err)
+	is.Equal(gdoc.CurrentScores, []int32{446, 312})
+	is.Equal(gdoc.Winner, int32(0))
+	is.Equal(gdoc.PlayerOnTurn, onTurn)
+	is.Equal(len(gdoc.Events), numEvts+1)
+	last := gdoc.Events[numEvts]
+	is.Equal(last.Type, ipc.GameEvent_TIME_PENALTY)
+	is.Equal(last.PlayerIndex, uint32(1))
+	is.Equal(last.LostScore, int32(10))
+	is.Equal(last.Cumulative, int32(312))
+
+	// A large enough penalty flips the winner.
+	err = ProcessGameplayEvent(ctx, DefaultConfig.WGLConfig(), timePenaltyEvt(0, 140), "", gdoc)
+	is.NoErr(err)
+	is.Equal(gdoc.CurrentScores, []int32{306, 312})
+	is.Equal(gdoc.Winner, int32(1))
+	is.Equal(gdoc.Events[len(gdoc.Events)-1].Rack, gdoc.Racks[0])
+
+	// Replaying the events reproduces the penalties and the winner.
+	replayed := loadGDoc("document-gameover.json")
+	replayed.Type = ipc.GameType_ANNOTATED
+	err = ReplayEvents(ctx, DefaultConfig.WGLConfig(), replayed, gdoc.Events, false)
+	is.NoErr(err)
+	is.Equal(replayed.PlayState, ipc.PlayState_GAME_OVER)
+	is.Equal(replayed.CurrentScores, gdoc.CurrentScores)
+	is.Equal(replayed.Winner, gdoc.Winner)
+	is.Equal(len(replayed.Events), len(gdoc.Events))
+}
+
+// Entering a penalty for a player replaces the one they already have, and
+// zero removes it, so the annotator can correct a penalty later.
+func TestTimePenaltyReplaceAndRemove(t *testing.T) {
+	is := is.New(t)
+	ctx := ctxForTests()
+	gdoc := loadGDoc("document-gameover.json")
+	gdoc.Type = ipc.GameType_ANNOTATED
+	numEvts := len(gdoc.Events)
+	cfg := DefaultConfig.WGLConfig()
+
+	is.NoErr(ProcessGameplayEvent(ctx, cfg, timePenaltyEvt(1, 10), "", gdoc))
+	is.NoErr(ProcessGameplayEvent(ctx, cfg, timePenaltyEvt(0, 20), "", gdoc))
+	is.Equal(gdoc.CurrentScores, []int32{426, 312})
+
+	is.NoErr(ProcessGameplayEvent(ctx, cfg, timePenaltyEvt(1, 30), "", gdoc))
+	is.Equal(gdoc.CurrentScores, []int32{426, 292})
+	is.Equal(len(gdoc.Events), numEvts+2)
+
+	// Removing the other player's penalty leaves this one untouched.
+	is.NoErr(ProcessGameplayEvent(ctx, cfg, timePenaltyEvt(0, 0), "", gdoc))
+	is.Equal(gdoc.CurrentScores, []int32{446, 292})
+	is.Equal(len(gdoc.Events), numEvts+1)
+	last := gdoc.Events[numEvts]
+	is.Equal(last.PlayerIndex, uint32(1))
+	is.Equal(last.LostScore, int32(30))
+	is.Equal(last.Cumulative, int32(292))
+
+	// A large penalty flips the winner and removing it flips it back.
+	is.NoErr(ProcessGameplayEvent(ctx, cfg, timePenaltyEvt(0, 200), "", gdoc))
+	is.Equal(gdoc.Winner, int32(1))
+	is.NoErr(ProcessGameplayEvent(ctx, cfg, timePenaltyEvt(0, 0), "", gdoc))
+	is.Equal(gdoc.Winner, int32(0))
+	is.Equal(gdoc.CurrentScores, []int32{446, 292})
+}
+
+// A penalty event records only the tiles the annotator knows, not the random
+// fill, like every other annotated event.
+func TestTimePenaltyRecordsKnownRack(t *testing.T) {
+	is := is.New(t)
+	ctx := ctxForTests()
+	gdoc := loadGDoc("document-gameover.json")
+	gdoc.Type = ipc.GameType_ANNOTATED
+	gdoc.Racks[1] = nil // player 1's rack is unknown
+
+	is.NoErr(ProcessGameplayEvent(ctx, DefaultConfig.WGLConfig(), timePenaltyEvt(0, 10), "", gdoc))
+	is.Equal(gdoc.Events[len(gdoc.Events)-1].Rack, gdoc.Racks[0])
+	is.NoErr(ProcessGameplayEvent(ctx, DefaultConfig.WGLConfig(), timePenaltyEvt(1, 10), "", gdoc))
+	is.Equal(len(gdoc.Events[len(gdoc.Events)-1].Rack), 0)
+}
+
+// Re-applying a penalty after an amendment recomputes its cumulative score
+// from the points lost rather than trusting the stale saved cumulative.
+func TestTimePenaltyEditorModeRecomputesCumulative(t *testing.T) {
+	is := is.New(t)
+	ctx := ctxForTests()
+	gdoc := loadGDoc("document-gameover.json")
+	gdoc.Type = ipc.GameType_ANNOTATED
+	gdoc.CurrentScores[1] = 400
+	err := ApplyEventInEditorMode(ctx, DefaultConfig.WGLConfig(), gdoc, &ipc.GameEvent{
+		Type:        ipc.GameEvent_TIME_PENALTY,
+		PlayerIndex: 0,
+		LostScore:   50,
+		Cumulative:  396,
+	})
+	is.NoErr(err)
+	is.Equal(gdoc.CurrentScores, []int32{396, 400})
+	is.Equal(gdoc.Events[len(gdoc.Events)-1].Cumulative, int32(396))
+	is.Equal(gdoc.Winner, int32(1))
+}
+
+// A saved penalty is dropped rather than applied mid-game when an earlier
+// amendment means the game is no longer over.
+func TestTimePenaltyEditorModeRequiresGameOver(t *testing.T) {
+	is := is.New(t)
+	ctx := ctxForTests()
+	gdoc := loadGDoc("document-earlygame.json")
+	gdoc.Type = ipc.GameType_ANNOTATED
+	before := proto.Clone(gdoc)
+	err := ApplyEventInEditorMode(ctx, DefaultConfig.WGLConfig(), gdoc, &ipc.GameEvent{
+		Type:        ipc.GameEvent_TIME_PENALTY,
+		PlayerIndex: 0,
+		LostScore:   10,
+	})
+	is.True(err != nil)
+	is.True(proto.Equal(before, gdoc))
+}
+
+func TestTimePenaltyRejected(t *testing.T) {
+	ctx := ctxForTests()
+	cases := []struct {
+		name   string
+		doc    string
+		native bool
+		evt    *ipc.ClientGameplayEvent
+	}{
+		{"not annotated", "document-gameover.json", true, timePenaltyEvt(0, 10)},
+		{"game not over", "document-earlygame.json", false, timePenaltyEvt(0, 10)},
+		{"negative points", "document-gameover.json", false, timePenaltyEvt(0, -10)},
+		{"too many points", "document-gameover.json", false, timePenaltyEvt(0, maxTimePenalty+1)},
+		{"bad player", "document-gameover.json", false, timePenaltyEvt(2, 10)},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			is := is.New(t)
+			gdoc := loadGDoc(tc.doc)
+			if !tc.native {
+				gdoc.Type = ipc.GameType_ANNOTATED
+			}
+			tc.evt.GameId = gdoc.Uid
+			before := proto.Clone(gdoc)
+			err := ProcessGameplayEvent(ctx, DefaultConfig.WGLConfig(), tc.evt, "", gdoc)
+			is.True(err != nil)
+			is.True(proto.Equal(before, gdoc))
+		})
+	}
+}
