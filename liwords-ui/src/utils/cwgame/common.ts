@@ -30,6 +30,11 @@ export enum Direction {
   Vertical,
 }
 
+// True when the main input is a finger rather than a mouse and keyboard,
+// unlike isTouchDevice, which also matches touchscreen laptops.
+export const hasTouchPrimaryInput = () =>
+  window.matchMedia?.("(hover: none) and (pointer: coarse)").matches ?? false;
+
 export const isTouchDevice = () => {
   const userAgent = navigator.userAgent || navigator.vendor;
   if (/android/i.test(userAgent) || /iPad|iPhone|iPod/.test(userAgent)) {

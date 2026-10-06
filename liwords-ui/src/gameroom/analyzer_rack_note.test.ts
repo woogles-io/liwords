@@ -21,3 +21,18 @@ it("says nothing once a short rack may just be the endgame", () => {
 it("says nothing after the game is over", () => {
   expect(rackNote(0, 80, true)).toBeNull();
 });
+
+it("points to Space in the board editor", () => {
+  expect(rackNote(0, 80, false, "keyboard")).toBe(
+    "No rack entered for this turn. Press Space to enter the rack.",
+  );
+  expect(rackNote(3, 80, false, "keyboard")).toBe(
+    "Analyzing 3 known tiles. Press Space to enter the rack.",
+  );
+});
+
+it("points to the pencil on a touch screen", () => {
+  expect(rackNote(0, 80, false, "touch")).toBe(
+    "No rack entered for this turn. Tap the pencil to enter the rack.",
+  );
+});

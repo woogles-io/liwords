@@ -358,7 +358,12 @@ const GameControls = React.memo((props: Props) => {
     setHandleChallengeShortcut,
     setHandleNeitherShortcut,
   } = props;
-  const hasRegularButtons = !(isExamining || gameEndControls || observer);
+  // The board editor always examines, but its buttons are live.
+  const hasRegularButtons = !(
+    (isExamining && !props.boardEditingMode) ||
+    gameEndControls ||
+    observer
+  );
   const handlePassShortcut = useCallback(() => {
     if (!hasRegularButtons) return;
     if (!passButton.current) return;

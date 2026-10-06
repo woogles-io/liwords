@@ -451,7 +451,7 @@ export const BoardEditor = () => {
             tournamentID={gameInfo.tournamentId}
           /> */}
           <Card></Card>
-          <Analyzer includeCard />
+          <Analyzer includeCard boardEditingMode />
 
           <Card
             title="Editor controls"
