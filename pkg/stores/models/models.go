@@ -72,6 +72,9 @@ type AnalysisJob struct {
 	CompletedAt         pgtype.Timestamptz
 	RequestedByUserUuid pgtype.Text
 	RequestType         pgtype.Text
+	Player0MistakeIndex pgtype.Float8
+	Player1MistakeIndex pgtype.Float8
+	AnalysisVersion     pgtype.Int4
 }
 
 type AnnotatedGameMetadatum struct {

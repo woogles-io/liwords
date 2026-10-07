@@ -28,13 +28,19 @@ SET
 WHERE id = $1 AND claimed_by_user_uuid = $2;
 
 -- name: CompleteJob :one
--- Marks job as completed and returns game_id and processing duration
+-- Marks job as completed and returns game_id and processing duration.
+-- The summary columns are copied from the result by the caller; see the
+-- 202610060002 migration for what NULL means in each.
 UPDATE analysis_jobs
 SET
     status = 'completed',
-    result = $1,
+    result = sqlc.arg(result),
+    player0_mistake_index = sqlc.narg(player0_mistake_index),
+    player1_mistake_index = sqlc.narg(player1_mistake_index),
+    analysis_version = sqlc.arg(analysis_version),
     completed_at = NOW()
-WHERE id = $2 AND claimed_by_user_uuid = $3 AND status IN ('claimed', 'processing')
+WHERE id = sqlc.arg(id) AND claimed_by_user_uuid = sqlc.arg(claimed_by_user_uuid)
+  AND status IN ('claimed', 'processing')
 RETURNING game_id, requested_by_user_uuid, EXTRACT(EPOCH FROM (NOW() - claimed_at))::BIGINT * 1000 as duration_ms;
 
 -- name: FailJob :exec
@@ -75,7 +81,7 @@ RETURNING id;
 -- (completed_at - claimed_at) and how long it waited (claimed_at - created_at).
 SELECT
     aj.id, aj.game_id, aj.status, aj.config_json, aj.result, aj.error_message,
-    aj.completed_at, aj.created_at, aj.claimed_at,
+    aj.completed_at, aj.created_at, aj.claimed_at, aj.analysis_version,
     COALESCE(u.username, '') as analyzed_by_username
 FROM analysis_jobs aj
 LEFT JOIN users u ON u.uuid = aj.claimed_by_user_uuid
@@ -239,3 +245,21 @@ SELECT id, game_id
 FROM analysis_jobs
 WHERE status = 'completed'
   AND result->'turns'->0->>'playedMove' ~ '^[A-O][0-9]';
+
+-- name: BackfillAnalysisSummaryColumns :execrows
+-- Copies the summary fields out of the stored result for up to $1 jobs that
+-- have a result but no columns yet. protojson drops zero values, so a missing
+-- mistakeIndex inside a present summary is 0 and a missing analysisVersion is
+-- 0 (v0). Returns the number of jobs updated; 0 means done.
+UPDATE analysis_jobs aj
+SET player0_mistake_index = CASE WHEN aj.result->'playerSummaries'->0 IS NOT NULL
+        THEN COALESCE(aj.result->'playerSummaries'->0->>'mistakeIndex', '0')::DOUBLE PRECISION END,
+    player1_mistake_index = CASE WHEN aj.result->'playerSummaries'->1 IS NOT NULL
+        THEN COALESCE(aj.result->'playerSummaries'->1->>'mistakeIndex', '0')::DOUBLE PRECISION END,
+    analysis_version = COALESCE(aj.result->>'analysisVersion', '0')::INT
+WHERE aj.id IN (
+    SELECT id FROM analysis_jobs
+    WHERE result IS NOT NULL AND analysis_version IS NULL
+    LIMIT sqlc.arg(batch_size)::INT
+    FOR UPDATE SKIP LOCKED
+);
