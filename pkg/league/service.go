@@ -360,7 +360,7 @@ func (ls *LeagueService) RecalculateSeasonExtendedStats(
 		return nil, apiserver.InternalErr(fmt.Errorf("failed to recalculate extended stats: %w", err))
 	}
 
-	// Also recalculate mistake index from analysis data (repairs NULL MI)
+	// Also rebuild mistake index from the stored analysis results
 	if err := standingsManager.RecalculateSeasonMistakeIndex(ctx, seasonID); err != nil {
 		return nil, apiserver.InternalErr(fmt.Errorf("failed to recalculate mistake index: %w", err))
 	}
@@ -2570,9 +2570,8 @@ func (ls *LeagueService) CancelPlayerResults(
 		return nil, apiserver.InternalErr(fmt.Errorf("failed to recalculate extended stats: %w", err))
 	}
 
-	// Step 5: Recalculate mistake index from analysis data.
-	// RecalculateAndSaveStandings may NULL out MI for players without existing
-	// standings. This replays MI from analysis_jobs source data to fix it.
+	// Step 5: Rebuild mistake index from the stored analysis results, so the
+	// cancelled games' analyses stop counting.
 	if err := standingsMgr.RecalculateSeasonMistakeIndex(ctx, seasonID); err != nil {
 		return nil, apiserver.InternalErr(fmt.Errorf("failed to recalculate mistake index: %w", err))
 	}

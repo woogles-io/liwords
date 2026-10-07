@@ -21,7 +21,7 @@ type mockLeagueStore struct {
 	gameResults    map[uuid.UUID][]models.GetDivisionGameResultsRow
 	registrations  map[uuid.UUID][]models.GetDivisionRegistrationsRow
 	gamesWithStats map[uuid.UUID][]models.GetDivisionGamesWithStatsRow
-	analyzedGames  map[uuid.UUID][]models.GetDivisionAnalyzedGamesRow
+	refreshedMI    []uuid.UUID
 }
 
 func newMockLeagueStore() *mockLeagueStore {
@@ -31,7 +31,6 @@ func newMockLeagueStore() *mockLeagueStore {
 		gameResults:    make(map[uuid.UUID][]models.GetDivisionGameResultsRow),
 		registrations:  make(map[uuid.UUID][]models.GetDivisionRegistrationsRow),
 		gamesWithStats: make(map[uuid.UUID][]models.GetDivisionGamesWithStatsRow),
-		analyzedGames:  make(map[uuid.UUID][]models.GetDivisionAnalyzedGamesRow),
 	}
 }
 
@@ -57,8 +56,9 @@ func (m *mockLeagueStore) GetDivisionGamesWithStats(ctx context.Context, divisio
 	return m.gamesWithStats[divisionID], nil
 }
 
-func (m *mockLeagueStore) GetDivisionAnalyzedGames(ctx context.Context, divisionID uuid.UUID) ([]models.GetDivisionAnalyzedGamesRow, error) {
-	return m.analyzedGames[divisionID], nil
+func (m *mockLeagueStore) RefreshDivisionMistakeIndex(ctx context.Context, divisionID uuid.UUID) error {
+	m.refreshedMI = append(m.refreshedMI, divisionID)
+	return nil
 }
 
 func (m *mockLeagueStore) GetPreviousSeasonRegistrantsNotInCurrent(ctx context.Context, arg models.GetPreviousSeasonRegistrantsNotInCurrentParams) ([]models.GetPreviousSeasonRegistrantsNotInCurrentRow, error) {
@@ -79,8 +79,7 @@ func (m *mockLeagueStore) UpsertStanding(ctx context.Context, arg models.UpsertS
 			divStandings[i].Spread = arg.Spread
 			divStandings[i].GamesPlayed = arg.GamesPlayed
 			divStandings[i].Result = arg.Result
-			divStandings[i].TotalMistakeIndex = arg.TotalMistakeIndex
-			divStandings[i].GamesAnalyzed = arg.GamesAnalyzed
+			// Like the real query, an existing row keeps its MI columns.
 			found = true
 			break
 		}
@@ -624,77 +623,16 @@ func TestRecalculateSeasonMistakeIndex(t *testing.T) {
 	store := newMockLeagueStore()
 	sm := NewStandingsManager(store)
 
-	divID := uuid.New()
-	seasonID := uuid.New()
+	div1, div2 := uuid.New(), uuid.New()
+	store.divisions[div1] = models.LeagueDivision{Uuid: div1, DivisionNumber: 1}
+	store.divisions[div2] = models.LeagueDivision{Uuid: div2, DivisionNumber: 2}
 
-	store.divisions[divID] = models.LeagueDivision{
-		Uuid:           divID,
-		DivisionNumber: 1,
-	}
-
-	// Two players with stale/NULL MI in standings
-	store.standings[divID] = []models.GetStandingsRow{
-		{
-			DivisionID:        divID,
-			UserID:            1,
-			Wins:              pgtype.Int4{Int32: 2, Valid: true},
-			Losses:            pgtype.Int4{Int32: 0, Valid: true},
-			TotalMistakeIndex: pgtype.Float8{Valid: false}, // NULL — the bug
-			GamesAnalyzed:     pgtype.Int4{Valid: false},   // NULL
-		},
-		{
-			DivisionID:        divID,
-			UserID:            2,
-			Wins:              pgtype.Int4{Int32: 0, Valid: true},
-			Losses:            pgtype.Int4{Int32: 2, Valid: true},
-			TotalMistakeIndex: pgtype.Float8{Float64: 99, Valid: true}, // stale
-			GamesAnalyzed:     pgtype.Int4{Int32: 99, Valid: true},     // stale
-		},
-	}
-
-	// Two analyzed games
-	store.analyzedGames[divID] = []models.GetDivisionAnalyzedGamesRow{
-		{
-			GameID:              "game1",
-			Player0ID:           pgtype.Int4{Int32: 1, Valid: true},
-			Player1ID:           pgtype.Int4{Int32: 2, Valid: true},
-			Player0MistakeIndex: 3.5,
-			Player1MistakeIndex: 7.2,
-		},
-		{
-			GameID:              "game2",
-			Player0ID:           pgtype.Int4{Int32: 1, Valid: true},
-			Player1ID:           pgtype.Int4{Int32: 2, Valid: true},
-			Player0MistakeIndex: 4.1,
-			Player1MistakeIndex: 6.3,
-		},
-	}
-
-	err := sm.RecalculateSeasonMistakeIndex(ctx, seasonID)
+	err := sm.RecalculateSeasonMistakeIndex(ctx, uuid.New())
 	require.NoError(t, err)
 
-	standings := store.standings[divID]
-	var p1, p2 *models.GetStandingsRow
-	for i := range standings {
-		if standings[i].UserID == 1 {
-			p1 = &standings[i]
-		}
-		if standings[i].UserID == 2 {
-			p2 = &standings[i]
-		}
-	}
-	require.NotNil(t, p1)
-	require.NotNil(t, p2)
-
-	// Player 1: MI = 3.5 + 4.1 = 7.6, games analyzed = 2
-	assert.True(t, p1.TotalMistakeIndex.Valid)
-	assert.InDelta(t, 7.6, p1.TotalMistakeIndex.Float64, 0.001)
-	assert.Equal(t, int32(2), p1.GamesAnalyzed.Int32)
-
-	// Player 2: MI = 7.2 + 6.3 = 13.5, games analyzed = 2
-	assert.True(t, p2.TotalMistakeIndex.Valid)
-	assert.InDelta(t, 13.5, p2.TotalMistakeIndex.Float64, 0.001)
-	assert.Equal(t, int32(2), p2.GamesAnalyzed.Int32)
+	// The rebuild itself is SQL (RefreshDivisionMistakeIndex, covered by
+	// pkg/analysis tests); every division must get one.
+	assert.ElementsMatch(t, []uuid.UUID{div1, div2}, store.refreshedMI)
 }
 
 func TestStandingsCalculation_TimeoutLoss(t *testing.T) {

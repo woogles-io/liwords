@@ -258,25 +258,6 @@ func (q *Queries) CreateSeason(ctx context.Context, arg CreateSeasonParams) (Lea
 	return i, err
 }
 
-const decrementStandingMistakeIndex = `-- name: DecrementStandingMistakeIndex :exec
-UPDATE league_standings
-SET total_mistake_index = total_mistake_index - $3,
-    games_analyzed = GREATEST(0, games_analyzed - 1),
-    updated_at = NOW()
-WHERE division_id = $1 AND user_id = $2
-`
-
-type DecrementStandingMistakeIndexParams struct {
-	DivisionID        uuid.UUID
-	UserID            int32
-	TotalMistakeIndex pgtype.Float8
-}
-
-func (q *Queries) DecrementStandingMistakeIndex(ctx context.Context, arg DecrementStandingMistakeIndexParams) error {
-	_, err := q.db.Exec(ctx, decrementStandingMistakeIndex, arg.DivisionID, arg.UserID, arg.TotalMistakeIndex)
-	return err
-}
-
 const deleteDivision = `-- name: DeleteDivision :exec
 DELETE FROM league_divisions
 WHERE uuid = $1
@@ -417,63 +398,6 @@ func (q *Queries) GetDivision(ctx context.Context, argUuid uuid.UUID) (LeagueDiv
 		&i.UpdatedAt,
 	)
 	return i, err
-}
-
-const getDivisionAnalyzedGames = `-- name: GetDivisionAnalyzedGames :many
-
-SELECT DISTINCT ON (aj.game_id)
-    aj.game_id,
-    g.player0_id,
-    g.player1_id,
-    -- Stored as protojson, which drops a field that holds its zero value, so a
-    -- perfect game has no mistakeIndex key at all. A game counts as analyzed
-    -- when both summaries are there; a summary without the key means 0.
-    COALESCE(aj.result->'playerSummaries'->0->>'mistakeIndex', '0')::DOUBLE PRECISION as player0_mistake_index,
-    COALESCE(aj.result->'playerSummaries'->1->>'mistakeIndex', '0')::DOUBLE PRECISION as player1_mistake_index
-FROM analysis_jobs aj
-JOIN games g ON g.uuid = aj.game_id
-WHERE g.league_division_id = $1
-  AND aj.status = 'completed'
-  AND aj.result->'playerSummaries'->0 IS NOT NULL
-  AND aj.result->'playerSummaries'->1 IS NOT NULL
-ORDER BY aj.game_id, aj.completed_at DESC
-`
-
-type GetDivisionAnalyzedGamesRow struct {
-	GameID              string
-	Player0ID           pgtype.Int4
-	Player1ID           pgtype.Int4
-	Player0MistakeIndex float64
-	Player1MistakeIndex float64
-}
-
-// Exclude CANCELLED
-// Get the latest completed analysis for each game in a division.
-// Used to recalculate mistake index totals from source data.
-func (q *Queries) GetDivisionAnalyzedGames(ctx context.Context, leagueDivisionID pgtype.UUID) ([]GetDivisionAnalyzedGamesRow, error) {
-	rows, err := q.db.Query(ctx, getDivisionAnalyzedGames, leagueDivisionID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []GetDivisionAnalyzedGamesRow
-	for rows.Next() {
-		var i GetDivisionAnalyzedGamesRow
-		if err := rows.Scan(
-			&i.GameID,
-			&i.Player0ID,
-			&i.Player1ID,
-			&i.Player0MistakeIndex,
-			&i.Player1MistakeIndex,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
 }
 
 const getDivisionGameResults = `-- name: GetDivisionGameResults :many
@@ -880,6 +804,7 @@ func (q *Queries) GetForceFinishedGamesMissingPlayers(ctx context.Context, seaso
 }
 
 const getGameLeagueInfo = `-- name: GetGameLeagueInfo :one
+
 SELECT
     g.league_division_id,
     g.season_id,
@@ -910,6 +835,7 @@ type GetGameLeagueInfoRow struct {
 	GameEndReason    pgtype.Int2
 }
 
+// Exclude CANCELLED
 func (q *Queries) GetGameLeagueInfo(ctx context.Context, argUuid pgtype.Text) (GetGameLeagueInfoRow, error) {
 	row := q.db.QueryRow(ctx, getGameLeagueInfo, argUuid)
 	var i GetGameLeagueInfoRow
@@ -2514,25 +2440,6 @@ func (q *Queries) GetUnfinishedLeagueGames(ctx context.Context, seasonID pgtype.
 	return items, nil
 }
 
-const incrementStandingMistakeIndex = `-- name: IncrementStandingMistakeIndex :exec
-UPDATE league_standings
-SET total_mistake_index = total_mistake_index + $3,
-    games_analyzed = games_analyzed + 1,
-    updated_at = NOW()
-WHERE division_id = $1 AND user_id = $2
-`
-
-type IncrementStandingMistakeIndexParams struct {
-	DivisionID        uuid.UUID
-	UserID            int32
-	TotalMistakeIndex pgtype.Float8
-}
-
-func (q *Queries) IncrementStandingMistakeIndex(ctx context.Context, arg IncrementStandingMistakeIndexParams) error {
-	_, err := q.db.Exec(ctx, incrementStandingMistakeIndex, arg.DivisionID, arg.UserID, arg.TotalMistakeIndex)
-	return err
-}
-
 const incrementStandingsAtomic = `-- name: IncrementStandingsAtomic :exec
 INSERT INTO league_standings (division_id, user_id, wins, losses, draws, spread, games_played, games_remaining, result,
     total_score, total_opponent_score, total_bingos, total_opponent_bingos, total_turns, high_turn, high_game, timeouts, blanks_played,
@@ -2740,6 +2647,52 @@ func (q *Queries) PenalizePlayerSeasonGames(ctx context.Context, arg PenalizePla
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const refreshDivisionMistakeIndex = `-- name: RefreshDivisionMistakeIndex :exec
+WITH latest AS (
+    SELECT DISTINCT ON (aj.game_id)
+        g.player0_id,
+        g.player1_id,
+        COALESCE(aj.result->'playerSummaries'->0->>'mistakeIndex', '0')::DOUBLE PRECISION AS mi0,
+        COALESCE(aj.result->'playerSummaries'->1->>'mistakeIndex', '0')::DOUBLE PRECISION AS mi1
+    FROM analysis_jobs aj
+    JOIN games g ON g.uuid = aj.game_id
+    WHERE g.league_division_id = $1::uuid
+      AND aj.result->'playerSummaries'->0 IS NOT NULL
+      AND aj.result->'playerSummaries'->1 IS NOT NULL
+    ORDER BY aj.game_id, aj.created_at DESC
+),
+per_player AS (
+    SELECT player0_id AS user_id, mi0 AS mi FROM latest WHERE player0_id IS NOT NULL
+    UNION ALL
+    SELECT player1_id AS user_id, mi1 AS mi FROM latest WHERE player1_id IS NOT NULL
+),
+totals AS (
+    SELECT user_id, SUM(mi) AS total, COUNT(*)::INT AS n
+    FROM per_player
+    GROUP BY user_id
+)
+UPDATE league_standings ls
+SET total_mistake_index = COALESCE(t.total, 0),
+    games_analyzed = COALESCE(t.n, 0),
+    updated_at = NOW()
+FROM league_standings cur
+LEFT JOIN totals t ON t.user_id = cur.user_id
+WHERE ls.id = cur.id
+  AND cur.division_id = $1::uuid
+`
+
+// Rebuilds total_mistake_index and games_analyzed for every standing in a
+// division from the stored analysis results, so a refresh is idempotent and
+// repairs any earlier drift. Each game counts once, using its newest job that
+// has a result. A requeued job keeps its old result until the new one lands
+// (ResetAnalysisJobKeepResult), so the game stays counted during reanalysis,
+// whatever the job's status. protojson drops a zero mistakeIndex, so a
+// summary without the key means 0.
+func (q *Queries) RefreshDivisionMistakeIndex(ctx context.Context, divisionID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, refreshDivisionMistakeIndex, divisionID)
+	return err
 }
 
 const registerPlayer = `-- name: RegisterPlayer :one
@@ -3085,8 +3038,9 @@ DO UPDATE SET
     blanks_played = EXCLUDED.blanks_played,
     total_tiles_played = EXCLUDED.total_tiles_played,
     total_opponent_tiles_played = EXCLUDED.total_opponent_tiles_played,
-    total_mistake_index = EXCLUDED.total_mistake_index,
-    games_analyzed = EXCLUDED.games_analyzed,
+    -- total_mistake_index and games_analyzed are deliberately not updated:
+    -- they are owned by RefreshDivisionMistakeIndex, and copying back a value
+    -- read earlier would undo a refresh that ran in between.
     updated_at = NOW()
 `
 

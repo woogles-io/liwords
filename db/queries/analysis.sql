@@ -200,7 +200,8 @@ FROM analysis_jobs
 WHERE id = $1;
 
 -- name: ResetAnalysisJobKeepResult :exec
--- Resets job to pending but keeps result for JIT MI subtraction
+-- Resets job to pending but keeps result, so league standings keep counting
+-- the old analysis until the new one replaces it
 UPDATE analysis_jobs
 SET status = 'pending',
     error_message = NULL,

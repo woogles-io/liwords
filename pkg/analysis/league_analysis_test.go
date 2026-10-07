@@ -478,6 +478,14 @@ func completeAnalysis(t *testing.T, ctx context.Context, queries *models.Queries
 	err := analysis.EnqueueGameForAnalysis(ctx, queries, gameID, 0)
 	is.NoErr(err)
 
+	return claimAndComplete(t, ctx, queries, result)
+}
+
+// claimAndComplete claims the next pending job and completes it with result.
+func claimAndComplete(t *testing.T, ctx context.Context, queries *models.Queries,
+	result *macondopb.GameAnalysisResult) []byte {
+	is := is.New(t)
+
 	workerUUID := pgtype.Text{String: "test-uuid-3", Valid: true}
 	job, err := queries.ClaimNextJob(ctx, workerUUID)
 	is.NoErr(err)
@@ -493,6 +501,117 @@ func completeAnalysis(t *testing.T, ctx context.Context, queries *models.Queries
 	is.NoErr(err)
 
 	return resultJSON
+}
+
+func analysisResult(mi0, mi1 float64) *macondopb.GameAnalysisResult {
+	return &macondopb.GameAnalysisResult{
+		AnalysisVersion: 2,
+		PlayerSummaries: []*macondopb.PlayerSummary{
+			{PlayerName: "testuser1", MistakeIndex: mi0},
+			{PlayerName: "testuser2", MistakeIndex: mi1},
+		},
+	}
+}
+
+// seedStanding writes a standing with the given MI columns, as a drifted
+// counter would have left them.
+func seedStanding(t *testing.T, ctx context.Context, queries *models.Queries,
+	divisionID uuid.UUID, userID int32, totalMI float64, analyzed int32) {
+	is := is.New(t)
+	err := queries.UpsertStanding(ctx, models.UpsertStandingParams{
+		DivisionID:        divisionID,
+		UserID:            userID,
+		TotalMistakeIndex: pgtype.Float8{Float64: totalMI, Valid: true},
+		GamesAnalyzed:     pgtype.Int4{Int32: analyzed, Valid: true},
+	})
+	is.NoErr(err)
+}
+
+// standingMI returns a standing's (total mistake index, games analyzed).
+func standingMI(t *testing.T, ctx context.Context, queries *models.Queries,
+	divisionID uuid.UUID, userID int32) (float64, int32) {
+	is := is.New(t)
+	st, err := queries.GetPlayerStanding(ctx, models.GetPlayerStandingParams{
+		DivisionID: divisionID,
+		UserID:     userID,
+	})
+	is.NoErr(err)
+	is.True(st.TotalMistakeIndex.Valid)
+	is.True(st.GamesAnalyzed.Valid)
+	return st.TotalMistakeIndex.Float64, st.GamesAnalyzed.Int32
+}
+
+func assertMI(t *testing.T, ctx context.Context, queries *models.Queries,
+	divisionID uuid.UUID, userID int32, wantTotal float64, wantAnalyzed int32) {
+	t.Helper()
+	total, analyzed := standingMI(t, ctx, queries, divisionID, userID)
+	if analyzed != wantAnalyzed || total < wantTotal-1e-9 || total > wantTotal+1e-9 {
+		t.Fatalf("user %d: got MI total %v over %d games, want %v over %d",
+			userID, total, analyzed, wantTotal, wantAnalyzed)
+	}
+}
+
+// TestRefreshDivisionMistakeIndex covers the rebuild of standings' MI columns
+// from stored analysis results. The old running counters drifted whenever an
+// increment and its matching decrement didn't both land: a rejected late
+// submission decremented without re-adding, a requeue re-added without
+// subtracting. A rebuild has no such pairing to get wrong.
+func TestRefreshDivisionMistakeIndex(t *testing.T) {
+	is := is.New(t)
+	ctx := context.Background()
+
+	pool, queries := setupTestDB(t)
+	defer pool.Close()
+
+	createTestUsers(t, pool)
+	leagueID, seasonID, divisionID := createMinimalLeague(t, ctx, queries)
+
+	// Drifted counters, plus a player with no analyzed games.
+	seedStanding(t, ctx, queries, divisionID, 1, 99, 19)
+	seedStanding(t, ctx, queries, divisionID, 2, 1, 11)
+	seedStanding(t, ctx, queries, divisionID, 4, 5, 5)
+
+	now := time.Now()
+	gameA := insertLeagueGame(t, ctx, pool, leagueID, seasonID, divisionID, now.Add(-3*time.Hour), 400, 380)
+	gameB := insertLeagueGame(t, ctx, pool, leagueID, seasonID, divisionID, now.Add(-2*time.Hour), 450, 300)
+	// Never analyzed: must not count.
+	insertLeagueGame(t, ctx, pool, leagueID, seasonID, divisionID, now.Add(-time.Hour), 350, 390)
+
+	completeAnalysis(t, ctx, queries, gameA, analysisResult(3.0, 4.0))
+	completeAnalysis(t, ctx, queries, gameB, analysisResult(1.5, 2.5))
+
+	is.NoErr(queries.RefreshDivisionMistakeIndex(ctx, divisionID))
+	assertMI(t, ctx, queries, divisionID, 1, 4.5, 2)
+	assertMI(t, ctx, queries, divisionID, 2, 6.5, 2)
+	assertMI(t, ctx, queries, divisionID, 4, 0, 0)
+
+	// Idempotent: a repeat, as from a duplicate or late submission, changes nothing.
+	is.NoErr(queries.RefreshDivisionMistakeIndex(ctx, divisionID))
+	assertMI(t, ctx, queries, divisionID, 1, 4.5, 2)
+	assertMI(t, ctx, queries, divisionID, 2, 6.5, 2)
+
+	// A whole-row upsert (standings recalculation) leaves MI alone.
+	seedStanding(t, ctx, queries, divisionID, 1, 0, 0)
+	assertMI(t, ctx, queries, divisionID, 1, 4.5, 2)
+
+	// Requeued for reanalysis: the job is pending again but keeps its old
+	// result, so the game stays counted at its old value meanwhile.
+	is.NoErr(analysis.RequeueJobByGameID(ctx, queries, gameA, 0))
+	is.NoErr(queries.RefreshDivisionMistakeIndex(ctx, divisionID))
+	assertMI(t, ctx, queries, divisionID, 1, 4.5, 2)
+	assertMI(t, ctx, queries, divisionID, 2, 6.5, 2)
+
+	// The reanalysis replaces the old result rather than adding to it.
+	claimAndComplete(t, ctx, queries, analysisResult(5.0, 1.0))
+	is.NoErr(queries.RefreshDivisionMistakeIndex(ctx, divisionID))
+	assertMI(t, ctx, queries, divisionID, 1, 6.5, 2)
+	assertMI(t, ctx, queries, divisionID, 2, 3.5, 2)
+
+	// A second job for the same game: only the newest counts, once.
+	completeAnalysis(t, ctx, queries, gameB, analysisResult(2.0, 2.0))
+	is.NoErr(queries.RefreshDivisionMistakeIndex(ctx, divisionID))
+	assertMI(t, ctx, queries, divisionID, 1, 7.0, 2)
+	assertMI(t, ctx, queries, divisionID, 2, 3.0, 2)
 }
 
 // TestPerfectGameReadsBackAsAnalyzed covers a mistake index of 0 -- a perfect
@@ -556,13 +675,12 @@ func TestPerfectGameReadsBackAsAnalyzed(t *testing.T) {
 	is.Equal(opponent[0].HasMistakeIndex, true)
 	is.Equal(opponent[0].PlayerMistakeIndex, 2.2)
 
-	// The season recalculation counts the game for both players.
-	games, err := queries.GetDivisionAnalyzedGames(ctx, pgtype.UUID{Bytes: divisionID, Valid: true})
-	is.NoErr(err)
-	is.Equal(len(games), 1)
-	is.Equal(games[0].GameID, analyzed)
-	is.Equal(games[0].Player0MistakeIndex, float64(0))
-	is.Equal(games[0].Player1MistakeIndex, 2.2)
+	// The standings rebuild counts the game for both players.
+	seedStanding(t, ctx, queries, divisionID, 1, 0, 0)
+	seedStanding(t, ctx, queries, divisionID, 2, 0, 0)
+	is.NoErr(queries.RefreshDivisionMistakeIndex(ctx, divisionID))
+	assertMI(t, ctx, queries, divisionID, 1, 0, 1)
+	assertMI(t, ctx, queries, divisionID, 2, 2.2, 1)
 }
 
 // NOTE: Integration test for "league game finishes -> gets enqueued"
