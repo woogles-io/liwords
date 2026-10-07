@@ -237,6 +237,80 @@ func (q *Queries) GetFollows(ctx context.Context, followerID pgtype.Int4) ([]Get
 	return items, nil
 }
 
+const getLinkedAccounts = `-- name: GetLinkedAccounts :many
+WITH my_ips AS (
+    SELECT c.ip FROM user_clients c WHERE c.user_id = $1::integer
+    UNION
+    SELECT r.registration_ip FROM users r
+     WHERE r.id = $1::integer AND r.registration_ip IS NOT NULL
+), my_cids AS (
+    SELECT c.client_id FROM user_clients c WHERE c.user_id = $1::integer AND c.client_id <> ''
+    UNION
+    SELECT r.registration_client_id FROM users r
+     WHERE r.id = $1::integer AND r.registration_client_id IS NOT NULL
+), hits (user_id, matched_on, value, last_seen) AS (
+    SELECT uc.user_id, 'client_id', uc.client_id, uc.last_seen
+      FROM user_clients uc WHERE uc.client_id IN (SELECT client_id FROM my_cids)
+    UNION ALL
+    SELECT ru.id, 'registration_client_id', ru.registration_client_id, ru.created_at
+      FROM users ru WHERE ru.registration_client_id IN (SELECT client_id FROM my_cids)
+    UNION ALL
+    SELECT uc.user_id, 'ip', host(uc.ip), uc.last_seen
+      FROM user_clients uc WHERE uc.ip IN (SELECT ip FROM my_ips)
+    UNION ALL
+    SELECT ru.id, 'registration_ip', host(ru.registration_ip), ru.created_at
+      FROM users ru WHERE ru.registration_ip IN (SELECT ip FROM my_ips)
+)
+SELECT u.username, u.uuid, hits.matched_on::text AS matched_on, hits.value::text AS value,
+       max(hits.last_seen)::timestamptz AS last_seen,
+       EXISTS (SELECT 1 FROM user_actions ua
+                WHERE ua.user_id = u.id AND ua.action_type = 1 AND ua.removed_time IS NULL
+                  AND (ua.end_time IS NULL OR ua.end_time > now()))::bool AS suspended
+FROM hits JOIN users u ON u.id = hits.user_id
+WHERE hits.user_id <> $1::integer
+GROUP BY u.id, u.username, u.uuid, hits.matched_on, hits.value
+ORDER BY hits.matched_on, last_seen DESC
+LIMIT 200
+`
+
+type GetLinkedAccountsRow struct {
+	Username  string
+	Uuid      string
+	MatchedOn string
+	Value     string
+	LastSeen  pgtype.Timestamptz
+	Suspended bool
+}
+
+// Other accounts sharing any IP address or client identifier with the given
+// user, from either their registration or their seen-from records.
+func (q *Queries) GetLinkedAccounts(ctx context.Context, userID int32) ([]GetLinkedAccountsRow, error) {
+	rows, err := q.db.Query(ctx, getLinkedAccounts, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetLinkedAccountsRow
+	for rows.Next() {
+		var i GetLinkedAccountsRow
+		if err := rows.Scan(
+			&i.Username,
+			&i.Uuid,
+			&i.MatchedOn,
+			&i.Value,
+			&i.LastSeen,
+			&i.Suspended,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getMatchingEmails = `-- name: GetMatchingEmails :many
 SELECT u.uuid, u.email, u.created_at, u.username, p.birth_date
 FROM users u
@@ -353,6 +427,46 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (GetUserByEm
 	return i, err
 }
 
+const getUserClients = `-- name: GetUserClients :many
+SELECT host(ip)::text AS ip, client_id, first_seen, last_seen
+FROM user_clients
+WHERE user_id = $1
+ORDER BY last_seen DESC
+LIMIT 200
+`
+
+type GetUserClientsRow struct {
+	Ip        string
+	ClientID  string
+	FirstSeen pgtype.Timestamptz
+	LastSeen  pgtype.Timestamptz
+}
+
+func (q *Queries) GetUserClients(ctx context.Context, userID int32) ([]GetUserClientsRow, error) {
+	rows, err := q.db.Query(ctx, getUserClients, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetUserClientsRow
+	for rows.Next() {
+		var i GetUserClientsRow
+		if err := rows.Scan(
+			&i.Ip,
+			&i.ClientID,
+			&i.FirstSeen,
+			&i.LastSeen,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getUserDBIDFromUUID = `-- name: GetUserDBIDFromUUID :one
 SELECT id FROM users WHERE uuid = $1
 `
@@ -366,29 +480,44 @@ func (q *Queries) GetUserDBIDFromUUID(ctx context.Context, uuid string) (int32, 
 
 const getUserDetails = `-- name: GetUserDetails :one
 SELECT
-    u.uuid, u.email, u.created_at, u.username, p.birth_date
+    u.id, u.uuid, u.email, u.created_at, u.username, p.birth_date,
+    u.verified, u.notoriety, u.internal_bot,
+    COALESCE(host(u.registration_ip), '')::text AS registration_ip,
+    COALESCE(u.registration_client_id, '')::text AS registration_client_id
 FROM users u
 JOIN profiles p on u.id = p.user_id
 WHERE lower(u.username) = $1
 `
 
 type GetUserDetailsRow struct {
-	Uuid      string
-	Email     string
-	CreatedAt pgtype.Timestamptz
-	Username  string
-	BirthDate pgtype.Text
+	ID                   int32
+	Uuid                 string
+	Email                string
+	CreatedAt            pgtype.Timestamptz
+	Username             string
+	BirthDate            pgtype.Text
+	Verified             bool
+	Notoriety            int32
+	InternalBot          bool
+	RegistrationIp       string
+	RegistrationClientID string
 }
 
 func (q *Queries) GetUserDetails(ctx context.Context, lowercasedUsername string) (GetUserDetailsRow, error) {
 	row := q.db.QueryRow(ctx, getUserDetails, lowercasedUsername)
 	var i GetUserDetailsRow
 	err := row.Scan(
+		&i.ID,
 		&i.Uuid,
 		&i.Email,
 		&i.CreatedAt,
 		&i.Username,
 		&i.BirthDate,
+		&i.Verified,
+		&i.Notoriety,
+		&i.InternalBot,
+		&i.RegistrationIp,
+		&i.RegistrationClientID,
 	)
 	return i, err
 }

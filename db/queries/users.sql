@@ -23,7 +23,10 @@ WHERE u.uuid = ANY(@user_uuids::text[]);
 
 -- name: GetUserDetails :one
 SELECT
-    u.uuid, u.email, u.created_at, u.username, p.birth_date
+    u.id, u.uuid, u.email, u.created_at, u.username, p.birth_date,
+    u.verified, u.notoriety, u.internal_bot,
+    COALESCE(host(u.registration_ip), '')::text AS registration_ip,
+    COALESCE(u.registration_client_id, '')::text AS registration_client_id
 FROM users u
 JOIN profiles p on u.id = p.user_id
 WHERE lower(u.username) = @lowercased_username;
@@ -175,3 +178,47 @@ ON CONFLICT (user_id, ip, client_id) DO UPDATE
 
 -- name: PruneUserClients :execrows
 DELETE FROM user_clients WHERE last_seen < @cutoff;
+
+-- name: GetUserClients :many
+SELECT host(ip)::text AS ip, client_id, first_seen, last_seen
+FROM user_clients
+WHERE user_id = @user_id
+ORDER BY last_seen DESC
+LIMIT 200;
+
+-- name: GetLinkedAccounts :many
+-- Other accounts sharing any IP address or client identifier with the given
+-- user, from either their registration or their seen-from records.
+WITH my_ips AS (
+    SELECT c.ip FROM user_clients c WHERE c.user_id = @user_id::integer
+    UNION
+    SELECT r.registration_ip FROM users r
+     WHERE r.id = @user_id::integer AND r.registration_ip IS NOT NULL
+), my_cids AS (
+    SELECT c.client_id FROM user_clients c WHERE c.user_id = @user_id::integer AND c.client_id <> ''
+    UNION
+    SELECT r.registration_client_id FROM users r
+     WHERE r.id = @user_id::integer AND r.registration_client_id IS NOT NULL
+), hits (user_id, matched_on, value, last_seen) AS (
+    SELECT uc.user_id, 'client_id', uc.client_id, uc.last_seen
+      FROM user_clients uc WHERE uc.client_id IN (SELECT client_id FROM my_cids)
+    UNION ALL
+    SELECT ru.id, 'registration_client_id', ru.registration_client_id, ru.created_at
+      FROM users ru WHERE ru.registration_client_id IN (SELECT client_id FROM my_cids)
+    UNION ALL
+    SELECT uc.user_id, 'ip', host(uc.ip), uc.last_seen
+      FROM user_clients uc WHERE uc.ip IN (SELECT ip FROM my_ips)
+    UNION ALL
+    SELECT ru.id, 'registration_ip', host(ru.registration_ip), ru.created_at
+      FROM users ru WHERE ru.registration_ip IN (SELECT ip FROM my_ips)
+)
+SELECT u.username, u.uuid, hits.matched_on::text AS matched_on, hits.value::text AS value,
+       max(hits.last_seen)::timestamptz AS last_seen,
+       EXISTS (SELECT 1 FROM user_actions ua
+                WHERE ua.user_id = u.id AND ua.action_type = 1 AND ua.removed_time IS NULL
+                  AND (ua.end_time IS NULL OR ua.end_time > now()))::bool AS suspended
+FROM hits JOIN users u ON u.id = hits.user_id
+WHERE hits.user_id <> @user_id::integer
+GROUP BY u.id, u.username, u.uuid, hits.matched_on, hits.value
+ORDER BY hits.matched_on, last_seen DESC
+LIMIT 200;

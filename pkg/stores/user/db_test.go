@@ -18,6 +18,7 @@ import (
 	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/glicko"
 	"github.com/woogles-io/liwords/pkg/stores/common"
+	"github.com/woogles-io/liwords/pkg/stores/models"
 	"github.com/woogles-io/liwords/rpc/api/proto/mod_service"
 	"github.com/woogles-io/liwords/rpc/api/proto/user_service"
 )
@@ -797,4 +798,44 @@ func TestClientRecords(t *testing.T) {
 	is.NoErr(err)
 	is.Equal(n, int64(1))
 	is.Equal(count(), 2)
+}
+
+func TestLinkedAccounts(t *testing.T) {
+	is := is.New(t)
+	ustore, pool, ctx := recreateDB()
+	defer ustore.Disconnect()
+	q := models.New(pool)
+
+	const (
+		cesar = "mozEwaVMvTfUA2oxZfYN8k"
+		mina  = "iW7AaqNJDuaxgcYnrFfcJF"
+		jesse = "3xpEkpRAy3AizbVmDg3kdi"
+	)
+	// cesar and mina share a browser (on different networks); jesse registered
+	// from cesar's IP. adult shares nothing.
+	is.NoErr(ustore.RecordClient(ctx, cesar, "203.0.113.7", "browser-1"))
+	is.NoErr(ustore.RecordClient(ctx, mina, "198.51.100.9", "browser-1"))
+	is.NoErr(ustore.SetRegistrationClient(ctx, jesse, "203.0.113.7", "browser-2"))
+	is.NoErr(ustore.RecordClient(ctx, "adult_uuid", "192.0.2.1", "browser-3"))
+
+	var cesarID int32
+	is.NoErr(pool.QueryRow(ctx, "SELECT id FROM users WHERE uuid = $1", cesar).Scan(&cesarID))
+
+	rows, err := q.GetLinkedAccounts(ctx, cesarID)
+	is.NoErr(err)
+	got := map[string]string{}
+	for _, r := range rows {
+		got[r.Username+"/"+r.MatchedOn] = r.Value
+		is.True(!r.Suspended)
+	}
+	is.Equal(got, map[string]string{
+		"mina/client_id":        "browser-1",
+		"jesse/registration_ip": "203.0.113.7",
+	})
+
+	clients, err := q.GetUserClients(ctx, cesarID)
+	is.NoErr(err)
+	is.Equal(len(clients), 1)
+	is.Equal(clients[0].Ip, "203.0.113.7")
+	is.Equal(clients[0].ClientID, "browser-1")
 }

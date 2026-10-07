@@ -3,7 +3,10 @@ package config
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"sort"
 	"strings"
+	"time"
 
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -212,13 +215,68 @@ func (cs *ConfigService) GetUserDetails(ctx context.Context, req *connect.Reques
 		return nil, err
 	}
 
-	return connect.NewResponse(&pb.UserDetailsResponse{
-		Uuid:      deetz.Uuid,
-		Email:     deetz.Email,
-		Created:   timestamppb.New(deetz.CreatedAt.Time),
-		BirthDate: deetz.BirthDate.String,
-		Username:  deetz.Username,
-	}), nil
+	actions, err := cs.userStore.GetActions(ctx, deetz.Uuid)
+	if err != nil {
+		return nil, err
+	}
+	clients, err := cs.q.GetUserClients(ctx, deetz.ID)
+	if err != nil {
+		return nil, err
+	}
+	linked, err := cs.q.GetLinkedAccounts(ctx, deetz.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	resp := &pb.UserDetailsResponse{
+		Uuid:                 deetz.Uuid,
+		Email:                deetz.Email,
+		Created:              timestamppb.New(deetz.CreatedAt.Time),
+		BirthDate:            deetz.BirthDate.String,
+		Username:             deetz.Username,
+		Verified:             deetz.Verified,
+		Notoriety:            deetz.Notoriety,
+		IsBot:                deetz.InternalBot,
+		RegistrationIp:       deetz.RegistrationIp,
+		RegistrationClientId: deetz.RegistrationClientID,
+	}
+	now := time.Now()
+	for _, a := range actions {
+		if a.EndTime != nil && a.EndTime.AsTime().Before(now) {
+			continue
+		}
+		resp.ActiveActions = append(resp.ActiveActions, &pb.UserModAction{
+			Type:  a.Type.String(),
+			Start: a.StartTime,
+			End:   a.EndTime,
+			Note:  a.Note,
+		})
+	}
+	sort.Slice(resp.ActiveActions, func(i, j int) bool {
+		return resp.ActiveActions[i].Type < resp.ActiveActions[j].Type
+	})
+	for _, c := range clients {
+		resp.Clients = append(resp.Clients, &pb.UserClient{
+			Ip:        c.Ip,
+			ClientId:  c.ClientID,
+			FirstSeen: timestamppb.New(c.FirstSeen.Time),
+			LastSeen:  timestamppb.New(c.LastSeen.Time),
+		})
+	}
+	for _, l := range linked {
+		resp.LinkedAccounts = append(resp.LinkedAccounts, &pb.LinkedAccount{
+			Username:  l.Username,
+			Uuid:      l.Uuid,
+			MatchedOn: l.MatchedOn,
+			Value:     l.Value,
+			LastSeen:  timestamppb.New(l.LastSeen.Time),
+			Suspended: l.Suspended,
+		})
+	}
+
+	res := connect.NewResponse(resp)
+	setPrivate(res.Header())
+	return res, nil
 }
 
 func (cs *ConfigService) SearchEmail(ctx context.Context, req *connect.Request[pb.SearchEmailRequest]) (
@@ -249,9 +307,18 @@ func (cs *ConfigService) SearchEmail(ctx context.Context, req *connect.Request[p
 		}
 	}
 
-	return connect.NewResponse(&pb.SearchEmailResponse{
+	res := connect.NewResponse(&pb.SearchEmailResponse{
 		Users: matchesPb,
-	}), nil
+	})
+	setPrivate(res.Header())
+	return res, nil
+}
+
+// setPrivate marks a response as never cacheable by shared caches. These
+// endpoints are reachable by GET, and a CDN keying only on the URL could
+// otherwise serve one viewer's private results to another.
+func setPrivate(h http.Header) {
+	h.Set("Cache-Control", "private, no-store")
 }
 
 func (cs *ConfigService) GetCorrespondenceGameCount(ctx context.Context, req *connect.Request[pb.GetCorrespondenceGameCountRequest]) (
