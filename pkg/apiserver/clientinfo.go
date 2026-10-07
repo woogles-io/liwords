@@ -31,10 +31,13 @@ func ClientInfoMiddlewareGenerator(secureCookies bool) (mw func(http.Handler) ht
 			ctx := r.Context()
 			ctx = context.WithValue(ctx, clientipkey, ClientIPFromRequest(r))
 
-			cid := ""
+			// Only an ID the browser sent back is put in the context. A new
+			// visitor's first page load makes several requests in parallel,
+			// each minting its own ID; only one of those cookies survives, so
+			// a freshly minted ID can't be trusted to identify the browser.
 			if c, err := r.Cookie(ClientIDCookie); err == nil && ValidClientID(c.Value) {
-				cid = c.Value
-			} else if cid = newClientID(); cid != "" {
+				ctx = context.WithValue(ctx, clientidkey, c.Value)
+			} else if cid := newClientID(); cid != "" {
 				http.SetCookie(w, &http.Cookie{
 					Name:     ClientIDCookie,
 					Value:    cid,
@@ -45,7 +48,6 @@ func ClientInfoMiddlewareGenerator(secureCookies bool) (mw func(http.Handler) ht
 					Secure:   secureCookies,
 				})
 			}
-			ctx = context.WithValue(ctx, clientidkey, cid)
 			h.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
@@ -59,8 +61,8 @@ func ClientIP(ctx context.Context) string {
 	return ip
 }
 
-// ClientID returns the client ID stored by ClientInfoMiddlewareGenerator, or ""
-// if unknown.
+// ClientID returns the client ID the request presented, or "" if it had none
+// (including when one was just issued).
 func ClientID(ctx context.Context) string {
 	cid, _ := ctx.Value(clientidkey).(string)
 	return cid

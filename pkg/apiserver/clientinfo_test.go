@@ -49,7 +49,8 @@ func TestClientInfoMiddleware(t *testing.T) {
 		gotIP = ClientIP(r.Context())
 	}))
 
-	// No cookie: one is issued and placed in the context.
+	// No cookie: one is issued, but not placed in the context until the
+	// browser presents it.
 	rec := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodGet, "/", nil)
 	r.RemoteAddr = "192.0.2.5:4321"
@@ -59,7 +60,7 @@ func TestClientInfoMiddleware(t *testing.T) {
 	is.Equal(cookies[0].Name, ClientIDCookie)
 	is.True(cookies[0].HttpOnly)
 	is.True(ValidClientID(cookies[0].Value))
-	is.Equal(gotID, cookies[0].Value)
+	is.Equal(gotID, "")
 	is.Equal(gotIP, "192.0.2.5")
 
 	// Valid cookie: reused, not reissued.
@@ -77,5 +78,5 @@ func TestClientInfoMiddleware(t *testing.T) {
 	r.AddCookie(&http.Cookie{Name: ClientIDCookie, Value: "bogus"})
 	h.ServeHTTP(rec, r)
 	is.Equal(len(rec.Result().Cookies()), 1)
-	is.True(gotID != "bogus")
+	is.Equal(gotID, "")
 }
