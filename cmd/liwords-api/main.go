@@ -316,6 +316,9 @@ func main() {
 	pairService := pair.NewPairService(cfg, lambdaClient)
 	vdoWebhookService := vdowebhook.NewVDOWebhookService(stores.TournamentStore, cfg.VDOPollingIntervalSeconds)
 	analysisService := analysis.NewAnalysisService(stores.UserStore, stores.GameStore, stores.Queries, dbPool)
+	if bucket := os.Getenv("ANALYSIS_UPLOAD_BUCKET"); bucket != "" {
+		analysisService.SetResultStore(analysis.NewS3ResultStore(s3Client, bucket))
+	}
 	analysisAdminService := analysis.NewAnalysisAdminService(stores.UserStore, stores.Queries)
 	router.Handle("/ping", http.HandlerFunc(pingEndpoint))
 

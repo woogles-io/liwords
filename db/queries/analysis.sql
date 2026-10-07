@@ -28,20 +28,40 @@ SET
 WHERE id = $1 AND claimed_by_user_uuid = $2;
 
 -- name: CompleteJob :one
--- Marks job as completed and returns game_id and processing duration.
--- The summary columns are copied from the result by the caller; see the
--- 202610060002 migration for what NULL means in each.
-UPDATE analysis_jobs
+-- Marks job as completed and returns game_id, processing duration and the
+-- job's previous result_s3_key (so the caller can delete a replaced object).
+-- With a result store, the caller passes the uploaded object's key and a NULL
+-- result; without one, the result itself and a NULL key. The summary columns
+-- are copied from the result by the caller; see the 202610060002 migration for
+-- what NULL means in each.
+WITH prev AS (
+    SELECT j.id AS job_id, j.result_s3_key AS previous_s3_key
+    FROM analysis_jobs j
+    WHERE j.id = sqlc.arg(id)
+    FOR UPDATE
+)
+UPDATE analysis_jobs aj
 SET
     status = 'completed',
-    result = sqlc.arg(result),
+    result = sqlc.narg(result),
+    result_s3_key = sqlc.narg(result_s3_key),
     player0_mistake_index = sqlc.narg(player0_mistake_index),
     player1_mistake_index = sqlc.narg(player1_mistake_index),
     analysis_version = sqlc.arg(analysis_version),
     completed_at = NOW()
-WHERE id = sqlc.arg(id) AND claimed_by_user_uuid = sqlc.arg(claimed_by_user_uuid)
-  AND status IN ('claimed', 'processing')
-RETURNING game_id, requested_by_user_uuid, EXTRACT(EPOCH FROM (NOW() - claimed_at))::BIGINT * 1000 as duration_ms;
+FROM prev
+WHERE aj.id = prev.job_id AND aj.claimed_by_user_uuid = sqlc.arg(claimed_by_user_uuid)
+  AND aj.status IN ('claimed', 'processing')
+RETURNING aj.game_id, aj.requested_by_user_uuid,
+    EXTRACT(EPOCH FROM (NOW() - aj.claimed_at))::BIGINT * 1000 as duration_ms,
+    prev.previous_s3_key;
+
+-- name: GetJobClaim :one
+-- Who holds a job, checked before uploading a submitted result so a stale
+-- submission doesn't upload an object only to have CompleteJob reject it.
+SELECT game_id, status, claimed_by_user_uuid
+FROM analysis_jobs
+WHERE id = $1;
 
 -- name: FailJob :exec
 -- Marks job as failed with error message
@@ -81,7 +101,7 @@ RETURNING id;
 -- (completed_at - claimed_at) and how long it waited (claimed_at - created_at).
 SELECT
     aj.id, aj.game_id, aj.status, aj.config_json, aj.result, aj.error_message,
-    aj.completed_at, aj.created_at, aj.claimed_at, aj.analysis_version,
+    aj.completed_at, aj.created_at, aj.claimed_at, aj.analysis_version, aj.result_s3_key,
     COALESCE(u.username, '') as analyzed_by_username
 FROM analysis_jobs aj
 LEFT JOIN users u ON u.uuid = aj.claimed_by_user_uuid
@@ -128,22 +148,6 @@ WHERE aj.status = 'pending'
   AND (aj.priority > (SELECT priority FROM analysis_jobs target WHERE target.id = $1)
        OR (aj.priority = (SELECT priority FROM analysis_jobs target WHERE target.id = $1)
            AND aj.created_at < (SELECT created_at FROM analysis_jobs target WHERE target.id = $1)));
-
--- name: GetAnalysisJobWithDetails :one
--- Get full details of an analysis job
-SELECT
-    id,
-    game_id,
-    status,
-    requested_by_user_uuid,
-    request_type,
-    result,
-    error_message,
-    created_at,
-    completed_at,
-    priority
-FROM analysis_jobs
-WHERE id = $1;
 
 -- name: GetAdminAnalysisStats :one
 -- Get overview stats for admin dashboard
@@ -200,11 +204,6 @@ SELECT COUNT(*) as total
 FROM analysis_jobs
 WHERE status = 'completed';
 
--- name: GetJobByID :one
-SELECT id, game_id, status, result
-FROM analysis_jobs
-WHERE id = $1;
-
 -- name: ResetAnalysisJobKeepResult :exec
 -- Resets job to pending but keeps result, so league standings keep counting
 -- the old analysis until the new one replaces it
@@ -238,14 +237,6 @@ FROM analysis_jobs
 WHERE game_id = ANY($1::text[])
   AND status = 'completed';
 
--- name: GetVerticalOpenerJobs :many
--- Find completed jobs where the first turn was a vertical opening move
--- (column-first coordinates like A1, B3, etc. indicate vertical plays)
-SELECT id, game_id
-FROM analysis_jobs
-WHERE status = 'completed'
-  AND result->'turns'->0->>'playedMove' ~ '^[A-O][0-9]';
-
 -- name: BackfillAnalysisSummaryColumns :execrows
 -- Copies the summary fields out of the stored result for up to $1 jobs that
 -- have a result but no columns yet. protojson drops zero values, so a missing
@@ -263,3 +254,45 @@ WHERE aj.id IN (
     LIMIT sqlc.arg(batch_size)::INT
     FOR UPDATE SKIP LOCKED
 );
+
+-- name: ListAnalysisResultsToUpload :many
+-- Jobs whose result is still only in the result column, in id order after
+-- @after, for cmd/backfill-analysis-s3. Zero-turn results have nothing worth
+-- an object and are skipped.
+SELECT id, game_id, result
+FROM analysis_jobs
+WHERE result_s3_key IS NULL
+  AND result IS NOT NULL
+  AND id > sqlc.arg(after)::uuid
+  AND jsonb_array_length(COALESCE(result->'turns', '[]'::jsonb)) > 0
+ORDER BY id
+LIMIT sqlc.arg(batch_size)::INT;
+
+-- name: SetAnalysisResultS3Key :execrows
+-- Records an uploaded object for a job that has none yet. 0 rows means a
+-- reanalysis stored its own result in the meantime; the caller then deletes
+-- the object it uploaded.
+UPDATE analysis_jobs
+SET result_s3_key = sqlc.arg(result_s3_key)
+WHERE id = sqlc.arg(id) AND result_s3_key IS NULL;
+
+-- name: ListAnalysisResultsToClear :many
+-- Jobs that still hold a result in the result column but no longer need it:
+-- uploaded ones, plus zero-turn ones, which have no object. Requires the
+-- summary columns, which the MI queries read once result is gone.
+SELECT id, game_id, result, result_s3_key
+FROM analysis_jobs
+WHERE result IS NOT NULL
+  AND analysis_version IS NOT NULL
+  AND id > sqlc.arg(after)::uuid
+ORDER BY id
+LIMIT sqlc.arg(batch_size)::INT;
+
+-- name: ClearAnalysisResult :execrows
+-- Drops the result column's copy once the caller has checked the object
+-- matches. The key must still be the one checked.
+UPDATE analysis_jobs
+SET result = NULL
+WHERE id = sqlc.arg(id)
+  AND result IS NOT NULL
+  AND result_s3_key IS NOT DISTINCT FROM sqlc.narg(result_s3_key);

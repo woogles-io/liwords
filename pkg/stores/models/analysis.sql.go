@@ -91,49 +91,93 @@ func (q *Queries) ClaimNextJob(ctx context.Context, claimedByUserUuid pgtype.Tex
 	return i, err
 }
 
-const completeJob = `-- name: CompleteJob :one
+const clearAnalysisResult = `-- name: ClearAnalysisResult :execrows
 UPDATE analysis_jobs
+SET result = NULL
+WHERE id = $1
+  AND result IS NOT NULL
+  AND result_s3_key IS NOT DISTINCT FROM $2
+`
+
+type ClearAnalysisResultParams struct {
+	ID          uuid.UUID
+	ResultS3Key pgtype.Text
+}
+
+// Drops the result column's copy once the caller has checked the object
+// matches. The key must still be the one checked.
+func (q *Queries) ClearAnalysisResult(ctx context.Context, arg ClearAnalysisResultParams) (int64, error) {
+	result, err := q.db.Exec(ctx, clearAnalysisResult, arg.ID, arg.ResultS3Key)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const completeJob = `-- name: CompleteJob :one
+WITH prev AS (
+    SELECT j.id AS job_id, j.result_s3_key AS previous_s3_key
+    FROM analysis_jobs j
+    WHERE j.id = $7
+    FOR UPDATE
+)
+UPDATE analysis_jobs aj
 SET
     status = 'completed',
     result = $1,
-    player0_mistake_index = $2,
-    player1_mistake_index = $3,
-    analysis_version = $4,
+    result_s3_key = $2,
+    player0_mistake_index = $3,
+    player1_mistake_index = $4,
+    analysis_version = $5,
     completed_at = NOW()
-WHERE id = $5 AND claimed_by_user_uuid = $6
-  AND status IN ('claimed', 'processing')
-RETURNING game_id, requested_by_user_uuid, EXTRACT(EPOCH FROM (NOW() - claimed_at))::BIGINT * 1000 as duration_ms
+FROM prev
+WHERE aj.id = prev.job_id AND aj.claimed_by_user_uuid = $6
+  AND aj.status IN ('claimed', 'processing')
+RETURNING aj.game_id, aj.requested_by_user_uuid,
+    EXTRACT(EPOCH FROM (NOW() - aj.claimed_at))::BIGINT * 1000 as duration_ms,
+    prev.previous_s3_key
 `
 
 type CompleteJobParams struct {
 	Result              []byte
+	ResultS3Key         pgtype.Text
 	Player0MistakeIndex pgtype.Float8
 	Player1MistakeIndex pgtype.Float8
 	AnalysisVersion     pgtype.Int4
-	ID                  uuid.UUID
 	ClaimedByUserUuid   pgtype.Text
+	ID                  uuid.UUID
 }
 
 type CompleteJobRow struct {
 	GameID              string
 	RequestedByUserUuid pgtype.Text
 	DurationMs          int32
+	PreviousS3Key       pgtype.Text
 }
 
-// Marks job as completed and returns game_id and processing duration.
-// The summary columns are copied from the result by the caller; see the
-// 202610060002 migration for what NULL means in each.
+// Marks job as completed and returns game_id, processing duration and the
+// job's previous result_s3_key (so the caller can delete a replaced object).
+// With a result store, the caller passes the uploaded object's key and a NULL
+// result; without one, the result itself and a NULL key. The summary columns
+// are copied from the result by the caller; see the 202610060002 migration for
+// what NULL means in each.
 func (q *Queries) CompleteJob(ctx context.Context, arg CompleteJobParams) (CompleteJobRow, error) {
 	row := q.db.QueryRow(ctx, completeJob,
 		arg.Result,
+		arg.ResultS3Key,
 		arg.Player0MistakeIndex,
 		arg.Player1MistakeIndex,
 		arg.AnalysisVersion,
-		arg.ID,
 		arg.ClaimedByUserUuid,
+		arg.ID,
 	)
 	var i CompleteJobRow
-	err := row.Scan(&i.GameID, &i.RequestedByUserUuid, &i.DurationMs)
+	err := row.Scan(
+		&i.GameID,
+		&i.RequestedByUserUuid,
+		&i.DurationMs,
+		&i.PreviousS3Key,
+	)
 	return i, err
 }
 
@@ -223,54 +267,6 @@ func (q *Queries) GetAdminAnalysisStats(ctx context.Context) (GetAdminAnalysisSt
 	row := q.db.QueryRow(ctx, getAdminAnalysisStats)
 	var i GetAdminAnalysisStatsRow
 	err := row.Scan(&i.TotalCompleted, &i.PendingCount, &i.ProcessingCount)
-	return i, err
-}
-
-const getAnalysisJobWithDetails = `-- name: GetAnalysisJobWithDetails :one
-SELECT
-    id,
-    game_id,
-    status,
-    requested_by_user_uuid,
-    request_type,
-    result,
-    error_message,
-    created_at,
-    completed_at,
-    priority
-FROM analysis_jobs
-WHERE id = $1
-`
-
-type GetAnalysisJobWithDetailsRow struct {
-	ID                  uuid.UUID
-	GameID              string
-	Status              string
-	RequestedByUserUuid pgtype.Text
-	RequestType         pgtype.Text
-	Result              []byte
-	ErrorMessage        pgtype.Text
-	CreatedAt           pgtype.Timestamptz
-	CompletedAt         pgtype.Timestamptz
-	Priority            pgtype.Int4
-}
-
-// Get full details of an analysis job
-func (q *Queries) GetAnalysisJobWithDetails(ctx context.Context, id uuid.UUID) (GetAnalysisJobWithDetailsRow, error) {
-	row := q.db.QueryRow(ctx, getAnalysisJobWithDetails, id)
-	var i GetAnalysisJobWithDetailsRow
-	err := row.Scan(
-		&i.ID,
-		&i.GameID,
-		&i.Status,
-		&i.RequestedByUserUuid,
-		&i.RequestType,
-		&i.Result,
-		&i.ErrorMessage,
-		&i.CreatedAt,
-		&i.CompletedAt,
-		&i.Priority,
-	)
 	return i, err
 }
 
@@ -442,7 +438,7 @@ func (q *Queries) GetContributorsLeaderboard(ctx context.Context, limit int32) (
 const getJobByGameID = `-- name: GetJobByGameID :one
 SELECT
     aj.id, aj.game_id, aj.status, aj.config_json, aj.result, aj.error_message,
-    aj.completed_at, aj.created_at, aj.claimed_at, aj.analysis_version,
+    aj.completed_at, aj.created_at, aj.claimed_at, aj.analysis_version, aj.result_s3_key,
     COALESCE(u.username, '') as analyzed_by_username
 FROM analysis_jobs aj
 LEFT JOIN users u ON u.uuid = aj.claimed_by_user_uuid
@@ -462,6 +458,7 @@ type GetJobByGameIDRow struct {
 	CreatedAt          pgtype.Timestamptz
 	ClaimedAt          pgtype.Timestamptz
 	AnalysisVersion    pgtype.Int4
+	ResultS3Key        pgtype.Text
 	AnalyzedByUsername string
 }
 
@@ -482,33 +479,30 @@ func (q *Queries) GetJobByGameID(ctx context.Context, gameID string) (GetJobByGa
 		&i.CreatedAt,
 		&i.ClaimedAt,
 		&i.AnalysisVersion,
+		&i.ResultS3Key,
 		&i.AnalyzedByUsername,
 	)
 	return i, err
 }
 
-const getJobByID = `-- name: GetJobByID :one
-SELECT id, game_id, status, result
+const getJobClaim = `-- name: GetJobClaim :one
+SELECT game_id, status, claimed_by_user_uuid
 FROM analysis_jobs
 WHERE id = $1
 `
 
-type GetJobByIDRow struct {
-	ID     uuid.UUID
-	GameID string
-	Status string
-	Result []byte
+type GetJobClaimRow struct {
+	GameID            string
+	Status            string
+	ClaimedByUserUuid pgtype.Text
 }
 
-func (q *Queries) GetJobByID(ctx context.Context, id uuid.UUID) (GetJobByIDRow, error) {
-	row := q.db.QueryRow(ctx, getJobByID, id)
-	var i GetJobByIDRow
-	err := row.Scan(
-		&i.ID,
-		&i.GameID,
-		&i.Status,
-		&i.Result,
-	)
+// Who holds a job, checked before uploading a submitted result so a stale
+// submission doesn't upload an object only to have CompleteJob reject it.
+func (q *Queries) GetJobClaim(ctx context.Context, id uuid.UUID) (GetJobClaimRow, error) {
+	row := q.db.QueryRow(ctx, getJobClaim, id)
+	var i GetJobClaimRow
+	err := row.Scan(&i.GameID, &i.Status, &i.ClaimedByUserUuid)
 	return i, err
 }
 
@@ -572,30 +566,91 @@ func (q *Queries) GetUserRequestCountToday(ctx context.Context, userUuid string)
 	return request_count, err
 }
 
-const getVerticalOpenerJobs = `-- name: GetVerticalOpenerJobs :many
-SELECT id, game_id
+const listAnalysisResultsToClear = `-- name: ListAnalysisResultsToClear :many
+SELECT id, game_id, result, result_s3_key
 FROM analysis_jobs
-WHERE status = 'completed'
-  AND result->'turns'->0->>'playedMove' ~ '^[A-O][0-9]'
+WHERE result IS NOT NULL
+  AND analysis_version IS NOT NULL
+  AND id > $1::uuid
+ORDER BY id
+LIMIT $2::INT
 `
 
-type GetVerticalOpenerJobsRow struct {
-	ID     uuid.UUID
-	GameID string
+type ListAnalysisResultsToClearParams struct {
+	After     uuid.UUID
+	BatchSize int32
 }
 
-// Find completed jobs where the first turn was a vertical opening move
-// (column-first coordinates like A1, B3, etc. indicate vertical plays)
-func (q *Queries) GetVerticalOpenerJobs(ctx context.Context) ([]GetVerticalOpenerJobsRow, error) {
-	rows, err := q.db.Query(ctx, getVerticalOpenerJobs)
+type ListAnalysisResultsToClearRow struct {
+	ID          uuid.UUID
+	GameID      string
+	Result      []byte
+	ResultS3Key pgtype.Text
+}
+
+// Jobs that still hold a result in the result column but no longer need it:
+// uploaded ones, plus zero-turn ones, which have no object. Requires the
+// summary columns, which the MI queries read once result is gone.
+func (q *Queries) ListAnalysisResultsToClear(ctx context.Context, arg ListAnalysisResultsToClearParams) ([]ListAnalysisResultsToClearRow, error) {
+	rows, err := q.db.Query(ctx, listAnalysisResultsToClear, arg.After, arg.BatchSize)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []GetVerticalOpenerJobsRow
+	var items []ListAnalysisResultsToClearRow
 	for rows.Next() {
-		var i GetVerticalOpenerJobsRow
-		if err := rows.Scan(&i.ID, &i.GameID); err != nil {
+		var i ListAnalysisResultsToClearRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.GameID,
+			&i.Result,
+			&i.ResultS3Key,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listAnalysisResultsToUpload = `-- name: ListAnalysisResultsToUpload :many
+SELECT id, game_id, result
+FROM analysis_jobs
+WHERE result_s3_key IS NULL
+  AND result IS NOT NULL
+  AND id > $1::uuid
+  AND jsonb_array_length(COALESCE(result->'turns', '[]'::jsonb)) > 0
+ORDER BY id
+LIMIT $2::INT
+`
+
+type ListAnalysisResultsToUploadParams struct {
+	After     uuid.UUID
+	BatchSize int32
+}
+
+type ListAnalysisResultsToUploadRow struct {
+	ID     uuid.UUID
+	GameID string
+	Result []byte
+}
+
+// Jobs whose result is still only in the result column, in id order after
+// @after, for cmd/backfill-analysis-s3. Zero-turn results have nothing worth
+// an object and are skipped.
+func (q *Queries) ListAnalysisResultsToUpload(ctx context.Context, arg ListAnalysisResultsToUploadParams) ([]ListAnalysisResultsToUploadRow, error) {
+	rows, err := q.db.Query(ctx, listAnalysisResultsToUpload, arg.After, arg.BatchSize)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListAnalysisResultsToUploadRow
+	for rows.Next() {
+		var i ListAnalysisResultsToUploadRow
+		if err := rows.Scan(&i.ID, &i.GameID, &i.Result); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -687,6 +742,28 @@ type ResetAnalysisJobWithPriorityParams struct {
 func (q *Queries) ResetAnalysisJobWithPriority(ctx context.Context, arg ResetAnalysisJobWithPriorityParams) error {
 	_, err := q.db.Exec(ctx, resetAnalysisJobWithPriority, arg.ID, arg.Priority)
 	return err
+}
+
+const setAnalysisResultS3Key = `-- name: SetAnalysisResultS3Key :execrows
+UPDATE analysis_jobs
+SET result_s3_key = $1
+WHERE id = $2 AND result_s3_key IS NULL
+`
+
+type SetAnalysisResultS3KeyParams struct {
+	ResultS3Key pgtype.Text
+	ID          uuid.UUID
+}
+
+// Records an uploaded object for a job that has none yet. 0 rows means a
+// reanalysis stored its own result in the meantime; the caller then deletes
+// the object it uploaded.
+func (q *Queries) SetAnalysisResultS3Key(ctx context.Context, arg SetAnalysisResultS3KeyParams) (int64, error) {
+	result, err := q.db.Exec(ctx, setAnalysisResultS3Key, arg.ResultS3Key, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const updateHeartbeat = `-- name: UpdateHeartbeat :exec

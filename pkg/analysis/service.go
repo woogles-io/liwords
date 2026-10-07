@@ -3,6 +3,7 @@ package analysis
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -95,6 +96,8 @@ type AnalysisService struct {
 	queries   *models.Queries
 	natsconn  *nats.Conn
 	dbPool    *pgxpool.Pool
+	// resultStore holds analysis results; nil keeps them in the result column.
+	resultStore ResultStore
 }
 
 func NewAnalysisService(userStore user.Store, gameStore GameStore, queries *models.Queries, dbPool *pgxpool.Pool) *AnalysisService {
@@ -104,6 +107,22 @@ func NewAnalysisService(userStore user.Store, gameStore GameStore, queries *mode
 		queries:   queries,
 		dbPool:    dbPool,
 	}
+}
+
+// SetResultStore makes the service store results in rs instead of the
+// result column.
+func (s *AnalysisService) SetResultStore(rs ResultStore) {
+	s.resultStore = rs
+}
+
+// deleteResult removes an object no job points to, in the background and
+// best-effort: a leftover object costs storage, nothing else.
+func (s *AnalysisService) deleteResult(ctx context.Context, key string) {
+	go func() {
+		if err := s.resultStore.Delete(context.WithoutCancel(ctx), key); err != nil {
+			log.Warn().Err(err).Str("s3_key", key).Msg("failed to delete unreferenced analysis result")
+		}
+	}()
 }
 
 func (s *AnalysisService) SetNatsConn(nc *nats.Conn) {
@@ -229,28 +248,23 @@ func (s *AnalysisService) SubmitResult(
 		}), nil
 	}
 
-	// Re-serialize to protojson for JSONB storage (DB schema unchanged).
-	resultProto, err := protojson.Marshal(result)
-	if err != nil {
+	// Reject a submission this worker no longer holds (e.g. the job was
+	// reclaimed and finished by another worker) before uploading anything.
+	// CompleteJob re-checks this atomically; this check only saves uploads.
+	claim, err := s.queries.GetJobClaim(ctx, jobID)
+	if err != nil || claim.ClaimedByUserUuid.String != user.UUID ||
+		(claim.Status != "claimed" && claim.Status != "processing") {
 		return connect.NewResponse(&pb.SubmitResultResponse{
 			Accepted: false,
-			Error:    fmt.Sprintf("failed to re-serialize result: %v", err),
+			Error:    "job not found or already completed",
 		}), nil
 	}
 
 	// Basic validation
 	if len(result.Turns) == 0 {
 		// Accept if the game itself has no turns (e.g. aborted before any move).
-		job, err := s.queries.GetAnalysisJobWithDetails(ctx, jobID)
-		if err != nil {
-			return connect.NewResponse(&pb.SubmitResultResponse{
-				Accepted: false,
-				Error:    "result has no turns",
-			}), nil
-		}
-
 		// Check if this is an annotated game - there are no zero-turn annotated games
-		metadata, err := s.gameStore.GetMetadata(ctx, job.GameID)
+		metadata, err := s.gameStore.GetMetadata(ctx, claim.GameID)
 		if err == nil && metadata.Type == ipc.GameType_ANNOTATED {
 			return connect.NewResponse(&pb.SubmitResultResponse{
 				Accepted: false,
@@ -259,7 +273,7 @@ func (s *AnalysisService) SubmitResult(
 		}
 
 		// For regular games, verify it actually has no events
-		game, err := s.gameStore.Get(ctx, job.GameID)
+		game, err := s.gameStore.Get(ctx, claim.GameID)
 		if err != nil || len(game.History().Events) != 0 {
 			return connect.NewResponse(&pb.SubmitResultResponse{
 				Accepted: false,
@@ -267,7 +281,7 @@ func (s *AnalysisService) SubmitResult(
 			}), nil
 		}
 		// Zero-turn game: fall through to CompleteJob with the empty result.
-		log.Info().Str("job_id", jobID.String()).Str("game_id", job.GameID).Msg("accepting empty analysis for zero-turn game")
+		log.Info().Str("job_id", jobID.String()).Str("game_id", claim.GameID).Msg("accepting empty analysis for zero-turn game")
 	}
 
 	if len(result.Turns) != 0 && len(result.PlayerSummaries) != 2 {
@@ -277,11 +291,35 @@ func (s *AnalysisService) SubmitResult(
 		}), nil
 	}
 
-	// Store result
+	// Store the result: in the result store when there is one (a zero-turn
+	// result has nothing worth an object), otherwise in the result column.
+	var resultJSON []byte
+	var resultKey pgtype.Text
+	if s.resultStore == nil {
+		resultJSON, err = protojson.Marshal(result)
+		if err != nil {
+			return connect.NewResponse(&pb.SubmitResultResponse{
+				Accepted: false,
+				Error:    fmt.Sprintf("failed to re-serialize result: %v", err),
+			}), nil
+		}
+	} else if len(result.Turns) > 0 {
+		key := ResultKey(claim.GameID, jobID)
+		if err := s.resultStore.Put(ctx, key, result); err != nil {
+			log.Error().Err(err).Str("job_id", jobID.String()).Msg("failed to store analysis result")
+			return connect.NewResponse(&pb.SubmitResultResponse{
+				Accepted: false,
+				Error:    "failed to store result; please retry",
+			}), nil
+		}
+		resultKey = pgtype.Text{String: key, Valid: true}
+	}
+
 	userUUID := pgtype.Text{String: user.UUID, Valid: true}
 	mi0, mi1, version := SummaryColumns(result)
 	completedJob, err := s.queries.CompleteJob(ctx, models.CompleteJobParams{
-		Result:              resultProto,
+		Result:              resultJSON,
+		ResultS3Key:         resultKey,
 		Player0MistakeIndex: mi0,
 		Player1MistakeIndex: mi1,
 		AnalysisVersion:     version,
@@ -290,10 +328,20 @@ func (s *AnalysisService) SubmitResult(
 	})
 
 	if err != nil {
+		// Lost the job between the claim check and here; the object we just
+		// stored is referenced by nothing.
+		if resultKey.Valid {
+			s.deleteResult(ctx, resultKey.String)
+		}
 		return connect.NewResponse(&pb.SubmitResultResponse{
 			Accepted: false,
 			Error:    "job not found or already completed",
 		}), nil
+	}
+
+	// A reanalysis replaces the job's previous object.
+	if prev := completedJob.PreviousS3Key; prev.Valid && prev.String != resultKey.String {
+		s.deleteResult(ctx, prev.String)
 	}
 
 	log.Info().
@@ -761,26 +809,41 @@ func (s *AnalysisService) GetAnalysisResult(
 		}), nil
 	}
 
-	if len(job.Result) == 0 {
-		return connect.NewResponse(&pb.GetAnalysisResultResponse{
-			Found: false,
-		}), nil
-	}
-
-	var result macondo.GameAnalysisResult
-	// Use DiscardUnknown to handle legacy analysis data that may contain fields
-	// removed in newer macondo versions (e.g., avgSpreadLoss in PlayerSummary)
-	unmarshalOpts := protojson.UnmarshalOptions{DiscardUnknown: true}
-	if err := unmarshalOpts.Unmarshal(job.Result, &result); err != nil {
-		log.Error().Err(err).Str("game_id", gameID).Msg("failed to unmarshal stored analysis result")
-		return nil, apiserver.InternalErr(fmt.Errorf("failed to deserialize analysis result: %w", err))
+	result, err := s.loadResult(ctx, job)
+	if err != nil {
+		log.Error().Err(err).Str("game_id", gameID).Msg("failed to load analysis result")
+		return nil, apiserver.InternalErr(fmt.Errorf("failed to load analysis result: %w", err))
 	}
 
 	return connect.NewResponse(&pb.GetAnalysisResultResponse{
 		Found:   true,
-		Result:  &result,
+		Result:  result,
 		RunInfo: runInfoForJob(job),
 	}), nil
+}
+
+// loadResult reads a completed job's result: from the result store when the
+// job has an object, otherwise from the result column (jobs not yet uploaded).
+// A completed job with neither is a zero-turn game, whose result is empty.
+// TODO: drop the result-column path once cmd/backfill-analysis-s3 has run.
+func (s *AnalysisService) loadResult(ctx context.Context, job models.GetJobByGameIDRow) (*macondo.GameAnalysisResult, error) {
+	if job.ResultS3Key.Valid && s.resultStore != nil {
+		result, err := s.resultStore.Get(ctx, job.ResultS3Key.String)
+		if err == nil {
+			return result, nil
+		}
+		if len(job.Result) == 0 {
+			return nil, err
+		}
+		log.Warn().Err(err).Str("game_id", job.GameID).Msg("analysis result fetch failed, using result column")
+	}
+	if job.ResultS3Key.Valid && s.resultStore == nil && len(job.Result) == 0 {
+		return nil, errors.New("result is in the result store, but none is configured")
+	}
+	if len(job.Result) == 0 {
+		return &macondo.GameAnalysisResult{}, nil
+	}
+	return unmarshalResult(job.Result)
 }
 
 // runInfoForJob summarizes how a completed job was produced. Every timestamp is
