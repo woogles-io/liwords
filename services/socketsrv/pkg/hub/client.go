@@ -94,6 +94,10 @@ type Client struct {
 
 	forwardedFor string
 	clientID     string
+	// removed is set once the hub has removed this client. Only accessed
+	// from the hub's Run goroutine.
+	removed bool
+
 	pongCount    int
 	lastPingSent time.Time
 	// The round-trip lag; it is a sort of average.

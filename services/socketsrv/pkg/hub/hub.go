@@ -143,6 +143,9 @@ func (h *Hub) removeClient(c *Client) error {
 	// single-threaded Run
 	log.Debug().Str("client", c.username).Str("connid", c.connID).Str("userid", c.userID).Msg("removing client")
 	close(c.send)
+	// The client's read pump will still try to unregister it once the
+	// connection closes; that's expected, not an error.
+	c.removed = true
 
 	realms := h.clients[c]
 
@@ -237,7 +240,7 @@ func (h *Hub) Run() {
 					log.Err(err).Msg("error-removing-client")
 				}
 				log.Info().Str("username", client.username).Msg("unregistered-client")
-			} else {
+			} else if !client.removed {
 				log.Error().Msg("unregistered-but-not-in-map")
 			}
 
