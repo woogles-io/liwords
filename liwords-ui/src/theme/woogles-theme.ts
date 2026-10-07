@@ -1,3 +1,4 @@
+import { components } from "./components";
 import {
   createTheme,
   type CSSVariablesResolver,
@@ -32,12 +33,32 @@ const wooglesBlue: MantineColorsTuple = [
   "#08304c",
 ];
 
+/**
+ * Rebased on $timer-out-dark (#a92e2e), which is what @mixin button fills a
+ * dangerous primary button with. Mantine's stock red.6 is #fa5252, noticeably
+ * brighter, so `color="red"` has to resolve to ours for danger buttons to match.
+ */
+const wooglesRed: MantineColorsTuple = [
+  "#f8f1f1",
+  "#efdcdc",
+  "#e1b7b7",
+  "#d28989",
+  "#c65858",
+  "#ac3434",
+  "#a92e2e",
+  "#8b2626",
+  "#6c1d1d",
+  "#511616",
+];
+
 export const wooglesTheme = createTheme({
   fontFamily: "Mulish, sans-serif",
   fontFamilyMonospace: '"Courier Prime", monospace',
   headings: { fontFamily: "Mulish, sans-serif" },
 
-  colors: { woogles: wooglesBlue },
+  colors: { woogles: wooglesBlue, red: wooglesRed },
+
+  components,
   primaryColor: "woogles",
 
   // antd's Button token sets borderRadius: 0. Match it so Mantine buttons do

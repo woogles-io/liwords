@@ -52,6 +52,7 @@ import { ChatMessageSchema } from "./gen/api/proto/ipc/chat_pb";
 import { MessageType } from "./gen/api/proto/ipc/ipc_pb";
 import Footer from "./navigation/footer";
 import { Embed } from "./embed/embed";
+import { ComponentGallery } from "./dev/component_gallery";
 
 import { App as AntDApp } from "antd";
 import { ConfigProvider } from "antd";
@@ -491,6 +492,15 @@ const App = React.memo(() => {
                 <Route path="docs/:manualId/:sectionId" element={<DocPage />} />
                 <Route path="about" element={<Team />} />
                 <Route path="team" element={<Team />} />
+                {/* Side-by-side antd/Mantine reference for the migration.
+                    import.meta.env.DEV is statically false in production, so
+                    the whole component tree-shakes out. It deliberately imports
+                    no stylesheet -- a stylesheet import is a side effect that
+                    survives tree-shaking even when the component does not.
+                    Removed in Phase 9 with antd. */}
+                {import.meta.env.DEV && (
+                  <Route path="dev/components" element={<ComponentGallery />} />
+                )}
                 <Route path="terms" element={<TermsOfService />} />
                 <Route path="register" element={<Register />} />
                 <Route path="verify-email" element={<VerifyEmail />} />
