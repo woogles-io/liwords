@@ -32,7 +32,7 @@ WHERE id = $1 AND claimed_by_user_uuid = $2;
 -- job's previous result_s3_key (so the caller can delete a replaced object).
 -- With a result store, the caller passes the uploaded object's key and a NULL
 -- result; without one, the result itself and a NULL key. The summary columns
--- are copied from the result by the caller; see the 202610060002 migration for
+-- are copied from the result by the caller; see the 202610070001 migration for
 -- what NULL means in each.
 WITH prev AS (
     SELECT j.id AS job_id, j.result_s3_key AS previous_s3_key

@@ -142,6 +142,7 @@ func (as *AuthenticationService) Login(ctx context.Context, r *connect.Request[p
 	if err != nil {
 		return nil, apiserver.InternalErr(err)
 	}
+	apiserver.RecordClient(ctx, as.userStore, user.UUID)
 	return connect.NewResponse(&pb.LoginResponse{}), nil
 }
 
@@ -179,6 +180,21 @@ func (as *AuthenticationService) GetSocketToken(ctx context.Context, r *connect.
 	}
 
 	u, err := apiserver.AuthUser(ctx, as.userStore)
+	if err == nil {
+		if _, banErr := mod.ActionExists(ctx, as.userStore, u.UUID, false,
+			[]ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT}); banErr != nil {
+			// A suspended account can't keep using a session it had beforehand.
+			// End it and continue as a logged-out visitor.
+			log.Info().Err(banErr).Str("userID", u.UUID).Msg("socket-token-session-ended")
+			if sess, sessErr := apiserver.GetSession(ctx); sessErr == nil {
+				if delErr := as.sessionStore.Delete(ctx, sess); delErr != nil {
+					log.Err(delErr).Msg("delete-session")
+				}
+				apiserver.ExpireCookie(ctx, sess.ID, as.secureCookies)
+			}
+			err = banErr
+		}
+	}
 	if err != nil {
 		// Auth failed - log comprehensive details for debugging
 		log.Warn().
@@ -217,6 +233,8 @@ func (as *AuthenticationService) GetSocketToken(ctx context.Context, r *connect.
 	}
 	// create a random connection ID.
 	cid := shortuuid.New()[1:10]
+
+	apiserver.RecordClient(ctx, as.userStore, uuid)
 
 	log.Info().
 		Str("username", unn).

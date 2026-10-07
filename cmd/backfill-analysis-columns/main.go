@@ -1,6 +1,6 @@
 // Command backfill-analysis-columns copies each analysis job's player mistake
 // indexes and analysis version out of the stored result into the summary
-// columns added in migration 202610060002. Jobs completed after that migration
+// columns added in migration 202610070001. Jobs completed after that migration
 // already have them; this fills in the older ones. It works in small batches so
 // it never holds many job rows locked at once, and is safe to stop and re-run.
 package main

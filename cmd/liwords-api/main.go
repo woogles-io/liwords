@@ -65,6 +65,7 @@ import (
 	pkgprofile "github.com/woogles-io/liwords/pkg/profile"
 	"github.com/woogles-io/liwords/pkg/puzzles"
 	"github.com/woogles-io/liwords/pkg/registration"
+	"github.com/woogles-io/liwords/pkg/sessions"
 	"github.com/woogles-io/liwords/pkg/stores"
 	gamestore "github.com/woogles-io/liwords/pkg/stores/game"
 	"github.com/woogles-io/liwords/pkg/tournament"
@@ -226,6 +227,7 @@ func main() {
 		WithTiming("exposeRW", apiserver.ExposeResponseWriterMiddleware),
 		WithTiming("auth", apiserver.AuthenticationMiddlewareGenerator(stores.SessionStore, cfg.SecureCookies)),
 		WithTiming("apikey", apiserver.APIKeyMiddlewareGenerator()),
+		WithTiming("clientInfo", apiserver.ClientInfoMiddlewareGenerator(cfg.SecureCookies)),
 		WithTiming("config", config.CtxMiddlewareGenerator(cfg)),
 		WithTiming("accessLog", hlog.AccessHandler(func(r *http.Request, status int, size int, d time.Duration) {
 			path := strings.Split(r.URL.Path, "/")
@@ -480,6 +482,8 @@ func main() {
 		panic(err)
 	}
 
+	mod.SetSessionRevoker(sessions.NewRevoker(stores.SessionStore, natsconn))
+
 	// Handle bus.
 	pubsubBus, err := bus.NewBus(cfg, natsconn, stores, redisPool)
 	if err != nil {
@@ -523,6 +527,7 @@ func main() {
 	go pubsubBus.ProcessMessages(ctx)
 	go vdoWebhookService.Start(ctx)
 	go analysisService.StartReclaimWorker(ctx)
+	go pruneClientRecords(ctx, stores.UserStore)
 	broadcastService.StartPoller(ctx)
 
 	go func() {

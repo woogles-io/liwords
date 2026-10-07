@@ -626,20 +626,257 @@ func (x *GetUserDetailsRequest) GetUsername() string {
 	return ""
 }
 
-type UserDetailsResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Uuid          string                 `protobuf:"bytes,1,opt,name=uuid,proto3" json:"uuid,omitempty"`
-	Email         string                 `protobuf:"bytes,2,opt,name=email,proto3" json:"email,omitempty"`
-	Created       *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=created,proto3" json:"created,omitempty"`
-	BirthDate     string                 `protobuf:"bytes,4,opt,name=birth_date,json=birthDate,proto3" json:"birth_date,omitempty"`
-	Username      string                 `protobuf:"bytes,5,opt,name=username,proto3" json:"username,omitempty"`
+// An IP address and client identifier an account has been seen from.
+type UserClient struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Ip    string                 `protobuf:"bytes,1,opt,name=ip,proto3" json:"ip,omitempty"`
+	// Empty if the browser had no client identifier yet.
+	ClientId      string                 `protobuf:"bytes,2,opt,name=client_id,json=clientId,proto3" json:"client_id,omitempty"`
+	FirstSeen     *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=first_seen,json=firstSeen,proto3" json:"first_seen,omitempty"`
+	LastSeen      *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=last_seen,json=lastSeen,proto3" json:"last_seen,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+func (x *UserClient) Reset() {
+	*x = UserClient{}
+	mi := &file_proto_config_service_config_service_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UserClient) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UserClient) ProtoMessage() {}
+
+func (x *UserClient) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_config_service_config_service_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UserClient.ProtoReflect.Descriptor instead.
+func (*UserClient) Descriptor() ([]byte, []int) {
+	return file_proto_config_service_config_service_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *UserClient) GetIp() string {
+	if x != nil {
+		return x.Ip
+	}
+	return ""
+}
+
+func (x *UserClient) GetClientId() string {
+	if x != nil {
+		return x.ClientId
+	}
+	return ""
+}
+
+func (x *UserClient) GetFirstSeen() *timestamppb.Timestamp {
+	if x != nil {
+		return x.FirstSeen
+	}
+	return nil
+}
+
+func (x *UserClient) GetLastSeen() *timestamppb.Timestamp {
+	if x != nil {
+		return x.LastSeen
+	}
+	return nil
+}
+
+// Another account that shares an IP address or client identifier.
+type LinkedAccount struct {
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Username string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
+	Uuid     string                 `protobuf:"bytes,2,opt,name=uuid,proto3" json:"uuid,omitempty"`
+	// One of "client_id", "ip", "registration_client_id", "registration_ip".
+	MatchedOn string `protobuf:"bytes,3,opt,name=matched_on,json=matchedOn,proto3" json:"matched_on,omitempty"`
+	// The shared IP address or client identifier.
+	Value         string                 `protobuf:"bytes,4,opt,name=value,proto3" json:"value,omitempty"`
+	LastSeen      *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=last_seen,json=lastSeen,proto3" json:"last_seen,omitempty"`
+	Suspended     bool                   `protobuf:"varint,6,opt,name=suspended,proto3" json:"suspended,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *LinkedAccount) Reset() {
+	*x = LinkedAccount{}
+	mi := &file_proto_config_service_config_service_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LinkedAccount) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LinkedAccount) ProtoMessage() {}
+
+func (x *LinkedAccount) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_config_service_config_service_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LinkedAccount.ProtoReflect.Descriptor instead.
+func (*LinkedAccount) Descriptor() ([]byte, []int) {
+	return file_proto_config_service_config_service_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *LinkedAccount) GetUsername() string {
+	if x != nil {
+		return x.Username
+	}
+	return ""
+}
+
+func (x *LinkedAccount) GetUuid() string {
+	if x != nil {
+		return x.Uuid
+	}
+	return ""
+}
+
+func (x *LinkedAccount) GetMatchedOn() string {
+	if x != nil {
+		return x.MatchedOn
+	}
+	return ""
+}
+
+func (x *LinkedAccount) GetValue() string {
+	if x != nil {
+		return x.Value
+	}
+	return ""
+}
+
+func (x *LinkedAccount) GetLastSeen() *timestamppb.Timestamp {
+	if x != nil {
+		return x.LastSeen
+	}
+	return nil
+}
+
+func (x *LinkedAccount) GetSuspended() bool {
+	if x != nil {
+		return x.Suspended
+	}
+	return false
+}
+
+type UserModAction struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The mod_service.ModActionType name, e.g. "SUSPEND_ACCOUNT".
+	Type  string                 `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
+	Start *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=start,proto3" json:"start,omitempty"`
+	// Unset if the action is permanent.
+	End           *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=end,proto3" json:"end,omitempty"`
+	Note          string                 `protobuf:"bytes,4,opt,name=note,proto3" json:"note,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UserModAction) Reset() {
+	*x = UserModAction{}
+	mi := &file_proto_config_service_config_service_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UserModAction) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UserModAction) ProtoMessage() {}
+
+func (x *UserModAction) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_config_service_config_service_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UserModAction.ProtoReflect.Descriptor instead.
+func (*UserModAction) Descriptor() ([]byte, []int) {
+	return file_proto_config_service_config_service_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *UserModAction) GetType() string {
+	if x != nil {
+		return x.Type
+	}
+	return ""
+}
+
+func (x *UserModAction) GetStart() *timestamppb.Timestamp {
+	if x != nil {
+		return x.Start
+	}
+	return nil
+}
+
+func (x *UserModAction) GetEnd() *timestamppb.Timestamp {
+	if x != nil {
+		return x.End
+	}
+	return nil
+}
+
+func (x *UserModAction) GetNote() string {
+	if x != nil {
+		return x.Note
+	}
+	return ""
+}
+
+type UserDetailsResponse struct {
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	Uuid      string                 `protobuf:"bytes,1,opt,name=uuid,proto3" json:"uuid,omitempty"`
+	Email     string                 `protobuf:"bytes,2,opt,name=email,proto3" json:"email,omitempty"`
+	Created   *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=created,proto3" json:"created,omitempty"`
+	BirthDate string                 `protobuf:"bytes,4,opt,name=birth_date,json=birthDate,proto3" json:"birth_date,omitempty"`
+	Username  string                 `protobuf:"bytes,5,opt,name=username,proto3" json:"username,omitempty"`
+	// The fields below are only filled in by GetUserDetails, not SearchEmail.
+	Verified             bool             `protobuf:"varint,6,opt,name=verified,proto3" json:"verified,omitempty"`
+	Notoriety            int32            `protobuf:"varint,7,opt,name=notoriety,proto3" json:"notoriety,omitempty"`
+	IsBot                bool             `protobuf:"varint,8,opt,name=is_bot,json=isBot,proto3" json:"is_bot,omitempty"`
+	ActiveActions        []*UserModAction `protobuf:"bytes,9,rep,name=active_actions,json=activeActions,proto3" json:"active_actions,omitempty"`
+	RegistrationIp       string           `protobuf:"bytes,10,opt,name=registration_ip,json=registrationIp,proto3" json:"registration_ip,omitempty"`
+	RegistrationClientId string           `protobuf:"bytes,11,opt,name=registration_client_id,json=registrationClientId,proto3" json:"registration_client_id,omitempty"`
+	// Most recently seen first.
+	Clients        []*UserClient    `protobuf:"bytes,12,rep,name=clients,proto3" json:"clients,omitempty"`
+	LinkedAccounts []*LinkedAccount `protobuf:"bytes,13,rep,name=linked_accounts,json=linkedAccounts,proto3" json:"linked_accounts,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
 func (x *UserDetailsResponse) Reset() {
 	*x = UserDetailsResponse{}
-	mi := &file_proto_config_service_config_service_proto_msgTypes[13]
+	mi := &file_proto_config_service_config_service_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -651,7 +888,7 @@ func (x *UserDetailsResponse) String() string {
 func (*UserDetailsResponse) ProtoMessage() {}
 
 func (x *UserDetailsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_config_service_config_service_proto_msgTypes[13]
+	mi := &file_proto_config_service_config_service_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -664,7 +901,7 @@ func (x *UserDetailsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UserDetailsResponse.ProtoReflect.Descriptor instead.
 func (*UserDetailsResponse) Descriptor() ([]byte, []int) {
-	return file_proto_config_service_config_service_proto_rawDescGZIP(), []int{13}
+	return file_proto_config_service_config_service_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *UserDetailsResponse) GetUuid() string {
@@ -702,6 +939,62 @@ func (x *UserDetailsResponse) GetUsername() string {
 	return ""
 }
 
+func (x *UserDetailsResponse) GetVerified() bool {
+	if x != nil {
+		return x.Verified
+	}
+	return false
+}
+
+func (x *UserDetailsResponse) GetNotoriety() int32 {
+	if x != nil {
+		return x.Notoriety
+	}
+	return 0
+}
+
+func (x *UserDetailsResponse) GetIsBot() bool {
+	if x != nil {
+		return x.IsBot
+	}
+	return false
+}
+
+func (x *UserDetailsResponse) GetActiveActions() []*UserModAction {
+	if x != nil {
+		return x.ActiveActions
+	}
+	return nil
+}
+
+func (x *UserDetailsResponse) GetRegistrationIp() string {
+	if x != nil {
+		return x.RegistrationIp
+	}
+	return ""
+}
+
+func (x *UserDetailsResponse) GetRegistrationClientId() string {
+	if x != nil {
+		return x.RegistrationClientId
+	}
+	return ""
+}
+
+func (x *UserDetailsResponse) GetClients() []*UserClient {
+	if x != nil {
+		return x.Clients
+	}
+	return nil
+}
+
+func (x *UserDetailsResponse) GetLinkedAccounts() []*LinkedAccount {
+	if x != nil {
+		return x.LinkedAccounts
+	}
+	return nil
+}
+
 type SearchEmailRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	PartialEmail  string                 `protobuf:"bytes,1,opt,name=partial_email,json=partialEmail,proto3" json:"partial_email,omitempty"`
@@ -711,7 +1004,7 @@ type SearchEmailRequest struct {
 
 func (x *SearchEmailRequest) Reset() {
 	*x = SearchEmailRequest{}
-	mi := &file_proto_config_service_config_service_proto_msgTypes[14]
+	mi := &file_proto_config_service_config_service_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -723,7 +1016,7 @@ func (x *SearchEmailRequest) String() string {
 func (*SearchEmailRequest) ProtoMessage() {}
 
 func (x *SearchEmailRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_config_service_config_service_proto_msgTypes[14]
+	mi := &file_proto_config_service_config_service_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -736,7 +1029,7 @@ func (x *SearchEmailRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SearchEmailRequest.ProtoReflect.Descriptor instead.
 func (*SearchEmailRequest) Descriptor() ([]byte, []int) {
-	return file_proto_config_service_config_service_proto_rawDescGZIP(), []int{14}
+	return file_proto_config_service_config_service_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *SearchEmailRequest) GetPartialEmail() string {
@@ -755,7 +1048,7 @@ type SearchEmailResponse struct {
 
 func (x *SearchEmailResponse) Reset() {
 	*x = SearchEmailResponse{}
-	mi := &file_proto_config_service_config_service_proto_msgTypes[15]
+	mi := &file_proto_config_service_config_service_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -767,7 +1060,7 @@ func (x *SearchEmailResponse) String() string {
 func (*SearchEmailResponse) ProtoMessage() {}
 
 func (x *SearchEmailResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_config_service_config_service_proto_msgTypes[15]
+	mi := &file_proto_config_service_config_service_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -780,7 +1073,7 @@ func (x *SearchEmailResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SearchEmailResponse.ProtoReflect.Descriptor instead.
 func (*SearchEmailResponse) Descriptor() ([]byte, []int) {
-	return file_proto_config_service_config_service_proto_rawDescGZIP(), []int{15}
+	return file_proto_config_service_config_service_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *SearchEmailResponse) GetUsers() []*UserDetailsResponse {
@@ -799,7 +1092,7 @@ type Usernames struct {
 
 func (x *Usernames) Reset() {
 	*x = Usernames{}
-	mi := &file_proto_config_service_config_service_proto_msgTypes[16]
+	mi := &file_proto_config_service_config_service_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -811,7 +1104,7 @@ func (x *Usernames) String() string {
 func (*Usernames) ProtoMessage() {}
 
 func (x *Usernames) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_config_service_config_service_proto_msgTypes[16]
+	mi := &file_proto_config_service_config_service_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -824,7 +1117,7 @@ func (x *Usernames) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Usernames.ProtoReflect.Descriptor instead.
 func (*Usernames) Descriptor() ([]byte, []int) {
-	return file_proto_config_service_config_service_proto_rawDescGZIP(), []int{16}
+	return file_proto_config_service_config_service_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *Usernames) GetUsernames() []string {
@@ -842,7 +1135,7 @@ type GetCorrespondenceGameCountRequest struct {
 
 func (x *GetCorrespondenceGameCountRequest) Reset() {
 	*x = GetCorrespondenceGameCountRequest{}
-	mi := &file_proto_config_service_config_service_proto_msgTypes[17]
+	mi := &file_proto_config_service_config_service_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -854,7 +1147,7 @@ func (x *GetCorrespondenceGameCountRequest) String() string {
 func (*GetCorrespondenceGameCountRequest) ProtoMessage() {}
 
 func (x *GetCorrespondenceGameCountRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_config_service_config_service_proto_msgTypes[17]
+	mi := &file_proto_config_service_config_service_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -867,7 +1160,7 @@ func (x *GetCorrespondenceGameCountRequest) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use GetCorrespondenceGameCountRequest.ProtoReflect.Descriptor instead.
 func (*GetCorrespondenceGameCountRequest) Descriptor() ([]byte, []int) {
-	return file_proto_config_service_config_service_proto_rawDescGZIP(), []int{17}
+	return file_proto_config_service_config_service_proto_rawDescGZIP(), []int{20}
 }
 
 type CorrespondenceGameCountResponse struct {
@@ -879,7 +1172,7 @@ type CorrespondenceGameCountResponse struct {
 
 func (x *CorrespondenceGameCountResponse) Reset() {
 	*x = CorrespondenceGameCountResponse{}
-	mi := &file_proto_config_service_config_service_proto_msgTypes[18]
+	mi := &file_proto_config_service_config_service_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -891,7 +1184,7 @@ func (x *CorrespondenceGameCountResponse) String() string {
 func (*CorrespondenceGameCountResponse) ProtoMessage() {}
 
 func (x *CorrespondenceGameCountResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_config_service_config_service_proto_msgTypes[18]
+	mi := &file_proto_config_service_config_service_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -904,7 +1197,7 @@ func (x *CorrespondenceGameCountResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CorrespondenceGameCountResponse.ProtoReflect.Descriptor instead.
 func (*CorrespondenceGameCountResponse) Descriptor() ([]byte, []int) {
-	return file_proto_config_service_config_service_proto_rawDescGZIP(), []int{18}
+	return file_proto_config_service_config_service_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *CorrespondenceGameCountResponse) GetCount() int32 {
@@ -948,14 +1241,43 @@ const file_proto_config_service_config_service_proto_rawDesc = "" +
 	"\x17GetUsersForBadgeRequest\x12\x12\n" +
 	"\x04code\x18\x01 \x01(\tR\x04code\"3\n" +
 	"\x15GetUserDetailsRequest\x12\x1a\n" +
-	"\busername\x18\x01 \x01(\tR\busername\"\xb0\x01\n" +
+	"\busername\x18\x01 \x01(\tR\busername\"\xad\x01\n" +
+	"\n" +
+	"UserClient\x12\x0e\n" +
+	"\x02ip\x18\x01 \x01(\tR\x02ip\x12\x1b\n" +
+	"\tclient_id\x18\x02 \x01(\tR\bclientId\x129\n" +
+	"\n" +
+	"first_seen\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\tfirstSeen\x127\n" +
+	"\tlast_seen\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\blastSeen\"\xcb\x01\n" +
+	"\rLinkedAccount\x12\x1a\n" +
+	"\busername\x18\x01 \x01(\tR\busername\x12\x12\n" +
+	"\x04uuid\x18\x02 \x01(\tR\x04uuid\x12\x1d\n" +
+	"\n" +
+	"matched_on\x18\x03 \x01(\tR\tmatchedOn\x12\x14\n" +
+	"\x05value\x18\x04 \x01(\tR\x05value\x127\n" +
+	"\tlast_seen\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\blastSeen\x12\x1c\n" +
+	"\tsuspended\x18\x06 \x01(\bR\tsuspended\"\x97\x01\n" +
+	"\rUserModAction\x12\x12\n" +
+	"\x04type\x18\x01 \x01(\tR\x04type\x120\n" +
+	"\x05start\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\x05start\x12,\n" +
+	"\x03end\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\x03end\x12\x12\n" +
+	"\x04note\x18\x04 \x01(\tR\x04note\"\xa4\x04\n" +
 	"\x13UserDetailsResponse\x12\x12\n" +
 	"\x04uuid\x18\x01 \x01(\tR\x04uuid\x12\x14\n" +
 	"\x05email\x18\x02 \x01(\tR\x05email\x124\n" +
 	"\acreated\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\acreated\x12\x1d\n" +
 	"\n" +
 	"birth_date\x18\x04 \x01(\tR\tbirthDate\x12\x1a\n" +
-	"\busername\x18\x05 \x01(\tR\busername\"9\n" +
+	"\busername\x18\x05 \x01(\tR\busername\x12\x1a\n" +
+	"\bverified\x18\x06 \x01(\bR\bverified\x12\x1c\n" +
+	"\tnotoriety\x18\a \x01(\x05R\tnotoriety\x12\x15\n" +
+	"\x06is_bot\x18\b \x01(\bR\x05isBot\x12D\n" +
+	"\x0eactive_actions\x18\t \x03(\v2\x1d.config_service.UserModActionR\ractiveActions\x12'\n" +
+	"\x0fregistration_ip\x18\n" +
+	" \x01(\tR\x0eregistrationIp\x124\n" +
+	"\x16registration_client_id\x18\v \x01(\tR\x14registrationClientId\x124\n" +
+	"\aclients\x18\f \x03(\v2\x1a.config_service.UserClientR\aclients\x12F\n" +
+	"\x0flinked_accounts\x18\r \x03(\v2\x1d.config_service.LinkedAccountR\x0elinkedAccounts\"9\n" +
 	"\x12SearchEmailRequest\x12#\n" +
 	"\rpartial_email\x18\x01 \x01(\tR\fpartialEmail\"P\n" +
 	"\x13SearchEmailResponse\x129\n" +
@@ -993,7 +1315,7 @@ func file_proto_config_service_config_service_proto_rawDescGZIP() []byte {
 	return file_proto_config_service_config_service_proto_rawDescData
 }
 
-var file_proto_config_service_config_service_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
+var file_proto_config_service_config_service_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
 var file_proto_config_service_config_service_proto_goTypes = []any{
 	(*EnableGamesRequest)(nil),                // 0: config_service.EnableGamesRequest
 	(*SetFEHashRequest)(nil),                  // 1: config_service.SetFEHashRequest
@@ -1008,51 +1330,62 @@ var file_proto_config_service_config_service_proto_goTypes = []any{
 	(*AssignBadgeRequest)(nil),                // 10: config_service.AssignBadgeRequest
 	(*GetUsersForBadgeRequest)(nil),           // 11: config_service.GetUsersForBadgeRequest
 	(*GetUserDetailsRequest)(nil),             // 12: config_service.GetUserDetailsRequest
-	(*UserDetailsResponse)(nil),               // 13: config_service.UserDetailsResponse
-	(*SearchEmailRequest)(nil),                // 14: config_service.SearchEmailRequest
-	(*SearchEmailResponse)(nil),               // 15: config_service.SearchEmailResponse
-	(*Usernames)(nil),                         // 16: config_service.Usernames
-	(*GetCorrespondenceGameCountRequest)(nil), // 17: config_service.GetCorrespondenceGameCountRequest
-	(*CorrespondenceGameCountResponse)(nil),   // 18: config_service.CorrespondenceGameCountResponse
-	(*timestamppb.Timestamp)(nil),             // 19: google.protobuf.Timestamp
+	(*UserClient)(nil),                        // 13: config_service.UserClient
+	(*LinkedAccount)(nil),                     // 14: config_service.LinkedAccount
+	(*UserModAction)(nil),                     // 15: config_service.UserModAction
+	(*UserDetailsResponse)(nil),               // 16: config_service.UserDetailsResponse
+	(*SearchEmailRequest)(nil),                // 17: config_service.SearchEmailRequest
+	(*SearchEmailResponse)(nil),               // 18: config_service.SearchEmailResponse
+	(*Usernames)(nil),                         // 19: config_service.Usernames
+	(*GetCorrespondenceGameCountRequest)(nil), // 20: config_service.GetCorrespondenceGameCountRequest
+	(*CorrespondenceGameCountResponse)(nil),   // 21: config_service.CorrespondenceGameCountResponse
+	(*timestamppb.Timestamp)(nil),             // 22: google.protobuf.Timestamp
 }
 var file_proto_config_service_config_service_proto_depIdxs = []int32{
 	3,  // 0: config_service.SetAnnouncementsRequest.announcements:type_name -> config_service.Announcement
 	3,  // 1: config_service.AnnouncementsResponse.announcements:type_name -> config_service.Announcement
 	3,  // 2: config_service.SetSingleAnnouncementRequest.announcement:type_name -> config_service.Announcement
-	19, // 3: config_service.UserDetailsResponse.created:type_name -> google.protobuf.Timestamp
-	13, // 4: config_service.SearchEmailResponse.users:type_name -> config_service.UserDetailsResponse
-	0,  // 5: config_service.ConfigService.SetGamesEnabled:input_type -> config_service.EnableGamesRequest
-	1,  // 6: config_service.ConfigService.SetFEHash:input_type -> config_service.SetFEHashRequest
-	4,  // 7: config_service.ConfigService.SetAnnouncements:input_type -> config_service.SetAnnouncementsRequest
-	5,  // 8: config_service.ConfigService.GetAnnouncements:input_type -> config_service.GetAnnouncementsRequest
-	7,  // 9: config_service.ConfigService.SetSingleAnnouncement:input_type -> config_service.SetSingleAnnouncementRequest
-	8,  // 10: config_service.ConfigService.SetGlobalIntegration:input_type -> config_service.SetGlobalIntegrationRequest
-	9,  // 11: config_service.ConfigService.AddBadge:input_type -> config_service.AddBadgeRequest
-	10, // 12: config_service.ConfigService.AssignBadge:input_type -> config_service.AssignBadgeRequest
-	10, // 13: config_service.ConfigService.UnassignBadge:input_type -> config_service.AssignBadgeRequest
-	11, // 14: config_service.ConfigService.GetUsersForBadge:input_type -> config_service.GetUsersForBadgeRequest
-	12, // 15: config_service.ConfigService.GetUserDetails:input_type -> config_service.GetUserDetailsRequest
-	14, // 16: config_service.ConfigService.SearchEmail:input_type -> config_service.SearchEmailRequest
-	17, // 17: config_service.ConfigService.GetCorrespondenceGameCount:input_type -> config_service.GetCorrespondenceGameCountRequest
-	2,  // 18: config_service.ConfigService.SetGamesEnabled:output_type -> config_service.ConfigResponse
-	2,  // 19: config_service.ConfigService.SetFEHash:output_type -> config_service.ConfigResponse
-	2,  // 20: config_service.ConfigService.SetAnnouncements:output_type -> config_service.ConfigResponse
-	6,  // 21: config_service.ConfigService.GetAnnouncements:output_type -> config_service.AnnouncementsResponse
-	2,  // 22: config_service.ConfigService.SetSingleAnnouncement:output_type -> config_service.ConfigResponse
-	2,  // 23: config_service.ConfigService.SetGlobalIntegration:output_type -> config_service.ConfigResponse
-	2,  // 24: config_service.ConfigService.AddBadge:output_type -> config_service.ConfigResponse
-	2,  // 25: config_service.ConfigService.AssignBadge:output_type -> config_service.ConfigResponse
-	2,  // 26: config_service.ConfigService.UnassignBadge:output_type -> config_service.ConfigResponse
-	16, // 27: config_service.ConfigService.GetUsersForBadge:output_type -> config_service.Usernames
-	13, // 28: config_service.ConfigService.GetUserDetails:output_type -> config_service.UserDetailsResponse
-	15, // 29: config_service.ConfigService.SearchEmail:output_type -> config_service.SearchEmailResponse
-	18, // 30: config_service.ConfigService.GetCorrespondenceGameCount:output_type -> config_service.CorrespondenceGameCountResponse
-	18, // [18:31] is the sub-list for method output_type
-	5,  // [5:18] is the sub-list for method input_type
-	5,  // [5:5] is the sub-list for extension type_name
-	5,  // [5:5] is the sub-list for extension extendee
-	0,  // [0:5] is the sub-list for field type_name
+	22, // 3: config_service.UserClient.first_seen:type_name -> google.protobuf.Timestamp
+	22, // 4: config_service.UserClient.last_seen:type_name -> google.protobuf.Timestamp
+	22, // 5: config_service.LinkedAccount.last_seen:type_name -> google.protobuf.Timestamp
+	22, // 6: config_service.UserModAction.start:type_name -> google.protobuf.Timestamp
+	22, // 7: config_service.UserModAction.end:type_name -> google.protobuf.Timestamp
+	22, // 8: config_service.UserDetailsResponse.created:type_name -> google.protobuf.Timestamp
+	15, // 9: config_service.UserDetailsResponse.active_actions:type_name -> config_service.UserModAction
+	13, // 10: config_service.UserDetailsResponse.clients:type_name -> config_service.UserClient
+	14, // 11: config_service.UserDetailsResponse.linked_accounts:type_name -> config_service.LinkedAccount
+	16, // 12: config_service.SearchEmailResponse.users:type_name -> config_service.UserDetailsResponse
+	0,  // 13: config_service.ConfigService.SetGamesEnabled:input_type -> config_service.EnableGamesRequest
+	1,  // 14: config_service.ConfigService.SetFEHash:input_type -> config_service.SetFEHashRequest
+	4,  // 15: config_service.ConfigService.SetAnnouncements:input_type -> config_service.SetAnnouncementsRequest
+	5,  // 16: config_service.ConfigService.GetAnnouncements:input_type -> config_service.GetAnnouncementsRequest
+	7,  // 17: config_service.ConfigService.SetSingleAnnouncement:input_type -> config_service.SetSingleAnnouncementRequest
+	8,  // 18: config_service.ConfigService.SetGlobalIntegration:input_type -> config_service.SetGlobalIntegrationRequest
+	9,  // 19: config_service.ConfigService.AddBadge:input_type -> config_service.AddBadgeRequest
+	10, // 20: config_service.ConfigService.AssignBadge:input_type -> config_service.AssignBadgeRequest
+	10, // 21: config_service.ConfigService.UnassignBadge:input_type -> config_service.AssignBadgeRequest
+	11, // 22: config_service.ConfigService.GetUsersForBadge:input_type -> config_service.GetUsersForBadgeRequest
+	12, // 23: config_service.ConfigService.GetUserDetails:input_type -> config_service.GetUserDetailsRequest
+	17, // 24: config_service.ConfigService.SearchEmail:input_type -> config_service.SearchEmailRequest
+	20, // 25: config_service.ConfigService.GetCorrespondenceGameCount:input_type -> config_service.GetCorrespondenceGameCountRequest
+	2,  // 26: config_service.ConfigService.SetGamesEnabled:output_type -> config_service.ConfigResponse
+	2,  // 27: config_service.ConfigService.SetFEHash:output_type -> config_service.ConfigResponse
+	2,  // 28: config_service.ConfigService.SetAnnouncements:output_type -> config_service.ConfigResponse
+	6,  // 29: config_service.ConfigService.GetAnnouncements:output_type -> config_service.AnnouncementsResponse
+	2,  // 30: config_service.ConfigService.SetSingleAnnouncement:output_type -> config_service.ConfigResponse
+	2,  // 31: config_service.ConfigService.SetGlobalIntegration:output_type -> config_service.ConfigResponse
+	2,  // 32: config_service.ConfigService.AddBadge:output_type -> config_service.ConfigResponse
+	2,  // 33: config_service.ConfigService.AssignBadge:output_type -> config_service.ConfigResponse
+	2,  // 34: config_service.ConfigService.UnassignBadge:output_type -> config_service.ConfigResponse
+	19, // 35: config_service.ConfigService.GetUsersForBadge:output_type -> config_service.Usernames
+	16, // 36: config_service.ConfigService.GetUserDetails:output_type -> config_service.UserDetailsResponse
+	18, // 37: config_service.ConfigService.SearchEmail:output_type -> config_service.SearchEmailResponse
+	21, // 38: config_service.ConfigService.GetCorrespondenceGameCount:output_type -> config_service.CorrespondenceGameCountResponse
+	26, // [26:39] is the sub-list for method output_type
+	13, // [13:26] is the sub-list for method input_type
+	13, // [13:13] is the sub-list for extension type_name
+	13, // [13:13] is the sub-list for extension extendee
+	0,  // [0:13] is the sub-list for field type_name
 }
 
 func init() { file_proto_config_service_config_service_proto_init() }
@@ -1066,7 +1399,7 @@ func file_proto_config_service_config_service_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_config_service_config_service_proto_rawDesc), len(file_proto_config_service_config_service_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   19,
+			NumMessages:   22,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

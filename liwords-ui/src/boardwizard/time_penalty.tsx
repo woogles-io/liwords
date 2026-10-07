@@ -1,5 +1,5 @@
 import { Button } from "antd";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Modal } from "../utils/focus_modal";
 
 // Mirrors maxTimePenalty in pkg/cwgame.
@@ -27,23 +27,19 @@ type Props = {
 // Shown when an annotated game ends: the final scores, the winner, and an
 // over-time penalty for either or both players.
 export const EndOfGameModal = (props: Props) => {
-  const [penalties, setPenalties] = useState<number[]>([]);
+  const { open, players, onClose } = props;
+  // The editor remounts this (via key) on each open, so it starts current.
+  const [penalties, setPenalties] = useState(() =>
+    players.map((p) => p.penalty),
+  );
   const [submitting, setSubmitting] = useState(false);
 
-  const { open, players, onClose } = props;
-  useEffect(() => {
-    if (open) {
-      setPenalties(players.map((p) => p.penalty));
-    }
-  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const penaltyFor = (idx: number) => penalties[idx] ?? players[idx].penalty;
   const finalScores = players.map(
-    (p, idx) => p.score + p.penalty - penaltyFor(idx),
+    (p, idx) => p.score + p.penalty - penalties[idx],
   );
   const best = Math.max(...finalScores);
   const tied = finalScores.every((s) => s === best);
-  const changed = players.some((p, idx) => penaltyFor(idx) !== p.penalty);
+  const changed = players.some((p, idx) => penalties[idx] !== p.penalty);
 
   const addPenalty = (idx: number) =>
     setPenalties((prev) =>
@@ -59,8 +55,8 @@ export const EndOfGameModal = (props: Props) => {
     setSubmitting(true);
     try {
       for (let idx = 0; idx < players.length; idx++) {
-        if (penaltyFor(idx) !== players[idx].penalty) {
-          await props.onSubmit(idx, penaltyFor(idx));
+        if (penalties[idx] !== players[idx].penalty) {
+          await props.onSubmit(idx, penalties[idx]);
         }
       }
       onClose();
@@ -168,15 +164,15 @@ export const EndOfGameModal = (props: Props) => {
               size="small"
               aria-label={`Time penalty for ${p.name}`}
               onClick={() => addPenalty(idx)}
-              disabled={penaltyFor(idx) >= maxTimePenalty}
+              disabled={penalties[idx] >= maxTimePenalty}
             >
-              -{penaltyFor(idx) + penaltyIncrement}
+              -{penalties[idx] + penaltyIncrement}
             </Button>
           </div>
         ))}
         {players.map(
           (p, idx) =>
-            penaltyFor(idx) > 0 && (
+            penalties[idx] > 0 && (
               <Button
                 key={`clear-${idx}`}
                 type="link"

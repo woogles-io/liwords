@@ -453,3 +453,47 @@ func makeActionMap(actions []*ms.ModAction) map[string]*ms.ModAction {
 	}
 	return actionMap
 }
+
+type recordingRevoker struct {
+	revoked []string
+}
+
+func (r *recordingRevoker) RevokeUserSessions(ctx context.Context, userUUID string) error {
+	r.revoked = append(r.revoked, userUUID)
+	return nil
+}
+
+func TestSuspensionRevokesSessions(t *testing.T) {
+	is := is.New(t)
+	ctx := context.Background()
+	recreateDB()
+	us := userStore()
+	defer us.(*user.DBStore).Disconnect()
+
+	rev := &recordingRevoker{}
+	SetSessionRevoker(rev)
+	defer SetSessionRevoker(nil)
+
+	// Non-suspension actions leave sessions alone.
+	err := ApplyActions(ctx, us, nil, "Moderator", []*ms.ModAction{
+		{UserId: "Spammer", Type: ms.ModActionType_MUTE, Duration: 100},
+		{UserId: "Sandbagger", Type: ms.ModActionType_SUSPEND_GAMES, Duration: 100},
+	})
+	is.NoErr(err)
+	is.Equal(len(rev.revoked), 0)
+
+	// A suspension revokes that user's sessions.
+	err = ApplyActions(ctx, us, nil, "Moderator", []*ms.ModAction{
+		{UserId: "Hacker", Type: ms.ModActionType_SUSPEND_ACCOUNT, Duration: 100},
+	})
+	is.NoErr(err)
+	is.Equal(rev.revoked, []string{"Hacker"})
+
+	// Account deletion implies a permanent suspension, so it revokes too.
+	rev.revoked = nil
+	err = ApplyActions(ctx, us, nil, "Moderator", []*ms.ModAction{
+		{UserId: "Deleter", Type: ms.ModActionType_DELETE_ACCOUNT},
+	})
+	is.NoErr(err)
+	is.Equal(rev.revoked, []string{"Deleter"})
+}

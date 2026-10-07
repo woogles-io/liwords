@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/rs/zerolog/log"
+
 	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/user"
 	"github.com/woogles-io/liwords/pkg/utilities"
@@ -131,6 +133,18 @@ func GetActionHistory(ctx context.Context, us user.Store, uuid string) ([]*ms.Mo
 	return history, nil
 }
 
+// SessionRevoker ends all of a user's active sessions.
+type SessionRevoker interface {
+	RevokeUserSessions(ctx context.Context, userUUID string) error
+}
+
+var sessionRevoker SessionRevoker
+
+// SetSessionRevoker sets what ApplyActions uses to log out suspended users.
+func SetSessionRevoker(r SessionRevoker) {
+	sessionRevoker = r
+}
+
 func ApplyActions(ctx context.Context, us user.Store, cs user.ChatStore, applierUserId string, actions []*ms.ModAction) error {
 	actionsToApply := []*ms.ModAction{}
 	for _, action := range actions {
@@ -158,7 +172,31 @@ func ApplyActions(ctx context.Context, us user.Store, cs user.ChatStore, applier
 		actionsToApply = append(actionsToApply, action)
 	}
 
-	return us.ApplyActions(ctx, actionsToApply)
+	err := us.ApplyActions(ctx, actionsToApply)
+	if err != nil {
+		return err
+	}
+	revokeSuspendedSessions(ctx, actionsToApply)
+	return nil
+}
+
+// revokeSuspendedSessions logs out every user who just had their account
+// suspended. Best-effort: the actions have already been applied, and a
+// suspended user is also refused new sessions and socket tokens.
+func revokeSuspendedSessions(ctx context.Context, actions []*ms.ModAction) {
+	if sessionRevoker == nil {
+		return
+	}
+	revoked := map[string]bool{}
+	for _, action := range actions {
+		if action.Type != ms.ModActionType_SUSPEND_ACCOUNT || revoked[action.UserId] {
+			continue
+		}
+		revoked[action.UserId] = true
+		if err := sessionRevoker.RevokeUserSessions(ctx, action.UserId); err != nil {
+			log.Err(err).Str("userID", action.UserId).Msg("revoke-sessions")
+		}
+	}
 }
 
 func prepareAction(ctx context.Context, us user.Store, cs user.ChatStore, action *ms.ModAction) error {

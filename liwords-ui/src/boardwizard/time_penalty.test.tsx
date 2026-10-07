@@ -101,3 +101,29 @@ it("stays open when a penalty fails to send", async () => {
   await waitFor(() => expect(onSubmit).toHaveBeenCalled());
   expect(onClose).not.toHaveBeenCalled();
 });
+
+it("keeps its edits when the scores update, and starts afresh when remounted", () => {
+  const onSubmit = vi.fn();
+  const onClose = vi.fn();
+  const modal = (key: number, players: EndOfGamePlayer[]) => (
+    <EndOfGameModal
+      key={key}
+      open
+      players={players}
+      onClose={onClose}
+      onSubmit={onSubmit}
+    />
+  );
+  const { getByLabelText, rerender } = render(modal(1, fresh));
+  const josh = () => getByLabelText("Time penalty for josh");
+  fireEvent.click(josh());
+  fireEvent.click(josh());
+  expect(josh().textContent).toBe("-30");
+  // Another penalty of 10 lands while the modal is open: the edit is kept.
+  const applied = [fresh[0], { name: "josh", score: 378, penalty: 10 }];
+  rerender(modal(1, applied));
+  expect(josh().textContent).toBe("-30");
+  // Reopened (new key): it starts from the penalty actually applied.
+  rerender(modal(2, applied));
+  expect(josh().textContent).toBe("-20");
+});

@@ -159,7 +159,7 @@ type CompleteJobRow struct {
 // job's previous result_s3_key (so the caller can delete a replaced object).
 // With a result store, the caller passes the uploaded object's key and a NULL
 // result; without one, the result itself and a NULL key. The summary columns
-// are copied from the result by the caller; see the 202610060002 migration for
+// are copied from the result by the caller; see the 202610070001 migration for
 // what NULL means in each.
 func (q *Queries) CompleteJob(ctx context.Context, arg CompleteJobParams) (CompleteJobRow, error) {
 	row := q.db.QueryRow(ctx, completeJob,

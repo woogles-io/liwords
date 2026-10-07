@@ -65,5 +65,24 @@ func TestSession(t *testing.T) {
 
 	_, err = store.Get(ctx, extendedCesarSession.ID)
 	is.True(err != nil)
+
+	// DeleteForUser removes all of one user's sessions and nobody else's.
+	cesar1, err := store.New(ctx, cesarUser)
+	is.NoErr(err)
+	cesar2, err := store.New(ctx, cesarUser)
+	is.NoErr(err)
+	minaSession, err := store.New(ctx, minaUser)
+	is.NoErr(err)
+
+	n, err := store.DeleteForUser(ctx, "cesar_uuid")
+	is.NoErr(err)
+	is.Equal(n, int64(2))
+	_, err = store.Get(ctx, cesar1.ID)
+	is.True(err != nil)
+	_, err = store.Get(ctx, cesar2.ID)
+	is.True(err != nil)
+	_, err = store.Get(ctx, minaSession.ID)
+	is.NoErr(err)
+
 	store.Disconnect()
 }
