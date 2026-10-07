@@ -122,7 +122,7 @@ type CompleteJobRow struct {
 
 // Marks job as completed and returns game_id and processing duration.
 // The summary columns are copied from the result by the caller; see the
-// 202610060002 migration for what NULL means in each.
+// 202610070001 migration for what NULL means in each.
 func (q *Queries) CompleteJob(ctx context.Context, arg CompleteJobParams) (CompleteJobRow, error) {
 	row := q.db.QueryRow(ctx, completeJob,
 		arg.Result,
