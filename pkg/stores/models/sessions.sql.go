@@ -35,6 +35,18 @@ func (q *Queries) DeleteSession(ctx context.Context, uuid string) error {
 	return err
 }
 
+const deleteSessionsForUser = `-- name: DeleteSessionsForUser :execrows
+DELETE FROM db_sessions WHERE data ->> 'uuid' = $1::text
+`
+
+func (q *Queries) DeleteSessionsForUser(ctx context.Context, userUuid string) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteSessionsForUser, userUuid)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const extendSessionExpiry = `-- name: ExtendSessionExpiry :execrows
 UPDATE db_sessions SET expires_at = $1 WHERE uuid = $2
 `

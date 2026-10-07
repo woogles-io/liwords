@@ -43,12 +43,53 @@ message AssignBadgeRequest {
 message GetUsersForBadgeRequest { string code = 1; }
 
 message GetUserDetailsRequest { string username = 1; }
+// An IP address and client identifier an account has been seen from.
+message UserClient {
+  string ip = 1;
+  // Empty if the browser had no client identifier yet.
+  string client_id = 2;
+  google.protobuf.Timestamp first_seen = 3;
+  google.protobuf.Timestamp last_seen = 4;
+}
+
+// Another account that shares an IP address or client identifier.
+message LinkedAccount {
+  string username = 1;
+  string uuid = 2;
+  // One of "client_id", "ip", "registration_client_id", "registration_ip".
+  string matched_on = 3;
+  // The shared IP address or client identifier.
+  string value = 4;
+  google.protobuf.Timestamp last_seen = 5;
+  bool suspended = 6;
+}
+
+message UserModAction {
+  // The mod_service.ModActionType name, e.g. "SUSPEND_ACCOUNT".
+  string type = 1;
+  google.protobuf.Timestamp start = 2;
+  // Unset if the action is permanent.
+  google.protobuf.Timestamp end = 3;
+  string note = 4;
+}
+
 message UserDetailsResponse {
   string uuid = 1;
   string email = 2;
   google.protobuf.Timestamp created = 3;
   string birth_date = 4;
   string username = 5;
+
+  // The fields below are only filled in by GetUserDetails, not SearchEmail.
+  bool verified = 6;
+  int32 notoriety = 7;
+  bool is_bot = 8;
+  repeated UserModAction active_actions = 9;
+  string registration_ip = 10;
+  string registration_client_id = 11;
+  // Most recently seen first.
+  repeated UserClient clients = 12;
+  repeated LinkedAccount linked_accounts = 13;
 }
 message SearchEmailRequest { string partial_email = 1; }
 message SearchEmailResponse { repeated UserDetailsResponse users = 1; }

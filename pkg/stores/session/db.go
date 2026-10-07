@@ -86,6 +86,11 @@ func (s *DBStore) Delete(ctx context.Context, sess *entity.Session) error {
 	return s.queries.DeleteSession(ctx, sess.ID)
 }
 
+// DeleteForUser deletes all of a user's sessions.
+func (s *DBStore) DeleteForUser(ctx context.Context, userUUID string) (int64, error) {
+	return s.queries.DeleteSessionsForUser(ctx, userUUID)
+}
+
 // ExtendExpiry extends the expiry of the given cookie.
 func (s *DBStore) ExtendExpiry(ctx context.Context, sess *entity.Session) error {
 	rowsAffected, err := s.queries.ExtendSessionExpiry(ctx, models.ExtendSessionExpiryParams{
