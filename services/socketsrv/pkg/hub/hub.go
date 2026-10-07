@@ -81,6 +81,8 @@ type Hub struct {
 	broadcastRealm  chan RealmMessage
 	broadcastUser   chan UserMessage
 	sendConnMessage chan ConnMessage
+	// endUserSockets receives user IDs whose sockets must all be closed.
+	endUserSockets chan string
 }
 
 func NewHub(cfg *config.Config) (*Hub, error) {
@@ -100,6 +102,7 @@ func NewHub(cfg *config.Config) (*Hub, error) {
 		broadcastRealm:  make(chan RealmMessage),
 		broadcastUser:   make(chan UserMessage),
 		sendConnMessage: make(chan ConnMessage),
+		endUserSockets:  make(chan string),
 		register:        make(chan *Client),
 		unregister:      make(chan *Client),
 		clients:         make(map[*Client][]Realm),
@@ -140,6 +143,9 @@ func (h *Hub) removeClient(c *Client) error {
 	// single-threaded Run
 	log.Debug().Str("client", c.username).Str("connid", c.connID).Str("userid", c.userID).Msg("removing client")
 	close(c.send)
+	// The client's read pump will still try to unregister it once the
+	// connection closes; that's expected, not an error.
+	c.removed = true
 
 	realms := h.clients[c]
 
@@ -234,7 +240,7 @@ func (h *Hub) Run() {
 					log.Err(err).Msg("error-removing-client")
 				}
 				log.Info().Str("username", client.username).Msg("unregistered-client")
-			} else {
+			} else if !client.removed {
 				log.Error().Msg("unregistered-but-not-in-map")
 			}
 
@@ -280,6 +286,18 @@ func (h *Hub) Run() {
 					h.removeClient(client)
 				}
 			}
+
+		case userID := <-h.endUserSockets:
+			clients := make([]*Client, 0, len(h.clientsByUserID[userID]))
+			for client := range h.clientsByUserID[userID] {
+				clients = append(clients, client)
+			}
+			for _, client := range clients {
+				if err := h.removeClient(client); err != nil {
+					log.Err(err).Msg("error-removing-client")
+				}
+			}
+			log.Info().Str("userID", userID).Int("sockets", len(clients)).Msg("ended-user-sockets")
 
 		case message := <-h.sendConnMessage:
 			c, ok := h.clientsByConnID[message.connID]

@@ -7,6 +7,7 @@ package models
 import (
 	"database/sql/driver"
 	"fmt"
+	"net/netip"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -537,6 +538,8 @@ type User struct {
 	Verified              bool
 	VerificationToken     pgtype.Text
 	VerificationExpiresAt pgtype.Timestamptz
+	RegistrationIp        *netip.Addr
+	RegistrationClientID  pgtype.Text
 }
 
 type UserAction struct {
@@ -566,6 +569,14 @@ type UserAnalysisRequest struct {
 type UserBadge struct {
 	UserID  int32
 	BadgeID int32
+}
+
+type UserClient struct {
+	UserID    int32
+	Ip        netip.Addr
+	ClientID  string
+	FirstSeen pgtype.Timestamptz
+	LastSeen  pgtype.Timestamptz
 }
 
 type UserObsSlot struct {

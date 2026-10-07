@@ -276,6 +276,7 @@ export const BoardEditor = () => {
   // position of a finished game. Appending a time penalty moves the end, so
   // it does not count as arriving there.
   const [endOfGameOpen, setEndOfGameOpen] = useState(false);
+  const [endOfGameKey, setEndOfGameKey] = useState(0);
   const atEnd =
     gameContext.playState === PlayState.GAME_OVER &&
     examinableGameContext.turns.length === gameContext.turns.length;
@@ -294,6 +295,7 @@ export const BoardEditor = () => {
       gameContext.gameID &&
       (!sameGame || justEnded || (!prevAtEnd.current && !turnsAppended))
     ) {
+      setEndOfGameKey((k) => k + 1);
       setEndOfGameOpen(true);
     }
     prevAtEnd.current = atEnd;
@@ -546,6 +548,7 @@ export const BoardEditor = () => {
             />
           </Card>
           <EndOfGameModal
+            key={endOfGameKey}
             open={endOfGameOpen}
             players={endOfGamePlayers}
             onClose={() => setEndOfGameOpen(false)}

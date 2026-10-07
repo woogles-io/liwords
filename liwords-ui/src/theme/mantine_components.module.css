@@ -1,0 +1,118 @@
+/*
+ * Per-component styling for the Mantine theme, referenced from
+ * src/theme/components.ts via each component's `classNames`.
+ *
+ * Only properties Mantine does not expose as a CSS variable belong here --
+ * anything with a `--component-*` variable should go through `vars` instead,
+ * since those are part of Mantine's documented API and survive upgrades.
+ *
+ * Every value here was reached by measuring the antd equivalent at
+ * /dev/components and closing the gap, not by eye. Re-measure after changing
+ * anything.
+ */
+
+/*
+ * Woogles buttons are flat and static: no transition, and hover/focus/active
+ * look identical to rest. That is deliberate in base.scss's @mixin button and
+ * predates the migration, so it is reproduced rather than modernised.
+ */
+.button {
+  font-weight: 800;
+  transition: none;
+  touch-action: manipulation;
+
+  /*
+   * antd's base line-height is 11/7. Mantine's Button sets 1. At 12px that is
+   * the difference between the 18.857px antd computes and 12px, and it decides
+   * where the label sits inside the 36px box. Written as a fraction because
+   * 1.5714 truncates to 18.8568px and shows up as a diff.
+   */
+  line-height: calc(11 / 7);
+
+  /* @mixin button: `padding: 3px 18px`. The inline axis goes through
+     --button-padding-x; there is no variable for the block axis. */
+  padding-block: 3px;
+}
+
+.button:hover,
+.button:focus,
+.button:active {
+  transition: none;
+}
+
+/*
+ * Keyboard shortcut hint, revealed on hover of an enabled button. Rendered by
+ * game controls as <span class="key-command">. Carried over verbatim from
+ * @mixin button.
+ */
+.button :global(span.key-command) {
+  position: absolute;
+  top: 0;
+  right: 0;
+  padding: 0 4px;
+  font-size: 10px;
+  opacity: 0;
+}
+
+.button:not(:disabled):hover :global(span.key-command) {
+  opacity: 1;
+}
+
+/*
+ * Both shadows come from antd's own tokens rather than from any Woogles design
+ * decision -- the reskin mixin never removed them, so they are part of how these
+ * buttons look today. Reproduced for fidelity; dropping them would be a
+ * reasonable deliberate change later.
+ */
+.buttonDefault {
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.02);
+
+  /*
+   * @mixin button puts margins on the buttons themselves. That fights layouts
+   * that want to control their own spacing, and Mantine's idiom is <Group gap>
+   * -- but dropping it made every migrated area visibly tighter than the antd
+   * original, which is not a trade worth making mid-migration. Reproduced, and
+   * a reasonable thing to remove deliberately once antd is gone.
+   */
+  margin: 0 6px;
+}
+
+.buttonFilled {
+  margin: 6px 3px;
+}
+
+/*
+ * antd's filled shadow is tinted per button colour -- blue for primary, red for
+ * dangerous. Reproducing that per colour is more machinery than a 0.1-alpha 2px
+ * shadow is worth, so it is applied only to the default-coloured filled button.
+ * A colour-specific button gets no shadow, which is a smaller error than a blue
+ * shadow under a red button.
+ */
+.buttonFilledThemed {
+  box-shadow: 0 2px 0 rgba(5, 145, 255, 0.1);
+}
+
+/*
+ * Disabled. @mixin button greys the border and text but keeps the page
+ * background; the primary variant instead fills grey with background-coloured
+ * text. antd drops the shadow in both cases. Mantine's defaults are its own
+ * greys, so all of it needs stating.
+ */
+.buttonDefault:disabled,
+.buttonDefault[data-disabled] {
+  background-color: var(--woogles-color-background);
+  border-color: var(--woogles-color-gray-subtle);
+  color: var(--woogles-color-gray-subtle);
+  box-shadow: none;
+}
+
+.buttonFilled:disabled,
+.buttonFilled[data-disabled] {
+  background-color: var(--woogles-color-gray-subtle);
+  color: var(--woogles-color-background);
+  box-shadow: none;
+
+  /* The filled variant has no border at all; setting only border-color left
+     Mantine's 1px solid showing through. */
+  border: 0;
+}
