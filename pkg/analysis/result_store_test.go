@@ -282,7 +282,7 @@ func TestUploadAndClearResults(t *testing.T) {
 		{fullResult(3.0, 4.0), true},
 		{fullResult(1.0, 2.0), true},
 		{&macondopb.GameAnalysisResult{AnalysisVersion: 2}, true}, // zero-turn
-		{fullResult(5.0, 6.0), false},                            // columns not backfilled yet
+		{fullResult(5.0, 6.0), false},                             // columns not backfilled yet
 	}
 	games := make([]string, len(jobs))
 	for i, j := range jobs {
