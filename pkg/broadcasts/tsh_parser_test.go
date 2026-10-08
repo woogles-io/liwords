@@ -133,6 +133,25 @@ func TestTSHNewtParser_ControlCharsInStrings(t *testing.T) {
 	}
 }
 
+func TestNormalizePlayerName(t *testing.T) {
+	tests := map[string]string{
+		"Shreve, Jon":        "Shreve, Jon",
+		"Shreve,Jon":         "Shreve, Jon",
+		"Shreve,\tJon":       "Shreve, Jon",
+		"Shreve ,  Jon":      "Shreve, Jon",
+		"  Shreve, Jon \t":   "Shreve, Jon",
+		"Van  Der Berg, Ann": "Van Der Berg, Ann",
+		"Smith,":             "Smith,",
+		"Alice":              "Alice",
+		"":                   "",
+	}
+	for in, want := range tests {
+		if got := normalizePlayerName(in); got != want {
+			t.Errorf("normalizePlayerName(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
 func TestTSHNewtParser_Parse(t *testing.T) {
 	p := &TSHNewtParser{}
 	fd, err := p.Parse([]byte(minimalTSHFeed))

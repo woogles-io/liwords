@@ -419,7 +419,7 @@ func (p *TSHNewtParser) ParseDivision(data []byte, divisionName string) (*FeedDa
 		}
 		players = append(players, FeedPlayer{
 			ID:       tp.ID,
-			Name:     string(tp.Name),
+			Name:     normalizePlayerName(string(tp.Name)),
 			Rating:   tp.Rating,
 			Scores:   tp.Scores,
 			Pairings: tp.Pairings,
@@ -445,6 +445,18 @@ func (p *TSHNewtParser) ParseDivision(data []byte, divisionName string) (*FeedDa
 		CurrentRound: currentRound,
 		DivisionName: string(div.Name),
 	}, nil
+}
+
+// normalizePlayerName trims the name, collapses whitespace runs to a single
+// space, and puts exactly one space after each comma ("Last ,First" becomes
+// "Last, First"). Names are matched by exact string elsewhere (ratings, OBS
+// fields), so a stray-whitespace edit to the .t file mid-event must not change
+// the name.
+func normalizePlayerName(name string) string {
+	name = strings.Join(strings.Fields(name), " ")
+	name = strings.ReplaceAll(name, " ,", ",")
+	name = strings.ReplaceAll(name, ",", ", ")
+	return strings.Join(strings.Fields(name), " ")
 }
 
 // extractNewtJSON strips the `newt=...;` JS wrapper and returns valid JSON bytes.
