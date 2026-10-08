@@ -99,7 +99,11 @@ const GameDetailModal = ({ gameId, onClose }: GameDetailModalProps) => {
     analysisClient
       .getAnalysisResult(create(GetAnalysisResultRequestSchema, { gameId }))
       .then((resp) => {
-        if (resp.found && resp.resultProto.length > 0) {
+        // Prefer the typed result (what the server sends); the bytes field
+        // is deprecated and only kept for old servers.
+        if (resp.found && resp.result && resp.result.turns.length > 0) {
+          setResult(resp.result);
+        } else if (resp.found && resp.resultProto.length > 0) {
           const jsonStr = new TextDecoder().decode(resp.resultProto);
           const parsed = fromJsonString(GameAnalysisResultSchema, jsonStr);
           setResult(parsed);

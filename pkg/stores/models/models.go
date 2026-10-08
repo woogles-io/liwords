@@ -76,6 +76,7 @@ type AnalysisJob struct {
 	Player0MistakeIndex pgtype.Float8
 	Player1MistakeIndex pgtype.Float8
 	AnalysisVersion     pgtype.Int4
+	ResultS3Key         pgtype.Text
 }
 
 type AnnotatedGameMetadatum struct {

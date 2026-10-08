@@ -318,6 +318,9 @@ func main() {
 	pairService := pair.NewPairService(cfg, lambdaClient)
 	vdoWebhookService := vdowebhook.NewVDOWebhookService(stores.TournamentStore, cfg.VDOPollingIntervalSeconds)
 	analysisService := analysis.NewAnalysisService(stores.UserStore, stores.GameStore, stores.Queries, dbPool)
+	if bucket := os.Getenv("ANALYSIS_UPLOAD_BUCKET"); bucket != "" {
+		analysisService.SetResultStore(analysis.NewS3ResultStore(s3Client, bucket))
+	}
 	analysisAdminService := analysis.NewAnalysisAdminService(stores.UserStore, stores.Queries)
 	router.Handle("/ping", http.HandlerFunc(pingEndpoint))
 
@@ -423,7 +426,10 @@ func main() {
 		user_serviceconnect.NewAuthorizationServiceHandler(authorizationService, options),
 	)
 	connectapi.Handle(
-		analysis_serviceconnect.NewAnalysisQueueServiceHandler(analysisService, options),
+		// Workers upload results here; cap the request so an account can't
+		// send arbitrarily large payloads (read into memory, then stored).
+		analysis_serviceconnect.NewAnalysisQueueServiceHandler(analysisService, options,
+			connect.WithReadMaxBytes(analysis.MaxSubmitResultBytes)),
 	)
 	connectapi.Handle(
 		analysis_serviceconnect.NewAnalysisServiceHandler(analysisService, options),
