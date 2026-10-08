@@ -91,6 +91,7 @@ class Booper {
   private audio: HTMLAudioElement;
   private unlocked = false;
   private unlocking: Promise<boolean> | null = null;
+  private source: Promise<string> | null = null;
 
   constructor(
     readonly soundName: string,
@@ -102,6 +103,29 @@ class Booper {
     // sounds, about a third of our CloudFront bytes.
     this.audio = new Audio();
     this.audio.preload = "auto";
+  }
+
+  // The element plays from an in-memory blob rather than from this.src.
+  // Safari loads <audio> sources with Range requests that bypass its HTTP
+  // cache, so Safari visitors re-downloaded every sound on every page load
+  // despite the 35-day max-age (5-6 requests per sound per visitor per hour
+  // in CloudFront logs). A plain fetch() honors the cache in every browser.
+  // Falls back to the URL if the fetch fails.
+  private loadSource(): Promise<string> {
+    if (!this.source) {
+      this.source = fetch(this.src)
+        .then((resp) => {
+          if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+          return resp.blob();
+        })
+        .then((blob) => URL.createObjectURL(blob))
+        .catch((e) => {
+          console.warn(`cannot fetch ${this.soundName}:`, e);
+          this.source = null;
+          return this.src;
+        });
+    }
+    return this.source;
   }
 
   // Must be called from within a user gesture event handler.
@@ -123,20 +147,22 @@ class Booper {
 
   private async unlockWithSilence(): Promise<boolean> {
     const { audio } = this;
+    // Start the download now; it runs while the silence plays.
+    const source = this.loadSource();
+    let unlocked = false;
     try {
       audio.src = silentWavUrl;
       await audio.play();
       audio.pause();
-      this.unlocked = true;
+      unlocked = true;
     } catch {
       // Autoplay still blocked — will retry on the next gesture.
-    } finally {
-      // Point the element at its real sound whether or not the unlock worked.
-      // This is where the file is first downloaded; later calls are served
-      // from cache.
-      audio.src = this.src;
-      audio.load();
     }
+    // Point the element at its real sound whether or not the unlock worked.
+    // Only mark it unlocked afterwards, so play() never replays the silence.
+    audio.src = await source;
+    audio.load();
+    this.unlocked = unlocked;
     return this.unlocked;
   }
 
