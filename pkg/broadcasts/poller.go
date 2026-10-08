@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
+	"strconv"
 	"sync"
 	"time"
 
@@ -183,13 +185,37 @@ var broadcastHTTPClient = &http.Client{
 	},
 }
 
-func fetchURL(url string) ([]byte, error) {
-	resp, err := broadcastHTTPClient.Get(url) //nolint:gosec // URL is admin-configured
+func fetchURL(feedURL string) ([]byte, error) {
+	req, err := http.NewRequest(http.MethodGet, cacheBustedURL(feedURL, time.Now()), nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Cache-Control", "no-cache")
+	resp, err := broadcastHTTPClient.Do(req) //nolint:gosec // URL is admin-configured
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
 	return io.ReadAll(resp.Body)
+}
+
+// cacheBustedURL appends a unique query parameter so CDNs in front of
+// director-hosted feeds can't serve a stale copy. Some (e.g. Hostinger's) cache
+// tourney.js for days, ignore a Cache-Control request header, and hold separate
+// copies per cache node, so polls would flip between current and hours-old
+// results. Existing query parameters are kept verbatim.
+func cacheBustedURL(feedURL string, now time.Time) string {
+	u, err := url.Parse(feedURL)
+	if err != nil {
+		return feedURL
+	}
+	bust := "_=" + strconv.FormatInt(now.UnixNano(), 10)
+	if u.RawQuery == "" {
+		u.RawQuery = bust
+	} else {
+		u.RawQuery += "&" + bust
+	}
+	return u.String()
 }
 
 func publishBroadcastUpdate(nc *nats.Conn, broadcastUUID, slug string, divs map[string]*FeedData) {
