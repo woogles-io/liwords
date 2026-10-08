@@ -64,24 +64,42 @@ describe("rack drag: insert", () => {
   });
 });
 
-describe("rack drag: lift and swap", () => {
-  it("swaps with the tile it comes back down on (IHEASES example)", () => {
-    // Drag the rightmost E (slot 5) upward.
-    const lifted = drive(5, [onRack(320), { x: 300, y: 400 }]);
-    expect(lifted).toEqual({ from: 5, mode: "lifted", target: null });
+describe("rack drag: lift and come back down", () => {
+  it("inserts, not swaps: B up, over F, down gives ACDEFBG", () => {
+    // Drag B (slot 1) up off the rack: every tile returns home.
+    const lifted = drive(1, [{ x: 160, y: 400 }]);
+    expect(lifted).toEqual({ from: 1, mode: "lifted", target: null });
     expect(previewSlots(7, lifted)).toEqual([0, 1, 2, 3, 4, 5, 6]);
 
-    // Come back down on the H.
-    const s = nextRackDragState(lifted, onRack(165), geo);
-    expect(s).toEqual({ from: 5, mode: "swap", target: 1 });
-    expect(previewSlots(7, s)).toEqual([0, 5, 2, 3, 4, 1, 6]);
-    expect(applyRackDrag(rack("IHEASES"), s)).toEqual(rack("IEEASHS"));
+    // Sideways to above F (slot 5), then back down onto it.
+    const above = nextRackDragState(lifted, { x: 320, y: 400 }, geo);
+    expect(above.target).toBeNull();
+    const s = nextRackDragState(above, onRack(320), geo);
+    expect(s).toEqual({ from: 1, mode: "insert", target: 5 });
+    // C, D, E and F slide left; B lands in F's old slot.
+    expect(previewSlots(7, s)).toEqual([0, 5, 1, 2, 3, 4, 6]);
+    expect(applyRackDrag(rack("ABCDEFG"), s)).toEqual(rack("ACDEFBG"));
   });
 
-  it("keeps swapping (not inserting) while sliding along after re-entry", () => {
+  it("gives the same result as dragging straight along the rack", () => {
+    const straight = drive(1, [onRack(320)]);
+    const viaLift = drive(1, [
+      { x: 160, y: 400 },
+      { x: 320, y: 400 },
+      onRack(320),
+    ]);
+    expect(viaLift).toEqual(straight);
+  });
+
+  it("inserts leftward too (IHEASES: right E down on H gives IEHEASS)", () => {
+    const s = drive(5, [{ x: 300, y: 400 }, onRack(165)]);
+    expect(applyRackDrag(rack("IHEASES"), s)).toEqual(rack("IEHEASS"));
+  });
+
+  it("keeps sliding tiles as it moves along after coming back down", () => {
     const s = drive(5, [{ x: 300, y: 400 }, onRack(165), onRack(240)]);
-    expect(s).toEqual({ from: 5, mode: "swap", target: 3 });
-    expect(applyRackDrag(rack("IHEASES"), s)).toEqual(rack("IHEESAS"));
+    expect(s).toEqual({ from: 5, mode: "insert", target: 3 });
+    expect(applyRackDrag(rack("IHEASES"), s)).toEqual(rack("IHEEASS"));
   });
 
   it("is a no-op when returning to the origin slot", () => {
@@ -90,9 +108,8 @@ describe("rack drag: lift and swap", () => {
     expect(applyRackDrag(rack("IHEASES"), s)).toEqual(rack("IHEASES"));
   });
 
-  it("has no target beside the rack after lifting", () => {
-    const s = drive(2, [{ x: 200, y: 400 }, onRack(40)]);
-    expect(s).toEqual({ from: 2, mode: "swap", target: null });
+  it("clamps to the ends when coming down beside the rack", () => {
+    expect(drive(2, [{ x: 200, y: 400 }, onRack(40)]).target).toBe(0);
   });
 
   it("re-lifts when leaving again", () => {
@@ -110,17 +127,15 @@ describe("rack drag: gaps", () => {
     expect(out).toEqual(rack("AGB_D_F"));
     expect(out.filter((x) => x === GAP)).toHaveLength(2);
 
-    const sw = drive(0, [{ x: 0, y: 0 }, onRack(200)]);
-    expect(applyRackDrag(r, sw)).toEqual(rack("_BAD_FG"));
+    const viaLift = drive(0, [{ x: 0, y: 0 }, onRack(200)]);
+    expect(applyRackDrag(r, viaLift)).toEqual(rack("B_AD_FG"));
   });
 
   it("always previews a permutation", () => {
     for (let from = 0; from < 7; from++) {
       for (let target = 0; target < 7; target++) {
-        for (const mode of ["insert", "swap"] as const) {
-          const slots = previewSlots(7, { from, mode, target });
-          expect([...slots].sort()).toEqual([0, 1, 2, 3, 4, 5, 6]);
-        }
+        const slots = previewSlots(7, { from, mode: "insert", target });
+        expect([...slots].sort()).toEqual([0, 1, 2, 3, 4, 5, 6]);
       }
     }
   });
@@ -142,11 +157,9 @@ describe("rack drag: short racks", () => {
     expect(drive3(0, [onRack(900)]).target).toBe(2);
   });
 
-  it("swaps within a three-tile rack, ignoring the empty rack area", () => {
+  it("inserts after a lift within a three-tile rack", () => {
     const s = drive3(0, [{ x: 200, y: 400 }, onRack(280)]);
-    expect(applyRackDrag(rack("ABC"), s)).toEqual(rack("CBA"));
-    // Over the spacer to the left of the tiles: nothing to swap with.
-    expect(drive3(0, [{ x: 200, y: 400 }, onRack(120)]).target).toBeNull();
+    expect(applyRackDrag(rack("ABC"), s)).toEqual(rack("BCA"));
   });
 
   it("is a no-op for a single tile", () => {

@@ -1,15 +1,14 @@
 // Pure logic for rearranging tiles within the rack while dragging.
 //
-// Two gestures:
-// - insert: drag sideways along the rack; tiles between the origin and the
-//   pointer slide one slot toward the origin (like a sortable list).
-// - swap: drag off the rack vertically ("lift"), then come back down onto it;
-//   the tile under the pointer trades places with the dragged tile.
+// Dragging along the rack inserts: tiles between the origin and the pointer
+// slide one slot toward the origin (like a sortable list). Dragging off the
+// rack vertically ("lift") sends every tile home; coming back down onto the
+// rack inserts again at the new position, so the path taken doesn't matter.
 //
 // Nothing here touches the DOM, so the rack can render a preview from
 // previewSlots() and commit applyRackDrag() once, when the drag ends.
 
-export type RackDragMode = "insert" | "lifted" | "swap";
+export type RackDragMode = "insert" | "lifted";
 
 export type RackDragState = {
   from: number;
@@ -64,25 +63,10 @@ export const nextRackDragState = (
     return { from: prev.from, mode: "lifted", target: null };
   }
 
-  if (prev.mode === "insert") {
-    return {
-      from: prev.from,
-      mode: "insert",
-      target: nearestSlot(pointer.x, geo),
-    };
-  }
-
-  // Once lifted, coming back onto the rack swaps rather than inserts.
-  const n = geo.slotCenters.length;
-  const half = geo.slotWidth / 2;
-  const overRack =
-    n > 0 &&
-    pointer.x >= geo.slotCenters[0] - half &&
-    pointer.x <= geo.slotCenters[n - 1] + half;
   return {
     from: prev.from,
-    mode: "swap",
-    target: overRack ? nearestSlot(pointer.x, geo) : null,
+    mode: "insert",
+    target: nearestSlot(pointer.x, geo),
   };
 };
 
@@ -97,10 +81,7 @@ const resultingOrder = (len: number, state: RackDragState): number[] => {
   if (target < 0 || target >= len) {
     return order;
   }
-  if (mode === "swap") {
-    order[from] = target;
-    order[target] = from;
-  } else if (mode === "insert") {
+  if (mode === "insert") {
     order.splice(from, 1);
     order.splice(target, 0, from);
   }
