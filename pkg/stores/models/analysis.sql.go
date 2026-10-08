@@ -12,33 +12,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const backfillAnalysisSummaryColumns = `-- name: BackfillAnalysisSummaryColumns :execrows
-UPDATE analysis_jobs aj
-SET player0_mistake_index = CASE WHEN aj.result->'playerSummaries'->0 IS NOT NULL
-        THEN COALESCE(aj.result->'playerSummaries'->0->>'mistakeIndex', '0')::DOUBLE PRECISION END,
-    player1_mistake_index = CASE WHEN aj.result->'playerSummaries'->1 IS NOT NULL
-        THEN COALESCE(aj.result->'playerSummaries'->1->>'mistakeIndex', '0')::DOUBLE PRECISION END,
-    analysis_version = COALESCE(aj.result->>'analysisVersion', '0')::INT
-WHERE aj.id IN (
-    SELECT id FROM analysis_jobs
-    WHERE result IS NOT NULL AND analysis_version IS NULL
-    LIMIT $1::INT
-    FOR UPDATE SKIP LOCKED
-)
-`
-
-// Copies the summary fields out of the stored result for up to $1 jobs that
-// have a result but no columns yet. protojson drops zero values, so a missing
-// mistakeIndex inside a present summary is 0 and a missing analysisVersion is
-// 0 (v0). Returns the number of jobs updated; 0 means done.
-func (q *Queries) BackfillAnalysisSummaryColumns(ctx context.Context, batchSize int32) (int64, error) {
-	result, err := q.db.Exec(ctx, backfillAnalysisSummaryColumns, batchSize)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
-}
-
 const checkExistingUserRequest = `-- name: CheckExistingUserRequest :one
 SELECT job_id
 FROM user_analysis_requests
@@ -106,47 +79,23 @@ func (q *Queries) ClaimNextJob(ctx context.Context, arg ClaimNextJobParams) (Cla
 	return i, err
 }
 
-const clearAnalysisResult = `-- name: ClearAnalysisResult :execrows
-UPDATE analysis_jobs
-SET result = NULL
-WHERE id = $1
-  AND result IS NOT NULL
-  AND result_s3_key IS NOT DISTINCT FROM $2
-`
-
-type ClearAnalysisResultParams struct {
-	ID          uuid.UUID
-	ResultS3Key pgtype.Text
-}
-
-// Drops the result column's copy once the caller has checked the object
-// matches. The key must still be the one checked.
-func (q *Queries) ClearAnalysisResult(ctx context.Context, arg ClearAnalysisResultParams) (int64, error) {
-	result, err := q.db.Exec(ctx, clearAnalysisResult, arg.ID, arg.ResultS3Key)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
-}
-
 const completeJob = `-- name: CompleteJob :one
 WITH prev AS (
     SELECT j.id AS job_id, j.result_s3_key AS previous_s3_key
     FROM analysis_jobs j
-    WHERE j.id = $7
+    WHERE j.id = $6
     FOR UPDATE
 )
 UPDATE analysis_jobs aj
 SET
     status = 'completed',
-    result = $1,
-    result_s3_key = $2,
-    player0_mistake_index = $3,
-    player1_mistake_index = $4,
-    analysis_version = $5,
+    result_s3_key = $1,
+    player0_mistake_index = $2,
+    player1_mistake_index = $3,
+    analysis_version = $4,
     completed_at = NOW()
 FROM prev
-WHERE aj.id = prev.job_id AND aj.claimed_by_user_uuid = $6
+WHERE aj.id = prev.job_id AND aj.claimed_by_user_uuid = $5
   AND aj.status IN ('claimed', 'processing')
 RETURNING aj.game_id, aj.requested_by_user_uuid,
     EXTRACT(EPOCH FROM (NOW() - aj.claimed_at))::BIGINT * 1000 as duration_ms,
@@ -154,7 +103,6 @@ RETURNING aj.game_id, aj.requested_by_user_uuid,
 `
 
 type CompleteJobParams struct {
-	Result              []byte
 	ResultS3Key         pgtype.Text
 	Player0MistakeIndex pgtype.Float8
 	Player1MistakeIndex pgtype.Float8
@@ -172,13 +120,11 @@ type CompleteJobRow struct {
 
 // Marks job as completed and returns game_id, processing duration and the
 // job's previous result_s3_key (so the caller can delete a replaced object).
-// With a result store, the caller passes the uploaded object's key and a NULL
-// result; without one, the result itself and a NULL key. The summary columns
-// are copied from the result by the caller; see the 202610070001 migration for
-// what NULL means in each.
+// The result itself lives in the result store at result_s3_key (NULL for a
+// zero-turn game, which has none); the summary columns are copied from it by
+// the caller.
 func (q *Queries) CompleteJob(ctx context.Context, arg CompleteJobParams) (CompleteJobRow, error) {
 	row := q.db.QueryRow(ctx, completeJob,
-		arg.Result,
 		arg.ResultS3Key,
 		arg.Player0MistakeIndex,
 		arg.Player1MistakeIndex,
@@ -452,7 +398,7 @@ func (q *Queries) GetContributorsLeaderboard(ctx context.Context, limit int32) (
 
 const getJobByGameID = `-- name: GetJobByGameID :one
 SELECT
-    aj.id, aj.game_id, aj.status, aj.config_json, aj.result, aj.error_message,
+    aj.id, aj.game_id, aj.status, aj.config_json, aj.error_message,
     aj.completed_at, aj.created_at, aj.claimed_at, aj.analysis_version, aj.result_s3_key,
     COALESCE(u.username, '') as analyzed_by_username
 FROM analysis_jobs aj
@@ -467,7 +413,6 @@ type GetJobByGameIDRow struct {
 	GameID             string
 	Status             string
 	ConfigJson         []byte
-	Result             []byte
 	ErrorMessage       pgtype.Text
 	CompletedAt        pgtype.Timestamptz
 	CreatedAt          pgtype.Timestamptz
@@ -488,7 +433,6 @@ func (q *Queries) GetJobByGameID(ctx context.Context, gameID string) (GetJobByGa
 		&i.GameID,
 		&i.Status,
 		&i.ConfigJson,
-		&i.Result,
 		&i.ErrorMessage,
 		&i.CompletedAt,
 		&i.CreatedAt,
@@ -581,101 +525,6 @@ func (q *Queries) GetUserRequestCountToday(ctx context.Context, userUuid string)
 	return request_count, err
 }
 
-const listAnalysisResultsToClear = `-- name: ListAnalysisResultsToClear :many
-SELECT id, game_id, result, result_s3_key
-FROM analysis_jobs
-WHERE result IS NOT NULL
-  AND analysis_version IS NOT NULL
-  AND id > $1::uuid
-ORDER BY id
-LIMIT $2::INT
-`
-
-type ListAnalysisResultsToClearParams struct {
-	After     uuid.UUID
-	BatchSize int32
-}
-
-type ListAnalysisResultsToClearRow struct {
-	ID          uuid.UUID
-	GameID      string
-	Result      []byte
-	ResultS3Key pgtype.Text
-}
-
-// Jobs that still hold a result in the result column but no longer need it:
-// uploaded ones, plus zero-turn ones, which have no object. Requires the
-// summary columns, which the MI queries read once result is gone.
-func (q *Queries) ListAnalysisResultsToClear(ctx context.Context, arg ListAnalysisResultsToClearParams) ([]ListAnalysisResultsToClearRow, error) {
-	rows, err := q.db.Query(ctx, listAnalysisResultsToClear, arg.After, arg.BatchSize)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []ListAnalysisResultsToClearRow
-	for rows.Next() {
-		var i ListAnalysisResultsToClearRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.GameID,
-			&i.Result,
-			&i.ResultS3Key,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listAnalysisResultsToUpload = `-- name: ListAnalysisResultsToUpload :many
-SELECT id, game_id, result
-FROM analysis_jobs
-WHERE result_s3_key IS NULL
-  AND result IS NOT NULL
-  AND id > $1::uuid
-  AND jsonb_array_length(COALESCE(result->'turns', '[]'::jsonb)) > 0
-ORDER BY id
-LIMIT $2::INT
-`
-
-type ListAnalysisResultsToUploadParams struct {
-	After     uuid.UUID
-	BatchSize int32
-}
-
-type ListAnalysisResultsToUploadRow struct {
-	ID     uuid.UUID
-	GameID string
-	Result []byte
-}
-
-// Jobs whose result is still only in the result column, in id order after
-// @after, for cmd/backfill-analysis-s3. Zero-turn results have nothing worth
-// an object and are skipped.
-func (q *Queries) ListAnalysisResultsToUpload(ctx context.Context, arg ListAnalysisResultsToUploadParams) ([]ListAnalysisResultsToUploadRow, error) {
-	rows, err := q.db.Query(ctx, listAnalysisResultsToUpload, arg.After, arg.BatchSize)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []ListAnalysisResultsToUploadRow
-	for rows.Next() {
-		var i ListAnalysisResultsToUploadRow
-		if err := rows.Scan(&i.ID, &i.GameID, &i.Result); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const reclaimStaleJobs = `-- name: ReclaimStaleJobs :exec
 UPDATE analysis_jobs
 SET
@@ -728,8 +577,8 @@ SET status = 'pending',
 WHERE id = $1
 `
 
-// Resets job to pending but keeps result, so league standings keep counting
-// the old analysis until the new one replaces it
+// Resets job to pending but keeps its result_s3_key and summary columns, so
+// the old analysis stays viewable and counted until the new one replaces it
 func (q *Queries) ResetAnalysisJobKeepResult(ctx context.Context, id uuid.UUID) error {
 	_, err := q.db.Exec(ctx, resetAnalysisJobKeepResult, id)
 	return err
@@ -757,28 +606,6 @@ type ResetAnalysisJobWithPriorityParams struct {
 func (q *Queries) ResetAnalysisJobWithPriority(ctx context.Context, arg ResetAnalysisJobWithPriorityParams) error {
 	_, err := q.db.Exec(ctx, resetAnalysisJobWithPriority, arg.ID, arg.Priority)
 	return err
-}
-
-const setAnalysisResultS3Key = `-- name: SetAnalysisResultS3Key :execrows
-UPDATE analysis_jobs
-SET result_s3_key = $1
-WHERE id = $2 AND result_s3_key IS NULL
-`
-
-type SetAnalysisResultS3KeyParams struct {
-	ResultS3Key pgtype.Text
-	ID          uuid.UUID
-}
-
-// Records an uploaded object for a job that has none yet. 0 rows means a
-// reanalysis stored its own result in the meantime; the caller then deletes
-// the object it uploaded.
-func (q *Queries) SetAnalysisResultS3Key(ctx context.Context, arg SetAnalysisResultS3KeyParams) (int64, error) {
-	result, err := q.db.Exec(ctx, setAnalysisResultS3Key, arg.ResultS3Key, arg.ID)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
 }
 
 const updateHeartbeat = `-- name: UpdateHeartbeat :exec

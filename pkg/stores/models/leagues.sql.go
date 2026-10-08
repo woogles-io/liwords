@@ -1359,27 +1359,13 @@ FROM game_players gp_player
 INNER JOIN games g ON gp_player.game_uuid = g.uuid
 INNER JOIN users u_opponent ON gp_player.opponent_id = u_opponent.id
 LEFT JOIN LATERAL (
-    -- The result is stored as protojson, which drops a field that holds its
-    -- zero value, so a perfect game has no mistakeIndex key at all. Presence
-    -- is therefore this player's summary, not the key inside it, and a
-    -- summary without the key means 0.
-    -- Jobs from before the summary columns (analysis_version IS NULL) fall
-    -- back to the result; see RefreshDivisionMistakeIndex.
-    SELECT x.mistake_index
+    SELECT (CASE gp_player.player_index WHEN 0 THEN aj.player0_mistake_index
+                                        ELSE aj.player1_mistake_index END)::DOUBLE PRECISION AS mistake_index
     FROM analysis_jobs aj
-    CROSS JOIN LATERAL (
-        SELECT CASE
-            WHEN aj.analysis_version IS NOT NULL THEN
-                CASE gp_player.player_index WHEN 0 THEN aj.player0_mistake_index
-                                            ELSE aj.player1_mistake_index END
-            WHEN aj.result->'playerSummaries'->gp_player.player_index::INT IS NOT NULL THEN
-                COALESCE(aj.result->'playerSummaries'->gp_player.player_index::INT->>'mistakeIndex',
-                         '0')::DOUBLE PRECISION
-        END::DOUBLE PRECISION AS mistake_index
-    ) x
     WHERE aj.game_id = gp_player.game_uuid
       AND aj.status = 'completed'
-      AND x.mistake_index IS NOT NULL
+      AND CASE gp_player.player_index WHEN 0 THEN aj.player0_mistake_index
+                                      ELSE aj.player1_mistake_index END IS NOT NULL
     ORDER BY aj.completed_at DESC
     LIMIT 1
 ) mi ON true
@@ -2659,29 +2645,18 @@ func (q *Queries) PenalizePlayerSeasonGames(ctx context.Context, arg PenalizePla
 }
 
 const refreshDivisionMistakeIndex = `-- name: RefreshDivisionMistakeIndex :exec
-WITH jobs AS (
-    SELECT
-        aj.game_id,
-        aj.created_at,
+WITH latest AS (
+    SELECT DISTINCT ON (aj.game_id)
         g.player0_id,
         g.player1_id,
-        CASE WHEN aj.analysis_version IS NOT NULL THEN aj.player0_mistake_index
-             WHEN aj.result->'playerSummaries'->0 IS NOT NULL
-             THEN COALESCE(aj.result->'playerSummaries'->0->>'mistakeIndex', '0')::DOUBLE PRECISION
-        END AS mi0,
-        CASE WHEN aj.analysis_version IS NOT NULL THEN aj.player1_mistake_index
-             WHEN aj.result->'playerSummaries'->1 IS NOT NULL
-             THEN COALESCE(aj.result->'playerSummaries'->1->>'mistakeIndex', '0')::DOUBLE PRECISION
-        END AS mi1
+        aj.player0_mistake_index AS mi0,
+        aj.player1_mistake_index AS mi1
     FROM analysis_jobs aj
     JOIN games g ON g.uuid = aj.game_id
     WHERE g.league_division_id = $1::uuid
-),
-latest AS (
-    SELECT DISTINCT ON (game_id) player0_id, player1_id, mi0, mi1
-    FROM jobs
-    WHERE mi0 IS NOT NULL AND mi1 IS NOT NULL
-    ORDER BY game_id, created_at DESC
+      AND aj.player0_mistake_index IS NOT NULL
+      AND aj.player1_mistake_index IS NOT NULL
+    ORDER BY aj.game_id, aj.created_at DESC
 ),
 per_player AS (
     SELECT player0_id AS user_id, mi0 AS mi FROM latest WHERE player0_id IS NOT NULL
@@ -2704,17 +2679,11 @@ WHERE ls.id = cur.id
 `
 
 // Rebuilds total_mistake_index and games_analyzed for every standing in a
-// division from the stored analysis results, so a refresh is idempotent and
+// division from the jobs' summary columns, so a refresh is idempotent and
 // repairs any earlier drift. Each game counts once, using its newest job that
-// has both player summaries. A requeued job keeps its old result until the
-// new one lands (ResetAnalysisJobKeepResult), so the game stays counted during
-// reanalysis, whatever the job's status.
-//
-// MI comes from the summary columns. Jobs from before those columns existed
-// (analysis_version IS NULL) fall back to the result until
-// cmd/backfill-analysis-columns has run; protojson drops a zero mistakeIndex,
-// so a summary without the key means 0. TODO: drop the fallback once the
-// backfill is done, before results move to S3.
+// has both players' mistake indexes. A requeued job keeps its old columns
+// until the new result lands (ResetAnalysisJobKeepResult), so the game stays
+// counted during reanalysis, whatever the job's status.
 func (q *Queries) RefreshDivisionMistakeIndex(ctx context.Context, divisionID uuid.UUID) error {
 	_, err := q.db.Exec(ctx, refreshDivisionMistakeIndex, divisionID)
 	return err

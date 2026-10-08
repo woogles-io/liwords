@@ -11,7 +11,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/matryer/is"
-	"google.golang.org/protobuf/encoding/protojson"
 
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/woogles-io/liwords/pkg/analysis"
@@ -282,22 +281,26 @@ func TestCompleteJob(t *testing.T) {
 	job, err := queries.ClaimNextJob(ctx, anyClaims(testUserUUID))
 	is.NoErr(err)
 
-	// Complete the job with mock result
-	mockResult := []byte(`{"turns": [{"equity": 0.5}], "player_summaries": [{}, {}]}`)
-
+	// Complete the job as SubmitResult does: the result's object key plus its
+	// summary columns.
 	completedJob, err := queries.CompleteJob(ctx, models.CompleteJobParams{
-		Result:            mockResult,
-		ID:                job.ID,
-		ClaimedByUserUuid: testUserUUID,
+		ResultS3Key:         pgtype.Text{String: "analyses/x/y.json.gz", Valid: true},
+		Player0MistakeIndex: pgtype.Float8{Float64: 1.5, Valid: true},
+		Player1MistakeIndex: pgtype.Float8{Float64: 2.5, Valid: true},
+		AnalysisVersion:     pgtype.Int4{Int32: 2, Valid: true},
+		ID:                  job.ID,
+		ClaimedByUserUuid:   testUserUUID,
 	})
 	is.NoErr(err)
 	is.True(completedJob.DurationMs >= 0) // Should have a duration
+	is.True(!completedJob.PreviousS3Key.Valid)
 
 	// Verify job is completed
 	jobStatus, err := queries.GetJobByGameID(ctx, gameID)
 	is.NoErr(err)
 	is.Equal(jobStatus.Status, "completed")
-	is.True(len(jobStatus.Result) > 0)
+	is.Equal(jobStatus.ResultS3Key.String, "analyses/x/y.json.gz")
+	is.Equal(jobStatus.AnalysisVersion.Int32, int32(2))
 }
 
 // TestReclaimStaleJobs tests that stale jobs are reclaimed
@@ -475,51 +478,33 @@ func insertLeagueGame(t *testing.T, ctx context.Context, pool *pgxpool.Pool,
 	return gameID
 }
 
-// completeAnalysis stores result against gameID the way the worker path does,
-// through protojson.
+// completeAnalysis queues gameID for analysis and completes it with result.
 func completeAnalysis(t *testing.T, ctx context.Context, queries *models.Queries,
-	gameID string, result *macondopb.GameAnalysisResult) []byte {
+	gameID string, result *macondopb.GameAnalysisResult) {
 	is := is.New(t)
-
-	err := analysis.EnqueueGameForAnalysis(ctx, queries, gameID, 0)
-	is.NoErr(err)
-
-	return claimAndComplete(t, ctx, queries, result)
+	is.NoErr(analysis.EnqueueGameForAnalysis(ctx, queries, gameID, 0))
+	claimAndComplete(t, ctx, queries, result)
 }
 
-// claimAndComplete claims the next pending job and completes it with result,
-// filling the summary columns as SubmitResult does.
+// claimAndComplete claims the next pending job and completes it with result's
+// summary columns, as SubmitResult does. The result object itself isn't stored;
+// these tests only read the columns.
 func claimAndComplete(t *testing.T, ctx context.Context, queries *models.Queries,
-	result *macondopb.GameAnalysisResult) []byte {
-	return claimAndCompleteWith(t, ctx, queries, result, true)
-}
-
-// claimAndCompleteWith is claimAndComplete; withColumns=false stores only the
-// result, as jobs completed before the summary columns existed were.
-func claimAndCompleteWith(t *testing.T, ctx context.Context, queries *models.Queries,
-	result *macondopb.GameAnalysisResult, withColumns bool) []byte {
+	result *macondopb.GameAnalysisResult) {
 	is := is.New(t)
 
 	workerUUID := pgtype.Text{String: "test-uuid-3", Valid: true}
 	job, err := queries.ClaimNextJob(ctx, anyClaims(workerUUID))
 	is.NoErr(err)
 
-	resultJSON, err := protojson.Marshal(result)
-	is.NoErr(err)
-
 	params := models.CompleteJobParams{
-		Result:            resultJSON,
 		ID:                job.ID,
 		ClaimedByUserUuid: workerUUID,
 	}
-	if withColumns {
-		params.Player0MistakeIndex, params.Player1MistakeIndex, params.AnalysisVersion =
-			analysis.SummaryColumns(result)
-	}
+	params.Player0MistakeIndex, params.Player1MistakeIndex, params.AnalysisVersion =
+		analysis.SummaryColumns(result)
 	_, err = queries.CompleteJob(ctx, params)
 	is.NoErr(err)
-
-	return resultJSON
 }
 
 func analysisResult(mi0, mi1 float64) *macondopb.GameAnalysisResult {
@@ -568,90 +553,6 @@ func assertMI(t *testing.T, ctx context.Context, queries *models.Queries,
 		t.Fatalf("user %d: got MI total %v over %d games, want %v over %d",
 			userID, total, analyzed, wantTotal, wantAnalyzed)
 	}
-}
-
-// TestBackfillAnalysisSummaryColumns covers jobs completed before the summary
-// columns existed: readers fall back to the result until the backfill copies
-// it over, and afterwards read only the columns.
-func TestBackfillAnalysisSummaryColumns(t *testing.T) {
-	is := is.New(t)
-	ctx := context.Background()
-
-	pool, queries := setupTestDB(t)
-	defer pool.Close()
-
-	createTestUsers(t, pool)
-	leagueID, seasonID, divisionID := createMinimalLeague(t, ctx, queries)
-	seedStanding(t, ctx, queries, divisionID, 1, 0, 0)
-	seedStanding(t, ctx, queries, divisionID, 2, 0, 0)
-
-	now := time.Now()
-	games := []string{
-		insertLeagueGame(t, ctx, pool, leagueID, seasonID, divisionID, now.Add(-4*time.Hour), 400, 380),
-		insertLeagueGame(t, ctx, pool, leagueID, seasonID, divisionID, now.Add(-3*time.Hour), 450, 300),
-		insertLeagueGame(t, ctx, pool, leagueID, seasonID, divisionID, now.Add(-2*time.Hour), 350, 390),
-	}
-	legacy := []*macondopb.GameAnalysisResult{
-		analysisResult(3.0, 4.0),
-		analysisResult(0, 2.5), // perfect game: protojson drops the 0
-		{AnalysisVersion: 2},   // zero-turn game: no summaries, not counted
-	}
-	for i, g := range games {
-		is.NoErr(analysis.EnqueueGameForAnalysis(ctx, queries, g, 0))
-		claimAndCompleteWith(t, ctx, queries, legacy[i], false)
-	}
-	// A v0 result has no analysisVersion key at all.
-	_, err := pool.Exec(ctx, `UPDATE analysis_jobs SET result = result - 'analysisVersion' WHERE game_id = $1`, games[0])
-	is.NoErr(err)
-
-	check := func() {
-		t.Helper()
-		is.NoErr(queries.RefreshDivisionMistakeIndex(ctx, divisionID))
-		assertMI(t, ctx, queries, divisionID, 1, 3.0, 2)
-		assertMI(t, ctx, queries, divisionID, 2, 6.5, 2)
-
-		rows, err := queries.GetPlayerSeasonGames(ctx, models.GetPlayerSeasonGamesParams{
-			UserUuid: "test-uuid-1",
-			SeasonID: pgtype.UUID{Bytes: seasonID, Valid: true},
-		})
-		is.NoErr(err)
-		is.Equal(len(rows), 3) // newest first
-		is.Equal(rows[0].HasMistakeIndex, false)
-		is.Equal(rows[1].HasMistakeIndex, true)
-		is.Equal(rows[1].PlayerMistakeIndex, float64(0))
-		is.Equal(rows[2].PlayerMistakeIndex, 3.0)
-	}
-
-	// Before the backfill, readers fall back to the result.
-	check()
-
-	// Small batches until done; a re-run finds nothing.
-	var total int64
-	for {
-		n, err := queries.BackfillAnalysisSummaryColumns(ctx, 2)
-		is.NoErr(err)
-		if n == 0 {
-			break
-		}
-		total += n
-	}
-	is.Equal(total, int64(3))
-
-	var versions []int32
-	var nullMI int
-	err = pool.QueryRow(ctx, `
-		SELECT array_agg(analysis_version ORDER BY created_at),
-		       count(*) FILTER (WHERE player0_mistake_index IS NULL OR player1_mistake_index IS NULL)
-		FROM analysis_jobs`).Scan(&versions, &nullMI)
-	is.NoErr(err)
-	is.Equal(versions, []int32{0, 2, 2}) // v0 stored as 0, not left NULL
-	is.Equal(nullMI, 1)                  // only the zero-turn game
-
-	// After the backfill the columns alone are enough: blank out the results
-	// (as moving them to S3 would) and every reader still agrees.
-	_, err = pool.Exec(ctx, `UPDATE analysis_jobs SET result = '{}'::jsonb`)
-	is.NoErr(err)
-	check()
 }
 
 // TestRefreshDivisionMistakeIndex covers the rebuild of standings' MI columns
@@ -718,10 +619,9 @@ func TestRefreshDivisionMistakeIndex(t *testing.T) {
 }
 
 // TestPerfectGameReadsBackAsAnalyzed covers a mistake index of 0 -- a perfect
-// game. protojson drops a field holding its zero value, so the stored result
-// has no mistakeIndex key at all, and reading presence off that key reported
-// the game as unanalyzed: the game history modal showed "-" and the season
-// recalculation dropped the game from both players' analyzed counts.
+// game. It must read back as analyzed with index 0, not as unanalyzed:
+// earlier, reading it out of protojson (which drops zero values) showed "-" in
+// the game history modal and dropped the game from the season recalculation.
 func TestPerfectGameReadsBackAsAnalyzed(t *testing.T) {
 	is := is.New(t)
 	ctx := context.Background()
@@ -738,21 +638,13 @@ func TestPerfectGameReadsBackAsAnalyzed(t *testing.T) {
 	insertLeagueGame(t, ctx, pool, leagueID, seasonID, divisionID,
 		now.Add(-2*time.Hour), 400, 380)
 
-	resultJSON := completeAnalysis(t, ctx, queries, analyzed, &macondopb.GameAnalysisResult{
+	completeAnalysis(t, ctx, queries, analyzed, &macondopb.GameAnalysisResult{
 		AnalysisVersion: 2,
 		PlayerSummaries: []*macondopb.PlayerSummary{
 			{PlayerName: "testuser1", MistakeIndex: 0},
 			{PlayerName: "testuser2", MistakeIndex: 2.2},
 		},
 	})
-
-	// The premise: the perfect player's summary carries no mistakeIndex key.
-	var stored struct {
-		PlayerSummaries []map[string]any `json:"playerSummaries"`
-	}
-	is.NoErr(json.Unmarshal(resultJSON, &stored))
-	_, present := stored.PlayerSummaries[0]["mistakeIndex"]
-	is.True(!present)
 
 	seasonUUID := pgtype.UUID{Bytes: seasonID, Valid: true}
 	// The perfect game is analyzed, and its index is 0 rather than missing.
