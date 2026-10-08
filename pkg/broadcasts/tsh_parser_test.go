@@ -114,6 +114,44 @@ func TestExtractNewtJSON(t *testing.T) {
 	}
 }
 
+func TestTSHNewtParser_ControlCharsInStrings(t *testing.T) {
+	// TSH emits a JS literal, which may contain a raw tab inside a string;
+	// a player literally named "undefined" must also survive.
+	feed := "newt={\"divisions\":[{\"name\":\"A\",\"maxr\":0,\"players\":[null," +
+		"{\"id\":1,\"name\":\"Shreve,\tJon\",\"newr\":undefined,\"pairings\":[2],\"scores\":[]}," +
+		"{\"id\":2,\"name\":\"undefined\",\"pairings\":[1],\"scores\":[]}]}]};"
+	p := &TSHNewtParser{}
+	fd, err := p.Parse([]byte(feed))
+	if err != nil {
+		t.Fatalf("Parse() error = %v", err)
+	}
+	if got := findPlayer(fd.Players, 1).Name; got != "Shreve, Jon" {
+		t.Errorf("player 1 name = %q, want %q", got, "Shreve, Jon")
+	}
+	if got := findPlayer(fd.Players, 2).Name; got != "undefined" {
+		t.Errorf("player 2 name = %q, want %q", got, "undefined")
+	}
+}
+
+func TestNormalizePlayerName(t *testing.T) {
+	tests := map[string]string{
+		"Shreve, Jon":        "Shreve, Jon",
+		"Shreve,Jon":         "Shreve, Jon",
+		"Shreve,\tJon":       "Shreve, Jon",
+		"Shreve ,  Jon":      "Shreve, Jon",
+		"  Shreve, Jon \t":   "Shreve, Jon",
+		"Van  Der Berg, Ann": "Van Der Berg, Ann",
+		"Smith,":             "Smith,",
+		"Alice":              "Alice",
+		"":                   "",
+	}
+	for in, want := range tests {
+		if got := normalizePlayerName(in); got != want {
+			t.Errorf("normalizePlayerName(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
 func TestTSHNewtParser_Parse(t *testing.T) {
 	p := &TSHNewtParser{}
 	fd, err := p.Parse([]byte(minimalTSHFeed))
