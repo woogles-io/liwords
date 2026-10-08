@@ -316,10 +316,13 @@ func TestUploadAndClearResults(t *testing.T) {
 		is.Equal(job.ResultS3Key.Valid, i != 2)
 	}
 
-	// Re-running finds nothing left to upload.
+	// Re-running uploads nothing more: only the zero-turn job is still
+	// without a key, and it is skipped again.
 	stats, err = analysis.UploadResults(ctx, queries, store, opts)
 	is.NoErr(err)
-	is.Equal(stats.Processed, int64(0))
+	is.Equal(stats.Done, int64(0))
+	is.Equal(stats.Skipped, int64(1))
+	is.Equal(len(store.Keys()), 3)
 
 	// A corrupted object must not let its job's column copy go.
 	job1, err := queries.GetJobByGameID(ctx, games[1])

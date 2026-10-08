@@ -265,18 +265,27 @@ WHERE aj.id IN (
     FOR UPDATE SKIP LOCKED
 );
 
--- name: ListAnalysisResultsToUpload :many
--- Jobs whose result is still only in the result column, in id order after
--- @after, for cmd/backfill-analysis-s3. Zero-turn results have nothing worth
--- an object and are skipped.
-SELECT id, game_id, result
+-- name: ListAnalysisJobsToUpload :many
+-- Ids of jobs whose result is still only in the result column, in id order
+-- after @after, for cmd/backfill-analysis-s3. Reads only the partial index:
+-- filtering on the result itself here made Postgres detoast every remaining
+-- result for each batch.
+SELECT id
 FROM analysis_jobs
 WHERE result_s3_key IS NULL
   AND result IS NOT NULL
   AND id > sqlc.arg(after)::uuid
-  AND jsonb_array_length(COALESCE(result->'turns', '[]'::jsonb)) > 0
 ORDER BY id
 LIMIT sqlc.arg(batch_size)::INT;
+
+-- name: GetAnalysisResultsToUpload :many
+-- The results of the jobs ListAnalysisJobsToUpload returned, still without a key.
+SELECT id, game_id, result
+FROM analysis_jobs
+WHERE id = ANY(sqlc.arg(ids)::uuid[])
+  AND result_s3_key IS NULL
+  AND result IS NOT NULL
+ORDER BY id;
 
 -- name: SetAnalysisResultS3Key :execrows
 -- Records an uploaded object for a job that has none yet. 0 rows means a

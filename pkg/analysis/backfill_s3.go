@@ -98,23 +98,57 @@ func runBatches[R any](ctx context.Context, opts BackfillOptions,
 	}
 }
 
+// uploadRow is a listed job id and, unless it was keyed since, its result.
+type uploadRow struct {
+	id  uuid.UUID
+	row models.GetAnalysisResultsToUploadRow
+}
+
 // UploadResults copies results still held only in the result column into the
 // store and records their keys. The result column is left alone; see
 // ClearUploadedResults. Safe to stop and re-run.
 func UploadResults(ctx context.Context, queries *models.Queries, store ResultStore, opts BackfillOptions) (BackfillStats, error) {
 	return runBatches(ctx, opts,
-		func(ctx context.Context, after uuid.UUID, limit int32) ([]models.ListAnalysisResultsToUploadRow, error) {
-			return queries.ListAnalysisResultsToUpload(ctx, models.ListAnalysisResultsToUploadParams{
+		func(ctx context.Context, after uuid.UUID, limit int32) ([]uploadRow, error) {
+			// Ids first (index only), then just those results: one query
+			// filtering on the results scanned all of them every batch.
+			ids, err := queries.ListAnalysisJobsToUpload(ctx, models.ListAnalysisJobsToUploadParams{
 				After: after, BatchSize: limit,
 			})
+			if err != nil || len(ids) == 0 {
+				return nil, err
+			}
+			rows, err := queries.GetAnalysisResultsToUpload(ctx, ids)
+			if err != nil {
+				return nil, err
+			}
+			// A job keyed meanwhile drops out; keep the cursor moving past it.
+			out := make([]uploadRow, 0, len(ids))
+			byID := make(map[uuid.UUID]models.GetAnalysisResultsToUploadRow, len(rows))
+			for _, r := range rows {
+				byID[r.ID] = r
+			}
+			for _, id := range ids {
+				out = append(out, uploadRow{id: id, row: byID[id]})
+			}
+			return out, nil
 		},
-		func(r models.ListAnalysisResultsToUploadRow) uuid.UUID { return r.ID },
-		func(ctx context.Context, row models.ListAnalysisResultsToUploadRow, c *backfillCounters) {
+		func(r uploadRow) uuid.UUID { return r.id },
+		func(ctx context.Context, u uploadRow, c *backfillCounters) {
+			row := u.row
+			if len(row.Result) == 0 {
+				c.skipped.Add(1) // stored by a reanalysis since it was listed
+				return
+			}
 			l := log.With().Str("job_id", row.ID.String()).Str("game_id", row.GameID).Logger()
 			result, err := unmarshalResult(row.Result)
 			if err != nil {
 				l.Error().Err(err).Msg("backfill-upload: stored result unreadable")
 				c.failed.Add(1)
+				return
+			}
+			if len(result.GetTurns()) == 0 {
+				c.skipped.Add(1) // zero-turn: nothing worth an object
 				return
 			}
 			if opts.DryRun {

@@ -323,6 +323,42 @@ func (q *Queries) GetAnalysisLeaderboard(ctx context.Context, limit int32) ([]Ge
 	return items, nil
 }
 
+const getAnalysisResultsToUpload = `-- name: GetAnalysisResultsToUpload :many
+SELECT id, game_id, result
+FROM analysis_jobs
+WHERE id = ANY($1::uuid[])
+  AND result_s3_key IS NULL
+  AND result IS NOT NULL
+ORDER BY id
+`
+
+type GetAnalysisResultsToUploadRow struct {
+	ID     uuid.UUID
+	GameID string
+	Result []byte
+}
+
+// The results of the jobs ListAnalysisJobsToUpload returned, still without a key.
+func (q *Queries) GetAnalysisResultsToUpload(ctx context.Context, ids []uuid.UUID) ([]GetAnalysisResultsToUploadRow, error) {
+	rows, err := q.db.Query(ctx, getAnalysisResultsToUpload, ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetAnalysisResultsToUploadRow
+	for rows.Next() {
+		var i GetAnalysisResultsToUploadRow
+		if err := rows.Scan(&i.ID, &i.GameID, &i.Result); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getAnalyzedGameIds = `-- name: GetAnalyzedGameIds :many
 SELECT game_id
 FROM analysis_jobs
@@ -581,6 +617,45 @@ func (q *Queries) GetUserRequestCountToday(ctx context.Context, userUuid string)
 	return request_count, err
 }
 
+const listAnalysisJobsToUpload = `-- name: ListAnalysisJobsToUpload :many
+SELECT id
+FROM analysis_jobs
+WHERE result_s3_key IS NULL
+  AND result IS NOT NULL
+  AND id > $1::uuid
+ORDER BY id
+LIMIT $2::INT
+`
+
+type ListAnalysisJobsToUploadParams struct {
+	After     uuid.UUID
+	BatchSize int32
+}
+
+// Ids of jobs whose result is still only in the result column, in id order
+// after @after, for cmd/backfill-analysis-s3. Reads only the partial index:
+// filtering on the result itself here made Postgres detoast every remaining
+// result for each batch.
+func (q *Queries) ListAnalysisJobsToUpload(ctx context.Context, arg ListAnalysisJobsToUploadParams) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, listAnalysisJobsToUpload, arg.After, arg.BatchSize)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listAnalysisResultsToClear = `-- name: ListAnalysisResultsToClear :many
 SELECT id, game_id, result, result_s3_key
 FROM analysis_jobs
@@ -621,51 +696,6 @@ func (q *Queries) ListAnalysisResultsToClear(ctx context.Context, arg ListAnalys
 			&i.Result,
 			&i.ResultS3Key,
 		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listAnalysisResultsToUpload = `-- name: ListAnalysisResultsToUpload :many
-SELECT id, game_id, result
-FROM analysis_jobs
-WHERE result_s3_key IS NULL
-  AND result IS NOT NULL
-  AND id > $1::uuid
-  AND jsonb_array_length(COALESCE(result->'turns', '[]'::jsonb)) > 0
-ORDER BY id
-LIMIT $2::INT
-`
-
-type ListAnalysisResultsToUploadParams struct {
-	After     uuid.UUID
-	BatchSize int32
-}
-
-type ListAnalysisResultsToUploadRow struct {
-	ID     uuid.UUID
-	GameID string
-	Result []byte
-}
-
-// Jobs whose result is still only in the result column, in id order after
-// @after, for cmd/backfill-analysis-s3. Zero-turn results have nothing worth
-// an object and are skipped.
-func (q *Queries) ListAnalysisResultsToUpload(ctx context.Context, arg ListAnalysisResultsToUploadParams) ([]ListAnalysisResultsToUploadRow, error) {
-	rows, err := q.db.Query(ctx, listAnalysisResultsToUpload, arg.After, arg.BatchSize)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []ListAnalysisResultsToUploadRow
-	for rows.Next() {
-		var i ListAnalysisResultsToUploadRow
-		if err := rows.Scan(&i.ID, &i.GameID, &i.Result); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
