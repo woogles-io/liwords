@@ -3,12 +3,12 @@ import oppmoveSound from "../assets/oppmove.mp3";
 import matchreqSound from "../assets/matchreq.mp3";
 import startgameSound from "../assets/startgame.mp3";
 import endgameSound from "../assets/endgame.mp3";
-import woofSound from "../assets/woof.wav";
+import woofSound from "../assets/woof.mp3";
 import eagleScreechSound from "../assets/eagle-screech.mp3";
 import meowSound from "../assets/meow.mp3";
 import receivechatSound from "../assets/receivechat.mp3";
 import newtourneyroundSound from "../assets/newtourneyround.mp3";
-import wolgesSound from "../assets/wolges.wav";
+import wolgesSound from "../assets/wolges.mp3";
 import abortnudgeSound from "../assets/abortnudge.mp3";
 import newpuzzleSound from "../assets/newpuzzle.mp3";
 import puzzlecorrectSound from "../assets/puzzlecorrect-acoustic-fast.mp3";
@@ -96,9 +96,12 @@ class Booper {
     readonly soundName: string,
     private readonly src: string,
   ) {
-    this.audio = new Audio(src);
-    // Preload so the buffer is ready before it's needed.
-    this.audio.load();
+    // No src yet: the real file is fetched in unlockWithSilence, on the first
+    // user gesture. Nothing can play before then anyway, and preloading here
+    // made every cold page load (crawlers included) download all fifteen
+    // sounds, about a third of our CloudFront bytes.
+    this.audio = new Audio();
+    this.audio.preload = "auto";
   }
 
   // Must be called from within a user gesture event handler.
@@ -128,8 +131,9 @@ class Booper {
     } catch {
       // Autoplay still blocked — will retry on the next gesture.
     } finally {
-      // Point the element back at its real sound whether or not the unlock
-      // worked; the browser will normally serve it from cache.
+      // Point the element at its real sound whether or not the unlock worked.
+      // This is where the file is first downloaded; later calls are served
+      // from cache.
       audio.src = this.src;
       audio.load();
     }
