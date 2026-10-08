@@ -449,9 +449,12 @@ func (p *TSHNewtParser) ParseDivision(data []byte, divisionName string) (*FeedDa
 
 // extractNewtJSON strips the `newt=...;` JS wrapper and returns valid JSON bytes.
 // Handles both `newt={...};` and `var newt={...};` forms.
-// Also replaces JS `undefined` literals with `null`.
+// The payload is a JS literal rather than strict JSON, so it is also
+// normalised: `undefined` becomes `null`, and raw control characters inside
+// strings (JS allows a literal tab there, e.g. "Last,<TAB>First" from a
+// mistyped .t file; JSON does not) become spaces.
 // If the data has no `newt=` prefix it is assumed to already be extracted JSON
-// and is returned as-is (after the undefined→null replacement).
+// and is returned as-is (after normalisation).
 func extractNewtJSON(data []byte) ([]byte, error) {
 	s := string(data)
 
@@ -460,8 +463,38 @@ func extractNewtJSON(data []byte) ([]byte, error) {
 		s = strings.TrimRight(s, " \t\r\n;")
 	}
 
-	// Replace JS undefined with null
-	s = strings.ReplaceAll(s, "undefined", "null")
+	return jsLiteralToJSON(s), nil
+}
 
-	return []byte(s), nil
+// jsLiteralToJSON rewrites the JS-isms TSH emits into valid JSON. It tracks
+// whether it is inside a string so that a player named "undefined" is left
+// alone.
+func jsLiteralToJSON(s string) []byte {
+	const undef = "undefined"
+	out := make([]byte, 0, len(s))
+	inString, escaped := false, false
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		switch {
+		case inString:
+			switch {
+			case escaped:
+				escaped = false
+			case c == '\\':
+				escaped = true
+			case c == '"':
+				inString = false
+			case c < 0x20:
+				c = ' '
+			}
+		case c == '"':
+			inString = true
+		case strings.HasPrefix(s[i:], undef):
+			out = append(out, "null"...)
+			i += len(undef) - 1
+			continue
+		}
+		out = append(out, c)
+	}
+	return out
 }

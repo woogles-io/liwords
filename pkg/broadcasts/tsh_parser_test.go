@@ -114,6 +114,25 @@ func TestExtractNewtJSON(t *testing.T) {
 	}
 }
 
+func TestTSHNewtParser_ControlCharsInStrings(t *testing.T) {
+	// TSH emits a JS literal, which may contain a raw tab inside a string;
+	// a player literally named "undefined" must also survive.
+	feed := "newt={\"divisions\":[{\"name\":\"A\",\"maxr\":0,\"players\":[null," +
+		"{\"id\":1,\"name\":\"Shreve,\tJon\",\"newr\":undefined,\"pairings\":[2],\"scores\":[]}," +
+		"{\"id\":2,\"name\":\"undefined\",\"pairings\":[1],\"scores\":[]}]}]};"
+	p := &TSHNewtParser{}
+	fd, err := p.Parse([]byte(feed))
+	if err != nil {
+		t.Fatalf("Parse() error = %v", err)
+	}
+	if got := findPlayer(fd.Players, 1).Name; got != "Shreve, Jon" {
+		t.Errorf("player 1 name = %q, want %q", got, "Shreve, Jon")
+	}
+	if got := findPlayer(fd.Players, 2).Name; got != "undefined" {
+		t.Errorf("player 2 name = %q, want %q", got, "undefined")
+	}
+}
+
 func TestTSHNewtParser_Parse(t *testing.T) {
 	p := &TSHNewtParser{}
 	fd, err := p.Parse([]byte(minimalTSHFeed))
