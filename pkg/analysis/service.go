@@ -279,10 +279,14 @@ func (s *AnalysisService) SubmitResult(
 
 	// Store result
 	userUUID := pgtype.Text{String: user.UUID, Valid: true}
+	mi0, mi1, version := SummaryColumns(result)
 	completedJob, err := s.queries.CompleteJob(ctx, models.CompleteJobParams{
-		Result:            resultProto,
-		ID:                jobID,
-		ClaimedByUserUuid: userUUID,
+		Result:              resultProto,
+		Player0MistakeIndex: mi0,
+		Player1MistakeIndex: mi1,
+		AnalysisVersion:     version,
+		ID:                  jobID,
+		ClaimedByUserUuid:   userUUID,
 	})
 
 	if err != nil {
@@ -366,6 +370,37 @@ func refreshLeagueMistakeIndex(ctx context.Context, queries *models.Queries, gam
 		Str("game_id", gameID).
 		Str("division_id", divisionID.String()).
 		Msg("refreshed league standings mistake index")
+}
+
+// SummaryColumns returns the analysis_jobs summary columns for result: each
+// player's mistake index (NULL when that player has no summary, as in a
+// zero-turn game) and the analysis version.
+func SummaryColumns(result *macondo.GameAnalysisResult) (mi0, mi1 pgtype.Float8, version pgtype.Int4) {
+	summaries := result.GetPlayerSummaries()
+	if len(summaries) > 0 && summaries[0] != nil {
+		mi0 = pgtype.Float8{Float64: summaries[0].GetMistakeIndex(), Valid: true}
+	}
+	if len(summaries) > 1 && summaries[1] != nil {
+		mi1 = pgtype.Float8{Float64: summaries[1].GetMistakeIndex(), Valid: true}
+	}
+	return mi0, mi1, pgtype.Int4{Int32: result.GetAnalysisVersion(), Valid: true}
+}
+
+// storedAnalysisVersion reads a job's analysis version from its column, falling
+// back to the stored result for jobs from before the column was backfilled.
+// TODO: drop the fallback once cmd/backfill-analysis-columns has run.
+func storedAnalysisVersion(column pgtype.Int4, result []byte) int32 {
+	if column.Valid {
+		return column.Int32
+	}
+	if len(result) == 0 {
+		return 0
+	}
+	var partial struct {
+		AnalysisVersion int32 `json:"analysisVersion"`
+	}
+	_ = json.Unmarshal(result, &partial)
+	return partial.AnalysisVersion
 }
 
 const maxFailJobErrorLen = 1024
@@ -508,13 +543,7 @@ func (s *AnalysisService) RequestAnalysis(
 				Msg("re-requesting analysis for previously failed job")
 		} else if req.Msg.Force && existingJob.Status == "completed" {
 			// Force re-analysis only allowed for legacy (v0) results
-			var partial struct {
-				AnalysisVersion int32 `json:"analysisVersion"`
-			}
-			if len(existingJob.Result) > 0 {
-				_ = json.Unmarshal(existingJob.Result, &partial)
-			}
-			if partial.AnalysisVersion >= 2 {
+			if storedAnalysisVersion(existingJob.AnalysisVersion, existingJob.Result) >= 2 {
 				return connect.NewResponse(&pb.RequestAnalysisResponse{
 					Status:  pb.RequestAnalysisResponse_ALREADY_REQUESTED,
 					Message: "Analysis is already up to date",
@@ -700,16 +729,9 @@ func (s *AnalysisService) GetAnalysisStatus(
 		errorMsg = job.ErrorMessage.String
 	}
 
-	// Extract analysis_version from the stored result JSONB for completed jobs.
-	// We only need one field so parse minimally to avoid full unmarshal overhead.
 	var analysisVersion int32
-	if job.Status == "completed" && len(job.Result) > 0 {
-		var partial struct {
-			AnalysisVersion int32 `json:"analysisVersion"`
-		}
-		if err := json.Unmarshal(job.Result, &partial); err == nil {
-			analysisVersion = partial.AnalysisVersion
-		}
+	if job.Status == "completed" {
+		analysisVersion = storedAnalysisVersion(job.AnalysisVersion, job.Result)
 	}
 
 	return connect.NewResponse(&pb.GetAnalysisStatusResponse{

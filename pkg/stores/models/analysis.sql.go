@@ -12,6 +12,33 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const backfillAnalysisSummaryColumns = `-- name: BackfillAnalysisSummaryColumns :execrows
+UPDATE analysis_jobs aj
+SET player0_mistake_index = CASE WHEN aj.result->'playerSummaries'->0 IS NOT NULL
+        THEN COALESCE(aj.result->'playerSummaries'->0->>'mistakeIndex', '0')::DOUBLE PRECISION END,
+    player1_mistake_index = CASE WHEN aj.result->'playerSummaries'->1 IS NOT NULL
+        THEN COALESCE(aj.result->'playerSummaries'->1->>'mistakeIndex', '0')::DOUBLE PRECISION END,
+    analysis_version = COALESCE(aj.result->>'analysisVersion', '0')::INT
+WHERE aj.id IN (
+    SELECT id FROM analysis_jobs
+    WHERE result IS NOT NULL AND analysis_version IS NULL
+    LIMIT $1::INT
+    FOR UPDATE SKIP LOCKED
+)
+`
+
+// Copies the summary fields out of the stored result for up to $1 jobs that
+// have a result but no columns yet. protojson drops zero values, so a missing
+// mistakeIndex inside a present summary is 0 and a missing analysisVersion is
+// 0 (v0). Returns the number of jobs updated; 0 means done.
+func (q *Queries) BackfillAnalysisSummaryColumns(ctx context.Context, batchSize int32) (int64, error) {
+	result, err := q.db.Exec(ctx, backfillAnalysisSummaryColumns, batchSize)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const checkExistingUserRequest = `-- name: CheckExistingUserRequest :one
 SELECT job_id
 FROM user_analysis_requests
@@ -69,15 +96,22 @@ UPDATE analysis_jobs
 SET
     status = 'completed',
     result = $1,
+    player0_mistake_index = $2,
+    player1_mistake_index = $3,
+    analysis_version = $4,
     completed_at = NOW()
-WHERE id = $2 AND claimed_by_user_uuid = $3 AND status IN ('claimed', 'processing')
+WHERE id = $5 AND claimed_by_user_uuid = $6
+  AND status IN ('claimed', 'processing')
 RETURNING game_id, requested_by_user_uuid, EXTRACT(EPOCH FROM (NOW() - claimed_at))::BIGINT * 1000 as duration_ms
 `
 
 type CompleteJobParams struct {
-	Result            []byte
-	ID                uuid.UUID
-	ClaimedByUserUuid pgtype.Text
+	Result              []byte
+	Player0MistakeIndex pgtype.Float8
+	Player1MistakeIndex pgtype.Float8
+	AnalysisVersion     pgtype.Int4
+	ID                  uuid.UUID
+	ClaimedByUserUuid   pgtype.Text
 }
 
 type CompleteJobRow struct {
@@ -86,9 +120,18 @@ type CompleteJobRow struct {
 	DurationMs          int32
 }
 
-// Marks job as completed and returns game_id and processing duration
+// Marks job as completed and returns game_id and processing duration.
+// The summary columns are copied from the result by the caller; see the
+// 202610070001 migration for what NULL means in each.
 func (q *Queries) CompleteJob(ctx context.Context, arg CompleteJobParams) (CompleteJobRow, error) {
-	row := q.db.QueryRow(ctx, completeJob, arg.Result, arg.ID, arg.ClaimedByUserUuid)
+	row := q.db.QueryRow(ctx, completeJob,
+		arg.Result,
+		arg.Player0MistakeIndex,
+		arg.Player1MistakeIndex,
+		arg.AnalysisVersion,
+		arg.ID,
+		arg.ClaimedByUserUuid,
+	)
 	var i CompleteJobRow
 	err := row.Scan(&i.GameID, &i.RequestedByUserUuid, &i.DurationMs)
 	return i, err
@@ -399,7 +442,7 @@ func (q *Queries) GetContributorsLeaderboard(ctx context.Context, limit int32) (
 const getJobByGameID = `-- name: GetJobByGameID :one
 SELECT
     aj.id, aj.game_id, aj.status, aj.config_json, aj.result, aj.error_message,
-    aj.completed_at, aj.created_at, aj.claimed_at,
+    aj.completed_at, aj.created_at, aj.claimed_at, aj.analysis_version,
     COALESCE(u.username, '') as analyzed_by_username
 FROM analysis_jobs aj
 LEFT JOIN users u ON u.uuid = aj.claimed_by_user_uuid
@@ -418,6 +461,7 @@ type GetJobByGameIDRow struct {
 	CompletedAt        pgtype.Timestamptz
 	CreatedAt          pgtype.Timestamptz
 	ClaimedAt          pgtype.Timestamptz
+	AnalysisVersion    pgtype.Int4
 	AnalyzedByUsername string
 }
 
@@ -437,6 +481,7 @@ func (q *Queries) GetJobByGameID(ctx context.Context, gameID string) (GetJobByGa
 		&i.CompletedAt,
 		&i.CreatedAt,
 		&i.ClaimedAt,
+		&i.AnalysisVersion,
 		&i.AnalyzedByUsername,
 	)
 	return i, err
