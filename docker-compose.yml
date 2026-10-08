@@ -29,6 +29,7 @@ services:
       AVATAR_UPLOAD_BUCKET: woogles-uploads
       IDENTITY_VERIFICATION_UPLOAD_BUCKET: woogles-verifications
       GAMEHISTORY_UPLOAD_BUCKET: woogles-gamehistories
+      ANALYSIS_UPLOAD_BUCKET: woogles-analyses
       USE_MINIO_S3: 1
       MINIO_S3_ENDPOINT: http://minio:9000
       DB_MIGRATIONS_PATH: file:///opt/program/db/migrations
@@ -232,6 +233,7 @@ services:
       /usr/bin/mc anonymous set public myminio/woogles-uploads;
       /usr/bin/mc mb myminio/woogles-verifications --ignore-existing;
       /usr/bin/mc mb myminio/woogles-gamehistories --ignore-existing;
+      /usr/bin/mc mb myminio/woogles-analyses --ignore-existing;
       exit 0;
       "
     networks:

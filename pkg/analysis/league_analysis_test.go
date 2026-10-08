@@ -39,6 +39,12 @@ func setupTestDB(t *testing.T) (*pgxpool.Pool, *models.Queries) {
 	return pool, queries
 }
 
+// anyClaims claims for worker with no practical cap on active claims, for
+// tests that aren't about that cap.
+func anyClaims(worker pgtype.Text) models.ClaimNextJobParams {
+	return models.ClaimNextJobParams{Worker: worker, MaxActive: 1000}
+}
+
 func createTestUsers(t *testing.T, pool *pgxpool.Pool) {
 	ustore, err := user.NewDBStore(pool)
 	if err != nil {
@@ -170,15 +176,15 @@ func TestEnqueueWithPriority(t *testing.T) {
 	// Claim jobs and verify they come out in priority order
 	testUserUUID := pgtype.Text{String: "test-uuid-1", Valid: true}
 
-	job1, err := queries.ClaimNextJob(ctx, testUserUUID)
+	job1, err := queries.ClaimNextJob(ctx, anyClaims(testUserUUID))
 	is.NoErr(err)
 	is.Equal(job1.GameID, game2) // Highest priority first
 
-	job2, err := queries.ClaimNextJob(ctx, testUserUUID)
+	job2, err := queries.ClaimNextJob(ctx, anyClaims(testUserUUID))
 	is.NoErr(err)
 	is.Equal(job2.GameID, game3) // Medium priority second
 
-	job3, err := queries.ClaimNextJob(ctx, testUserUUID)
+	job3, err := queries.ClaimNextJob(ctx, anyClaims(testUserUUID))
 	is.NoErr(err)
 	is.Equal(job3.GameID, game1) // Lowest priority last
 }
@@ -200,7 +206,7 @@ func TestClaimNextJob(t *testing.T) {
 
 	// Claim the job
 	testUserUUID := pgtype.Text{String: "test-uuid-1", Valid: true}
-	job, err := queries.ClaimNextJob(ctx, testUserUUID)
+	job, err := queries.ClaimNextJob(ctx, anyClaims(testUserUUID))
 	is.NoErr(err)
 	is.Equal(job.GameID, gameID)
 
@@ -210,7 +216,7 @@ func TestClaimNextJob(t *testing.T) {
 	is.Equal(jobStatus.Status, "claimed")
 
 	// Try to claim another job - should get error (no jobs available)
-	_, err = queries.ClaimNextJob(ctx, testUserUUID)
+	_, err = queries.ClaimNextJob(ctx, anyClaims(testUserUUID))
 	is.True(err != nil) // Should be no jobs available
 }
 
@@ -230,7 +236,7 @@ func TestHeartbeat(t *testing.T) {
 	is.NoErr(err)
 
 	testUserUUID := pgtype.Text{String: "test-uuid-1", Valid: true}
-	job, err := queries.ClaimNextJob(ctx, testUserUUID)
+	job, err := queries.ClaimNextJob(ctx, anyClaims(testUserUUID))
 	is.NoErr(err)
 
 	// Update heartbeat
@@ -273,7 +279,7 @@ func TestCompleteJob(t *testing.T) {
 	is.NoErr(err)
 
 	testUserUUID := pgtype.Text{String: "test-uuid-1", Valid: true}
-	job, err := queries.ClaimNextJob(ctx, testUserUUID)
+	job, err := queries.ClaimNextJob(ctx, anyClaims(testUserUUID))
 	is.NoErr(err)
 
 	// Complete the job with mock result
@@ -310,7 +316,7 @@ func TestReclaimStaleJobs(t *testing.T) {
 	is.NoErr(err)
 
 	testUserUUID := pgtype.Text{String: "test-uuid-1", Valid: true}
-	job, err := queries.ClaimNextJob(ctx, testUserUUID)
+	job, err := queries.ClaimNextJob(ctx, anyClaims(testUserUUID))
 	is.NoErr(err)
 
 	// Manually set heartbeat to 3 minutes ago (past the 2 minute timeout)
@@ -353,7 +359,7 @@ func TestMaxRetries(t *testing.T) {
 	is.NoErr(err)
 
 	testUserUUID := pgtype.Text{String: "test-uuid-1", Valid: true}
-	job, err := queries.ClaimNextJob(ctx, testUserUUID)
+	job, err := queries.ClaimNextJob(ctx, anyClaims(testUserUUID))
 	is.NoErr(err)
 
 	// Set retry count to max (3) and make it stale
@@ -495,7 +501,7 @@ func claimAndCompleteWith(t *testing.T, ctx context.Context, queries *models.Que
 	is := is.New(t)
 
 	workerUUID := pgtype.Text{String: "test-uuid-3", Valid: true}
-	job, err := queries.ClaimNextJob(ctx, workerUUID)
+	job, err := queries.ClaimNextJob(ctx, anyClaims(workerUUID))
 	is.NoErr(err)
 
 	resultJSON, err := protojson.Marshal(result)
