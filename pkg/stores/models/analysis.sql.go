@@ -74,8 +74,19 @@ WHERE id = (
     LIMIT 1
     FOR UPDATE SKIP LOCKED
 )
+AND (
+    SELECT COUNT(*)
+    FROM analysis_jobs
+    WHERE claimed_by_user_uuid = $1
+      AND status IN ('claimed', 'processing')
+) < $2::INT
 RETURNING id, game_id, config_json
 `
+
+type ClaimNextJobParams struct {
+	Worker    pgtype.Text
+	MaxActive int32
+}
 
 type ClaimNextJobRow struct {
 	ID         uuid.UUID
@@ -83,9 +94,13 @@ type ClaimNextJobRow struct {
 	ConfigJson []byte
 }
 
-// Claims the next available job atomically using FOR UPDATE SKIP LOCKED
-func (q *Queries) ClaimNextJob(ctx context.Context, claimedByUserUuid pgtype.Text) (ClaimNextJobRow, error) {
-	row := q.db.QueryRow(ctx, claimNextJob, claimedByUserUuid)
+// Claims the next available job atomically using FOR UPDATE SKIP LOCKED.
+// A worker already holding @max_active jobs gets none, so one account can't
+// claim the whole queue and let it time out into failure. Two simultaneous
+// claims by the same worker can each see the old count; overshooting by one
+// is harmless.
+func (q *Queries) ClaimNextJob(ctx context.Context, arg ClaimNextJobParams) (ClaimNextJobRow, error) {
+	row := q.db.QueryRow(ctx, claimNextJob, arg.Worker, arg.MaxActive)
 	var i ClaimNextJobRow
 	err := row.Scan(&i.ID, &i.GameID, &i.ConfigJson)
 	return i, err

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 	"time"
 
@@ -35,6 +36,16 @@ import (
 const MinMacondoVersion = "v0.13.8"
 
 const (
+	// maxActiveClaimsPerWorker caps how many jobs one worker holds at once.
+	// The macondo worker runs one job at a time; the slack covers a restart
+	// while its previous claim is still waiting to be reclaimed.
+	maxActiveClaimsPerWorker = 2
+	// MaxSubmitResultBytes caps a SubmitResult request. The largest real
+	// result is ~1.2 MB of JSON; the cap is applied to the queue service in
+	// cmd/liwords-api.
+	MaxSubmitResultBytes = 4 << 20
+	// maxResultTurns bounds a submitted result; real games top out near 320.
+	maxResultTurns              = 500
 	dailyAnalysisLimitRegular   = int64(15)
 	dailyAnalysisLimitVolunteer = int64(30)
 )
@@ -153,9 +164,13 @@ func (s *AnalysisService) ClaimJob(
 
 	// Claim next job
 	userUUID := pgtype.Text{String: user.UUID, Valid: true}
-	job, err := s.queries.ClaimNextJob(ctx, userUUID)
+	job, err := s.queries.ClaimNextJob(ctx, models.ClaimNextJobParams{
+		Worker:    userUUID,
+		MaxActive: maxActiveClaimsPerWorker,
+	})
 	if err != nil {
-		// No jobs available (or other error - treat as no jobs)
+		// No jobs available, this worker already holds its limit, or another
+		// error - treat as no jobs
 		return connect.NewResponse(&pb.ClaimJobResponse{
 			NoJobs: true,
 		}), nil
@@ -291,6 +306,13 @@ func (s *AnalysisService) SubmitResult(
 		}), nil
 	}
 
+	if err := checkResultBounds(result); err != nil {
+		return connect.NewResponse(&pb.SubmitResultResponse{
+			Accepted: false,
+			Error:    err.Error(),
+		}), nil
+	}
+
 	// Store the result: in the result store when there is one (a zero-turn
 	// result has nothing worth an object), otherwise in the result column.
 	var resultJSON []byte
@@ -418,6 +440,29 @@ func refreshLeagueMistakeIndex(ctx context.Context, queries *models.Queries, gam
 		Str("game_id", gameID).
 		Str("division_id", divisionID.String()).
 		Msg("refreshed league standings mistake index")
+}
+
+// checkResultBounds rejects results no real analysis could produce. macondo
+// analyzes at most one turn per game event, and each turn adds at most 1.0 to
+// its player's mistake index (Small 0.2, Medium 0.5, Large 1.0), so a mistake
+// index lies between 0 and the number of turns.
+func checkResultBounds(result *macondo.GameAnalysisResult) error {
+	turns := result.GetTurns()
+	if len(turns) > maxResultTurns {
+		return fmt.Errorf("result has %d turns; at most %d allowed", len(turns), maxResultTurns)
+	}
+	for _, t := range turns {
+		if t.GetPlayerIndex() != 0 && t.GetPlayerIndex() != 1 {
+			return fmt.Errorf("turn %d has invalid player index %d", t.GetTurnNumber(), t.GetPlayerIndex())
+		}
+	}
+	for i, ps := range result.GetPlayerSummaries() {
+		mi := ps.GetMistakeIndex()
+		if math.IsNaN(mi) || mi < 0 || mi > float64(len(turns)) {
+			return fmt.Errorf("player %d mistake index %v is out of range", i, mi)
+		}
+	}
+	return nil
 }
 
 // SummaryColumns returns the analysis_jobs summary columns for result: each

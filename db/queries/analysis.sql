@@ -1,9 +1,13 @@
 -- name: ClaimNextJob :one
--- Claims the next available job atomically using FOR UPDATE SKIP LOCKED
+-- Claims the next available job atomically using FOR UPDATE SKIP LOCKED.
+-- A worker already holding @max_active jobs gets none, so one account can't
+-- claim the whole queue and let it time out into failure. Two simultaneous
+-- claims by the same worker can each see the old count; overshooting by one
+-- is harmless.
 UPDATE analysis_jobs
 SET
     status = 'claimed',
-    claimed_by_user_uuid = $1,
+    claimed_by_user_uuid = sqlc.arg(worker),
     claimed_at = NOW(),
     heartbeat_at = NOW()
 WHERE id = (
@@ -14,6 +18,12 @@ WHERE id = (
     LIMIT 1
     FOR UPDATE SKIP LOCKED
 )
+AND (
+    SELECT COUNT(*)
+    FROM analysis_jobs
+    WHERE claimed_by_user_uuid = sqlc.arg(worker)
+      AND status IN ('claimed', 'processing')
+) < sqlc.arg(max_active)::INT
 RETURNING id, game_id, config_json;
 
 -- name: UpdateHeartbeat :exec

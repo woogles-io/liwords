@@ -426,7 +426,10 @@ func main() {
 		user_serviceconnect.NewAuthorizationServiceHandler(authorizationService, options),
 	)
 	connectapi.Handle(
-		analysis_serviceconnect.NewAnalysisQueueServiceHandler(analysisService, options),
+		// Workers upload results here; cap the request so an account can't
+		// send arbitrarily large payloads (read into memory, then stored).
+		analysis_serviceconnect.NewAnalysisQueueServiceHandler(analysisService, options,
+			connect.WithReadMaxBytes(analysis.MaxSubmitResultBytes)),
 	)
 	connectapi.Handle(
 		analysis_serviceconnect.NewAnalysisServiceHandler(analysisService, options),

@@ -2,7 +2,12 @@ package analysis_test
 
 import (
 	"context"
+	"fmt"
+	"math"
+	"net/http"
+	"net/http/httptest"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -19,6 +24,7 @@ import (
 	"github.com/woogles-io/liwords/pkg/stores/models"
 	"github.com/woogles-io/liwords/pkg/stores/user"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/analysis_service"
+	"github.com/woogles-io/liwords/rpc/api/proto/analysis_service/analysis_serviceconnect"
 )
 
 // s3Fixture is an AnalysisService backed by a MemoryResultStore, with one
@@ -68,11 +74,15 @@ func newS3Fixture(t *testing.T) *s3Fixture {
 	}
 }
 
-// fullResult is a result with turns, so it gets stored as an object.
+// fullResult is a result with ten turns, so it gets stored as an object and
+// mistake indexes up to 10 are plausible.
 func fullResult(mi0, mi1 float64) *macondopb.GameAnalysisResult {
 	r := analysisResult(mi0, mi1)
-	r.Turns = []*macondopb.TurnAnalysis{
-		{TurnNumber: 1, PlayerName: "testuser1", PlayedMove: "8D QUIXOTIC", PlayedScore: 365},
+	for i := range 10 {
+		r.Turns = append(r.Turns, &macondopb.TurnAnalysis{
+			TurnNumber: int32(i + 1), PlayerIndex: int32(i % 2),
+			PlayerName: fmt.Sprintf("testuser%d", i%2+1), PlayedMove: "8D QUIXOTIC", PlayedScore: 365,
+		})
 	}
 	return r
 }
@@ -81,7 +91,7 @@ func pgtextOf(s string) pgtype.Text { return pgtype.Text{String: s, Valid: true}
 
 func (f *s3Fixture) claim(t *testing.T, worker string) uuid.UUID {
 	t.Helper()
-	job, err := f.queries.ClaimNextJob(context.Background(), pgtextOf(worker))
+	job, err := f.queries.ClaimNextJob(context.Background(), anyClaims(pgtextOf(worker)))
 	is.New(t).NoErr(err)
 	return job.ID
 }
@@ -336,4 +346,95 @@ func TestUploadAndClearResults(t *testing.T) {
 	is.NoErr(queries.RefreshDivisionMistakeIndex(ctx, divisionID))
 	assertMI(t, ctx, queries, divisionID, 1, 9.0, 3)
 	assertMI(t, ctx, queries, divisionID, 2, 12.0, 3)
+}
+
+func (f *s3Fixture) claimJob(t *testing.T, ctx context.Context) *pb.ClaimJobResponse {
+	t.Helper()
+	resp, err := f.svc.ClaimJob(ctx, connect.NewRequest(&pb.ClaimJobRequest{
+		MacondoVersion: analysis.MinMacondoVersion,
+	}))
+	is.New(t).NoErr(err)
+	return resp.Msg
+}
+
+// TestClaimJobCapsActiveClaims: one account can't claim the whole queue and
+// let it time out into failure.
+func TestClaimJobCapsActiveClaims(t *testing.T) {
+	is := is.New(t)
+	ctx := context.Background()
+	f := newS3Fixture(t)
+
+	// Three more queued games, four in all.
+	leagueID, seasonID := uuid.Nil, uuid.Nil
+	is.NoErr(f.pool.QueryRow(ctx, `SELECT league_id, season_id FROM games WHERE uuid = $1`, f.gameID).Scan(&leagueID, &seasonID))
+	for i := range 3 {
+		g := insertLeagueGame(t, ctx, f.pool, leagueID, seasonID, f.divisionID, time.Now().Add(time.Duration(i+1)*time.Minute), 400, 380)
+		is.NoErr(analysis.EnqueueGameForAnalysis(ctx, f.queries, g, 0))
+	}
+
+	first := f.claimJob(t, f.worker1)
+	second := f.claimJob(t, f.worker1)
+	is.True(!first.NoJobs && !second.NoJobs)
+	is.True(f.claimJob(t, f.worker1).NoJobs) // holding two already
+
+	// Another worker is unaffected.
+	is.True(!f.claimJob(t, f.worker2).NoJobs)
+
+	// Finishing one frees a slot.
+	jobID, err := uuid.Parse(first.JobId)
+	is.NoErr(err)
+	is.True(f.submit(t, f.worker1, jobID, fullResult(1.0, 2.0)).Accepted)
+	is.True(!f.claimJob(t, f.worker1).NoJobs)
+}
+
+// TestSubmitResultRejectsImpossibleResults: values no real analysis produces
+// are turned away, and the job stays with the worker to resubmit.
+func TestSubmitResultRejectsImpossibleResults(t *testing.T) {
+	is := is.New(t)
+	f := newS3Fixture(t)
+	jobID := f.claim(t, "test-uuid-3")
+
+	tooManyTurns := fullResult(1.0, 1.0)
+	for i := range 501 {
+		tooManyTurns.Turns = append(tooManyTurns.Turns, &macondopb.TurnAnalysis{TurnNumber: int32(i + 11)})
+	}
+	badPlayer := fullResult(0, 0)
+	badPlayer.Turns[0].PlayerIndex = 2
+
+	for name, r := range map[string]*macondopb.GameAnalysisResult{
+		"MI above turn count": fullResult(11, 0), // ten turns, so at most 10
+		"negative MI":         fullResult(-0.2, 0),
+		"NaN MI":              fullResult(math.NaN(), 0),
+		"too many turns":      tooManyTurns,
+		"bad player index":    badPlayer,
+	} {
+		resp := f.submit(t, f.worker1, jobID, r)
+		if resp.Accepted {
+			t.Errorf("%s: accepted", name)
+		}
+	}
+	f.waitForKeys(t) // nothing stored
+
+	is.True(f.submit(t, f.worker1, jobID, fullResult(1.0, 0.5)).Accepted)
+}
+
+// TestSubmitResultSizeCap: the queue service handler, configured as in
+// cmd/liwords-api, rejects oversized requests before reading them in.
+func TestSubmitResultSizeCap(t *testing.T) {
+	is := is.New(t)
+	f := newS3Fixture(t)
+
+	mux := http.NewServeMux()
+	mux.Handle(analysis_serviceconnect.NewAnalysisQueueServiceHandler(f.svc,
+		connect.WithReadMaxBytes(analysis.MaxSubmitResultBytes)))
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	client := analysis_serviceconnect.NewAnalysisQueueServiceClient(srv.Client(), srv.URL)
+
+	huge := fullResult(1.0, 1.0)
+	huge.Turns[0].PlayedMove = strings.Repeat("A", analysis.MaxSubmitResultBytes)
+	_, err := client.SubmitResult(context.Background(), connect.NewRequest(&pb.SubmitResultRequest{
+		JobId: uuid.NewString(), Result: huge,
+	}))
+	is.Equal(connect.CodeOf(err), connect.CodeResourceExhausted)
 }
