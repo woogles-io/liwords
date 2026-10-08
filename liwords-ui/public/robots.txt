@@ -8,6 +8,7 @@ User-agent: AhrefsBot
 User-agent: AhrefsSiteAudit
 User-agent: ExaSearchBot
 User-agent: Reflectionbot
+User-agent: ShapBot
 Disallow: /
 
 # Everyone else: game pages are the bulk of crawl traffic and are not worth
