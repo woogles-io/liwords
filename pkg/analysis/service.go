@@ -20,7 +20,6 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
-	"google.golang.org/protobuf/encoding/protojson"
 
 	macondo "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/woogles-io/liwords/pkg/apiserver"
@@ -107,7 +106,8 @@ type AnalysisService struct {
 	queries   *models.Queries
 	natsconn  *nats.Conn
 	dbPool    *pgxpool.Pool
-	// resultStore holds analysis results; nil keeps them in the result column.
+	// resultStore holds analysis results; without one, results can be neither
+	// stored nor served.
 	resultStore ResultStore
 }
 
@@ -120,8 +120,7 @@ func NewAnalysisService(userStore user.Store, gameStore GameStore, queries *mode
 	}
 }
 
-// SetResultStore makes the service store results in rs instead of the
-// result column.
+// SetResultStore sets where analysis results are stored and read from.
 func (s *AnalysisService) SetResultStore(rs ResultStore) {
 	s.resultStore = rs
 }
@@ -313,19 +312,16 @@ func (s *AnalysisService) SubmitResult(
 		}), nil
 	}
 
-	// Store the result: in the result store when there is one (a zero-turn
-	// result has nothing worth an object), otherwise in the result column.
-	var resultJSON []byte
-	var resultKey pgtype.Text
+	// Store the result. A zero-turn result has nothing worth an object.
 	if s.resultStore == nil {
-		resultJSON, err = protojson.Marshal(result)
-		if err != nil {
-			return connect.NewResponse(&pb.SubmitResultResponse{
-				Accepted: false,
-				Error:    fmt.Sprintf("failed to re-serialize result: %v", err),
-			}), nil
-		}
-	} else if len(result.Turns) > 0 {
+		log.Error().Str("job_id", jobID.String()).Msg("no analysis result store configured (ANALYSIS_UPLOAD_BUCKET)")
+		return connect.NewResponse(&pb.SubmitResultResponse{
+			Accepted: false,
+			Error:    "server cannot store results right now; please retry later",
+		}), nil
+	}
+	var resultKey pgtype.Text
+	if len(result.Turns) > 0 {
 		key := ResultKey(claim.GameID, jobID)
 		if err := s.resultStore.Put(ctx, key, result); err != nil {
 			log.Error().Err(err).Str("job_id", jobID.String()).Msg("failed to store analysis result")
@@ -340,7 +336,6 @@ func (s *AnalysisService) SubmitResult(
 	userUUID := pgtype.Text{String: user.UUID, Valid: true}
 	mi0, mi1, version := SummaryColumns(result)
 	completedJob, err := s.queries.CompleteJob(ctx, models.CompleteJobParams{
-		Result:              resultJSON,
 		ResultS3Key:         resultKey,
 		Player0MistakeIndex: mi0,
 		Player1MistakeIndex: mi1,
@@ -477,23 +472,6 @@ func SummaryColumns(result *macondo.GameAnalysisResult) (mi0, mi1 pgtype.Float8,
 		mi1 = pgtype.Float8{Float64: summaries[1].GetMistakeIndex(), Valid: true}
 	}
 	return mi0, mi1, pgtype.Int4{Int32: result.GetAnalysisVersion(), Valid: true}
-}
-
-// storedAnalysisVersion reads a job's analysis version from its column, falling
-// back to the stored result for jobs from before the column was backfilled.
-// TODO: drop the fallback once cmd/backfill-analysis-columns has run.
-func storedAnalysisVersion(column pgtype.Int4, result []byte) int32 {
-	if column.Valid {
-		return column.Int32
-	}
-	if len(result) == 0 {
-		return 0
-	}
-	var partial struct {
-		AnalysisVersion int32 `json:"analysisVersion"`
-	}
-	_ = json.Unmarshal(result, &partial)
-	return partial.AnalysisVersion
 }
 
 const maxFailJobErrorLen = 1024
@@ -636,7 +614,7 @@ func (s *AnalysisService) RequestAnalysis(
 				Msg("re-requesting analysis for previously failed job")
 		} else if req.Msg.Force && existingJob.Status == "completed" {
 			// Force re-analysis only allowed for legacy (v0) results
-			if storedAnalysisVersion(existingJob.AnalysisVersion, existingJob.Result) >= 2 {
+			if existingJob.AnalysisVersion.Int32 >= 2 {
 				return connect.NewResponse(&pb.RequestAnalysisResponse{
 					Status:  pb.RequestAnalysisResponse_ALREADY_REQUESTED,
 					Message: "Analysis is already up to date",
@@ -824,7 +802,7 @@ func (s *AnalysisService) GetAnalysisStatus(
 
 	var analysisVersion int32
 	if job.Status == "completed" {
-		analysisVersion = storedAnalysisVersion(job.AnalysisVersion, job.Result)
+		analysisVersion = job.AnalysisVersion.Int32
 	}
 
 	return connect.NewResponse(&pb.GetAnalysisStatusResponse{
@@ -867,28 +845,16 @@ func (s *AnalysisService) GetAnalysisResult(
 	}), nil
 }
 
-// loadResult reads a completed job's result: from the result store when the
-// job has an object, otherwise from the result column (jobs not yet uploaded).
-// A completed job with neither is a zero-turn game, whose result is empty.
-// TODO: drop the result-column path once cmd/backfill-analysis-s3 has run.
+// loadResult reads a completed job's result from the result store. A
+// completed job without an object is a zero-turn game, whose result is empty.
 func (s *AnalysisService) loadResult(ctx context.Context, job models.GetJobByGameIDRow) (*macondo.GameAnalysisResult, error) {
-	if job.ResultS3Key.Valid && s.resultStore != nil {
-		result, err := s.resultStore.Get(ctx, job.ResultS3Key.String)
-		if err == nil {
-			return result, nil
-		}
-		if len(job.Result) == 0 {
-			return nil, err
-		}
-		log.Warn().Err(err).Str("game_id", job.GameID).Msg("analysis result fetch failed, using result column")
-	}
-	if job.ResultS3Key.Valid && s.resultStore == nil && len(job.Result) == 0 {
-		return nil, errors.New("result is in the result store, but none is configured")
-	}
-	if len(job.Result) == 0 {
+	if !job.ResultS3Key.Valid {
 		return &macondo.GameAnalysisResult{}, nil
 	}
-	return unmarshalResult(job.Result)
+	if s.resultStore == nil {
+		return nil, errors.New("no analysis result store configured (ANALYSIS_UPLOAD_BUCKET)")
+	}
+	return s.resultStore.Get(ctx, job.ResultS3Key.String)
 }
 
 // runInfoForJob summarizes how a completed job was produced. Every timestamp is

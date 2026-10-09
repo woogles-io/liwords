@@ -320,6 +320,8 @@ func main() {
 	analysisService := analysis.NewAnalysisService(stores.UserStore, stores.GameStore, stores.Queries, dbPool)
 	if bucket := os.Getenv("ANALYSIS_UPLOAD_BUCKET"); bucket != "" {
 		analysisService.SetResultStore(analysis.NewS3ResultStore(s3Client, bucket))
+	} else {
+		log.Warn().Msg("ANALYSIS_UPLOAD_BUCKET not set: analysis results can be neither stored nor served")
 	}
 	analysisAdminService := analysis.NewAnalysisAdminService(stores.UserStore, stores.Queries)
 	router.Handle("/ping", http.HandlerFunc(pingEndpoint))

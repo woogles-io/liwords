@@ -147,7 +147,6 @@ func TestSubmitResultStoresObject(t *testing.T) {
 
 	job := f.job(t)
 	is.True(job.ResultS3Key.Valid)
-	is.Equal(len(job.Result), 0) // the column no longer holds results
 	is.Equal(job.AnalysisVersion.Int32, int32(2))
 	f.waitForKeys(t, job.ResultS3Key.String)
 
@@ -244,108 +243,36 @@ func TestGetAnalysisResultSources(t *testing.T) {
 	ctx := context.Background()
 	f := newS3Fixture(t)
 
-	// A job completed before results moved to S3: served from the column.
-	legacy := fullResult(3.0, 4.0)
-	claimAndComplete(t, ctx, f.queries, legacy)
-	served := f.served(t)
-	is.True(served.Found)
-	is.True(proto.Equal(served.Result, legacy))
+	// Served from the object.
+	jobID := f.claim(t, "test-uuid-3")
+	want := fullResult(3.0, 4.0)
+	is.True(f.submit(t, f.worker1, jobID, want).Accepted)
+	is.True(proto.Equal(f.served(t).Result, want))
 
-	// Uploaded but the fetch fails: the column's copy still serves it.
-	is.NoErr(f.store.Put(ctx, "k", legacy))
-	_, err := f.pool.Exec(ctx, `UPDATE analysis_jobs SET result_s3_key = 'k'`)
-	is.NoErr(err)
+	// A failed fetch is reported, not served as an empty analysis.
 	f.store.FailGet = true
-	is.True(proto.Equal(f.served(t).Result, legacy))
-
-	// ...and with no copy left, the failure is reported rather than hidden.
-	_, err = f.pool.Exec(ctx, `UPDATE analysis_jobs SET result = NULL`)
-	is.NoErr(err)
-	_, err = f.svc.GetAnalysisResult(ctx, connect.NewRequest(&pb.GetAnalysisResultRequest{GameId: f.gameID}))
+	_, err := f.svc.GetAnalysisResult(ctx, connect.NewRequest(&pb.GetAnalysisResultRequest{GameId: f.gameID}))
 	is.True(err != nil)
+	f.store.FailGet = false
 
-	// A zero-turn game: completed with neither an object nor a column copy.
+	// A zero-turn game: completed without an object.
 	_, err = f.pool.Exec(ctx, `UPDATE analysis_jobs SET result_s3_key = NULL`)
 	is.NoErr(err)
-	served = f.served(t)
+	served := f.served(t)
 	is.True(served.Found)
 	is.Equal(len(served.Result.GetTurns()), 0)
 }
 
-// TestUploadAndClearResults covers cmd/backfill-analysis-s3's two passes over
-// jobs completed before results moved to S3.
-func TestUploadAndClearResults(t *testing.T) {
+// TestSubmitResultWithoutStore: a server with no result store turns results
+// away (the worker retries later) rather than accepting and losing them.
+func TestSubmitResultWithoutStore(t *testing.T) {
 	is := is.New(t)
-	ctx := context.Background()
+	f := newS3Fixture(t)
+	f.svc.SetResultStore(nil)
 
-	pool, queries := setupTestDB(t)
-	defer pool.Close()
-	createTestUsers(t, pool)
-	leagueID, seasonID, divisionID := createMinimalLeague(t, ctx, queries)
-
-	now := time.Now()
-	type legacyJob struct {
-		result  *macondopb.GameAnalysisResult
-		columns bool // summary columns already filled
-	}
-	jobs := []legacyJob{
-		{fullResult(3.0, 4.0), true},
-		{fullResult(1.0, 2.0), true},
-		{&macondopb.GameAnalysisResult{AnalysisVersion: 2}, true}, // zero-turn
-		{fullResult(5.0, 6.0), false},                             // columns not backfilled yet
-	}
-	games := make([]string, len(jobs))
-	for i, j := range jobs {
-		games[i] = insertLeagueGame(t, ctx, pool, leagueID, seasonID, divisionID, now.Add(time.Duration(i)*time.Minute), 400, 380)
-		is.NoErr(analysis.EnqueueGameForAnalysis(ctx, queries, games[i], 0))
-		claimAndCompleteWith(t, ctx, queries, j.result, j.columns)
-	}
-	store := analysis.NewMemoryResultStore()
-	opts := analysis.BackfillOptions{Workers: 3, BatchSize: 2}
-
-	// Upload: everything with turns gets an object; the column is kept.
-	stats, err := analysis.UploadResults(ctx, queries, store, opts)
-	is.NoErr(err)
-	is.Equal(stats.Done, int64(3))
-	is.Equal(stats.Failed, int64(0))
-	is.Equal(len(store.Keys()), 3)
-	for i, g := range games {
-		job, err := queries.GetJobByGameID(ctx, g)
-		is.NoErr(err)
-		is.True(len(job.Result) > 0)
-		is.Equal(job.ResultS3Key.Valid, i != 2)
-	}
-
-	// Re-running finds nothing left to upload.
-	stats, err = analysis.UploadResults(ctx, queries, store, opts)
-	is.NoErr(err)
-	is.Equal(stats.Processed, int64(0))
-
-	// A corrupted object must not let its job's column copy go.
-	job1, err := queries.GetJobByGameID(ctx, games[1])
-	is.NoErr(err)
-	is.NoErr(store.Put(ctx, job1.ResultS3Key.String, fullResult(9.0, 9.0)))
-
-	// Clear: verified uploads and the zero-turn job; not the corrupted one,
-	// nor the job whose summary columns are still missing.
-	stats, err = analysis.ClearUploadedResults(ctx, queries, store, opts)
-	is.NoErr(err)
-	is.Equal(stats.Done, int64(2))
-	is.Equal(stats.Failed, int64(1))
-	for i, g := range games {
-		job, err := queries.GetJobByGameID(ctx, g)
-		is.NoErr(err)
-		cleared := len(job.Result) == 0
-		is.Equal(cleared, i == 0 || i == 2)
-	}
-
-	// Standings are unchanged by all of this: they read the summary columns,
-	// falling back to the column copy only where those are missing.
-	seedStanding(t, ctx, queries, divisionID, 1, 0, 0)
-	seedStanding(t, ctx, queries, divisionID, 2, 0, 0)
-	is.NoErr(queries.RefreshDivisionMistakeIndex(ctx, divisionID))
-	assertMI(t, ctx, queries, divisionID, 1, 9.0, 3)
-	assertMI(t, ctx, queries, divisionID, 2, 12.0, 3)
+	jobID := f.claim(t, "test-uuid-3")
+	is.True(!f.submit(t, f.worker1, jobID, fullResult(3.0, 4.0)).Accepted)
+	is.Equal(f.job(t).Status, "claimed")
 }
 
 func (f *s3Fixture) claimJob(t *testing.T, ctx context.Context) *pb.ClaimJobResponse {
