@@ -41,9 +41,9 @@ The script normalizes the list: NFC, uppercase, first column only, duplicates re
 
 - DAWG half of the kwg = the kept word set
 - `.kad` = the set of per-word sorted-tile anagram keys
-- GADDAG half of the kwg = every `reverse(prefix)?suffix` entry for every word
+- GADDAG half of the kwg = every `reverse(prefix)@suffix` entry for every word
 
-It also writes `report.json`, `dropped.txt`, `added.txt` and `removed.txt` (diff against OLD inside the length window). kwgc exits 0 even when it fails, so rely on the script's checks, never on kwgc's exit code.
+It also writes `report.json`, `dropped.txt`, `added.txt` and `removed.txt` (diff against OLD inside the length window). The script checks every output itself, as well as kwgc's exit code.
 
 **Show the user a summary and wait for an OK before going on.** Include: raw / kept / dropped (short, long, invalid) counts, the 1-letter words dropped, the blank-only word count (words using zero-count tiles such as Q/X/Z/Ä/Ö/Ü in Norwegian are valid and stay in), added and removed counts with examples, and the file sizes next to OLD's. Stop and ask if:
 - any check failed
