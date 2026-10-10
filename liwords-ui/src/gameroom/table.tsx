@@ -332,7 +332,7 @@ const ChatIfVisible: React.FC<{ children: React.ReactNode }> = ({
 export const Table = React.memo((props: Props) => {
   const { gameID } = useParams();
   const ownsAnnotatedGame = useOwnsAnnotatedGame(gameID, props.annotated);
-  const { addChat } = useChatStoreContext();
+  const { addChat, chatGeneration } = useChatStoreContext();
 
   const { gameContext: examinableGameContext } =
     useExaminableGameContextStoreContext();
@@ -859,6 +859,7 @@ export const Table = React.memo((props: Props) => {
   const { handleSetHover, hideDefinitionHover, definitionPopover } =
     useDefinitionAndPhonyChecker({
       addChat,
+      chatGeneration,
       enableHoverDefine,
       gameContext,
       gameDone,

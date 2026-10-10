@@ -25,14 +25,18 @@ const gameContext = {
   ],
 } as unknown as GameState;
 
+type CheckerProps = { chatGeneration?: number; lexicon: string };
+
 const renderChecker = (
   addChat: (chat: ChatEntityObj) => void,
   lexicon: string,
-) =>
-  renderHook(
-    ({ lexicon }: { lexicon: string }) =>
+) => {
+  const initialProps: CheckerProps = { lexicon };
+  return renderHook(
+    ({ chatGeneration, lexicon }: CheckerProps) =>
       useDefinitionAndPhonyChecker({
         addChat,
+        chatGeneration,
         enableHoverDefine: true,
         gameContext,
         gameDone: true,
@@ -40,8 +44,9 @@ const renderChecker = (
         lexicon,
         variant: undefined,
       }),
-    { initialProps: { lexicon } },
+    { initialProps },
   );
+};
 
 describe("the phony checker", () => {
   beforeEach(() => {
@@ -76,5 +81,28 @@ describe("the phony checker", () => {
     });
     await waitFor(() => expect(addChat).toHaveBeenCalled());
     expect(addChat.mock.calls[0][0].message).toContain(`${PHONY}*`);
+  });
+
+  it("posts the report again when a channel load replaces the chat", async () => {
+    // The chat's history request can land after the report is posted, and a
+    // channel load replaces the whole chat list, dropping the report.
+    const addChat = vi.fn();
+    const { rerender } = renderChecker(addChat, "CSW24");
+    await waitFor(() => expect(addChat).toHaveBeenCalledTimes(1));
+    const { id, message } = addChat.mock.calls[0][0];
+
+    // Control: with the chat left alone, the report is not repeated.
+    await act(async () => {
+      rerender({ lexicon: "CSW24" });
+    });
+    expect(addChat).toHaveBeenCalledTimes(1);
+
+    // The same id, so the store skips it if the report survived the load.
+    await act(async () => {
+      rerender({ chatGeneration: 1, lexicon: "CSW24" });
+    });
+    expect(addChat).toHaveBeenCalledTimes(2);
+    expect(addChat.mock.calls[1][0]).toMatchObject({ id, message });
+    expect(id).toBeTruthy();
   });
 });
