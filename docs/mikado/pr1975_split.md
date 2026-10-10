@@ -235,9 +235,17 @@ reference never touched, which should never happen.
 ## hunks.py
 
 How partial files are built: every line comes verbatim from the reference, by
-applying chosen hunks of the master..reference diff with `git apply`. Hunk
-numbers per step are recorded in the file map and commit messages; `list`
-shows what each hunk contains.
+applying chosen hunks of the master..reference diff with `git apply`. `list`
+shows what each hunk contains. Hunks used so far, numbered as `list` prints
+them against `08da29c33`:
+
+| File | Step 1 | Step 3 | Still to land |
+|---|---|---|---|
+| `db/queries/games.sql` | 2 | 1 | none |
+| `pkg/gameplay/end.go` | 3, 4 | | 1, 2 (step 4) |
+| `pkg/stores/game/db.go` | 13 | 2, 4, 5, 6, 8, 9, 10, 11, 17 | 7, 12, 14, 15, 16 (4); 1, 3 (5); 14's `syncOngoingGame` part and 12's `writeOngoing` (7) |
+| `pkg/stores/game/s3.go` | | 1, 3, 5 | 2, 4 (step 4) |
+| `pkg/config/config.go` | | 1, 2 minus the `WriteOngoingGames` lines | those lines (7) |
 
 ```python
 #!/usr/bin/env python3
