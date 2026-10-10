@@ -15,7 +15,7 @@ below depend on facts rather than intentions:
 
 | | |
 |---|---|
-| prod schema version | `202607300001` |
+| prod schema version | `202607300001` (re-checked 2026-10-09: `202610070002`) |
 | `ongoing_games` | **does not exist in production**; the migration has never run |
 | `game_turns` | live since 2026-05-06; 30,861 rows over 1,876 games right now |
 | `games` | 12,696,909 rows |
@@ -24,8 +24,9 @@ below depend on facts rather than intentions:
 
 ### Already done, and worth knowing why
 
-`202608040001_ongoing_games` had never been applied anywhere but local test
-databases -- production is on `202607300001` -- so the columns that held a game
+`ongoing_games` (now `202610090001`, renumbered from `202608040001` so it sorts
+after the migrations master shipped in the meantime) had never been applied
+anywhere but local test databases -- production was on `202607300001` -- so the columns that held a game
 position were removed from the migration rather than created and later dropped.
 `play_state` and `on_turn` stayed: they are not snapshot mirrors, they are what
 lets the active-game listings filter a small table instead of scanning 12M rows.
@@ -342,7 +343,7 @@ follows is the work after that.
 - [ ] **`games.uuid` unique index — checked, migration written, not yet applied
       to production.** Zero duplicates and zero NULLs across all 12,692,837
       rows, so nothing needs cleaning up first. The migration
-      (`202609030001_games_uuid_unique`) is idempotent and covers fresh
+      (`202610090004_games_uuid_unique`) is idempotent and covers fresh
       databases; production wants these two by hand, because building a 705 MB
       index inline would lock out writers on a 12M-row table:
 

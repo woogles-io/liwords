@@ -15,15 +15,17 @@ BEGIN;
 -- idx_games_uuid` would find the name in use, skip, and leave a fresh database
 -- silently without the constraint. Distinct name, then drop the old one.
 --
--- Production has both statements applied by hand, with CONCURRENTLY, because
--- building a 705 MB index inside this transaction would lock out writers on the
--- 12M-row table for the duration:
+-- PRODUCTION MUST HAVE BOTH STATEMENTS APPLIED BY HAND, WITH CONCURRENTLY,
+-- BEFORE THIS MIGRATION IS DEPLOYED. Building a 705 MB index inside this
+-- transaction would lock out writers on the 12M-row table for the duration:
 --
 --     CREATE UNIQUE INDEX CONCURRENTLY idx_games_uuid_unique ON games (uuid);
 --     DROP INDEX CONCURRENTLY idx_games_uuid;
 --
--- Both are therefore no-ops there. Everywhere else the table is small enough
--- that doing it inline costs nothing.
+-- As of 2026-10-09 neither has been run (idx_games_uuid still exists and
+-- idx_games_uuid_unique does not). Once they have, both statements below are
+-- no-ops there. Everywhere else the table is small enough that doing it inline
+-- costs nothing.
 CREATE UNIQUE INDEX IF NOT EXISTS idx_games_uuid_unique ON games (uuid);
 
 -- Redundant once the unique index exists: same column, same lookups, and it

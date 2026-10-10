@@ -4,7 +4,7 @@ BEGIN;
 --
 -- automod files a row here when it judges a player badly, and adds to their
 -- notoriety score at the same time. Neither is idempotent, and until
--- automod_verdicts (202609020001) nothing stopped it happening twice for one
+-- automod_verdicts (202610090002) nothing stopped it happening twice for one
 -- game: the guards against re-judging a finished game all read game_end_reason
 -- or the play state, and automod ran *before* the games row was written, so for
 -- the length of that window there was nothing for them to read.
