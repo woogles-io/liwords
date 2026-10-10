@@ -38,3 +38,15 @@ reporting/.venv/
 reporting/bestbot/*.jpg
 # never commit query result data snapshots anywhere under reporting/
 reporting/**/*.csv
+
+# Compiled binaries and local scratch data. These were committed by accident
+# once (a `git add -A` that swept up an untracked working tree) and cost the
+# history ~285 MB; the entries are here so it cannot happen again.
+gameplay.test
+gamehistories
+find-corrupted-games
+find-pre-archival-games
+cmd/profile-game-load/profile-game-load
+cmd/repair-force-finished/repair-force-finished
+cmd/league-tester/test_users*.json
+*.test
