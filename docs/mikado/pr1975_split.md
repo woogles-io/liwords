@@ -232,6 +232,44 @@ Migration files are matched by content rather than name, since their numbers
 change (see above). `NOT IN REF` means a split branch changed a file the
 reference never touched, which should never happen.
 
+## hunks.py
+
+How partial files are built: every line comes verbatim from the reference, by
+applying chosen hunks of the master..reference diff with `git apply`. Hunk
+numbers per step are recorded in the file map and commit messages; `list`
+shows what each hunk contains.
+
+```python
+#!/usr/bin/env python3
+"""hunks.py list <file>            -- number the hunks of master..ref for a file
+   hunks.py apply <file> 1,3,4     -- apply exactly those hunks to the worktree"""
+import subprocess, sys
+M, R = "origin/master", "08da29c33"
+def hunks(f):
+    d = subprocess.run(["git","diff","-U3",M,R,"--",f],capture_output=True,text=True,check=True).stdout
+    lines = d.splitlines(keepends=True)
+    i = next(k for k,l in enumerate(lines) if l.startswith("@@"))
+    head, hs, cur = "".join(lines[:i]), [], []
+    for l in lines[i:]:
+        if l.startswith("@@") and cur: hs.append("".join(cur)); cur=[]
+        cur.append(l)
+    hs.append("".join(cur))
+    return head, hs
+cmd, f = sys.argv[1], sys.argv[2]
+head, hs = hunks(f)
+if cmd == "list":
+    for n,h in enumerate(hs,1):
+        body=h.splitlines()
+        ch=[l for l in body[1:] if l[:1] in "+-"]
+        print(f"#{n} {body[0][:90]}  (+{sum(l[0]=='+' for l in ch)} -{sum(l[0]=='-' for l in ch)})")
+        for l in ch[:6]: print("    "+l[:110])
+else:
+    pick=[int(x) for x in sys.argv[3].split(",")]
+    patch=head+"".join(hs[n-1] for n in pick)
+    subprocess.run(["git","apply","--recount","-"],input=patch,text=True,check=True)
+    print(f"applied {pick} of {len(hs)} hunks to {f}")
+```
+
 ## Progress
 
 Kept up to date at the top of the stack. `TestStandings` in
