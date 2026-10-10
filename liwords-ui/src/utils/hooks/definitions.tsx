@@ -235,7 +235,7 @@ export const useDefinitionAndPhonyChecker = ({
 
   // What everything below is about: the game being looked at, and the lexicon
   // its words are judged against.
-  const resetKey = `${gameID ?? ""} ${lexicon}`;
+  const resetKey = JSON.stringify({ gameID, lexicon });
   const resetKeyRef = useRef(resetKey);
 
   // Forgetting the old game and listing the current one's words to define are
