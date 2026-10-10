@@ -133,6 +133,7 @@ export const Chat = React.memo((props: Props) => {
     clearChat,
     addChats,
     setChatChannels,
+    setCurrentChatChannel,
   } = useChatStoreContext();
   const { presences } = usePresenceStoreContext();
   const lastChannel = useRef("");
@@ -590,6 +591,7 @@ export const Chat = React.memo((props: Props) => {
     async (newChannel: string | undefined) => {
       if (newChannel && newChannel !== lastChannel.current) {
         lastChannel.current = newChannel;
+        setCurrentChatChannel(newChannel);
         setChannelSelectedTime(Date.now());
 
         // Clear unseen messages for this channel
@@ -623,7 +625,7 @@ export const Chat = React.memo((props: Props) => {
         setHeight();
       }
     },
-    [addChats, clearChat, setHeight, socializeClient],
+    [addChats, clearChat, setCurrentChatChannel, setHeight, socializeClient],
   );
 
   useEffect(() => {
