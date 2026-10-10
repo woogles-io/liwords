@@ -11,52 +11,32 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const countSeekConflictsForCorrespondence = `-- name: CountSeekConflictsForCorrespondence :one
-SELECT
-    COUNT(*) FILTER (WHERE receiver = '') AS has_open_seek,
-    COUNT(*) FILTER (WHERE game_mode IS NULL OR game_mode != 1) AS has_realtime_seek
-FROM soughtgames
-WHERE seeker = $1
+const countRealtimeSeeksForUser = `-- name: CountRealtimeSeeksForUser :one
+SELECT COUNT(*) FROM soughtgames WHERE seeker = $1 AND (game_mode IS NULL OR game_mode = 0)
 `
 
-type CountSeekConflictsForCorrespondenceRow struct {
-	HasOpenSeek     int64
-	HasRealtimeSeek int64
-}
-
-func (q *Queries) CountSeekConflictsForCorrespondence(ctx context.Context, seekerID pgtype.Text) (CountSeekConflictsForCorrespondenceRow, error) {
-	row := q.db.QueryRow(ctx, countSeekConflictsForCorrespondence, seekerID)
-	var i CountSeekConflictsForCorrespondenceRow
-	err := row.Scan(&i.HasOpenSeek, &i.HasRealtimeSeek)
-	return i, err
-}
-
-const countSeeksForUser = `-- name: CountSeeksForUser :one
-SELECT COUNT(*) FROM soughtgames WHERE seeker = $1
-`
-
-func (q *Queries) CountSeeksForUser(ctx context.Context, seekerID pgtype.Text) (int64, error) {
-	row := q.db.QueryRow(ctx, countSeeksForUser, seekerID)
+func (q *Queries) CountRealtimeSeeksForUser(ctx context.Context, seekerID pgtype.Text) (int64, error) {
+	row := q.db.QueryRow(ctx, countRealtimeSeeksForUser, seekerID)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
 }
 
-const deleteSoughtGameBySeekerConnID = `-- name: DeleteSoughtGameBySeekerConnID :exec
-DELETE FROM soughtgames WHERE seeker_conn_id = $1
+const deleteRealtimeSoughtGamesBySeekerConnID = `-- name: DeleteRealtimeSoughtGamesBySeekerConnID :exec
+DELETE FROM soughtgames WHERE seeker_conn_id = $1 AND (game_mode IS NULL OR game_mode = 0)
 `
 
-func (q *Queries) DeleteSoughtGameBySeekerConnID(ctx context.Context, seekerConnID pgtype.Text) error {
-	_, err := q.db.Exec(ctx, deleteSoughtGameBySeekerConnID, seekerConnID)
+func (q *Queries) DeleteRealtimeSoughtGamesBySeekerConnID(ctx context.Context, seekerConnID pgtype.Text) error {
+	_, err := q.db.Exec(ctx, deleteRealtimeSoughtGamesBySeekerConnID, seekerConnID)
 	return err
 }
 
-const deleteSoughtGameBySeekerID = `-- name: DeleteSoughtGameBySeekerID :exec
-DELETE FROM soughtgames WHERE seeker = $1
+const deleteRealtimeSoughtGamesBySeekerID = `-- name: DeleteRealtimeSoughtGamesBySeekerID :exec
+DELETE FROM soughtgames WHERE seeker = $1 AND (game_mode IS NULL OR game_mode = 0)
 `
 
-func (q *Queries) DeleteSoughtGameBySeekerID(ctx context.Context, seekerID pgtype.Text) error {
-	_, err := q.db.Exec(ctx, deleteSoughtGameBySeekerID, seekerID)
+func (q *Queries) DeleteRealtimeSoughtGamesBySeekerID(ctx context.Context, seekerID pgtype.Text) error {
+	_, err := q.db.Exec(ctx, deleteRealtimeSoughtGamesBySeekerID, seekerID)
 	return err
 }
 
@@ -104,6 +84,32 @@ func (q *Queries) ExpireOldRealtimeSeeks(ctx context.Context) (int64, error) {
 	return result.RowsAffected(), nil
 }
 
+const getRealtimeSoughtGameBySeekerConnID = `-- name: GetRealtimeSoughtGameBySeekerConnID :one
+SELECT request FROM soughtgames
+WHERE seeker_conn_id = $1 AND (game_mode IS NULL OR game_mode = 0)
+LIMIT 1
+`
+
+func (q *Queries) GetRealtimeSoughtGameBySeekerConnID(ctx context.Context, seekerConnID pgtype.Text) ([]byte, error) {
+	row := q.db.QueryRow(ctx, getRealtimeSoughtGameBySeekerConnID, seekerConnID)
+	var request []byte
+	err := row.Scan(&request)
+	return request, err
+}
+
+const getRealtimeSoughtGameBySeekerID = `-- name: GetRealtimeSoughtGameBySeekerID :one
+SELECT request FROM soughtgames
+WHERE seeker = $1 AND (game_mode IS NULL OR game_mode = 0)
+LIMIT 1
+`
+
+func (q *Queries) GetRealtimeSoughtGameBySeekerID(ctx context.Context, seekerID pgtype.Text) ([]byte, error) {
+	row := q.db.QueryRow(ctx, getRealtimeSoughtGameBySeekerID, seekerID)
+	var request []byte
+	err := row.Scan(&request)
+	return request, err
+}
+
 const getSoughtGameByReceiverConnID = `-- name: GetSoughtGameByReceiverConnID :one
 SELECT request FROM soughtgames WHERE receiver_conn_id = $1
 `
@@ -132,17 +138,6 @@ SELECT request FROM soughtgames WHERE seeker_conn_id = $1
 
 func (q *Queries) GetSoughtGameBySeekerConnID(ctx context.Context, seekerConnID pgtype.Text) ([]byte, error) {
 	row := q.db.QueryRow(ctx, getSoughtGameBySeekerConnID, seekerConnID)
-	var request []byte
-	err := row.Scan(&request)
-	return request, err
-}
-
-const getSoughtGameBySeekerID = `-- name: GetSoughtGameBySeekerID :one
-SELECT request FROM soughtgames WHERE seeker = $1
-`
-
-func (q *Queries) GetSoughtGameBySeekerID(ctx context.Context, seekerID pgtype.Text) ([]byte, error) {
-	row := q.db.QueryRow(ctx, getSoughtGameBySeekerID, seekerID)
 	var request []byte
 	err := row.Scan(&request)
 	return request, err

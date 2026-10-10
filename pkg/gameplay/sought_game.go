@@ -10,9 +10,7 @@ import (
 )
 
 var (
-	errAlreadyOpenReq                  = errors.New("You already have an open match or seek request")
-	errCannotMixCorrespondenceRealtime = errors.New("You cannot create a correspondence match while you have a real-time seek open, or vice versa")
-	errCannotMixSeekAndMatch           = errors.New("You cannot create a match request while you have an open seek, or vice versa")
+	errAlreadyOpenReq = errors.New("You already have an open match or seek request")
 )
 
 // SoughtGameStore is an interface for getting a sought game.
@@ -49,20 +47,12 @@ func NewSoughtGame(ctx context.Context, gameStore SoughtGameStore,
 	}
 
 	// Check if user can create this seek/match
-	canCreate, conflictType, err := gameStore.CanCreateSeek(ctx, req.User.UserId, gameMode, receiverID)
+	canCreate, _, err := gameStore.CanCreateSeek(ctx, req.User.UserId, gameMode, receiverID)
 	if err != nil {
 		return nil, err
 	}
 	if !canCreate {
-		// Return a more specific error based on the conflict type
-		switch conflictType {
-		case "has_open_seek":
-			return nil, errCannotMixSeekAndMatch
-		case "has_realtime_seek":
-			return nil, errCannotMixCorrespondenceRealtime
-		default:
-			return nil, errAlreadyOpenReq
-		}
+		return nil, errAlreadyOpenReq
 	}
 
 	sg := entity.NewSoughtGame(req)
