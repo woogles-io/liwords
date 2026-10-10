@@ -31,8 +31,8 @@ step:
    that is fine. Generated files a step does not change are reverted, so each
    PR's diff is only its own. The ledger ignores the header line.
 
-After the last step, the tree equals the reference tree, except for
-migration filenames (see below) and this document. That final diff is what
+After the last step, the tree of 7 with 1b merged in equals the reference
+tree, except for migration filenames (see below) and this document. That final diff is what
 proves nothing was dropped.
 
 ## Migration numbering
@@ -62,7 +62,10 @@ any of these, or it will be skipped.
 | 6 | `referee-split-6-no-cache` | remove the game LRU cache | **yes**: every load hits the DB | none |
 | 7 | `referee-split-7-ongoing-games` | `ongoing_games` migration, queries, writer; mikado docs | none with the flag off | `WRITE_ONGOING_GAMES` |
 
-1b is independent of everything and can merge whenever the manual step is done.
+1b branches from master, not from 1, so the manual step never blocks the rest
+of the stack. It can merge whenever that step is done (renumbering first if
+anything higher has merged). Everything else is a linear stack: 2 on 1, 3 on
+2, and so on.
 
 ### File map
 
