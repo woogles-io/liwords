@@ -25,11 +25,14 @@ describe("the chat store", () => {
     expect(result.current.chatGeneration).toBe(before);
     act(() => {
       result.current.clearChat();
-      result.current.addChats([serverMsg("b")], "chat.game.abc");
+      result.current.addChats([serverMsg("b")]);
     });
     expect(result.current.chatGeneration).toBeGreaterThan(before);
     expect(result.current.chat.map((c) => c.id)).toEqual(["b"]);
-    expect(result.current.loadedChatChannel).toBe("chat.game.abc");
+    act(() => {
+      result.current.setCurrentChatChannel("chat.game.abc");
+    });
+    expect(result.current.currentChatChannel).toBe("chat.game.abc");
   });
 
   it("does not add an entry whose id is already listed", () => {

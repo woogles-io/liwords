@@ -332,7 +332,7 @@ const ChatIfVisible: React.FC<{ children: React.ReactNode }> = ({
 export const Table = React.memo((props: Props) => {
   const { gameID } = useParams();
   const ownsAnnotatedGame = useOwnsAnnotatedGame(gameID, props.annotated);
-  const { addChat, chatGeneration, loadedChatChannel } = useChatStoreContext();
+  const { addChat, chatGeneration, currentChatChannel } = useChatStoreContext();
 
   const { gameContext: examinableGameContext } =
     useExaminableGameContextStoreContext();
@@ -866,7 +866,7 @@ export const Table = React.memo((props: Props) => {
       enableHoverDefine,
       // The report belongs in this game's chat only, not in a direct-message
       // channel opened from the same page.
-      inGameChat: loadedChatChannel === gameChatChannel,
+      inGameChat: currentChatChannel === gameChatChannel,
       gameContext,
       gameDone,
       gameID,

@@ -419,9 +419,9 @@ export const useDefinitionAndPhonyChecker = ({
   useEffect(() => {
     console.log("[phony-debug] post effect, phonies:", phonies);
     if (!phonies) return;
-    // Only into the game's own chat, once its history has loaded. While another
-    // channel is loaded, nothing is posted and nothing is marked as reported,
-    // so coming back to the game chat posts the report again.
+    // Only while the chat shows the game's own channel. While another channel
+    // is shown, nothing is posted and nothing is marked as reported, so coming
+    // back to the game chat posts the report again.
     if (!inGameChat) return;
     // A channel load replaces the whole chat list, and the history request can
     // land either side of the definitions one, so a report posted before it is

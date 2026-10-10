@@ -131,13 +131,14 @@ type GameContextStoreData = {
 
 type ChatStoreData = {
   addChat: (chat: ChatEntityObj) => void;
-  addChats: (chats: Array<ChatEntityObj>, channel: string) => void;
+  addChats: (chats: Array<ChatEntityObj>) => void;
   clearChat: () => void;
   deleteChat: (id: string, channel: string) => void;
   chat: Array<ChatEntityObj>;
   chatChannels: ActiveChatChannels | undefined;
   chatGeneration: number;
-  loadedChatChannel: string;
+  currentChatChannel: string;
+  setCurrentChatChannel: (channel: string) => void;
   setChatChannels: (chatChannels: ActiveChatChannels) => void;
 };
 
@@ -328,7 +329,8 @@ const ChatContext = createContext<ChatStoreData>({
   chatChannels: undefined,
   chatGeneration: 0,
   deleteChat: defaultFunction,
-  loadedChatChannel: "",
+  currentChatChannel: "",
+  setCurrentChatChannel: defaultFunction,
   setChatChannels: defaultFunction,
 });
 
@@ -968,8 +970,9 @@ const RealStore = ({ children, ...props }: Props) => {
   // Counts the times the chat list was replaced wholesale (a channel load), so
   // whatever posted into the old list can tell its entries are gone.
   const [chatGeneration, setChatGeneration] = useState(0);
-  // The channel whose history the chat list was last loaded with.
-  const [loadedChatChannel, setLoadedChatChannel] = useState("");
+  // The channel the chat panel shows, set as soon as it starts loading one,
+  // so a history request that fails cannot leave it unset.
+  const [currentChatChannel, setCurrentChatChannel] = useState("");
   const [chatChannels, setChatChannels] = useState<
     ActiveChatChannels | undefined
   >(undefined);
@@ -1022,14 +1025,10 @@ const RealStore = ({ children, ...props }: Props) => {
     [addChat, gameContext.alphabet],
   );
 
-  const addChats = useCallback(
-    (entities: Array<ChatEntityObj>, channel: string) => {
-      setChat([...entities]);
-      setLoadedChatChannel(channel);
-      setChatGeneration((g) => g + 1);
-    },
-    [],
-  );
+  const addChats = useCallback((entities: Array<ChatEntityObj>) => {
+    setChat([...entities]);
+    setChatGeneration((g) => g + 1);
+  }, []);
 
   const clearChat = useCallback(() => {
     setChat([]);
@@ -1227,8 +1226,9 @@ const RealStore = ({ children, ...props }: Props) => {
       chat,
       chatChannels,
       chatGeneration,
-      loadedChatChannel,
+      currentChatChannel,
       setChatChannels,
+      setCurrentChatChannel,
     }),
     [
       addChat,
@@ -1238,8 +1238,9 @@ const RealStore = ({ children, ...props }: Props) => {
       chatChannels,
       chatGeneration,
       deleteChat,
-      loadedChatChannel,
+      currentChatChannel,
       setChatChannels,
+      setCurrentChatChannel,
     ],
   );
   const presenceStore = useMemo(

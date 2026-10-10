@@ -112,8 +112,8 @@ describe("the phony checker", () => {
   });
 
   it("waits for the game chat before posting", async () => {
-    // Before the game chat has loaded (the list may still hold the lobby's),
-    // the report would land in the wrong place, or be wiped by the load.
+    // Until the chat shows the game's channel (it may still show the lobby's),
+    // the report would land in the wrong place.
     const addChat = vi.fn();
     const { rerender } = renderChecker(addChat, "CSW24");
     await act(async () => {
