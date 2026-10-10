@@ -64,7 +64,6 @@ type AnalysisJob struct {
 	ClaimedAt           pgtype.Timestamptz
 	HeartbeatAt         pgtype.Timestamptz
 	ConfigJson          []byte
-	Result              []byte
 	ErrorMessage        pgtype.Text
 	RetryCount          pgtype.Int4
 	MaxRetries          pgtype.Int4
