@@ -23,9 +23,12 @@ export const RackEditor = (props: Props) => {
     [props.alphabet],
   );
 
-  const [currentRack, setCurrentRack] = useState(props.currentRack);
-  const [curRackStr, setCurRackStr] = useState(
-    calculateRackStr(props.currentRack),
+  // Enter sends this as it is, so a prefilled rack is capped like typed input.
+  const [currentRack, setCurrentRack] = useState(() =>
+    props.currentRack.slice(0, MaxRackLength),
+  );
+  const [curRackStr, setCurRackStr] = useState(() =>
+    calculateRackStr(props.currentRack.slice(0, MaxRackLength)),
   );
 
   const inputRef = useRef<InputRef>(null);
