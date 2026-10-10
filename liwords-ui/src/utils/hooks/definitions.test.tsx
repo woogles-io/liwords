@@ -25,7 +25,11 @@ const gameContext = {
   ],
 } as unknown as GameState;
 
-type CheckerProps = { chatGeneration?: number; lexicon: string };
+type CheckerProps = {
+  chatGeneration?: number;
+  inGameChat?: boolean;
+  lexicon: string;
+};
 
 const renderChecker = (
   addChat: (chat: ChatEntityObj) => void,
@@ -33,11 +37,12 @@ const renderChecker = (
 ) => {
   const initialProps: CheckerProps = { lexicon };
   return renderHook(
-    ({ chatGeneration, lexicon }: CheckerProps) =>
+    ({ chatGeneration, inGameChat, lexicon }: CheckerProps) =>
       useDefinitionAndPhonyChecker({
         addChat,
         chatGeneration,
         enableHoverDefine: true,
+        inGameChat,
         gameContext,
         gameDone: true,
         gameID: "annogame",
@@ -104,5 +109,41 @@ describe("the phony checker", () => {
     expect(addChat).toHaveBeenCalledTimes(2);
     expect(addChat.mock.calls[1][0]).toMatchObject({ id, message });
     expect(id).toBeTruthy();
+  });
+
+  it("waits for the game chat before posting", async () => {
+    // Before the game chat has loaded (the list may still hold the lobby's),
+    // the report would land in the wrong place, or be wiped by the load.
+    const addChat = vi.fn();
+    const { rerender } = renderChecker(addChat, "CSW24");
+    await act(async () => {
+      rerender({ inGameChat: false, lexicon: "CSW24" });
+    });
+    await waitFor(() => expect(mock.defineWords).toHaveBeenCalled());
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+    expect(addChat).not.toHaveBeenCalled();
+    await act(async () => {
+      rerender({ chatGeneration: 1, inGameChat: true, lexicon: "CSW24" });
+    });
+    expect(addChat).toHaveBeenCalledTimes(1);
+  });
+
+  it("posts nothing into another chat, and again on coming back", async () => {
+    // A direct-message channel opened on the game page reloads the list too.
+    const addChat = vi.fn();
+    const { rerender } = renderChecker(addChat, "CSW24");
+    await waitFor(() => expect(addChat).toHaveBeenCalledTimes(1));
+    const { id } = addChat.mock.calls[0][0];
+    await act(async () => {
+      rerender({ chatGeneration: 1, inGameChat: false, lexicon: "CSW24" });
+    });
+    expect(addChat).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      rerender({ chatGeneration: 2, inGameChat: true, lexicon: "CSW24" });
+    });
+    expect(addChat).toHaveBeenCalledTimes(2);
+    expect(addChat.mock.calls[1][0].id).toBe(id);
   });
 });

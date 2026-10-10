@@ -131,12 +131,13 @@ type GameContextStoreData = {
 
 type ChatStoreData = {
   addChat: (chat: ChatEntityObj) => void;
-  addChats: (chats: Array<ChatEntityObj>) => void;
+  addChats: (chats: Array<ChatEntityObj>, channel: string) => void;
   clearChat: () => void;
   deleteChat: (id: string, channel: string) => void;
   chat: Array<ChatEntityObj>;
   chatChannels: ActiveChatChannels | undefined;
   chatGeneration: number;
+  loadedChatChannel: string;
   setChatChannels: (chatChannels: ActiveChatChannels) => void;
 };
 
@@ -327,6 +328,7 @@ const ChatContext = createContext<ChatStoreData>({
   chatChannels: undefined,
   chatGeneration: 0,
   deleteChat: defaultFunction,
+  loadedChatChannel: "",
   setChatChannels: defaultFunction,
 });
 
@@ -966,6 +968,8 @@ const RealStore = ({ children, ...props }: Props) => {
   // Counts the times the chat list was replaced wholesale (a channel load), so
   // whatever posted into the old list can tell its entries are gone.
   const [chatGeneration, setChatGeneration] = useState(0);
+  // The channel whose history the chat list was last loaded with.
+  const [loadedChatChannel, setLoadedChatChannel] = useState("");
   const [chatChannels, setChatChannels] = useState<
     ActiveChatChannels | undefined
   >(undefined);
@@ -1018,10 +1022,14 @@ const RealStore = ({ children, ...props }: Props) => {
     [addChat, gameContext.alphabet],
   );
 
-  const addChats = useCallback((entities: Array<ChatEntityObj>) => {
-    setChat([...entities]);
-    setChatGeneration((g) => g + 1);
-  }, []);
+  const addChats = useCallback(
+    (entities: Array<ChatEntityObj>, channel: string) => {
+      setChat([...entities]);
+      setLoadedChatChannel(channel);
+      setChatGeneration((g) => g + 1);
+    },
+    [],
+  );
 
   const clearChat = useCallback(() => {
     setChat([]);
@@ -1219,6 +1227,7 @@ const RealStore = ({ children, ...props }: Props) => {
       chat,
       chatChannels,
       chatGeneration,
+      loadedChatChannel,
       setChatChannels,
     }),
     [
@@ -1229,6 +1238,7 @@ const RealStore = ({ children, ...props }: Props) => {
       chatChannels,
       chatGeneration,
       deleteChat,
+      loadedChatChannel,
       setChatChannels,
     ],
   );

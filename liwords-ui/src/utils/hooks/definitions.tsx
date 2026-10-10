@@ -17,6 +17,7 @@ export const useDefinitionAndPhonyChecker = ({
   addChat,
   chatGeneration,
   enableHoverDefine,
+  inGameChat = true,
   gameContext,
   gameDone,
   gameID,
@@ -26,6 +27,7 @@ export const useDefinitionAndPhonyChecker = ({
   addChat: (chat: ChatEntityObj) => void;
   chatGeneration?: number;
   enableHoverDefine: boolean;
+  inGameChat?: boolean;
   gameContext: GameState;
   gameDone: boolean;
   gameID?: string;
@@ -417,6 +419,10 @@ export const useDefinitionAndPhonyChecker = ({
   useEffect(() => {
     console.log("[phony-debug] post effect, phonies:", phonies);
     if (!phonies) return;
+    // Only into the game's own chat, once its history has loaded. While another
+    // channel is loaded, nothing is posted and nothing is marked as reported,
+    // so coming back to the game chat posts the report again.
+    if (!inGameChat) return;
     // A channel load replaces the whole chat list, and the history request can
     // land either side of the definitions one, so a report posted before it is
     // gone. Post it again then, under the same ids: addChat skips an entry that
@@ -495,7 +501,7 @@ export const useDefinitionAndPhonyChecker = ({
         });
       }
     }
-  }, [gameContext, phonies, addChat, chatGeneration, gameID]);
+  }, [gameContext, phonies, addChat, chatGeneration, gameID, inGameChat]);
 
   return {
     handleSetHover,

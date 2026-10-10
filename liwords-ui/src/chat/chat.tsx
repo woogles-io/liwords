@@ -614,7 +614,7 @@ export const Chat = React.memo((props: Props) => {
         clearChat();
         const messages: Array<ChatMessage> = chats.messages;
         if (messages) {
-          addChats(messages.map(chatMessageToChatEntity));
+          addChats(messages.map(chatMessageToChatEntity), newChannel);
         }
         setHasUnreadChat(false);
         setChatAutoScroll(true);
