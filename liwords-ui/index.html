@@ -130,6 +130,17 @@
         descent-override: 25%;
         line-gap-override: 0%;
       }
+      /* The logo text stays plain Mulish, so it keeps matching the header
+         drawn into board images (pkg/memento/header.png). Same file as the
+         Mulish stylesheet's 900 weight. */
+      @font-face {
+        font-family: "Woogles Logo";
+        font-style: normal;
+        font-weight: 900;
+        font-display: swap;
+        src: url(https://fonts.gstatic.com/s/mulish/v18/1Ptyg83HX_SGhgqO0yLcmjzUAuWexTpW8aevG547LTdNwA.woff2)
+          format("woff2");
+      }
     </style>
     <link
       href="https://fonts.googleapis.com/css2?family=Fjalla+One&display=swap"

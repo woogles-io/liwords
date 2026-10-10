@@ -130,6 +130,8 @@ body {
       text-transform: none;
       align-self: center;
       margin: 0 12px;
+      /* Plain Mulish, without the I and l from index.html. */
+      font-family: "Woogles Logo", $font-default;
       font-size: 28px;
       font-weight: 900;
       line-height: 35px;
