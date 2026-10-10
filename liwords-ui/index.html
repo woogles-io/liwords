@@ -54,6 +54,83 @@
       href="https://fonts.googleapis.com/css2?family=Mulish:wght@400;500;700;800;900&display=swap"
       rel="stylesheet"
     />
+    <!--
+      Mulish draws capital I and lowercase l as the same plain stem, so names
+      that differ only there cannot be told apart. These faces put IBM Plex
+      Sans's capital I (serifed) and lowercase l (tailed) into the Mulish
+      family; every other character still comes from Mulish.
+
+      They must come after the Mulish stylesheet: faces with the same
+      descriptors are tried in reverse order of definition, so these win for
+      their unicode-range. One rule per weight loaded above, because only
+      faces with matching descriptors combine that way. Each points at the
+      Plex weight whose stems match that Mulish weight, since Plex runs
+      heavier (Mulish 700 gets Plex 600). The overrides are Mulish's vertical
+      metrics, so a line with an I or an l is no taller where browsers honor
+      them.
+    -->
+    <style>
+      @font-face {
+        font-family: "Mulish";
+        font-style: normal;
+        font-weight: 400;
+        font-display: swap;
+        src: url(https://fonts.gstatic.com/s/ibmplexsans/v23/zYXGKVElMYYaJe8bpLHnCwDKr932-G7dytD-Dmu1swZSAXcomDVmadSD6llDB6g4.woff2)
+          format("woff2");
+        unicode-range: U+0049, U+006C;
+        ascent-override: 100.5%;
+        descent-override: 25%;
+        line-gap-override: 0%;
+      }
+      @font-face {
+        font-family: "Mulish";
+        font-style: normal;
+        font-weight: 500;
+        font-display: swap;
+        src: url(https://fonts.gstatic.com/s/ibmplexsans/v23/zYXGKVElMYYaJe8bpLHnCwDKr932-G7dytD-Dmu1swZSAXcomDVmadSD6llDB6g4.woff2)
+          format("woff2");
+        unicode-range: U+0049, U+006C;
+        ascent-override: 100.5%;
+        descent-override: 25%;
+        line-gap-override: 0%;
+      }
+      @font-face {
+        font-family: "Mulish";
+        font-style: normal;
+        font-weight: 700;
+        font-display: swap;
+        src: url(https://fonts.gstatic.com/s/ibmplexsans/v23/zYXGKVElMYYaJe8bpLHnCwDKr932-G7dytD-Dmu1swZSAXcomDVmadSDNF5DB6g4.woff2)
+          format("woff2");
+        unicode-range: U+0049, U+006C;
+        ascent-override: 100.5%;
+        descent-override: 25%;
+        line-gap-override: 0%;
+      }
+      @font-face {
+        font-family: "Mulish";
+        font-style: normal;
+        font-weight: 800;
+        font-display: swap;
+        src: url(https://fonts.gstatic.com/s/ibmplexsans/v23/zYXGKVElMYYaJe8bpLHnCwDKr932-G7dytD-Dmu1swZSAXcomDVmadSDDV5DB6g4.woff2)
+          format("woff2");
+        unicode-range: U+0049, U+006C;
+        ascent-override: 100.5%;
+        descent-override: 25%;
+        line-gap-override: 0%;
+      }
+      @font-face {
+        font-family: "Mulish";
+        font-style: normal;
+        font-weight: 900;
+        font-display: swap;
+        src: url(https://fonts.gstatic.com/s/ibmplexsans/v23/zYXGKVElMYYaJe8bpLHnCwDKr932-G7dytD-Dmu1swZSAXcomDVmadSDDV5DB6g4.woff2)
+          format("woff2");
+        unicode-range: U+0049, U+006C;
+        ascent-override: 100.5%;
+        descent-override: 25%;
+        line-gap-override: 0%;
+      }
+    </style>
     <link
       href="https://fonts.googleapis.com/css2?family=Fjalla+One&display=swap"
       rel="stylesheet"
