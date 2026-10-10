@@ -1071,7 +1071,9 @@ export const useOnSocketMsg = () => {
             });
             if (ev.gameId !== gameContext.gameID) {
               const key = `analysis-complete-${ev.gameId}`;
-              const analysisPath = `/game/${encodeURIComponent(ev.gameId)}`;
+              // ?analysis=computer opens the game with its computer analysis
+              // showing (table.tsx).
+              const analysisPath = `/game/${encodeURIComponent(ev.gameId)}?analysis=computer`;
               notification.success({
                 message: "Computer analysis ready",
                 description: "Click to view the analysis",
