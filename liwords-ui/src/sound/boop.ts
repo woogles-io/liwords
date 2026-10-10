@@ -149,8 +149,14 @@ class Booper {
 const playableSounds: { [key: string]: Booper } = {};
 
 // Only load sounds if this is not an embed page. This is a bit of a hack.
+//
+// Also skip them for automated browsers (navigator.webdriver is set by
+// Puppeteer, Playwright and Selenium). Nobody hears the sounds there, and
+// automated page loads downloading them were a large share of our CDN bytes.
+const soundsLoaded =
+  !window.location.pathname.startsWith("/embed/") && !navigator.webdriver;
 
-if (!window.location.pathname.startsWith("/embed/")) {
+if (soundsLoaded) {
   const booperArray = [
     new Booper("makeMoveSound", makemoveSound),
     new Booper("oppMoveSound", oppmoveSound),
@@ -199,6 +205,7 @@ window.addEventListener("touchend", unlockAll, true);
 window.addEventListener("keydown", unlockAll, true);
 
 const playSound = (soundName: string) => {
+  if (!soundsLoaded) return;
   const booper = playableSounds[soundName];
   if (!booper) {
     throw new TypeError(`unsupported sound: ${soundName}`);
