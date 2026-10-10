@@ -25,6 +25,9 @@ import (
 )
 
 type NotorietyStore interface {
+	// RecordAutomodVerdict records that automod has judged this player in this
+	// game, returning false if it already had. See automod_verdicts.
+	RecordAutomodVerdict(ctx context.Context, playerID string, gameID string, verdict int) (bool, error)
 	AddNotoriousGame(ctx context.Context, gameID string, playerID string, gameType int, time int64) error
 	GetNotoriousGames(ctx context.Context, playerID string, limit int) ([]*ms.NotoriousGame, error)
 	DeleteNotoriousGames(ctx context.Context, playerID string) error
@@ -60,35 +63,49 @@ var ExcessivePhonyThreshold float64 = 0.5
 var ExcessivePhonyMinimum int = 3
 var testTimestamp int64 = 1
 
-func Automod(ctx context.Context, us user.Store, ns NotorietyStore, u0 *entity.User, u1 *entity.User, g *entity.Game) error {
-	totalGameTime := g.GameReq.InitialTimeSeconds + (60 * g.GameReq.MaxOvertimeMinutes)
-	lngt := ms.NotoriousGameType_GOOD
-	wngt := ms.NotoriousGameType_GOOD
+// Verdict is what a finished game says about each player's conduct.
+//
+// It is a description, not an effect: deciding is separate from acting on the
+// decision, so the decision can be tested against a game without a database, a
+// user store, or a game that was ever really played.
+type Verdict struct {
+	// LoserIdx is the player the game was lost by, never negative -- a drawn
+	// game reports 0, which is what the original code's `LoserIdx * LoserIdx`
+	// arrived at less obviously.
+	LoserIdx int
+	Winner   ms.NotoriousGameType
+	Loser    ms.NotoriousGameType
+}
+
+// Classify decides what a finished game says about each player.
+//
+// Pure: it reads the game and nothing else, and changes nothing. Everything it
+// looks at is on the game -- the end reason, the loser, the event log, the
+// timers and the meta events. Notably it does *not* look at whose turn it is;
+// a game is over, and the loser is whoever the loser is.
+func Classify(g *entity.Game, cfg *wglconfig.Config, isBotGame bool) (Verdict, error) {
+	v := Verdict{Winner: ms.NotoriousGameType_GOOD, Loser: ms.NotoriousGameType_GOOD}
+
 	history := g.History()
-	// Perhaps too cute, but solves cases where g.LoserIdex is -1
-	nonNegativeLoserIdx := g.LoserIdx * g.LoserIdx
-	loserId := history.Players[nonNegativeLoserIdx].UserId
-	winnerIdx := 1 - nonNegativeLoserIdx
+	// Perhaps too cute, but solves cases where g.LoserIdx is -1
+	v.LoserIdx = g.LoserIdx * g.LoserIdx
+	loserId := history.Players[v.LoserIdx].UserId
+	winnerIdx := 1 - v.LoserIdx
 
-	cfg, err := config.Ctx(ctx)
-	if err != nil {
-		return err
-	}
-
-	isBotGame := u0.IsBot || u1.IsBot
+	totalGameTime := g.GameReq.InitialTimeSeconds + (60 * g.GameReq.MaxOvertimeMinutes)
 
 	if (g.GameEndReason == ipc.GameEndReason_TIME || g.GameEndReason == ipc.GameEndReason_RESIGNED) &&
 		totalGameTime > int32(UnreasonableTime) && !isBotGame {
 		// g.LoserIdx should never be -1, but if it is somehow, then the whole app will
 		// crash, so let's just be sure
 		if g.LoserIdx == -1 {
-			return errors.New("game ended in resignation but does not have a winner")
+			return v, errors.New("game ended in resignation but does not have a winner")
 		}
 		// Someone lost on time, determine if the loser made no plays at all
 		var loserLastEvent *pb.GameEvent
 		for i := len(history.Events) - 1; i >= 0; i-- {
 			evt := history.Events[i]
-			if evt.PlayerIndex == uint32(nonNegativeLoserIdx) && (evt.Type == pb.GameEvent_TILE_PLACEMENT_MOVE ||
+			if evt.PlayerIndex == uint32(v.LoserIdx) && (evt.Type == pb.GameEvent_TILE_PLACEMENT_MOVE ||
 				evt.Type == pb.GameEvent_EXCHANGE ||
 				evt.Type == pb.GameEvent_UNSUCCESSFUL_CHALLENGE_TURN_LOSS ||
 				evt.Type == pb.GameEvent_CHALLENGE) {
@@ -102,49 +119,49 @@ func Automod(ctx context.Context, us user.Store, ns NotorietyStore, u0 *entity.U
 			// If the loser also denied an abort or adjudication,
 			// this is even ruder
 			if loserDeniedNudge(g, loserId) {
-				lngt = ms.NotoriousGameType_NO_PLAY_DENIED_NUDGE
+				v.Loser = ms.NotoriousGameType_NO_PLAY_DENIED_NUDGE
 			} else {
-				lngt = ms.NotoriousGameType_NO_PLAY
+				v.Loser = ms.NotoriousGameType_NO_PLAY
 			}
 		} else if g.GameEndReason == ipc.GameEndReason_RESIGNED {
 			timeOfResignation := int32(g.Timers.TimeRemaining[g.LoserIdx])
 			if unreasonableTime(loserLastEvent.MillisRemaining - timeOfResignation) {
-				lngt = ms.NotoriousGameType_SITTING
+				v.Loser = ms.NotoriousGameType_SITTING
 			}
 		} else if unreasonableTime(loserLastEvent.MillisRemaining) {
 			// The loser let their clock run down, this is rude
-			lngt = ms.NotoriousGameType_SITTING
+			v.Loser = ms.NotoriousGameType_SITTING
 		}
 	}
 
 	// Check for excessive phonies
-	if wngt == ms.NotoriousGameType_GOOD {
-		excessive, err := excessivePhonies(history, cfg.WGLConfig(), winnerIdx)
+	if v.Winner == ms.NotoriousGameType_GOOD {
+		excessive, err := excessivePhonies(history, cfg, winnerIdx)
 		if err != nil {
-			return err
+			return v, err
 		}
 		if excessive {
-			wngt = ms.NotoriousGameType_EXCESSIVE_PHONIES
+			v.Winner = ms.NotoriousGameType_EXCESSIVE_PHONIES
 		}
 	}
 
-	if lngt == ms.NotoriousGameType_GOOD {
-		excessive, err := excessivePhonies(history, cfg.WGLConfig(), nonNegativeLoserIdx)
+	if v.Loser == ms.NotoriousGameType_GOOD {
+		excessive, err := excessivePhonies(history, cfg, v.LoserIdx)
 		if err != nil {
-			return err
+			return v, err
 		}
 		if excessive {
-			lngt = ms.NotoriousGameType_EXCESSIVE_PHONIES
+			v.Loser = ms.NotoriousGameType_EXCESSIVE_PHONIES
 		}
 	}
 
 	// Now check for sandbagging
-	if g.GameEndReason == ipc.GameEndReason_RESIGNED && lngt == ms.NotoriousGameType_GOOD {
+	if g.GameEndReason == ipc.GameEndReason_RESIGNED && v.Loser == ms.NotoriousGameType_GOOD {
 		// This could be a case of sandbagging
 		totalMoves := 0
 		for i := 0; i < len(history.Events); i++ {
 			evt := history.Events[i]
-			if evt.PlayerIndex == uint32(nonNegativeLoserIdx) && (evt.Type == pb.GameEvent_TILE_PLACEMENT_MOVE ||
+			if evt.PlayerIndex == uint32(v.LoserIdx) && (evt.Type == pb.GameEvent_TILE_PLACEMENT_MOVE ||
 				evt.Type == pb.GameEvent_EXCHANGE) {
 				totalMoves++
 			}
@@ -152,27 +169,40 @@ func Automod(ctx context.Context, us user.Store, ns NotorietyStore, u0 *entity.U
 		// scoreDifference := int(g.Quickdata.FinalScores[g.WinnerIdx] - g.Quickdata.FinalScores[g.LoserIdx])
 		// if totalMoves < SandbaggingThreshold && scoreDifference/totalMoves < InsurmountablePerTurnScore {
 		if totalMoves < SandbaggingThreshold {
-			lngt = ms.NotoriousGameType_SANDBAG
+			v.Loser = ms.NotoriousGameType_SANDBAG
 		}
+	}
+
+	return v, nil
+}
+
+// Automod judges a finished game and applies the result to both players.
+func Automod(ctx context.Context, us user.Store, ns NotorietyStore, u0 *entity.User, u1 *entity.User, g *entity.Game) error {
+	cfg, err := config.Ctx(ctx)
+	if err != nil {
+		return err
+	}
+
+	v, err := Classify(g, cfg.WGLConfig(), u0.IsBot || u1.IsBot)
+	if err != nil {
+		return err
 	}
 
 	luser := u0
 	wuser := u1
 
-	if nonNegativeLoserIdx == 1 {
+	if v.LoserIdx == 1 {
 		luser, wuser = wuser, luser
 	}
 
 	if !wuser.IsBot {
-		err := updateNotoriety(ctx, us, ns, wuser, g.Uid(), wngt)
-		if err != nil {
+		if err := updateNotoriety(ctx, us, ns, wuser, g.Uid(), v.Winner); err != nil {
 			return err
 		}
 	}
 
 	if !luser.IsBot {
-		err := updateNotoriety(ctx, us, ns, luser, g.Uid(), lngt)
-		if err != nil {
+		if err := updateNotoriety(ctx, us, ns, luser, g.Uid(), v.Loser); err != nil {
 			return err
 		}
 	}
@@ -219,7 +249,24 @@ func ResetNotoriety(ctx context.Context, us user.Store, ns NotorietyStore, uuid 
 	return us.SetNotoriety(ctx, user.UUID, 0)
 }
 
+// updateNotoriety applies one verdict to one player, once.
+//
+// Its effects are not idempotent -- a bad game adds to the score and files a
+// row, a good one subtracts -- so it records the verdict first and does nothing
+// if that verdict was already recorded. Before this, running automod twice for
+// a game penalised a player twice, and the only thing preventing it was that
+// every caller of performEndgameDuties happened to check whether the game had
+// already ended.
 func updateNotoriety(ctx context.Context, us user.Store, ns NotorietyStore, user *entity.User, guid string, ngt ms.NotoriousGameType) error {
+	recorded, err := ns.RecordAutomodVerdict(ctx, user.UUID, guid, int(ngt))
+	if err != nil {
+		return err
+	}
+	if !recorded {
+		log.Debug().Str("username", user.Username).Str("gameID", guid).
+			Msg("automod-already-applied")
+		return nil
+	}
 
 	previousNotorietyScore := user.Notoriety
 	newNotoriety := user.Notoriety
@@ -308,6 +355,13 @@ func loserDeniedNudge(g *entity.Game, userId string) bool {
 func isPhonyEvent(event *pb.GameEvent,
 	history *pb.GameHistory,
 	cfg *wglconfig.Config) (bool, error) {
+	// An event that formed no words cannot have formed a phony, so decide that
+	// before loading a lexicon. Loading it first meant a game whose lexicon is
+	// missing or unnamed failed the phony check outright rather than answering
+	// the question it could answer.
+	if len(event.WordsFormed) == 0 {
+		return false, nil
+	}
 	phony := false
 	gd, err := kwg.GetKWG(cfg, history.Lexicon)
 	if err != nil {

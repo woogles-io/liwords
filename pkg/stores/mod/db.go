@@ -24,6 +24,23 @@ func (s *DBStore) Disconnect() {
 	s.dbPool.Close()
 }
 
+// RecordAutomodVerdict records automod's judgement of one player in one game
+// and reports whether this call is the one that recorded it.
+//
+// False means automod has already judged this pairing, and its effects -- which
+// add to or subtract from a notoriety score -- must not be applied again.
+func (s *DBStore) RecordAutomodVerdict(ctx context.Context, playerID string, gameID string, verdict int) (bool, error) {
+	n, err := s.queries.RecordAutomodVerdict(ctx, models.RecordAutomodVerdictParams{
+		PlayerID: playerID,
+		GameID:   gameID,
+		Verdict:  int32(verdict),
+	})
+	if err != nil {
+		return false, err
+	}
+	return n == 1, nil
+}
+
 func (s *DBStore) AddNotoriousGame(ctx context.Context, playerID string, gameID string, gameType int, time int64) error {
 	return s.queries.AddNotoriousGame(ctx, models.AddNotoriousGameParams{
 		GameID:    pgtype.Text{String: gameID, Valid: true},
