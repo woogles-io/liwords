@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -610,9 +611,10 @@ func (s *DBStore) SpawnShadowCompare(ctx context.Context, g *entity.Game) {
 	// which the production load path will use. Not because the column is
 	// doubted, but because Set has not committed yet at this point in the move
 	// path, so reading it here would compare against the previous move's racks.
-	// What this shadow is testing is the derivation -- board, scores, turn
-	// counts, the scoreless counter, and above all the play state -- from the
-	// events actually in the table.
+	// What this shadow is testing is the derivation -- board, scores, the
+	// scoreless counter, and above all the play state -- from the events
+	// actually in the table. (Not per-player turn counts; see
+	// shadowCompareTurns.)
 	racks := make([]string, xwordgame.MaxPlayers)
 	for p := range racks {
 		racks[p] = g.Game.RackLettersFor(p)
@@ -693,9 +695,15 @@ func (s *DBStore) shadowCompareTurns(
 		return
 	}
 
-	// No exclusions here: want came from the live macondo game, which does
-	// maintain the state its reconstruction path drops.
-	divs := xwordbridge.CompareStates(res.State, want)
+	// One exclusion: per-player turn counts. want is often not a game macondo
+	// played live but one it rebuilt from history -- every correspondence game,
+	// and every game once the cache is gone -- and macondo's replay loses those
+	// counts. In v0.13.5 playMove increments players[i].turns for placements
+	// and passes (game/game.go:582, :644), while PlayTurn, which NewFromHistory
+	// replays through, increments it only for exchanges (:1144). Nothing in
+	// liwords reads the count, so diffing it only buries real mismatches under
+	// false ones. Everything else is compared.
+	divs := withoutTurnCounts(xwordbridge.CompareStates(res.State, want))
 	if len(divs) == 0 {
 		log.Debug().Str("gameID", gameID).Int("turns", len(events)).Msg("shadow-turns-ok")
 		return
@@ -705,6 +713,18 @@ func (s *DBStore) shadowCompareTurns(
 		ev = ev.Str("from_turns."+d.Field, d.Ours).Str("live."+d.Field, d.Theirs)
 	}
 	ev.Msg("shadow-turns-mismatch")
+}
+
+// withoutTurnCounts drops the per-player turn-count fields from a comparison.
+// See shadowCompareTurns for why.
+func withoutTurnCounts(divs []xwordbridge.Divergence) []xwordbridge.Divergence {
+	out := divs[:0]
+	for _, d := range divs {
+		if !strings.HasPrefix(d.Field, "turns[") {
+			out = append(out, d)
+		}
+	}
+	return out
 }
 
 // GetMetadata gets metadata about the game, but does not actually play the game.
