@@ -383,12 +383,14 @@ type AnalyzerContextProviderProps = {
   children: React.ReactNode;
   lexicon: string;
   variant?: string;
+  // Bumping this shows the computer analysis, as its button does.
+  openComputerAnalysisSignal?: number;
 };
 
 export const AnalyzerContextProvider = (
   props: AnalyzerContextProviderProps,
 ) => {
-  const { children, lexicon, variant } = props;
+  const { children, lexicon, variant, openComputerAnalysisSignal = 0 } = props;
   const [, setMovesCacheId] = useState(0);
   const rerenderMoves = useCallback(
     () => setMovesCacheId((n) => (n + 1) | 0),
@@ -403,6 +405,11 @@ export const AnalyzerContextProvider = (
       setAutoMode(true);
     }
   }, [freshExamineSignal]);
+  useEffect(() => {
+    if (openComputerAnalysisSignal > 0) {
+      setShowComputerAnalysis(true);
+    }
+  }, [openComputerAnalysisSignal]);
   const [unrace, setUnrace] = useState(new Unrace());
 
   const { gameContext: examinableGameContext } =
