@@ -862,6 +862,7 @@ export const Table = React.memo((props: Props) => {
   const { handleSetHover, hideDefinitionHover, definitionPopover } =
     useDefinitionAndPhonyChecker({
       addChat,
+      challengeRule: gameInfo.gameRequest?.challengeRule,
       chatGeneration,
       enableHoverDefine,
       // The report belongs in this game's chat only, not in a direct-message

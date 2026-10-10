@@ -1,7 +1,10 @@
 import { create } from "@bufbuild/protobuf";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { GameEventSchema } from "../../gen/api/proto/vendored/macondo/macondo_pb";
+import {
+  ChallengeRule,
+  GameEventSchema,
+} from "../../gen/api/proto/vendored/macondo/macondo_pb";
 import type { ChatEntityObj } from "../../store/constants";
 import type { GameState } from "../../store/reducers/game_reducer";
 import { useDefinitionAndPhonyChecker } from "./definitions";
@@ -34,12 +37,14 @@ type CheckerProps = {
 const renderChecker = (
   addChat: (chat: ChatEntityObj) => void,
   lexicon: string,
+  challengeRule?: ChallengeRule,
 ) => {
   const initialProps: CheckerProps = { lexicon };
   return renderHook(
     ({ chatGeneration, inGameChat, lexicon }: CheckerProps) =>
       useDefinitionAndPhonyChecker({
         addChat,
+        challengeRule,
         chatGeneration,
         enableHoverDefine: true,
         inGameChat,
@@ -145,5 +150,48 @@ describe("the phony checker", () => {
     });
     expect(addChat).toHaveBeenCalledTimes(2);
     expect(addChat.mock.calls[1][0].id).toBe(id);
+  });
+
+  describe("under VOID", () => {
+    const allValid = async ({ words }: { words: string[] }) => ({
+      results: Object.fromEntries(
+        words.map((word) => [word, { v: true, d: "" }]),
+      ),
+    });
+
+    it("says nothing when every word is valid", async () => {
+      // VOID refuses an invalid word when it is played, so "all valid" is a
+      // given there, not news.
+      mock.defineWords.mockImplementation(allValid);
+      const addChat = vi.fn();
+      renderChecker(addChat, "CSW24", ChallengeRule.VOID);
+      await waitFor(() => expect(mock.defineWords).toHaveBeenCalled());
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      });
+      expect(addChat).not.toHaveBeenCalled();
+    });
+
+    it("lists the words the current word list rejects", async () => {
+      // Such a word was valid when played; the word list changed since. No one
+      // could have challenged it, so the report does not say so.
+      const addChat = vi.fn();
+      renderChecker(addChat, "CSW24", ChallengeRule.VOID);
+      await waitFor(() => expect(addChat).toHaveBeenCalled());
+      expect(addChat).toHaveBeenCalledTimes(1);
+      expect(addChat.mock.calls[0][0].message).toBe(
+        `Not in the current word list: ${PHONY}*`,
+      );
+    });
+
+    it("leaves the other rules saying all words are valid", async () => {
+      mock.defineWords.mockImplementation(allValid);
+      const addChat = vi.fn();
+      renderChecker(addChat, "CSW24", ChallengeRule.DOUBLE);
+      await waitFor(() => expect(addChat).toHaveBeenCalled());
+      expect(addChat.mock.calls[0][0].message).toBe(
+        "All words played are valid",
+      );
+    });
   });
 });
