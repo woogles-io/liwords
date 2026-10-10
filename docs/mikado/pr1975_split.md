@@ -32,7 +32,8 @@ step:
    PR's diff is only its own. The ledger ignores the header line.
 
 After the last step, the tree of 7 with 1b merged in equals the reference
-tree, except for migration filenames (see below) and this document. That final diff is what
+tree, except for migration filenames (see below), this document, and the
+deliberate deviations listed under "Problems found in the reference branch". That final diff is what
 proves nothing was dropped.
 
 ## Migration numbering
@@ -140,20 +141,33 @@ The old test is kept until step 6 (above). Before 6 merges, add a
 Fixes for these are deliberate deviations from the reference. Each gets its own
 commit and is listed here, so the final tree diff explains itself.
 
-- **`SHADOW_TURNS` reports false mismatches on `turns[]`.** Found in step 3 by
-  running the `pkg/gameplay` suite with `DUAL_WRITE_TURNS`, `SHADOW_TURNS` and
-  `SHADOW_TURNS_LOAD` on, against master, step 3 and the reference.
-  `SpawnShadowCompare` diffs with `CompareStates`, which excludes nothing, on
-  the grounds that the game it compares against was played live in memory.
-  That stops being true when the game was loaded from history: macondo's
-  `NewFromHistory` loses per-player turn counts (`PlayTurn` only increments
-  them for exchanges, see `xwordgame_review.md`). The reference produces
-  `from_turns.turns[0]=1 live.turns[0]=0` in `TestDoubleChallengeGoodWord` and
-  `TestQuickdata`. In production this hits every correspondence game now, and
-  every game after step 6. It is a false alarm, not corruption, but it would
-  bury real mismatches. **Open:** decide the fix before trusting the flag
-  (exclude `turns[]` from this comparison, or fix `PlayTurn` in macondo, which
-  `xwordgame_remaining.md` already lists).
+- **`SHADOW_TURNS` reported false mismatches on `turns[]`. Fixed in step 3.**
+  Found by running the `pkg/gameplay` suite with `DUAL_WRITE_TURNS`,
+  `SHADOW_TURNS` and `SHADOW_TURNS_LOAD` on, against master, step 3 and the
+  reference. The reference produced `from_turns.turns[0]=1 live.turns[0]=0`
+  in `TestDoubleChallengeGoodWord` and `TestQuickdata`.
+
+  Cause, confirmed in macondo v0.13.5: live play (`playMove`,
+  `game/game.go:582` and `:644`) increments a player's turn count for
+  placements and passes, while replay (`PlayTurn`, `:1144`, which
+  `NewFromHistory` uses) increments it only for exchanges. Any game macondo
+  rebuilt from history undercounts. That is every correspondence game now, and
+  every game after step 6. `SpawnShadowCompare` diffed with `CompareStates`,
+  which excludes nothing, on the assumption that it was comparing against a
+  game played live. Nothing in liwords reads the count (`TurnsForNick` has no
+  callers).
+
+  Fix: `shadowCompareTurns` drops `turns[*]` and compares everything else.
+  It does not reuse `DivergencesVsReconstruction`, which also waives fields
+  live play does maintain. `SHADOW_TURNS_LOAD` already excluded the field.
+  New test `shadowturns_test.go` plays moves live, reloads the game from
+  history, and checks the shadow is quiet. Its precondition asserts the counts
+  really differ, so it fails loudly once macondo is fixed and the exclusion
+  can go. Mutation-checked: without the exclusion it fails with exactly the
+  reference's `turns[0]`/`turns[1]` mismatch and no other field.
+
+  Deviation from the reference: the exclusion and one comment in `db.go`, plus
+  the new test file. These carry through to the top of the stack.
 
 ## Manual steps
 
@@ -204,6 +218,8 @@ version, the reference version, or something else.
 # Migrations are matched by content, because they are renumbered.
 # Generated models are compared ignoring the sqlc version header line.
 m=${1:-origin/master}; r=${2:-08da29c33}
+# Files the split adds on purpose, each listed in the plan's deviations section.
+deviations=" pkg/stores/game/shadowturns_test.go "
 blob() { git rev-parse -q --verify "$1:$2" 2>/dev/null || echo none; }
 git diff --name-only "$m" "$r" | while read -r f; do
   here=$(blob HEAD "$f"); mm=$(blob "$m" "$f"); rr=$(blob "$r" "$f")
@@ -224,13 +240,18 @@ done
 git diff --name-only "$m" HEAD | while read -r f; do
   [[ $f == docs/mikado/pr1975_split.md ]] && continue
   [[ $f == db/migrations/* ]] && continue
-  git diff --quiet "$m" "$r" -- "$f" && printf '%-14s %s\n' "NOT IN REF" "$f"
+  if git diff --quiet "$m" "$r" -- "$f"; then
+    [[ $deviations == *" $f "* ]] && s="DEVIATION" || s="NOT IN REF"
+    printf '%-14s %s\n' "$s" "$f"
+  fi
 done
 ```
 
 Migration files are matched by content rather than name, since their numbers
 change (see above). `NOT IN REF` means a split branch changed a file the
-reference never touched, which should never happen.
+reference never touched, which should never happen. `DEVIATION` is the same
+thing for a file listed in the script's `deviations` variable, each one
+explained under "Problems found in the reference branch".
 
 ## hunks.py
 
