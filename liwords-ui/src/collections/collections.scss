@@ -19,16 +19,12 @@
     overflow-x: hidden;
     flex-shrink: 0;
     padding-top: 24px;
-    @include colorModed() {
-      background: m($background);
-    }
+    background: m($background);
 
     .collection-navigation {
       height: 100%;
       border-radius: 0;
-      @include colorModed() {
-        border-right: 1px solid m($gray-subtle);
-      }
+      border-right: 1px solid m($gray-subtle);
 
       .collection-header {
         text-align: center;
@@ -72,15 +68,11 @@
             border-radius: 4px;
 
             // Default subtle background for all items
-            @include colorModed() {
-              background-color: m($card-background);
-              border: 1px solid m($off-background);
-            }
+            background-color: m($card-background);
+            border: 1px solid m($off-background);
 
             &:hover {
-              @include colorModed() {
-                background-color: m($gray-subtle);
-              }
+              background-color: m($gray-subtle);
 
               .drag-handle {
                 opacity: 1 !important;
@@ -92,10 +84,8 @@
             }
 
             &.active {
-              @include colorModed() {
-                background-color: m($primary-light);
-                border-left: 3px solid m($primary-dark);
-              }
+              background-color: m($primary-light);
+              border-left: 3px solid m($primary-dark);
               margin-left: -12px;
               padding-left: 9px;
             }
@@ -105,10 +95,8 @@
               transform: rotate(2deg);
               z-index: 1000;
 
-              @include colorModed() {
-                background-color: m($primary-light);
-                border: 2px dashed m($primary-dark);
-              }
+              background-color: m($primary-light);
+              border: 2px dashed m($primary-dark);
             }
           }
 
@@ -118,9 +106,7 @@
               color 0.2s ease;
 
             &:hover {
-              @include colorModed() {
-                color: m($primary-dark);
-              }
+              color: m($primary-dark);
             }
           }
         }
@@ -132,16 +118,12 @@
             margin-bottom: 4px;
 
             &:hover {
-              @include colorModed() {
-                background-color: m($gray-subtle);
-              }
+              background-color: m($gray-subtle);
             }
 
             &.active {
-              @include colorModed() {
-                background-color: m($primary-light);
-                border-left: 3px solid m($primary-dark);
-              }
+              background-color: m($primary-light);
+              border-left: 3px solid m($primary-dark);
               margin-left: -12px;
               padding-left: 9px;
             }
@@ -166,15 +148,11 @@
 
         h2 {
           margin-bottom: 8px;
-          @include colorModed() {
-            color: m($primary-dark);
-          }
+          color: m($primary-dark);
         }
 
         .chapter-type {
-          @include colorModed() {
-            color: m($gray-medium);
-          }
+          color: m($gray-medium);
           font-size: 14px;
           margin: 0;
         }
@@ -191,9 +169,7 @@
 
       .chapter-info {
         text-align: center;
-        @include colorModed() {
-          color: m($gray-medium);
-        }
+        color: m($gray-medium);
         font-size: 14px;
 
         p {
@@ -228,19 +204,15 @@
       height: auto;
       max-height: 40vh;
       border-right: none;
-      @include colorModed() {
-        border-bottom: 1px solid m($gray-subtle);
-      }
+      border-bottom: 1px solid m($gray-subtle);
     }
   }
 }
 
 // Collection Navigation Header (for game view)
 .collection-navigation-header {
-  @include colorModed() {
-    background: m($off-background);
-    border-bottom: 1px solid m($gray-subtle);
-  }
+  background: m($off-background);
+  border-bottom: 1px solid m($gray-subtle);
   padding: 8px 16px;
   display: flex;
   justify-content: center;
@@ -255,14 +227,10 @@
 
     .back-button {
       flex-shrink: 0;
-      @include colorModed() {
-        color: m($primary-dark);
-      }
+      color: m($primary-dark);
 
       &:hover {
-        @include colorModed() {
-          background: m($gray-subtle);
-        }
+        background: m($gray-subtle);
       }
     }
 
@@ -274,9 +242,7 @@
       min-width: 0; // Allow flex shrinking
 
       .collection-icon {
-        @include colorModed() {
-          color: m($primary-dark);
-        }
+        color: m($primary-dark);
         font-size: 16px;
         flex-shrink: 0;
       }
@@ -289,9 +255,7 @@
       .chapter-indicator {
         font-size: 12px;
         flex-shrink: 0;
-        @include colorModed() {
-          color: m($gray-medium);
-        }
+        color: m($gray-medium);
       }
     }
 
@@ -302,14 +266,10 @@
         min-width: auto;
 
         &:not(.ant-btn-primary) {
-          @include colorModed() {
-            color: m($primary-dark);
-          }
+          color: m($primary-dark);
 
           &:hover:not(:disabled) {
-            @include colorModed() {
-              background: m($gray-subtle);
-            }
+            background: m($gray-subtle);
           }
         }
       }
@@ -364,9 +324,7 @@
       gap: 12px;
 
       .collection-icon {
-        @include colorModed() {
-          color: m($primary-dark);
-        }
+        color: m($primary-dark);
         font-size: 18px;
         flex-shrink: 0;
         margin-top: 2px;
@@ -382,16 +340,12 @@
           font-size: 15px;
           line-height: 1.3;
           margin-bottom: 4px;
-          @include colorModed() {
-            color: m($gray-extreme);
-          }
+          color: m($gray-extreme);
         }
 
         .chapter-indicator {
           font-size: 12px;
-          @include colorModed() {
-            color: m($gray-medium);
-          }
+          color: m($gray-medium);
         }
       }
     }
@@ -407,22 +361,16 @@
         margin-bottom: 2px;
         transition: all 0.2s ease;
 
-        @include colorModed() {
-          border: 1px solid transparent;
-        }
+        border: 1px solid transparent;
 
         &:hover {
-          @include colorModed() {
-            background: m($gray-subtle);
-            border-color: m($primary-dark);
-          }
+          background: m($gray-subtle);
+          border-color: m($primary-dark);
         }
 
         &.active {
-          @include colorModed() {
-            background: m($primary-light);
-            border-color: m($primary-dark);
-          }
+          background: m($primary-light);
+          border-color: m($primary-dark);
         }
 
         .chapter-item-content {
@@ -435,9 +383,7 @@
             margin-bottom: 2px;
 
             .chapter-icon {
-              @include colorModed() {
-                color: m($primary-dark);
-              }
+              color: m($primary-dark);
               font-size: 12px;
               flex-shrink: 0;
             }
@@ -445,18 +391,14 @@
             .chapter-title {
               font-size: 14px;
               line-height: 1.3;
-              @include colorModed() {
-                color: m($gray-extreme);
-              }
+              color: m($gray-extreme);
             }
           }
 
           .chapter-type {
             font-size: 11px;
             margin-left: 20px; // Align with chapter title (icon + gap)
-            @include colorModed() {
-              color: m($gray-medium);
-            }
+            color: m($gray-medium);
           }
         }
       }
@@ -471,16 +413,12 @@
 
     .back-button {
       max-width: 200px;
-      @include colorModed() {
-        color: m($primary-dark);
-        border-color: m($gray-subtle);
-      }
+      color: m($primary-dark);
+      border-color: m($gray-subtle);
 
       &:hover:not(:disabled) {
-        @include colorModed() {
-          background: m($gray-subtle);
-          border-color: m($primary-dark);
-        }
+        background: m($gray-subtle);
+        border-color: m($primary-dark);
       }
     }
 
@@ -538,24 +476,18 @@
           }
 
           &:not(.ant-btn-primary) {
-            @include colorModed() {
-              color: m($gray-extreme);
-              border-color: m($gray-subtle);
-            }
+            color: m($gray-extreme);
+            border-color: m($gray-subtle);
 
             &:hover:not(:disabled) {
-              @include colorModed() {
-                background: m($gray-subtle);
-                border-color: m($primary-dark);
-              }
+              background: m($gray-subtle);
+              border-color: m($primary-dark);
             }
 
             &:disabled {
-              @include colorModed() {
-                color: m($gray-medium) !important;
-                background: m($gray-subtle) !important;
-                border-color: m($gray-subtle) !important;
-              }
+              color: m($gray-medium) !important;
+              background: m($gray-subtle) !important;
+              border-color: m($gray-subtle) !important;
               cursor: not-allowed !important;
               opacity: 0.6 !important;
             }

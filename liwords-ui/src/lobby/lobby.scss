@@ -84,14 +84,12 @@
   a {
     li {
       padding-bottom: 18px;
-      @include colorModed() {
-        color: m($gray-extreme);
-      }
+      color: m($gray-extreme);
 
-      // NB: no `color` here. It used to be `color: inherit`, which was dead
-      // because colorModed() above emitted a higher-specificity selector.
-      // Now that colorModed() is a passthrough it would win and paint these
-      // links $primary-dark, so the declaration is gone rather than reordered.
+      // NB: deliberately no `color` here. There used to be `color: inherit`,
+      // dead because the themed rule above outranked it back when dark mode was
+      // emitted under a `.mode--*` ancestor. Without that extra class it would
+      // win, and these links would inherit $primary-dark from App.scss.
       &,
       &:focus,
       &:active,
@@ -106,9 +104,7 @@
 
       &:hover h4,
       &:hover p {
-        @include colorModed() {
-          background-color: d(primary-middle-on-bg);
-        }
+        background-color: d(primary-middle-on-bg);
       }
     }
   }
@@ -126,14 +122,10 @@
 
   h4 {
     span.director {
-      @include colorModed() {
-        color: m($primary-dark);
-      }
+      color: m($primary-dark);
 
       &.readonly {
-        @include colorModed() {
-          color: m($gray-medium);
-        }
+        color: m($gray-medium);
         opacity: 0.7;
       }
     }
@@ -143,9 +135,7 @@
     margin-top: 8px;
   }
   h5.section-header {
-    @include colorModed() {
-      color: m($gray-medium);
-    }
+    color: m($gray-medium);
     & {
       letter-spacing: 0.16em;
       text-transform: uppercase;
@@ -154,18 +144,11 @@
   }
   h3.tournament-name {
     font-size: 24px;
-    @include colorModed() {
-      color: m($primary-dark);
-    }
+    color: m($primary-dark);
   }
   .ant-card-head {
     padding-bottom: 8px;
-    @include colorModed() {
-      background-image: linear-gradient(
-        m($header) 50%,
-        m($card-background) 100%
-      );
-    }
+    background-image: linear-gradient(m($header) 50%, m($card-background) 100%);
     .ant-card-head-title {
       font-size: 22px;
     }
@@ -174,9 +157,7 @@
     list-style-type: disc;
   }
   li {
-    @include colorModed() {
-      color: m($gray-extreme);
-    }
+    color: m($gray-extreme);
     & {
       margin-left: 48px;
     }

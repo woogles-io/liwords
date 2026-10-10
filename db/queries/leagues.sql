@@ -298,8 +298,9 @@ DO UPDATE SET
     blanks_played = EXCLUDED.blanks_played,
     total_tiles_played = EXCLUDED.total_tiles_played,
     total_opponent_tiles_played = EXCLUDED.total_opponent_tiles_played,
-    total_mistake_index = EXCLUDED.total_mistake_index,
-    games_analyzed = EXCLUDED.games_analyzed,
+    -- total_mistake_index and games_analyzed are deliberately not updated:
+    -- they are owned by RefreshDivisionMistakeIndex, and copying back a value
+    -- read earlier would undo a refresh that ran in between.
     updated_at = NOW();
 
 -- name: UpdateStandingResult :exec
@@ -325,19 +326,44 @@ WHERE ls.division_id = $1;
 SELECT * FROM league_standings
 WHERE division_id = $1 AND user_id = $2;
 
--- name: IncrementStandingMistakeIndex :exec
-UPDATE league_standings
-SET total_mistake_index = total_mistake_index + $3,
-    games_analyzed = games_analyzed + 1,
+-- name: RefreshDivisionMistakeIndex :exec
+-- Rebuilds total_mistake_index and games_analyzed for every standing in a
+-- division from the jobs' summary columns, so a refresh is idempotent and
+-- repairs any earlier drift. Each game counts once, using its newest job that
+-- has both players' mistake indexes. A requeued job keeps its old columns
+-- until the new result lands (ResetAnalysisJobKeepResult), so the game stays
+-- counted during reanalysis, whatever the job's status.
+WITH latest AS (
+    SELECT DISTINCT ON (aj.game_id)
+        g.player0_id,
+        g.player1_id,
+        aj.player0_mistake_index AS mi0,
+        aj.player1_mistake_index AS mi1
+    FROM analysis_jobs aj
+    JOIN games g ON g.uuid = aj.game_id
+    WHERE g.league_division_id = sqlc.arg(division_id)::uuid
+      AND aj.player0_mistake_index IS NOT NULL
+      AND aj.player1_mistake_index IS NOT NULL
+    ORDER BY aj.game_id, aj.created_at DESC
+),
+per_player AS (
+    SELECT player0_id AS user_id, mi0 AS mi FROM latest WHERE player0_id IS NOT NULL
+    UNION ALL
+    SELECT player1_id AS user_id, mi1 AS mi FROM latest WHERE player1_id IS NOT NULL
+),
+totals AS (
+    SELECT user_id, SUM(mi) AS total, COUNT(*)::INT AS n
+    FROM per_player
+    GROUP BY user_id
+)
+UPDATE league_standings ls
+SET total_mistake_index = COALESCE(t.total, 0),
+    games_analyzed = COALESCE(t.n, 0),
     updated_at = NOW()
-WHERE division_id = $1 AND user_id = $2;
-
--- name: DecrementStandingMistakeIndex :exec
-UPDATE league_standings
-SET total_mistake_index = total_mistake_index - $3,
-    games_analyzed = GREATEST(0, games_analyzed - 1),
-    updated_at = NOW()
-WHERE division_id = $1 AND user_id = $2;
+FROM league_standings cur
+LEFT JOIN totals t ON t.user_id = cur.user_id
+WHERE ls.id = cur.id
+  AND cur.division_id = sqlc.arg(division_id)::uuid;
 
 -- name: DeleteDivisionStandings :exec
 DELETE FROM league_standings
@@ -582,26 +608,6 @@ WHERE g.league_division_id = $1
   AND gp0.game_end_reason != 5  -- Exclude ABORTED
   AND gp0.game_end_reason != 7; -- Exclude CANCELLED
 
--- name: GetDivisionAnalyzedGames :many
--- Get the latest completed analysis for each game in a division.
--- Used to recalculate mistake index totals from source data.
-SELECT DISTINCT ON (aj.game_id)
-    aj.game_id,
-    g.player0_id,
-    g.player1_id,
-    -- Stored as protojson, which drops a field that holds its zero value, so a
-    -- perfect game has no mistakeIndex key at all. A game counts as analyzed
-    -- when both summaries are there; a summary without the key means 0.
-    COALESCE(aj.result->'playerSummaries'->0->>'mistakeIndex', '0')::DOUBLE PRECISION as player0_mistake_index,
-    COALESCE(aj.result->'playerSummaries'->1->>'mistakeIndex', '0')::DOUBLE PRECISION as player1_mistake_index
-FROM analysis_jobs aj
-JOIN games g ON g.uuid = aj.game_id
-WHERE g.league_division_id = $1
-  AND aj.status = 'completed'
-  AND aj.result->'playerSummaries'->0 IS NOT NULL
-  AND aj.result->'playerSummaries'->1 IS NOT NULL
-ORDER BY aj.game_id, aj.completed_at DESC;
-
 -- name: GetGameLeagueInfo :one
 SELECT
     g.league_division_id,
@@ -643,18 +649,13 @@ FROM game_players gp_player
 INNER JOIN games g ON gp_player.game_uuid = g.uuid
 INNER JOIN users u_opponent ON gp_player.opponent_id = u_opponent.id
 LEFT JOIN LATERAL (
-    -- The result is stored as protojson, which drops a field that holds its
-    -- zero value, so a perfect game has no mistakeIndex key at all. Presence
-    -- is therefore this player's summary, not the key inside it, and a
-    -- summary without the key means 0.
-    SELECT COALESCE(
-        aj.result->'playerSummaries'->gp_player.player_index::INT->>'mistakeIndex',
-        '0'
-    )::DOUBLE PRECISION AS mistake_index
+    SELECT (CASE gp_player.player_index WHEN 0 THEN aj.player0_mistake_index
+                                        ELSE aj.player1_mistake_index END)::DOUBLE PRECISION AS mistake_index
     FROM analysis_jobs aj
     WHERE aj.game_id = gp_player.game_uuid
       AND aj.status = 'completed'
-      AND aj.result->'playerSummaries'->gp_player.player_index::INT IS NOT NULL
+      AND CASE gp_player.player_index WHEN 0 THEN aj.player0_mistake_index
+                                      ELSE aj.player1_mistake_index END IS NOT NULL
     ORDER BY aj.completed_at DESC
     LIMIT 1
 ) mi ON true

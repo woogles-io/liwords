@@ -47,8 +47,19 @@ WHERE id = (
     LIMIT 1
     FOR UPDATE SKIP LOCKED
 )
+AND (
+    SELECT COUNT(*)
+    FROM analysis_jobs
+    WHERE claimed_by_user_uuid = $1
+      AND status IN ('claimed', 'processing')
+) < $2::INT
 RETURNING id, game_id, config_json
 `
+
+type ClaimNextJobParams struct {
+	Worker    pgtype.Text
+	MaxActive int32
+}
 
 type ClaimNextJobRow struct {
 	ID         uuid.UUID
@@ -56,41 +67,78 @@ type ClaimNextJobRow struct {
 	ConfigJson []byte
 }
 
-// Claims the next available job atomically using FOR UPDATE SKIP LOCKED
-func (q *Queries) ClaimNextJob(ctx context.Context, claimedByUserUuid pgtype.Text) (ClaimNextJobRow, error) {
-	row := q.db.QueryRow(ctx, claimNextJob, claimedByUserUuid)
+// Claims the next available job atomically using FOR UPDATE SKIP LOCKED.
+// A worker already holding @max_active jobs gets none, so one account can't
+// claim the whole queue and let it time out into failure. Two simultaneous
+// claims by the same worker can each see the old count; overshooting by one
+// is harmless.
+func (q *Queries) ClaimNextJob(ctx context.Context, arg ClaimNextJobParams) (ClaimNextJobRow, error) {
+	row := q.db.QueryRow(ctx, claimNextJob, arg.Worker, arg.MaxActive)
 	var i ClaimNextJobRow
 	err := row.Scan(&i.ID, &i.GameID, &i.ConfigJson)
 	return i, err
 }
 
 const completeJob = `-- name: CompleteJob :one
-UPDATE analysis_jobs
+WITH prev AS (
+    SELECT j.id AS job_id, j.result_s3_key AS previous_s3_key
+    FROM analysis_jobs j
+    WHERE j.id = $6
+    FOR UPDATE
+)
+UPDATE analysis_jobs aj
 SET
     status = 'completed',
-    result = $1,
+    result_s3_key = $1,
+    player0_mistake_index = $2,
+    player1_mistake_index = $3,
+    analysis_version = $4,
     completed_at = NOW()
-WHERE id = $2 AND claimed_by_user_uuid = $3 AND status IN ('claimed', 'processing')
-RETURNING game_id, requested_by_user_uuid, EXTRACT(EPOCH FROM (NOW() - claimed_at))::BIGINT * 1000 as duration_ms
+FROM prev
+WHERE aj.id = prev.job_id AND aj.claimed_by_user_uuid = $5
+  AND aj.status IN ('claimed', 'processing')
+RETURNING aj.game_id, aj.requested_by_user_uuid,
+    EXTRACT(EPOCH FROM (NOW() - aj.claimed_at))::BIGINT * 1000 as duration_ms,
+    prev.previous_s3_key
 `
 
 type CompleteJobParams struct {
-	Result            []byte
-	ID                uuid.UUID
-	ClaimedByUserUuid pgtype.Text
+	ResultS3Key         pgtype.Text
+	Player0MistakeIndex pgtype.Float8
+	Player1MistakeIndex pgtype.Float8
+	AnalysisVersion     pgtype.Int4
+	ClaimedByUserUuid   pgtype.Text
+	ID                  uuid.UUID
 }
 
 type CompleteJobRow struct {
 	GameID              string
 	RequestedByUserUuid pgtype.Text
 	DurationMs          int32
+	PreviousS3Key       pgtype.Text
 }
 
-// Marks job as completed and returns game_id and processing duration
+// Marks job as completed and returns game_id, processing duration and the
+// job's previous result_s3_key (so the caller can delete a replaced object).
+// The result itself lives in the result store at result_s3_key (NULL for a
+// zero-turn game, which has none); the summary columns are copied from it by
+// the caller.
 func (q *Queries) CompleteJob(ctx context.Context, arg CompleteJobParams) (CompleteJobRow, error) {
-	row := q.db.QueryRow(ctx, completeJob, arg.Result, arg.ID, arg.ClaimedByUserUuid)
+	row := q.db.QueryRow(ctx, completeJob,
+		arg.ResultS3Key,
+		arg.Player0MistakeIndex,
+		arg.Player1MistakeIndex,
+		arg.AnalysisVersion,
+		arg.ClaimedByUserUuid,
+		arg.ID,
+	)
 	var i CompleteJobRow
-	err := row.Scan(&i.GameID, &i.RequestedByUserUuid, &i.DurationMs)
+	err := row.Scan(
+		&i.GameID,
+		&i.RequestedByUserUuid,
+		&i.DurationMs,
+		&i.PreviousS3Key,
+	)
 	return i, err
 }
 
@@ -180,54 +228,6 @@ func (q *Queries) GetAdminAnalysisStats(ctx context.Context) (GetAdminAnalysisSt
 	row := q.db.QueryRow(ctx, getAdminAnalysisStats)
 	var i GetAdminAnalysisStatsRow
 	err := row.Scan(&i.TotalCompleted, &i.PendingCount, &i.ProcessingCount)
-	return i, err
-}
-
-const getAnalysisJobWithDetails = `-- name: GetAnalysisJobWithDetails :one
-SELECT
-    id,
-    game_id,
-    status,
-    requested_by_user_uuid,
-    request_type,
-    result,
-    error_message,
-    created_at,
-    completed_at,
-    priority
-FROM analysis_jobs
-WHERE id = $1
-`
-
-type GetAnalysisJobWithDetailsRow struct {
-	ID                  uuid.UUID
-	GameID              string
-	Status              string
-	RequestedByUserUuid pgtype.Text
-	RequestType         pgtype.Text
-	Result              []byte
-	ErrorMessage        pgtype.Text
-	CreatedAt           pgtype.Timestamptz
-	CompletedAt         pgtype.Timestamptz
-	Priority            pgtype.Int4
-}
-
-// Get full details of an analysis job
-func (q *Queries) GetAnalysisJobWithDetails(ctx context.Context, id uuid.UUID) (GetAnalysisJobWithDetailsRow, error) {
-	row := q.db.QueryRow(ctx, getAnalysisJobWithDetails, id)
-	var i GetAnalysisJobWithDetailsRow
-	err := row.Scan(
-		&i.ID,
-		&i.GameID,
-		&i.Status,
-		&i.RequestedByUserUuid,
-		&i.RequestType,
-		&i.Result,
-		&i.ErrorMessage,
-		&i.CreatedAt,
-		&i.CompletedAt,
-		&i.Priority,
-	)
 	return i, err
 }
 
@@ -398,8 +398,8 @@ func (q *Queries) GetContributorsLeaderboard(ctx context.Context, limit int32) (
 
 const getJobByGameID = `-- name: GetJobByGameID :one
 SELECT
-    aj.id, aj.game_id, aj.status, aj.config_json, aj.result, aj.error_message,
-    aj.completed_at, aj.created_at, aj.claimed_at,
+    aj.id, aj.game_id, aj.status, aj.config_json, aj.error_message,
+    aj.completed_at, aj.created_at, aj.claimed_at, aj.analysis_version, aj.result_s3_key,
     COALESCE(u.username, '') as analyzed_by_username
 FROM analysis_jobs aj
 LEFT JOIN users u ON u.uuid = aj.claimed_by_user_uuid
@@ -413,11 +413,12 @@ type GetJobByGameIDRow struct {
 	GameID             string
 	Status             string
 	ConfigJson         []byte
-	Result             []byte
 	ErrorMessage       pgtype.Text
 	CompletedAt        pgtype.Timestamptz
 	CreatedAt          pgtype.Timestamptz
 	ClaimedAt          pgtype.Timestamptz
+	AnalysisVersion    pgtype.Int4
+	ResultS3Key        pgtype.Text
 	AnalyzedByUsername string
 }
 
@@ -432,38 +433,35 @@ func (q *Queries) GetJobByGameID(ctx context.Context, gameID string) (GetJobByGa
 		&i.GameID,
 		&i.Status,
 		&i.ConfigJson,
-		&i.Result,
 		&i.ErrorMessage,
 		&i.CompletedAt,
 		&i.CreatedAt,
 		&i.ClaimedAt,
+		&i.AnalysisVersion,
+		&i.ResultS3Key,
 		&i.AnalyzedByUsername,
 	)
 	return i, err
 }
 
-const getJobByID = `-- name: GetJobByID :one
-SELECT id, game_id, status, result
+const getJobClaim = `-- name: GetJobClaim :one
+SELECT game_id, status, claimed_by_user_uuid
 FROM analysis_jobs
 WHERE id = $1
 `
 
-type GetJobByIDRow struct {
-	ID     uuid.UUID
-	GameID string
-	Status string
-	Result []byte
+type GetJobClaimRow struct {
+	GameID            string
+	Status            string
+	ClaimedByUserUuid pgtype.Text
 }
 
-func (q *Queries) GetJobByID(ctx context.Context, id uuid.UUID) (GetJobByIDRow, error) {
-	row := q.db.QueryRow(ctx, getJobByID, id)
-	var i GetJobByIDRow
-	err := row.Scan(
-		&i.ID,
-		&i.GameID,
-		&i.Status,
-		&i.Result,
-	)
+// Who holds a job, checked before uploading a submitted result so a stale
+// submission doesn't upload an object only to have CompleteJob reject it.
+func (q *Queries) GetJobClaim(ctx context.Context, id uuid.UUID) (GetJobClaimRow, error) {
+	row := q.db.QueryRow(ctx, getJobClaim, id)
+	var i GetJobClaimRow
+	err := row.Scan(&i.GameID, &i.Status, &i.ClaimedByUserUuid)
 	return i, err
 }
 
@@ -527,40 +525,6 @@ func (q *Queries) GetUserRequestCountToday(ctx context.Context, userUuid string)
 	return request_count, err
 }
 
-const getVerticalOpenerJobs = `-- name: GetVerticalOpenerJobs :many
-SELECT id, game_id
-FROM analysis_jobs
-WHERE status = 'completed'
-  AND result->'turns'->0->>'playedMove' ~ '^[A-O][0-9]'
-`
-
-type GetVerticalOpenerJobsRow struct {
-	ID     uuid.UUID
-	GameID string
-}
-
-// Find completed jobs where the first turn was a vertical opening move
-// (column-first coordinates like A1, B3, etc. indicate vertical plays)
-func (q *Queries) GetVerticalOpenerJobs(ctx context.Context) ([]GetVerticalOpenerJobsRow, error) {
-	rows, err := q.db.Query(ctx, getVerticalOpenerJobs)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []GetVerticalOpenerJobsRow
-	for rows.Next() {
-		var i GetVerticalOpenerJobsRow
-		if err := rows.Scan(&i.ID, &i.GameID); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const reclaimStaleJobs = `-- name: ReclaimStaleJobs :exec
 UPDATE analysis_jobs
 SET
@@ -613,7 +577,8 @@ SET status = 'pending',
 WHERE id = $1
 `
 
-// Resets job to pending but keeps result for JIT MI subtraction
+// Resets job to pending but keeps its result_s3_key and summary columns, so
+// the old analysis stays viewable and counted until the new one replaces it
 func (q *Queries) ResetAnalysisJobKeepResult(ctx context.Context, id uuid.UUID) error {
 	_, err := q.db.Exec(ctx, resetAnalysisJobKeepResult, id)
 	return err

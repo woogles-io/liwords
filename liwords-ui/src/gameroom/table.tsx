@@ -10,6 +10,7 @@ import { HomeOutlined, RightOutlined } from "@ant-design/icons";
 
 import { Link, useSearchParams, useParams } from "react-router";
 import { useFirefoxPatch } from "../utils/hooks/firefox";
+import { useOwnsAnnotatedGame } from "../utils/hooks/annotated_game_owner";
 import { useDefinitionAndPhonyChecker } from "../utils/hooks/definitions";
 import { BoardPanel } from "./board_panel";
 import { TopBar } from "../navigation/topbar";
@@ -32,7 +33,7 @@ import { PlayerCards } from "./player_cards";
 import Pool from "./pool";
 import { encodeToSocketFmt } from "../utils/protobuf";
 import "./scss/gameroom.scss";
-import { ScoreCard } from "./scorecard";
+import { examineAndSeek, ScoreCard } from "./scorecard";
 import { CommentsDrawer } from "./CommentsDrawer";
 import { defaultGameInfo, GameInfo } from "./game_info";
 import { useComments } from "../utils/hooks/comments";
@@ -330,6 +331,7 @@ const ChatIfVisible: React.FC<{ children: React.ReactNode }> = ({
 
 export const Table = React.memo((props: Props) => {
   const { gameID } = useParams();
+  const ownsAnnotatedGame = useOwnsAnnotatedGame(gameID, props.annotated);
   const { addChat } = useChatStoreContext();
 
   const { gameContext: examinableGameContext } =
@@ -603,9 +605,17 @@ export const Table = React.memo((props: Props) => {
         }
 
         if (resp.type === GameType.ANNOTATED) {
-          // If this is an annotated game, leave early. We will use
-          // a synthetic GameInfo constructed from the annotated game's
-          // GameDocument.
+          if (!props.annotated) {
+            // A /game/<id> link to an annotated game; only /anno/ can load it.
+            window.location.replace(
+              `/anno/${encodeURIComponent(gameID ?? "")}` +
+                window.location.search +
+                window.location.hash,
+            );
+            return;
+          }
+          // We will use a synthetic GameInfo constructed from the annotated
+          // game's GameDocument.
           return;
         }
         setGameInfo(resp);
@@ -635,19 +645,6 @@ export const Table = React.memo((props: Props) => {
           }
         }
       } catch (e) {
-        // Annotated games are stored as GameDocuments; the metadata Get endpoint
-        // rejects them ("annotated game ... should be accessed via GetDocument,
-        // not Get"). A faulty /game/<id> link to an annotated game -- e.g. from
-        // the analysis-ready notification or a profile link -- lands here.
-        // Redirect to the /anno/ view that can actually load it (replace, so the
-        // dead /game/ URL is not left in history) instead of showing an error.
-        if (
-          gameID &&
-          String(e).includes("should be accessed via GetDocument")
-        ) {
-          window.location.replace(`/anno/${encodeURIComponent(gameID)}`);
-          return;
-        }
         message.error({
           content: `Failed to fetch game information; please refresh. (Error: ${e})`,
           duration: 10,
@@ -661,7 +658,7 @@ export const Table = React.memo((props: Props) => {
       // Cleanup messages
       message.destroy("board-messages");
     };
-  }, [gameID, gmClient, setGameEndMessage, setPoolFormat]);
+  }, [gameID, gmClient, setGameEndMessage, setPoolFormat, props.annotated]);
 
   useEffect(() => {
     // If we are in annotated mode, we must explicitly fetch the GameDocument
@@ -1036,6 +1033,13 @@ export const Table = React.memo((props: Props) => {
     searchedTurn,
     setSearchParams,
   ]);
+  const scorecardSeek = useMemo(
+    () =>
+      props.annotated || gameDone
+        ? examineAndSeek(handleExamineStart, handleExamineGoTo, gameDone)
+        : undefined,
+    [props.annotated, gameDone, handleExamineStart, handleExamineGoTo],
+  );
   const boardTheme = "board--" + tournamentContext.metadata.boardStyle || "";
   const tileTheme = "tile--" + tournamentContext.metadata.tileStyle || "";
   const alphabet = useMemo(
@@ -1216,6 +1220,11 @@ export const Table = React.memo((props: Props) => {
               <HomeOutlined />
               Back to Broadcast
             </Link>
+          ) : ownsAnnotatedGame ? (
+            <Link to="/editor">
+              <HomeOutlined />
+              Back to editor
+            </Link>
           ) : (
             <Link to="/">
               <HomeOutlined />
@@ -1247,6 +1256,7 @@ export const Table = React.memo((props: Props) => {
       gameInfo.leagueId,
       gameInfo.leagueSlug,
       gameInfo.tournamentId,
+      ownsAnnotatedGame,
       tournamentContext.metadata,
       broadcastCtx,
       nextCorresGame,
@@ -1452,6 +1462,7 @@ export const Table = React.memo((props: Props) => {
           />
           <ScoreCard
             isExamining={isExamining}
+            onSeek={scorecardSeek}
             isInMobileView={isInMobileView}
             events={examinableGameContext.turns}
             allEvents={gameContext.turns}

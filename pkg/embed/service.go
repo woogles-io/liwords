@@ -1,9 +1,11 @@
 package embed
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"html"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -106,12 +108,28 @@ func (es *EmbedService) generateEmbedHTML(gameDoc *ipc.GameDocument, gameID stri
 		return "", fmt.Errorf("failed to serialize options: %w", err)
 	}
 
+	// protojson does not escape <, > and &, so a user-controlled string in the
+	// document (e.g. a player name containing "</script>") could otherwise
+	// break out of the <script> block below.
+	var escapedDoc bytes.Buffer
+	json.HTMLEscape(&escapedDoc, gameDocJSON)
+
+	// encoding/json escapes <, > and & by default.
+	gameIDJSON, err := json.Marshal(gameID)
+	if err != nil {
+		return "", fmt.Errorf("failed to serialize game ID: %w", err)
+	}
+
 	// Generate unique container ID
 	containerID := fmt.Sprintf("woogles-embed-%s", gameID)
+	containerIDJSON, err := json.Marshal(containerID)
+	if err != nil {
+		return "", fmt.Errorf("failed to serialize container ID: %w", err)
+	}
 
 	// Build the embed HTML with complete HTML document structure
 	// Use relative path for the embed script so it works with any domain
-	html := fmt.Sprintf(`<!DOCTYPE html>
+	page := fmt.Sprintf(`<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -129,8 +147,8 @@ func (es *EmbedService) generateEmbedHTML(gameDoc *ipc.GameDocument, gameID stri
   </div>
   <script>
     window.WooglesEmbed = {
-      gameId: %q,
-      containerId: %q,
+      gameId: %s,
+      containerId: %s,
       gameDocument: %s,
       options: %s
     };
@@ -139,16 +157,16 @@ func (es *EmbedService) generateEmbedHTML(gameDoc *ipc.GameDocument, gameID stri
   <script src="/static/js/embed-standalone.js"></script>
 </body>
 </html>`,
-		containerID,
+		html.EscapeString(containerID),
 		options.Width,
 		options.Height,
-		gameID,
-		containerID,
-		string(gameDocJSON),
+		gameIDJSON,
+		containerIDJSON,
+		escapedDoc.String(),
 		string(optionsJSON),
 	)
 
-	return html, nil
+	return page, nil
 }
 
 func (es *EmbedService) generateEmbedEndpoint(w http.ResponseWriter, r *http.Request, gameID string) {

@@ -46,6 +46,8 @@ const { screenSizeDesktop, screenSizeLaptop, screenSizeTablet } = variables;
 
 type Props = {
   isExamining?: boolean;
+  // Seek to an event index when not already examining (e.g. annotated games).
+  onSeek?: (evtIdx: number) => void;
   events: Array<GameEvent>;
   allEvents?: Array<GameEvent>; // full game events, used for two-col view in examination mode
   allBoard?: Board; // full final board, used for two-col view in examination mode
@@ -660,6 +662,7 @@ export const ScoreCard = React.memo((props: Props) => {
   let contents = null;
   const { gameContext } = useGameContextStoreContext();
   const { handleExamineGoTo, examinedTurn } = useExamineStoreContext();
+  const seek = props.isExamining ? handleExamineGoTo : props.onSeek;
 
   // Scroll selected turn into view when examinedTurn changes (arrow navigation).
   // Skip on mobile: the scorecard is below the board in a single-column stack,
@@ -765,9 +768,7 @@ export const ScoreCard = React.memo((props: Props) => {
                       board={props.allBoard ?? props.board}
                       alphabet={gameContext.alphabet}
                       onSeek={
-                        props.isExamining
-                          ? () => handleExamineGoTo(left.turn.firstEvtIdx)
-                          : undefined
+                        seek ? () => seek(left.turn.firstEvtIdx) : undefined
                       }
                       isSelected={
                         props.isExamining &&
@@ -798,9 +799,7 @@ export const ScoreCard = React.memo((props: Props) => {
                       board={props.allBoard ?? props.board}
                       alphabet={gameContext.alphabet}
                       onSeek={
-                        props.isExamining
-                          ? () => handleExamineGoTo(right.turn.firstEvtIdx)
-                          : undefined
+                        seek ? () => seek(right.turn.firstEvtIdx) : undefined
                       }
                       isSelected={
                         props.isExamining &&
@@ -861,11 +860,7 @@ export const ScoreCard = React.memo((props: Props) => {
             timeBankP0={timeBankState?.p0TimeBank}
             timeBankP1={timeBankState?.p1TimeBank}
             eventIndex={eventIdx}
-            onSeek={
-              props.isExamining
-                ? () => handleExamineGoTo(t.firstEvtIdx)
-                : undefined
-            }
+            onSeek={seek ? () => seek(t.firstEvtIdx) : undefined}
             isSelected={
               props.isExamining &&
               examinedTurn >= t.firstEvtIdx &&
@@ -910,3 +905,16 @@ export const ScoreCard = React.memo((props: Props) => {
     </Card>
   );
 });
+
+// Starts examining if needed, then jumps to the event. The start may reset a
+// finished game to turn 0; the goTo is applied after it, so it wins.
+export const examineAndSeek =
+  (
+    start: (gameDone?: boolean) => void,
+    goTo: (x: number) => void,
+    gameDone: boolean,
+  ) =>
+  (evtIdx: number) => {
+    start(gameDone);
+    goTo(evtIdx);
+  };

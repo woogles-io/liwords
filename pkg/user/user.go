@@ -33,6 +33,12 @@ type Store interface {
 	SetStats(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey,
 		p0stats *entity.Stats, p1stats *entity.Stats) error
 	SetNotoriety(ctx context.Context, uuid string, notoriety int) error
+	// SetRegistrationClient records the IP and client ID an account was created from.
+	SetRegistrationClient(ctx context.Context, uuid string, ip string, clientID string) error
+	// RecordClient records that the user was seen from the given IP and client ID.
+	RecordClient(ctx context.Context, uuid string, ip string, clientID string) error
+	// PruneClients deletes client records not seen since before the cutoff.
+	PruneClients(ctx context.Context, cutoff time.Time) (int64, error)
 	ResetRatings(ctx context.Context, uuid string) error
 	ResetStats(ctx context.Context, uuid string) error
 	ResetProfile(ctx context.Context, uuid string) error

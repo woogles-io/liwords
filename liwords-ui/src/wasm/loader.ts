@@ -55,6 +55,9 @@ class Loadable {
 const loadablesByKey: { [key: string]: Array<Loadable> } = {};
 {
   const filenames = [
+    "CSW15.kad",
+    "CSW15.klv2",
+    "CSW15.kwg",
     "CSW19.kad",
     "CSW19.klv2",
     "CSW19.kwg",
@@ -97,6 +100,9 @@ const loadablesByKey: { [key: string]: Array<Loadable> } = {};
     "NSF25.kad",
     "NSF25.klv2",
     "NSF25.kwg",
+    "NSF26.kad",
+    "NSF26.klv2",
+    "NSF26.kwg",
     "NSWL20.kad",
     "NSWL20.klv2",
     "NSWL20.kwg",
@@ -130,6 +136,7 @@ const loadablesByKey: { [key: string]: Array<Loadable> } = {};
     "SLV26.klv2",
     "SLV26.kwg",
     "SLV26.kad",
+    "super-CSW15.klv2",
     "super-CSW19.klv2",
     "super-CSW19X.klv2",
     "super-CSW21.klv2",

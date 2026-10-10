@@ -1494,24 +1494,28 @@ body {
 </html>
 `))
 
+// obsPageData fields are plain Go values, never template.JS: html/template
+// escapes them for the <script> context (quoting strings and encoding <, >,
+// & and quotes), so user-controlled values such as player names and the
+// path-derived events URL can't break out of the script block.
 type obsPageData struct {
-	Field        template.JS
-	IsMarquee    template.JS
-	IsBlank      template.JS
+	Field        string
+	IsMarquee    bool
+	IsBlank      bool
 	DefaultSize  int
-	InitialValue template.JS // JS string literal, so quotes are included
-	EventsURL    template.JS
+	InitialValue string
+	EventsURL    string
 }
 
 func serveOBSPage(w http.ResponseWriter, suffix, initialValue, eventsURL string) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	obsPageTmpl.Execute(w, obsPageData{
-		Field:        template.JS(fmt.Sprintf("%q", suffix)),
-		IsMarquee:    template.JS(fmt.Sprintf("%v", obsIsMarquee(suffix))),
-		IsBlank:      template.JS(fmt.Sprintf("%v", obsIsBlank(suffix))),
+		Field:        suffix,
+		IsMarquee:    obsIsMarquee(suffix),
+		IsBlank:      obsIsBlank(suffix),
 		DefaultSize:  obsDefaultSize(suffix),
-		InitialValue: template.JS(fmt.Sprintf("%q", initialValue)),
-		EventsURL:    template.JS(fmt.Sprintf("%q", eventsURL)),
+		InitialValue: initialValue,
+		EventsURL:    eventsURL,
 	})
 }

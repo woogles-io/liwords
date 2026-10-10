@@ -11,7 +11,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/matryer/is"
-	"google.golang.org/protobuf/encoding/protojson"
 
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/woogles-io/liwords/pkg/analysis"
@@ -37,6 +36,12 @@ func setupTestDB(t *testing.T) (*pgxpool.Pool, *models.Queries) {
 
 	queries := models.New(pool)
 	return pool, queries
+}
+
+// anyClaims claims for worker with no practical cap on active claims, for
+// tests that aren't about that cap.
+func anyClaims(worker pgtype.Text) models.ClaimNextJobParams {
+	return models.ClaimNextJobParams{Worker: worker, MaxActive: 1000}
 }
 
 func createTestUsers(t *testing.T, pool *pgxpool.Pool) {
@@ -170,15 +175,15 @@ func TestEnqueueWithPriority(t *testing.T) {
 	// Claim jobs and verify they come out in priority order
 	testUserUUID := pgtype.Text{String: "test-uuid-1", Valid: true}
 
-	job1, err := queries.ClaimNextJob(ctx, testUserUUID)
+	job1, err := queries.ClaimNextJob(ctx, anyClaims(testUserUUID))
 	is.NoErr(err)
 	is.Equal(job1.GameID, game2) // Highest priority first
 
-	job2, err := queries.ClaimNextJob(ctx, testUserUUID)
+	job2, err := queries.ClaimNextJob(ctx, anyClaims(testUserUUID))
 	is.NoErr(err)
 	is.Equal(job2.GameID, game3) // Medium priority second
 
-	job3, err := queries.ClaimNextJob(ctx, testUserUUID)
+	job3, err := queries.ClaimNextJob(ctx, anyClaims(testUserUUID))
 	is.NoErr(err)
 	is.Equal(job3.GameID, game1) // Lowest priority last
 }
@@ -200,7 +205,7 @@ func TestClaimNextJob(t *testing.T) {
 
 	// Claim the job
 	testUserUUID := pgtype.Text{String: "test-uuid-1", Valid: true}
-	job, err := queries.ClaimNextJob(ctx, testUserUUID)
+	job, err := queries.ClaimNextJob(ctx, anyClaims(testUserUUID))
 	is.NoErr(err)
 	is.Equal(job.GameID, gameID)
 
@@ -210,7 +215,7 @@ func TestClaimNextJob(t *testing.T) {
 	is.Equal(jobStatus.Status, "claimed")
 
 	// Try to claim another job - should get error (no jobs available)
-	_, err = queries.ClaimNextJob(ctx, testUserUUID)
+	_, err = queries.ClaimNextJob(ctx, anyClaims(testUserUUID))
 	is.True(err != nil) // Should be no jobs available
 }
 
@@ -230,7 +235,7 @@ func TestHeartbeat(t *testing.T) {
 	is.NoErr(err)
 
 	testUserUUID := pgtype.Text{String: "test-uuid-1", Valid: true}
-	job, err := queries.ClaimNextJob(ctx, testUserUUID)
+	job, err := queries.ClaimNextJob(ctx, anyClaims(testUserUUID))
 	is.NoErr(err)
 
 	// Update heartbeat
@@ -273,25 +278,29 @@ func TestCompleteJob(t *testing.T) {
 	is.NoErr(err)
 
 	testUserUUID := pgtype.Text{String: "test-uuid-1", Valid: true}
-	job, err := queries.ClaimNextJob(ctx, testUserUUID)
+	job, err := queries.ClaimNextJob(ctx, anyClaims(testUserUUID))
 	is.NoErr(err)
 
-	// Complete the job with mock result
-	mockResult := []byte(`{"turns": [{"equity": 0.5}], "player_summaries": [{}, {}]}`)
-
+	// Complete the job as SubmitResult does: the result's object key plus its
+	// summary columns.
 	completedJob, err := queries.CompleteJob(ctx, models.CompleteJobParams{
-		Result:            mockResult,
-		ID:                job.ID,
-		ClaimedByUserUuid: testUserUUID,
+		ResultS3Key:         pgtype.Text{String: "analyses/x/y.json.gz", Valid: true},
+		Player0MistakeIndex: pgtype.Float8{Float64: 1.5, Valid: true},
+		Player1MistakeIndex: pgtype.Float8{Float64: 2.5, Valid: true},
+		AnalysisVersion:     pgtype.Int4{Int32: 2, Valid: true},
+		ID:                  job.ID,
+		ClaimedByUserUuid:   testUserUUID,
 	})
 	is.NoErr(err)
 	is.True(completedJob.DurationMs >= 0) // Should have a duration
+	is.True(!completedJob.PreviousS3Key.Valid)
 
 	// Verify job is completed
 	jobStatus, err := queries.GetJobByGameID(ctx, gameID)
 	is.NoErr(err)
 	is.Equal(jobStatus.Status, "completed")
-	is.True(len(jobStatus.Result) > 0)
+	is.Equal(jobStatus.ResultS3Key.String, "analyses/x/y.json.gz")
+	is.Equal(jobStatus.AnalysisVersion.Int32, int32(2))
 }
 
 // TestReclaimStaleJobs tests that stale jobs are reclaimed
@@ -310,7 +319,7 @@ func TestReclaimStaleJobs(t *testing.T) {
 	is.NoErr(err)
 
 	testUserUUID := pgtype.Text{String: "test-uuid-1", Valid: true}
-	job, err := queries.ClaimNextJob(ctx, testUserUUID)
+	job, err := queries.ClaimNextJob(ctx, anyClaims(testUserUUID))
 	is.NoErr(err)
 
 	// Manually set heartbeat to 3 minutes ago (past the 2 minute timeout)
@@ -353,7 +362,7 @@ func TestMaxRetries(t *testing.T) {
 	is.NoErr(err)
 
 	testUserUUID := pgtype.Text{String: "test-uuid-1", Valid: true}
-	job, err := queries.ClaimNextJob(ctx, testUserUUID)
+	job, err := queries.ClaimNextJob(ctx, anyClaims(testUserUUID))
 	is.NoErr(err)
 
 	// Set retry count to max (3) and make it stale
@@ -469,37 +478,150 @@ func insertLeagueGame(t *testing.T, ctx context.Context, pool *pgxpool.Pool,
 	return gameID
 }
 
-// completeAnalysis stores result against gameID the way the worker path does,
-// through protojson.
+// completeAnalysis queues gameID for analysis and completes it with result.
 func completeAnalysis(t *testing.T, ctx context.Context, queries *models.Queries,
-	gameID string, result *macondopb.GameAnalysisResult) []byte {
+	gameID string, result *macondopb.GameAnalysisResult) {
+	is := is.New(t)
+	is.NoErr(analysis.EnqueueGameForAnalysis(ctx, queries, gameID, 0))
+	claimAndComplete(t, ctx, queries, result)
+}
+
+// claimAndComplete claims the next pending job and completes it with result's
+// summary columns, as SubmitResult does. The result object itself isn't stored;
+// these tests only read the columns.
+func claimAndComplete(t *testing.T, ctx context.Context, queries *models.Queries,
+	result *macondopb.GameAnalysisResult) {
 	is := is.New(t)
 
-	err := analysis.EnqueueGameForAnalysis(ctx, queries, gameID, 0)
-	is.NoErr(err)
-
 	workerUUID := pgtype.Text{String: "test-uuid-3", Valid: true}
-	job, err := queries.ClaimNextJob(ctx, workerUUID)
+	job, err := queries.ClaimNextJob(ctx, anyClaims(workerUUID))
 	is.NoErr(err)
 
-	resultJSON, err := protojson.Marshal(result)
-	is.NoErr(err)
-
-	_, err = queries.CompleteJob(ctx, models.CompleteJobParams{
-		Result:            resultJSON,
+	params := models.CompleteJobParams{
 		ID:                job.ID,
 		ClaimedByUserUuid: workerUUID,
+	}
+	params.Player0MistakeIndex, params.Player1MistakeIndex, params.AnalysisVersion =
+		analysis.SummaryColumns(result)
+	_, err = queries.CompleteJob(ctx, params)
+	is.NoErr(err)
+}
+
+func analysisResult(mi0, mi1 float64) *macondopb.GameAnalysisResult {
+	return &macondopb.GameAnalysisResult{
+		AnalysisVersion: 2,
+		PlayerSummaries: []*macondopb.PlayerSummary{
+			{PlayerName: "testuser1", MistakeIndex: mi0},
+			{PlayerName: "testuser2", MistakeIndex: mi1},
+		},
+	}
+}
+
+// seedStanding writes a standing with the given MI columns, as a drifted
+// counter would have left them.
+func seedStanding(t *testing.T, ctx context.Context, queries *models.Queries,
+	divisionID uuid.UUID, userID int32, totalMI float64, analyzed int32) {
+	is := is.New(t)
+	err := queries.UpsertStanding(ctx, models.UpsertStandingParams{
+		DivisionID:        divisionID,
+		UserID:            userID,
+		TotalMistakeIndex: pgtype.Float8{Float64: totalMI, Valid: true},
+		GamesAnalyzed:     pgtype.Int4{Int32: analyzed, Valid: true},
 	})
 	is.NoErr(err)
+}
 
-	return resultJSON
+// standingMI returns a standing's (total mistake index, games analyzed).
+func standingMI(t *testing.T, ctx context.Context, queries *models.Queries,
+	divisionID uuid.UUID, userID int32) (float64, int32) {
+	is := is.New(t)
+	st, err := queries.GetPlayerStanding(ctx, models.GetPlayerStandingParams{
+		DivisionID: divisionID,
+		UserID:     userID,
+	})
+	is.NoErr(err)
+	is.True(st.TotalMistakeIndex.Valid)
+	is.True(st.GamesAnalyzed.Valid)
+	return st.TotalMistakeIndex.Float64, st.GamesAnalyzed.Int32
+}
+
+func assertMI(t *testing.T, ctx context.Context, queries *models.Queries,
+	divisionID uuid.UUID, userID int32, wantTotal float64, wantAnalyzed int32) {
+	t.Helper()
+	total, analyzed := standingMI(t, ctx, queries, divisionID, userID)
+	if analyzed != wantAnalyzed || total < wantTotal-1e-9 || total > wantTotal+1e-9 {
+		t.Fatalf("user %d: got MI total %v over %d games, want %v over %d",
+			userID, total, analyzed, wantTotal, wantAnalyzed)
+	}
+}
+
+// TestRefreshDivisionMistakeIndex covers the rebuild of standings' MI columns
+// from stored analysis results. The old running counters drifted whenever an
+// increment and its matching decrement didn't both land: a rejected late
+// submission decremented without re-adding, a requeue re-added without
+// subtracting. A rebuild has no such pairing to get wrong.
+func TestRefreshDivisionMistakeIndex(t *testing.T) {
+	is := is.New(t)
+	ctx := context.Background()
+
+	pool, queries := setupTestDB(t)
+	defer pool.Close()
+
+	createTestUsers(t, pool)
+	leagueID, seasonID, divisionID := createMinimalLeague(t, ctx, queries)
+
+	// Drifted counters, plus a player with no analyzed games.
+	seedStanding(t, ctx, queries, divisionID, 1, 99, 19)
+	seedStanding(t, ctx, queries, divisionID, 2, 1, 11)
+	seedStanding(t, ctx, queries, divisionID, 4, 5, 5)
+
+	now := time.Now()
+	gameA := insertLeagueGame(t, ctx, pool, leagueID, seasonID, divisionID, now.Add(-3*time.Hour), 400, 380)
+	gameB := insertLeagueGame(t, ctx, pool, leagueID, seasonID, divisionID, now.Add(-2*time.Hour), 450, 300)
+	// Never analyzed: must not count.
+	insertLeagueGame(t, ctx, pool, leagueID, seasonID, divisionID, now.Add(-time.Hour), 350, 390)
+
+	completeAnalysis(t, ctx, queries, gameA, analysisResult(3.0, 4.0))
+	completeAnalysis(t, ctx, queries, gameB, analysisResult(1.5, 2.5))
+
+	is.NoErr(queries.RefreshDivisionMistakeIndex(ctx, divisionID))
+	assertMI(t, ctx, queries, divisionID, 1, 4.5, 2)
+	assertMI(t, ctx, queries, divisionID, 2, 6.5, 2)
+	assertMI(t, ctx, queries, divisionID, 4, 0, 0)
+
+	// Idempotent: a repeat, as from a duplicate or late submission, changes nothing.
+	is.NoErr(queries.RefreshDivisionMistakeIndex(ctx, divisionID))
+	assertMI(t, ctx, queries, divisionID, 1, 4.5, 2)
+	assertMI(t, ctx, queries, divisionID, 2, 6.5, 2)
+
+	// A whole-row upsert (standings recalculation) leaves MI alone.
+	seedStanding(t, ctx, queries, divisionID, 1, 0, 0)
+	assertMI(t, ctx, queries, divisionID, 1, 4.5, 2)
+
+	// Requeued for reanalysis: the job is pending again but keeps its old
+	// result, so the game stays counted at its old value meanwhile.
+	is.NoErr(analysis.RequeueJobByGameID(ctx, queries, gameA, 0))
+	is.NoErr(queries.RefreshDivisionMistakeIndex(ctx, divisionID))
+	assertMI(t, ctx, queries, divisionID, 1, 4.5, 2)
+	assertMI(t, ctx, queries, divisionID, 2, 6.5, 2)
+
+	// The reanalysis replaces the old result rather than adding to it.
+	claimAndComplete(t, ctx, queries, analysisResult(5.0, 1.0))
+	is.NoErr(queries.RefreshDivisionMistakeIndex(ctx, divisionID))
+	assertMI(t, ctx, queries, divisionID, 1, 6.5, 2)
+	assertMI(t, ctx, queries, divisionID, 2, 3.5, 2)
+
+	// A second job for the same game: only the newest counts, once.
+	completeAnalysis(t, ctx, queries, gameB, analysisResult(2.0, 2.0))
+	is.NoErr(queries.RefreshDivisionMistakeIndex(ctx, divisionID))
+	assertMI(t, ctx, queries, divisionID, 1, 7.0, 2)
+	assertMI(t, ctx, queries, divisionID, 2, 3.0, 2)
 }
 
 // TestPerfectGameReadsBackAsAnalyzed covers a mistake index of 0 -- a perfect
-// game. protojson drops a field holding its zero value, so the stored result
-// has no mistakeIndex key at all, and reading presence off that key reported
-// the game as unanalyzed: the game history modal showed "-" and the season
-// recalculation dropped the game from both players' analyzed counts.
+// game. It must read back as analyzed with index 0, not as unanalyzed:
+// earlier, reading it out of protojson (which drops zero values) showed "-" in
+// the game history modal and dropped the game from the season recalculation.
 func TestPerfectGameReadsBackAsAnalyzed(t *testing.T) {
 	is := is.New(t)
 	ctx := context.Background()
@@ -516,21 +638,13 @@ func TestPerfectGameReadsBackAsAnalyzed(t *testing.T) {
 	insertLeagueGame(t, ctx, pool, leagueID, seasonID, divisionID,
 		now.Add(-2*time.Hour), 400, 380)
 
-	resultJSON := completeAnalysis(t, ctx, queries, analyzed, &macondopb.GameAnalysisResult{
+	completeAnalysis(t, ctx, queries, analyzed, &macondopb.GameAnalysisResult{
 		AnalysisVersion: 2,
 		PlayerSummaries: []*macondopb.PlayerSummary{
 			{PlayerName: "testuser1", MistakeIndex: 0},
 			{PlayerName: "testuser2", MistakeIndex: 2.2},
 		},
 	})
-
-	// The premise: the perfect player's summary carries no mistakeIndex key.
-	var stored struct {
-		PlayerSummaries []map[string]any `json:"playerSummaries"`
-	}
-	is.NoErr(json.Unmarshal(resultJSON, &stored))
-	_, present := stored.PlayerSummaries[0]["mistakeIndex"]
-	is.True(!present)
 
 	seasonUUID := pgtype.UUID{Bytes: seasonID, Valid: true}
 	// The perfect game is analyzed, and its index is 0 rather than missing.
@@ -556,13 +670,12 @@ func TestPerfectGameReadsBackAsAnalyzed(t *testing.T) {
 	is.Equal(opponent[0].HasMistakeIndex, true)
 	is.Equal(opponent[0].PlayerMistakeIndex, 2.2)
 
-	// The season recalculation counts the game for both players.
-	games, err := queries.GetDivisionAnalyzedGames(ctx, pgtype.UUID{Bytes: divisionID, Valid: true})
-	is.NoErr(err)
-	is.Equal(len(games), 1)
-	is.Equal(games[0].GameID, analyzed)
-	is.Equal(games[0].Player0MistakeIndex, float64(0))
-	is.Equal(games[0].Player1MistakeIndex, 2.2)
+	// The standings rebuild counts the game for both players.
+	seedStanding(t, ctx, queries, divisionID, 1, 0, 0)
+	seedStanding(t, ctx, queries, divisionID, 2, 0, 0)
+	is.NoErr(queries.RefreshDivisionMistakeIndex(ctx, divisionID))
+	assertMI(t, ctx, queries, divisionID, 1, 0, 1)
+	assertMI(t, ctx, queries, divisionID, 2, 2.2, 1)
 }
 
 // NOTE: Integration test for "league game finishes -> gets enqueued"

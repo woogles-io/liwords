@@ -7,7 +7,7 @@ import {
 } from "../gen/api/proto/vendored/macondo/macondo_pb";
 import { Board } from "../utils/cwgame/board";
 import { StandardEnglishAlphabet } from "../constants/alphabets";
-import { TwoColTurn, twoColScore } from "./scorecard";
+import { examineAndSeek, TwoColTurn, twoColScore } from "./scorecard";
 
 afterEach(cleanup);
 
@@ -104,4 +104,15 @@ it("renders the aggregated score in the DOM without [object Object]", () => {
     "986",
   );
   expect(container.textContent).toContain("Challenge! Valid");
+});
+
+it("examineAndSeek starts examining before seeking so the seek wins", () => {
+  const calls: Array<string> = [];
+  const seek = examineAndSeek(
+    (done) => calls.push(`start:${done}`),
+    (x) => calls.push(`goTo:${x}`),
+    true,
+  );
+  seek(7);
+  expect(calls).toEqual(["start:true", "goTo:7"]);
 });

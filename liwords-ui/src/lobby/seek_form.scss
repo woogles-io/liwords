@@ -2,13 +2,9 @@
 
 .ant-modal-root .seek-modal {
   .ant-modal-header {
-    @include colorModed() {
-      background-image: linear-gradient(m($header) 30%, m($background) 100%);
-    }
+    background-image: linear-gradient(m($header) 30%, m($background) 100%);
     .ant-modal-title {
-      @include colorModed() {
-        color: m($gray-extreme);
-      }
+      color: m($gray-extreme);
     }
   }
   button {
@@ -22,41 +18,31 @@
   }
 
   .ant-radio-button-wrapper:not(.ant-radio-button-wrapper-disabled) {
-    @include colorModed() {
-      background: m($background);
-      border-color: m($gray-medium);
-      color: m($gray-medium);
-    }
+    background: m($background);
+    border-color: m($gray-medium);
+    color: m($gray-medium);
     & {
       opacity: 0.9;
     }
     &:before {
-      @include colorModed() {
-        background: m($gray-medium);
-      }
+      background: m($gray-medium);
     }
   }
   .ant-radio-button-wrapper-checked:not(.ant-radio-button-wrapper-disabled) {
-    @include colorModed() {
-      border-color: m($primary-dark);
-      color: m($gray-extreme);
-      background: m($primary-light);
-    }
+    border-color: m($primary-dark);
+    color: m($gray-extreme);
+    background: m($primary-light);
     & {
       opacity: 1;
       transition: none;
     }
     &:before {
-      @include colorModed() {
-        background: m($primary-dark);
-      }
+      background: m($primary-dark);
     }
   }
   .ant-form-item-explain,
   .ant-form-item-extra {
-    @include colorModed() {
-      color: m($gray-extreme);
-    }
+    color: m($gray-extreme);
   }
   .ant-form-item {
     margin-bottom: 12px;
@@ -65,17 +51,13 @@
     margin-bottom: 12px;
   }
   dl {
-    @include colorModed() {
-      color: m($gray-extreme);
-    }
+    color: m($gray-extreme);
   }
   .ant-select-selector,
   .ant-select-item,
   .ant-select-dropdown {
-    @include colorModed() {
-      background: m($background);
-      color: m($gray-extreme);
-    }
+    background: m($background);
+    color: m($gray-extreme);
     & {
       z-index: 1100;
     }
@@ -87,16 +69,12 @@
   .ant-select-single:not(.ant-select-customize-input)
     .ant-select-selector
     .ant-select-selection-search-input {
-    @include colorModed() {
-      background: m($background);
-      color: m($gray-extreme);
-    }
+    background: m($background);
+    color: m($gray-extreme);
   }
   .ant-input-number-input {
-    @include colorModed() {
-      background: m($card-background);
-      color: m($gray-extreme);
-    }
+    background: m($card-background);
+    color: m($gray-extreme);
   }
   .ant-form-item-control-input {
     width: 100%;
@@ -119,9 +97,7 @@
     text-align: left;
     & > label {
       text-align: left;
-      @include colorModed() {
-        color: m($gray-extreme);
-      }
+      color: m($gray-extreme);
     }
     & > label::after {
       content: "";
@@ -132,18 +108,12 @@
   }
 
   .ant-switch-handle:before {
-    @include colorModed() {
-      background-color: m($gray-medium);
-    }
+    background-color: m($gray-medium);
   }
   .ant-switch-checked {
-    @include colorModed() {
-      background-color: m($primary-dark);
-    }
+    background-color: m($primary-dark);
     .ant-switch-handle:before {
-      @include colorModed() {
-        background-color: m($background);
-      }
+      background-color: m($background);
     }
   }
 
@@ -157,9 +127,7 @@
       .help {
         display: block;
         font-size: 14px;
-        @include colorModed() {
-          color: m($primary-midDark);
-        }
+        color: m($primary-midDark);
       }
     }
   }
@@ -170,10 +138,8 @@
   }
 
   .advanced-field {
-    @include colorModed() {
-      background: m($off-background);
-      border-left: 3px solid m($primary-dark);
-    }
+    background: m($off-background);
+    border-left: 3px solid m($primary-dark);
     padding: 6px 12px;
     border-radius: 4px;
     margin-bottom: 12px;
@@ -189,9 +155,7 @@
     text-transform: uppercase;
     margin-top: 24px;
     margin-bottom: 16px;
-    @include colorModed() {
-      color: m($primary-midDark);
-    }
+    color: m($primary-midDark);
   }
 }
 
@@ -201,9 +165,7 @@
 
 .rc-virtual-list {
   .bot-selector-item {
-    @include colorModed() {
-      border: 1px solid m($gray-subtle);
-    }
+    border: 1px solid m($gray-subtle);
   }
 }
 
@@ -217,16 +179,12 @@
   align-items: center;
   gap: 10px;
   align-self: stretch;
-  @include colorModed() {
-    background-color: m($primary-dark);
-  }
+  background-color: m($primary-dark);
   .pt-callout-link {
     width: 24px;
     height: 24px;
     path {
-      @include colorModed() {
-        fill: m($background);
-      }
+      fill: m($background);
     }
   }
   .pt-callout-text {
@@ -235,9 +193,7 @@
     line-height: normal;
     font-style: normal;
     flex: 1 0 0;
-    @include colorModed() {
-      color: m($background);
-    }
+    color: m($background);
   }
 }
 
@@ -309,9 +265,7 @@
             font-style: normal;
             display: flex;
             align-items: center;
-            @include colorModed() {
-              color: m($gray-extreme);
-            }
+            color: m($gray-extreme);
           }
           .bot-selector-short-desc {
             width: 130px;
@@ -323,9 +277,7 @@
             display: flex;
             align-items: center;
             text-align: right;
-            @include colorModed() {
-              color: m($gray-extreme);
-            }
+            color: m($gray-extreme);
           }
         }
 
@@ -341,17 +293,13 @@
           align-self: stretch;
           flex-grow: 0;
           white-space: normal;
-          @include colorModed() {
-            color: m($gray-extreme);
-          }
+          color: m($gray-extreme);
         }
       }
     }
   }
   .bot-selector-item-disabled {
-    @include colorModed() {
-      background-color: m($gray-subtle);
-    }
+    background-color: m($gray-subtle);
   }
 }
 

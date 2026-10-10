@@ -1,10 +1,8 @@
 @use "../base.scss" as *;
 
 .monitoring-link-container {
-  @include colorModed() {
-    background: m($card-background) !important;
-    border-color: m($gray-subtle) !important;
-  }
+  background: m($card-background) !important;
+  border-color: m($gray-subtle) !important;
 }
 
 .pairings-container {
@@ -42,9 +40,7 @@
     transition: background-color 0.2s ease;
 
     &:hover {
-      @include colorModed() {
-        background: m($primary-light);
-      }
+      background: m($primary-light);
 
       &::after {
         content: " ✏️";
@@ -58,19 +54,13 @@
     &.mine {
       &.ROUND_OPEN.current,
       &.ROUND_OPPONENT_WAITING.current {
-        @include colorModed() {
-          background: m($primary-light);
-        }
+        background: m($primary-light);
       }
       &.ROUND_LATE.current {
-        @include colorModed() {
-          background: m($timer-out-light);
-        }
+        background: m($timer-out-light);
       }
       &.ROUND_READY.current {
-        @include colorModed() {
-          background: m($timer-light);
-        }
+        background: m($timer-light);
       }
     }
   }
@@ -88,30 +78,22 @@
   }
   .ant-select {
     width: 200px;
-    @include colorModed() {
-      background: m($background);
-      color: m($gray-extreme);
-      border: 1px solid m($gray-medium);
-    }
+    background: m($background);
+    color: m($gray-extreme);
+    border: 1px solid m($gray-medium);
     .ant-select-arrow {
-      @include colorModed() {
-        color: m($gray-medium);
-      }
+      color: m($gray-medium);
     }
     .ant-select-selection-placeholder {
       z-index: 1;
       font-weight: normal;
       opacity: 0.8;
-      @include colorModed() {
-        color: m($gray-medium);
-      }
+      color: m($gray-medium);
     }
     input,
     .ant-select-selector {
-      @include colorModed() {
-        background: m($card-background);
-        color: m($gray-extreme);
-      }
+      background: m($card-background);
+      color: m($gray-extreme);
     }
   }
 }
@@ -131,9 +113,7 @@
   .ant-table-placeholder {
     td {
       padding: 18px 0;
-      @include colorModed() {
-        border-color: m($gray-subtle);
-      }
+      border-color: m($gray-subtle);
       & {
         border: 1px solid;
         border-left: 0;
@@ -154,9 +134,7 @@
     overflow-y: auto;
   }
   th.ant-table-cell {
-    @include colorModed() {
-      color: m($gray-medium);
-    }
+    color: m($gray-medium);
   }
   .ant-card-actions {
     position: absolute;
@@ -164,9 +142,7 @@
     width: 100%;
     height: 64px;
     background: transparent;
-    @include colorModed() {
-      border-top: 1px solid m($off-background);
-    }
+    border-top: 1px solid m($off-background);
     li {
       margin: 0;
       height: 100%;
@@ -187,10 +163,8 @@
         font-size: 16px;
         align-items: center;
         justify-content: space-around;
-        @include colorModed() {
-          background: m($card-background);
-          border: 1px solid m($primary-dark);
-        }
+        background: m($card-background);
+        border: 1px solid m($primary-dark);
       }
       div {
         display: flex;
@@ -198,9 +172,7 @@
         align-items: center;
         justify-content: center;
         font-weight: 700;
-        @include colorModed() {
-          color: m($primary-dark);
-        }
+        color: m($primary-dark);
         & {
           width: 100%;
           height: 100%;
@@ -208,14 +180,10 @@
       }
       &:nth-child(2) {
         font-size: 20px;
-        @include colorModed() {
-          background: m($primary-light);
-        }
+        background: m($primary-light);
         div {
           cursor: normal;
-          @include colorModed() {
-            color: m($gray-extreme);
-          }
+          color: m($gray-extreme);
         }
       }
       &:nth-child(1) {

@@ -14,3 +14,6 @@ UPDATE db_sessions SET expires_at = @expires_at WHERE uuid = @uuid;
 UPDATE db_sessions
    SET data = jsonb_set(data, '{csrf_token}', to_jsonb(@csrf_token::text))
  WHERE uuid = @uuid;
+
+-- name: DeleteSessionsForUser :execrows
+DELETE FROM db_sessions WHERE data ->> 'uuid' = @user_uuid::text;

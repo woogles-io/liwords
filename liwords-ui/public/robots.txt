@@ -1,3 +1,21 @@
 # https://www.robotstxt.org/robotstxt.html
+
+# Crawlers that render pages run the whole SPA with a cold cache, so every
+# game page they visit downloads the full JS bundle. That traffic tripled the
+# CloudFront bill in Aug-Sep 2026. These crawlers get nothing useful from
+# Woogles and are blocked outright.
+User-agent: AhrefsBot
+User-agent: AhrefsSiteAudit
+User-agent: ExaSearchBot
+User-agent: Reflectionbot
+User-agent: ShapBot
+Disallow: /
+
+# Everyone else: game pages are the bulk of crawl traffic and are not worth
+# indexing. A crawler that matches a group above ignores this one.
 User-agent: *
-Disallow:
+Disallow: /game/
+Disallow: /anno/
+Disallow: /embed/
+Disallow: /editor/
+Disallow: /api/

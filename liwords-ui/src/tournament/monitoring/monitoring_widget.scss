@@ -16,9 +16,7 @@
   justify-content: center;
   transition: all 0.3s ease;
 
-  @include colorModed() {
-    background: m($background);
-  }
+  background: m($background);
 
   &:hover {
     transform: scale(1.1);

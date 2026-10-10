@@ -1,9 +1,13 @@
 -- name: ClaimNextJob :one
--- Claims the next available job atomically using FOR UPDATE SKIP LOCKED
+-- Claims the next available job atomically using FOR UPDATE SKIP LOCKED.
+-- A worker already holding @max_active jobs gets none, so one account can't
+-- claim the whole queue and let it time out into failure. Two simultaneous
+-- claims by the same worker can each see the old count; overshooting by one
+-- is harmless.
 UPDATE analysis_jobs
 SET
     status = 'claimed',
-    claimed_by_user_uuid = $1,
+    claimed_by_user_uuid = sqlc.arg(worker),
     claimed_at = NOW(),
     heartbeat_at = NOW()
 WHERE id = (
@@ -14,6 +18,12 @@ WHERE id = (
     LIMIT 1
     FOR UPDATE SKIP LOCKED
 )
+AND (
+    SELECT COUNT(*)
+    FROM analysis_jobs
+    WHERE claimed_by_user_uuid = sqlc.arg(worker)
+      AND status IN ('claimed', 'processing')
+) < sqlc.arg(max_active)::INT
 RETURNING id, game_id, config_json;
 
 -- name: UpdateHeartbeat :exec
@@ -28,14 +38,38 @@ SET
 WHERE id = $1 AND claimed_by_user_uuid = $2;
 
 -- name: CompleteJob :one
--- Marks job as completed and returns game_id and processing duration
-UPDATE analysis_jobs
+-- Marks job as completed and returns game_id, processing duration and the
+-- job's previous result_s3_key (so the caller can delete a replaced object).
+-- The result itself lives in the result store at result_s3_key (NULL for a
+-- zero-turn game, which has none); the summary columns are copied from it by
+-- the caller.
+WITH prev AS (
+    SELECT j.id AS job_id, j.result_s3_key AS previous_s3_key
+    FROM analysis_jobs j
+    WHERE j.id = sqlc.arg(id)
+    FOR UPDATE
+)
+UPDATE analysis_jobs aj
 SET
     status = 'completed',
-    result = $1,
+    result_s3_key = sqlc.narg(result_s3_key),
+    player0_mistake_index = sqlc.narg(player0_mistake_index),
+    player1_mistake_index = sqlc.narg(player1_mistake_index),
+    analysis_version = sqlc.arg(analysis_version),
     completed_at = NOW()
-WHERE id = $2 AND claimed_by_user_uuid = $3 AND status IN ('claimed', 'processing')
-RETURNING game_id, requested_by_user_uuid, EXTRACT(EPOCH FROM (NOW() - claimed_at))::BIGINT * 1000 as duration_ms;
+FROM prev
+WHERE aj.id = prev.job_id AND aj.claimed_by_user_uuid = sqlc.arg(claimed_by_user_uuid)
+  AND aj.status IN ('claimed', 'processing')
+RETURNING aj.game_id, aj.requested_by_user_uuid,
+    EXTRACT(EPOCH FROM (NOW() - aj.claimed_at))::BIGINT * 1000 as duration_ms,
+    prev.previous_s3_key;
+
+-- name: GetJobClaim :one
+-- Who holds a job, checked before uploading a submitted result so a stale
+-- submission doesn't upload an object only to have CompleteJob reject it.
+SELECT game_id, status, claimed_by_user_uuid
+FROM analysis_jobs
+WHERE id = $1;
 
 -- name: FailJob :exec
 -- Marks job as failed with error message
@@ -74,8 +108,8 @@ RETURNING id;
 -- claimed_at is returned so callers can derive how long the run took
 -- (completed_at - claimed_at) and how long it waited (claimed_at - created_at).
 SELECT
-    aj.id, aj.game_id, aj.status, aj.config_json, aj.result, aj.error_message,
-    aj.completed_at, aj.created_at, aj.claimed_at,
+    aj.id, aj.game_id, aj.status, aj.config_json, aj.error_message,
+    aj.completed_at, aj.created_at, aj.claimed_at, aj.analysis_version, aj.result_s3_key,
     COALESCE(u.username, '') as analyzed_by_username
 FROM analysis_jobs aj
 LEFT JOIN users u ON u.uuid = aj.claimed_by_user_uuid
@@ -122,22 +156,6 @@ WHERE aj.status = 'pending'
   AND (aj.priority > (SELECT priority FROM analysis_jobs target WHERE target.id = $1)
        OR (aj.priority = (SELECT priority FROM analysis_jobs target WHERE target.id = $1)
            AND aj.created_at < (SELECT created_at FROM analysis_jobs target WHERE target.id = $1)));
-
--- name: GetAnalysisJobWithDetails :one
--- Get full details of an analysis job
-SELECT
-    id,
-    game_id,
-    status,
-    requested_by_user_uuid,
-    request_type,
-    result,
-    error_message,
-    created_at,
-    completed_at,
-    priority
-FROM analysis_jobs
-WHERE id = $1;
 
 -- name: GetAdminAnalysisStats :one
 -- Get overview stats for admin dashboard
@@ -194,13 +212,9 @@ SELECT COUNT(*) as total
 FROM analysis_jobs
 WHERE status = 'completed';
 
--- name: GetJobByID :one
-SELECT id, game_id, status, result
-FROM analysis_jobs
-WHERE id = $1;
-
 -- name: ResetAnalysisJobKeepResult :exec
--- Resets job to pending but keeps result for JIT MI subtraction
+-- Resets job to pending but keeps its result_s3_key and summary columns, so
+-- the old analysis stays viewable and counted until the new one replaces it
 UPDATE analysis_jobs
 SET status = 'pending',
     error_message = NULL,
@@ -230,11 +244,3 @@ SELECT game_id
 FROM analysis_jobs
 WHERE game_id = ANY($1::text[])
   AND status = 'completed';
-
--- name: GetVerticalOpenerJobs :many
--- Find completed jobs where the first turn was a vertical opening move
--- (column-first coordinates like A1, B3, etc. indicate vertical plays)
-SELECT id, game_id
-FROM analysis_jobs
-WHERE status = 'completed'
-  AND result->'turns'->0->>'playedMove' ~ '^[A-O][0-9]';

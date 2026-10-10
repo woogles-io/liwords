@@ -65,6 +65,7 @@ import (
 	pkgprofile "github.com/woogles-io/liwords/pkg/profile"
 	"github.com/woogles-io/liwords/pkg/puzzles"
 	"github.com/woogles-io/liwords/pkg/registration"
+	"github.com/woogles-io/liwords/pkg/sessions"
 	"github.com/woogles-io/liwords/pkg/stores"
 	gamestore "github.com/woogles-io/liwords/pkg/stores/game"
 	"github.com/woogles-io/liwords/pkg/tournament"
@@ -226,6 +227,7 @@ func main() {
 		WithTiming("exposeRW", apiserver.ExposeResponseWriterMiddleware),
 		WithTiming("auth", apiserver.AuthenticationMiddlewareGenerator(stores.SessionStore, cfg.SecureCookies)),
 		WithTiming("apikey", apiserver.APIKeyMiddlewareGenerator()),
+		WithTiming("clientInfo", apiserver.ClientInfoMiddlewareGenerator(cfg.SecureCookies)),
 		WithTiming("config", config.CtxMiddlewareGenerator(cfg)),
 		WithTiming("accessLog", hlog.AccessHandler(func(r *http.Request, status int, size int, d time.Duration) {
 			path := strings.Split(r.URL.Path, "/")
@@ -316,6 +318,11 @@ func main() {
 	pairService := pair.NewPairService(cfg, lambdaClient)
 	vdoWebhookService := vdowebhook.NewVDOWebhookService(stores.TournamentStore, cfg.VDOPollingIntervalSeconds)
 	analysisService := analysis.NewAnalysisService(stores.UserStore, stores.GameStore, stores.Queries, dbPool)
+	if bucket := os.Getenv("ANALYSIS_UPLOAD_BUCKET"); bucket != "" {
+		analysisService.SetResultStore(analysis.NewS3ResultStore(s3Client, bucket))
+	} else {
+		log.Warn().Msg("ANALYSIS_UPLOAD_BUCKET not set: analysis results can be neither stored nor served")
+	}
 	analysisAdminService := analysis.NewAnalysisAdminService(stores.UserStore, stores.Queries)
 	router.Handle("/ping", http.HandlerFunc(pingEndpoint))
 
@@ -421,7 +428,10 @@ func main() {
 		user_serviceconnect.NewAuthorizationServiceHandler(authorizationService, options),
 	)
 	connectapi.Handle(
-		analysis_serviceconnect.NewAnalysisQueueServiceHandler(analysisService, options),
+		// Workers upload results here; cap the request so an account can't
+		// send arbitrarily large payloads (read into memory, then stored).
+		analysis_serviceconnect.NewAnalysisQueueServiceHandler(analysisService, options,
+			connect.WithReadMaxBytes(analysis.MaxSubmitResultBytes)),
 	)
 	connectapi.Handle(
 		analysis_serviceconnect.NewAnalysisServiceHandler(analysisService, options),
@@ -472,6 +482,8 @@ func main() {
 		panic(err)
 	}
 
+	mod.SetSessionRevoker(sessions.NewRevoker(stores.SessionStore, natsconn))
+
 	// Handle bus.
 	pubsubBus, err := bus.NewBus(cfg, natsconn, stores, redisPool)
 	if err != nil {
@@ -515,6 +527,7 @@ func main() {
 	go pubsubBus.ProcessMessages(ctx)
 	go vdoWebhookService.Start(ctx)
 	go analysisService.StartReclaimWorker(ctx)
+	go pruneClientRecords(ctx, stores.UserStore)
 	broadcastService.StartPoller(ctx)
 
 	go func() {

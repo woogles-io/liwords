@@ -3,7 +3,9 @@ package analysis
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"math"
 	"strings"
 	"time"
 
@@ -18,7 +20,6 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
-	"google.golang.org/protobuf/encoding/protojson"
 
 	macondo "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/woogles-io/liwords/pkg/apiserver"
@@ -31,9 +32,19 @@ import (
 
 // MinMacondoVersion is the minimum macondo worker version accepted.
 // Workers older than this are rejected at ClaimJob.
-const MinMacondoVersion = "v0.13.3"
+const MinMacondoVersion = "v0.13.8"
 
 const (
+	// maxActiveClaimsPerWorker caps how many jobs one worker holds at once.
+	// The macondo worker runs one job at a time; the slack covers a restart
+	// while its previous claim is still waiting to be reclaimed.
+	maxActiveClaimsPerWorker = 2
+	// MaxSubmitResultBytes caps a SubmitResult request. The largest real
+	// result is ~1.2 MB of JSON; the cap is applied to the queue service in
+	// cmd/liwords-api.
+	MaxSubmitResultBytes = 4 << 20
+	// maxResultTurns bounds a submitted result; real games top out near 320.
+	maxResultTurns              = 500
 	dailyAnalysisLimitRegular   = int64(15)
 	dailyAnalysisLimitVolunteer = int64(30)
 )
@@ -95,6 +106,9 @@ type AnalysisService struct {
 	queries   *models.Queries
 	natsconn  *nats.Conn
 	dbPool    *pgxpool.Pool
+	// resultStore holds analysis results; without one, results can be neither
+	// stored nor served.
+	resultStore ResultStore
 }
 
 func NewAnalysisService(userStore user.Store, gameStore GameStore, queries *models.Queries, dbPool *pgxpool.Pool) *AnalysisService {
@@ -104,6 +118,21 @@ func NewAnalysisService(userStore user.Store, gameStore GameStore, queries *mode
 		queries:   queries,
 		dbPool:    dbPool,
 	}
+}
+
+// SetResultStore sets where analysis results are stored and read from.
+func (s *AnalysisService) SetResultStore(rs ResultStore) {
+	s.resultStore = rs
+}
+
+// deleteResult removes an object no job points to, in the background and
+// best-effort: a leftover object costs storage, nothing else.
+func (s *AnalysisService) deleteResult(ctx context.Context, key string) {
+	go func() {
+		if err := s.resultStore.Delete(context.WithoutCancel(ctx), key); err != nil {
+			log.Warn().Err(err).Str("s3_key", key).Msg("failed to delete unreferenced analysis result")
+		}
+	}()
 }
 
 func (s *AnalysisService) SetNatsConn(nc *nats.Conn) {
@@ -134,9 +163,13 @@ func (s *AnalysisService) ClaimJob(
 
 	// Claim next job
 	userUUID := pgtype.Text{String: user.UUID, Valid: true}
-	job, err := s.queries.ClaimNextJob(ctx, userUUID)
+	job, err := s.queries.ClaimNextJob(ctx, models.ClaimNextJobParams{
+		Worker:    userUUID,
+		MaxActive: maxActiveClaimsPerWorker,
+	})
 	if err != nil {
-		// No jobs available (or other error - treat as no jobs)
+		// No jobs available, this worker already holds its limit, or another
+		// error - treat as no jobs
 		return connect.NewResponse(&pb.ClaimJobResponse{
 			NoJobs: true,
 		}), nil
@@ -229,28 +262,23 @@ func (s *AnalysisService) SubmitResult(
 		}), nil
 	}
 
-	// Re-serialize to protojson for JSONB storage (DB schema unchanged).
-	resultProto, err := protojson.Marshal(result)
-	if err != nil {
+	// Reject a submission this worker no longer holds (e.g. the job was
+	// reclaimed and finished by another worker) before uploading anything.
+	// CompleteJob re-checks this atomically; this check only saves uploads.
+	claim, err := s.queries.GetJobClaim(ctx, jobID)
+	if err != nil || claim.ClaimedByUserUuid.String != user.UUID ||
+		(claim.Status != "claimed" && claim.Status != "processing") {
 		return connect.NewResponse(&pb.SubmitResultResponse{
 			Accepted: false,
-			Error:    fmt.Sprintf("failed to re-serialize result: %v", err),
+			Error:    "job not found or already completed",
 		}), nil
 	}
 
 	// Basic validation
 	if len(result.Turns) == 0 {
 		// Accept if the game itself has no turns (e.g. aborted before any move).
-		job, err := s.queries.GetAnalysisJobWithDetails(ctx, jobID)
-		if err != nil {
-			return connect.NewResponse(&pb.SubmitResultResponse{
-				Accepted: false,
-				Error:    "result has no turns",
-			}), nil
-		}
-
 		// Check if this is an annotated game - there are no zero-turn annotated games
-		metadata, err := s.gameStore.GetMetadata(ctx, job.GameID)
+		metadata, err := s.gameStore.GetMetadata(ctx, claim.GameID)
 		if err == nil && metadata.Type == ipc.GameType_ANNOTATED {
 			return connect.NewResponse(&pb.SubmitResultResponse{
 				Accepted: false,
@@ -259,7 +287,7 @@ func (s *AnalysisService) SubmitResult(
 		}
 
 		// For regular games, verify it actually has no events
-		game, err := s.gameStore.Get(ctx, job.GameID)
+		game, err := s.gameStore.Get(ctx, claim.GameID)
 		if err != nil || len(game.History().Events) != 0 {
 			return connect.NewResponse(&pb.SubmitResultResponse{
 				Accepted: false,
@@ -267,7 +295,7 @@ func (s *AnalysisService) SubmitResult(
 			}), nil
 		}
 		// Zero-turn game: fall through to CompleteJob with the empty result.
-		log.Info().Str("job_id", jobID.String()).Str("game_id", job.GameID).Msg("accepting empty analysis for zero-turn game")
+		log.Info().Str("job_id", jobID.String()).Str("game_id", claim.GameID).Msg("accepting empty analysis for zero-turn game")
 	}
 
 	if len(result.Turns) != 0 && len(result.PlayerSummaries) != 2 {
@@ -277,29 +305,60 @@ func (s *AnalysisService) SubmitResult(
 		}), nil
 	}
 
-	// JIT MI subtraction: if this job has an existing result (reanalysis),
-	// subtract the old MI before storing the new result.
-	existingJob, err := s.queries.GetJobByID(ctx, jobID)
-	if err == nil && len(existingJob.Result) > 0 {
-		var oldResult macondo.GameAnalysisResult
-		if err := protojson.Unmarshal(existingJob.Result, &oldResult); err == nil {
-			applyLeagueMistakeIndex(ctx, s.queries, existingJob.GameID, &oldResult, true) // decrement
-		}
+	if err := checkResultBounds(result); err != nil {
+		return connect.NewResponse(&pb.SubmitResultResponse{
+			Accepted: false,
+			Error:    err.Error(),
+		}), nil
 	}
 
-	// Store result
+	// Store the result. A zero-turn result has nothing worth an object.
+	if s.resultStore == nil {
+		log.Error().Str("job_id", jobID.String()).Msg("no analysis result store configured (ANALYSIS_UPLOAD_BUCKET)")
+		return connect.NewResponse(&pb.SubmitResultResponse{
+			Accepted: false,
+			Error:    "server cannot store results right now; please retry later",
+		}), nil
+	}
+	var resultKey pgtype.Text
+	if len(result.Turns) > 0 {
+		key := ResultKey(claim.GameID, jobID)
+		if err := s.resultStore.Put(ctx, key, result); err != nil {
+			log.Error().Err(err).Str("job_id", jobID.String()).Msg("failed to store analysis result")
+			return connect.NewResponse(&pb.SubmitResultResponse{
+				Accepted: false,
+				Error:    "failed to store result; please retry",
+			}), nil
+		}
+		resultKey = pgtype.Text{String: key, Valid: true}
+	}
+
 	userUUID := pgtype.Text{String: user.UUID, Valid: true}
+	mi0, mi1, version := SummaryColumns(result)
 	completedJob, err := s.queries.CompleteJob(ctx, models.CompleteJobParams{
-		Result:            resultProto,
-		ID:                jobID,
-		ClaimedByUserUuid: userUUID,
+		ResultS3Key:         resultKey,
+		Player0MistakeIndex: mi0,
+		Player1MistakeIndex: mi1,
+		AnalysisVersion:     version,
+		ID:                  jobID,
+		ClaimedByUserUuid:   userUUID,
 	})
 
 	if err != nil {
+		// Lost the job between the claim check and here; the object we just
+		// stored is referenced by nothing.
+		if resultKey.Valid {
+			s.deleteResult(ctx, resultKey.String)
+		}
 		return connect.NewResponse(&pb.SubmitResultResponse{
 			Accepted: false,
 			Error:    "job not found or already completed",
 		}), nil
+	}
+
+	// A reanalysis replaces the job's previous object.
+	if prev := completedJob.PreviousS3Key; prev.Valid && prev.String != resultKey.String {
+		s.deleteResult(ctx, prev.String)
 	}
 
 	log.Info().
@@ -309,10 +368,12 @@ func (s *AnalysisService) SubmitResult(
 		Int32("duration_ms", completedJob.DurationMs).
 		Msg("result accepted")
 
-	// Update league standings with mistake index if this is a league game.
+	// Refresh league standings' mistake index if this is a league game. This runs
+	// only after CompleteJob has stored the result, and rebuilds the totals from
+	// stored results, so a rejected, duplicate or late submission can't skew them.
 	// context.WithoutCancel preserves the otel trace context while detaching from
 	// the request cancellation (which fires as soon as we return a response).
-	go s.updateLeagueMistakeIndex(context.WithoutCancel(ctx), completedJob.GameID, result)
+	go s.updateLeagueMistakeIndex(context.WithoutCancel(ctx), completedJob.GameID)
 
 	// Notify the requesting user via WebSocket if this was a user-requested analysis.
 	if s.natsconn != nil && completedJob.RequestedByUserUuid.Valid {
@@ -329,19 +390,20 @@ func (s *AnalysisService) SubmitResult(
 	}), nil
 }
 
-// updateLeagueMistakeIndex updates league standings with mistake index for a completed analysis.
-// Runs asynchronously (best-effort) so failures don't affect the SubmitResult response.
-func (s *AnalysisService) updateLeagueMistakeIndex(ctx context.Context, gameID string, result *macondo.GameAnalysisResult) {
+// updateLeagueMistakeIndex refreshes league standings' mistake index after an analysis completes.
+// Runs asynchronously (best-effort) so failures don't affect the SubmitResult response;
+// the next refresh of the division repairs anything a failure leaves behind.
+func (s *AnalysisService) updateLeagueMistakeIndex(ctx context.Context, gameID string) {
 	ctx, span := tracer.Start(ctx, "analysis.updateLeagueMistakeIndex",
 		trace.WithAttributes(attribute.String("game.id", gameID)),
 	)
 	defer span.End()
-	applyLeagueMistakeIndex(ctx, s.queries, gameID, result, false)
+	refreshLeagueMistakeIndex(ctx, s.queries, gameID)
 }
 
-// applyLeagueMistakeIndex adds (decrement=false) or subtracts (decrement=true) a game's
-// mistake index contribution from league standings.
-func applyLeagueMistakeIndex(ctx context.Context, queries *models.Queries, gameID string, result *macondo.GameAnalysisResult, decrement bool) {
+// refreshLeagueMistakeIndex rebuilds the mistake index totals of the division a game
+// belongs to from the stored analysis results. It is idempotent.
+func refreshLeagueMistakeIndex(ctx context.Context, queries *models.Queries, gameID string) {
 	gameInfo, err := queries.GetGameLeagueInfo(ctx, pgtype.Text{String: gameID, Valid: true})
 	if err != nil {
 		if err == pgx.ErrNoRows {
@@ -361,49 +423,55 @@ func applyLeagueMistakeIndex(ctx context.Context, queries *models.Queries, gameI
 		return
 	}
 
-	players := []struct {
-		playerID     pgtype.Int4
-		mistakeIndex float64
-	}{
-		{gameInfo.Player0ID, result.PlayerSummaries[0].GetMistakeIndex()},
-		{gameInfo.Player1ID, result.PlayerSummaries[1].GetMistakeIndex()},
+	if err := queries.RefreshDivisionMistakeIndex(ctx, divisionID); err != nil {
+		log.Error().Err(err).
+			Str("game_id", gameID).
+			Str("division_id", divisionID.String()).
+			Msg("failed to refresh league mistake index")
+		return
 	}
 
-	for _, p := range players {
-		if !p.playerID.Valid {
-			continue
-		}
-		mistakeIndex := pgtype.Float8{Float64: p.mistakeIndex, Valid: true}
-		if decrement {
-			err = queries.DecrementStandingMistakeIndex(ctx, models.DecrementStandingMistakeIndexParams{
-				DivisionID:        divisionID,
-				UserID:            p.playerID.Int32,
-				TotalMistakeIndex: mistakeIndex,
-			})
-		} else {
-			err = queries.IncrementStandingMistakeIndex(ctx, models.IncrementStandingMistakeIndexParams{
-				DivisionID:        divisionID,
-				UserID:            p.playerID.Int32,
-				TotalMistakeIndex: mistakeIndex,
-			})
-		}
-		if err != nil {
-			log.Error().Err(err).
-				Str("game_id", gameID).
-				Int32("user_id", p.playerID.Int32).
-				Bool("decrement", decrement).
-				Msg("failed to update league mistake index")
-		}
-	}
-
-	action := "incremented"
-	if decrement {
-		action = "decremented"
-	}
 	log.Info().
 		Str("game_id", gameID).
 		Str("division_id", divisionID.String()).
-		Msg(action + " league standings mistake index")
+		Msg("refreshed league standings mistake index")
+}
+
+// checkResultBounds rejects results no real analysis could produce. macondo
+// analyzes at most one turn per game event, and each turn adds at most 1.0 to
+// its player's mistake index (Small 0.2, Medium 0.5, Large 1.0), so a mistake
+// index lies between 0 and the number of turns.
+func checkResultBounds(result *macondo.GameAnalysisResult) error {
+	turns := result.GetTurns()
+	if len(turns) > maxResultTurns {
+		return fmt.Errorf("result has %d turns; at most %d allowed", len(turns), maxResultTurns)
+	}
+	for _, t := range turns {
+		if t.GetPlayerIndex() != 0 && t.GetPlayerIndex() != 1 {
+			return fmt.Errorf("turn %d has invalid player index %d", t.GetTurnNumber(), t.GetPlayerIndex())
+		}
+	}
+	for i, ps := range result.GetPlayerSummaries() {
+		mi := ps.GetMistakeIndex()
+		if math.IsNaN(mi) || mi < 0 || mi > float64(len(turns)) {
+			return fmt.Errorf("player %d mistake index %v is out of range", i, mi)
+		}
+	}
+	return nil
+}
+
+// SummaryColumns returns the analysis_jobs summary columns for result: each
+// player's mistake index (NULL when that player has no summary, as in a
+// zero-turn game) and the analysis version.
+func SummaryColumns(result *macondo.GameAnalysisResult) (mi0, mi1 pgtype.Float8, version pgtype.Int4) {
+	summaries := result.GetPlayerSummaries()
+	if len(summaries) > 0 && summaries[0] != nil {
+		mi0 = pgtype.Float8{Float64: summaries[0].GetMistakeIndex(), Valid: true}
+	}
+	if len(summaries) > 1 && summaries[1] != nil {
+		mi1 = pgtype.Float8{Float64: summaries[1].GetMistakeIndex(), Valid: true}
+	}
+	return mi0, mi1, pgtype.Int4{Int32: result.GetAnalysisVersion(), Valid: true}
 }
 
 const maxFailJobErrorLen = 1024
@@ -546,13 +614,7 @@ func (s *AnalysisService) RequestAnalysis(
 				Msg("re-requesting analysis for previously failed job")
 		} else if req.Msg.Force && existingJob.Status == "completed" {
 			// Force re-analysis only allowed for legacy (v0) results
-			var partial struct {
-				AnalysisVersion int32 `json:"analysisVersion"`
-			}
-			if len(existingJob.Result) > 0 {
-				_ = json.Unmarshal(existingJob.Result, &partial)
-			}
-			if partial.AnalysisVersion >= 2 {
+			if existingJob.AnalysisVersion.Int32 >= 2 {
 				return connect.NewResponse(&pb.RequestAnalysisResponse{
 					Status:  pb.RequestAnalysisResponse_ALREADY_REQUESTED,
 					Message: "Analysis is already up to date",
@@ -560,7 +622,7 @@ func (s *AnalysisService) RequestAnalysis(
 				}), nil
 			}
 			// Legacy result — reset the existing job back to pending (same as admin RequeueAnalysis)
-			// Don't subtract MI here - JIT subtraction happens in SubmitResult
+			// Keep the old result: standings keep counting it until the new analysis lands
 			if err := s.queries.ResetAnalysisJobKeepResult(ctx, existingJob.ID); err != nil {
 				log.Error().Err(err).Str("job_id", existingJob.ID.String()).Msg("failed to reset legacy job for re-analysis")
 				return nil, apiserver.InternalErr(fmt.Errorf("failed to reset legacy job: %w", err))
@@ -738,16 +800,9 @@ func (s *AnalysisService) GetAnalysisStatus(
 		errorMsg = job.ErrorMessage.String
 	}
 
-	// Extract analysis_version from the stored result JSONB for completed jobs.
-	// We only need one field so parse minimally to avoid full unmarshal overhead.
 	var analysisVersion int32
-	if job.Status == "completed" && len(job.Result) > 0 {
-		var partial struct {
-			AnalysisVersion int32 `json:"analysisVersion"`
-		}
-		if err := json.Unmarshal(job.Result, &partial); err == nil {
-			analysisVersion = partial.AnalysisVersion
-		}
+	if job.Status == "completed" {
+		analysisVersion = job.AnalysisVersion.Int32
 	}
 
 	return connect.NewResponse(&pb.GetAnalysisStatusResponse{
@@ -777,26 +832,29 @@ func (s *AnalysisService) GetAnalysisResult(
 		}), nil
 	}
 
-	if len(job.Result) == 0 {
-		return connect.NewResponse(&pb.GetAnalysisResultResponse{
-			Found: false,
-		}), nil
-	}
-
-	var result macondo.GameAnalysisResult
-	// Use DiscardUnknown to handle legacy analysis data that may contain fields
-	// removed in newer macondo versions (e.g., avgSpreadLoss in PlayerSummary)
-	unmarshalOpts := protojson.UnmarshalOptions{DiscardUnknown: true}
-	if err := unmarshalOpts.Unmarshal(job.Result, &result); err != nil {
-		log.Error().Err(err).Str("game_id", gameID).Msg("failed to unmarshal stored analysis result")
-		return nil, apiserver.InternalErr(fmt.Errorf("failed to deserialize analysis result: %w", err))
+	result, err := s.loadResult(ctx, job)
+	if err != nil {
+		log.Error().Err(err).Str("game_id", gameID).Msg("failed to load analysis result")
+		return nil, apiserver.InternalErr(fmt.Errorf("failed to load analysis result: %w", err))
 	}
 
 	return connect.NewResponse(&pb.GetAnalysisResultResponse{
 		Found:   true,
-		Result:  &result,
+		Result:  result,
 		RunInfo: runInfoForJob(job),
 	}), nil
+}
+
+// loadResult reads a completed job's result from the result store. A
+// completed job without an object is a zero-turn game, whose result is empty.
+func (s *AnalysisService) loadResult(ctx context.Context, job models.GetJobByGameIDRow) (*macondo.GameAnalysisResult, error) {
+	if !job.ResultS3Key.Valid {
+		return &macondo.GameAnalysisResult{}, nil
+	}
+	if s.resultStore == nil {
+		return nil, errors.New("no analysis result store configured (ANALYSIS_UPLOAD_BUCKET)")
+	}
+	return s.resultStore.Get(ctx, job.ResultS3Key.String)
 }
 
 // runInfoForJob summarizes how a completed job was produced. Every timestamp is

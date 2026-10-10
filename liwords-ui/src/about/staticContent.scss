@@ -30,9 +30,7 @@
   }
   ol {
     padding-inline-start: 20px;
-    @include colorModed() {
-      color: m($gray-extreme);
-    }
+    color: m($gray-extreme);
     li {
       margin-top: 1.4em;
       font-weight: 700;

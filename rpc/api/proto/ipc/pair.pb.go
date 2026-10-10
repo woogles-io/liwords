@@ -130,6 +130,7 @@ const (
 	PairError_TIMEOUT                               PairError = 31
 	PairError_UNSUPPORTED_PAIR_METHOD               PairError = 32
 	PairError_SIMPLE_PAIRING_FAILED                 PairError = 33
+	PairError_INVALID_AUTO_PAIRING_METHOD_USAGE     PairError = 34
 )
 
 // Enum value maps for PairError.
@@ -169,6 +170,7 @@ var (
 		31: "TIMEOUT",
 		32: "UNSUPPORTED_PAIR_METHOD",
 		33: "SIMPLE_PAIRING_FAILED",
+		34: "INVALID_AUTO_PAIRING_METHOD_USAGE",
 	}
 	PairError_value = map[string]int32{
 		"SUCCESS":                               0,
@@ -205,6 +207,7 @@ var (
 		"TIMEOUT":                               31,
 		"UNSUPPORTED_PAIR_METHOD":               32,
 		"SIMPLE_PAIRING_FAILED":                 33,
+		"INVALID_AUTO_PAIRING_METHOD_USAGE":     34,
 	}
 )
 
@@ -674,7 +677,7 @@ const file_proto_ipc_pair_proto_rawDesc = "" +
 	"PAIR_SWISS\x10\x06\x12\x19\n" +
 	"\x15PAIR_TEAM_ROUND_ROBIN\x10\a\x12 \n" +
 	"\x1cPAIR_INTERLEAVED_ROUND_ROBIN\x10\b\x12\r\n" +
-	"\tPAIR_AUTO\x10\t*\xc9\a\n" +
+	"\tPAIR_AUTO\x10\t*\xf0\a\n" +
 	"\tPairError\x12\v\n" +
 	"\aSUCCESS\x10\x00\x12\x1d\n" +
 	"\x19PLAYER_COUNT_INSUFFICIENT\x10\x01\x12\x1c\n" +
@@ -710,7 +713,8 @@ const file_proto_ipc_pair_proto_rawDesc = "" +
 	"\x16REQUEST_TO_JSON_FAILED\x10\x1e\x12\v\n" +
 	"\aTIMEOUT\x10\x1f\x12\x1b\n" +
 	"\x17UNSUPPORTED_PAIR_METHOD\x10 \x12\x19\n" +
-	"\x15SIMPLE_PAIRING_FAILED\x10!Bq\n" +
+	"\x15SIMPLE_PAIRING_FAILED\x10!\x12%\n" +
+	"!INVALID_AUTO_PAIRING_METHOD_USAGE\x10\"Bq\n" +
 	"\acom.ipcB\tPairProtoP\x01Z/github.com/woogles-io/liwords/rpc/api/proto/ipc\xa2\x02\x03IXX\xaa\x02\x03Ipc\xca\x02\x03Ipc\xe2\x02\x0fIpc\\GPBMetadata\xea\x02\x03Ipcb\x06proto3"
 
 var (

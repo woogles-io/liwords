@@ -567,7 +567,7 @@ func TestEnforceGuarantees_PromotedPlayerGuaranteed(t *testing.T) {
 // Scenario: 30 players across 2 divisions of 15.
 //   - Div-1: 2 relegated (virtual div 2, score ~150k) + 13 stayed (virtual div 1, ~240k).
 //   - Div-2: 3 relegated (virtual div 3 — beyond last div, overflow to div 2)
-//             + 12 stayed (virtual div 2, ~140k).
+//   - 12 stayed (virtual div 2, ~140k).
 //
 // The 2 relegated from div1 and 3 relegated from div2 both have high relegated bonus (50k).
 // We construct a case where some STAYED-from-div1 players (ceiling=div1) are crowded out.
@@ -830,4 +830,143 @@ func TestEnforceGuarantees_BottomDivisionStayedCanSeedNewDivision(t *testing.T) 
 	// pulled back into Division 1 by their unconditional ceiling guarantee.
 	is.Equal(div1Count, 15)
 	is.Equal(div2Count, 13)
+}
+
+// TestRebalance_EnforcementDrainedBottomDivisionGetsMerged covers the ordering
+// between MergeUndersizedFinalDivision and enforceGuarantees.
+//
+// The merge used to run first, sizing the bottom division against a
+// distribution that enforcement was about to change: bucketing filled it past
+// MinimumFinalDivSize, the size check passed, and enforcement then pulled the
+// ceiling-holding players back up out of it, leaving a rump division nothing
+// rechecked.
+//
+// PROMOTED is the status that still reaches this. Its ceiling is prevDiv-1
+// with no bottom-division exemption -- c817963c added one only for STAYED --
+// so promoted players from the previous bottom division can be bucketed into a
+// newly created bottom division and immediately pulled back out.
+//
+// Scenario: season 1 has 4 divisions of 15. Division 4 (the bottom) sends 4
+// players up as PROMOTED and keeps 11 as STAYED. All 60 return for season 2,
+// which needs round(60/15)=4 divisions. Priority bucketing puts the 4 PROMOTED
+// (virtual div 3, bonus 30k) below the 15 STAYED players of virtual div 3
+// (bonus 40k), so they land at the top of Division 4 alongside the 11 STAYED
+// players from the old bottom division -- 15 players, comfortably above the
+// threshold. Enforcement then moves those 4 up to their ceiling of Division 3,
+// dropping Division 4 to 11. The merge must run after that to see it.
+func TestRebalance_EnforcementDrainedBottomDivisionGetsMerged(t *testing.T) {
+	is := is.New(t)
+	ctx := context.Background()
+
+	allStores, cleanup := setupIntegrationTest(t)
+	defer cleanup()
+
+	store := allStores.LeagueStore
+	leagueID, season1ID := createLeagueAndSeason(t, ctx, allStores)
+
+	// Season 1: four divisions of 15 (users 1-15, 16-30, 31-45, 46-60).
+	s1Divs := make([]uuid.UUID, 5) // 1-indexed by division number
+	for divNum := 1; divNum <= 4; divNum++ {
+		id := uuid.New()
+		_, err := store.CreateDivision(ctx, models.CreateDivisionParams{
+			Uuid: id, SeasonID: season1ID, DivisionNumber: int32(divNum),
+			DivisionName: pgtype.Text{String: fmt.Sprintf("Division %d", divNum), Valid: true},
+		})
+		is.NoErr(err)
+		s1Divs[divNum] = id
+	}
+
+	for i := 1; i <= 60; i++ {
+		divNum := (i-1)/15 + 1
+		divID := s1Divs[divNum]
+		rankInDiv := (i-1)%15 + 1
+
+		_, err := store.RegisterPlayer(ctx, models.RegisterPlayerParams{
+			UserID: int32(i), SeasonID: season1ID,
+			Status:     pgtype.Text{String: "REGISTERED", Valid: true},
+			DivisionID: pgtype.UUID{Bytes: divID, Valid: true},
+		})
+		is.NoErr(err)
+		err = store.UpsertStanding(ctx, models.UpsertStandingParams{
+			UserID: int32(i), DivisionID: divID,
+		})
+		is.NoErr(err)
+
+		// Division 4's top 4 finishers are promoted; everyone else stays.
+		// Distinct ranks keep bucketing order deterministic.
+		outcome := ipc.StandingResult_RESULT_STAYED
+		if divNum == 4 && rankInDiv <= 4 {
+			outcome = ipc.StandingResult_RESULT_PROMOTED
+		}
+		err = store.UpdateStandingResult(ctx, models.UpdateStandingResultParams{
+			DivisionID: divID, UserID: int32(i),
+			Result: pgtype.Int4{Int32: int32(outcome), Valid: true},
+		})
+		is.NoErr(err)
+		err = store.UpdatePreviousDivisionRank(ctx, models.UpdatePreviousDivisionRankParams{
+			UserID: int32(i), SeasonID: season1ID,
+			PreviousDivisionRank: pgtype.Int4{Int32: int32(rankInDiv), Valid: true},
+		})
+		is.NoErr(err)
+	}
+
+	// Season 2: all 60 return.
+	season2ID := uuid.New()
+	_, err := store.CreateSeason(ctx, models.CreateSeasonParams{
+		Uuid: season2ID, LeagueID: leagueID, SeasonNumber: 2,
+		StartDate: pgtype.Timestamptz{Time: time.Now(), Valid: true},
+		EndDate:   pgtype.Timestamptz{Time: time.Now().AddDate(0, 0, 14), Valid: true},
+		Status:    int32(ipc.SeasonStatus_SEASON_SCHEDULED),
+	})
+	is.NoErr(err)
+
+	for i := 1; i <= 60; i++ {
+		_, err = store.RegisterPlayer(ctx, models.RegisterPlayerParams{
+			UserID: int32(i), SeasonID: season2ID,
+			Status: pgtype.Text{String: "REGISTERED", Valid: true},
+		})
+		is.NoErr(err)
+	}
+
+	regs, err := store.GetSeasonRegistrations(ctx, season2ID)
+	is.NoErr(err)
+	is.Equal(len(regs), 60)
+
+	categorized := make([]CategorizedPlayer, 60)
+	for i, r := range regs {
+		categorized[i] = CategorizedPlayer{Registration: r, Category: PlayerCategoryReturning}
+	}
+
+	rm := NewRebalanceManager(allStores)
+	result, err := rm.RebalanceDivisions(ctx, leagueID, season1ID, season2ID, 2, categorized, 15)
+	is.NoErr(err)
+
+	// Enforcement drained the bucketed Division 4 from 15 down to 11, so the
+	// merge that follows must absorb it: 4 divisions created, 3 survive.
+	is.True(result.FinalDivMerged)
+	is.Equal(result.DivisionsCreated, 3)
+
+	s2Divs, err := store.GetDivisionsBySeason(ctx, season2ID)
+	is.NoErr(err)
+	is.Equal(len(s2Divs), 3)
+
+	counts := map[int32]int{}
+	for _, d := range s2Divs {
+		players, err := store.GetDivisionRegistrations(ctx, d.Uuid)
+		is.NoErr(err)
+		counts[d.DivisionNumber] = len(players)
+	}
+
+	// Every surviving division must clear the minimum. With the merge running
+	// first this ended as 15/15/19/11, leaving an 11-player bottom division.
+	for divNum, n := range counts {
+		is.True(n >= MinimumFinalDivSize)
+		if n < MinimumFinalDivSize {
+			t.Errorf("division %d has %d players, below minimum %d", divNum, n, MinimumFinalDivSize)
+		}
+	}
+	is.Equal(counts[1], 15)
+	is.Equal(counts[2], 15)
+	is.Equal(counts[3], 30) // 15 STAYED + 4 enforced-up PROMOTED + 11 merged in
+	is.Equal(len(counts), 3)
 }

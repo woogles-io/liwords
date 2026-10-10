@@ -53,6 +53,8 @@ func newPubSub(natsURL string, cfg *config.Config) (*PubSub, error) {
 		"presence.changed.>",
 		// Efficient seek notifications to followed users
 		"seek.followed.>",
+		// a user's sessions were revoked; disconnect their sockets
+		"sessionend.>",
 	}
 	pubSub := &PubSub{
 		natsconn:      natsconn,
@@ -128,6 +130,14 @@ func (h *Hub) PubsubProcess() {
 			} else {
 				h.sendToUserChannel(userID, msg.Data, subtopics[2])
 			}
+
+		case msg := <-h.pubsub.subchans["sessionend.>"]:
+			subtopics := strings.Split(msg.Subject, ".")
+			if len(subtopics) != 2 || subtopics[1] == "" {
+				log.Error().Msgf("sessionend subtopics weird %v", msg.Subject)
+				continue
+			}
+			h.endUserSockets <- subtopics[1]
 
 		case msg := <-h.pubsub.subchans["connid.>"]:
 			// Forward to the given connection ID only.

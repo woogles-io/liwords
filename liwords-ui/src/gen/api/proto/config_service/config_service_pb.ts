@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file proto/config_service/config_service.proto.
  */
 export const file_proto_config_service_config_service: GenFile = /*@__PURE__*/
-  fileDesc("Cilwcm90by9jb25maWdfc2VydmljZS9jb25maWdfc2VydmljZS5wcm90bxIOY29uZmlnX3NlcnZpY2UiJQoSRW5hYmxlR2FtZXNSZXF1ZXN0Eg8KB2VuYWJsZWQYASABKAgiIAoQU2V0RkVIYXNoUmVxdWVzdBIMCgRoYXNoGAEgASgJIhAKDkNvbmZpZ1Jlc3BvbnNlIjkKDEFubm91bmNlbWVudBINCgV0aXRsZRgBIAEoCRIMCgRsaW5rGAIgASgJEgwKBGJvZHkYAyABKAkiTgoXU2V0QW5ub3VuY2VtZW50c1JlcXVlc3QSMwoNYW5ub3VuY2VtZW50cxgBIAMoCzIcLmNvbmZpZ19zZXJ2aWNlLkFubm91bmNlbWVudCIZChdHZXRBbm5vdW5jZW1lbnRzUmVxdWVzdCJMChVBbm5vdW5jZW1lbnRzUmVzcG9uc2USMwoNYW5ub3VuY2VtZW50cxgBIAMoCzIcLmNvbmZpZ19zZXJ2aWNlLkFubm91bmNlbWVudCJuChxTZXRTaW5nbGVBbm5vdW5jZW1lbnRSZXF1ZXN0EjIKDGFubm91bmNlbWVudBgBIAEoCzIcLmNvbmZpZ19zZXJ2aWNlLkFubm91bmNlbWVudBIaChJsaW5rX3NlYXJjaF9zdHJpbmcYAiABKAkiSgobU2V0R2xvYmFsSW50ZWdyYXRpb25SZXF1ZXN0EhgKEGludGVncmF0aW9uX25hbWUYASABKAkSEQoJanNvbl9kYXRhGAIgASgJIjQKD0FkZEJhZGdlUmVxdWVzdBIMCgRjb2RlGAEgASgJEhMKC2Rlc2NyaXB0aW9uGAIgASgJIjQKEkFzc2lnbkJhZGdlUmVxdWVzdBIQCgh1c2VybmFtZRgBIAEoCRIMCgRjb2RlGAIgASgJIicKF0dldFVzZXJzRm9yQmFkZ2VSZXF1ZXN0EgwKBGNvZGUYASABKAkiKQoVR2V0VXNlckRldGFpbHNSZXF1ZXN0EhAKCHVzZXJuYW1lGAEgASgJIoUBChNVc2VyRGV0YWlsc1Jlc3BvbnNlEgwKBHV1aWQYASABKAkSDQoFZW1haWwYAiABKAkSKwoHY3JlYXRlZBgDIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASEgoKYmlydGhfZGF0ZRgEIAEoCRIQCgh1c2VybmFtZRgFIAEoCSIrChJTZWFyY2hFbWFpbFJlcXVlc3QSFQoNcGFydGlhbF9lbWFpbBgBIAEoCSJJChNTZWFyY2hFbWFpbFJlc3BvbnNlEjIKBXVzZXJzGAEgAygLMiMuY29uZmlnX3NlcnZpY2UuVXNlckRldGFpbHNSZXNwb25zZSIeCglVc2VybmFtZXMSEQoJdXNlcm5hbWVzGAEgAygJIiMKIUdldENvcnJlc3BvbmRlbmNlR2FtZUNvdW50UmVxdWVzdCIwCh9Db3JyZXNwb25kZW5jZUdhbWVDb3VudFJlc3BvbnNlEg0KBWNvdW50GAEgASgFMuEJCg1Db25maWdTZXJ2aWNlElUKD1NldEdhbWVzRW5hYmxlZBIiLmNvbmZpZ19zZXJ2aWNlLkVuYWJsZUdhbWVzUmVxdWVzdBoeLmNvbmZpZ19zZXJ2aWNlLkNvbmZpZ1Jlc3BvbnNlEk0KCVNldEZFSGFzaBIgLmNvbmZpZ19zZXJ2aWNlLlNldEZFSGFzaFJlcXVlc3QaHi5jb25maWdfc2VydmljZS5Db25maWdSZXNwb25zZRJbChBTZXRBbm5vdW5jZW1lbnRzEicuY29uZmlnX3NlcnZpY2UuU2V0QW5ub3VuY2VtZW50c1JlcXVlc3QaHi5jb25maWdfc2VydmljZS5Db25maWdSZXNwb25zZRJnChBHZXRBbm5vdW5jZW1lbnRzEicuY29uZmlnX3NlcnZpY2UuR2V0QW5ub3VuY2VtZW50c1JlcXVlc3QaJS5jb25maWdfc2VydmljZS5Bbm5vdW5jZW1lbnRzUmVzcG9uc2UiA5ACARJlChVTZXRTaW5nbGVBbm5vdW5jZW1lbnQSLC5jb25maWdfc2VydmljZS5TZXRTaW5nbGVBbm5vdW5jZW1lbnRSZXF1ZXN0Gh4uY29uZmlnX3NlcnZpY2UuQ29uZmlnUmVzcG9uc2USYwoUU2V0R2xvYmFsSW50ZWdyYXRpb24SKy5jb25maWdfc2VydmljZS5TZXRHbG9iYWxJbnRlZ3JhdGlvblJlcXVlc3QaHi5jb25maWdfc2VydmljZS5Db25maWdSZXNwb25zZRJLCghBZGRCYWRnZRIfLmNvbmZpZ19zZXJ2aWNlLkFkZEJhZGdlUmVxdWVzdBoeLmNvbmZpZ19zZXJ2aWNlLkNvbmZpZ1Jlc3BvbnNlElEKC0Fzc2lnbkJhZGdlEiIuY29uZmlnX3NlcnZpY2UuQXNzaWduQmFkZ2VSZXF1ZXN0Gh4uY29uZmlnX3NlcnZpY2UuQ29uZmlnUmVzcG9uc2USUwoNVW5hc3NpZ25CYWRnZRIiLmNvbmZpZ19zZXJ2aWNlLkFzc2lnbkJhZGdlUmVxdWVzdBoeLmNvbmZpZ19zZXJ2aWNlLkNvbmZpZ1Jlc3BvbnNlElsKEEdldFVzZXJzRm9yQmFkZ2USJy5jb25maWdfc2VydmljZS5HZXRVc2Vyc0ZvckJhZGdlUmVxdWVzdBoZLmNvbmZpZ19zZXJ2aWNlLlVzZXJuYW1lcyIDkAIBEmEKDkdldFVzZXJEZXRhaWxzEiUuY29uZmlnX3NlcnZpY2UuR2V0VXNlckRldGFpbHNSZXF1ZXN0GiMuY29uZmlnX3NlcnZpY2UuVXNlckRldGFpbHNSZXNwb25zZSIDkAIBElsKC1NlYXJjaEVtYWlsEiIuY29uZmlnX3NlcnZpY2UuU2VhcmNoRW1haWxSZXF1ZXN0GiMuY29uZmlnX3NlcnZpY2UuU2VhcmNoRW1haWxSZXNwb25zZSIDkAIBEoUBChpHZXRDb3JyZXNwb25kZW5jZUdhbWVDb3VudBIxLmNvbmZpZ19zZXJ2aWNlLkdldENvcnJlc3BvbmRlbmNlR2FtZUNvdW50UmVxdWVzdBovLmNvbmZpZ19zZXJ2aWNlLkNvcnJlc3BvbmRlbmNlR2FtZUNvdW50UmVzcG9uc2UiA5ACAUK4AQoSY29tLmNvbmZpZ19zZXJ2aWNlQhJDb25maWdTZXJ2aWNlUHJvdG9QAVo6Z2l0aHViLmNvbS93b29nbGVzLWlvL2xpd29yZHMvcnBjL2FwaS9wcm90by9jb25maWdfc2VydmljZaICA0NYWKoCDUNvbmZpZ1NlcnZpY2XKAg1Db25maWdTZXJ2aWNl4gIZQ29uZmlnU2VydmljZVxHUEJNZXRhZGF0YeoCDUNvbmZpZ1NlcnZpY2ViBnByb3RvMw", [file_google_protobuf_timestamp]);
+  fileDesc("Cilwcm90by9jb25maWdfc2VydmljZS9jb25maWdfc2VydmljZS5wcm90bxIOY29uZmlnX3NlcnZpY2UiJQoSRW5hYmxlR2FtZXNSZXF1ZXN0Eg8KB2VuYWJsZWQYASABKAgiIAoQU2V0RkVIYXNoUmVxdWVzdBIMCgRoYXNoGAEgASgJIhAKDkNvbmZpZ1Jlc3BvbnNlIjkKDEFubm91bmNlbWVudBINCgV0aXRsZRgBIAEoCRIMCgRsaW5rGAIgASgJEgwKBGJvZHkYAyABKAkiTgoXU2V0QW5ub3VuY2VtZW50c1JlcXVlc3QSMwoNYW5ub3VuY2VtZW50cxgBIAMoCzIcLmNvbmZpZ19zZXJ2aWNlLkFubm91bmNlbWVudCIZChdHZXRBbm5vdW5jZW1lbnRzUmVxdWVzdCJMChVBbm5vdW5jZW1lbnRzUmVzcG9uc2USMwoNYW5ub3VuY2VtZW50cxgBIAMoCzIcLmNvbmZpZ19zZXJ2aWNlLkFubm91bmNlbWVudCJuChxTZXRTaW5nbGVBbm5vdW5jZW1lbnRSZXF1ZXN0EjIKDGFubm91bmNlbWVudBgBIAEoCzIcLmNvbmZpZ19zZXJ2aWNlLkFubm91bmNlbWVudBIaChJsaW5rX3NlYXJjaF9zdHJpbmcYAiABKAkiSgobU2V0R2xvYmFsSW50ZWdyYXRpb25SZXF1ZXN0EhgKEGludGVncmF0aW9uX25hbWUYASABKAkSEQoJanNvbl9kYXRhGAIgASgJIjQKD0FkZEJhZGdlUmVxdWVzdBIMCgRjb2RlGAEgASgJEhMKC2Rlc2NyaXB0aW9uGAIgASgJIjQKEkFzc2lnbkJhZGdlUmVxdWVzdBIQCgh1c2VybmFtZRgBIAEoCRIMCgRjb2RlGAIgASgJIicKF0dldFVzZXJzRm9yQmFkZ2VSZXF1ZXN0EgwKBGNvZGUYASABKAkiKQoVR2V0VXNlckRldGFpbHNSZXF1ZXN0EhAKCHVzZXJuYW1lGAEgASgJIooBCgpVc2VyQ2xpZW50EgoKAmlwGAEgASgJEhEKCWNsaWVudF9pZBgCIAEoCRIuCgpmaXJzdF9zZWVuGAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBItCglsYXN0X3NlZW4YBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIpQBCg1MaW5rZWRBY2NvdW50EhAKCHVzZXJuYW1lGAEgASgJEgwKBHV1aWQYAiABKAkSEgoKbWF0Y2hlZF9vbhgDIAEoCRINCgV2YWx1ZRgEIAEoCRItCglsYXN0X3NlZW4YBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhEKCXN1c3BlbmRlZBgGIAEoCCJ/Cg1Vc2VyTW9kQWN0aW9uEgwKBHR5cGUYASABKAkSKQoFc3RhcnQYAiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEicKA2VuZBgDIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASDAoEbm90ZRgEIAEoCSKPAwoTVXNlckRldGFpbHNSZXNwb25zZRIMCgR1dWlkGAEgASgJEg0KBWVtYWlsGAIgASgJEisKB2NyZWF0ZWQYAyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhIKCmJpcnRoX2RhdGUYBCABKAkSEAoIdXNlcm5hbWUYBSABKAkSEAoIdmVyaWZpZWQYBiABKAgSEQoJbm90b3JpZXR5GAcgASgFEg4KBmlzX2JvdBgIIAEoCBI1Cg5hY3RpdmVfYWN0aW9ucxgJIAMoCzIdLmNvbmZpZ19zZXJ2aWNlLlVzZXJNb2RBY3Rpb24SFwoPcmVnaXN0cmF0aW9uX2lwGAogASgJEh4KFnJlZ2lzdHJhdGlvbl9jbGllbnRfaWQYCyABKAkSKwoHY2xpZW50cxgMIAMoCzIaLmNvbmZpZ19zZXJ2aWNlLlVzZXJDbGllbnQSNgoPbGlua2VkX2FjY291bnRzGA0gAygLMh0uY29uZmlnX3NlcnZpY2UuTGlua2VkQWNjb3VudCIrChJTZWFyY2hFbWFpbFJlcXVlc3QSFQoNcGFydGlhbF9lbWFpbBgBIAEoCSJJChNTZWFyY2hFbWFpbFJlc3BvbnNlEjIKBXVzZXJzGAEgAygLMiMuY29uZmlnX3NlcnZpY2UuVXNlckRldGFpbHNSZXNwb25zZSIeCglVc2VybmFtZXMSEQoJdXNlcm5hbWVzGAEgAygJIiMKIUdldENvcnJlc3BvbmRlbmNlR2FtZUNvdW50UmVxdWVzdCIwCh9Db3JyZXNwb25kZW5jZUdhbWVDb3VudFJlc3BvbnNlEg0KBWNvdW50GAEgASgFMuEJCg1Db25maWdTZXJ2aWNlElUKD1NldEdhbWVzRW5hYmxlZBIiLmNvbmZpZ19zZXJ2aWNlLkVuYWJsZUdhbWVzUmVxdWVzdBoeLmNvbmZpZ19zZXJ2aWNlLkNvbmZpZ1Jlc3BvbnNlEk0KCVNldEZFSGFzaBIgLmNvbmZpZ19zZXJ2aWNlLlNldEZFSGFzaFJlcXVlc3QaHi5jb25maWdfc2VydmljZS5Db25maWdSZXNwb25zZRJbChBTZXRBbm5vdW5jZW1lbnRzEicuY29uZmlnX3NlcnZpY2UuU2V0QW5ub3VuY2VtZW50c1JlcXVlc3QaHi5jb25maWdfc2VydmljZS5Db25maWdSZXNwb25zZRJnChBHZXRBbm5vdW5jZW1lbnRzEicuY29uZmlnX3NlcnZpY2UuR2V0QW5ub3VuY2VtZW50c1JlcXVlc3QaJS5jb25maWdfc2VydmljZS5Bbm5vdW5jZW1lbnRzUmVzcG9uc2UiA5ACARJlChVTZXRTaW5nbGVBbm5vdW5jZW1lbnQSLC5jb25maWdfc2VydmljZS5TZXRTaW5nbGVBbm5vdW5jZW1lbnRSZXF1ZXN0Gh4uY29uZmlnX3NlcnZpY2UuQ29uZmlnUmVzcG9uc2USYwoUU2V0R2xvYmFsSW50ZWdyYXRpb24SKy5jb25maWdfc2VydmljZS5TZXRHbG9iYWxJbnRlZ3JhdGlvblJlcXVlc3QaHi5jb25maWdfc2VydmljZS5Db25maWdSZXNwb25zZRJLCghBZGRCYWRnZRIfLmNvbmZpZ19zZXJ2aWNlLkFkZEJhZGdlUmVxdWVzdBoeLmNvbmZpZ19zZXJ2aWNlLkNvbmZpZ1Jlc3BvbnNlElEKC0Fzc2lnbkJhZGdlEiIuY29uZmlnX3NlcnZpY2UuQXNzaWduQmFkZ2VSZXF1ZXN0Gh4uY29uZmlnX3NlcnZpY2UuQ29uZmlnUmVzcG9uc2USUwoNVW5hc3NpZ25CYWRnZRIiLmNvbmZpZ19zZXJ2aWNlLkFzc2lnbkJhZGdlUmVxdWVzdBoeLmNvbmZpZ19zZXJ2aWNlLkNvbmZpZ1Jlc3BvbnNlElsKEEdldFVzZXJzRm9yQmFkZ2USJy5jb25maWdfc2VydmljZS5HZXRVc2Vyc0ZvckJhZGdlUmVxdWVzdBoZLmNvbmZpZ19zZXJ2aWNlLlVzZXJuYW1lcyIDkAIBEmEKDkdldFVzZXJEZXRhaWxzEiUuY29uZmlnX3NlcnZpY2UuR2V0VXNlckRldGFpbHNSZXF1ZXN0GiMuY29uZmlnX3NlcnZpY2UuVXNlckRldGFpbHNSZXNwb25zZSIDkAIBElsKC1NlYXJjaEVtYWlsEiIuY29uZmlnX3NlcnZpY2UuU2VhcmNoRW1haWxSZXF1ZXN0GiMuY29uZmlnX3NlcnZpY2UuU2VhcmNoRW1haWxSZXNwb25zZSIDkAIBEoUBChpHZXRDb3JyZXNwb25kZW5jZUdhbWVDb3VudBIxLmNvbmZpZ19zZXJ2aWNlLkdldENvcnJlc3BvbmRlbmNlR2FtZUNvdW50UmVxdWVzdBovLmNvbmZpZ19zZXJ2aWNlLkNvcnJlc3BvbmRlbmNlR2FtZUNvdW50UmVzcG9uc2UiA5ACAUK4AQoSY29tLmNvbmZpZ19zZXJ2aWNlQhJDb25maWdTZXJ2aWNlUHJvdG9QAVo6Z2l0aHViLmNvbS93b29nbGVzLWlvL2xpd29yZHMvcnBjL2FwaS9wcm90by9jb25maWdfc2VydmljZaICA0NYWKoCDUNvbmZpZ1NlcnZpY2XKAg1Db25maWdTZXJ2aWNl4gIZQ29uZmlnU2VydmljZVxHUEJNZXRhZGF0YeoCDUNvbmZpZ1NlcnZpY2ViBnByb3RvMw", [file_google_protobuf_timestamp]);
 
 /**
  * @generated from message config_service.EnableGamesRequest
@@ -258,6 +258,126 @@ export const GetUserDetailsRequestSchema: GenMessage<GetUserDetailsRequest> = /*
   messageDesc(file_proto_config_service_config_service, 12);
 
 /**
+ * An IP address and client identifier an account has been seen from.
+ *
+ * @generated from message config_service.UserClient
+ */
+export type UserClient = Message<"config_service.UserClient"> & {
+  /**
+   * @generated from field: string ip = 1;
+   */
+  ip: string;
+
+  /**
+   * Empty if the browser had no client identifier yet.
+   *
+   * @generated from field: string client_id = 2;
+   */
+  clientId: string;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp first_seen = 3;
+   */
+  firstSeen?: Timestamp | undefined;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp last_seen = 4;
+   */
+  lastSeen?: Timestamp | undefined;
+};
+
+/**
+ * Describes the message config_service.UserClient.
+ * Use `create(UserClientSchema)` to create a new message.
+ */
+export const UserClientSchema: GenMessage<UserClient> = /*@__PURE__*/
+  messageDesc(file_proto_config_service_config_service, 13);
+
+/**
+ * Another account that shares an IP address or client identifier.
+ *
+ * @generated from message config_service.LinkedAccount
+ */
+export type LinkedAccount = Message<"config_service.LinkedAccount"> & {
+  /**
+   * @generated from field: string username = 1;
+   */
+  username: string;
+
+  /**
+   * @generated from field: string uuid = 2;
+   */
+  uuid: string;
+
+  /**
+   * One of "client_id", "ip", "registration_client_id", "registration_ip".
+   *
+   * @generated from field: string matched_on = 3;
+   */
+  matchedOn: string;
+
+  /**
+   * The shared IP address or client identifier.
+   *
+   * @generated from field: string value = 4;
+   */
+  value: string;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp last_seen = 5;
+   */
+  lastSeen?: Timestamp | undefined;
+
+  /**
+   * @generated from field: bool suspended = 6;
+   */
+  suspended: boolean;
+};
+
+/**
+ * Describes the message config_service.LinkedAccount.
+ * Use `create(LinkedAccountSchema)` to create a new message.
+ */
+export const LinkedAccountSchema: GenMessage<LinkedAccount> = /*@__PURE__*/
+  messageDesc(file_proto_config_service_config_service, 14);
+
+/**
+ * @generated from message config_service.UserModAction
+ */
+export type UserModAction = Message<"config_service.UserModAction"> & {
+  /**
+   * The mod_service.ModActionType name, e.g. "SUSPEND_ACCOUNT".
+   *
+   * @generated from field: string type = 1;
+   */
+  type: string;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp start = 2;
+   */
+  start?: Timestamp | undefined;
+
+  /**
+   * Unset if the action is permanent.
+   *
+   * @generated from field: google.protobuf.Timestamp end = 3;
+   */
+  end?: Timestamp | undefined;
+
+  /**
+   * @generated from field: string note = 4;
+   */
+  note: string;
+};
+
+/**
+ * Describes the message config_service.UserModAction.
+ * Use `create(UserModActionSchema)` to create a new message.
+ */
+export const UserModActionSchema: GenMessage<UserModAction> = /*@__PURE__*/
+  messageDesc(file_proto_config_service_config_service, 15);
+
+/**
  * @generated from message config_service.UserDetailsResponse
  */
 export type UserDetailsResponse = Message<"config_service.UserDetailsResponse"> & {
@@ -285,6 +405,50 @@ export type UserDetailsResponse = Message<"config_service.UserDetailsResponse"> 
    * @generated from field: string username = 5;
    */
   username: string;
+
+  /**
+   * The fields below are only filled in by GetUserDetails, not SearchEmail.
+   *
+   * @generated from field: bool verified = 6;
+   */
+  verified: boolean;
+
+  /**
+   * @generated from field: int32 notoriety = 7;
+   */
+  notoriety: number;
+
+  /**
+   * @generated from field: bool is_bot = 8;
+   */
+  isBot: boolean;
+
+  /**
+   * @generated from field: repeated config_service.UserModAction active_actions = 9;
+   */
+  activeActions: UserModAction[];
+
+  /**
+   * @generated from field: string registration_ip = 10;
+   */
+  registrationIp: string;
+
+  /**
+   * @generated from field: string registration_client_id = 11;
+   */
+  registrationClientId: string;
+
+  /**
+   * Most recently seen first.
+   *
+   * @generated from field: repeated config_service.UserClient clients = 12;
+   */
+  clients: UserClient[];
+
+  /**
+   * @generated from field: repeated config_service.LinkedAccount linked_accounts = 13;
+   */
+  linkedAccounts: LinkedAccount[];
 };
 
 /**
@@ -292,7 +456,7 @@ export type UserDetailsResponse = Message<"config_service.UserDetailsResponse"> 
  * Use `create(UserDetailsResponseSchema)` to create a new message.
  */
 export const UserDetailsResponseSchema: GenMessage<UserDetailsResponse> = /*@__PURE__*/
-  messageDesc(file_proto_config_service_config_service, 13);
+  messageDesc(file_proto_config_service_config_service, 16);
 
 /**
  * @generated from message config_service.SearchEmailRequest
@@ -309,7 +473,7 @@ export type SearchEmailRequest = Message<"config_service.SearchEmailRequest"> & 
  * Use `create(SearchEmailRequestSchema)` to create a new message.
  */
 export const SearchEmailRequestSchema: GenMessage<SearchEmailRequest> = /*@__PURE__*/
-  messageDesc(file_proto_config_service_config_service, 14);
+  messageDesc(file_proto_config_service_config_service, 17);
 
 /**
  * @generated from message config_service.SearchEmailResponse
@@ -326,7 +490,7 @@ export type SearchEmailResponse = Message<"config_service.SearchEmailResponse"> 
  * Use `create(SearchEmailResponseSchema)` to create a new message.
  */
 export const SearchEmailResponseSchema: GenMessage<SearchEmailResponse> = /*@__PURE__*/
-  messageDesc(file_proto_config_service_config_service, 15);
+  messageDesc(file_proto_config_service_config_service, 18);
 
 /**
  * @generated from message config_service.Usernames
@@ -343,7 +507,7 @@ export type Usernames = Message<"config_service.Usernames"> & {
  * Use `create(UsernamesSchema)` to create a new message.
  */
 export const UsernamesSchema: GenMessage<Usernames> = /*@__PURE__*/
-  messageDesc(file_proto_config_service_config_service, 16);
+  messageDesc(file_proto_config_service_config_service, 19);
 
 /**
  * @generated from message config_service.GetCorrespondenceGameCountRequest
@@ -356,7 +520,7 @@ export type GetCorrespondenceGameCountRequest = Message<"config_service.GetCorre
  * Use `create(GetCorrespondenceGameCountRequestSchema)` to create a new message.
  */
 export const GetCorrespondenceGameCountRequestSchema: GenMessage<GetCorrespondenceGameCountRequest> = /*@__PURE__*/
-  messageDesc(file_proto_config_service_config_service, 17);
+  messageDesc(file_proto_config_service_config_service, 20);
 
 /**
  * @generated from message config_service.CorrespondenceGameCountResponse
@@ -373,7 +537,7 @@ export type CorrespondenceGameCountResponse = Message<"config_service.Correspond
  * Use `create(CorrespondenceGameCountResponseSchema)` to create a new message.
  */
 export const CorrespondenceGameCountResponseSchema: GenMessage<CorrespondenceGameCountResponse> = /*@__PURE__*/
-  messageDesc(file_proto_config_service_config_service, 18);
+  messageDesc(file_proto_config_service_config_service, 21);
 
 /**
  * ConfigService requires admin authentication, except for the GetAnnouncements

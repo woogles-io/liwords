@@ -83,6 +83,7 @@ enum PairError {
   TIMEOUT = 31;
   UNSUPPORTED_PAIR_METHOD = 32;
   SIMPLE_PAIRING_FAILED = 33;
+  INVALID_AUTO_PAIRING_METHOD_USAGE = 34;
 }
 
 message PairResponse {

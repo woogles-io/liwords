@@ -887,3 +887,65 @@ func TestTileCorruption5Z(t *testing.T) {
 	close(c)
 	wg.Wait()
 }
+
+// Setting or removing a time penalty after the game has ended changes its
+// result, so the game-done hook runs again (it refreshes broadcast stats) and
+// the whole document is published.
+func TestTimePenaltyRerunsGameDoneHook(t *testing.T) {
+	is := is.New(t)
+	svc := newService()
+	defer func() { cleanupConns(svc) }()
+	c := make(chan *entity.EventWrapper, 100)
+	svc.SetEventChannel(c)
+	var done []string
+	svc.SetAnnotatedGameDoneHook(func(ctx context.Context, gameUUID string) {
+		done = append(done, gameUUID)
+	})
+	apikey, err := svc.userStore.GetAPIKey(context.Background(), "someuser")
+	is.NoErr(err)
+	ctx := apiserver.StoreAPIKeyInContext(ctxForTests(), apikey)
+
+	gcg, err := os.ReadFile("./testdata/vs_josh.gcg")
+	is.NoErr(err)
+	r, err := svc.ImportGCG(ctx, connect.NewRequest(&omgwords_service.ImportGCGRequest{
+		Gcg:           string(gcg),
+		Lexicon:       "CSW21",
+		Rules:         &ipc.GameRules{BoardLayoutName: "CrosswordGame", LetterDistributionName: "english", VariantName: "classic"},
+		ChallengeRule: ipc.ChallengeRule_ChallengeRule_FIVE_POINT,
+	}))
+	is.NoErr(err)
+	gid := r.Msg.GameId
+	is.Equal(len(done), 1)
+
+	setPenalty := func(pidx uint32, points int32) *ipc.GameDocument {
+		for len(c) > 0 {
+			<-c
+		}
+		_, err := svc.SendGameEvent(ctx, connect.NewRequest(&omgwords_service.AnnotatedGameEvent{
+			Event: &ipc.ClientGameplayEvent{
+				Type:               ipc.ClientGameplayEvent_TIME_PENALTY,
+				GameId:             gid,
+				PenaltyPoints:      points,
+				PenaltyPlayerIndex: pidx,
+			},
+		}))
+		is.NoErr(err)
+		is.Equal(len(c), 1)
+		msg := <-c
+		docEvt, ok := msg.Event.(*ipc.GameDocumentEvent)
+		is.True(ok)
+		return docEvt.Doc
+	}
+
+	// Scores before any penalty are 457-397.
+	doc := setPenalty(0, 70)
+	is.Equal(doc.CurrentScores, []int32{387, 397})
+	is.Equal(doc.Winner, int32(1))
+	is.Equal(len(done), 2)
+
+	doc = setPenalty(0, 0)
+	is.Equal(doc.CurrentScores, []int32{457, 397})
+	is.Equal(doc.Winner, int32(0))
+	is.Equal(len(done), 3)
+	is.Equal(done[2], gid)
+}

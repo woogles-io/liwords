@@ -32,9 +32,7 @@
     padding-top: 16px;
     border-top: 1px solid;
 
-    @include colorModed {
-      border-top-color: m($off-background);
-    }
+    border-top-color: m($off-background);
   }
 
   .wizard-nav-right {

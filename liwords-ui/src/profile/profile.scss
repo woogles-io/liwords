@@ -25,9 +25,7 @@
     margin-bottom: 18px;
     max-width: 600px;
     padding-left: 9px;
-    @include colorModed() {
-      color: m($gray-extreme);
-    }
+    color: m($gray-extreme);
 
     // ReactMarkdown paragraph spacing fix for user profile bios
     p {
@@ -124,9 +122,7 @@
     overflow: hidden;
     border-radius: 4px;
     padding: 0;
-    @include colorModed() {
-      background: m($off-background);
-    }
+    background: m($off-background);
     @media (min-width: $screen-tablet-min) {
       margin-left: 18px;
       width: 50%;
@@ -142,17 +138,13 @@
       h4 {
         font-size: 24px;
         margin: 3px;
-        @include colorModed() {
-          color: m($secondary-dark);
-        }
+        color: m($secondary-dark);
       }
       p {
         margin: 0;
       }
       &:nth-child(2n) {
-        @include colorModed() {
-          background: m($secondary-lighter);
-        }
+        background: m($secondary-lighter);
       }
     }
   }
@@ -166,18 +158,14 @@
     h3.rating {
       margin: 0;
       font-size: 36px;
-      @include colorModed() {
-        color: m($primary-dark);
-      }
+      color: m($primary-dark);
     }
     .rating-date {
       font-size: 14px;
       margin: 0 0 12px 0;
     }
     .ant-card-head {
-      @include colorModed() {
-        background-color: m($primary-light);
-      }
+      background-color: m($primary-light);
     }
     .stat-item {
       background: transparent;
@@ -193,14 +181,10 @@
   }
   .puzzle-stats {
     h3.rating {
-      @include colorModed() {
-        color: m($secondary-dark);
-      }
+      color: m($secondary-dark);
     }
     .ant-card-head {
-      @include colorModed() {
-        background-color: m($secondary-lighter);
-      }
+      background-color: m($secondary-lighter);
     }
   }
 
@@ -223,9 +207,7 @@
         height: 8px;
         border-radius: 100%;
         opacity: 1;
-        @include colorModed() {
-          background: m($primary-middle);
-        }
+        background: m($primary-middle);
       }
     }
     .slick-dots li.slick-active {
@@ -234,61 +216,43 @@
         width: 10px;
         height: 10px;
         border-radius: 100%;
-        @include colorModed() {
-          background: m($primary-dark);
-        }
+        background: m($primary-dark);
       }
     }
     .puzzle-items {
       .slick-dots li button {
-        @include colorModed() {
-          background: m($secondary-medium);
-        }
+        background: m($secondary-medium);
       }
       .slick-dots li.slick-active button {
-        @include colorModed() {
-          background: m($secondary-dark);
-        }
+        background: m($secondary-dark);
       }
     }
 
     .game-items {
       .slick-dots li button {
-        @include colorModed() {
-          background: m($gray-medium);
-        }
+        background: m($gray-medium);
       }
       .slick-dots li.slick-active button {
-        @include colorModed() {
-          background: m($gray-extreme);
-        }
+        background: m($gray-extreme);
       }
     }
   }
 
   .game-info {
     h3.rating {
-      @include colorModed() {
-        color: m($secondary-dark);
-      }
+      color: m($secondary-dark);
     }
     .ant-card-head {
-      @include colorModed() {
-        background-color: m($profile-game-tie);
-      }
+      background-color: m($profile-game-tie);
     }
     &.win {
       .ant-card-head {
-        @include colorModed() {
-          background-color: m($profile-game-win);
-        }
+        background-color: m($profile-game-win);
       }
     }
     &.loss {
       .ant-card-head {
-        @include colorModed() {
-          background-color: m($profile-game-loss);
-        }
+        background-color: m($profile-game-loss);
       }
     }
     .detail-icons {
@@ -301,9 +265,7 @@
 
       .anticon-fund {
         font-size: 20px;
-        @include colorModed() {
-          color: m($primary-dark);
-        }
+        color: m($primary-dark);
       }
     }
     .ant-card-head-title {
@@ -341,21 +303,15 @@
       font-size: 16px;
       font-weight: 800;
       letter-spacing: 0;
-      @include colorModed() {
-        color: m($timer-dark);
-      }
+      color: m($timer-dark);
       &.mode_x2 {
-        @include colorModed() {
-          color: m($timer-out-dark);
-        }
+        color: m($timer-out-dark);
       }
       &.mode_Void {
         @include type-deco;
         font-size: 12px;
         letter-spacing: 0;
-        @include colorModed() {
-          color: m($timer-low-dark);
-        }
+        color: m($timer-low-dark);
         & {
           text-transform: uppercase;
         }
@@ -392,27 +348,21 @@
       }
     }
     .ant-card-actions {
-      @include colorModed() {
-        border-top-color: m($gray-medium);
-        background: m($card-background);
-      }
+      border-top-color: m($gray-medium);
+      background: m($card-background);
       li {
         text-align: center;
       }
     }
     .ant-card-actions > li > span > .anticon,
     .ant-card-actions > li > span a:not(.ant-btn) {
-      @include colorModed() {
-        color: m($primary-dark);
-      }
+      color: m($primary-dark);
     }
   }
   .game-history-card {
     margin-top: 64px;
     .ant-card-head {
-      @include colorModed() {
-        background-color: m($primary-light);
-      }
+      background-color: m($primary-light);
     }
     .ant-card-body {
       padding: 0;
@@ -423,9 +373,7 @@
     cursor: pointer;
     text-align: right;
     font-weight: 700;
-    @include colorModed() {
-      color: m($primary-dark);
-    }
+    color: m($primary-dark);
   }
   .ant-card {
     margin-bottom: 12px;

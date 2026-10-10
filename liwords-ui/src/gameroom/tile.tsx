@@ -144,14 +144,7 @@ type TileProps = {
   grabbable: boolean;
   rackIndex?: number | undefined;
   selected?: boolean;
-  moveRackTile?: (
-    indexA: number | undefined,
-    indexB: number | undefined,
-  ) => void;
-  returnToRack?: (
-    rackIndex: number | undefined,
-    tileIndex: number | undefined,
-  ) => void;
+  onDragEnd?: (didDrop: boolean, dropResult: unknown) => void;
   onClick?: (evt: React.MouseEvent<HTMLElement>) => void;
   onContextMenu?: (evt: React.MouseEvent<HTMLElement>) => void;
   onMouseEnter?: (evt: React.MouseEvent<HTMLElement>) => void;
@@ -200,12 +193,7 @@ const Tile = React.memo((props: TileProps) => {
     canDrag: (monitor) => canDrag,
     type: TILE_TYPE,
     end: (item, monitor) => {
-      const dropResult = monitor.getDropResult();
-      if (!dropResult) {
-        // Item was dropped outside a valid target
-        // React-dnd will handle returning to source, but this fires immediately
-        // when the drag ends, which should make the tile selectable faster
-      }
+      props.onDragEnd?.(monitor.didDrop(), monitor.getDropResult());
     },
   });
 
@@ -224,12 +212,6 @@ const Tile = React.memo((props: TileProps) => {
           parseInt(item.rackIndex, 10),
           parseInt(item.tileIndex, 10),
         );
-        return;
-      }
-      if (props.moveRackTile && item.rackIndex) {
-        props.moveRackTile(props.rackIndex, parseInt(item.rackIndex, 10));
-      } else if (props.returnToRack && item.tileIndex) {
-        props.returnToRack(props.rackIndex, parseInt(item.tileIndex, 10));
       }
     },
     collect: (monitor) => ({

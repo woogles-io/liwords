@@ -22,9 +22,7 @@
     margin-top: 12px;
   }
   .anticon-heart {
-    @include colorModed() {
-      color: m($timer-out-dark);
-    }
+    color: m($timer-out-dark);
     & {
       margin-right: 6px;
     }
@@ -49,9 +47,7 @@
       text-align: right;
       height: 32px;
       font-weight: bold;
-      @include colorModed() {
-        color: m($gray-medium);
-      }
+      color: m($gray-medium);
       & {
         cursor: pointer;
         padding-right: 14px;
@@ -60,14 +56,10 @@
       }
       &:hover,
       &.active {
-        @include colorModed() {
-          color: m($primary-dark);
-        }
+        color: m($primary-dark);
       }
       &.active {
-        @include colorModed() {
-          border-color: m($primary-dark);
-        }
+        border-color: m($primary-dark);
       }
     }
   }
@@ -87,9 +79,7 @@
   }
 
   label {
-    @include colorModed() {
-      color: m($gray-extreme);
-    }
+    color: m($gray-extreme);
   }
   .ant-card {
     margin-bottom: 12px;
@@ -98,9 +88,7 @@
     padding: 24px;
   }
   .ant-card-head {
-    @include colorModed() {
-      background-color: m($primary-light);
-    }
+    background-color: m($primary-light);
   }
   .ant-select .ant-select-selector {
     z-index: 0;
@@ -167,9 +155,7 @@
       height: 28px;
       flex-shrink: 0;
       path {
-        @include colorModed() {
-          fill: m($primary-dark);
-        }
+        fill: m($primary-dark);
       }
     }
   }
@@ -247,9 +233,7 @@
   font-weight: bold;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  @include colorModed() {
-    color: m($gray-extreme);
-  }
+  color: m($gray-extreme);
 }
 
 .closed-account {
@@ -320,43 +304,31 @@
     .ant-picker {
       padding: 0 9px;
       margin-bottom: 20px;
-      @include colorModed() {
-        background: m($background);
-      }
+      background: m($background);
       .anticon,
       .anticon:hover {
-        @include colorModed() {
-          color: m($gray-medium);
-          background: m($background);
-        }
+        color: m($gray-medium);
+        background: m($background);
       }
     }
     span.notice {
       margin-left: 6px;
       font-style: italic;
       font-weight: normal;
-      @include colorModed() {
-        color: m($gray-medium);
-      }
+      color: m($gray-medium);
     }
   }
   .close-account-button,
   .bio-tips {
     font-weight: bold;
     cursor: pointer;
-    @include colorModed() {
-      color: m($primary-dark);
-    }
+    color: m($primary-dark);
     &:hover,
     &.active {
-      @include colorModed() {
-        color: m($primary-dark);
-      }
+      color: m($primary-dark);
     }
     &.active {
-      @include colorModed() {
-        border-color: m($primary-dark);
-      }
+      border-color: m($primary-dark);
     }
   }
   .save-button {
@@ -374,10 +346,8 @@
   .ant-select-selector,
   .ant-select-item,
   .ant-select-dropdown {
-    @include colorModed() {
-      background: m($background);
-      color: m($gray-extreme);
-    }
+    background: m($background);
+    color: m($gray-extreme);
     .hover-help {
       display: none;
     }
@@ -391,11 +361,9 @@
     border-radius: 4px;
     font-size: 15px;
     letter-spacing: 0.05em;
-    @include colorModed() {
-      background: m($background);
-      color: m($gray-extreme);
-      outline: 0;
-    }
+    background: m($background);
+    color: m($gray-extreme);
+    outline: 0;
   }
   .bio-section-header {
     width: 100%;
@@ -459,10 +427,8 @@
 
 .secret-warning {
   padding: 16px;
-  @include colorModed() {
-    background: m($primary-light);
-    color: m($gray-extreme);
-  }
+  background: m($primary-light);
+  color: m($gray-extreme);
 }
 
 .secret .title {
@@ -474,9 +440,7 @@
   .ant-modal-body {
     padding: 0 16px;
     .cropper {
-      @include colorModed() {
-        background: m($primary-dark);
-      }
+      background: m($primary-dark);
       & {
         position: relative;
         width: 296px;
@@ -499,24 +463,18 @@
       top: 2px;
       .ant-slider-track,
       .ant-slider-rail {
-        @include colorModed() {
-          background: m($gray-extreme);
-        }
+        background: m($gray-extreme);
       }
       .ant-slider-handle {
         // width: 24px;
         // height: 24px;
         // top: 0px;
         // border-radius: 10px;
-        @include colorModed() {
-          background-color: m($primary-dark);
-          border-color: m($primary-dark);
-        }
+        background-color: m($primary-dark);
+        border-color: m($primary-dark);
       }
     }
-    @include colorModed() {
-      color: m($gray-extreme);
-    }
+    color: m($gray-extreme);
   }
 }
 .tile-selection,
@@ -552,56 +510,40 @@
 }
 .api-settings {
   .anticon-eye {
-    @include colorModed() {
-      color: m($primary-dark);
-    }
+    color: m($primary-dark);
   }
   .anticon-reload {
-    @include colorModed() {
-      color: m($primary-midDark);
-    }
+    color: m($primary-midDark);
   }
 }
 .integration-card {
   .ant-card-head-title {
-    @include colorModed() {
-      color: m($primary-dark);
-    }
+    color: m($primary-dark);
   }
   .ant-card-extra {
-    @include colorModed() {
-      color: m($primary-dark);
-    }
+    color: m($primary-dark);
   }
   .ant-card-body {
     min-height: 220px;
   }
   .ant-card-actions {
-    @include colorModed() {
-      background: m($card-background);
-    }
+    background: m($card-background);
   }
 
   // Roles & Permissions styling
   // NB: these used to carry hardcoded `& { color: #666 }` / `#f5f5f5` / `#999`
-  // fallbacks after each colorModed() block. They were dead — colorModed()
-  // emitted a higher-specificity selector — and would have become live (and
-  // wrong, in dark mode) once colorModed() became a passthrough.
+  // fallbacks. They were dead back when dark mode was emitted under a `.mode--*`
+  // ancestor, which outranked them. Without that extra class they would win, and
+  // be wrong in dark mode.
   .description {
-    @include colorModed() {
-      color: m($gray-medium);
-    }
+    color: m($gray-medium);
   }
 
   .permission-item {
-    @include colorModed() {
-      background-color: m($card-background);
-    }
+    background-color: m($card-background);
 
     .permission-code {
-      @include colorModed() {
-        color: m($gray-medium);
-      }
+      color: m($gray-medium);
     }
   }
 }

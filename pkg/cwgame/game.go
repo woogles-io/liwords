@@ -79,8 +79,6 @@ func playMove(ctx context.Context, gdoc *ipc.GameDocument, gevt *ipc.GameEvent, 
 		gdoc.Events = append(gdoc.Events, gevt)
 
 		if gdoc.PlayState == ipc.PlayState_WAITING_FOR_FINAL_PASS {
-			gdoc.PlayState = ipc.PlayState_GAME_OVER
-			gdoc.EndReason = ipc.GameEndReason_STANDARD
 			dist, err := tilemapping.GetDistribution(cfg.WGLConfig(), gdoc.LetterDistribution)
 			if err != nil {
 				return err
@@ -95,20 +93,11 @@ func playMove(ctx context.Context, gdoc *ipc.GameDocument, gevt *ipc.GameEvent, 
 			if wentout == -1 {
 				return errors.New("no empty rack but player went out")
 			}
-			endRackCalcs(gdoc, dist, wentout)
-			addWinnerToHistory(gdoc)
+			if err := endGameAfterGoingOut(gdoc, dist, wentout); err != nil {
+				return err
+			}
 		} else {
 			gdoc.ScorelessTurns += 1
-			// In annotated games, auto-assign or top off the next player's rack
-			// This ensures the opponent always has a full rack after a pass
-			if gdoc.Type == ipc.GameType_ANNOTATED {
-				inv := NewTileInventory(gdoc, cfg.WGLConfig())
-				nextPlayer := 1 - gdoc.PlayerOnTurn
-				_, err := inv.DrawToFillRack(int(nextPlayer))
-				if err != nil {
-					return err
-				}
-			}
 		}
 
 	case ipc.GameEvent_EXCHANGE:
@@ -131,20 +120,6 @@ func playMove(ctx context.Context, gdoc *ipc.GameDocument, gevt *ipc.GameEvent, 
 			Interface("current_player_rack_after", gdoc.Racks[gdoc.PlayerOnTurn]).
 			Interface("opponent_rack_after", gdoc.Racks[1-gdoc.PlayerOnTurn]).
 			Msg("exchange-after-exchange")
-
-		// In annotated games, auto-assign or top off the next player's rack
-		// This ensures the opponent always has a full rack after an exchange
-		if gdoc.Type == ipc.GameType_ANNOTATED {
-			nextPlayer := 1 - gdoc.PlayerOnTurn
-			tilesDrawn, err := inv.DrawToFillRack(int(nextPlayer))
-			if err != nil {
-				return err
-			}
-			log.Debug().
-				Int("tiles_drawn", tilesDrawn).
-				Interface("opponent_rack_final", gdoc.Racks[nextPlayer]).
-				Msg("exchange-after-fill-opponent")
-		}
 
 		gdoc.ScorelessTurns += 1
 		gevt.MillisRemaining = int32(tr)
@@ -192,7 +167,7 @@ func playTilePlacementMove(cfg *config.Config, gevt *ipc.GameEvent, gdoc *ipc.Ga
 	// This prevents tile corruption where board.PlayMove creates tiles on the board even if
 	// they're not in the rack. Without this check, tiles get placed on the board (creating extras),
 	// then the Leave validation fails, leaving us with a corrupted game state.
-	rackTiles := tilemapping.FromByteArr(gevt.Rack)
+	rackTiles := tilemapping.FromByteArr(gdoc.Racks[gdoc.PlayerOnTurn])
 	_, err = tilemapping.Leave(rackTiles, tilesUsed, true)
 	if err != nil {
 		return fmt.Errorf("rack doesn't contain tiles needed for move: %w", err)
@@ -221,7 +196,7 @@ func playTilePlacementMove(cfg *config.Config, gevt *ipc.GameEvent, gdoc *ipc.Ga
 
 	// Calculate leave (tiles remaining in rack after playing)
 	// zeroIsPlaythrough=true: playing on board, tile 0 in tilesUsed represents play-through markers
-	leave, err := tilemapping.Leave(tilemapping.FromByteArr(gevt.Rack), tilesUsed, true)
+	leave, err := tilemapping.Leave(rackTiles, tilesUsed, true)
 	if err != nil {
 		return err
 	}
@@ -249,16 +224,6 @@ func playTilePlacementMove(cfg *config.Config, gevt *ipc.GameEvent, gdoc *ipc.Ga
 	gevt.IsBingo = tilesPlayed == RackTileLimit
 	gevt.MillisRemaining = int32(tr)
 
-	// In annotated games, auto-assign or top off the next player's rack
-	// This ensures the opponent always has a full rack after a play
-	if gdoc.Type == ipc.GameType_ANNOTATED {
-		nextPlayer := 1 - gdoc.PlayerOnTurn
-		_, err := inv.DrawToFillRack(int(nextPlayer))
-		if err != nil {
-			return err
-		}
-	}
-
 	gevt.WordsFormed = make([][]byte, len(wordsFormed))
 	gevt.WordsFormedFriendly = make([]string, len(wordsFormed))
 	gevt.Cumulative = gdoc.CurrentScores[gdoc.PlayerOnTurn]
@@ -274,13 +239,10 @@ func playTilePlacementMove(cfg *config.Config, gevt *ipc.GameEvent, gdoc *ipc.Ga
 		if gdoc.ChallengeRule != ipc.ChallengeRule_ChallengeRule_VOID {
 			gdoc.PlayState = ipc.PlayState_WAITING_FOR_FINAL_PASS
 		} else {
-			gdoc.PlayState = ipc.PlayState_GAME_OVER
-			gdoc.EndReason = ipc.GameEndReason_STANDARD
-			err = endRackCalcs(gdoc, dist, int(gdoc.PlayerOnTurn))
+			err = endGameAfterGoingOut(gdoc, dist, int(gdoc.PlayerOnTurn))
 			if err != nil {
 				return err
 			}
-			addWinnerToHistory(gdoc)
 		}
 	}
 	return nil
@@ -434,6 +396,18 @@ func RecalculateConsecutiveZeroesPenalties(gdoc *ipc.GameDocument, dist *tilemap
 		penaltyEvt := endRackPenaltyEvt(gdoc, uint32(p), ptsOnRack)
 		gdoc.Events = append(gdoc.Events, penaltyEvt)
 	}
+	return nil
+}
+
+// endGameAfterGoingOut ends the game normally once player wentout has played
+// out and no challenge remains: it awards end-rack points and sets the winner.
+func endGameAfterGoingOut(gdoc *ipc.GameDocument, dist *tilemapping.LetterDistribution, wentout int) error {
+	gdoc.PlayState = ipc.PlayState_GAME_OVER
+	gdoc.EndReason = ipc.GameEndReason_STANDARD
+	if err := endRackCalcs(gdoc, dist, wentout); err != nil {
+		return err
+	}
+	addWinnerToHistory(gdoc)
 	return nil
 }
 
@@ -655,11 +629,8 @@ func challengeEvent(ctx context.Context, cfg *config.Config, gdoc *ipc.GameDocum
 		}
 
 		if gdoc.PlayState == ipc.PlayState_WAITING_FOR_FINAL_PASS {
-			gdoc.PlayState = ipc.PlayState_GAME_OVER
-			gdoc.EndReason = ipc.GameEndReason_STANDARD
-
 			// Game is actually over now, after the failed challenge.
-			err = endRackCalcs(gdoc, dist, int(challengee))
+			err = endGameAfterGoingOut(gdoc, dist, int(challengee))
 			if err != nil {
 				return err
 			}

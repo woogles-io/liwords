@@ -9,9 +9,7 @@
     &.ant-table-cell-row-hover {
       background: #ffffff !important;
 
-      @include colorModed {
-        background: m($card-background) !important;
-      }
+      background: m($card-background) !important;
     }
 
     &::before {
@@ -101,9 +99,7 @@
     color: #666;
     margin-bottom: 32px;
 
-    @include colorModed {
-      color: #aaa;
-    }
+    color: #aaa;
   }
 
   .loading-container {
@@ -143,9 +139,7 @@
       font-size: 16px;
       color: #666;
 
-      @include colorModed {
-        color: #aaa;
-      }
+      color: #aaa;
     }
 
     .season-dates-header {
@@ -154,16 +148,12 @@
       border-radius: 4px;
       font-size: 15px;
 
-      @include colorModed {
-        background-color: m($off-background);
-        border: 1px solid m($gray-subtle);
-      }
+      background-color: m($off-background);
+      border: 1px solid m($gray-subtle);
 
       .season-dates-info {
         strong {
-          @include colorModed {
-            color: m($primary-dark);
-          }
+          color: m($primary-dark);
         }
       }
     }
@@ -181,9 +171,7 @@
         font-size: 14px;
         color: #888;
 
-        @include colorModed {
-          color: #aaa;
-        }
+        color: #aaa;
       }
 
       div {
@@ -238,9 +226,7 @@
       margin: 0 0 12px 0;
       color: #666;
 
-      @include colorModed {
-        color: #aaa;
-      }
+      color: #aaa;
     }
 
     // Season info compact box
@@ -250,15 +236,11 @@
       font-size: 11px;
       margin-bottom: 12px;
 
-      @include colorModed {
-        background-color: m($off-background);
-        border: 1px solid m($gray-subtle);
-      }
+      background-color: m($off-background);
+      border: 1px solid m($gray-subtle);
 
       strong {
-        @include colorModed {
-          color: m($primary-dark);
-        }
+        color: m($primary-dark);
       }
     }
 
@@ -268,9 +250,7 @@
       border-top: 1px solid #e8e8e8;
       padding-top: 10px;
 
-      @include colorModed {
-        border-top-color: m($gray-subtle);
-      }
+      border-top-color: m($gray-subtle);
 
       .settings-row {
         display: flex;
@@ -283,18 +263,14 @@
         &:not(:last-child) {
           border-bottom: 1px solid #f5f5f5;
 
-          @include colorModed {
-            border-bottom-color: m($gray-subtle);
-          }
+          border-bottom-color: m($gray-subtle);
         }
 
         .settings-label {
           font-weight: 500;
           color: #888;
 
-          @include colorModed {
-            color: m($gray-medium);
-          }
+          color: m($gray-medium);
         }
 
         .settings-value {
@@ -302,9 +278,7 @@
           color: #333;
           text-align: right;
 
-          @include colorModed {
-            color: m($gray-extreme);
-          }
+          color: m($gray-extreme);
         }
       }
     }
@@ -326,9 +300,7 @@
       margin: 0 0 12px 0;
       color: #666;
 
-      @include colorModed {
-        color: #aaa;
-      }
+      color: #aaa;
     }
 
     .ant-card-body {
@@ -347,9 +319,7 @@
       text-decoration: underline;
       color: #1890ff;
 
-      @include colorModed {
-        color: #40a9ff;
-      }
+      color: #40a9ff;
     }
   }
 
@@ -364,9 +334,7 @@
     margin-bottom: 12px;
     padding-left: 16px;
 
-    @include colorModed {
-      color: #999;
-    }
+    color: #999;
 
     &:hover,
     &:focus-visible {
@@ -374,9 +342,7 @@
       color: #1890ff;
       outline: none;
 
-      @include colorModed {
-        color: #40a9ff;
-      }
+      color: #40a9ff;
     }
   }
 
@@ -440,10 +406,8 @@
       background: linear-gradient(135deg, #fffbea 0%, #fff8dc 100%);
       border: 1px solid #e6d8a8;
 
-      @include colorModed {
-        background: linear-gradient(135deg, #eee8d5 0%, #f5f0db 100%);
-        border-color: #d4c4a8;
-      }
+      background: linear-gradient(135deg, #eee8d5 0%, #f5f0db 100%);
+      border-color: #d4c4a8;
 
       .champion-content {
         display: flex;
@@ -455,9 +419,7 @@
           font-size: 48px;
           color: #d4af37;
 
-          @include colorModed {
-            color: #b8992e;
-          }
+          color: #b8992e;
         }
 
         .champion-text {
@@ -467,9 +429,7 @@
             font-weight: 700;
             color: #8b6914;
 
-            @include colorModed {
-              color: #2c2c2c;
-            }
+            color: #2c2c2c;
           }
 
           .champion-name {
@@ -478,9 +438,7 @@
             font-weight: 600;
             color: #6b5610;
 
-            @include colorModed {
-              color: #3a3a3a;
-            }
+            color: #3a3a3a;
           }
         }
       }
@@ -498,18 +456,14 @@
       .ant-table {
         background: #ffffff;
 
-        @include colorModed {
-          background: m($card-background);
-        }
+        background: m($card-background);
 
         .ant-table-thead > tr > th {
           background: #fafafa;
           color: rgba(0, 0, 0, 0.85);
 
-          @include colorModed {
-            background: m($off-background);
-            color: m($gray-extreme);
-          }
+          background: m($off-background);
+          color: m($gray-extreme);
         }
 
         .ant-table-tbody > tr > td {
@@ -517,45 +471,33 @@
           color: rgba(0, 0, 0, 0.85);
           border-bottom: 1px solid #f0f0f0;
 
-          @include colorModed {
-            background: m($card-background);
-            color: m($gray-extreme);
-            border-bottom-color: m($gray-subtle);
-          }
+          background: m($card-background);
+          color: m($gray-extreme);
+          border-bottom-color: m($gray-subtle);
         }
 
         .ant-table-tbody > tr:hover > td {
           background: #fafafa !important;
 
-          @include colorModed {
-            background: m($off-background) !important;
-          }
+          background: m($off-background) !important;
         }
 
         // Promotion zone highlighting
         .ant-table-tbody > tr.promotion-row > td {
-          @include colorModed {
-            background: m($profile-game-win) !important;
-          }
+          background: m($profile-game-win) !important;
         }
 
         .ant-table-tbody > tr.promotion-row:hover > td {
-          @include colorModed {
-            background: d(win-hover) !important;
-          }
+          background: d(win-hover) !important;
         }
 
         // Relegation zone highlighting
         .ant-table-tbody > tr.relegation-row > td {
-          @include colorModed {
-            background: m($profile-game-loss) !important;
-          }
+          background: m($profile-game-loss) !important;
         }
 
         .ant-table-tbody > tr.relegation-row:hover > td {
-          @include colorModed {
-            background: d(loss-hover) !important;
-          }
+          background: d(loss-hover) !important;
         }
 
         // Clickable player names. The username itself is a context-menu
@@ -569,9 +511,7 @@
               color: #1890ff;
               text-decoration: underline;
 
-              @include colorModed {
-                color: #40a9ff;
-              }
+              color: #40a9ff;
             }
           }
         }
@@ -589,10 +529,8 @@
       margin-bottom: 24px;
       border-radius: 4px;
 
-      @include colorModed {
-        background: m($primary-light);
-        border: 1px solid m($primary-middle);
-      }
+      background: m($primary-light);
+      border: 1px solid m($primary-middle);
 
       p {
         margin: 0 0 8px 0;
@@ -621,10 +559,8 @@
           margin-right: 6px;
           vertical-align: middle;
 
-          @include colorModed {
-            background: m($profile-game-win);
-            border: 1px solid d(win-border);
-          }
+          background: m($profile-game-win);
+          border: 1px solid d(win-border);
         }
 
         .relegation-indicator {
@@ -635,10 +571,8 @@
           margin-right: 6px;
           vertical-align: middle;
 
-          @include colorModed {
-            background: m($profile-game-loss);
-            border: 1px solid d(loss-border);
-          }
+          background: m($profile-game-loss);
+          border: 1px solid d(loss-border);
         }
       }
     }
@@ -652,10 +586,8 @@
     border-radius: 4px;
     border: 1px solid #e8e8e8;
 
-    @include colorModed {
-      background: m($off-background);
-      border-color: m($gray-subtle);
-    }
+    background: m($off-background);
+    border-color: m($gray-subtle);
 
     p {
       margin: 0;
@@ -664,9 +596,7 @@
       color: #666;
       font-style: italic;
 
-      @include colorModed {
-        color: m($gray-medium);
-      }
+      color: m($gray-medium);
 
       strong {
         font-weight: 600;
@@ -680,9 +610,7 @@
     padding-top: 32px;
     border-top: 1px solid #e8e8e8;
 
-    @include colorModed {
-      border-top-color: m($gray-subtle);
-    }
+    border-top-color: m($gray-subtle);
 
     h2 {
       font-size: 24px;
@@ -699,29 +627,23 @@
         border-radius: 4px;
         background: #ffffff;
 
-        @include colorModed {
-          border-color: m($gray-subtle);
-          background: m($card-background);
-        }
+        border-color: m($gray-subtle);
+        background: m($card-background);
 
         .ant-collapse-header {
           font-size: 16px;
           font-weight: 600;
           padding: 16px 24px;
 
-          @include colorModed {
-            color: m($gray-extreme);
-          }
+          color: m($gray-extreme);
         }
 
         .ant-collapse-content {
           border-top: 1px solid #d9d9d9;
 
-          @include colorModed {
-            border-top-color: m($gray-subtle);
-            background: m($card-background);
-            color: m($gray-extreme);
-          }
+          border-top-color: m($gray-subtle);
+          background: m($card-background);
+          color: m($gray-extreme);
 
           .ant-collapse-content-box {
             padding: 16px 24px;
@@ -760,9 +682,7 @@
       font-size: 14px;
       margin-bottom: 12px;
 
-      @include colorModed {
-        color: m($gray-medium);
-      }
+      color: m($gray-medium);
     }
 
     .invite-controls {
@@ -889,18 +809,16 @@
     border-radius: 4px;
     transition: background-color 0.2s;
 
-    @include colorModed {
-      background: m($card-background);
-      border: 1px solid m($gray-subtle);
+    background: m($card-background);
+    border: 1px solid m($gray-subtle);
 
-      &:hover {
-        background: m($off-background);
-      }
+    &:hover {
+      background: m($off-background);
+    }
 
-      &.user-turn {
-        background: m($off-background);
-        border-color: m($gray-medium);
-      }
+    &.user-turn {
+      background: m($off-background);
+      border-color: m($gray-medium);
     }
 
     // Compact variant for better vertical space usage
@@ -933,9 +851,7 @@
         font-size: 12px;
         font-weight: 600;
 
-        @include colorModed {
-          color: m($gray-medium);
-        }
+        color: m($gray-medium);
 
         &.low-time {
           color: #ff4d4f;
@@ -959,9 +875,7 @@
         font-size: 11px;
         font-weight: 600;
 
-        @include colorModed {
-          color: m($gray-medium);
-        }
+        color: m($gray-medium);
 
         .low-time {
           color: #ff4d4f;
@@ -976,9 +890,7 @@
     border-radius: 4px;
     margin-bottom: 24px;
 
-    @include colorModed {
-      background-color: m($off-background);
-    }
+    background-color: m($off-background);
 
     ul {
       list-style-type: disc;
@@ -993,24 +905,18 @@
     margin-bottom: 24px;
     font-weight: 500;
 
-    @include colorModed {
-      background-color: m($off-background);
-    }
+    background-color: m($off-background);
   }
 }
 
 .league-color-666 {
   color: #666;
 
-  @include colorModed {
-    color: m($gray-medium);
-  }
+  color: m($gray-medium);
 }
 
 .league-color-999 {
   color: #999;
 
-  @include colorModed {
-    color: m($gray-medium);
-  }
+  color: m($gray-medium);
 }

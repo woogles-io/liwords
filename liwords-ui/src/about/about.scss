@@ -6,9 +6,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  @include colorModed() {
-    background-image: linear-gradient(m($header) 20%, m($background) 70%);
-  }
+  background-image: linear-gradient(m($header) 20%, m($background) 70%);
   & {
     height: 140px;
   }
@@ -23,19 +21,15 @@
       font-weight: 500;
       line-height: 1.5em;
     }
-    @include colorModed() {
-      background: transparent;
-      color: m($gray-extreme);
-    }
+    background: transparent;
+    color: m($gray-extreme);
   }
   .intro {
     margin: 0 auto;
     max-width: $screen-mobile-min;
     padding: 12px 12px 48px;
     h4 {
-      @include colorModed() {
-        color: m($secondary);
-      }
+      color: m($secondary);
     }
     p + h4 {
       margin-top: 36px;
@@ -46,9 +40,7 @@
   }
   .bio {
     min-height: 380px;
-    @include colorModed() {
-      background: m($secondary-lighter);
-    }
+    background: m($secondary-lighter);
     .container {
       display: flex;
       align-items: flex-start;
@@ -59,9 +51,7 @@
       height: 380px;
     }
     h3 {
-      @include colorModed() {
-        color: m($secondary);
-      }
+      color: m($secondary);
       & {
         font-size: 24px;
         margin-bottom: 0.5em;
@@ -79,13 +69,9 @@
     .container {
       justify-content: flex-end;
     }
-    @include colorModed() {
-      background: m($primary-light);
-    }
+    background: m($primary-light);
     h3 {
-      @include colorModed() {
-        color: m($primary-dark);
-      }
+      color: m($primary-dark);
       & {
         font-size: 21px;
         margin-bottom: 0.5em;

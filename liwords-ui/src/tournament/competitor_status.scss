@@ -31,26 +31,20 @@
     }
   }
   &.ROUND_READY {
-    @include colorModed() {
-      background: m($timer-light);
-      color: m($gray-extreme);
-    }
+    background: m($timer-light);
+    color: m($gray-extreme);
   }
   &.ROUND_LATE {
-    @include colorModed() {
-      background: m($timer-out-light);
-      color: m($gray-extreme);
-      border: 1px solid m($timer-out-dark);
-    }
+    background: m($timer-out-light);
+    color: m($gray-extreme);
+    border: 1px solid m($timer-out-dark);
   }
   &.ROUND_OPPONENT_WAITING {
     p {
       color: #414141; // theming outlier
     }
-    @include colorModed() {
-      background: m($timer-low-light);
-      border: 1px solid m($timer-low-dark);
-    }
+    background: m($timer-low-light);
+    border: 1px solid m($timer-low-dark);
   }
 }
 

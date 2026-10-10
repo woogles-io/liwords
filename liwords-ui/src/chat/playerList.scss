@@ -4,9 +4,7 @@
   padding: 12px 0 0 0;
   .breadcrumb {
     margin: 6px 0;
-    @include colorModed() {
-      color: m($gray-medium);
-    }
+    color: m($gray-medium);
   }
 }
 .player-sections {
@@ -34,31 +32,23 @@
 .player-list {
   p.prompt {
     padding: 12px 0;
-    @include colorModed() {
-      color: m($gray-extreme);
-    }
+    color: m($gray-extreme);
   }
   .ant-input-affix-wrapper {
     margin: 0 24px 0px;
     width: calc(100% - 48px);
-    @include colorModed() {
-      background: m($card-background);
-      color: m($gray-extreme);
-    }
+    background: m($card-background);
+    color: m($gray-extreme);
     .anticon {
-      @include colorModed() {
-        color: m($gray-medium);
-        background: m($card-background);
-      }
+      color: m($gray-medium);
+      background: m($card-background);
     }
     .ant-input-suffix {
       max-width: 40px;
     }
     input {
-      @include colorModed() {
-        background: m($card-background);
-        color: m($gray-extreme);
-      }
+      background: m($card-background);
+      color: m($gray-extreme);
     }
   }
   .player-display {
@@ -79,26 +69,20 @@
         left: 0;
         content: " ";
         white-space: pre;
-        @include colorModed() {
-          background: m($timer-dark);
-          border-color: m($card-background);
-        }
+        background: m($timer-dark);
+        border-color: m($card-background);
       }
     }
     .player-name {
       font-weight: 700;
-      @include colorModed() {
-        color: m($gray-extreme);
-      }
+      color: m($gray-extreme);
     }
     .country-flag {
       margin-left: 9px;
     }
     &.offline {
       .player-name {
-        @include colorModed() {
-          color: m($gray-medium);
-        }
+        color: m($gray-medium);
         & {
           font-style: oblique;
         }
@@ -119,9 +103,7 @@
         border-radius: 1px;
         width: 14px;
         height: 14px;
-        @include colorModed() {
-          background: m($primary-dark);
-        }
+        background: m($primary-dark);
       }
     }
     &.puzzling {
@@ -129,16 +111,12 @@
         border-radius: 1px;
         width: 14px;
         height: 14px;
-        @include colorModed() {
-          background: m($secondary);
-        }
+        background: m($secondary);
       }
     }
     &.search {
       .player-name {
-        @include colorModed() {
-          color: m($gray-extreme);
-        }
+        color: m($gray-extreme);
         & {
           font-style: normal;
           font-weight: normal;

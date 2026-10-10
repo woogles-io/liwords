@@ -1,11 +1,9 @@
 @use "../base.scss" as *;
 
 .upcoming-tournaments-widget {
-  @include colorModed {
-    .ant-card-body {
-      padding: 0;
-      overflow-y: auto;
-    }
+  .ant-card-body {
+    padding: 0;
+    overflow-y: auto;
   }
 
   .tournaments-container {
@@ -15,10 +13,8 @@
 
   h4 {
     @include type-default;
-    @include colorModed() {
-      color: m($list-header-text);
-      background-color: m($list-header);
-    }
+    color: m($list-header-text);
+    background-color: m($list-header);
     & {
       font-size: 22px;
       font-weight: bold;
@@ -37,9 +33,7 @@
     padding: 6px 0;
     border-bottom: 1px solid;
 
-    @include colorModed {
-      border-bottom-color: m($off-background);
-    }
+    border-bottom-color: m($off-background);
 
     &:last-child {
       border-bottom: none;
@@ -60,12 +54,10 @@
     align-items: center;
     gap: 5px;
 
-    @include colorModed {
-      color: themed("text");
+    color: themed("text");
 
-      &:hover {
-        color: themed("primary");
-      }
+    &:hover {
+      color: themed("primary");
     }
   }
 
@@ -73,18 +65,14 @@
     font-size: 12px;
     opacity: 0.7;
 
-    @include colorModed {
-      color: themed("text-secondary");
-    }
+    color: themed("text-secondary");
   }
 
   .tournament-director {
     font-size: 11px;
     font-weight: 400;
 
-    @include colorModed {
-      color: themed("text-secondary");
-    }
+    color: themed("text-secondary");
 
     &:before {
       content: "• ";
@@ -97,9 +85,7 @@
     flex-direction: column;
     gap: 3px;
 
-    @include colorModed {
-      color: themed("text-secondary");
-    }
+    color: themed("text-secondary");
   }
 
   .tournament-meta {
@@ -136,37 +122,31 @@
     text-transform: uppercase;
     letter-spacing: 0.5px;
 
-    @include colorModed {
-      &.open {
-        background-color: m($profile-game-win);
-        color: m($gray-extreme);
-      }
+    &.open {
+      background-color: m($profile-game-win);
+      color: m($gray-extreme);
+    }
 
-      &.closed {
-        background-color: m($gray-subtle);
-        color: m($gray-medium);
-      }
+    &.closed {
+      background-color: m($gray-subtle);
+      color: m($gray-medium);
+    }
 
-      &.live {
-        background-color: m($timer-out-dark);
-        color: m($white);
-      }
+    &.live {
+      background-color: m($timer-out-dark);
+      color: m($white);
     }
   }
 
   .tournament-time {
     font-size: 11px;
 
-    @include colorModed {
-      color: themed("text-secondary");
-    }
+    color: themed("text-secondary");
 
     strong {
       font-weight: 600;
 
-      @include colorModed {
-        color: themed("text");
-      }
+      color: themed("text");
     }
   }
 
@@ -176,9 +156,7 @@
     font-style: italic;
     font-size: 11px;
 
-    @include colorModed {
-      color: themed("text-secondary");
-    }
+    color: themed("text-secondary");
   }
 }
 
@@ -189,10 +167,8 @@
 
   h4 {
     @include type-default;
-    @include colorModed() {
-      color: m($list-header-text);
-      background-color: m($list-header);
-    }
+    color: m($list-header-text);
+    background-color: m($list-header);
     & {
       font-size: 18px;
       font-weight: bold;
@@ -212,9 +188,7 @@
     padding: 6px 0;
     border-bottom: 1px solid;
 
-    @include colorModed {
-      border-bottom-color: m($off-background);
-    }
+    border-bottom-color: m($off-background);
 
     &:last-child {
       border-bottom: none;
@@ -235,12 +209,10 @@
     align-items: center;
     gap: 5px;
 
-    @include colorModed {
-      color: themed("text");
+    color: themed("text");
 
-      &:hover {
-        color: themed("primary");
-      }
+    &:hover {
+      color: themed("primary");
     }
   }
 
@@ -248,18 +220,14 @@
     font-size: 12px;
     opacity: 0.7;
 
-    @include colorModed {
-      color: themed("text-secondary");
-    }
+    color: themed("text-secondary");
   }
 
   .tournament-director {
     font-size: 11px;
     font-weight: 400;
 
-    @include colorModed {
-      color: themed("text-secondary");
-    }
+    color: themed("text-secondary");
 
     &:before {
       content: "• ";
@@ -272,9 +240,7 @@
     flex-direction: column;
     gap: 3px;
 
-    @include colorModed {
-      color: themed("text-secondary");
-    }
+    color: themed("text-secondary");
   }
 
   .tournament-meta {
@@ -311,37 +277,31 @@
     text-transform: uppercase;
     letter-spacing: 0.5px;
 
-    @include colorModed {
-      &.open {
-        background-color: m($profile-game-win);
-        color: m($gray-extreme);
-      }
+    &.open {
+      background-color: m($profile-game-win);
+      color: m($gray-extreme);
+    }
 
-      &.closed {
-        background-color: m($gray-subtle);
-        color: m($gray-medium);
-      }
+    &.closed {
+      background-color: m($gray-subtle);
+      color: m($gray-medium);
+    }
 
-      &.live {
-        background-color: m($timer-out-dark);
-        color: m($white);
-      }
+    &.live {
+      background-color: m($timer-out-dark);
+      color: m($white);
     }
   }
 
   .tournament-time {
     font-size: 11px;
 
-    @include colorModed {
-      color: themed("text-secondary");
-    }
+    color: themed("text-secondary");
 
     strong {
       font-weight: 600;
 
-      @include colorModed {
-        color: themed("text");
-      }
+      color: themed("text");
     }
   }
 
@@ -351,9 +311,7 @@
     font-style: italic;
     font-size: 11px;
 
-    @include colorModed {
-      color: themed("text-secondary");
-    }
+    color: themed("text-secondary");
   }
 
   // League status card styles
@@ -361,9 +319,7 @@
     padding: 8px 0;
     border-bottom: 1px solid;
 
-    @include colorModed {
-      border-bottom-color: m($off-background);
-    }
+    border-bottom-color: m($off-background);
 
     &:last-child {
       border-bottom: none;
@@ -378,20 +334,16 @@
     gap: 6px;
     margin-bottom: 6px;
 
-    @include colorModed {
-      color: themed("text");
+    color: themed("text");
 
-      &:hover {
-        color: themed("primary");
-      }
+    &:hover {
+      color: themed("primary");
     }
 
     .league-icon {
       font-size: 14px;
 
-      @include colorModed {
-        color: m($primary-dark);
-      }
+      color: m($primary-dark);
     }
   }
 
@@ -401,9 +353,7 @@
     gap: 4px;
     font-size: 11px;
 
-    @include colorModed {
-      color: themed("text-secondary");
-    }
+    color: themed("text-secondary");
   }
 
   .status-badge {
@@ -416,30 +366,26 @@
     letter-spacing: 0.5px;
     width: fit-content;
 
-    @include colorModed {
-      &.live {
-        background-color: m($timer-out-dark);
-        color: m($white);
-      }
+    &.live {
+      background-color: m($timer-out-dark);
+      color: m($white);
+    }
 
-      &.registration {
-        background-color: m($profile-game-win);
-        color: m($gray-extreme);
-      }
+    &.registration {
+      background-color: m($profile-game-win);
+      color: m($gray-extreme);
+    }
 
-      &.completed {
-        background-color: m($gray-subtle);
-        color: m($gray-medium);
-      }
+    &.completed {
+      background-color: m($gray-subtle);
+      color: m($gray-medium);
     }
   }
 
   .status-message {
     font-weight: 500;
 
-    @include colorModed {
-      color: themed("text");
-    }
+    color: themed("text");
   }
 
   .status-date,
@@ -447,16 +393,12 @@
   .status-previous-champion {
     font-size: 11px;
 
-    @include colorModed {
-      color: themed("text-secondary");
-    }
+    color: themed("text-secondary");
 
     strong {
       font-weight: 600;
 
-      @include colorModed {
-        color: themed("text");
-      }
+      color: themed("text");
     }
   }
 

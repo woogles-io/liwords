@@ -37,6 +37,7 @@ import {
 import { Modal } from "../utils/focus_modal";
 import { GameRequest } from "../gen/api/proto/ipc/omgwords_pb";
 import {
+  DivisionControls,
   TournamentGameResult,
   RoundControl,
 } from "../gen/api/proto/ipc/tournament_pb";
@@ -52,6 +53,8 @@ type DivisionConfig = {
   numRounds: number;
   gameRequest?: GameRequest;
   roundControls?: RoundControl[];
+  // Copied from another tournament; holds gibsonization, spread cap, etc.
+  divisionControls?: DivisionControls;
 };
 
 type WizardData = {
@@ -190,6 +193,14 @@ export const TournamentWizard = () => {
           gameRequest: d.gameRequest,
           roundControls:
             d.roundControls.length > 0 ? d.roundControls : undefined,
+          // A division whose controls were never set has NO_RESULT here,
+          // which the server rejects; fall back to the defaults for those.
+          divisionControls:
+            d.divisionControls &&
+            d.divisionControls.suspendedResult !==
+              TournamentGameResult.NO_RESULT
+              ? d.divisionControls
+              : undefined,
         }));
 
         // Determine shared game request: if all divisions have the same settings
@@ -306,14 +317,21 @@ export const TournamentWizard = () => {
       for (const div of wizardData.divisions) {
         const effectiveGameRequest = div.gameRequest ?? wizardData.gameRequest;
         if (effectiveGameRequest || wizardData.tournamentMode === "irl") {
+          const copied = div.divisionControls;
           try {
             await tournamentClient.setDivisionControls({
               id: tournamentId,
               division: div.name,
               gameRequest: effectiveGameRequest,
-              suspendedResult: TournamentGameResult.FORFEIT_LOSS,
-              suspendedSpread: -50,
-              autoStart: false,
+              suspendedResult:
+                copied?.suspendedResult ?? TournamentGameResult.FORFEIT_LOSS,
+              suspendedSpread: copied?.suspendedSpread ?? -50,
+              autoStart: copied?.autoStart ?? false,
+              spreadCap: copied?.spreadCap ?? 0,
+              gibsonize: copied?.gibsonize ?? false,
+              gibsonSpread: copied?.gibsonSpread ?? 0,
+              minimumPlacement: copied?.minimumPlacement ?? 0,
+              maximumByePlacement: copied?.maximumByePlacement ?? 0,
             });
           } catch (e) {
             console.error("Error setting division controls:", e);

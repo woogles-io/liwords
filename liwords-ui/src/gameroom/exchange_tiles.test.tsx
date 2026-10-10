@@ -1,138 +1,143 @@
 import React from "react";
-import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
+import { cleanup, render } from "@testing-library/react";
 
 import { ExchangeTiles } from "./exchange_tiles";
 import { MachineLetter, MachineWord } from "../utils/cwgame/common";
 import {
   StandardCatalanAlphabet,
   StandardEnglishAlphabet,
+  Alphabet,
 } from "../constants/alphabets";
 import { DndProvider } from "react-dnd";
 import { TouchBackend } from "react-dnd-touch-backend";
-import { act } from "react-dom/test-utils";
-
-function renderExchangeTiles(callback: (t: MachineWord) => void) {
-  vi.useFakeTimers();
-  const ret = render(
-    <DndProvider backend={TouchBackend}>
-      <ExchangeTiles
-        tileColorId={1}
-        rack={[1, 2, 5, 8, 12, 12, 12]} // abehlll
-        alphabet={StandardEnglishAlphabet}
-        onOk={callback}
-        onCancel={() => {}}
-        modalVisible={true}
-      />
-    </DndProvider>,
-  );
-  // there's a delay in ExchangeTiles before it becomes interactive.
-  // simulate that here.
-  act(() => {
-    vi.advanceTimersByTime(500);
-  });
-  return ret;
-}
-
-function renderExchangeCatalanTiles(callback: (t: MachineWord) => void) {
-  vi.useFakeTimers();
-  const ret = render(
-    <DndProvider backend={TouchBackend}>
-      <ExchangeTiles
-        tileColorId={1}
-        rack={[1, 13, 19, 6, 21, 17, 10]} // A L·L QU E S O I
-        alphabet={StandardCatalanAlphabet}
-        onOk={callback}
-        onCancel={() => {}}
-        modalVisible={true}
-      />
-    </DndProvider>,
-  );
-  act(() => {
-    vi.advanceTimersByTime(500);
-  });
-  return ret;
-}
 
 afterEach(cleanup);
 
-it("is idiotic, that is, the whole goddamn javascript ecosystem", () => {
-  expect(
-    "these stupid ass tests don't work anymore, no matter how many acts and waitFors I put everywhere",
-  ).toBeTruthy();
+// These drive the component with real DOM events and real timers. They used to
+// use fake timers plus waitFor, which deadlock each other, and had been skipped
+// for it.
+
+const pressKey = (key: string) =>
+  window.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true }));
+const click = (el: Element) =>
+  el.dispatchEvent(
+    new MouseEvent("click", { bubbles: true, cancelable: true }),
+  );
+const settle = () => new Promise((r) => setTimeout(r, 0));
+
+const exchangeButton = () =>
+  Array.from(document.querySelectorAll("button")).find(
+    (b) => b.textContent === "Exchange",
+  )!;
+
+async function renderExchangeTiles(
+  callback: (t: MachineWord) => void,
+  rack: MachineWord = [1, 2, 5, 8, 12, 12, 12], // ABEHLLL
+  alphabet: Alphabet = StandardEnglishAlphabet,
+) {
+  const ret = render(
+    <DndProvider backend={TouchBackend}>
+      <ExchangeTiles
+        tileColorId={1}
+        rack={rack}
+        alphabet={alphabet}
+        onOk={callback}
+        onCancel={() => {}}
+        modalVisible={true}
+      />
+    </DndProvider>,
+  );
+  // the modal ignores keystrokes for a moment after opening so that the key
+  // used to open it doesn't preselect a tile.
+  await new Promise((r) => setTimeout(r, 200));
+  return ret;
+}
+
+it("exchanges the right tiles", async () => {
+  const cb = vi.fn();
+  await renderExchangeTiles(cb);
+  expect(exchangeButton()).toBeDisabled();
+
+  pressKey("B");
+  pressKey("E");
+  await settle();
+
+  expect(exchangeButton()).toBeEnabled();
+  click(exchangeButton());
+  await settle();
+  expect(cb).toHaveBeenCalledWith(new Array<MachineLetter>(2, 5));
 });
 
-it.skip("exchanges the right tiles", async () => {
+it("exchanges repeated tile", async () => {
   const cb = vi.fn();
-  const { findByRole } = renderExchangeTiles(cb);
-  const exchButton = await findByRole("button", { name: "Exchange" });
-  expect(exchButton).toBeVisible();
-  await waitFor(() => {
-    fireEvent.keyDown(document.activeElement || document.body, { key: "B" });
-    fireEvent.keyUp(document.activeElement || document.body, { key: "B" });
-    fireEvent.keyDown(document.activeElement || document.body, { key: "E" });
-    fireEvent.keyUp(document.activeElement || document.body, { key: "E" });
-  });
-  await act(() =>
-    waitFor(() => {
-      expect(exchButton).toBeEnabled();
-    }),
-  );
-  await waitFor(() => {
-    fireEvent.click(exchButton);
-  });
-  await act(() =>
-    waitFor(() => {
-      expect(cb).toHaveBeenCalledWith(new Array<MachineLetter>(2, 5));
-    }),
-  );
-});
+  await renderExchangeTiles(cb);
 
-it.skip("exchanges repeated tile", async () => {
-  const cb = vi.fn();
+  pressKey("L");
+  pressKey("L");
+  await settle();
 
-  const { findByRole } = renderExchangeTiles(cb);
-
-  const exchButton = await findByRole("button", { name: "Exchange" });
-  expect(exchButton).toBeVisible();
-
-  fireEvent.keyDown(document.activeElement || document.body, { key: "L" });
-  fireEvent.keyUp(document.activeElement || document.body, { key: "L" });
-  fireEvent.keyDown(document.activeElement || document.body, { key: "L" });
-  fireEvent.keyUp(document.activeElement || document.body, { key: "L" });
-  expect(exchButton).toBeEnabled();
-  fireEvent.click(exchButton);
+  expect(exchangeButton()).toBeEnabled();
+  click(exchangeButton());
+  await settle();
   expect(cb).toHaveBeenCalledWith(new Array<MachineLetter>(12, 12));
 });
 
-it.skip("ignores non-existing tiles", async () => {
+it("deselects every instance of a repeated tile at once", async () => {
   const cb = vi.fn();
+  await renderExchangeTiles(cb);
 
-  const { findByRole } = renderExchangeTiles(cb);
+  pressKey("L");
+  pressKey("L");
+  pressKey("L");
+  await settle();
+  expect(document.querySelectorAll(".rack .tile.selected").length).toBe(3);
 
-  const exchButton = await findByRole("button", { name: "Exchange" });
-  expect(exchButton).toBeVisible();
+  pressKey("L"); // all three are selected, so this clears them
+  await settle();
+  expect(document.querySelectorAll(".rack .tile.selected").length).toBe(0);
+  expect(exchangeButton()).toBeDisabled();
+});
 
-  fireEvent.keyDown(document.activeElement || document.body, { key: "M" });
-  fireEvent.keyUp(document.activeElement || document.body, { key: "M" });
-  expect(exchButton).toBeDisabled();
-  fireEvent.click(exchButton);
+it("selects and clears the whole rack with -", async () => {
+  const cb = vi.fn();
+  await renderExchangeTiles(cb);
+
+  pressKey("-");
+  await settle();
+  expect(document.querySelectorAll(".rack .tile.selected").length).toBe(7);
+
+  click(exchangeButton());
+  await settle();
+  expect(cb).toHaveBeenCalledWith([1, 2, 5, 8, 12, 12, 12]);
+});
+
+it("ignores non-existing tiles", async () => {
+  const cb = vi.fn();
+  await renderExchangeTiles(cb);
+
+  pressKey("M");
+  await settle();
+
+  expect(exchangeButton()).toBeDisabled();
+  click(exchangeButton());
+  await settle();
   expect(cb).toBeCalledTimes(0);
 });
 
-it.skip("works with multi-letter tiles and shortcut/alias", async () => {
+it("works with multi-letter tiles and shortcut/alias", async () => {
   const cb = vi.fn();
+  await renderExchangeTiles(
+    cb,
+    [1, 13, 19, 6, 21, 17, 10], // A L·L QU E S O I
+    StandardCatalanAlphabet,
+  );
 
-  const { findByRole } = renderExchangeCatalanTiles(cb);
+  pressKey("W"); // alias for L·L
+  pressKey("Q");
+  await settle();
 
-  const exchButton = await findByRole("button", { name: "Exchange" });
-  expect(exchButton).toBeVisible();
-
-  fireEvent.keyDown(document.activeElement || document.body, { key: "W" });
-  fireEvent.keyUp(document.activeElement || document.body, { key: "W" });
-  fireEvent.keyDown(document.activeElement || document.body, { key: "Q" });
-  fireEvent.keyUp(document.activeElement || document.body, { key: "Q" });
-
-  expect(exchButton).toBeEnabled();
-  fireEvent.click(exchButton);
+  expect(exchangeButton()).toBeEnabled();
+  click(exchangeButton());
+  await settle();
   expect(cb).toHaveBeenCalledWith(new Array<MachineLetter>(13, 19));
 });

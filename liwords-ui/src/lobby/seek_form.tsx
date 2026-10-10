@@ -230,8 +230,11 @@ export const SeekForm = (props: Props) => {
     case "OSPS50":
       storedValues.lexicon = "OSPS52";
       break;
+    case "NSF21":
+    case "NSF22":
     case "NSF23":
-      storedValues.lexicon = "NSF25";
+    case "NSF25":
+      storedValues.lexicon = "NSF26";
       break;
     case "NSWL20":
       storedValues.lexicon = "NSWL23";

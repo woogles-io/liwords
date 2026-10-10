@@ -55,7 +55,14 @@ func handleEvent(ctx context.Context, cfg *wglconfig.Config, userID string, evt 
 	// Collect events to publish AFTER the store write so that any subscriber
 	// that re-reads the document (e.g. OBS handler) sees the latest state.
 	var pendingEvts []*entity.EventWrapper
-	if len(g.Events) != oldNumEvents {
+	if evt.Type == ipc.ClientGameplayEvent_TIME_PENALTY {
+		// Setting a time penalty can replace or remove earlier penalty events,
+		// so send the whole document rather than just the new events.
+		docEvt := &ipc.GameDocumentEvent{Doc: proto.Clone(g).(*ipc.GameDocument)}
+		wrapped := entity.WrapEvent(docEvt, ipc.MessageType_OMGWORDS_GAMEDOCUMENT)
+		wrapped.AddAudience(entity.AudChannel, AnnotatedChannelName(g.Uid))
+		pendingEvts = append(pendingEvts, wrapped)
+	} else if len(g.Events) > oldNumEvents {
 		// This will pretty much always happen if we didn't return an error.
 		newEvents := g.Events[oldNumEvents:]
 		for _, evt := range newEvents {
@@ -98,6 +105,8 @@ func handleEvent(ctx context.Context, cfg *wglconfig.Config, userID string, evt 
 	}
 
 	gameEnded := false
+	// A time penalty changes the result of a game that is already over, so it
+	// re-runs the game-done duties, as an amendment does; they are idempotent.
 	if g.PlayState == ipc.PlayState_GAME_OVER {
 		// rate the game and send such and such.
 		// performendgameduties
@@ -121,9 +130,6 @@ func handleAmendment(ctx context.Context, cfg *wglconfig.Config, userID string,
 	if len(g.Events)-1 < int(evtIndex) {
 		return false, apiserver.InvalidArg("tried to amend a rack for a non-existing event")
 	}
-
-	rack := g.Events[evtIndex].Rack
-	pidx := g.Events[evtIndex].PlayerIndex
 
 	// Clone the document to work on - we'll only update the real document if everything succeeds
 	gdocClone := proto.Clone(g).(*ipc.GameDocument)
@@ -168,10 +174,7 @@ func handleAmendment(ctx context.Context, cfg *wglconfig.Config, userID string,
 		}
 		cwgame.LogTileState(gdocClone, "after-replay")
 
-		// Remember the rack we just saved. We need to re-assign it.
-		racks := make([][]byte, len(g.Players))
-		racks[pidx] = rack
-		err = cwgame.AssignRacks(cfg, gdocClone, racks, cwgame.AssignEmptyIfUnambiguous)
+		err = cwgame.RestoreRackForAmendment(cfg, gdocClone, g.Events[evtIndex])
 		if err != nil {
 			return false, apiserver.InvalidArg(err.Error())
 		}

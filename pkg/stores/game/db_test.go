@@ -2,6 +2,7 @@ package game
 
 import (
 	"context"
+	"errors"
 	"os"
 	"testing"
 
@@ -256,6 +257,22 @@ func TestGet(t *testing.T) {
 	is.Equal(entGame.ChallengeRule(), macondopb.ChallengeRule_FIVE_POINT)
 	is.Equal(entGame.History().ChallengeRule, macondopb.ChallengeRule_FIVE_POINT)
 	// Clean up connections
+	ustore.(*user.DBStore).Disconnect()
+	gstore.Disconnect()
+}
+
+func TestGetAnnotatedGame(t *testing.T) {
+	ustore, gstore := recreateDB()
+	is := is.New(t)
+	ctx := context.Background()
+
+	_, err := gstore.dbPool.Exec(ctx, "UPDATE games SET type = $1 WHERE uuid = $2",
+		pb.GameType_ANNOTATED, "wJxURccCgSAPivUvj4QdYL")
+	is.NoErr(err)
+
+	_, err = gstore.Get(ctx, "wJxURccCgSAPivUvj4QdYL")
+	is.True(errors.Is(err, ErrAnnotatedGame))
+
 	ustore.(*user.DBStore).Disconnect()
 	gstore.Disconnect()
 }
