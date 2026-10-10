@@ -9,6 +9,8 @@ User-agent: AhrefsSiteAudit
 User-agent: ExaSearchBot
 User-agent: Reflectionbot
 User-agent: ShapBot
+User-agent: Sogou web spider
+User-agent: Sogou
 Disallow: /
 
 # Everyone else: game pages are the bulk of crawl traffic and are not worth
