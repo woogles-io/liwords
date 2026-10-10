@@ -839,3 +839,41 @@ func TestLinkedAccounts(t *testing.T) {
 	is.Equal(clients[0].Ip, "203.0.113.7")
 	is.Equal(clients[0].ClientID, "browser-1")
 }
+
+func TestGetUsersOnEmailDomains(t *testing.T) {
+	is := is.New(t)
+	ustore, pool, ctx := recreateDB()
+	defer ustore.Disconnect()
+	q := models.New(pool)
+
+	joined := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	for i, u := range []*entity.User{
+		{Username: "drop1", Email: "drop1@mailinator.com", UUID: "drop1_uuid"},
+		// A subdomain of a listed domain, in capitals.
+		{Username: "drop2", Email: "Drop2@Inbox.MAILINATOR.com", UUID: "drop2_uuid"},
+		{Username: "drop3", Email: "drop3@trashmail.de", UUID: "drop3_uuid"},
+		// Only the end of the domain matches.
+		{Username: "keep1", Email: "keep1@notmailinator.com", UUID: "keep1_uuid"},
+		// The domain is what comes after the last @.
+		{Username: "keep2", Email: "mailinator.com@gmail.com", UUID: "keep2_uuid"},
+	} {
+		is.NoErr(ustore.New(ctx, u))
+		is.NoErr(common.UpdateTableByUUID(ctx, pool, "users", u.UUID,
+			[]string{"created_at"}, []interface{}{joined.AddDate(0, i, 0)}))
+	}
+
+	rows, err := q.GetUsersOnEmailDomains(ctx, []string{"mailinator.com", "trashmail.de"})
+	is.NoErr(err)
+	usernames := []string{}
+	for _, r := range rows {
+		usernames = append(usernames, r.Username)
+	}
+	// Newest first.
+	is.Equal(usernames, []string{"drop3", "drop2", "drop1"})
+
+	// A bare top-level domain never matches, though every address here
+	// ends in one.
+	rows, err = q.GetUsersOnEmailDomains(ctx, []string{"com", "io", "de"})
+	is.NoErr(err)
+	is.Equal(len(rows), 0)
+}

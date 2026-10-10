@@ -735,6 +735,61 @@ func (q *Queries) GetUsernameFromUUID(ctx context.Context, uuid string) (string,
 	return username, err
 }
 
+const getUsersOnEmailDomains = `-- name: GetUsersOnEmailDomains :many
+WITH listed AS (
+    SELECT unnest($1::text[]) AS domain
+),
+suffixes AS (
+    SELECT u.id, array_to_string(labels[i:], '.') AS suffix
+    FROM users u
+    CROSS JOIN LATERAL string_to_array(lower(substring(u.email from '@([^@]*)$')), '.') AS labels
+    CROSS JOIN LATERAL generate_series(1, cardinality(labels) - 1) AS i
+)
+SELECT u.uuid, u.email, u.created_at, u.username, p.birth_date
+FROM users u
+JOIN profiles p on u.id = p.user_id
+WHERE u.id IN (SELECT s.id FROM suffixes s JOIN listed l ON l.domain = s.suffix)
+ORDER BY u.created_at DESC
+`
+
+type GetUsersOnEmailDomainsRow struct {
+	Uuid      string
+	Email     string
+	CreatedAt pgtype.Timestamptz
+	Username  string
+	BirthDate pgtype.Text
+}
+
+// Accounts whose email domain (after the last @), or a parent domain of it,
+// is one of @domains, newest first. A bare top-level domain never matches.
+// Each domain and its parents are joined against the list, so the list is
+// hashed once instead of scanned per account.
+func (q *Queries) GetUsersOnEmailDomains(ctx context.Context, domains []string) ([]GetUsersOnEmailDomainsRow, error) {
+	rows, err := q.db.Query(ctx, getUsersOnEmailDomains, domains)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetUsersOnEmailDomainsRow
+	for rows.Next() {
+		var i GetUsersOnEmailDomainsRow
+		if err := rows.Scan(
+			&i.Uuid,
+			&i.Email,
+			&i.CreatedAt,
+			&i.Username,
+			&i.BirthDate,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getUsersWithProfileByUUIDs = `-- name: GetUsersWithProfileByUUIDs :many
 SELECT u.id, u.username, u.uuid, u.email, u.password, u.internal_bot,
        u.notoriety, u.verified, u.verification_token, u.verification_expires_at,

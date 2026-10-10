@@ -2,6 +2,7 @@ package config
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"sort"
@@ -330,6 +331,49 @@ func (cs *ConfigService) SearchEmail(ctx context.Context, req *connect.Request[p
 			BirthDate:       matches[i].BirthDate.String,
 			Username:        matches[i].Username,
 			DisposableEmail: disposable(matches[i].Email),
+		}
+	}
+
+	res := connect.NewResponse(&pb.SearchEmailResponse{
+		Users: matchesPb,
+	})
+	setPrivate(res.Header())
+	return res, nil
+}
+
+func (cs *ConfigService) SearchDisposableEmail(ctx context.Context, req *connect.Request[pb.SearchDisposableEmailRequest]) (
+	*connect.Response[pb.SearchEmailResponse], error) {
+
+	_, err := apiserver.AuthenticateWithPermission(ctx, cs.userStore, cs.q, rbac.CanSeePrivateUserData)
+	if err != nil {
+		return nil, err
+	}
+	if cs.disposable == nil {
+		return nil, connect.NewError(connect.CodeUnavailable, errors.New("the list of disposable-email domains is unavailable"))
+	}
+	domains, err := cs.disposable.Domains(ctx)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeUnavailable,
+			fmt.Errorf("the list of disposable-email domains is unavailable: %w", err))
+	}
+	listed := make([]string, 0, len(domains))
+	for d := range domains {
+		listed = append(listed, d)
+	}
+
+	matches, err := cs.q.GetUsersOnEmailDomains(ctx, listed)
+	if err != nil {
+		return nil, err
+	}
+	matchesPb := make([]*pb.UserDetailsResponse, len(matches))
+	for i := range matches {
+		matchesPb[i] = &pb.UserDetailsResponse{
+			Uuid:            matches[i].Uuid,
+			Email:           matches[i].Email,
+			Created:         timestamppb.New(matches[i].CreatedAt.Time),
+			BirthDate:       matches[i].BirthDate.String,
+			Username:        matches[i].Username,
+			DisposableEmail: pb.DisposableEmail_DISPOSABLE_EMAIL_YES,
 		}
 	}
 

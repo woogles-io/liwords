@@ -65,6 +65,13 @@ export const getUserDetails = ConfigService.method.getUserDetails;
 export const searchEmail = ConfigService.method.searchEmail;
 
 /**
+ * Newest accounts first.
+ *
+ * @generated from rpc config_service.ConfigService.SearchDisposableEmail
+ */
+export const searchDisposableEmail = ConfigService.method.searchDisposableEmail;
+
+/**
  * @generated from rpc config_service.ConfigService.GetCorrespondenceGameCount
  */
 export const getCorrespondenceGameCount = ConfigService.method.getCorrespondenceGameCount;

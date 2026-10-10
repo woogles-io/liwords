@@ -67,6 +67,9 @@ const (
 	// ConfigServiceSearchEmailProcedure is the fully-qualified name of the ConfigService's SearchEmail
 	// RPC.
 	ConfigServiceSearchEmailProcedure = "/config_service.ConfigService/SearchEmail"
+	// ConfigServiceSearchDisposableEmailProcedure is the fully-qualified name of the ConfigService's
+	// SearchDisposableEmail RPC.
+	ConfigServiceSearchDisposableEmailProcedure = "/config_service.ConfigService/SearchDisposableEmail"
 	// ConfigServiceGetCorrespondenceGameCountProcedure is the fully-qualified name of the
 	// ConfigService's GetCorrespondenceGameCount RPC.
 	ConfigServiceGetCorrespondenceGameCountProcedure = "/config_service.ConfigService/GetCorrespondenceGameCount"
@@ -86,6 +89,8 @@ type ConfigServiceClient interface {
 	GetUsersForBadge(context.Context, *connect.Request[config_service.GetUsersForBadgeRequest]) (*connect.Response[config_service.Usernames], error)
 	GetUserDetails(context.Context, *connect.Request[config_service.GetUserDetailsRequest]) (*connect.Response[config_service.UserDetailsResponse], error)
 	SearchEmail(context.Context, *connect.Request[config_service.SearchEmailRequest]) (*connect.Response[config_service.SearchEmailResponse], error)
+	// Newest accounts first.
+	SearchDisposableEmail(context.Context, *connect.Request[config_service.SearchDisposableEmailRequest]) (*connect.Response[config_service.SearchEmailResponse], error)
 	GetCorrespondenceGameCount(context.Context, *connect.Request[config_service.GetCorrespondenceGameCountRequest]) (*connect.Response[config_service.CorrespondenceGameCountResponse], error)
 }
 
@@ -176,6 +181,13 @@ func NewConfigServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
+		searchDisposableEmail: connect.NewClient[config_service.SearchDisposableEmailRequest, config_service.SearchEmailResponse](
+			httpClient,
+			baseURL+ConfigServiceSearchDisposableEmailProcedure,
+			connect.WithSchema(configServiceMethods.ByName("SearchDisposableEmail")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
 		getCorrespondenceGameCount: connect.NewClient[config_service.GetCorrespondenceGameCountRequest, config_service.CorrespondenceGameCountResponse](
 			httpClient,
 			baseURL+ConfigServiceGetCorrespondenceGameCountProcedure,
@@ -200,6 +212,7 @@ type configServiceClient struct {
 	getUsersForBadge           *connect.Client[config_service.GetUsersForBadgeRequest, config_service.Usernames]
 	getUserDetails             *connect.Client[config_service.GetUserDetailsRequest, config_service.UserDetailsResponse]
 	searchEmail                *connect.Client[config_service.SearchEmailRequest, config_service.SearchEmailResponse]
+	searchDisposableEmail      *connect.Client[config_service.SearchDisposableEmailRequest, config_service.SearchEmailResponse]
 	getCorrespondenceGameCount *connect.Client[config_service.GetCorrespondenceGameCountRequest, config_service.CorrespondenceGameCountResponse]
 }
 
@@ -263,6 +276,11 @@ func (c *configServiceClient) SearchEmail(ctx context.Context, req *connect.Requ
 	return c.searchEmail.CallUnary(ctx, req)
 }
 
+// SearchDisposableEmail calls config_service.ConfigService.SearchDisposableEmail.
+func (c *configServiceClient) SearchDisposableEmail(ctx context.Context, req *connect.Request[config_service.SearchDisposableEmailRequest]) (*connect.Response[config_service.SearchEmailResponse], error) {
+	return c.searchDisposableEmail.CallUnary(ctx, req)
+}
+
 // GetCorrespondenceGameCount calls config_service.ConfigService.GetCorrespondenceGameCount.
 func (c *configServiceClient) GetCorrespondenceGameCount(ctx context.Context, req *connect.Request[config_service.GetCorrespondenceGameCountRequest]) (*connect.Response[config_service.CorrespondenceGameCountResponse], error) {
 	return c.getCorrespondenceGameCount.CallUnary(ctx, req)
@@ -282,6 +300,8 @@ type ConfigServiceHandler interface {
 	GetUsersForBadge(context.Context, *connect.Request[config_service.GetUsersForBadgeRequest]) (*connect.Response[config_service.Usernames], error)
 	GetUserDetails(context.Context, *connect.Request[config_service.GetUserDetailsRequest]) (*connect.Response[config_service.UserDetailsResponse], error)
 	SearchEmail(context.Context, *connect.Request[config_service.SearchEmailRequest]) (*connect.Response[config_service.SearchEmailResponse], error)
+	// Newest accounts first.
+	SearchDisposableEmail(context.Context, *connect.Request[config_service.SearchDisposableEmailRequest]) (*connect.Response[config_service.SearchEmailResponse], error)
 	GetCorrespondenceGameCount(context.Context, *connect.Request[config_service.GetCorrespondenceGameCountRequest]) (*connect.Response[config_service.CorrespondenceGameCountResponse], error)
 }
 
@@ -368,6 +388,13 @@ func NewConfigServiceHandler(svc ConfigServiceHandler, opts ...connect.HandlerOp
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
+	configServiceSearchDisposableEmailHandler := connect.NewUnaryHandler(
+		ConfigServiceSearchDisposableEmailProcedure,
+		svc.SearchDisposableEmail,
+		connect.WithSchema(configServiceMethods.ByName("SearchDisposableEmail")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
 	configServiceGetCorrespondenceGameCountHandler := connect.NewUnaryHandler(
 		ConfigServiceGetCorrespondenceGameCountProcedure,
 		svc.GetCorrespondenceGameCount,
@@ -401,6 +428,8 @@ func NewConfigServiceHandler(svc ConfigServiceHandler, opts ...connect.HandlerOp
 			configServiceGetUserDetailsHandler.ServeHTTP(w, r)
 		case ConfigServiceSearchEmailProcedure:
 			configServiceSearchEmailHandler.ServeHTTP(w, r)
+		case ConfigServiceSearchDisposableEmailProcedure:
+			configServiceSearchDisposableEmailHandler.ServeHTTP(w, r)
 		case ConfigServiceGetCorrespondenceGameCountProcedure:
 			configServiceGetCorrespondenceGameCountHandler.ServeHTTP(w, r)
 		default:
@@ -458,6 +487,10 @@ func (UnimplementedConfigServiceHandler) GetUserDetails(context.Context, *connec
 
 func (UnimplementedConfigServiceHandler) SearchEmail(context.Context, *connect.Request[config_service.SearchEmailRequest]) (*connect.Response[config_service.SearchEmailResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("config_service.ConfigService.SearchEmail is not implemented"))
+}
+
+func (UnimplementedConfigServiceHandler) SearchDisposableEmail(context.Context, *connect.Request[config_service.SearchDisposableEmailRequest]) (*connect.Response[config_service.SearchEmailResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("config_service.ConfigService.SearchDisposableEmail is not implemented"))
 }
 
 func (UnimplementedConfigServiceHandler) GetCorrespondenceGameCount(context.Context, *connect.Request[config_service.GetCorrespondenceGameCountRequest]) (*connect.Response[config_service.CorrespondenceGameCountResponse], error) {

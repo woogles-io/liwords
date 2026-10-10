@@ -103,6 +103,8 @@ message UserDetailsResponse {
 }
 message SearchEmailRequest { string partial_email = 1; }
 message SearchEmailResponse { repeated UserDetailsResponse users = 1; }
+// Lists the accounts whose email is on a known disposable-email domain.
+message SearchDisposableEmailRequest {}
 message Usernames { repeated string usernames = 1; }
 
 message GetCorrespondenceGameCountRequest {}
@@ -132,6 +134,11 @@ service ConfigService {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   rpc SearchEmail(SearchEmailRequest) returns (SearchEmailResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Newest accounts first.
+  rpc SearchDisposableEmail(SearchDisposableEmailRequest)
+      returns (SearchEmailResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   rpc GetCorrespondenceGameCount(GetCorrespondenceGameCountRequest)
