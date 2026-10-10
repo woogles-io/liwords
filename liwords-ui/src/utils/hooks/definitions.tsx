@@ -9,12 +9,16 @@ import { GameState } from "../../store/reducers/game_reducer";
 import { ChatEntityType, ChatEntityObj } from "../../store/constants";
 import { Blank } from "../../utils/cwgame/common";
 import { Unrace } from "../../utils/unrace";
-import { GameEvent_Type } from "../../gen/api/proto/vendored/macondo/macondo_pb";
+import {
+  ChallengeRule,
+  GameEvent_Type,
+} from "../../gen/api/proto/vendored/macondo/macondo_pb";
 import { useClient } from "./connect";
 import { WordService } from "../../gen/api/proto/word_service/word_service_pb";
 
 export const useDefinitionAndPhonyChecker = ({
   addChat,
+  challengeRule,
   chatGeneration,
   enableHoverDefine,
   inGameChat = true,
@@ -25,6 +29,7 @@ export const useDefinitionAndPhonyChecker = ({
   variant,
 }: {
   addChat: (chat: ChatEntityObj) => void;
+  challengeRule?: ChallengeRule;
   chatGeneration?: number;
   enableHoverDefine: boolean;
   inGameChat?: boolean;
@@ -439,7 +444,23 @@ export const useDefinitionAndPhonyChecker = ({
     };
     const reportID = (part: string) =>
       `phony-report-${gameID ?? ""}-${phonyReportSerial.current}-${part}`;
-    if (phonies.length) {
+    // Under VOID an invalid word cannot be played at all, so "all valid" is a
+    // given, and a word that fails now was valid when it was played: the word
+    // list has changed since. No one could have challenged it.
+    const isVoid = challengeRule === ChallengeRule.VOID;
+    if (phonies.length && isVoid) {
+      if (shouldPost(JSON.stringify({ notInWordList: phonies }))) {
+        addChat({
+          entityType: ChatEntityType.ServerMsg,
+          sender: "",
+          message: `Not in the current word list: ${phonies
+            .map((x) => `${x}*`)
+            .join(", ")}`,
+          id: reportID("current"),
+          channel: "server",
+        });
+      }
+    } else if (phonies.length) {
       // since +false === 0 and +true === 1, this is [unchallenged, challenged]
       const groupedWords = [new Set(), new Set()];
       let returningTiles = false;
@@ -489,7 +510,7 @@ export const useDefinitionAndPhonyChecker = ({
           });
         }
       }
-    } else {
+    } else if (!isVoid) {
       const thisPhonyReport = "all valid";
       if (shouldPost(thisPhonyReport)) {
         addChat({
@@ -501,7 +522,15 @@ export const useDefinitionAndPhonyChecker = ({
         });
       }
     }
-  }, [gameContext, phonies, addChat, chatGeneration, gameID, inGameChat]);
+  }, [
+    gameContext,
+    phonies,
+    addChat,
+    challengeRule,
+    chatGeneration,
+    gameID,
+    inGameChat,
+  ]);
 
   return {
     handleSetHover,
