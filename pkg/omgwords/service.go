@@ -343,6 +343,13 @@ func (gs *OMGWordsService) ReplaceGameDocument(ctx context.Context, req *connect
 	if err = gs.failIfSessionDoesntOwn(ctx, gid); err != nil {
 		return nil, err
 	}
+	racks := append([][]byte{}, req.Msg.Document.Racks...)
+	for _, evt := range req.Msg.Document.Events {
+		racks = append(racks, evt.Rack)
+	}
+	if err = checkRackSizes(racks...); err != nil {
+		return nil, err
+	}
 
 	// Just willy-nilly update the thing. Kind of scary.
 	err = gs.gameStore.UpdateDocument(ctx, req.Msg.Document)
@@ -528,6 +535,19 @@ func (gs *OMGWordsService) GetGameDocument(ctx context.Context, req *connect.Req
 	return nil, errors.New("not implemented for non-annotated games")
 }
 
+// checkRackSizes refuses a rack with more tiles than a rack can hold. Racks
+// are machine letters, one byte per tile, so a tile written with several
+// characters (the Spanish CH, say) still counts once.
+func checkRackSizes(racks ...[]byte) error {
+	for _, rack := range racks {
+		if len(rack) > cwgame.RackTileLimit {
+			return apiserver.InvalidArg(fmt.Sprintf("a rack holds at most %d tiles, not %d",
+				cwgame.RackTileLimit, len(rack)))
+		}
+	}
+	return nil
+}
+
 // SetRacks sets the player racks per user. It checks to make sure that the
 // rack can be set before actually setting it.
 func (gs *OMGWordsService) SetRacks(ctx context.Context, req *connect.Request[pb.SetRacksEvent],
@@ -555,6 +575,9 @@ func (gs *OMGWordsService) SetRacks(ctx context.Context, req *connect.Request[pb
 	// }
 	if len(req.Msg.Racks) != len(g.Players) {
 		return nil, apiserver.InvalidArg("number of racks must match number of players")
+	}
+	if err := checkRackSizes(req.Msg.Racks...); err != nil {
+		return nil, err
 	}
 	if req.Msg.Amendment && len(g.Events)-1 < int(req.Msg.EventNumber) {
 		return nil, apiserver.InvalidArg("tried to amend a rack for a non-existing event")
@@ -807,6 +830,12 @@ func (gs *OMGWordsService) ImportGCG(ctx context.Context, req *connect.Request[p
 	letterdist, err := tilemapping.GetDistribution(gs.cfg.WGLConfig(), req.Msg.Rules.LetterDistributionName)
 	if err != nil {
 		return nil, err
+	}
+	// Checked before the game exists, so a refused file leaves nothing behind.
+	for i, evt := range gh.Events {
+		if err := checkRackSizes(utilities.MacondoEvtToOMGEvt(evt, i, letterdist).Rack); err != nil {
+			return nil, err
+		}
 	}
 
 	cbr := &pb.CreateAnnotatedGameRequest{
