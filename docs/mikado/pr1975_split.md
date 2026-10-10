@@ -107,11 +107,17 @@ are split by hunk; the step that finishes a file is in **bold**.
 Code that is in neither master nor the reference branch. Each item has a step
 that removes it.
 
-- **Step 3: `SpawnShadowCompare` is called from `PlayMove`**, where master
-  calls it, still skipping finished games. In the reference branch it runs
-  from `Set` after the transaction commits, which needs step 4. Removed in 4.
+- **Step 3: `SpawnShadowCompare` is still called from `PlayMove`**, where
+  master calls it, after the immediate `AppendTurns` and skipping finished
+  games. `pkg/gameplay/game.go` is untouched in step 3. Only the function body
+  is the reference's; its doc comment (db.go hunk 7, "called by Set") waits for
+  step 4, where the call moves into `Set` after the transaction commits.
 - **Step 3: `shadowload_test.go` writes turns with `AppendTurns`** instead of
-  `StageTurns` + `Set`. Replaced with the reference version in 4.
+  `StageTurns` + `Set`, two lines, each marked `Split step 3`. Replaced with
+  the reference version in 4.
+- **Step 3: `pkg/config/config.go` has `ShadowTurnsLoad` but not
+  `WriteOngoingGames`.** The reference adds both in the same hunks; the second
+  lands with `ongoing_games` in 7.
 - **Step 1: `pkg/mod/automod_test.go` is kept.** The reference branch deletes
   it because it relies on the game cache sharing one `*entity.Game` between
   the test and the store, which stops being true in step 6. Until then it
@@ -128,6 +134,26 @@ Two things the deleted end-to-end test checked are no longer covered anywhere:
 
 The old test is kept until step 6 (above). Before 6 merges, add a
 `pkg/gameplay` test for both, or accept the gap explicitly.
+
+## Problems found in the reference branch while splitting
+
+Fixes for these are deliberate deviations from the reference. Each gets its own
+commit and is listed here, so the final tree diff explains itself.
+
+- **`SHADOW_TURNS` reports false mismatches on `turns[]`.** Found in step 3 by
+  running the `pkg/gameplay` suite with `DUAL_WRITE_TURNS`, `SHADOW_TURNS` and
+  `SHADOW_TURNS_LOAD` on, against master, step 3 and the reference.
+  `SpawnShadowCompare` diffs with `CompareStates`, which excludes nothing, on
+  the grounds that the game it compares against was played live in memory.
+  That stops being true when the game was loaded from history: macondo's
+  `NewFromHistory` loses per-player turn counts (`PlayTurn` only increments
+  them for exchanges, see `xwordgame_review.md`). The reference produces
+  `from_turns.turns[0]=1 live.turns[0]=0` in `TestDoubleChallengeGoodWord` and
+  `TestQuickdata`. In production this hits every correspondence game now, and
+  every game after step 6. It is a false alarm, not corruption, but it would
+  bury real mismatches. **Open:** decide the fix before trusting the flag
+  (exclude `turns[]` from this comparison, or fix `PlayTurn` in macondo, which
+  `xwordgame_remaining.md` already lists).
 
 ## Manual steps
 
