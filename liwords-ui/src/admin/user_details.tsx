@@ -9,7 +9,10 @@ import { Link } from "react-router";
 import moment from "moment";
 import { timestampDate } from "@bufbuild/protobuf/wkt";
 import { Timestamp } from "@bufbuild/protobuf/wkt";
-import { UserDetailsResponse } from "../gen/api/proto/config_service/config_service_pb";
+import {
+  DisposableEmail,
+  UserDetailsResponse,
+} from "../gen/api/proto/config_service/config_service_pb";
 
 const layout = {
   labelCol: {
@@ -201,6 +204,19 @@ export const UserDetails = () => {
       title: "Email",
       dataIndex: "email",
       key: "email",
+    },
+    {
+      title: "Disposable email",
+      dataIndex: "disposableEmail",
+      key: "disposableEmail",
+      // Unknown means the list of disposable-email domains could not be
+      // fetched, which is not the same as "no".
+      render: (d: DisposableEmail) =>
+        d === DisposableEmail.YES
+          ? "yes"
+          : d === DisposableEmail.NO
+            ? ""
+            : "list unavailable",
     },
     {
       title: "Joined",

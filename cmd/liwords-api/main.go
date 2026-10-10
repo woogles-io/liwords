@@ -53,6 +53,7 @@ import (
 	"github.com/woogles-io/liwords/pkg/collections"
 	"github.com/woogles-io/liwords/pkg/comments"
 	"github.com/woogles-io/liwords/pkg/config"
+	"github.com/woogles-io/liwords/pkg/disposableemail"
 	"github.com/woogles-io/liwords/pkg/embed"
 	"github.com/woogles-io/liwords/pkg/gameplay"
 	"github.com/woogles-io/liwords/pkg/integrations"
@@ -300,7 +301,8 @@ func main() {
 	wordService := words.NewWordService(cfg)
 	autocompleteService := userservices.NewAutocompleteService(stores.UserStore)
 	socializeService := userservices.NewSocializeService(stores.UserStore, stores.ChatStore, stores.PresenceStore, stores.Queries)
-	configService := config.NewConfigService(stores.ConfigStore, stores.UserStore, stores.Queries)
+	configService := config.NewConfigService(stores.ConfigStore, stores.UserStore, stores.Queries,
+		disposableemail.NewList(disposableemail.ListURL))
 	tournamentService := tournament.NewTournamentService(stores.TournamentStore, stores.UserStore, cfg, lambdaClient, stores.Queries)
 	gameCreatorAdapter := &GameCreatorAdapter{
 		stores:    stores,
