@@ -32,7 +32,8 @@ step:
    PR's diff is only its own. The ledger ignores the header line.
 
 After the last step, the tree of 7 with 1b merged in equals the reference
-tree, except for migration filenames (see below) and this document. That final diff is what
+tree, except for migration filenames (see below), this document, and the
+deliberate deviations listed under "Problems found in the reference branch". That final diff is what
 proves nothing was dropped.
 
 ## Migration numbering
@@ -107,11 +108,17 @@ are split by hunk; the step that finishes a file is in **bold**.
 Code that is in neither master nor the reference branch. Each item has a step
 that removes it.
 
-- **Step 3: `SpawnShadowCompare` is called from `PlayMove`**, where master
-  calls it, still skipping finished games. In the reference branch it runs
-  from `Set` after the transaction commits, which needs step 4. Removed in 4.
+- **Step 3: `SpawnShadowCompare` is still called from `PlayMove`**, where
+  master calls it, after the immediate `AppendTurns` and skipping finished
+  games. `pkg/gameplay/game.go` is untouched in step 3. Only the function body
+  is the reference's; its doc comment (db.go hunk 7, "called by Set") waits for
+  step 4, where the call moves into `Set` after the transaction commits.
 - **Step 3: `shadowload_test.go` writes turns with `AppendTurns`** instead of
-  `StageTurns` + `Set`. Replaced with the reference version in 4.
+  `StageTurns` + `Set`, two lines, each marked `Split step 3`. Replaced with
+  the reference version in 4.
+- **Step 3: `pkg/config/config.go` has `ShadowTurnsLoad` but not
+  `WriteOngoingGames`.** The reference adds both in the same hunks; the second
+  lands with `ongoing_games` in 7.
 - **Step 1: `pkg/mod/automod_test.go` is kept.** The reference branch deletes
   it because it relies on the game cache sharing one `*entity.Game` between
   the test and the store, which stops being true in step 6. Until then it
@@ -128,6 +135,39 @@ Two things the deleted end-to-end test checked are no longer covered anywhere:
 
 The old test is kept until step 6 (above). Before 6 merges, add a
 `pkg/gameplay` test for both, or accept the gap explicitly.
+
+## Problems found in the reference branch while splitting
+
+Fixes for these are deliberate deviations from the reference. Each gets its own
+commit and is listed here, so the final tree diff explains itself.
+
+- **`SHADOW_TURNS` reported false mismatches on `turns[]`. Fixed in step 3.**
+  Found by running the `pkg/gameplay` suite with `DUAL_WRITE_TURNS`,
+  `SHADOW_TURNS` and `SHADOW_TURNS_LOAD` on, against master, step 3 and the
+  reference. The reference produced `from_turns.turns[0]=1 live.turns[0]=0`
+  in `TestDoubleChallengeGoodWord` and `TestQuickdata`.
+
+  Cause, confirmed in macondo v0.13.5: live play (`playMove`,
+  `game/game.go:582` and `:644`) increments a player's turn count for
+  placements and passes, while replay (`PlayTurn`, `:1144`, which
+  `NewFromHistory` uses) increments it only for exchanges. Any game macondo
+  rebuilt from history undercounts. That is every correspondence game now, and
+  every game after step 6. `SpawnShadowCompare` diffed with `CompareStates`,
+  which excludes nothing, on the assumption that it was comparing against a
+  game played live. Nothing in liwords reads the count (`TurnsForNick` has no
+  callers).
+
+  Fix: `shadowCompareTurns` drops `turns[*]` and compares everything else.
+  It does not reuse `DivergencesVsReconstruction`, which also waives fields
+  live play does maintain. `SHADOW_TURNS_LOAD` already excluded the field.
+  New test `shadowturns_test.go` plays moves live, reloads the game from
+  history, and checks the shadow is quiet. Its precondition asserts the counts
+  really differ, so it fails loudly once macondo is fixed and the exclusion
+  can go. Mutation-checked: without the exclusion it fails with exactly the
+  reference's `turns[0]`/`turns[1]` mismatch and no other field.
+
+  Deviation from the reference: the exclusion and one comment in `db.go`, plus
+  the new test file. These carry through to the top of the stack.
 
 ## Manual steps
 
@@ -178,6 +218,8 @@ version, the reference version, or something else.
 # Migrations are matched by content, because they are renumbered.
 # Generated models are compared ignoring the sqlc version header line.
 m=${1:-origin/master}; r=${2:-08da29c33}
+# Files the split adds on purpose, each listed in the plan's deviations section.
+deviations=" pkg/stores/game/shadowturns_test.go "
 blob() { git rev-parse -q --verify "$1:$2" 2>/dev/null || echo none; }
 git diff --name-only "$m" "$r" | while read -r f; do
   here=$(blob HEAD "$f"); mm=$(blob "$m" "$f"); rr=$(blob "$r" "$f")
@@ -198,22 +240,77 @@ done
 git diff --name-only "$m" HEAD | while read -r f; do
   [[ $f == docs/mikado/pr1975_split.md ]] && continue
   [[ $f == db/migrations/* ]] && continue
-  git diff --quiet "$m" "$r" -- "$f" && printf '%-14s %s\n' "NOT IN REF" "$f"
+  if git diff --quiet "$m" "$r" -- "$f"; then
+    [[ $deviations == *" $f "* ]] && s="DEVIATION" || s="NOT IN REF"
+    printf '%-14s %s\n' "$s" "$f"
+  fi
 done
 ```
 
 Migration files are matched by content rather than name, since their numbers
 change (see above). `NOT IN REF` means a split branch changed a file the
-reference never touched, which should never happen.
+reference never touched, which should never happen. `DEVIATION` is the same
+thing for a file listed in the script's `deviations` variable, each one
+explained under "Problems found in the reference branch".
+
+## hunks.py
+
+How partial files are built: every line comes verbatim from the reference, by
+applying chosen hunks of the master..reference diff with `git apply`. `list`
+shows what each hunk contains. Hunks used so far, numbered as `list` prints
+them against `08da29c33`:
+
+| File | Step 1 | Step 3 | Still to land |
+|---|---|---|---|
+| `db/queries/games.sql` | 2 | 1 | none |
+| `pkg/gameplay/end.go` | 3, 4 | | 1, 2 (step 4) |
+| `pkg/stores/game/db.go` | 13 | 2, 4, 5, 6, 8, 9, 10, 11, 17 | 7, 12, 14, 15, 16 (4); 1, 3 (5); 14's `syncOngoingGame` part and 12's `writeOngoing` (7) |
+| `pkg/stores/game/s3.go` | | 1, 3, 5 | 2, 4 (step 4) |
+| `pkg/config/config.go` | | 1, 2 minus the `WriteOngoingGames` lines | those lines (7) |
+
+```python
+#!/usr/bin/env python3
+"""hunks.py list <file>            -- number the hunks of master..ref for a file
+   hunks.py apply <file> 1,3,4     -- apply exactly those hunks to the worktree"""
+import subprocess, sys
+M, R = "origin/master", "08da29c33"
+def hunks(f):
+    d = subprocess.run(["git","diff","-U3",M,R,"--",f],capture_output=True,text=True,check=True).stdout
+    lines = d.splitlines(keepends=True)
+    i = next(k for k,l in enumerate(lines) if l.startswith("@@"))
+    head, hs, cur = "".join(lines[:i]), [], []
+    for l in lines[i:]:
+        if l.startswith("@@") and cur: hs.append("".join(cur)); cur=[]
+        cur.append(l)
+    hs.append("".join(cur))
+    return head, hs
+cmd, f = sys.argv[1], sys.argv[2]
+head, hs = hunks(f)
+if cmd == "list":
+    for n,h in enumerate(hs,1):
+        body=h.splitlines()
+        ch=[l for l in body[1:] if l[:1] in "+-"]
+        print(f"#{n} {body[0][:90]}  (+{sum(l[0]=='+' for l in ch)} -{sum(l[0]=='-' for l in ch)})")
+        for l in ch[:6]: print("    "+l[:110])
+else:
+    pick=[int(x) for x in sys.argv[3].split(",")]
+    patch=head+"".join(hs[n-1] for n in pick)
+    subprocess.run(["git","apply","--recount","-"],input=patch,text=True,check=True)
+    print(f"applied {pick} of {len(hs)} hunks to {f}")
+```
 
 ## Progress
 
+Kept up to date at the top of the stack. `TestStandings` in
+`pkg/pair/standings` also fails on master and is excluded from "full suite".
+
+
 | # | Branch | PR | Ledger checked | Tests | Merged | Deployed |
 |---|---|---|---|---|---|---|
-| 1 | `referee-split-1-automod` | | | | | |
-| 1b | `referee-split-1b-games-uuid` | | | | | |
-| 2 | `referee-split-2-referee` | | | | | |
-| 3 | `referee-split-3-shadows` | | | | | |
+| 1 | `referee-split-1-automod` | #2026 | 2026-10-09 | full suite ✅ | | |
+| 1b | `referee-split-1b-games-uuid` | #2027 | 2026-10-09 | store + gameplay ✅ | | |
+| 2 | `referee-split-2-referee` | #2028 | 2026-10-09 | full suite ✅ (corpus tests skip) | | |
+| 3 | `referee-split-3-shadows` | #2029 | 2026-10-09 | full suite ✅; gameplay with flags on, matches master | | |
 | 4 | `referee-split-4-atomic-save` | | | | | |
 | 5 | `referee-split-5-session-lock` | | | | | |
 | 6 | `referee-split-6-no-cache` | | | | | |
