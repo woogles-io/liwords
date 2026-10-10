@@ -234,12 +234,16 @@ reference never touched, which should never happen.
 
 ## Progress
 
+Kept up to date at the top of the stack. `TestStandings` in
+`pkg/pair/standings` also fails on master and is excluded from "full suite".
+
+
 | # | Branch | PR | Ledger checked | Tests | Merged | Deployed |
 |---|---|---|---|---|---|---|
-| 1 | `referee-split-1-automod` | | | | | |
-| 1b | `referee-split-1b-games-uuid` | | | | | |
-| 2 | `referee-split-2-referee` | | | | | |
-| 3 | `referee-split-3-shadows` | | | | | |
+| 1 | `referee-split-1-automod` | #2026 | 2026-10-09 | full suite ✅ | | |
+| 1b | `referee-split-1b-games-uuid` | #2027 | 2026-10-09 | store + gameplay ✅ | | |
+| 2 | `referee-split-2-referee` | #2028 | 2026-10-09 | full suite ✅ (corpus tests skip) | | |
+| 3 | `referee-split-3-shadows` | #2029 | 2026-10-09 | full suite ✅; gameplay with flags on, matches master | | |
 | 4 | `referee-split-4-atomic-save` | | | | | |
 | 5 | `referee-split-5-session-lock` | | | | | |
 | 6 | `referee-split-6-no-cache` | | | | | |
