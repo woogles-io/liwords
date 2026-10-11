@@ -311,14 +311,14 @@ export const SeekForm = (props: Props) => {
     }
     if (!disableTimeControls) {
       valuesToPassThrough.initialtimeslider =
-        storedValues.initialtimeslider || defaultValues.initialtimeslider;
+        storedValues.initialtimeslider ?? defaultValues.initialtimeslider;
       valuesToPassThrough.extratime =
-        storedValues.extratime || defaultValues.extratime;
+        storedValues.extratime ?? defaultValues.extratime;
       valuesToPassThrough.incOrOT =
         storedValues.incOrOT || defaultValues.incOrOT;
     }
     if (!disableRatedControls) {
-      valuesToPassThrough.rated = storedValues.rated || defaultValues.rated;
+      valuesToPassThrough.rated = storedValues.rated ?? defaultValues.rated;
     }
     initialValues = {
       ...initFormValues,
