@@ -1,7 +1,7 @@
 import { Alert, Layout, Menu } from "antd";
 import { MenuInfo } from "rc-menu/lib/interface";
 import React, { useState } from "react";
-import { Link } from "react-router";
+import { Link, useSearchParams } from "react-router";
 import { TopBar } from "../navigation/topbar";
 import { useLoginStateStoreContext } from "../store/store";
 import { hasAnyPermission, ADMIN_PANEL_PERMS } from "../mod/perms";
@@ -20,6 +20,7 @@ import { AnalysisStats } from "./analysis_stats";
 
 type SiderProps = {
   setVisibleTab: React.Dispatch<React.SetStateAction<string>>;
+  initialTab: string;
 };
 
 const Sider = (props: SiderProps) => {
@@ -30,6 +31,7 @@ const Sider = (props: SiderProps) => {
     <Menu
       onClick={handleClick}
       mode="inline"
+      defaultSelectedKeys={props.initialTab ? [props.initialTab] : []}
       items={[
         //{ label: 'Options' },
         //{
@@ -59,7 +61,10 @@ const Sider = (props: SiderProps) => {
 };
 
 export const Admin = () => {
-  const [visibleTab, setVisibleTab] = useState("");
+  // ?tab= opens a tab directly, e.g. user-details from a user's menu.
+  const [searchParams] = useSearchParams();
+  const initialTab = searchParams.get("tab") ?? "";
+  const [visibleTab, setVisibleTab] = useState(initialTab);
   const { loginState } = useLoginStateStoreContext();
 
   if (!hasAnyPermission(loginState.permissions, ADMIN_PANEL_PERMS)) {
@@ -77,7 +82,7 @@ export const Admin = () => {
         <TopBar />
         <Layout style={{ marginTop: 20 }}>
           <Layout.Sider width={250}>
-            <Sider setVisibleTab={setVisibleTab} />
+            <Sider setVisibleTab={setVisibleTab} initialTab={initialTab} />
           </Layout.Sider>
           <Layout.Content style={{ marginLeft: 20 }}>
             {(visibleTab === "edit-tournament" ||
