@@ -15,7 +15,9 @@ import { WordService } from "../../gen/api/proto/word_service/word_service_pb";
 
 export const useDefinitionAndPhonyChecker = ({
   addChat,
+  chatGeneration,
   enableHoverDefine,
+  inGameChat = true,
   gameContext,
   gameDone,
   gameID,
@@ -23,7 +25,9 @@ export const useDefinitionAndPhonyChecker = ({
   variant,
 }: {
   addChat: (chat: ChatEntityObj) => void;
+  chatGeneration?: number;
   enableHoverDefine: boolean;
+  inGameChat?: boolean;
   gameContext: GameState;
   gameDone: boolean;
   gameID?: string;
@@ -233,7 +237,7 @@ export const useDefinitionAndPhonyChecker = ({
 
   // What everything below is about: the game being looked at, and the lexicon
   // its words are judged against.
-  const resetKey = `${gameID ?? ""} ${lexicon}`;
+  const resetKey = JSON.stringify({ gameID, lexicon });
   const resetKeyRef = useRef(resetKey);
 
   // Forgetting the old game and listing the current one's words to define are
@@ -408,9 +412,33 @@ export const useDefinitionAndPhonyChecker = ({
   }, [gameDone, phonies, playedWords, wordInfo]);
 
   const lastPhonyReport = useRef("");
+  // Counts new reports. It is part of a report's entry ids, so posting the
+  // same report again reuses them.
+  const phonyReportSerial = useRef(0);
+  const reportedChatGeneration = useRef(chatGeneration);
   useEffect(() => {
     console.log("[phony-debug] post effect, phonies:", phonies);
     if (!phonies) return;
+    // Only while the chat shows the game's own channel. While another channel
+    // is shown, nothing is posted and nothing is marked as reported, so coming
+    // back to the game chat posts the report again.
+    if (!inGameChat) return;
+    // A channel load replaces the whole chat list, and the history request can
+    // land either side of the definitions one, so a report posted before it is
+    // gone. Post it again then, under the same ids: addChat skips an entry that
+    // made it into the new list after all.
+    const chatReloaded = reportedChatGeneration.current !== chatGeneration;
+    reportedChatGeneration.current = chatGeneration;
+    const shouldPost = (thisPhonyReport: string) => {
+      if (lastPhonyReport.current !== thisPhonyReport) {
+        lastPhonyReport.current = thisPhonyReport;
+        phonyReportSerial.current++;
+        return true;
+      }
+      return chatReloaded;
+    };
+    const reportID = (part: string) =>
+      `phony-report-${gameID ?? ""}-${phonyReportSerial.current}-${part}`;
     if (phonies.length) {
       // since +false === 0 and +true === 1, this is [unchallenged, challenged]
       const groupedWords = [new Set(), new Set()];
@@ -437,8 +465,7 @@ export const useDefinitionAndPhonyChecker = ({
         challengedPhonies,
         unchallengedPhonies,
       });
-      if (lastPhonyReport.current !== thisPhonyReport) {
-        lastPhonyReport.current = thisPhonyReport;
+      if (shouldPost(thisPhonyReport)) {
         if (challengedPhonies.length) {
           addChat({
             entityType: ChatEntityType.ErrorMsg,
@@ -446,6 +473,7 @@ export const useDefinitionAndPhonyChecker = ({
             message: `Invalid words challenged off: ${challengedPhonies
               .map((x) => `${x}*`)
               .join(", ")}`,
+            id: reportID("challenged"),
             channel: "server",
           });
         }
@@ -456,23 +484,24 @@ export const useDefinitionAndPhonyChecker = ({
             message: `Invalid words played and not challenged: ${unchallengedPhonies
               .map((x) => `${x}*`)
               .join(", ")}`,
+            id: reportID("unchallenged"),
             channel: "server",
           });
         }
       }
     } else {
       const thisPhonyReport = "all valid";
-      if (lastPhonyReport.current !== thisPhonyReport) {
-        lastPhonyReport.current = thisPhonyReport;
+      if (shouldPost(thisPhonyReport)) {
         addChat({
           entityType: ChatEntityType.ServerMsg,
           sender: "",
           message: "All words played are valid",
+          id: reportID("valid"),
           channel: "server",
         });
       }
     }
-  }, [gameContext, phonies, addChat]);
+  }, [gameContext, phonies, addChat, chatGeneration, gameID, inGameChat]);
 
   return {
     handleSetHover,

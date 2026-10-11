@@ -136,6 +136,9 @@ type ChatStoreData = {
   deleteChat: (id: string, channel: string) => void;
   chat: Array<ChatEntityObj>;
   chatChannels: ActiveChatChannels | undefined;
+  chatGeneration: number;
+  currentChatChannel: string;
+  setCurrentChatChannel: (channel: string) => void;
   setChatChannels: (chatChannels: ActiveChatChannels) => void;
 };
 
@@ -324,7 +327,10 @@ const ChatContext = createContext<ChatStoreData>({
   clearChat: defaultFunction,
   chat: [],
   chatChannels: undefined,
+  chatGeneration: 0,
   deleteChat: defaultFunction,
+  currentChatChannel: "",
+  setCurrentChatChannel: defaultFunction,
   setChatChannels: defaultFunction,
 });
 
@@ -961,6 +967,12 @@ const RealStore = ({ children, ...props }: Props) => {
     create(SeekRequestSchema, {}),
   );
   const [chat, setChat] = useState(new Array<ChatEntityObj>());
+  // Counts the times the chat list was replaced wholesale (a channel load), so
+  // whatever posted into the old list can tell its entries are gone.
+  const [chatGeneration, setChatGeneration] = useState(0);
+  // The channel the chat panel shows, set as soon as it starts loading one,
+  // so a history request that fails cannot leave it unset.
+  const [currentChatChannel, setCurrentChatChannel] = useState("");
   const [chatChannels, setChatChannels] = useState<
     ActiveChatChannels | undefined
   >(undefined);
@@ -977,6 +989,10 @@ const RealStore = ({ children, ...props }: Props) => {
     setChat((oldChat) => {
       if (!entity.id) {
         entity.id = randomID();
+      } else if (oldChat.some((c) => c.id === entity.id)) {
+        // Already listed. The id is the entry's React key, and a poster that
+        // cannot tell whether its entry survived a channel load posts it again.
+        return oldChat;
       }
       // XXX: This should be sped up.
       const chatCopy = [...oldChat];
@@ -1011,10 +1027,12 @@ const RealStore = ({ children, ...props }: Props) => {
 
   const addChats = useCallback((entities: Array<ChatEntityObj>) => {
     setChat([...entities]);
+    setChatGeneration((g) => g + 1);
   }, []);
 
   const clearChat = useCallback(() => {
     setChat([]);
+    setChatGeneration((g) => g + 1);
   }, []);
 
   const deleteChat = useCallback((id: string, channel: string) => {
@@ -1207,7 +1225,10 @@ const RealStore = ({ children, ...props }: Props) => {
       deleteChat,
       chat,
       chatChannels,
+      chatGeneration,
+      currentChatChannel,
       setChatChannels,
+      setCurrentChatChannel,
     }),
     [
       addChat,
@@ -1215,8 +1236,11 @@ const RealStore = ({ children, ...props }: Props) => {
       clearChat,
       chat,
       chatChannels,
+      chatGeneration,
       deleteChat,
+      currentChatChannel,
       setChatChannels,
+      setCurrentChatChannel,
     ],
   );
   const presenceStore = useMemo(
