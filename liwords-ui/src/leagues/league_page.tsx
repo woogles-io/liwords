@@ -42,6 +42,13 @@ import { hasPermission, Perm } from "../mod/perms";
 import { DivisionStandings } from "./standings";
 import { LeagueRoster } from "./league_roster";
 import { LeagueCorrespondenceGames } from "./league_correspondence_games";
+import { FollowBar } from "./follow_bar";
+import {
+  FollowedPlayer,
+  followedDivision,
+  followNeighbors,
+  followPlayer,
+} from "./follow_player";
 import {
   PromotionFormula,
   StandingResult,
@@ -132,6 +139,16 @@ export const LeaguePage = (props: Props) => {
   const rosterMounted = useRef(false);
   if (showRoster) rosterMounted.current = true;
   const pendingDivisionJump = useRef<number>(0);
+  // The player whose seasons the previous / next buttons step through: set by
+  // picking one of their seasons in the all-time roster, cleared by "Stop" or
+  // by opening the roster. While set, a newly shown season opens on their
+  // division if they played it.
+  const [following, setFollowing] = useState<FollowedPlayer | null>(null);
+  // For the default-division effect, which runs only when new standings
+  // arrive: whom the page follows, and which season it shows, right now.
+  const followingRef = useRef<FollowedPlayer | null>(null);
+  followingRef.current = following;
+  const displayedSeasonNumberRef = useRef<number | undefined>(undefined);
 
   // Ref to the league Chat so that player-name menus on sibling surfaces
   // (standings, players-needing-to-start, season-games modal) can open a
@@ -208,6 +225,24 @@ export const LeaguePage = (props: Props) => {
         // new season. Keep the ref and wait for the next update.
         return;
       }
+      // Following someone: their division, or division 1 if they sat this
+      // season out. Otherwise the viewer's own division, else division 1.
+      if (followingRef.current) {
+        const followed =
+          displayedSeasonNumberRef.current !== undefined
+            ? followedDivision(
+                followingRef.current,
+                displayedSeasonNumberRef.current,
+              )
+            : undefined;
+        const followedDivId = standingsData.divisions.find(
+          (d) => followed !== undefined && d.divisionNumber === followed,
+        )?.uuid;
+        setSelectedDivisionId(
+          followedDivId ?? getDefaultDivisionId(standingsData.divisions),
+        );
+        return;
+      }
       const defaultDivId = getDefaultDivisionId(
         standingsData.divisions,
         userID,
@@ -222,6 +257,30 @@ export const LeaguePage = (props: Props) => {
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
   }, [selectedSeasonId]);
+
+  // Shows the standings of season seasonNum, on division divNum (0: the
+  // default division), from the roster or the follow bar.
+  const jumpToSeason = (seasonNum: number, divNum: number) => {
+    const season = allSeasons.find((s) => s.seasonNumber === seasonNum);
+    if (!season) return;
+    const isSameSeason = season.uuid === displaySeasonId;
+    setSelectedSeasonId(season.uuid);
+    setShowRoster(false);
+    if (isSameSeason && divNum > 0 && standingsData) {
+      // Already on this season — select division directly.
+      const targetDiv = standingsData.divisions.find(
+        (d) => d.divisionNumber === divNum,
+      );
+      if (targetDiv) {
+        setSelectedDivisionId(targetDiv.uuid);
+        return;
+      }
+    }
+    // Different season — defer until standings load.
+    if (divNum > 0) {
+      pendingDivisionJump.current = divNum;
+    }
+  };
 
   // Fetch registrations for selected season
   const { data: registrationsData } = useQuery(
@@ -297,6 +356,7 @@ export const LeaguePage = (props: Props) => {
     });
     return season;
   }, [allSeasons, displaySeasonId]);
+  displayedSeasonNumberRef.current = displayedSeason?.seasonNumber;
 
   // Check if user is registered for the displayed season
   const isUserRegistered = useMemo(() => {
@@ -326,6 +386,12 @@ export const LeaguePage = (props: Props) => {
     }
     return null;
   }, [userID, standingsData]);
+  // The division starred in the picker: the followed player's while
+  // following someone, else the viewer's own.
+  const starredDivisionNumber =
+    following && displayedSeason
+      ? followedDivision(following, displayedSeason.seasonNumber)
+      : userSeasonInfo?.divisionNumber;
 
   // Get all registrants for the displayed season
   const registrants = useMemo(() => {
@@ -583,10 +649,14 @@ export const LeaguePage = (props: Props) => {
             <a
               role="button"
               tabIndex={0}
-              onClick={() => setShowRoster((r) => !r)}
+              onClick={() => {
+                setFollowing(null);
+                setShowRoster((r) => !r);
+              }}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
+                  setFollowing(null);
                   setShowRoster((r) => !r);
                 }
               }}
@@ -675,8 +745,7 @@ export const LeaguePage = (props: Props) => {
                         >
                           {division.divisionName ||
                             `Division ${division.divisionNumber}`}
-                          {userSeasonInfo?.divisionNumber ===
-                          division.divisionNumber
+                          {starredDivisionNumber === division.divisionNumber
                             ? " \u2605"
                             : ""}
                           {totalGamesRemaining
@@ -689,6 +758,16 @@ export const LeaguePage = (props: Props) => {
                 )}
               </div>
             </div>
+
+            {/* Previous / next season of the player picked in the roster */}
+            {following && !showRoster && displayedSeason && (
+              <FollowBar
+                username={following.username}
+                {...followNeighbors(following, displayedSeason.seasonNumber)}
+                onGo={(s) => jumpToSeason(s.seasonNumber, s.divisionNumber)}
+                onStop={() => setFollowing(null)}
+              />
+            )}
 
             {/* Registration button for current season - centered */}
             {loggedIn &&
@@ -759,28 +838,9 @@ export const LeaguePage = (props: Props) => {
                   currentUserId={userID}
                   activeSeasonNumber={currentSeason?.seasonNumber}
                   defaultSortSeason={displayedSeason?.seasonNumber}
-                  onJumpToSeason={(seasonNum, divNum) => {
-                    const season = allSeasons.find(
-                      (s) => s.seasonNumber === seasonNum,
-                    );
-                    if (!season) return;
-                    const isSameSeason = season.uuid === displaySeasonId;
-                    setSelectedSeasonId(season.uuid);
-                    setShowRoster(false);
-                    if (isSameSeason && divNum > 0 && standingsData) {
-                      // Already on this season — select division directly.
-                      const targetDiv = standingsData.divisions.find(
-                        (d) => d.divisionNumber === divNum,
-                      );
-                      if (targetDiv) {
-                        setSelectedDivisionId(targetDiv.uuid);
-                        return;
-                      }
-                    }
-                    // Different season — defer until standings load.
-                    if (divNum > 0) {
-                      pendingDivisionJump.current = divNum;
-                    }
+                  onJumpToSeason={(seasonNum, divNum, player) => {
+                    setFollowing(followPlayer(player));
+                    jumpToSeason(seasonNum, divNum);
                   }}
                 />
               </div>
@@ -843,6 +903,7 @@ export const LeaguePage = (props: Props) => {
                         seasonNumber={displayedSeason?.seasonNumber || 0}
                         seasonStartDate={displayedSeason?.startDate}
                         currentUserId={userID}
+                        highlightUserId={following ? following.userId : userID}
                         onChat={openDirectMessage}
                         promotionFormula={displayedSeason?.promotionFormula}
                         timeBankWarnings={timeBankWarningsMap}
