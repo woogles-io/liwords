@@ -38,7 +38,9 @@ message StreakInfoResponse {
 message RematchStreakRequest { string original_request_id = 1; }
 
 message ActiveCorrespondenceGamesRequest {
-  // No fields - uses authenticated user from session
+  // Empty for the authenticated user's own games. Another user's games need
+  // the can_see_private_user_data permission.
+  string username = 1;
 }
 
 message RecentCorrespondenceGamesRequest {

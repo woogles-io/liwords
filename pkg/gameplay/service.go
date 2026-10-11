@@ -3,6 +3,7 @@ package gameplay
 import (
 	"context"
 	"regexp"
+	"strings"
 
 	"connectrpc.com/connect"
 	"github.com/rs/zerolog/log"
@@ -13,6 +14,7 @@ import (
 	"github.com/woogles-io/liwords/pkg/apiserver"
 	"github.com/woogles-io/liwords/pkg/auth/rbac"
 	"github.com/woogles-io/liwords/pkg/config"
+	"github.com/woogles-io/liwords/pkg/entity"
 	entityutils "github.com/woogles-io/liwords/pkg/entity/utilities"
 	"github.com/woogles-io/liwords/pkg/mod"
 	"github.com/woogles-io/liwords/pkg/omgwords/stores"
@@ -131,7 +133,9 @@ func (gs *GameService) GetRecentGames(ctx context.Context, req *connect.Request[
 	return connect.NewResponse(resp), nil
 }
 
-// GetActiveCorrespondenceGames gets all active correspondence games for the authenticated user.
+// GetActiveCorrespondenceGames gets all active correspondence games for the
+// authenticated user or, for a viewer who can see private user data (the
+// admin user lookup), for the user named in the request.
 func (gs *GameService) GetActiveCorrespondenceGames(ctx context.Context, req *connect.Request[pb.ActiveCorrespondenceGamesRequest],
 ) (*connect.Response[ipc.GameInfoResponses], error) {
 	// Authenticate the user
@@ -146,13 +150,43 @@ func (gs *GameService) GetActiveCorrespondenceGames(ctx context.Context, req *co
 		return nil, apiserver.InternalErr(err)
 	}
 
-	resp, err := gs.gameStore.ListActiveCorrespondenceForUser(ctx, user.UUID)
+	target, err := correspondenceGamesUser(ctx, gs.userStore, user, req.Msg.Username, func() (bool, error) {
+		return rbac.HasPermission(ctx, gs.queries, user.ID, rbac.CanSeePrivateUserData)
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := gs.gameStore.ListActiveCorrespondenceForUser(ctx, target.UUID)
 	if err != nil {
 		return nil, apiserver.InternalErr(err)
 	}
 
-	// No need to censor since user is only getting their own games
+	// No need to censor: the viewer either plays in these games or may see
+	// private user data.
 	return connect.NewResponse(resp), nil
+}
+
+// correspondenceGamesUser picks whose correspondence games to list: the
+// viewer's own when no other username is given, else that user's, if the
+// viewer can see private user data.
+func correspondenceGamesUser(ctx context.Context, us user.Store, viewer *entity.User,
+	username string, canSeePrivateUserData func() (bool, error)) (*entity.User, error) {
+	if username == "" || strings.EqualFold(username, viewer.Username) {
+		return viewer, nil
+	}
+	allowed, err := canSeePrivateUserData()
+	if err != nil {
+		return nil, apiserver.InternalErr(err)
+	}
+	if !allowed {
+		return nil, apiserver.PermissionDenied("you can only list your own correspondence games")
+	}
+	target, err := us.Get(ctx, username)
+	if err != nil {
+		return nil, apiserver.InvalidArg(err.Error())
+	}
+	return target, nil
 }
 
 // GetRecentCorrespondenceGames gets recently ended correspondence games for a user.
