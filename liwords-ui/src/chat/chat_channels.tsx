@@ -27,6 +27,38 @@ type Props = {
   suppressDefault?: boolean;
 };
 
+// Whether the channel list shows a channel. The unread count in chat.tsx uses
+// the same test, so it never counts a channel this list leaves out.
+export const listsChannel = (
+  ch: Pick<ActiveChatChannels_Channel, "name" | "displayName">,
+  defaultChannel: string,
+  tournamentID: string | undefined,
+  excludedPlayers: Set<string>,
+) => {
+  for (const ex of excludedPlayers) {
+    if (ch.name.includes(ex)) {
+      return false;
+    }
+  }
+  if (ch.name === defaultChannel) {
+    return false;
+  }
+  // From the lobby, filter out channels we can't get new messages for
+  // Todo: Remove this when we send tournament messages to all enrollees
+  // regardless of their location
+  if (defaultChannel === "chat.lobby") {
+    return ch.displayName.startsWith("pm");
+  }
+  if (tournamentID) {
+    return (
+      ch.displayName.startsWith("pm") ||
+      ch.name === `chat.tournament.${tournamentID}`
+    );
+  } else {
+    return ch.displayName.startsWith("pm");
+  }
+};
+
 export type ChatChannelLabel = {
   avatar?: ReactNode;
   title: string;
@@ -198,34 +230,14 @@ export const ChatChannels = React.memo((props: Props) => {
           ? -1
           : 0;
     })
-    .filter((ch) => {
-      let keep = true;
-      excludedPlayers.forEach((ex) => {
-        if (ch.name.includes(ex)) {
-          keep = false;
-        }
-      });
-      return keep;
-    })
-    .filter((ch) => {
-      return ch.name !== props.defaultChannel;
-    })
-    .filter((ch) => {
-      // From the lobby, filter out channels we can't get new messages for
-      // Todo: Remove this when we send tournament messages to all enrollees
-      // regardless of their location
-      if (props.defaultChannel === "chat.lobby") {
-        return ch.displayName.startsWith("pm");
-      }
-      if (props.tournamentID) {
-        return (
-          ch.displayName.startsWith("pm") ||
-          ch.name === `chat.tournament.${props.tournamentID}`
-        );
-      } else {
-        return ch.displayName.startsWith("pm");
-      }
-    })
+    .filter((ch) =>
+      listsChannel(
+        ch,
+        props.defaultChannel,
+        props.tournamentID,
+        excludedPlayers,
+      ),
+    )
     .map((ch) => {
       const channelLabel = parseChannelLabel(ch.displayName, username);
       if (!channelLabel) {

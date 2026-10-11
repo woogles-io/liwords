@@ -13,12 +13,13 @@ import { ChatEntity } from "./chat_entity";
 import { useApplyChatPrefs, useChatFontScaleControl } from "./chat_prefs";
 import {
   useChatStoreContext,
+  useExcludedPlayersStoreContext,
   useLoginStateStoreContext,
   usePresenceStoreContext,
 } from "../store/store";
 import "./chat.scss";
 import { Presences } from "./presences";
-import { ChatChannels } from "./chat_channels";
+import { ChatChannels, listsChannel } from "./chat_channels";
 import {
   ChatEntityObj,
   ChatEntityType,
@@ -135,6 +136,7 @@ export const Chat = React.memo((props: Props) => {
     setChatChannels,
   } = useChatStoreContext();
   const { presences } = usePresenceStoreContext();
+  const { excludedPlayers } = useExcludedPlayersStoreContext();
   const lastChannel = useRef("");
   const [chatAutoScroll, setChatAutoScroll] = useState(true);
   const [channel, setChannel] = useState<string | undefined>(
@@ -347,7 +349,19 @@ export const Chat = React.memo((props: Props) => {
         // otherwise respect the hasUpdate fields
         const newUpdatedChannels = new Set(
           resp?.channels
-            ?.filter((ch) => ch.hasUpdate)
+            // Count only what the channel list shows, or the badge can point
+            // at a channel the list hides (league and tournament channels in
+            // the lobby).
+            ?.filter(
+              (ch) =>
+                ch.hasUpdate &&
+                listsChannel(
+                  ch,
+                  props.defaultChannel,
+                  props.tournamentID,
+                  excludedPlayers,
+                ),
+            )
             ?.map((ch) => {
               return ch.name;
             }),
@@ -363,8 +377,10 @@ export const Chat = React.memo((props: Props) => {
     loggedIn,
     setNotificationCount,
     socializeClient,
+    props.defaultChannel,
     props.tournamentID,
     props.leagueID,
+    excludedPlayers,
   ]);
 
   useEffect(() => {
