@@ -980,6 +980,12 @@ export const Table = React.memo((props: Props) => {
 
   const searchedTurn = useMemo(() => searchParams.get("turn"), [searchParams]);
   const turnAsStr = us && !gameDone ? "" : (searchedTurn ?? ""); // Do not examine our current games.
+  // ?analysis=computer, from the "Computer analysis ready" toast, opens a
+  // finished game with its computer analysis showing. It is read once, here.
+  const openComputerAnalysis =
+    gameDone && searchParams.get("analysis") === "computer";
+  const [openComputerAnalysisSignal, setOpenComputerAnalysisSignal] =
+    useState(0);
   const hasActivatedExamineRef = useRef(false);
   const [autocorrectURL, setAutocorrectURL] = useState(false);
   useEffect(() => {
@@ -993,6 +999,12 @@ export const Table = React.memo((props: Props) => {
 
           // Autoscroll removed - comments now use drawer
         }
+        if (openComputerAnalysis) {
+          // Like the Examine button: start from the first turn, unless ?turn=
+          // has just picked one.
+          handleExamineStart(true);
+          setOpenComputerAnalysisSignal((n) => (n + 1) | 0);
+        }
         setAutocorrectURL(true); // Trigger rerender.
       }
     }
@@ -1002,26 +1014,33 @@ export const Table = React.memo((props: Props) => {
     handleExamineStart,
     handleExamineGoTo,
     props.annotated,
+    openComputerAnalysis,
   ]);
 
   // Autocorrect the turn on the URL.
   // Do not autocorrect when NEW_GAME_EVENT redirects to a rematch.
+  // This also drops ?analysis=, which is read once, above. It is dropped here
+  // because react-router applies a URL change in a transition: dropped
+  // anywhere else, this effect would first rebuild the URL from the old
+  // parameters and put it back.
   const canAutocorrectURL = autocorrectURL && gameID === gameContext.gameID;
   useEffect(() => {
     if (!canAutocorrectURL) return; // Too early if examining has not started.
     const turnParamShouldBe = isExamining
       ? String(examinableGameContext.turns.length + 1)
       : null;
-    if (turnParamShouldBe !== searchedTurn) {
+    if (turnParamShouldBe !== searchedTurn || searchParams.has("analysis")) {
       if (turnParamShouldBe == null) {
         // Remove turn parameter while preserving other parameters
         const newParams = new URLSearchParams(searchParams);
         newParams.delete("turn");
+        newParams.delete("analysis");
         setSearchParams(newParams, { replace: true });
       } else {
         // Update turn parameter while preserving other parameters
         const newParams = new URLSearchParams(searchParams);
         newParams.set("turn", turnParamShouldBe);
+        newParams.delete("analysis");
         setSearchParams(newParams, { replace: true });
       }
     }
@@ -1540,6 +1559,7 @@ export const Table = React.memo((props: Props) => {
       children={ret}
       lexicon={gameInfo.gameRequest?.lexicon ?? ""}
       variant={gameInfo.gameRequest?.rules?.variantName}
+      openComputerAnalysisSignal={openComputerAnalysisSignal}
     />
   );
   return ret;
