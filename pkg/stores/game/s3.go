@@ -23,6 +23,9 @@ import (
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/stores/models"
+
+	"github.com/woogles-io/liwords/pkg/xwordbridge"
+	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
 const (
@@ -93,6 +96,15 @@ func (h *HistoryArchiver) ArchiveAndCleanup(ctx context.Context, g *entity.Game)
 	assembled, err := assembleHistory(g, turns)
 	if err != nil {
 		return fmt.Errorf("archive-assemble: %w", err)
+	}
+
+	// What the archived object must carry to be reconstructable later. Checked
+	// separately from verifyHistory below, and this is the point: that compares
+	// two representations of the same data, so it is blind to a field both
+	// sides stop carrying.
+	if missing := archiveContractViolations(assembled, g.GameEndReason); len(missing) > 0 {
+		log.Error().Str("gameID", g.GameID()).Strs("missing", missing).
+			Msg("archive-contract-violation")
 	}
 
 	// Transitional: drops out in Phase 4 when games.history bytea is removed.
@@ -195,6 +207,60 @@ func assembleHistory(g *entity.Game, turns []models.GetGameTurnsRow) (*macondopb
 // older bytea histories were written without these metadata fields set, but the
 // assembled history always sets them to our standard values. A difference here
 // is not a semantic mismatch and should not block archival.
+// checkArchiveContract reports anything missing from a history about to be
+// archived that a later reconstruction will need.
+//
+// Once a game is in S3 that object is all there is: replay, analysis, GCG
+// export, puzzles and the image renderer all read it and nothing else. Whatever
+// it fails to carry is gone, and nobody finds out until someone opens an old
+// game.
+//
+// It logs and does not block. A false positive here would refuse an archival,
+// leaving turn rows behind and an orphaned S3 object, which is a worse outcome
+// than a log line for a problem that has never occurred. If one ever fires,
+// that is the moment to decide whether to harden it.
+//
+// The thresholds are measured, not assumed -- across 6,031 finished games in
+// the corpus: PlayState was GAME_OVER every time, LastKnownRacks had an entry
+// per player every time, and all 4,220 end-rack events carried a rack. Only
+// FinalScores had exceptions, all 21 of them aborted games, which never
+// produced a score -- hence the exemption.
+func archiveContractViolations(h *macondopb.GameHistory, reason ipc.GameEndReason) []string {
+	var missing []string
+
+	// The field the May 2026 incident destroyed. proto3's zero value here is
+	// PLAYING, so "absent" and "still being played" are the same bits.
+	if h.PlayState != macondopb.PlayState_GAME_OVER {
+		missing = append(missing, "play_state is "+h.PlayState.String()+", not GAME_OVER")
+	}
+	// The second witness that a game ended, and the one that saves a
+	// reconstruction when the play state is wrong. Aborted and cancelled games
+	// have no score to record.
+	if len(h.FinalScores) == 0 &&
+		reason != ipc.GameEndReason_ABORTED && reason != ipc.GameEndReason_CANCELLED {
+		missing = append(missing, "final_scores is empty")
+	}
+	// Racks cannot be derived from the event log -- an event records the rack a
+	// player moved from, never what they drew afterwards -- so without these a
+	// reconstruction cannot restore either rack, and the bag, which is the
+	// distribution minus the board minus the racks, comes out wrong too.
+	if len(h.LastKnownRacks) != len(h.Players) {
+		missing = append(missing, fmt.Sprintf("last_known_racks has %d entries for %d players",
+			len(h.LastKnownRacks), len(h.Players)))
+	}
+	// Losing this does not corrupt a replay -- the score comes from Cumulative.
+	// It blinds the check that would tell us a replay is wrong: without the
+	// rack, "we never knew the tiles" cannot be told apart from "we knew them
+	// and computed the adjustment wrongly".
+	for i, e := range h.Events {
+		if xwordbridge.IsTerminalEvent(e.Type) && e.Type != macondopb.GameEvent_TIME_PENALTY && e.Rack == "" {
+			missing = append(missing, fmt.Sprintf("event %d (%s) carries no rack", i, e.Type))
+		}
+	}
+
+	return missing
+}
+
 func verifyHistory(assembled, expected *macondopb.GameHistory, gameID string) error {
 	// Clone to avoid mutating the caller's proto.
 	norm := proto.Clone(expected).(*macondopb.GameHistory)
