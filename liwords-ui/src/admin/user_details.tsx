@@ -15,6 +15,7 @@ import {
   UserDetailsResponse,
   UserModAction,
 } from "../gen/api/proto/config_service/config_service_pb";
+import { UserCorrespondenceGames } from "./user_corres_games";
 
 const layout = {
   labelCol: {
@@ -120,6 +121,8 @@ const UserConnectionDetails = ({ user }: { user: UserDetailsResponse }) => {
           { title: "Note", dataIndex: "note", key: "note" },
         ]}
       />
+
+      <UserCorrespondenceGames username={user.username} />
 
       <h3>Seen from</h3>
       <Table

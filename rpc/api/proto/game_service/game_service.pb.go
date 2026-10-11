@@ -541,7 +541,10 @@ func (x *RematchStreakRequest) GetOriginalRequestId() string {
 }
 
 type ActiveCorrespondenceGamesRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Empty for the authenticated user's own games. Another user's games need
+	// the can_see_private_user_data permission.
+	Username      string `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -574,6 +577,13 @@ func (x *ActiveCorrespondenceGamesRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use ActiveCorrespondenceGamesRequest.ProtoReflect.Descriptor instead.
 func (*ActiveCorrespondenceGamesRequest) Descriptor() ([]byte, []int) {
 	return file_proto_game_service_game_service_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *ActiveCorrespondenceGamesRequest) GetUsername() string {
+	if x != nil {
+		return x.Username
+	}
+	return ""
 }
 
 type RecentCorrespondenceGamesRequest struct {
@@ -879,8 +889,9 @@ const file_proto_game_service_game_service_proto_rawDesc = "" +
 	"\bnickname\x18\x01 \x01(\tR\bnickname\x12\x12\n" +
 	"\x04uuid\x18\x02 \x01(\tR\x04uuid\"F\n" +
 	"\x14RematchStreakRequest\x12.\n" +
-	"\x13original_request_id\x18\x01 \x01(\tR\x11originalRequestId\"\"\n" +
-	" ActiveCorrespondenceGamesRequest\"[\n" +
+	"\x13original_request_id\x18\x01 \x01(\tR\x11originalRequestId\">\n" +
+	" ActiveCorrespondenceGamesRequest\x12\x1a\n" +
+	"\busername\x18\x01 \x01(\tR\busername\"[\n" +
 	" RecentCorrespondenceGamesRequest\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\x12\x1b\n" +
 	"\tnum_games\x18\x02 \x01(\x05R\bnumGames\"`\n" +
