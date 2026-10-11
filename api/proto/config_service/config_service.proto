@@ -73,12 +73,22 @@ message UserModAction {
   string note = 4;
 }
 
+// Whether an email address is on a known disposable-email domain.
+enum DisposableEmail {
+  // Not checked, because the list of disposable-email domains is
+  // unavailable.
+  DISPOSABLE_EMAIL_UNKNOWN = 0;
+  DISPOSABLE_EMAIL_NO = 1;
+  DISPOSABLE_EMAIL_YES = 2;
+}
+
 message UserDetailsResponse {
   string uuid = 1;
   string email = 2;
   google.protobuf.Timestamp created = 3;
   string birth_date = 4;
   string username = 5;
+  DisposableEmail disposable_email = 14;
 
   // The fields below are only filled in by GetUserDetails, not SearchEmail.
   bool verified = 6;
@@ -93,6 +103,8 @@ message UserDetailsResponse {
 }
 message SearchEmailRequest { string partial_email = 1; }
 message SearchEmailResponse { repeated UserDetailsResponse users = 1; }
+// Lists the accounts whose email is on a known disposable-email domain.
+message SearchDisposableEmailRequest {}
 message Usernames { repeated string usernames = 1; }
 
 message GetCorrespondenceGameCountRequest {}
@@ -122,6 +134,11 @@ service ConfigService {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   rpc SearchEmail(SearchEmailRequest) returns (SearchEmailResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Newest accounts first.
+  rpc SearchDisposableEmail(SearchDisposableEmailRequest)
+      returns (SearchEmailResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   rpc GetCorrespondenceGameCount(GetCorrespondenceGameCountRequest)

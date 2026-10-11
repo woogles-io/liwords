@@ -22,6 +22,58 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// Whether an email address is on a known disposable-email domain.
+type DisposableEmail int32
+
+const (
+	// Not checked, because the list of disposable-email domains is
+	// unavailable.
+	DisposableEmail_DISPOSABLE_EMAIL_UNKNOWN DisposableEmail = 0
+	DisposableEmail_DISPOSABLE_EMAIL_NO      DisposableEmail = 1
+	DisposableEmail_DISPOSABLE_EMAIL_YES     DisposableEmail = 2
+)
+
+// Enum value maps for DisposableEmail.
+var (
+	DisposableEmail_name = map[int32]string{
+		0: "DISPOSABLE_EMAIL_UNKNOWN",
+		1: "DISPOSABLE_EMAIL_NO",
+		2: "DISPOSABLE_EMAIL_YES",
+	}
+	DisposableEmail_value = map[string]int32{
+		"DISPOSABLE_EMAIL_UNKNOWN": 0,
+		"DISPOSABLE_EMAIL_NO":      1,
+		"DISPOSABLE_EMAIL_YES":     2,
+	}
+)
+
+func (x DisposableEmail) Enum() *DisposableEmail {
+	p := new(DisposableEmail)
+	*p = x
+	return p
+}
+
+func (x DisposableEmail) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (DisposableEmail) Descriptor() protoreflect.EnumDescriptor {
+	return file_proto_config_service_config_service_proto_enumTypes[0].Descriptor()
+}
+
+func (DisposableEmail) Type() protoreflect.EnumType {
+	return &file_proto_config_service_config_service_proto_enumTypes[0]
+}
+
+func (x DisposableEmail) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use DisposableEmail.Descriptor instead.
+func (DisposableEmail) EnumDescriptor() ([]byte, []int) {
+	return file_proto_config_service_config_service_proto_rawDescGZIP(), []int{0}
+}
+
 type EnableGamesRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Enabled       bool                   `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
@@ -854,12 +906,13 @@ func (x *UserModAction) GetNote() string {
 }
 
 type UserDetailsResponse struct {
-	state     protoimpl.MessageState `protogen:"open.v1"`
-	Uuid      string                 `protobuf:"bytes,1,opt,name=uuid,proto3" json:"uuid,omitempty"`
-	Email     string                 `protobuf:"bytes,2,opt,name=email,proto3" json:"email,omitempty"`
-	Created   *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=created,proto3" json:"created,omitempty"`
-	BirthDate string                 `protobuf:"bytes,4,opt,name=birth_date,json=birthDate,proto3" json:"birth_date,omitempty"`
-	Username  string                 `protobuf:"bytes,5,opt,name=username,proto3" json:"username,omitempty"`
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Uuid            string                 `protobuf:"bytes,1,opt,name=uuid,proto3" json:"uuid,omitempty"`
+	Email           string                 `protobuf:"bytes,2,opt,name=email,proto3" json:"email,omitempty"`
+	Created         *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=created,proto3" json:"created,omitempty"`
+	BirthDate       string                 `protobuf:"bytes,4,opt,name=birth_date,json=birthDate,proto3" json:"birth_date,omitempty"`
+	Username        string                 `protobuf:"bytes,5,opt,name=username,proto3" json:"username,omitempty"`
+	DisposableEmail DisposableEmail        `protobuf:"varint,14,opt,name=disposable_email,json=disposableEmail,proto3,enum=config_service.DisposableEmail" json:"disposable_email,omitempty"`
 	// The fields below are only filled in by GetUserDetails, not SearchEmail.
 	Verified             bool             `protobuf:"varint,6,opt,name=verified,proto3" json:"verified,omitempty"`
 	Notoriety            int32            `protobuf:"varint,7,opt,name=notoriety,proto3" json:"notoriety,omitempty"`
@@ -937,6 +990,13 @@ func (x *UserDetailsResponse) GetUsername() string {
 		return x.Username
 	}
 	return ""
+}
+
+func (x *UserDetailsResponse) GetDisposableEmail() DisposableEmail {
+	if x != nil {
+		return x.DisposableEmail
+	}
+	return DisposableEmail_DISPOSABLE_EMAIL_UNKNOWN
 }
 
 func (x *UserDetailsResponse) GetVerified() bool {
@@ -1083,6 +1143,43 @@ func (x *SearchEmailResponse) GetUsers() []*UserDetailsResponse {
 	return nil
 }
 
+// Lists the accounts whose email is on a known disposable-email domain.
+type SearchDisposableEmailRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SearchDisposableEmailRequest) Reset() {
+	*x = SearchDisposableEmailRequest{}
+	mi := &file_proto_config_service_config_service_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SearchDisposableEmailRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SearchDisposableEmailRequest) ProtoMessage() {}
+
+func (x *SearchDisposableEmailRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_config_service_config_service_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SearchDisposableEmailRequest.ProtoReflect.Descriptor instead.
+func (*SearchDisposableEmailRequest) Descriptor() ([]byte, []int) {
+	return file_proto_config_service_config_service_proto_rawDescGZIP(), []int{19}
+}
+
 type Usernames struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Usernames     []string               `protobuf:"bytes,1,rep,name=usernames,proto3" json:"usernames,omitempty"`
@@ -1092,7 +1189,7 @@ type Usernames struct {
 
 func (x *Usernames) Reset() {
 	*x = Usernames{}
-	mi := &file_proto_config_service_config_service_proto_msgTypes[19]
+	mi := &file_proto_config_service_config_service_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1104,7 +1201,7 @@ func (x *Usernames) String() string {
 func (*Usernames) ProtoMessage() {}
 
 func (x *Usernames) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_config_service_config_service_proto_msgTypes[19]
+	mi := &file_proto_config_service_config_service_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1117,7 +1214,7 @@ func (x *Usernames) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Usernames.ProtoReflect.Descriptor instead.
 func (*Usernames) Descriptor() ([]byte, []int) {
-	return file_proto_config_service_config_service_proto_rawDescGZIP(), []int{19}
+	return file_proto_config_service_config_service_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *Usernames) GetUsernames() []string {
@@ -1135,7 +1232,7 @@ type GetCorrespondenceGameCountRequest struct {
 
 func (x *GetCorrespondenceGameCountRequest) Reset() {
 	*x = GetCorrespondenceGameCountRequest{}
-	mi := &file_proto_config_service_config_service_proto_msgTypes[20]
+	mi := &file_proto_config_service_config_service_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1147,7 +1244,7 @@ func (x *GetCorrespondenceGameCountRequest) String() string {
 func (*GetCorrespondenceGameCountRequest) ProtoMessage() {}
 
 func (x *GetCorrespondenceGameCountRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_config_service_config_service_proto_msgTypes[20]
+	mi := &file_proto_config_service_config_service_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1160,7 +1257,7 @@ func (x *GetCorrespondenceGameCountRequest) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use GetCorrespondenceGameCountRequest.ProtoReflect.Descriptor instead.
 func (*GetCorrespondenceGameCountRequest) Descriptor() ([]byte, []int) {
-	return file_proto_config_service_config_service_proto_rawDescGZIP(), []int{20}
+	return file_proto_config_service_config_service_proto_rawDescGZIP(), []int{21}
 }
 
 type CorrespondenceGameCountResponse struct {
@@ -1172,7 +1269,7 @@ type CorrespondenceGameCountResponse struct {
 
 func (x *CorrespondenceGameCountResponse) Reset() {
 	*x = CorrespondenceGameCountResponse{}
-	mi := &file_proto_config_service_config_service_proto_msgTypes[21]
+	mi := &file_proto_config_service_config_service_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1184,7 +1281,7 @@ func (x *CorrespondenceGameCountResponse) String() string {
 func (*CorrespondenceGameCountResponse) ProtoMessage() {}
 
 func (x *CorrespondenceGameCountResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_config_service_config_service_proto_msgTypes[21]
+	mi := &file_proto_config_service_config_service_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1197,7 +1294,7 @@ func (x *CorrespondenceGameCountResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CorrespondenceGameCountResponse.ProtoReflect.Descriptor instead.
 func (*CorrespondenceGameCountResponse) Descriptor() ([]byte, []int) {
-	return file_proto_config_service_config_service_proto_rawDescGZIP(), []int{21}
+	return file_proto_config_service_config_service_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *CorrespondenceGameCountResponse) GetCount() int32 {
@@ -1261,14 +1358,15 @@ const file_proto_config_service_config_service_proto_rawDesc = "" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x120\n" +
 	"\x05start\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\x05start\x12,\n" +
 	"\x03end\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\x03end\x12\x12\n" +
-	"\x04note\x18\x04 \x01(\tR\x04note\"\xa4\x04\n" +
+	"\x04note\x18\x04 \x01(\tR\x04note\"\xf0\x04\n" +
 	"\x13UserDetailsResponse\x12\x12\n" +
 	"\x04uuid\x18\x01 \x01(\tR\x04uuid\x12\x14\n" +
 	"\x05email\x18\x02 \x01(\tR\x05email\x124\n" +
 	"\acreated\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\acreated\x12\x1d\n" +
 	"\n" +
 	"birth_date\x18\x04 \x01(\tR\tbirthDate\x12\x1a\n" +
-	"\busername\x18\x05 \x01(\tR\busername\x12\x1a\n" +
+	"\busername\x18\x05 \x01(\tR\busername\x12J\n" +
+	"\x10disposable_email\x18\x0e \x01(\x0e2\x1f.config_service.DisposableEmailR\x0fdisposableEmail\x12\x1a\n" +
 	"\bverified\x18\x06 \x01(\bR\bverified\x12\x1c\n" +
 	"\tnotoriety\x18\a \x01(\x05R\tnotoriety\x12\x15\n" +
 	"\x06is_bot\x18\b \x01(\bR\x05isBot\x12D\n" +
@@ -1281,12 +1379,18 @@ const file_proto_config_service_config_service_proto_rawDesc = "" +
 	"\x12SearchEmailRequest\x12#\n" +
 	"\rpartial_email\x18\x01 \x01(\tR\fpartialEmail\"P\n" +
 	"\x13SearchEmailResponse\x129\n" +
-	"\x05users\x18\x01 \x03(\v2#.config_service.UserDetailsResponseR\x05users\")\n" +
+	"\x05users\x18\x01 \x03(\v2#.config_service.UserDetailsResponseR\x05users\"\x1e\n" +
+	"\x1cSearchDisposableEmailRequest\")\n" +
 	"\tUsernames\x12\x1c\n" +
 	"\tusernames\x18\x01 \x03(\tR\tusernames\"#\n" +
 	"!GetCorrespondenceGameCountRequest\"7\n" +
 	"\x1fCorrespondenceGameCountResponse\x12\x14\n" +
-	"\x05count\x18\x01 \x01(\x05R\x05count2\xe1\t\n" +
+	"\x05count\x18\x01 \x01(\x05R\x05count*b\n" +
+	"\x0fDisposableEmail\x12\x1c\n" +
+	"\x18DISPOSABLE_EMAIL_UNKNOWN\x10\x00\x12\x17\n" +
+	"\x13DISPOSABLE_EMAIL_NO\x10\x01\x12\x18\n" +
+	"\x14DISPOSABLE_EMAIL_YES\x10\x022\xd2\n" +
+	"\n" +
 	"\rConfigService\x12U\n" +
 	"\x0fSetGamesEnabled\x12\".config_service.EnableGamesRequest\x1a\x1e.config_service.ConfigResponse\x12M\n" +
 	"\tSetFEHash\x12 .config_service.SetFEHashRequest\x1a\x1e.config_service.ConfigResponse\x12[\n" +
@@ -1299,7 +1403,8 @@ const file_proto_config_service_config_service_proto_rawDesc = "" +
 	"\rUnassignBadge\x12\".config_service.AssignBadgeRequest\x1a\x1e.config_service.ConfigResponse\x12[\n" +
 	"\x10GetUsersForBadge\x12'.config_service.GetUsersForBadgeRequest\x1a\x19.config_service.Usernames\"\x03\x90\x02\x01\x12a\n" +
 	"\x0eGetUserDetails\x12%.config_service.GetUserDetailsRequest\x1a#.config_service.UserDetailsResponse\"\x03\x90\x02\x01\x12[\n" +
-	"\vSearchEmail\x12\".config_service.SearchEmailRequest\x1a#.config_service.SearchEmailResponse\"\x03\x90\x02\x01\x12\x85\x01\n" +
+	"\vSearchEmail\x12\".config_service.SearchEmailRequest\x1a#.config_service.SearchEmailResponse\"\x03\x90\x02\x01\x12o\n" +
+	"\x15SearchDisposableEmail\x12,.config_service.SearchDisposableEmailRequest\x1a#.config_service.SearchEmailResponse\"\x03\x90\x02\x01\x12\x85\x01\n" +
 	"\x1aGetCorrespondenceGameCount\x121.config_service.GetCorrespondenceGameCountRequest\x1a/.config_service.CorrespondenceGameCountResponse\"\x03\x90\x02\x01B\xb8\x01\n" +
 	"\x12com.config_serviceB\x12ConfigServiceProtoP\x01Z:github.com/woogles-io/liwords/rpc/api/proto/config_service\xa2\x02\x03CXX\xaa\x02\rConfigService\xca\x02\rConfigService\xe2\x02\x19ConfigService\\GPBMetadata\xea\x02\rConfigServiceb\x06proto3"
 
@@ -1315,77 +1420,83 @@ func file_proto_config_service_config_service_proto_rawDescGZIP() []byte {
 	return file_proto_config_service_config_service_proto_rawDescData
 }
 
-var file_proto_config_service_config_service_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
+var file_proto_config_service_config_service_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_proto_config_service_config_service_proto_msgTypes = make([]protoimpl.MessageInfo, 23)
 var file_proto_config_service_config_service_proto_goTypes = []any{
-	(*EnableGamesRequest)(nil),                // 0: config_service.EnableGamesRequest
-	(*SetFEHashRequest)(nil),                  // 1: config_service.SetFEHashRequest
-	(*ConfigResponse)(nil),                    // 2: config_service.ConfigResponse
-	(*Announcement)(nil),                      // 3: config_service.Announcement
-	(*SetAnnouncementsRequest)(nil),           // 4: config_service.SetAnnouncementsRequest
-	(*GetAnnouncementsRequest)(nil),           // 5: config_service.GetAnnouncementsRequest
-	(*AnnouncementsResponse)(nil),             // 6: config_service.AnnouncementsResponse
-	(*SetSingleAnnouncementRequest)(nil),      // 7: config_service.SetSingleAnnouncementRequest
-	(*SetGlobalIntegrationRequest)(nil),       // 8: config_service.SetGlobalIntegrationRequest
-	(*AddBadgeRequest)(nil),                   // 9: config_service.AddBadgeRequest
-	(*AssignBadgeRequest)(nil),                // 10: config_service.AssignBadgeRequest
-	(*GetUsersForBadgeRequest)(nil),           // 11: config_service.GetUsersForBadgeRequest
-	(*GetUserDetailsRequest)(nil),             // 12: config_service.GetUserDetailsRequest
-	(*UserClient)(nil),                        // 13: config_service.UserClient
-	(*LinkedAccount)(nil),                     // 14: config_service.LinkedAccount
-	(*UserModAction)(nil),                     // 15: config_service.UserModAction
-	(*UserDetailsResponse)(nil),               // 16: config_service.UserDetailsResponse
-	(*SearchEmailRequest)(nil),                // 17: config_service.SearchEmailRequest
-	(*SearchEmailResponse)(nil),               // 18: config_service.SearchEmailResponse
-	(*Usernames)(nil),                         // 19: config_service.Usernames
-	(*GetCorrespondenceGameCountRequest)(nil), // 20: config_service.GetCorrespondenceGameCountRequest
-	(*CorrespondenceGameCountResponse)(nil),   // 21: config_service.CorrespondenceGameCountResponse
-	(*timestamppb.Timestamp)(nil),             // 22: google.protobuf.Timestamp
+	(DisposableEmail)(0),                      // 0: config_service.DisposableEmail
+	(*EnableGamesRequest)(nil),                // 1: config_service.EnableGamesRequest
+	(*SetFEHashRequest)(nil),                  // 2: config_service.SetFEHashRequest
+	(*ConfigResponse)(nil),                    // 3: config_service.ConfigResponse
+	(*Announcement)(nil),                      // 4: config_service.Announcement
+	(*SetAnnouncementsRequest)(nil),           // 5: config_service.SetAnnouncementsRequest
+	(*GetAnnouncementsRequest)(nil),           // 6: config_service.GetAnnouncementsRequest
+	(*AnnouncementsResponse)(nil),             // 7: config_service.AnnouncementsResponse
+	(*SetSingleAnnouncementRequest)(nil),      // 8: config_service.SetSingleAnnouncementRequest
+	(*SetGlobalIntegrationRequest)(nil),       // 9: config_service.SetGlobalIntegrationRequest
+	(*AddBadgeRequest)(nil),                   // 10: config_service.AddBadgeRequest
+	(*AssignBadgeRequest)(nil),                // 11: config_service.AssignBadgeRequest
+	(*GetUsersForBadgeRequest)(nil),           // 12: config_service.GetUsersForBadgeRequest
+	(*GetUserDetailsRequest)(nil),             // 13: config_service.GetUserDetailsRequest
+	(*UserClient)(nil),                        // 14: config_service.UserClient
+	(*LinkedAccount)(nil),                     // 15: config_service.LinkedAccount
+	(*UserModAction)(nil),                     // 16: config_service.UserModAction
+	(*UserDetailsResponse)(nil),               // 17: config_service.UserDetailsResponse
+	(*SearchEmailRequest)(nil),                // 18: config_service.SearchEmailRequest
+	(*SearchEmailResponse)(nil),               // 19: config_service.SearchEmailResponse
+	(*SearchDisposableEmailRequest)(nil),      // 20: config_service.SearchDisposableEmailRequest
+	(*Usernames)(nil),                         // 21: config_service.Usernames
+	(*GetCorrespondenceGameCountRequest)(nil), // 22: config_service.GetCorrespondenceGameCountRequest
+	(*CorrespondenceGameCountResponse)(nil),   // 23: config_service.CorrespondenceGameCountResponse
+	(*timestamppb.Timestamp)(nil),             // 24: google.protobuf.Timestamp
 }
 var file_proto_config_service_config_service_proto_depIdxs = []int32{
-	3,  // 0: config_service.SetAnnouncementsRequest.announcements:type_name -> config_service.Announcement
-	3,  // 1: config_service.AnnouncementsResponse.announcements:type_name -> config_service.Announcement
-	3,  // 2: config_service.SetSingleAnnouncementRequest.announcement:type_name -> config_service.Announcement
-	22, // 3: config_service.UserClient.first_seen:type_name -> google.protobuf.Timestamp
-	22, // 4: config_service.UserClient.last_seen:type_name -> google.protobuf.Timestamp
-	22, // 5: config_service.LinkedAccount.last_seen:type_name -> google.protobuf.Timestamp
-	22, // 6: config_service.UserModAction.start:type_name -> google.protobuf.Timestamp
-	22, // 7: config_service.UserModAction.end:type_name -> google.protobuf.Timestamp
-	22, // 8: config_service.UserDetailsResponse.created:type_name -> google.protobuf.Timestamp
-	15, // 9: config_service.UserDetailsResponse.active_actions:type_name -> config_service.UserModAction
-	13, // 10: config_service.UserDetailsResponse.clients:type_name -> config_service.UserClient
-	14, // 11: config_service.UserDetailsResponse.linked_accounts:type_name -> config_service.LinkedAccount
-	16, // 12: config_service.SearchEmailResponse.users:type_name -> config_service.UserDetailsResponse
-	0,  // 13: config_service.ConfigService.SetGamesEnabled:input_type -> config_service.EnableGamesRequest
-	1,  // 14: config_service.ConfigService.SetFEHash:input_type -> config_service.SetFEHashRequest
-	4,  // 15: config_service.ConfigService.SetAnnouncements:input_type -> config_service.SetAnnouncementsRequest
-	5,  // 16: config_service.ConfigService.GetAnnouncements:input_type -> config_service.GetAnnouncementsRequest
-	7,  // 17: config_service.ConfigService.SetSingleAnnouncement:input_type -> config_service.SetSingleAnnouncementRequest
-	8,  // 18: config_service.ConfigService.SetGlobalIntegration:input_type -> config_service.SetGlobalIntegrationRequest
-	9,  // 19: config_service.ConfigService.AddBadge:input_type -> config_service.AddBadgeRequest
-	10, // 20: config_service.ConfigService.AssignBadge:input_type -> config_service.AssignBadgeRequest
-	10, // 21: config_service.ConfigService.UnassignBadge:input_type -> config_service.AssignBadgeRequest
-	11, // 22: config_service.ConfigService.GetUsersForBadge:input_type -> config_service.GetUsersForBadgeRequest
-	12, // 23: config_service.ConfigService.GetUserDetails:input_type -> config_service.GetUserDetailsRequest
-	17, // 24: config_service.ConfigService.SearchEmail:input_type -> config_service.SearchEmailRequest
-	20, // 25: config_service.ConfigService.GetCorrespondenceGameCount:input_type -> config_service.GetCorrespondenceGameCountRequest
-	2,  // 26: config_service.ConfigService.SetGamesEnabled:output_type -> config_service.ConfigResponse
-	2,  // 27: config_service.ConfigService.SetFEHash:output_type -> config_service.ConfigResponse
-	2,  // 28: config_service.ConfigService.SetAnnouncements:output_type -> config_service.ConfigResponse
-	6,  // 29: config_service.ConfigService.GetAnnouncements:output_type -> config_service.AnnouncementsResponse
-	2,  // 30: config_service.ConfigService.SetSingleAnnouncement:output_type -> config_service.ConfigResponse
-	2,  // 31: config_service.ConfigService.SetGlobalIntegration:output_type -> config_service.ConfigResponse
-	2,  // 32: config_service.ConfigService.AddBadge:output_type -> config_service.ConfigResponse
-	2,  // 33: config_service.ConfigService.AssignBadge:output_type -> config_service.ConfigResponse
-	2,  // 34: config_service.ConfigService.UnassignBadge:output_type -> config_service.ConfigResponse
-	19, // 35: config_service.ConfigService.GetUsersForBadge:output_type -> config_service.Usernames
-	16, // 36: config_service.ConfigService.GetUserDetails:output_type -> config_service.UserDetailsResponse
-	18, // 37: config_service.ConfigService.SearchEmail:output_type -> config_service.SearchEmailResponse
-	21, // 38: config_service.ConfigService.GetCorrespondenceGameCount:output_type -> config_service.CorrespondenceGameCountResponse
-	26, // [26:39] is the sub-list for method output_type
-	13, // [13:26] is the sub-list for method input_type
-	13, // [13:13] is the sub-list for extension type_name
-	13, // [13:13] is the sub-list for extension extendee
-	0,  // [0:13] is the sub-list for field type_name
+	4,  // 0: config_service.SetAnnouncementsRequest.announcements:type_name -> config_service.Announcement
+	4,  // 1: config_service.AnnouncementsResponse.announcements:type_name -> config_service.Announcement
+	4,  // 2: config_service.SetSingleAnnouncementRequest.announcement:type_name -> config_service.Announcement
+	24, // 3: config_service.UserClient.first_seen:type_name -> google.protobuf.Timestamp
+	24, // 4: config_service.UserClient.last_seen:type_name -> google.protobuf.Timestamp
+	24, // 5: config_service.LinkedAccount.last_seen:type_name -> google.protobuf.Timestamp
+	24, // 6: config_service.UserModAction.start:type_name -> google.protobuf.Timestamp
+	24, // 7: config_service.UserModAction.end:type_name -> google.protobuf.Timestamp
+	24, // 8: config_service.UserDetailsResponse.created:type_name -> google.protobuf.Timestamp
+	0,  // 9: config_service.UserDetailsResponse.disposable_email:type_name -> config_service.DisposableEmail
+	16, // 10: config_service.UserDetailsResponse.active_actions:type_name -> config_service.UserModAction
+	14, // 11: config_service.UserDetailsResponse.clients:type_name -> config_service.UserClient
+	15, // 12: config_service.UserDetailsResponse.linked_accounts:type_name -> config_service.LinkedAccount
+	17, // 13: config_service.SearchEmailResponse.users:type_name -> config_service.UserDetailsResponse
+	1,  // 14: config_service.ConfigService.SetGamesEnabled:input_type -> config_service.EnableGamesRequest
+	2,  // 15: config_service.ConfigService.SetFEHash:input_type -> config_service.SetFEHashRequest
+	5,  // 16: config_service.ConfigService.SetAnnouncements:input_type -> config_service.SetAnnouncementsRequest
+	6,  // 17: config_service.ConfigService.GetAnnouncements:input_type -> config_service.GetAnnouncementsRequest
+	8,  // 18: config_service.ConfigService.SetSingleAnnouncement:input_type -> config_service.SetSingleAnnouncementRequest
+	9,  // 19: config_service.ConfigService.SetGlobalIntegration:input_type -> config_service.SetGlobalIntegrationRequest
+	10, // 20: config_service.ConfigService.AddBadge:input_type -> config_service.AddBadgeRequest
+	11, // 21: config_service.ConfigService.AssignBadge:input_type -> config_service.AssignBadgeRequest
+	11, // 22: config_service.ConfigService.UnassignBadge:input_type -> config_service.AssignBadgeRequest
+	12, // 23: config_service.ConfigService.GetUsersForBadge:input_type -> config_service.GetUsersForBadgeRequest
+	13, // 24: config_service.ConfigService.GetUserDetails:input_type -> config_service.GetUserDetailsRequest
+	18, // 25: config_service.ConfigService.SearchEmail:input_type -> config_service.SearchEmailRequest
+	20, // 26: config_service.ConfigService.SearchDisposableEmail:input_type -> config_service.SearchDisposableEmailRequest
+	22, // 27: config_service.ConfigService.GetCorrespondenceGameCount:input_type -> config_service.GetCorrespondenceGameCountRequest
+	3,  // 28: config_service.ConfigService.SetGamesEnabled:output_type -> config_service.ConfigResponse
+	3,  // 29: config_service.ConfigService.SetFEHash:output_type -> config_service.ConfigResponse
+	3,  // 30: config_service.ConfigService.SetAnnouncements:output_type -> config_service.ConfigResponse
+	7,  // 31: config_service.ConfigService.GetAnnouncements:output_type -> config_service.AnnouncementsResponse
+	3,  // 32: config_service.ConfigService.SetSingleAnnouncement:output_type -> config_service.ConfigResponse
+	3,  // 33: config_service.ConfigService.SetGlobalIntegration:output_type -> config_service.ConfigResponse
+	3,  // 34: config_service.ConfigService.AddBadge:output_type -> config_service.ConfigResponse
+	3,  // 35: config_service.ConfigService.AssignBadge:output_type -> config_service.ConfigResponse
+	3,  // 36: config_service.ConfigService.UnassignBadge:output_type -> config_service.ConfigResponse
+	21, // 37: config_service.ConfigService.GetUsersForBadge:output_type -> config_service.Usernames
+	17, // 38: config_service.ConfigService.GetUserDetails:output_type -> config_service.UserDetailsResponse
+	19, // 39: config_service.ConfigService.SearchEmail:output_type -> config_service.SearchEmailResponse
+	19, // 40: config_service.ConfigService.SearchDisposableEmail:output_type -> config_service.SearchEmailResponse
+	23, // 41: config_service.ConfigService.GetCorrespondenceGameCount:output_type -> config_service.CorrespondenceGameCountResponse
+	28, // [28:42] is the sub-list for method output_type
+	14, // [14:28] is the sub-list for method input_type
+	14, // [14:14] is the sub-list for extension type_name
+	14, // [14:14] is the sub-list for extension extendee
+	0,  // [0:14] is the sub-list for field type_name
 }
 
 func init() { file_proto_config_service_config_service_proto_init() }
@@ -1398,13 +1509,14 @@ func file_proto_config_service_config_service_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_config_service_config_service_proto_rawDesc), len(file_proto_config_service_config_service_proto_rawDesc)),
-			NumEnums:      0,
-			NumMessages:   22,
+			NumEnums:      1,
+			NumMessages:   23,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
 		GoTypes:           file_proto_config_service_config_service_proto_goTypes,
 		DependencyIndexes: file_proto_config_service_config_service_proto_depIdxs,
+		EnumInfos:         file_proto_config_service_config_service_proto_enumTypes,
 		MessageInfos:      file_proto_config_service_config_service_proto_msgTypes,
 	}.Build()
 	File_proto_config_service_config_service_proto = out.File

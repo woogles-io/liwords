@@ -2,6 +2,7 @@ package config
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"sort"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/woogles-io/liwords/pkg/apiserver"
 	"github.com/woogles-io/liwords/pkg/auth/rbac"
+	"github.com/woogles-io/liwords/pkg/disposableemail"
 	"github.com/woogles-io/liwords/pkg/stores/models"
 	"github.com/woogles-io/liwords/pkg/user"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/config_service"
@@ -31,13 +33,35 @@ type ConfigStore interface {
 }
 
 type ConfigService struct {
-	store     ConfigStore
-	userStore user.Store
-	q         *models.Queries
+	store      ConfigStore
+	userStore  user.Store
+	q          *models.Queries
+	disposable *disposableemail.List
 }
 
-func NewConfigService(cs ConfigStore, userStore user.Store, q *models.Queries) *ConfigService {
-	return &ConfigService{store: cs, userStore: userStore, q: q}
+func NewConfigService(cs ConfigStore, userStore user.Store, q *models.Queries,
+	disposable *disposableemail.List) *ConfigService {
+	return &ConfigService{store: cs, userStore: userStore, q: q, disposable: disposable}
+}
+
+// disposableEmailCheck returns a function that tells whether an address is
+// on a known disposable-email domain. If the list is unavailable, every
+// address comes back unknown, never "not disposable".
+func (cs *ConfigService) disposableEmailCheck(ctx context.Context) func(email string) pb.DisposableEmail {
+	var domains map[string]struct{}
+	if cs.disposable != nil {
+		// Domains logs a failed download itself.
+		domains, _ = cs.disposable.Domains(ctx)
+	}
+	return func(email string) pb.DisposableEmail {
+		if domains == nil {
+			return pb.DisposableEmail_DISPOSABLE_EMAIL_UNKNOWN
+		}
+		if disposableemail.Listed(domains, email) {
+			return pb.DisposableEmail_DISPOSABLE_EMAIL_YES
+		}
+		return pb.DisposableEmail_DISPOSABLE_EMAIL_NO
+	}
 }
 
 func (cs *ConfigService) SetGamesEnabled(ctx context.Context, req *connect.Request[pb.EnableGamesRequest],
@@ -234,6 +258,7 @@ func (cs *ConfigService) GetUserDetails(ctx context.Context, req *connect.Reques
 		Created:              timestamppb.New(deetz.CreatedAt.Time),
 		BirthDate:            deetz.BirthDate.String,
 		Username:             deetz.Username,
+		DisposableEmail:      cs.disposableEmailCheck(ctx)(deetz.Email),
 		Verified:             deetz.Verified,
 		Notoriety:            deetz.Notoriety,
 		IsBot:                deetz.InternalBot,
@@ -296,14 +321,59 @@ func (cs *ConfigService) SearchEmail(ctx context.Context, req *connect.Request[p
 		return nil, err
 	}
 	matchesPb := make([]*pb.UserDetailsResponse, len(matches))
+	disposable := cs.disposableEmailCheck(ctx)
 
 	for i := range matches {
 		matchesPb[i] = &pb.UserDetailsResponse{
-			Uuid:      matches[i].Uuid,
-			Email:     matches[i].Email,
-			Created:   timestamppb.New(matches[i].CreatedAt.Time),
-			BirthDate: matches[i].BirthDate.String,
-			Username:  matches[i].Username,
+			Uuid:            matches[i].Uuid,
+			Email:           matches[i].Email,
+			Created:         timestamppb.New(matches[i].CreatedAt.Time),
+			BirthDate:       matches[i].BirthDate.String,
+			Username:        matches[i].Username,
+			DisposableEmail: disposable(matches[i].Email),
+		}
+	}
+
+	res := connect.NewResponse(&pb.SearchEmailResponse{
+		Users: matchesPb,
+	})
+	setPrivate(res.Header())
+	return res, nil
+}
+
+func (cs *ConfigService) SearchDisposableEmail(ctx context.Context, req *connect.Request[pb.SearchDisposableEmailRequest]) (
+	*connect.Response[pb.SearchEmailResponse], error) {
+
+	_, err := apiserver.AuthenticateWithPermission(ctx, cs.userStore, cs.q, rbac.CanSeePrivateUserData)
+	if err != nil {
+		return nil, err
+	}
+	if cs.disposable == nil {
+		return nil, connect.NewError(connect.CodeUnavailable, errors.New("the list of disposable-email domains is unavailable"))
+	}
+	domains, err := cs.disposable.Domains(ctx)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeUnavailable,
+			fmt.Errorf("the list of disposable-email domains is unavailable: %w", err))
+	}
+	listed := make([]string, 0, len(domains))
+	for d := range domains {
+		listed = append(listed, d)
+	}
+
+	matches, err := cs.q.GetUsersOnEmailDomains(ctx, listed)
+	if err != nil {
+		return nil, err
+	}
+	matchesPb := make([]*pb.UserDetailsResponse, len(matches))
+	for i := range matches {
+		matchesPb[i] = &pb.UserDetailsResponse{
+			Uuid:            matches[i].Uuid,
+			Email:           matches[i].Email,
+			Created:         timestamppb.New(matches[i].CreatedAt.Time),
+			BirthDate:       matches[i].BirthDate.String,
+			Username:        matches[i].Username,
+			DisposableEmail: pb.DisposableEmail_DISPOSABLE_EMAIL_YES,
 		}
 	}
 

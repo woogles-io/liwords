@@ -2,6 +2,7 @@ import { useQuery } from "@connectrpc/connect-query";
 import { Button, Form, Input, message, Switch, Table } from "antd";
 import {
   getUserDetails,
+  searchDisposableEmail,
   searchEmail,
 } from "../gen/api/proto/config_service/config_service-ConfigService_connectquery";
 import { useState } from "react";
@@ -9,7 +10,10 @@ import { Link } from "react-router";
 import moment from "moment";
 import { timestampDate } from "@bufbuild/protobuf/wkt";
 import { Timestamp } from "@bufbuild/protobuf/wkt";
-import { UserDetailsResponse } from "../gen/api/proto/config_service/config_service_pb";
+import {
+  DisposableEmail,
+  UserDetailsResponse,
+} from "../gen/api/proto/config_service/config_service_pb";
 
 const layout = {
   labelCol: {
@@ -22,6 +26,15 @@ const layout = {
 
 const fmtTime = (ts?: Timestamp) =>
   ts ? moment(timestampDate(ts)).format("YYYY-MM-DD HH:mm") : "";
+
+const toRows = (users: UserDetailsResponse[]) =>
+  users.map((item) => ({
+    ...item,
+    created: item.created
+      ? moment(timestampDate(item.created)).toISOString()
+      : undefined,
+    key: item.uuid,
+  }));
 
 // Geolocation happens in the viewer's browser, so user IPs are never sent to a
 // third party by the server.
@@ -185,6 +198,11 @@ export const UserDetails = () => {
     { partialEmail: partialEmail },
     { enabled: false, retry: false },
   );
+  const { data: disposableData, refetch: refetchDisposable } = useQuery(
+    searchDisposableEmail,
+    {},
+    { enabled: false, retry: false },
+  );
 
   const columns = [
     {
@@ -201,6 +219,19 @@ export const UserDetails = () => {
       title: "Email",
       dataIndex: "email",
       key: "email",
+    },
+    {
+      title: "Disposable email",
+      dataIndex: "disposableEmail",
+      key: "disposableEmail",
+      // Unknown means the list of disposable-email domains could not be
+      // fetched, which is not the same as "no".
+      render: (d: DisposableEmail) =>
+        d === DisposableEmail.YES
+          ? "yes"
+          : d === DisposableEmail.NO
+            ? ""
+            : "list unavailable",
     },
     {
       title: "Joined",
@@ -225,13 +256,7 @@ export const UserDetails = () => {
       : undefined
     : searchEmailData?.users;
   if (dataSource?.length) {
-    tableDataSource = dataSource.map((item) => ({
-      ...item,
-      created: item.created
-        ? moment(timestampDate(item.created)).toISOString()
-        : undefined,
-      key: item.uuid,
-    }));
+    tableDataSource = toRows(dataSource);
   }
 
   return (
@@ -286,6 +311,24 @@ export const UserDetails = () => {
       {!searchByEmail && searchUserData && (
         <UserConnectionDetails user={searchUserData} />
       )}
+
+      <h3>Accounts on disposable-email domains</h3>
+      <Button
+        onClick={async () => {
+          try {
+            await refetchDisposable({ throwOnError: true });
+          } catch (e) {
+            message.error({ content: "Error: " + String(e) });
+          }
+        }}
+      >
+        List them
+      </Button>
+      <Table
+        dataSource={disposableData ? toRows(disposableData.users) : undefined}
+        columns={columns}
+        size="small"
+      />
     </>
   );
 };

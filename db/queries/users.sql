@@ -38,6 +38,26 @@ JOIN profiles p on u.id = p.user_id
 WHERE lower(u.email) LIKE @lowercased_email_like
 LIMIT 100;
 
+-- name: GetUsersOnEmailDomains :many
+-- Accounts whose email domain (after the last @), or a parent domain of it,
+-- is one of @domains, newest first. A bare top-level domain never matches.
+-- Each domain and its parents are joined against the list, so the list is
+-- hashed once instead of scanned per account.
+WITH listed AS (
+    SELECT unnest(@domains::text[]) AS domain
+),
+suffixes AS (
+    SELECT u.id, array_to_string(labels[i:], '.') AS suffix
+    FROM users u
+    CROSS JOIN LATERAL string_to_array(lower(substring(u.email from '@([^@]*)$')), '.') AS labels
+    CROSS JOIN LATERAL generate_series(1, cardinality(labels) - 1) AS i
+)
+SELECT u.uuid, u.email, u.created_at, u.username, p.birth_date
+FROM users u
+JOIN profiles p on u.id = p.user_id
+WHERE u.id IN (SELECT s.id FROM suffixes s JOIN listed l ON l.domain = s.suffix)
+ORDER BY u.created_at DESC;
+
 -- name: GetUserId :one
 SELECT
     u.id
