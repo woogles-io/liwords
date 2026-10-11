@@ -625,6 +625,30 @@ func TestSuccessfulChallengeCanTriggerTheScorelessStalemate(t *testing.T) {
 	is.Equal(cur.Scores, [MaxPlayers]int32{120 - 11, 140 - 7})
 }
 
+// Under the triple rule a successful challenge ends the game outright: the
+// phony comes off, the challenger wins, and no scoreless turn is counted --
+// so no stalemate can fire and nobody's rack is deducted. That is what
+// AdjudicateChallenge does, and what macondo does (game/challenge.go:68-96).
+// ApplyReturnedPhony, which the replay uses to apply a recorded verdict, used
+// to count the turn, and with five scoreless turns behind it deducted both
+// racks from a game that never had them deducted.
+func TestReturnedPhonyUnderTripleEndsWithoutAScorelessTurn(t *testing.T) {
+	is := is.New(t)
+	cur, prev, ld := challengeFixture(t, "FRIENDS", 74)
+	prev.ScorelessTurns = MaxScorelessTurns - 1
+	r := testRules(t, ChallengeRuleTriple, ld)
+	challenger := cur.OnTurn
+
+	res, err := cur.ApplyReturnedPhony(r, prev)
+	is.NoErr(err)
+	is.True(res.GameOver)
+	is.Equal(res.Winner, int8(challenger))
+	is.Equal(cur.PlayState, GameOver)
+	is.Equal(cur.ScorelessTurns, prev.ScorelessTurns)
+	is.True(res.ScorelessPenalties == nil)
+	is.Equal(cur.Scores, prev.Scores)
+}
+
 func TestChallengeRefusals(t *testing.T) {
 	is := is.New(t)
 

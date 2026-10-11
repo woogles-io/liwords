@@ -34,10 +34,23 @@ func (s *State) ApplyReturnedPhony(r *Rules, prev *State) (*ApplyResult, error) 
 	if err := s.returnPhony(prev, tmp); err != nil {
 		return nil, err
 	}
+	res := newApplyResult()
+	if r.ChallengeRule == ChallengeRuleTriple {
+		// A successful triple challenge ends the game outright and the
+		// challenger wins. No scoreless turn is counted, so the stalemate can
+		// never fire on top of it -- as in AdjudicateChallenge's triple branch
+		// and in macondo (game/challenge.go:68-96).
+		res.Score = tmp.LostScore
+		res.TimeAttributedTo = int8(challenger)
+		res.GameOver = true
+		res.Winner = int8(challenger)
+		s.PlayState = GameOver
+		s.LastWordsFormed = nil
+		return res, nil
+	}
 	// The challengee's forfeited turn counts as scoreless, on top of whatever
 	// had accumulated before the phony.
 	s.ScorelessTurns++
-	res := newApplyResult()
 	// Score carries what the challengee gave back, which is the one number a
 	// caller needs that the position no longer shows.
 	res.Score = tmp.LostScore
