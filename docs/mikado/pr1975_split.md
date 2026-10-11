@@ -7,7 +7,9 @@ changes to the move path. Shipped as one PR, the deploy order in
 cache removal have no flags, so they would all go live at once.
 
 This document is the plan for landing it as a stack of PRs, one deployable and
-revertible stage each, and the record of how each step was checked.
+revertible stage each, and the record of how each step was checked. It also
+holds what comes after the split: putting xwordgame on the live path, in
+three phases (see "After the split").
 
 **Reference:** branch `xwordgame-referee-state` at `08da29c33` (master merged
 in, migrations renumbered). Until the split is finished, that branch is the
@@ -233,6 +235,127 @@ reference's `turns[0]`/`turns[1]` mismatch and no other field.
 Deviation from the reference: the exclusion and one comment in `db.go`, plus
 the new test file. These carry through to the top of the stack.
 
+### Fixes from reviewing xwordgame against macondo (step 2)
+
+On 2026-10-10 xwordgame was compared, area by area, against macondo v0.13.5,
+whose game rules are unchanged in current macondo. The rules match for every
+path liwords uses. Each finding below was confirmed in the source. Fixed in
+step 2, each as its own commit with a regression test that fails without it:
+
+- **A refused exchange lost the tiles.** With an exchange limit below seven
+  (FISE, FILE), naming more tiles than the bag holds passed `ValidateMove`,
+  and `ApplyExchange` took the tiles off the rack before the draw failed.
+  `ValidateMove` now refuses it up front, as macondo does
+  (`apply.go`, `apply_test.go`).
+- **A successful triple challenge counted a scoreless turn in replay.**
+  `ApplyReturnedPhony` could fire the six-scoreless-turns ending and deduct
+  both racks from a game that never had them deducted. It now ends the game
+  with the challenger winning and counts nothing, as `AdjudicateChallenge`
+  and macondo do (`challenge_outcome.go`, `challenge_test.go`). This is in
+  the shadow path. Not re-checked against the production corpus, which needs
+  an export.
+- **Docs that were wrong:** when macondo clears the challengeable words (its
+  live path does, its reconstruction doesn't), how `TurnNum` moves, and what
+  the "67k challenges, 0 divergences" figure proves (the replay applies
+  recorded verdicts; it never decides one) (`state.go`, `quirks.go`,
+  `xwordgame_review.md`).
+
+Everything that only matters once xwordgame runs live games is in #2037. That
+includes the wordsmog lexicon file (`.kwg` vs macondo's `.kad`) and
+`RulesFor` ignoring a failed lexicon load. An earlier note here said those
+touched the shadows; they don't, because replay never checks words.
+
+### For step 7: the mikado graph and `xwordgame_remaining.md`
+
+They say "delete xwordbridge" when macondo leaves the live path. Only the
+scaffolding goes: `StateFromGame`, `Compare` and the `quirks.go` exclusions.
+`ReplayHistory`, `StateFromTurns`, `DecodeTurn(s)`, `MoveFromEvent` and
+`rules.go` are the future turns read path, and have to move into xwordgame or
+a liwords storage package. Also, removing macondo from `go.mod` has to depend
+on `MoveGameHistoryProto`, because stored event logs and every S3 archive use
+macondo's `GameHistory`/`GameEvent` protos. And `ReadPathFromTurns` ("serve
+a position rebuilt from game_turns") is drawn as a separate, earlier step than
+`MigrateNativeGamesToPkgGame` (put the referee on the live path). It can't be:
+`DBStore.Get` returns an `entity.Game` embedding macondo's game, and
+`StateFromTurns` returns an xwordgame position. They are one step, phase 2
+below; merge the nodes and replace the "what is left" list with the phases.
+Correct all of this when those docs land in step 7 (a deviation; add them to
+the ledger's list then).
+
+## After the split: putting xwordgame on the live path
+
+The point of all this is for xwordgame, not macondo, to referee live games,
+with the position rebuilt from `game_turns` on every load. #1975 planned that
+destination but not the route: it treated serving from turns as a step before
+the referee switch (impossible while `entity.Game` embeds macondo's game),
+called the remaining work "wiring it in", and had no stage where xwordgame
+decides real moves before it serves them. These phases fix that. Start phase 1
+once step 3's shadows have been quiet in production.
+
+Today, 16 non-test files reach into macondo's game through `entity.Game`
+(about 63 explicit call sites, mostly `History`, `Playing`, `PlayerOnTurn`,
+plus promoted methods called directly), centred on `pkg/gameplay` and the
+store's load and save. The work items are tracked in #2037, by phase.
+
+### Phase 1: run xwordgame alongside macondo on live moves
+
+Flag: `SHADOW_REFEREE`, default off. Serves nothing.
+
+- macondo still decides and serves every move. In the background, xwordgame
+  applies the same client move to the position rebuilt from turns, and the
+  two results are compared: the new position, and the events each would
+  write.
+- This is where the live wiring gets built, exercised on real traffic before
+  it serves anything:
+  - parsing and scoring client moves;
+  - turning `ApplyResult` into macondo-style events;
+  - the position before the last play, for challenges (from the replay, with
+    the racks corrected);
+  - returned tiles for challenge results;
+  - clock effects (the timeout fix, overtime penalty, winner after penalties).
+- It covers what synthetic tests can't: real challenges under every rule,
+  timeouts, exchanges and endings, decided by both engines. That closes the
+  evidence gap in #2037 (challenge decisions never compared against macondo).
+- Needs: step 3 (shadows, `GetGameWithTurns`). Doesn't need steps 4-6,
+  because it serves nothing.
+- Watch: a `referee-shadow-mismatch` log line naming every disagreeing field
+  and event. Bar to move on: zero for a week including a weekend, across real
+  challenges of each rule in use.
+
+### Phase 2: xwordgame serves
+
+Flag: `XWORDGAME_REFEREE`, default off, turned on per game mode: real-time
+first, correspondence last (a bad real-time game is over in twenty minutes, a
+bad correspondence game carries a corrupt position for weeks).
+
+- Loading means `StateFromTurns`. xwordgame applies moves; phase 1's emitters
+  write the events.
+- Keep writing the `history` bytea throughout the rollout, assembled from the
+  same events. That makes rollback instant: flip the flag off and macondo
+  reloads from the bytea. Because both engines read and write the same event
+  format, a game can switch engines between moves.
+- Bots: liwords validates bot moves through the referee too, so they go
+  through xwordgame the same way.
+- Needs: step 4 (turn rows and games row in one transaction), steps 5 and 6
+  (lock held across load-modify-save, no cache: every move rebuilds from
+  turns, so the lock is what serializes moves).
+- Watch: move error rates, `verifyHistory` / `archive-verify-mismatch` at
+  archival, phase 1's shadow left on for flag-off games.
+
+### Phase 3: take macondo off the live path
+
+- `entity.Game` stops embedding macondo's game and holds the xwordgame
+  position plus the history proto.
+- Stop writing the `history` bytea (the last step of shrinking `games`; see
+  `xwordgame_remaining.md`).
+- Delete the bridge scaffolding (`StateFromGame`, `Compare`, `quirks.go`) and
+  move its permanent half (`ReplayHistory`, `StateFromTurns`, `DecodeTurn(s)`,
+  `MoveFromEvent`, `rules.go`) into xwordgame or a liwords storage package.
+- Copy the `GameHistory`/`GameEvent` protos into liwords before removing
+  macondo from `go.mod` (the graph's `MoveGameHistoryProto`).
+- Separate, later: the annotator moves off `pkg/cwgame` onto xwordgame
+  (`FivePointMode` and `LegacyFivePointMode` exist for it).
+
 ## Manual steps
 
 - **Before 1b deploys:** production does not have the unique index (checked
@@ -292,6 +415,13 @@ pkg/gameplay/end.go
 pkg/mod/automod.go
 pkg/stores/models/models.go
 db/migrations/202610090003_notoriousgames_unique.up.sql
+pkg/xwordgame/apply.go
+pkg/xwordgame/apply_test.go
+pkg/xwordgame/challenge_outcome.go
+pkg/xwordgame/challenge_test.go
+pkg/xwordgame/state.go
+pkg/xwordbridge/quirks.go
+docs/mikado/xwordgame_review.md
 "
 # Reference changes that will not land at all (issue #2036). They must stay
 # at master.
@@ -402,11 +532,19 @@ Kept up to date at the top of the stack. `TestStandings` in
 
 | # | Branch | PR | Ledger checked | Tests | Merged | Deployed |
 |---|---|---|---|---|---|---|
-| 1 | `referee-split-1-automod` | #2026 | 2026-10-10 (re-cut) | | | |
-| 1b | `referee-split-1b-games-uuid` | #2027 | 2026-10-09 | store + gameplay ✅ | | |
-| 2 | `referee-split-2-referee` | #2028 | 2026-10-09 | full suite ✅ (corpus tests skip) | | |
-| 3 | `referee-split-3-shadows` | #2029 | 2026-10-09 | full suite ✅; gameplay with flags on, matches master | | |
+| 1 | `referee-split-1-automod` | #2026 | 2026-10-10 (re-cut) | full suite ✅ | ✅ | ✅ 2026-10-10 |
+| 1b | `referee-split-1b-games-uuid` | #2027 | 2026-10-09 | store + gameplay ✅ | ✅ | ✅ 2026-10-10 (index built by hand first; schema `202610090004`) |
+| 2 | `referee-split-2-referee` | #2028 | 2026-10-10 (review fixes) | full suite ✅ (corpus tests skip) | | |
+| 3 | `referee-split-3-shadows` | #2029 | 2026-10-10 | full suite ✅; gameplay with flags on, matches master | | |
 | 4 | `referee-split-4-atomic-save` | | | | | |
 | 5 | `referee-split-5-session-lock` | | | | | |
 | 6 | `referee-split-6-no-cache` | | | | | |
 | 7 | `referee-split-7-ongoing-games` | | | | | |
+
+After the split (see "After the split"):
+
+| Phase | What | Flag | Needs | Started | Flag on |
+|---|---|---|---|---|---|
+| 1 | xwordgame decides live moves alongside macondo, compared, serves nothing | `SHADOW_REFEREE` | step 3 deployed, its shadows quiet | | |
+| 2 | xwordgame serves, real-time first, correspondence last | `XWORDGAME_REFEREE` | phase 1 quiet for a week; steps 4-6 | | |
+| 3 | macondo off the live path | none | phase 2 on for every game mode | | |
