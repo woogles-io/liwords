@@ -13,6 +13,7 @@ import { Timestamp } from "@bufbuild/protobuf/wkt";
 import {
   DisposableEmail,
   UserDetailsResponse,
+  UserModAction,
 } from "../gen/api/proto/config_service/config_service_pb";
 
 const layout = {
@@ -35,6 +36,15 @@ const toRows = (users: UserDetailsResponse[]) =>
       : undefined,
     key: item.uuid,
   }));
+
+// How long an account stays suspended: blank if it isn't.
+export const suspensionText = (s?: UserModAction) =>
+  !s ? "" : s.end ? `until ${fmtTime(s.end)}` : "permanently";
+
+export const withoutSuspended = <T extends { suspension?: UserModAction }>(
+  rows: T[] | undefined,
+  hide: boolean,
+) => (rows && hide ? rows.filter((r) => !r.suspension) : rows);
 
 // Geolocation happens in the viewer's browser, so user IPs are never sent to a
 // third party by the server.
@@ -188,6 +198,7 @@ export const UserDetails = () => {
   const [username, setUsername] = useState("");
   const [partialEmail, setPartialEmail] = useState("");
   const [searchByEmail, setSearchByEmail] = useState(false);
+  const [hideSuspended, setHideSuspended] = useState(false);
   const { data: searchUserData, refetch: refetchByUsername } = useQuery(
     getUserDetails,
     { username: username },
@@ -234,6 +245,12 @@ export const UserDetails = () => {
             : "list unavailable",
     },
     {
+      title: "Suspended",
+      dataIndex: "suspension",
+      key: "suspension",
+      render: (s?: UserModAction) => suspensionText(s),
+    },
+    {
       title: "Joined",
       dataIndex: "created",
       key: "created",
@@ -256,7 +273,7 @@ export const UserDetails = () => {
       : undefined
     : searchEmailData?.users;
   if (dataSource?.length) {
-    tableDataSource = toRows(dataSource);
+    tableDataSource = withoutSuspended(toRows(dataSource), hideSuspended);
   }
 
   return (
@@ -267,6 +284,13 @@ export const UserDetails = () => {
           <Switch
             value={searchByEmail}
             onChange={() => setSearchByEmail((s) => !s)}
+            className="dark-toggle"
+          />
+        </Form.Item>
+        <Form.Item label="Hide suspended accounts">
+          <Switch
+            value={hideSuspended}
+            onChange={() => setHideSuspended((h) => !h)}
             className="dark-toggle"
           />
         </Form.Item>
@@ -325,7 +349,10 @@ export const UserDetails = () => {
         List them
       </Button>
       <Table
-        dataSource={disposableData ? toRows(disposableData.users) : undefined}
+        dataSource={withoutSuspended(
+          disposableData ? toRows(disposableData.users) : undefined,
+          hideSuspended,
+        )}
         columns={columns}
         size="small"
       />
