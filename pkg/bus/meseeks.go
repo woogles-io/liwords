@@ -607,10 +607,32 @@ func (b *Bus) gameAccepted(ctx context.Context, evt *pb.SoughtGameProcessEvent,
 	}
 
 	// Otherwise create a game
-	// If the ACCEPTOR of the seek has a seek request open, we must cancel it.
-	err = b.deleteSoughtForUser(ctx, userID)
-	if err != nil {
-		return err
+	if gameReq.GameMode == pb.GameMode_CORRESPONDENCE {
+		// The new game opens in the accepting tab, and in the seeking tab if
+		// it is still connected. Each of those tabs gets a new socket on the
+		// way, and closing the old one cancels the tab's real-time seek, so a
+		// live game accepted in between would be announced to a socket that
+		// is gone. Cancel those seeks before the redirect instead. Real-time
+		// seeks in the users' other tabs stay up.
+		seekerConnID, err := sg.SeekerConnID()
+		if err != nil {
+			return err
+		}
+		canceled, err := b.cancelRealtimeSeeksOfConns(ctx, connID, seekerConnID)
+		if err != nil {
+			return err
+		}
+		for _, c := range canceled {
+			if err := b.sendSoughtGameDeletion(ctx, c); err != nil {
+				return err
+			}
+		}
+	} else {
+		// If the ACCEPTOR of the seek has a seek request open, we must cancel it.
+		err = b.deleteSoughtForUser(ctx, userID)
+		if err != nil {
+			return err
+		}
 	}
 
 	return b.instantiateAndStartGame(ctx, accUser, requester, gameReq, sg, evt.RequestId, connID)
@@ -834,6 +856,27 @@ func (b *Bus) deleteSoughtForConnID(ctx context.Context, connID string) error {
 	}
 	log.Debug().Interface("req", req).Str("connID", connID).Msg("updating-receiver-for-connid")
 	return b.sendReceiverAbsent(ctx, req)
+}
+
+// cancelRealtimeSeeksOfConns cancels the real-time seek made from each of the
+// given connections, if there is one, and returns what it canceled.
+// Correspondence seeks stay. An empty connection ID is skipped, since it
+// names no tab.
+func (b *Bus) cancelRealtimeSeeksOfConns(ctx context.Context, connIDs ...string) ([]*entity.SoughtGame, error) {
+	var canceled []*entity.SoughtGame
+	for _, connID := range connIDs {
+		if connID == "" {
+			continue
+		}
+		sg, err := b.stores.SoughtGameStore.DeleteForSeekerConnID(ctx, connID)
+		if err != nil {
+			return canceled, err
+		}
+		if sg != nil {
+			canceled = append(canceled, sg)
+		}
+	}
+	return canceled, nil
 }
 
 // blockedByUUIDSet returns the set of UUIDs of users who block the given user (by DB ID),

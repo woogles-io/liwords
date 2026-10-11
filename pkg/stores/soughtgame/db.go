@@ -144,7 +144,10 @@ func (s *DBStore) DeleteForUser(ctx context.Context, userID string) (*entity.Sou
 	defer tx.Rollback(ctx)
 
 	qtx := s.queries.WithTx(tx)
-	data, err := qtx.GetSoughtGameBySeekerID(ctx, pgtype.Text{String: userID, Valid: true})
+	// Don't delete correspondence seeks when seeker leaves - they should persist.
+	// A user may hold correspondence seeks alongside their one real-time seek,
+	// so only the real-time seek is read and deleted.
+	data, err := qtx.GetRealtimeSoughtGameBySeekerID(ctx, pgtype.Text{String: userID, Valid: true})
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return nil, nil
@@ -156,16 +159,7 @@ func (s *DBStore) DeleteForUser(ctx context.Context, userID string) (*entity.Sou
 		return nil, err
 	}
 
-	// Don't delete correspondence seeks when seeker leaves - they should persist
-	if sg.SeekRequest != nil && sg.SeekRequest.GameRequest != nil && sg.SeekRequest.GameRequest.GameMode == pb.GameMode_CORRESPONDENCE {
-		log.Debug().Str("userID", userID).Msg("skipping-deletion-of-correspondence-seek-for-user")
-		if err := tx.Commit(ctx); err != nil {
-			return nil, err
-		}
-		return nil, nil
-	}
-
-	if err := qtx.DeleteSoughtGameBySeekerID(ctx, pgtype.Text{String: userID, Valid: true}); err != nil {
+	if err := qtx.DeleteRealtimeSoughtGamesBySeekerID(ctx, pgtype.Text{String: userID, Valid: true}); err != nil {
 		return nil, err
 	}
 
@@ -229,7 +223,10 @@ func (s *DBStore) DeleteForSeekerConnID(ctx context.Context, connID string) (*en
 	defer tx.Rollback(ctx)
 
 	qtx := s.queries.WithTx(tx)
-	data, err := qtx.GetSoughtGameBySeekerConnID(ctx, pgtype.Text{String: connID, Valid: true})
+	// Don't delete correspondence seeks when seeker disconnects - they should persist.
+	// The same connection may hold correspondence seeks alongside the one
+	// real-time seek, so only the real-time seek is read and deleted.
+	data, err := qtx.GetRealtimeSoughtGameBySeekerConnID(ctx, pgtype.Text{String: connID, Valid: true})
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return nil, nil
@@ -241,16 +238,7 @@ func (s *DBStore) DeleteForSeekerConnID(ctx context.Context, connID string) (*en
 		return nil, err
 	}
 
-	// Don't delete correspondence seeks when seeker disconnects - they should persist
-	if sg.SeekRequest != nil && sg.SeekRequest.GameRequest != nil && sg.SeekRequest.GameRequest.GameMode == pb.GameMode_CORRESPONDENCE {
-		log.Debug().Str("connID", connID).Msg("skipping-deletion-of-correspondence-seek")
-		if err := tx.Commit(ctx); err != nil {
-			return nil, err
-		}
-		return nil, nil
-	}
-
-	if err := qtx.DeleteSoughtGameBySeekerConnID(ctx, pgtype.Text{String: connID, Valid: true}); err != nil {
+	if err := qtx.DeleteRealtimeSoughtGamesBySeekerConnID(ctx, pgtype.Text{String: connID, Valid: true}); err != nil {
 		return nil, err
 	}
 
@@ -360,51 +348,20 @@ func (s *DBStore) ExistsForUser(ctx context.Context, userID string) (bool, error
 }
 
 // CanCreateSeek returns true if the user can create a new seek/match request.
-// For correspondence match requests, multiple can exist simultaneously.
-// For all other types (real-time or open seeks), only one can exist at a time.
+// A user may hold one real-time seek or match request at a time, alongside
+// any number of correspondence seeks and match requests.
 // Returns (canCreate, conflictType, error) where conflictType indicates what kind of conflict exists.
 func (s *DBStore) CanCreateSeek(ctx context.Context, userID string, gameMode pb.GameMode, receiverID string) (bool, string, error) {
-	tx, err := s.dbPool.BeginTx(ctx, common.ReadOnlyTxOptions)
-	if err != nil {
-		return false, "", err
-	}
-	defer tx.Rollback(ctx)
-	qtx := s.queries.WithTx(tx)
-
-	// Check if user has any existing seeks
-	count, err := qtx.CountSeeksForUser(ctx, pgtype.Text{String: userID, Valid: true})
-	if err != nil {
-		return false, "", err
-	}
-
-	// If no existing seeks, always allow
-	if count == 0 {
+	if gameMode == pb.GameMode_CORRESPONDENCE {
 		return true, "", nil
 	}
-
-	// If this is a correspondence match request (receiver != '' AND game_mode = 1)
-	isCorrespondenceMatch := gameMode == pb.GameMode_CORRESPONDENCE && receiverID != ""
-
-	if !isCorrespondenceMatch {
-		// For real-time or open seeks, don't allow if any existing seeks exist
-		return false, "has_other_seek", nil
-	}
-
-	// For correspondence match requests, check what kind of conflicts exist
-	conflicts, err := qtx.CountSeekConflictsForCorrespondence(ctx, pgtype.Text{String: userID, Valid: true})
+	count, err := s.queries.CountRealtimeSeeksForUser(ctx, pgtype.Text{String: userID, Valid: true})
 	if err != nil {
 		return false, "", err
 	}
-
-	// Determine conflict type
-	if conflicts.HasOpenSeek > 0 {
-		return false, "has_open_seek", nil
-	}
-	if conflicts.HasRealtimeSeek > 0 {
+	if count > 0 {
 		return false, "has_realtime_seek", nil
 	}
-
-	// All existing seeks are correspondence matches, allow
 	return true, "", nil
 }
 

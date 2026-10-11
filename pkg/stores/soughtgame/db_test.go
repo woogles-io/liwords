@@ -219,6 +219,74 @@ func TestSoughtGameNullValues(t *testing.T) {
 	store.Disconnect()
 }
 
+// One real-time seek or match request at a time, alongside any number of
+// correspondence ones; leaving cancels only the real-time one (#1792).
+func TestOneRealtimeSeekAlongsideCorrespondence(t *testing.T) {
+	_, store := recreateDB()
+	is := is.New(t)
+	ctx := context.Background()
+	seeker := common.DefaultSeekRequest.User.UserId
+	conn := common.DefaultSeekRequest.SeekerConnectionId
+
+	// newSeek stores a seek from the default seeker and returns its id; an
+	// empty receiver makes it an open seek.
+	newSeek := func(mode pb.GameMode, receiver string) string {
+		sg := newSoughtGame()
+		sg.SeekRequest.GameRequest.GameMode = mode
+		if receiver == "" {
+			sg.SeekRequest.ReceivingUser = nil
+		} else {
+			sg.SeekRequest.ReceivingUser.UserId = receiver
+		}
+		is.NoErr(store.New(ctx, sg))
+		id, err := sg.ID()
+		is.NoErr(err)
+		return id
+	}
+	canCreate := func(mode pb.GameMode, receiver string) bool {
+		ok, _, err := store.CanCreateSeek(ctx, seeker, mode, receiver)
+		is.NoErr(err)
+		return ok
+	}
+	exists := func(id string) bool {
+		_, err := store.Get(ctx, id)
+		return err == nil
+	}
+
+	corresOpen := newSeek(pb.GameMode_CORRESPONDENCE, "")
+	corresMatch := newSeek(pb.GameMode_CORRESPONDENCE, "someone")
+	is.True(canCreate(pb.GameMode_REAL_TIME, ""))
+	is.True(canCreate(pb.GameMode_CORRESPONDENCE, ""))
+
+	live := newSeek(pb.GameMode_REAL_TIME, "")
+	is.True(!canCreate(pb.GameMode_REAL_TIME, ""))
+	is.True(!canCreate(pb.GameMode_REAL_TIME, "someone"))
+	is.True(canCreate(pb.GameMode_CORRESPONDENCE, "other"))
+
+	// Leaving, or accepting a live game, cancels only the live seek.
+	deleted, err := store.DeleteForUser(ctx, seeker)
+	is.NoErr(err)
+	id, err := deleted.ID()
+	is.NoErr(err)
+	is.Equal(id, live)
+	is.True(!exists(live))
+	is.True(exists(corresOpen))
+	is.True(exists(corresMatch))
+
+	// So does closing the tab the seeks came from.
+	live = newSeek(pb.GameMode_REAL_TIME, "someone")
+	deleted, err = store.DeleteForSeekerConnID(ctx, conn)
+	is.NoErr(err)
+	id, err = deleted.ID()
+	is.NoErr(err)
+	is.Equal(id, live)
+	is.True(!exists(live))
+	is.True(exists(corresOpen))
+	is.True(exists(corresMatch))
+
+	store.Disconnect()
+}
+
 func newSoughtGame() *entity.SoughtGame {
 	sg := &entity.SoughtGame{SeekRequest: proto.Clone(&common.DefaultSeekRequest).(*pb.SeekRequest)}
 	sg.SeekRequest.GameRequest.RequestId = shortuuid.New()
