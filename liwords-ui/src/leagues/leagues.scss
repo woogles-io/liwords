@@ -375,6 +375,20 @@
     }
   }
 
+  // Previous / next season of the player followed from the roster
+  .league-follow-bar {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 16px;
+    padding: 0 16px;
+
+    .league-follow-name {
+      font-weight: 600;
+    }
+  }
+
   .season-navigation-card {
     margin-bottom: 24px;
 

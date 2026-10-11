@@ -42,6 +42,13 @@ import { hasPermission, Perm } from "../mod/perms";
 import { DivisionStandings } from "./standings";
 import { LeagueRoster } from "./league_roster";
 import { LeagueCorrespondenceGames } from "./league_correspondence_games";
+import { FollowBar } from "./follow_bar";
+import {
+  FollowedPlayer,
+  followNeighbors,
+  followPlayer,
+  showsFollowed,
+} from "./follow_player";
 import {
   PromotionFormula,
   StandingResult,
@@ -132,6 +139,10 @@ export const LeaguePage = (props: Props) => {
   const rosterMounted = useRef(false);
   if (showRoster) rosterMounted.current = true;
   const pendingDivisionJump = useRef<number>(0);
+  // The player whose seasons the previous / next buttons step through: set by
+  // picking one of their seasons in the all-time roster, cleared by picking a
+  // season or division by hand or by opening the roster.
+  const [following, setFollowing] = useState<FollowedPlayer | null>(null);
 
   // Ref to the league Chat so that player-name menus on sibling surfaces
   // (standings, players-needing-to-start, season-games modal) can open a
@@ -222,6 +233,30 @@ export const LeaguePage = (props: Props) => {
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
   }, [selectedSeasonId]);
+
+  // Shows the standings of season seasonNum, on division divNum (0: the
+  // default division), from the roster or the follow bar.
+  const jumpToSeason = (seasonNum: number, divNum: number) => {
+    const season = allSeasons.find((s) => s.seasonNumber === seasonNum);
+    if (!season) return;
+    const isSameSeason = season.uuid === displaySeasonId;
+    setSelectedSeasonId(season.uuid);
+    setShowRoster(false);
+    if (isSameSeason && divNum > 0 && standingsData) {
+      // Already on this season — select division directly.
+      const targetDiv = standingsData.divisions.find(
+        (d) => d.divisionNumber === divNum,
+      );
+      if (targetDiv) {
+        setSelectedDivisionId(targetDiv.uuid);
+        return;
+      }
+    }
+    // Different season — defer until standings load.
+    if (divNum > 0) {
+      pendingDivisionJump.current = divNum;
+    }
+  };
 
   // Fetch registrations for selected season
   const { data: registrationsData } = useQuery(
@@ -564,6 +599,7 @@ export const LeaguePage = (props: Props) => {
                   onInfoTextClick={(userId) => {
                     const division = playerToDivisionMap.get(userId);
                     if (division?.uuid) {
+                      setFollowing(null);
                       setSelectedDivisionId(division.uuid);
                       setShowRoster(false);
                     }
@@ -583,10 +619,14 @@ export const LeaguePage = (props: Props) => {
             <a
               role="button"
               tabIndex={0}
-              onClick={() => setShowRoster((r) => !r)}
+              onClick={() => {
+                setFollowing(null);
+                setShowRoster((r) => !r);
+              }}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
+                  setFollowing(null);
                   setShowRoster((r) => !r);
                 }
               }}
@@ -602,7 +642,10 @@ export const LeaguePage = (props: Props) => {
               <div className="league-selectors">
                 <Select
                   value={displaySeasonId || undefined}
-                  onChange={setSelectedSeasonId}
+                  onChange={(seasonId) => {
+                    setFollowing(null);
+                    setSelectedSeasonId(seasonId);
+                  }}
                   style={{ width: 250 }}
                   popupMatchSelectWidth={true}
                   options={allSeasons.map((season) => {
@@ -651,6 +694,7 @@ export const LeaguePage = (props: Props) => {
                   <Select
                     value={selectedDivisionId}
                     onChange={(val) => {
+                      setFollowing(null);
                       setSelectedDivisionId(val);
                       setShowRoster(false);
                     }}
@@ -689,6 +733,25 @@ export const LeaguePage = (props: Props) => {
                 )}
               </div>
             </div>
+
+            {/* Previous / next season of the player picked in the roster */}
+            {following &&
+              !showRoster &&
+              displayedSeason &&
+              showsFollowed(
+                following,
+                displayedSeason.seasonNumber,
+                standingsData?.divisions.find(
+                  (d) => d.uuid === selectedDivisionId,
+                )?.divisionNumber,
+              ) && (
+                <FollowBar
+                  username={following.username}
+                  {...followNeighbors(following, displayedSeason.seasonNumber)}
+                  onGo={(s) => jumpToSeason(s.seasonNumber, s.divisionNumber)}
+                  onStop={() => setFollowing(null)}
+                />
+              )}
 
             {/* Registration button for current season - centered */}
             {loggedIn &&
@@ -759,28 +822,9 @@ export const LeaguePage = (props: Props) => {
                   currentUserId={userID}
                   activeSeasonNumber={currentSeason?.seasonNumber}
                   defaultSortSeason={displayedSeason?.seasonNumber}
-                  onJumpToSeason={(seasonNum, divNum) => {
-                    const season = allSeasons.find(
-                      (s) => s.seasonNumber === seasonNum,
-                    );
-                    if (!season) return;
-                    const isSameSeason = season.uuid === displaySeasonId;
-                    setSelectedSeasonId(season.uuid);
-                    setShowRoster(false);
-                    if (isSameSeason && divNum > 0 && standingsData) {
-                      // Already on this season — select division directly.
-                      const targetDiv = standingsData.divisions.find(
-                        (d) => d.divisionNumber === divNum,
-                      );
-                      if (targetDiv) {
-                        setSelectedDivisionId(targetDiv.uuid);
-                        return;
-                      }
-                    }
-                    // Different season — defer until standings load.
-                    if (divNum > 0) {
-                      pendingDivisionJump.current = divNum;
-                    }
+                  onJumpToSeason={(seasonNum, divNum, player) => {
+                    setFollowing(followPlayer(player.username, player.seasons));
+                    jumpToSeason(seasonNum, divNum);
                   }}
                 />
               </div>
@@ -851,8 +895,12 @@ export const LeaguePage = (props: Props) => {
                         onRegister={
                           registrationOpenSeason &&
                           !isUserRegisteredForRegistrationOpenSeason
-                            ? () =>
-                                setSelectedSeasonId(registrationOpenSeason.uuid)
+                            ? () => {
+                                setFollowing(null);
+                                setSelectedSeasonId(
+                                  registrationOpenSeason.uuid,
+                                );
+                              }
                             : undefined
                         }
                       />
@@ -1058,9 +1106,10 @@ export const LeaguePage = (props: Props) => {
                           <Button
                             type="primary"
                             size="small"
-                            onClick={() =>
-                              setSelectedSeasonId(registrationOpenSeason.uuid)
-                            }
+                            onClick={() => {
+                              setFollowing(null);
+                              setSelectedSeasonId(registrationOpenSeason.uuid);
+                            }}
                             block
                             style={{ marginTop: 4 }}
                           >
@@ -1206,6 +1255,7 @@ export const LeaguePage = (props: Props) => {
                     <div key={div.uuid} style={{ marginLeft: 8 }}>
                       <a
                         onClick={() => {
+                          setFollowing(null);
                           setSelectedDivisionId(div.uuid);
                           setShowPlayersModal(false);
                           setShowRoster(false);

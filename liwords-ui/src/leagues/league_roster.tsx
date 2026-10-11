@@ -27,7 +27,12 @@ type Props = {
   currentUserId?: string;
   activeSeasonNumber?: number;
   defaultSortSeason?: number;
-  onJumpToSeason: (seasonNumber: number, divisionNumber: number) => void;
+  // With the player whose season was picked, so the page can follow them.
+  onJumpToSeason: (
+    seasonNumber: number,
+    divisionNumber: number,
+    player: LeagueRosterPlayer,
+  ) => void;
 };
 
 const resultIcon = (result: StandingResult) => {
@@ -553,7 +558,9 @@ export const LeagueRoster: React.FC<Props> = ({
               .join(", ")
           : undefined;
         return (
-          <span onClick={() => onJumpToSeason(sn, season.divisionNumber)}>
+          <span
+            onClick={() => onJumpToSeason(sn, season.divisionNumber, record)}
+          >
             {h2hDot}
             {formatSeason(
               season,
