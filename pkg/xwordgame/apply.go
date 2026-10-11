@@ -131,6 +131,14 @@ func (s *State) ValidateMove(r *Rules, m *Move) ([]tilemapping.MachineWord, erro
 			return nil, fmt.Errorf("xwordgame: cannot exchange with fewer than %d tiles in the bag, there are %d",
 				r.exchangeLimit(), remaining)
 		}
+		// With a limit below seven (FISE, FILE) a player can name more tiles
+		// than the bag holds. Refuse it here, before anything moves: the draw
+		// would fail after the tiles had already left the rack. macondo refuses
+		// it too, from inside its bag's Exchange.
+		if remaining := s.TilesRemaining(); len(m.Tiles) > remaining {
+			return nil, fmt.Errorf("xwordgame: cannot exchange %d tiles, the bag holds %d",
+				len(m.Tiles), remaining)
+		}
 		if !s.RackHas(int(s.OnTurn), m.Tiles) {
 			return nil, fmt.Errorf("xwordgame: your exchange contained a tile that is not on your rack")
 		}

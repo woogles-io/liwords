@@ -243,6 +243,25 @@ func TestExchangeRefusals(t *testing.T) {
 		is.NoErr(err)
 	})
 
+	// A limit below seven lets a player name more tiles than the bag holds.
+	// The refusal must leave the position exactly as it was: the tiles used to
+	// come off the rack before the draw failed, and were lost.
+	t.Run("more tiles named than the bag holds", func(t *testing.T) {
+		s, r := boardFixture(t, ChallengeRuleDouble)
+		r.ExchangeLimit = 1
+		is.NoErr(s.AssignRack(0, word(t, alph, "QUIZJXV")))
+		var scratch []tilemapping.MachineLetter
+		s.DrawAtMost(seededRand(), s.TilesRemaining()-2, scratch)
+		is.Equal(s.TilesRemaining(), 2)
+		before := s.Clone()
+
+		_, err := s.ApplyExchange(r, seededRand(), NewExchangeMove(word(t, alph, "JXV")))
+		is.True(err != nil)
+		t.Log(err)
+		is.True(s.Equal(before))
+		is.Equal(s.RackLen(0), RackTileLimit)
+	})
+
 	t.Run("tiles not on the rack", func(t *testing.T) {
 		s, r := boardFixture(t, ChallengeRuleDouble)
 		is.NoErr(s.AssignRack(0, word(t, alph, "AEIOU")))
