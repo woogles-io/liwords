@@ -3,6 +3,7 @@ package omgwords
 import (
 	"context"
 	"os"
+	"strings"
 	"sync"
 	"testing"
 
@@ -948,4 +949,65 @@ func TestTimePenaltyRerunsGameDoneHook(t *testing.T) {
 	is.Equal(doc.Winner, int32(0))
 	is.Equal(len(done), 3)
 	is.Equal(done[2], gid)
+}
+
+// A rack holds at most seven tiles, however it arrives (#1776).
+func TestRacksHoldAtMostSevenTiles(t *testing.T) {
+	is := is.New(t)
+	svc := newService()
+	defer func() { cleanupConns(svc) }()
+	c := make(chan *entity.EventWrapper, 10)
+	svc.SetEventChannel(c)
+	apikey, err := svc.userStore.GetAPIKey(context.Background(), "someuser")
+	is.NoErr(err)
+	ctx := apiserver.StoreAPIKeyInContext(ctxForTests(), apikey)
+
+	r, err := svc.CreateAnnotatedGame(ctx, connect.NewRequest(&omgwords_service.CreateAnnotatedGameRequest{
+		PlayersInfo: []*ipc.PlayerInfo{
+			{Nickname: "cesar", FullName: "Cesar", First: true},
+			{Nickname: "someone", FullName: "Someone"},
+		},
+		Lexicon:       "NWL20",
+		Rules:         &ipc.GameRules{BoardLayoutName: "CrosswordGame", LetterDistributionName: "english", VariantName: "classic"},
+		ChallengeRule: ipc.ChallengeRule_ChallengeRule_DOUBLE,
+	}))
+	is.NoErr(err)
+	gid := r.Msg.GameId
+
+	seven := []byte{1, 5, 7, 15, 22, 25, 26}    // AEGOVYZ
+	eight := []byte{1, 5, 7, 15, 22, 25, 26, 9} // AEGOVYZI
+
+	_, err = svc.SetRacks(ctx, connect.NewRequest(&omgwords_service.SetRacksEvent{
+		GameId: gid,
+		Racks:  [][]byte{eight, {}},
+	}))
+	is.Equal(connect.CodeOf(err), connect.CodeInvalidArgument)
+	_, err = svc.SetRacks(ctx, connect.NewRequest(&omgwords_service.SetRacksEvent{
+		GameId: gid,
+		Racks:  [][]byte{seven, {}},
+	}))
+	is.NoErr(err)
+
+	doc, err := svc.GetGameDocument(ctx, connect.NewRequest(&omgwords_service.GetGameDocumentRequest{
+		GameId: gid,
+	}))
+	is.NoErr(err)
+	doc.Msg.Racks[0] = eight
+	_, err = svc.ReplaceGameDocument(ctx, connect.NewRequest(&omgwords_service.ReplaceDocumentRequest{
+		Document: doc.Msg,
+	}))
+	is.Equal(connect.CodeOf(err), connect.CodeInvalidArgument)
+
+	gcg := "#character-encoding UTF-8\n" +
+		"#player1 cesar Cesar\n" +
+		"#player2 someone Someone\n" +
+		">cesar: AEGOVYZI 8D VOYAGE +26 26\n"
+	_, err = svc.ImportGCG(ctx, connect.NewRequest(&omgwords_service.ImportGCGRequest{
+		Gcg:           gcg,
+		Lexicon:       "NWL20",
+		Rules:         &ipc.GameRules{BoardLayoutName: "CrosswordGame", LetterDistributionName: "english", VariantName: "classic"},
+		ChallengeRule: ipc.ChallengeRule_ChallengeRule_DOUBLE,
+	}))
+	is.Equal(connect.CodeOf(err), connect.CodeInvalidArgument)
+	is.True(strings.Contains(err.Error(), "at most 7 tiles, not 8"))
 }
