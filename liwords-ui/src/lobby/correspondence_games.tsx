@@ -9,6 +9,7 @@ import React, {
 } from "react";
 import { useNavigate } from "react-router";
 import { RatingBadge } from "./rating_badge";
+import { RealtimeRequestNote } from "./realtime_request_note";
 import { challengeFormat, PlayerDisplay, SoughtGames } from "./sought_games";
 import { ActiveGame, SoughtGame } from "../store/reducers/lobby_reducer";
 import { CorrespondenceTurnIndicator } from "../shared/corres_turn_indicator";
@@ -33,6 +34,10 @@ type Props = {
   newGame: (seekID: string) => void;
   declineGame?: (seekID: string) => void;
   ratings?: { [key: string]: ProfileUpdate_Rating };
+  // The user's open real-time seek or match request, which this tab does not
+  // list, and how to get to the tab that does.
+  myRealtimeRequest?: SoughtGame;
+  showRealtimeRequest?: () => void;
 };
 
 export const CorrespondenceGames = (props: Props) => {
@@ -546,6 +551,12 @@ export const CorrespondenceGames = (props: Props) => {
 
   return (
     <>
+      {props.myRealtimeRequest && (
+        <RealtimeRequestNote
+          request={props.myRealtimeRequest}
+          onShow={props.showRealtimeRequest}
+        />
+      )}
       {props.correspondenceSeeks.length > 0 && (
         <SoughtGames
           isMatch={true}

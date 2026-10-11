@@ -258,6 +258,16 @@
       margin: 0;
     }
   }
+  .realtime-request-note {
+    margin: 0;
+    padding: 12px 12px 0;
+    text-align: left;
+
+    .ant-btn {
+      height: auto;
+      padding: 0;
+    }
+  }
 
   // Club match specific styling - left-justify everything
   .ant-table-wrapper.pairings.club-match {
