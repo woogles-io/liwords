@@ -266,7 +266,8 @@ export const SeekForm = (props: Props) => {
     lexicon: "CSW24",
     challengerule: ChallengeRule.VOID,
     initialtimeslider: initialTimeMinutesToSlider(20),
-    rated: true,
+    // Unrated until the player picks rated, which the form then saves.
+    rated: false,
     extratime: 1,
     friend: "",
     incOrOT: "overtime",

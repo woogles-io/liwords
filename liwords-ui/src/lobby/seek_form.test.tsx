@@ -16,7 +16,8 @@ import { ChallengeRule } from "../gen/api/proto/vendored/macondo/macondo_pb";
 import { Store, useTournamentStoreContext } from "../store/store";
 import { SeekForm } from "./seek_form";
 
-// What the seek form starts with. In a club room whose director lets
+// What the seek form starts with: unrated games, unless the player picked
+// rated before and the form saved that. In a club room whose director lets
 // players pick, the choices saved by the form are kept, unrated and zero
 // overtime included.
 
@@ -77,6 +78,19 @@ const shownRatingType = () =>
     .getByLabelText("Rating type")
     .closest(".ant-select")
     ?.querySelector(".ant-select-selection-item")?.textContent;
+
+it("starts on unrated games", () => {
+  renderStore();
+  openForm();
+  expect(shownRatingType()).toBe("Unrated");
+});
+
+it("keeps rated when the player picked it before", () => {
+  localStorage.setItem("lastSeekForm", JSON.stringify({ rated: true }));
+  renderStore();
+  openForm();
+  expect(shownRatingType()).toBe("Rated");
+});
 
 it("keeps saved unrated, shortest time and no overtime in a club", () => {
   localStorage.setItem(
