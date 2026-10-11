@@ -5,8 +5,8 @@ import {
   searchDisposableEmail,
   searchEmail,
 } from "../gen/api/proto/config_service/config_service-ConfigService_connectquery";
-import { useState } from "react";
-import { Link } from "react-router";
+import { useEffect, useRef, useState } from "react";
+import { Link, useSearchParams } from "react-router";
 import moment from "moment";
 import { timestampDate } from "@bufbuild/protobuf/wkt";
 import { Timestamp } from "@bufbuild/protobuf/wkt";
@@ -195,7 +195,10 @@ const UserConnectionDetails = ({ user }: { user: UserDetailsResponse }) => {
 };
 
 export const UserDetails = () => {
-  const [username, setUsername] = useState("");
+  // A user's menu links here with ?username=; look that user up at once.
+  const [searchParams] = useSearchParams();
+  const linkedUsername = searchParams.get("username") ?? "";
+  const [username, setUsername] = useState(linkedUsername);
   const [partialEmail, setPartialEmail] = useState("");
   const [searchByEmail, setSearchByEmail] = useState(false);
   const [hideSuspended, setHideSuspended] = useState(false);
@@ -204,6 +207,14 @@ export const UserDetails = () => {
     { username: username },
     { enabled: false, retry: false },
   );
+  const lookedUpLinked = useRef(false);
+  useEffect(() => {
+    if (!linkedUsername || lookedUpLinked.current) return;
+    lookedUpLinked.current = true;
+    refetchByUsername({ throwOnError: true }).catch((e) => {
+      message.error({ content: "Error: " + String(e) });
+    });
+  }, [linkedUsername, refetchByUsername]);
   const { data: searchEmailData, refetch: refetchByEmail } = useQuery(
     searchEmail,
     { partialEmail: partialEmail },

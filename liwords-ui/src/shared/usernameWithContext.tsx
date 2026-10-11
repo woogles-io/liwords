@@ -211,6 +211,26 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
       label: "Delete this message",
     });
   }
+  // The admin user lookup, for those allowed to see it. The server checks the
+  // same permission; the link carries only the (public) username.
+  if (
+    props.username &&
+    hasPermission(permissions, Perm.CanSeePrivateUserData)
+  ) {
+    userMenuOptions.push({
+      key: `userdetails-${props.userID}`,
+      label: (
+        <Link
+          to={`/admin?tab=user-details&username=${encodeURIComponent(
+            props.username,
+          )}`}
+          target="_blank"
+        >
+          User details
+        </Link>
+      ),
+    });
+  }
   const { modal } = App.useApp();
   // const userMenu = <ul>{userMenuOptions}</ul>;
   return (
