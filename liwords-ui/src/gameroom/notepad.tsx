@@ -93,6 +93,31 @@ export const NotepadContextProvider = ({
     return () => clearTimeout(timer);
   }, [curNotepad, gameID]);
 
+  // The notepad's sounds live here, once per page, not in Notepad: a game
+  // page shows two notepads, and each would ask for the sound.
+  const numWolgesWas = useRef(0);
+  const numWolges = useMemo(
+    () => curNotepad.match(/wolges/gi)?.length || 0,
+    [curNotepad],
+  );
+  useEffect(() => {
+    if (numWolges > numWolgesWas.current) {
+      BoopSounds.playSound("wolgesSound");
+    }
+    numWolgesWas.current = numWolges;
+  }, [numWolges]);
+  const numKofiWas = useRef(0);
+  const numKofi = useMemo(
+    () => curNotepad.match(/kofi/gi)?.length || 0,
+    [curNotepad],
+  );
+  useEffect(() => {
+    if (numKofi > numKofiWas.current) {
+      BoopSounds.playSound("eagleScreechSound");
+    }
+    numKofiWas.current = numKofi;
+  }, [numKofi]);
+
   const contextValue = useMemo(
     () => ({ curNotepad, setCurNotepad, feRackInfo }),
     [curNotepad, setCurNotepad, feRackInfo],
@@ -185,28 +210,6 @@ export const Notepad = React.memo((props: NotepadProps) => {
     () => /catcam/i.test(curNotepad),
     [curNotepad],
   );
-  const numWolgesWas = useRef(0);
-  const numWolges = useMemo(
-    () => curNotepad.match(/wolges/gi)?.length || 0,
-    [curNotepad],
-  );
-  useEffect(() => {
-    if (numWolges > numWolgesWas.current) {
-      BoopSounds.playSound("wolgesSound");
-    }
-    numWolgesWas.current = numWolges;
-  }, [numWolges]);
-  const numKofiWas = useRef(0);
-  const numKofi = useMemo(
-    () => curNotepad.match(/kofi/gi)?.length || 0,
-    [curNotepad],
-  );
-  useEffect(() => {
-    if (numKofi > numKofiWas.current) {
-      BoopSounds.playSound("eagleScreechSound");
-    }
-    numKofiWas.current = numKofi;
-  }, [numKofi]);
   const notepadIsNotEmpty = curNotepad.length > 0;
   const controls = useCallback(
     () => (
