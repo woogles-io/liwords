@@ -91,6 +91,10 @@ class Booper {
   private audio: HTMLAudioElement;
   private unlocked = false;
   private unlocking: Promise<boolean> | null = null;
+  // Plays asked for while the browser still refused sound, before a user
+  // gesture unlocked this element. Each one plays after the unlock, one after
+  // another.
+  private pending = 0;
 
   constructor(
     readonly soundName: string,
@@ -99,6 +103,9 @@ class Booper {
     this.audio = new Audio(src);
     // Preload so the buffer is ready before it's needed.
     this.audio.load();
+    this.audio.addEventListener("ended", () => {
+      this.playPending();
+    });
   }
 
   // Must be called from within a user gesture event handler.
@@ -133,16 +140,52 @@ class Booper {
       audio.src = this.src;
       audio.load();
     }
+    this.playPending();
     return this.unlocked;
+  }
+
+  // Plays the next request that had to wait, once this element is unlocked.
+  private playPending() {
+    if (!this.unlocked || this.pending === 0) return;
+    this.pending--;
+    if (!soundIsEnabled(this.soundName)) {
+      this.pending = 0;
+      return;
+    }
+    this.start();
+  }
+
+  private start() {
+    this.audio.currentTime = 0;
+    this.audio.play().catch((e) => {
+      console.warn(`cannot play ${this.soundName}:`, e);
+      // No "ended" event will follow, so go on to the next waiting request.
+      this.playPending();
+    });
   }
 
   play() {
     if (!soundIsEnabled(this.soundName)) return;
-    if (!this.unlocked) return;
+    if (this.unlocked) {
+      this.start();
+      return;
+    }
+    if (this.unlocking) {
+      // The silent unlock is using the element; play this right after it.
+      this.pending++;
+      return;
+    }
+    // Some browsers allow sound before any user gesture, so try now. If this
+    // one refuses, play it once the first gesture unlocks the element.
     this.audio.currentTime = 0;
-    this.audio.play().catch((e) => {
-      console.warn(`cannot play ${this.soundName}:`, e);
-    });
+    this.audio.play().then(
+      () => {
+        this.unlocked = true;
+      },
+      () => {
+        this.pending++;
+      },
+    );
   }
 }
 
