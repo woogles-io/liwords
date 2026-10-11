@@ -1,15 +1,23 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { FollowBar } from "./follow_bar";
-import { followNeighbors, followPlayer, showsFollowed } from "./follow_player";
+import {
+  followedDivision,
+  followNeighbors,
+  followPlayer,
+} from "./follow_player";
 
 // Played S3 in division 10 and S5 in division 9, sat out S4, and has
 // registered for S6 without a division yet.
-const andy = followPlayer("andy", [
-  { seasonNumber: 5, divisionNumber: 9 },
-  { seasonNumber: 6, divisionNumber: 0 },
-  { seasonNumber: 3, divisionNumber: 10 },
-]);
+const andy = followPlayer({
+  userId: "andy-id",
+  username: "andy",
+  seasons: [
+    { seasonNumber: 5, divisionNumber: 9 },
+    { seasonNumber: 6, divisionNumber: 0 },
+    { seasonNumber: 3, divisionNumber: 10 },
+  ],
+});
 
 describe("followNeighbors", () => {
   it("skips the seasons the player sat out", () => {
@@ -36,16 +44,15 @@ describe("followNeighbors", () => {
   });
 });
 
-describe("showsFollowed", () => {
-  it("is true only on the player's own season and division", () => {
-    expect(showsFollowed(andy, 5, 9)).toBe(true);
-    expect(showsFollowed(andy, 5, 8)).toBe(false);
-    expect(showsFollowed(andy, 4, 9)).toBe(false);
+describe("followedDivision", () => {
+  it("is the player's division in a season they played", () => {
+    expect(followedDivision(andy, 3)).toBe(10);
+    expect(followedDivision(andy, 5)).toBe(9);
   });
 
-  it("takes any division of a season the player was not placed in", () => {
-    expect(showsFollowed(andy, 6, 1)).toBe(true);
-    expect(showsFollowed(andy, 6, undefined)).toBe(true);
+  it("is nothing for a season they sat out or were not placed in", () => {
+    expect(followedDivision(andy, 4)).toBeUndefined();
+    expect(followedDivision(andy, 6)).toBeUndefined();
   });
 });
 

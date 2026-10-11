@@ -101,6 +101,9 @@ type DivisionStandingsProps = {
   seasonNumber: number;
   seasonStartDate?: Timestamp;
   currentUserId?: string;
+  // The player whose name is in gold: the one the page follows, if any, else
+  // the viewer (who keeps a bold name while following someone else).
+  highlightUserId?: string;
   promotionFormula?: PromotionFormula;
   timeBankWarnings?: Map<string, number>; // Map of userId to count of low timebank games
   nextSeasonRegistrations?: SeasonRegistrationsResponse;
@@ -116,6 +119,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
   seasonNumber,
   seasonStartDate,
   currentUserId,
+  highlightUserId = currentUserId,
   promotionFormula = PromotionFormula.PROMO_N_DIV_6,
   timeBankWarnings,
   nextSeasonRegistrations,
@@ -404,6 +408,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
         record: { userId: string; placementStatus: PlacementStatus },
       ) => {
         const isCurrentUser = record.userId === currentUserId;
+        const isHighlighted = record.userId === highlightUserId;
         const placementIndicator = getPlacementIndicator(
           record.placementStatus,
         );
@@ -417,9 +422,11 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
           <span
             className="standings-player"
             style={
-              isCurrentUser
+              isHighlighted
                 ? { color: "#d4af37", fontWeight: "bold" }
-                : undefined
+                : isCurrentUser
+                  ? { fontWeight: "bold" }
+                  : undefined
             }
           >
             <strong>

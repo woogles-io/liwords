@@ -45,9 +45,9 @@ import { LeagueCorrespondenceGames } from "./league_correspondence_games";
 import { FollowBar } from "./follow_bar";
 import {
   FollowedPlayer,
+  followedDivision,
   followNeighbors,
   followPlayer,
-  showsFollowed,
 } from "./follow_player";
 import {
   PromotionFormula,
@@ -140,9 +140,15 @@ export const LeaguePage = (props: Props) => {
   if (showRoster) rosterMounted.current = true;
   const pendingDivisionJump = useRef<number>(0);
   // The player whose seasons the previous / next buttons step through: set by
-  // picking one of their seasons in the all-time roster, cleared by picking a
-  // season or division by hand or by opening the roster.
+  // picking one of their seasons in the all-time roster, cleared by "Stop" or
+  // by opening the roster. While set, a newly shown season opens on their
+  // division if they played it.
   const [following, setFollowing] = useState<FollowedPlayer | null>(null);
+  // For the default-division effect, which runs only when new standings
+  // arrive: whom the page follows, and which season it shows, right now.
+  const followingRef = useRef<FollowedPlayer | null>(null);
+  followingRef.current = following;
+  const displayedSeasonNumberRef = useRef<number | undefined>(undefined);
 
   // Ref to the league Chat so that player-name menus on sibling surfaces
   // (standings, players-needing-to-start, season-games modal) can open a
@@ -217,6 +223,24 @@ export const LeaguePage = (props: Props) => {
         }
         // Target not found yet — standings may still be loading for the
         // new season. Keep the ref and wait for the next update.
+        return;
+      }
+      // Following someone: their division, or division 1 if they sat this
+      // season out. Otherwise the viewer's own division, else division 1.
+      if (followingRef.current) {
+        const followed =
+          displayedSeasonNumberRef.current !== undefined
+            ? followedDivision(
+                followingRef.current,
+                displayedSeasonNumberRef.current,
+              )
+            : undefined;
+        const followedDivId = standingsData.divisions.find(
+          (d) => followed !== undefined && d.divisionNumber === followed,
+        )?.uuid;
+        setSelectedDivisionId(
+          followedDivId ?? getDefaultDivisionId(standingsData.divisions),
+        );
         return;
       }
       const defaultDivId = getDefaultDivisionId(
@@ -332,6 +356,7 @@ export const LeaguePage = (props: Props) => {
     });
     return season;
   }, [allSeasons, displaySeasonId]);
+  displayedSeasonNumberRef.current = displayedSeason?.seasonNumber;
 
   // Check if user is registered for the displayed season
   const isUserRegistered = useMemo(() => {
@@ -361,6 +386,12 @@ export const LeaguePage = (props: Props) => {
     }
     return null;
   }, [userID, standingsData]);
+  // The division starred in the picker: the followed player's while
+  // following someone, else the viewer's own.
+  const starredDivisionNumber =
+    following && displayedSeason
+      ? followedDivision(following, displayedSeason.seasonNumber)
+      : userSeasonInfo?.divisionNumber;
 
   // Get all registrants for the displayed season
   const registrants = useMemo(() => {
@@ -599,7 +630,6 @@ export const LeaguePage = (props: Props) => {
                   onInfoTextClick={(userId) => {
                     const division = playerToDivisionMap.get(userId);
                     if (division?.uuid) {
-                      setFollowing(null);
                       setSelectedDivisionId(division.uuid);
                       setShowRoster(false);
                     }
@@ -642,10 +672,7 @@ export const LeaguePage = (props: Props) => {
               <div className="league-selectors">
                 <Select
                   value={displaySeasonId || undefined}
-                  onChange={(seasonId) => {
-                    setFollowing(null);
-                    setSelectedSeasonId(seasonId);
-                  }}
+                  onChange={setSelectedSeasonId}
                   style={{ width: 250 }}
                   popupMatchSelectWidth={true}
                   options={allSeasons.map((season) => {
@@ -694,7 +721,6 @@ export const LeaguePage = (props: Props) => {
                   <Select
                     value={selectedDivisionId}
                     onChange={(val) => {
-                      setFollowing(null);
                       setSelectedDivisionId(val);
                       setShowRoster(false);
                     }}
@@ -719,8 +745,7 @@ export const LeaguePage = (props: Props) => {
                         >
                           {division.divisionName ||
                             `Division ${division.divisionNumber}`}
-                          {userSeasonInfo?.divisionNumber ===
-                          division.divisionNumber
+                          {starredDivisionNumber === division.divisionNumber
                             ? " \u2605"
                             : ""}
                           {totalGamesRemaining
@@ -735,23 +760,14 @@ export const LeaguePage = (props: Props) => {
             </div>
 
             {/* Previous / next season of the player picked in the roster */}
-            {following &&
-              !showRoster &&
-              displayedSeason &&
-              showsFollowed(
-                following,
-                displayedSeason.seasonNumber,
-                standingsData?.divisions.find(
-                  (d) => d.uuid === selectedDivisionId,
-                )?.divisionNumber,
-              ) && (
-                <FollowBar
-                  username={following.username}
-                  {...followNeighbors(following, displayedSeason.seasonNumber)}
-                  onGo={(s) => jumpToSeason(s.seasonNumber, s.divisionNumber)}
-                  onStop={() => setFollowing(null)}
-                />
-              )}
+            {following && !showRoster && displayedSeason && (
+              <FollowBar
+                username={following.username}
+                {...followNeighbors(following, displayedSeason.seasonNumber)}
+                onGo={(s) => jumpToSeason(s.seasonNumber, s.divisionNumber)}
+                onStop={() => setFollowing(null)}
+              />
+            )}
 
             {/* Registration button for current season - centered */}
             {loggedIn &&
@@ -823,7 +839,7 @@ export const LeaguePage = (props: Props) => {
                   activeSeasonNumber={currentSeason?.seasonNumber}
                   defaultSortSeason={displayedSeason?.seasonNumber}
                   onJumpToSeason={(seasonNum, divNum, player) => {
-                    setFollowing(followPlayer(player.username, player.seasons));
+                    setFollowing(followPlayer(player));
                     jumpToSeason(seasonNum, divNum);
                   }}
                 />
@@ -887,6 +903,7 @@ export const LeaguePage = (props: Props) => {
                         seasonNumber={displayedSeason?.seasonNumber || 0}
                         seasonStartDate={displayedSeason?.startDate}
                         currentUserId={userID}
+                        highlightUserId={following ? following.userId : userID}
                         onChat={openDirectMessage}
                         promotionFormula={displayedSeason?.promotionFormula}
                         timeBankWarnings={timeBankWarningsMap}
@@ -895,12 +912,8 @@ export const LeaguePage = (props: Props) => {
                         onRegister={
                           registrationOpenSeason &&
                           !isUserRegisteredForRegistrationOpenSeason
-                            ? () => {
-                                setFollowing(null);
-                                setSelectedSeasonId(
-                                  registrationOpenSeason.uuid,
-                                );
-                              }
+                            ? () =>
+                                setSelectedSeasonId(registrationOpenSeason.uuid)
                             : undefined
                         }
                       />
@@ -1106,10 +1119,9 @@ export const LeaguePage = (props: Props) => {
                           <Button
                             type="primary"
                             size="small"
-                            onClick={() => {
-                              setFollowing(null);
-                              setSelectedSeasonId(registrationOpenSeason.uuid);
-                            }}
+                            onClick={() =>
+                              setSelectedSeasonId(registrationOpenSeason.uuid)
+                            }
                             block
                             style={{ marginTop: 4 }}
                           >
@@ -1255,7 +1267,6 @@ export const LeaguePage = (props: Props) => {
                     <div key={div.uuid} style={{ marginLeft: 8 }}>
                       <a
                         onClick={() => {
-                          setFollowing(null);
                           setSelectedDivisionId(div.uuid);
                           setShowPlayersModal(false);
                           setShowRoster(false);
