@@ -89,6 +89,10 @@ message UserDetailsResponse {
   string birth_date = 4;
   string username = 5;
   DisposableEmail disposable_email = 14;
+  // The account's current suspension (SUSPEND_ACCOUNT, not lifted, not yet
+  // ended); unset if it isn't suspended. Its end is unset if the suspension
+  // is permanent.
+  UserModAction suspension = 15;
 
   // The fields below are only filled in by GetUserDetails, not SearchEmail.
   bool verified = 6;

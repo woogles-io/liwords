@@ -18,6 +18,7 @@ import (
 	"github.com/woogles-io/liwords/pkg/stores/models"
 	"github.com/woogles-io/liwords/pkg/user"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/config_service"
+	ms "github.com/woogles-io/liwords/rpc/api/proto/mod_service"
 )
 
 type ConfigStore interface {
@@ -280,6 +281,7 @@ func (cs *ConfigService) GetUserDetails(ctx context.Context, req *connect.Reques
 	sort.Slice(resp.ActiveActions, func(i, j int) bool {
 		return resp.ActiveActions[i].Type < resp.ActiveActions[j].Type
 	})
+	resp.Suspension = suspensionOf(actions, now)
 	for _, c := range clients {
 		resp.Clients = append(resp.Clients, &pb.UserClient{
 			Ip:        c.Ip,
@@ -333,6 +335,9 @@ func (cs *ConfigService) SearchEmail(ctx context.Context, req *connect.Request[p
 			DisposableEmail: disposable(matches[i].Email),
 		}
 	}
+	if err := cs.fillSuspensions(ctx, matchesPb); err != nil {
+		return nil, err
+	}
 
 	res := connect.NewResponse(&pb.SearchEmailResponse{
 		Users: matchesPb,
@@ -376,12 +381,52 @@ func (cs *ConfigService) SearchDisposableEmail(ctx context.Context, req *connect
 			DisposableEmail: pb.DisposableEmail_DISPOSABLE_EMAIL_YES,
 		}
 	}
+	if err := cs.fillSuspensions(ctx, matchesPb); err != nil {
+		return nil, err
+	}
 
 	res := connect.NewResponse(&pb.SearchEmailResponse{
 		Users: matchesPb,
 	})
 	setPrivate(res.Header())
 	return res, nil
+}
+
+// suspensionOf picks the account suspension out of a user's current mod
+// actions (keyed by action type name): nil unless there is one that is
+// permanent or not yet over at now.
+func suspensionOf(actions map[string]*ms.ModAction, now time.Time) *pb.UserModAction {
+	a := actions[ms.ModActionType_SUSPEND_ACCOUNT.String()]
+	if a == nil || (a.EndTime != nil && !a.EndTime.AsTime().After(now)) {
+		return nil
+	}
+	return &pb.UserModAction{
+		Type:  a.Type.String(),
+		Start: a.StartTime,
+		End:   a.EndTime,
+		Note:  a.Note,
+	}
+}
+
+// fillSuspensions sets each user's current account suspension, with one
+// query for all of them.
+func (cs *ConfigService) fillSuspensions(ctx context.Context, users []*pb.UserDetailsResponse) error {
+	if len(users) == 0 {
+		return nil
+	}
+	uuids := make([]string, len(users))
+	for i, u := range users {
+		uuids[i] = u.Uuid
+	}
+	actions, err := cs.userStore.GetActionsBatch(ctx, uuids)
+	if err != nil {
+		return err
+	}
+	now := time.Now()
+	for _, u := range users {
+		u.Suspension = suspensionOf(actions[u.Uuid], now)
+	}
+	return nil
 }
 
 // setPrivate marks a response as never cacheable by shared caches. These
