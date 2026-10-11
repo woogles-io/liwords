@@ -114,9 +114,10 @@ true rather than taking them on faith:
 
 - `turns[]`: `PlayTurn` increments per-player turn counts only in the exchange
   branch, where live `playMove` increments for every move type.
-- `lastWordsFormed` once a game is over: macondo never clears it on a pass, an
-  exchange, or in `PlayToTurn`'s ending, so a finished position advertises a
-  play that cannot be challenged.
+- `lastWordsFormed` once a game is over: macondo's reconstruction never clears
+  it on a pass, an exchange, or in `PlayToTurn`'s ending, so a finished
+  position advertises a play that cannot be challenged. (Its live `playMove`
+  does clear it on every move; only the reconstruction path doesn't.)
 - `onTurn` and `scorelessTurns` once a game is over: meaningless, and macondo's
   reconstruction disagrees with its own live play on both.
 - `playState`: checked against the database's `game_end_reason` instead, because
@@ -132,6 +133,14 @@ Three independent harnesses, because each covers what the others cannot.
 | `pkg/xwordgame/*_test.go` | hand-computed scores and rules; a differential cannot catch a bug shared by both engines |
 | `pkg/xwordbridge/bridge_test.go` | same random move into both engines, 13 configs, both board sizes, all nine distributions, 196 games |
 | `pkg/xwordbridge/corpus_test.go` | 113,010 real games, 3.12M events, 67k challenges — **0 divergences** |
+
+**What the corpus does not prove** (found reviewing against macondo v0.13.5,
+2026-10-10): the replay *applies* each challenge verdict the log recorded; it
+does not decide it. `AdjudicateChallenge` runs only for `CHALLENGE` events,
+which live macondo never writes, and the live differential plays no
+challenges. So how xwordgame decides a challenge -- the rule, the lexicon
+check, bonus versus turn loss -- is covered only by the hand-written tests in
+`challenge_test.go`. Adding challenges to the differential is in #2037.
 
 The corpus is production data and is not in the repository. The export queries
 are in the file header; point `XWORDGAME_CORPUS` at a directory and the test
@@ -166,8 +175,10 @@ design could still be wrong.
 *In macondo, found by comparison:*
 
 - `PlayTurn` loses per-player turn counts
-- `lastWordsFormed` is never cleared on a pass or exchange, so `ChallengeEvent`
-  would adjudicate a challenge against a play from two turns ago
+- reconstruction (`PlayTurn`) never clears `lastWordsFormed` on a pass or
+  exchange, and liwords reloads every game through it, so after a reload
+  `ChallengeEvent` would adjudicate a challenge against a play from two turns
+  ago. Live `playMove` does clear it.
 - `PlayToTurn` advances the player on turn after non-move events
 - reconstruction never runs end-of-game logic, so a game that ended on six
   scoreless turns comes back as `PLAYING` — the incident's shape exactly

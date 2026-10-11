@@ -136,17 +136,20 @@ type State struct {
 	Bingos      [MaxPlayers]uint16
 	PlayerTurns [MaxPlayers]uint16
 
-	// TurnNum counts plies: it advances by exactly one per move applied,
-	// whatever that move was.
+	// TurnNum counts the moves that still stand: one for each placement,
+	// exchange or pass. A failed challenge that pays a bonus leaves it alone,
+	// and a phony coming off restores the value from before the phony, which
+	// is what returnPhony checks to make sure it is restoring the immediately
+	// preceding position.
 	//
 	// This is deliberately not macondo's Turn(), which is an index into its
-	// event history and so also advances for the synthetic events it writes at
-	// the end of a game -- one for an end-rack bonus, two for the
-	// scoreless-turn penalties. The two agree throughout normal play and part
-	// company only once a game ends. Counting log entries in a field that
-	// describes a position is the coupling this package exists to avoid, so
-	// xwordbridge.Compare checks PlayerTurns instead, which does mean the same
-	// thing in both engines.
+	// event history: it also advances for challenge events and for the
+	// synthetic events written at the end of a game -- one for an end-rack
+	// bonus, two for the scoreless-turn penalties. So the two part company
+	// after any challenge and at the end of every game. Counting log entries in
+	// a field that describes a position is the coupling this package exists to
+	// avoid, so xwordbridge.Compare checks PlayerTurns instead, which does mean
+	// the same thing in both engines.
 	TurnNum uint16
 
 	ScorelessTurns uint8

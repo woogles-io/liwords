@@ -62,14 +62,16 @@ type ReconstructionOpts struct {
 //     exchange branch. A rebuilt game reports a turn count equal to its number
 //     of exchanges.
 //
-//   - lastWordsFormed, unless the last move was a tile placement: macondo
-//     clears this field on a phony return, a challenge bonus and game start,
-//     but never on a pass or an exchange, in either the live or the
-//     reconstruction path. So after a pass it still believes the play before it
-//     is challengeable -- and ChallengeEvent's only guard is that the list is
-//     non-empty, so it would adjudicate a challenge against a play from two
-//     turns ago. We clear it, which is what the rules say: only the
-//     immediately preceding play can be challenged.
+//   - lastWordsFormed, unless the last move was a tile placement: macondo's
+//     live path clears it on every move (playMove assigns ValidateMove's
+//     result, which is nil for a pass or an exchange), but its reconstruction
+//     path, PlayTurn, never clears it on a pass or an exchange. liwords
+//     rebuilds every game it loads through NewFromHistory, so after a reload a
+//     game still believes the play before a pass is challengeable -- and
+//     ChallengeEvent's only guard is that the list is non-empty, so it would
+//     adjudicate a challenge against a play from two turns ago. We clear it,
+//     which is what the rules say: only the immediately preceding play can be
+//     challenged.
 //
 //   - onTurn, when the last event was a time penalty: PlayToTurn advances the
 //     player on turn after every event it processes, including a penalty, which

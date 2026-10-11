@@ -233,6 +233,47 @@ reference's `turns[0]`/`turns[1]` mismatch and no other field.
 Deviation from the reference: the exclusion and one comment in `db.go`, plus
 the new test file. These carry through to the top of the stack.
 
+### Fixes from reviewing xwordgame against macondo (step 2)
+
+On 2026-10-10 xwordgame was compared, area by area, against macondo v0.13.5,
+whose game rules are unchanged in current macondo. The rules match for every
+path liwords uses. Each finding below was confirmed in the source. Fixed in
+step 2, each as its own commit with a regression test that fails without it:
+
+- **A refused exchange lost the tiles.** With an exchange limit below seven
+  (FISE, FILE), naming more tiles than the bag holds passed `ValidateMove`,
+  and `ApplyExchange` took the tiles off the rack before the draw failed.
+  `ValidateMove` now refuses it up front, as macondo does
+  (`apply.go`, `apply_test.go`).
+- **A successful triple challenge counted a scoreless turn in replay.**
+  `ApplyReturnedPhony` could fire the six-scoreless-turns ending and deduct
+  both racks from a game that never had them deducted. It now ends the game
+  with the challenger winning and counts nothing, as `AdjudicateChallenge`
+  and macondo do (`challenge_outcome.go`, `challenge_test.go`). This is in
+  the shadow path. Not re-checked against the production corpus, which needs
+  an export.
+- **Docs that were wrong:** when macondo clears the challengeable words (its
+  live path does, its reconstruction doesn't), how `TurnNum` moves, and what
+  the "67k challenges, 0 divergences" figure proves (the replay applies
+  recorded verdicts; it never decides one) (`state.go`, `quirks.go`,
+  `xwordgame_review.md`).
+
+Everything that only matters once xwordgame runs live games is in #2037. That
+includes the wordsmog lexicon file (`.kwg` vs macondo's `.kad`) and
+`RulesFor` ignoring a failed lexicon load. An earlier note here said those
+touched the shadows; they don't, because replay never checks words.
+
+### For step 7: the mikado graph and `xwordgame_remaining.md`
+
+They say "delete xwordbridge" when macondo leaves the live path. Only the
+scaffolding goes: `StateFromGame`, `Compare` and the `quirks.go` exclusions.
+`ReplayHistory`, `StateFromTurns`, `DecodeTurn(s)`, `MoveFromEvent` and
+`rules.go` are the future turns read path, and have to move into xwordgame or
+a liwords storage package. Also, removing macondo from `go.mod` has to depend
+on `MoveGameHistoryProto`, because stored event logs and every S3 archive use
+macondo's `GameHistory`/`GameEvent` protos. Correct both when those docs land
+in step 7 (a deviation; add them to the ledger's list then).
+
 ## Manual steps
 
 - **Before 1b deploys:** production does not have the unique index (checked
@@ -292,6 +333,13 @@ pkg/gameplay/end.go
 pkg/mod/automod.go
 pkg/stores/models/models.go
 db/migrations/202610090003_notoriousgames_unique.up.sql
+pkg/xwordgame/apply.go
+pkg/xwordgame/apply_test.go
+pkg/xwordgame/challenge_outcome.go
+pkg/xwordgame/challenge_test.go
+pkg/xwordgame/state.go
+pkg/xwordbridge/quirks.go
+docs/mikado/xwordgame_review.md
 "
 # Reference changes that will not land at all (issue #2036). They must stay
 # at master.
