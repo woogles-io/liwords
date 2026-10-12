@@ -245,11 +245,25 @@ rows than events, no turn rows, skipped, errored), and the API logs one
 `shadow-summary` line per enabled shadow per hour, at info level, with the
 counts for that hour.
 
+The same PR fixes a false `shadow-turns-mismatch: more rows than events`.
+`SHADOW_TURNS` snapshots the game on the caller's goroutine and reads
+`game_turns` in its own, so the next move can commit its rows in between.
+Every one of the 13 such lines in production in the week to 2026-10-11 was a
+real-time game against a bot, exactly one row over. The reference has the
+same race, and step 4 makes it more frequent by running the shadow on every
+`Set`, game creation included. Turn rows are only inserted while a game is
+live, so the shadow now compares the first `wantEventCount` rows, the ones
+its snapshot was taken against. Extra rows the history really lacks are left
+to `SHADOW_TURNS_LOAD`, which reads the games row and the turns in one
+statement. Test: `TestShadowTurnsComparesSnapshotWhenGameMovedOn`, which fails
+without the fix.
+
 Deviation from the reference: `pkg/stores/game/shadowsummary.go` and its test
-(new), one counter line at each outcome in `db.go`, a count assertion in
-`shadowturns_test.go`, and the `RunShadowSummary` goroutine in
-`cmd/liwords-api/main.go`. When steps 4 and 6 bring in the reference's `db.go`
-and `main.go` hunks, these lines are carried over by hand.
+(new), one counter line at each outcome and the moved-on prefix in `db.go`,
+a count assertion and the moved-on test in `shadowturns_test.go`, and the
+`RunShadowSummary` goroutine in `cmd/liwords-api/main.go`. When steps 4 and 6
+bring in the reference's `db.go` and `main.go` hunks, these lines are carried
+over by hand.
 
 ### Fixes from reviewing xwordgame against macondo (step 2)
 

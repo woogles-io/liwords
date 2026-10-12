@@ -20,7 +20,7 @@ type shadowCounts struct {
 	ok        atomic.Int64 // compared, and agreed
 	mismatch  atomic.Int64 // compared, and disagreed
 	torn      atomic.Int64 // terminal event in turns beside a live games row
-	moreRows  atomic.Int64 // more turn rows than events
+	moreRows  atomic.Int64 // more turn rows than events (load shadow only)
 	fewerRows atomic.Int64 // fewer turn rows than events
 	noTurns   atomic.Int64 // no turn rows: predates dual-write, or no moves yet
 	skipped   atomic.Int64 // not compared: rules or snapshot unavailable

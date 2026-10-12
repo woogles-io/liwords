@@ -669,24 +669,30 @@ func (s *DBStore) shadowCompareTurns(
 		turnsShadowCounts.errored.Add(1)
 		return
 	}
+	if len(turns) > wantEventCount {
+		// The game has moved on since the snapshot. This runs in a goroutine, and
+		// the next move can commit its rows before this query runs -- a bot's
+		// reply often does, within milliseconds. Every "more rows than events"
+		// this used to report in production was that: a real-time bot game, one
+		// row over. Rows are only ever inserted while a game is live, so the
+		// first wantEventCount of them are the ones the snapshot was taken
+		// against, and those are what get compared.
+		//
+		// Rows the history genuinely lacks are the load shadow's to catch: it
+		// reads the games row and the turns in one statement, so the game cannot
+		// move on between the two.
+		turns = turns[:wantEventCount]
+	}
 	if len(turns) == 0 {
 		turnsShadowCounts.noTurns.Add(1)
 		return // game predates dual-write or has no moves yet
 	}
-
-	if len(turns) != wantEventCount {
-		if len(turns) < wantEventCount {
-			// In-flight at dual-write cutover -- partial rows, tolerated temporarily.
-			log.Warn().Str("gameID", gameID).
-				Int("want", wantEventCount).Int("got", len(turns)).
-				Msg("shadow-turns-skip: in-flight at dual-write cutover")
-			turnsShadowCounts.fewerRows.Add(1)
-			return
-		}
-		log.Error().Str("gameID", gameID).
+	if len(turns) < wantEventCount {
+		// In-flight at dual-write cutover -- partial rows, tolerated temporarily.
+		log.Warn().Str("gameID", gameID).
 			Int("want", wantEventCount).Int("got", len(turns)).
-			Msg("shadow-turns-mismatch: more rows than events")
-		turnsShadowCounts.moreRows.Add(1)
+			Msg("shadow-turns-skip: in-flight at dual-write cutover")
+		turnsShadowCounts.fewerRows.Add(1)
 		return
 	}
 
