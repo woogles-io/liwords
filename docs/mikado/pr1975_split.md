@@ -128,6 +128,16 @@ that removes it.
   lock and `lock.go`, which arrive in step 5; the rest of that comment comes
   back with them. `tx.go` is the reference file verbatim, so its header
   already describes step 5's session lock.
+- **Step 4: `Cache.setOrCreate` drops the game from the LRU when a save
+  fails.** Step 4 stages turn rows on the game object and `Set` writes them.
+  If a commit succeeds but its acknowledgement is lost, the cached object
+  still has the rows staged, and every later save collides with them on
+  `game_turns_pkey`, so the game can't be moved until it leaves the cache.
+  Dropping it makes the next request load what actually committed.
+  `cache_failedsave_test.go` fakes the lost acknowledgement; without the line,
+  the second and third saves fail with the duplicate key. Step 6 deletes the
+  LRU and the line with it. The test stays, because it checks the same thing
+  without a cache.
 - **Step 3: `pkg/config/config.go` has `ShadowTurnsLoad` but not
   `WriteOngoingGames`.** The reference adds both in the same hunks; the second
   lands with `ongoing_games` in 7.
@@ -453,6 +463,7 @@ deviations="
 pkg/stores/game/shadowturns_test.go
 pkg/stores/game/shadowsummary.go
 pkg/stores/game/shadowsummary_test.go
+pkg/stores/game/cache_failedsave_test.go
 cmd/liwords-api/main.go
 pkg/stores/game/db.go
 pkg/gameplay/end.go

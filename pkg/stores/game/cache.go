@@ -304,6 +304,14 @@ func (c *Cache) setOrCreate(ctx context.Context, game *entity.Game, isNew bool) 
 		err = c.backing.Set(ctx, game)
 	}
 	if err != nil {
+		// Drop it, so the next request loads the game from the database. The
+		// object here has the move applied and may still have its turn rows
+		// staged, but the save failed, so we don't know what was committed. If
+		// the commit went through and only the acknowledgement was lost, the
+		// staged rows are already in game_turns, and every later save of this
+		// object would collide with them and fail. A fresh load matches
+		// whatever actually committed.
+		c.cache.Remove(gameID)
 		return err
 	}
 	// Only add to cache if it's not a correspondence game
