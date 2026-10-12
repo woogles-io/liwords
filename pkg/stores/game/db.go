@@ -589,10 +589,10 @@ func (s *DBStore) shadowLoadFromTurns(
 // 	return hist, nil
 // }
 
-// SpawnShadowCompare launches a shadow-compare goroutine using the post-move
-// state of g. Call this after a successful AppendTurns; at that point
-// game_turns and g.History().Events are both at the same count, so the
-// comparison is race-free regardless of game type.
+// SpawnShadowCompare launches a shadow-compare goroutine using the post-save
+// state of g. Called by Set once the transaction has committed, at which point
+// game_turns and g.History().Events are at the same count for every game type,
+// finished ones included.
 func (s *DBStore) SpawnShadowCompare(ctx context.Context, g *entity.Game) {
 	cfg, cfgErr := config.Ctx(ctx)
 	if cfgErr != nil || !cfg.ShadowTurns {
@@ -1196,7 +1196,9 @@ func (s *DBStore) Set(ctx context.Context, g *entity.Game) error {
 	}
 
 	g.LastUpdatedAt = time.UnixMilli(g.TimerModule().Now())
-	return s.queries.UpdateGame(ctx, models.UpdateGameParams{
+
+	pending := g.PendingTurns()
+	params := models.UpdateGameParams{
 		UpdatedAt:        pgtype.Timestamptz{Time: g.LastUpdatedAt, Valid: true},
 		Player0ID:        pgtype.Int4{Int32: int32(g.PlayerDBIDs[0]), Valid: true},
 		Player1ID:        pgtype.Int4{Int32: int32(g.PlayerDBIDs[1]), Valid: true},
@@ -1218,7 +1220,57 @@ func (s *DBStore) Set(ctx context.Context, g *entity.Game) error {
 		SeasonID:         seasonID,
 		LeagueDivisionID: leagueDivisionID,
 		LastKnownRacks:   g.History().LastKnownRacks,
-	})
+	}
+
+	// One transaction containing both the event rows and the games row.
+	//
+	// Splitting them is what made the turns read path unusable: the rows landed
+	// hundreds of milliseconds before game_end_reason did -- the end-of-game
+	// path acquires two user mutexes, computes ratings and publishes to NATS in
+	// between -- so a load in that window saw a finished event log next to a row
+	// saying the game was still being played, and reconstructed a game that had
+	// ended as one in progress. Which is the May 2026 corruption reached by a
+	// different route.
+	//
+	// Serialization between writers is a separate concern and lives a level up:
+	// callers hold the game's lock across load, move and save.
+	if err := withGameTx(ctx, s.dbPool, func(ctx context.Context, q *models.Queries) error {
+		if len(pending) > 0 {
+			raw := make([][]byte, len(pending))
+			for i, t := range pending {
+				// AppendGameTurns derives each index as start_idx + ordinal, so
+				// it cannot express a gap -- it would write the wrong indices
+				// rather than refuse. Staged rows are consecutive by
+				// construction; say so loudly if that ever stops being true.
+				if want := pending[0].Idx + int32(i); t.Idx != want {
+					return fmt.Errorf("staged turns are not consecutive: row %d has index %d, expected %d", i, t.Idx, want)
+				}
+				raw[i] = t.Event
+			}
+			if err := q.AppendGameTurns(ctx, models.AppendGameTurnsParams{
+				GameUuid: g.GameID(),
+				StartIdx: pending[0].Idx,
+				Events:   raw,
+			}); err != nil {
+				return fmt.Errorf("appending %d turns from %d: %w", len(raw), pending[0].Idx, err)
+			}
+		}
+		return q.UpdateGame(ctx, params)
+	}); err != nil {
+		return err
+	}
+	// Only now, and only the rows this transaction wrote. A rollback leaves them
+	// staged, so the next save retries them rather than losing the move.
+	g.ClearPendingTurns(len(pending))
+
+	// Now that the rows are committed, check that they rebuild the game. This
+	// used to run in gameplay right after the events were written, which meant
+	// it had to skip finished games -- the end-of-game events had not been
+	// written yet at that point. Writing everything in one transaction removes
+	// that hole, so the check now covers the end of a game too, which is where
+	// the corruption happened.
+	s.SpawnShadowCompare(ctx, g)
+	return nil
 }
 
 // UpdateTimers writes only the timers column for a game (e.g. after add-time).
@@ -1272,17 +1324,44 @@ func (s *DBStore) UpdateEnd(ctx context.Context, gameID string, endReason, winne
 
 // AppendTurns marshals each GameEvent and appends them to game_turns starting at startIdx.
 // Errors are best-effort logged by callers; this does not roll back the game save.
-func (s *DBStore) AppendTurns(ctx context.Context, gameUUID string, startIdx int, events []*macondopb.GameEvent) error {
+func (s *DBStore) StageTurns(g *entity.Game, startIdx int, events []*macondopb.GameEvent) error {
+	if len(events) == 0 {
+		return nil
+	}
+	staged := make([]entity.PendingTurn, len(events))
 	for i, evt := range events {
 		b, err := protojson.Marshal(evt)
 		if err != nil {
 			return err
 		}
-		if err := s.AppendTurn(ctx, gameUUID, int32(startIdx+i), b); err != nil {
+		staged[i] = entity.PendingTurn{Idx: int32(startIdx + i), Event: b}
+	}
+	g.StageTurns(staged)
+	return nil
+}
+
+// AppendTurns writes events to game_turns immediately, outside any save.
+//
+// Only for callers that own a game outright and will not call Set -- repair
+// tools and the like. The move path must use StageTurns, so that the rows and
+// the games row commit together.
+func (s *DBStore) AppendTurns(ctx context.Context, gameUUID string, startIdx int, events []*macondopb.GameEvent) error {
+	if len(events) == 0 {
+		return nil
+	}
+	raw := make([][]byte, len(events))
+	for i, evt := range events {
+		b, err := protojson.Marshal(evt)
+		if err != nil {
 			return err
 		}
+		raw[i] = b
 	}
-	return nil
+	return s.queries.AppendGameTurns(ctx, models.AppendGameTurnsParams{
+		GameUuid: gameUUID,
+		StartIdx: int32(startIdx),
+		Events:   raw,
+	})
 }
 
 // AppendTurn appends one proto-marshaled event to game_turns.
@@ -1311,23 +1390,32 @@ func (s *DBStore) DeleteTurns(ctx context.Context, gameUUID string) error {
 
 // CommitArchival atomically sets history_s3_key on the games row and deletes
 // all game_turns rows for the game. Must only be called after a confirmed S3 upload.
-func (s *DBStore) CommitArchival(ctx context.Context, gameUUID string, s3Key string) error {
-	tx, err := s.dbPool.Begin(ctx)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback(ctx)
-	qtx := s.queries.WithTx(tx)
-	if err := qtx.SetGameHistoryS3Key(ctx, models.SetGameHistoryS3KeyParams{
-		Uuid:         common.ToPGTypeText(gameUUID),
-		HistoryS3Key: common.ToPGTypeText(s3Key),
-	}); err != nil {
-		return err
-	}
-	if err := qtx.DeleteGameTurns(ctx, gameUUID); err != nil {
-		return err
-	}
-	return tx.Commit(ctx)
+func (s *DBStore) CommitArchival(ctx context.Context, gameUUID string, s3Key string, archivedTurns int) error {
+	return withGameTx(ctx, s.dbPool, func(ctx context.Context, q *models.Queries) error {
+		// The rows were read, assembled and uploaded before this ran, and the
+		// upload is far too slow to hold a lock across. So check that the log is
+		// still the one that was archived. A move landing in that window would
+		// otherwise be deleted here and exist only in an S3 object written
+		// before it.
+		//
+		// This is the likeliest explanation for the three games in production
+		// that are archived and still have turn rows: the counts stopped
+		// matching and nothing noticed.
+		n, err := q.CountGameTurns(ctx, gameUUID)
+		if err != nil {
+			return err
+		}
+		if int(n) != archivedTurns {
+			return fmt.Errorf("archive-commit: game_turns changed under the archive: %d rows now, %d were uploaded", n, archivedTurns)
+		}
+		if err := q.SetGameHistoryS3Key(ctx, models.SetGameHistoryS3KeyParams{
+			Uuid:         common.ToPGTypeText(gameUUID),
+			HistoryS3Key: common.ToPGTypeText(s3Key),
+		}); err != nil {
+			return err
+		}
+		return q.DeleteGameTurns(ctx, gameUUID)
+	})
 }
 
 // SetHistoryS3Key sets history_s3_key on the games row without touching
