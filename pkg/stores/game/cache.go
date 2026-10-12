@@ -68,12 +68,15 @@ type backingStore interface {
 	InsertGamePlayers(ctx context.Context, g *entity.Game) error
 	SetTimerModuleCreator(creator TimerModuleCreator)
 	SetHistoryFetcher(f HistoryFetcher)
+	// StageTurns queues a move's events to be written by the next Set, in the
+	// same transaction as the games row. The move path must use this rather
+	// than AppendTurns; see DBStore.Set.
+	StageTurns(g *entity.Game, startIdx int, events []*macondopb.GameEvent) error
 	AppendTurns(ctx context.Context, gameUUID string, startIdx int, events []*macondopb.GameEvent) error
 	GetTurns(ctx context.Context, gameUUID string) ([]models.GetGameTurnsRow, error)
 	DeleteTurns(ctx context.Context, gameUUID string) error
-	CommitArchival(ctx context.Context, gameUUID string, s3Key string) error
+	CommitArchival(ctx context.Context, gameUUID string, s3Key string, archivedTurns int) error
 	SetHistoryS3Key(ctx context.Context, gameUUID string, s3Key string) error
-	SpawnShadowCompare(ctx context.Context, g *entity.Game)
 }
 
 // TimerModuleCreator is a function that creates a new timer module for a game.
@@ -301,6 +304,14 @@ func (c *Cache) setOrCreate(ctx context.Context, game *entity.Game, isNew bool) 
 		err = c.backing.Set(ctx, game)
 	}
 	if err != nil {
+		// Drop it, so the next request loads the game from the database. The
+		// object here has the move applied and may still have its turn rows
+		// staged, but the save failed, so we don't know what was committed. If
+		// the commit went through and only the acknowledgement was lost, the
+		// staged rows are already in game_turns, and every later save of this
+		// object would collide with them and fail. A fresh load matches
+		// whatever actually committed.
+		c.cache.Remove(gameID)
 		return err
 	}
 	// Only add to cache if it's not a correspondence game
@@ -399,12 +410,12 @@ func (c *Cache) SetHistoryFetcher(f HistoryFetcher) {
 	c.backing.SetHistoryFetcher(f)
 }
 
-func (c *Cache) AppendTurns(ctx context.Context, gameUUID string, startIdx int, events []*macondopb.GameEvent) error {
-	return c.backing.AppendTurns(ctx, gameUUID, startIdx, events)
+func (c *Cache) StageTurns(g *entity.Game, startIdx int, events []*macondopb.GameEvent) error {
+	return c.backing.StageTurns(g, startIdx, events)
 }
 
-func (c *Cache) SpawnShadowCompare(ctx context.Context, g *entity.Game) {
-	c.backing.SpawnShadowCompare(ctx, g)
+func (c *Cache) AppendTurns(ctx context.Context, gameUUID string, startIdx int, events []*macondopb.GameEvent) error {
+	return c.backing.AppendTurns(ctx, gameUUID, startIdx, events)
 }
 
 func (c *Cache) GetTurns(ctx context.Context, gameUUID string) ([]models.GetGameTurnsRow, error) {
@@ -415,8 +426,8 @@ func (c *Cache) DeleteTurns(ctx context.Context, gameUUID string) error {
 	return c.backing.DeleteTurns(ctx, gameUUID)
 }
 
-func (c *Cache) CommitArchival(ctx context.Context, gameUUID string, s3Key string) error {
-	return c.backing.CommitArchival(ctx, gameUUID, s3Key)
+func (c *Cache) CommitArchival(ctx context.Context, gameUUID string, s3Key string, archivedTurns int) error {
+	return c.backing.CommitArchival(ctx, gameUUID, s3Key, archivedTurns)
 }
 
 func (c *Cache) SetHistoryS3Key(ctx context.Context, gameUUID string, s3Key string) error {

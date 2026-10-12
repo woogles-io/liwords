@@ -123,6 +123,21 @@ that removes it.
 - **Step 3: `shadowload_test.go` writes turns with `AppendTurns`** instead of
   `StageTurns` + `Set`, two lines, each marked `Split step 3`. Replaced with
   the reference version in 4.
+- **Step 4: `Set`'s comment on serialization stops at "callers hold the
+  game's lock across load, move and save".** The reference names the session
+  lock and `lock.go`, which arrive in step 5; the rest of that comment comes
+  back with them. `tx.go` is the reference file verbatim, so its header
+  already describes step 5's session lock.
+- **Step 4: `Cache.setOrCreate` drops the game from the LRU when a save
+  fails.** Step 4 stages turn rows on the game object and `Set` writes them.
+  If a commit succeeds but its acknowledgement is lost, the cached object
+  still has the rows staged, and every later save collides with them on
+  `game_turns_pkey`, so the game can't be moved until it leaves the cache.
+  Dropping it makes the next request load what actually committed.
+  `cache_failedsave_test.go` fakes the lost acknowledgement; without the line,
+  the second and third saves fail with the duplicate key. Step 6 deletes the
+  LRU and the line with it. The test stays, because it checks the same thing
+  without a cache.
 - **Step 3: `pkg/config/config.go` has `ShadowTurnsLoad` but not
   `WriteOngoingGames`.** The reference adds both in the same hunks; the second
   lands with `ongoing_games` in 7.
@@ -416,6 +431,10 @@ Per step, from `xwordgame_remaining.md`:
    "quiet" means mismatch 0 with ok well above 0.
 4. *Watch* move error rates; `dual-write-turns-error` should turn into failed
    moves, not appear alongside them. `shadow-load-torn` should go to zero.
+   Before deploying, check that no live game has more turn rows than history
+   events: its next move would collide with an existing `turn_idx` and fail
+   every time. Checked 2026-10-12: 2,567 live games, 2,530 exact, 37 with no
+   rows, none ahead.
 5. *Watch* `ErrGameLockBusy`, `game-unlock-failed`, pool saturation, move
    latency.
 6. *Watch* p99 load latency, DB CPU.
@@ -444,6 +463,7 @@ deviations="
 pkg/stores/game/shadowturns_test.go
 pkg/stores/game/shadowsummary.go
 pkg/stores/game/shadowsummary_test.go
+pkg/stores/game/cache_failedsave_test.go
 cmd/liwords-api/main.go
 pkg/stores/game/db.go
 pkg/gameplay/end.go
@@ -575,7 +595,7 @@ Deployed column is the code.
 | 1b | `referee-split-1b-games-uuid` | #2027 | 2026-10-09 | store + gameplay ✅ | ✅ | ✅ 2026-10-10 (index built by hand first; schema `202610090004`) |
 | 2 | `referee-split-2-referee` | #2028 | 2026-10-10 (review fixes) | full suite ✅ (corpus tests skip) | ✅ | ✅ 2026-10-12 (`liwords-api:317`) |
 | 3 | `referee-split-3-shadows` | #2029 | 2026-10-10 | full suite ✅; gameplay with flags on, matches master | ✅ | ✅ 2026-10-12 (`liwords-api:317`, `SHADOW_TURNS` and `SHADOW_TURNS_LOAD` on) |
-| 4 | `referee-split-4-atomic-save` | | | | | |
+| 4 | `referee-split-4-atomic-save` | | 2026-10-12 | full suite ✅; gameplay with flags on: no mismatches | | |
 | 5 | `referee-split-5-session-lock` | | | | | |
 | 6 | `referee-split-6-no-cache` | | | | | |
 | 7 | `referee-split-7-ongoing-games` | | | | | |
