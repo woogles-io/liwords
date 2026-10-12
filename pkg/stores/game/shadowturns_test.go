@@ -67,7 +67,9 @@ func TestShadowTurnsIgnoresTurnCountsLostByReplay(t *testing.T) {
 
 	var buf syncBuffer
 	logged := zerolog.New(&buf).Level(zerolog.DebugLevel).WithContext(ctx)
+	okBefore := turnsShadowCounts.ok.Load()
 	gstore.shadowCompareTurns(logged, gid, rules, want, racks, len(reloaded.History().Events))
+	is.Equal(turnsShadowCounts.ok.Load()-okBefore, int64(1))
 
 	var msgs []string
 	for _, line := range strings.Split(strings.TrimSpace(buf.String()), "\n") {

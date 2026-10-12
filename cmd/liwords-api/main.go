@@ -535,6 +535,7 @@ func main() {
 	go vdoWebhookService.Start(ctx)
 	go analysisService.StartReclaimWorker(ctx)
 	go pruneClientRecords(ctx, stores.UserStore)
+	go gamestore.RunShadowSummary(ctx, cfg, time.Hour)
 	broadcastService.StartPoller(ctx)
 
 	go func() {
