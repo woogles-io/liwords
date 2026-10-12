@@ -837,6 +837,15 @@ p.streak-loss {
 
 .board {
   position: relative;
+  transition: transform 0.25s ease-in-out;
+
+  &.board-flipped {
+    transform: rotate(180deg);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
 }
 
 .data-area {

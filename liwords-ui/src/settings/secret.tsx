@@ -19,6 +19,8 @@ export const Secret = React.memo(() => {
     useLocalStorageBool("enableBicolorMode");
   const [showBonusLabels, setShowBonusLabels] =
     useLocalStorageBool("showBonusLabels");
+  const [flipBoardOffTurn, setFlipBoardOffTurn] =
+    useLocalStorageBool("flipBoardOffTurn");
 
   return (
     <div className="preferences secret">
@@ -131,6 +133,20 @@ export const Secret = React.memo(() => {
                 checked={showBonusLabels}
                 onChange={setShowBonusLabels}
                 className="bonus-labels-toggle"
+              />
+            </div>
+          </div>
+          <div className="toggle-section">
+            <div className="title">Turn the board around</div>
+            <div>
+              <div>
+                While it is your opponent's turn in your own game, show the
+                board rotated to face them
+              </div>
+              <Switch
+                checked={flipBoardOffTurn}
+                onChange={setFlipBoardOffTurn}
+                className="flip-board-toggle"
               />
             </div>
           </div>

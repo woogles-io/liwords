@@ -76,6 +76,7 @@ import {
 } from "../gen/api/proto/ipc/omgwords_pb";
 import { PuzzleStatus } from "../gen/api/proto/puzzle_service/puzzle_service_pb";
 import { useClient } from "../utils/hooks/connect";
+import { useLocalStorageBool } from "../utils/use_local_storage";
 import { GameMetadataService } from "../gen/api/proto/game_service/game_service_pb";
 
 import { RackEditor } from "./rack_editor";
@@ -1260,6 +1261,20 @@ export const BoardPanel = React.memo((props: Props) => {
   const tileColorId =
     (props.gameDone ? null : myId) ?? examinableGameContext.onturn;
 
+  // Secret setting: turn the board to face the opponent while they are on
+  // turn, as across a real table. Only for the players of a game in
+  // progress; never for observers, the analyzer, the editor or puzzles.
+  const [flipBoardOffTurn] = useLocalStorageBool("flipBoardOffTurn");
+  const boardFlipped =
+    flipBoardOffTurn &&
+    !observer &&
+    !isMyTurn &&
+    !isExamining &&
+    !props.gameDone &&
+    !props.puzzleMode &&
+    !props.boardEditingMode &&
+    !props.annotated;
+
   // Challenge is only valid when it's my turn AND the last event was a tile placement by the opponent.
   const lastEvent =
     examinableGameContext.turns[examinableGameContext.turns.length - 1];
@@ -1363,6 +1378,7 @@ export const BoardPanel = React.memo((props: Props) => {
         definitionPopover={props.definitionPopover}
         alphabet={props.alphabet}
         recallOneTile={recallOneTile}
+        flipped={boardFlipped}
       />
 
       {gameMetaMessage && !props.puzzleMode ? (

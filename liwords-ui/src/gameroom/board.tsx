@@ -46,6 +46,8 @@ type Props = {
     | { x: number; y: number; content: React.ReactNode }
     | undefined;
   recallOneTile?: (row: number, col: number) => void;
+  // Rotate the board 180 degrees, as if turned to face the opponent.
+  flipped?: boolean;
 };
 
 const Board = React.memo((props: Props) => {
@@ -71,9 +73,10 @@ const Board = React.memo((props: Props) => {
   if (props.gridSize === SuperCrosswordGameGridLayout.length) {
     zomgClass = " zomgboard";
   }
+  const flippedClass = props.flipped ? " board-flipped" : "";
 
   return (
-    <div className={`board${zomgClass}`}>
+    <div className={`board${zomgClass}${flippedClass}`}>
       <BoardCoordLabels gridDim={props.gridSize} />
       <div
         className="board-spaces-container"
