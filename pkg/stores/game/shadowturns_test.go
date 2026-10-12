@@ -67,7 +67,9 @@ func TestShadowTurnsIgnoresTurnCountsLostByReplay(t *testing.T) {
 
 	var buf syncBuffer
 	logged := zerolog.New(&buf).Level(zerolog.DebugLevel).WithContext(ctx)
+	okBefore := turnsShadowCounts.ok.Load()
 	gstore.shadowCompareTurns(logged, gid, rules, want, racks, len(reloaded.History().Events))
+	is.Equal(turnsShadowCounts.ok.Load()-okBefore, int64(1))
 
 	var msgs []string
 	for _, line := range strings.Split(strings.TrimSpace(buf.String()), "\n") {
@@ -80,4 +82,65 @@ func TestShadowTurnsIgnoresTurnCountsLostByReplay(t *testing.T) {
 	}
 	is.True(hasPrefix(msgs, "shadow-turns-ok"))
 	is.True(!hasPrefix(msgs, "shadow-turns-mismatch"))
+}
+
+// The shadow runs in a goroutine, so the next move can commit its rows before
+// the shadow reads them; a bot's reply often does. That is the game moving on,
+// not a row the history lacks, and the shadow must compare the rows its
+// snapshot was taken against rather than report a mismatch.
+func TestShadowTurnsComparesSnapshotWhenGameMovedOn(t *testing.T) {
+	is := is.New(t)
+	ustore, gstore := recreateDB()
+	defer gstore.Disconnect()
+	defer ustore.(*user.DBStore).Disconnect()
+
+	const gid = "wJxURccCgSAPivUvj4QdYL"
+	ctx := context.Background()
+
+	live, err := gstore.Get(ctx, gid)
+	is.NoErr(err)
+	play := func(coords, word string) {
+		before := len(live.History().Events)
+		_, err := live.PlayScoringMove(coords, word, true)
+		is.NoErr(err)
+		is.NoErr(gstore.AppendTurns(ctx, gid, before, live.History().Events[before:]))
+		is.NoErr(gstore.Set(ctx, live))
+	}
+
+	// What SpawnShadowCompare captures after the first move...
+	play("8E", "AGUE")
+	want, err := xwordbridge.StateFromGame(&live.Game)
+	is.NoErr(err)
+	wantEvents := len(live.History().Events)
+	racks := make([]string, xwordgame.MaxPlayers)
+	for p := range racks {
+		racks[p] = live.Game.RackLettersFor(p)
+	}
+	spec := xwordbridge.SpecFromHistory(live.History())
+	if spec.Lexicon == "" && live.GameReq != nil {
+		spec.Lexicon = live.GameReq.Lexicon
+	}
+	rules, err := xwordbridge.RulesFor(gstore.cfg.MacondoConfig(), spec)
+	is.NoErr(err)
+
+	// ...and the reply, committed before the shadow gets to read the table.
+	play("E8", "AVE")
+
+	var buf syncBuffer
+	logged := zerolog.New(&buf).Level(zerolog.DebugLevel).WithContext(ctx)
+	okBefore := turnsShadowCounts.ok.Load()
+	gstore.shadowCompareTurns(logged, gid, rules, want, racks, wantEvents)
+
+	var msgs []string
+	for _, line := range strings.Split(strings.TrimSpace(buf.String()), "\n") {
+		var rec struct {
+			Message string `json:"message"`
+		}
+		is.NoErr(json.Unmarshal([]byte(line), &rec))
+		msgs = append(msgs, rec.Message)
+		t.Log(line)
+	}
+	is.True(hasPrefix(msgs, "shadow-turns-ok"))
+	is.True(!hasPrefix(msgs, "shadow-turns-mismatch"))
+	is.Equal(turnsShadowCounts.ok.Load()-okBefore, int64(1))
 }

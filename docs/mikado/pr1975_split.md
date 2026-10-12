@@ -235,6 +235,36 @@ reference's `turns[0]`/`turns[1]` mismatch and no other field.
 Deviation from the reference: the exclusion and one comment in `db.go`, plus
 the new test file. These carry through to the top of the stack.
 
+### Shadow summary counts (after step 3)
+
+Added after step 3 shipped, in its own PR. A shadow comparison that agrees
+logs only at debug level, which production does not emit, so a week with no
+mismatch lines could not be told apart from a week in which no comparison
+ran. Each shadow now counts its outcomes (ok, mismatch, torn, more or fewer
+rows than events, no turn rows, skipped, errored), and the API logs one
+`shadow-summary` line per enabled shadow per hour, at info level, with the
+counts for that hour.
+
+The same PR fixes a false `shadow-turns-mismatch: more rows than events`.
+`SHADOW_TURNS` snapshots the game on the caller's goroutine and reads
+`game_turns` in its own, so the next move can commit its rows in between.
+Every one of the 13 such lines in production in the week to 2026-10-11 was a
+real-time game against a bot, exactly one row over. The reference has the
+same race, and step 4 makes it more frequent by running the shadow on every
+`Set`, game creation included. Turn rows are only inserted while a game is
+live, so the shadow now compares the first `wantEventCount` rows, the ones
+its snapshot was taken against. Extra rows the history really lacks are left
+to `SHADOW_TURNS_LOAD`, which reads the games row and the turns in one
+statement. Test: `TestShadowTurnsComparesSnapshotWhenGameMovedOn`, which fails
+without the fix.
+
+Deviation from the reference: `pkg/stores/game/shadowsummary.go` and its test
+(new), one counter line at each outcome and the moved-on prefix in `db.go`,
+a count assertion and the moved-on test in `shadowturns_test.go`, and the
+`RunShadowSummary` goroutine in `cmd/liwords-api/main.go`. When steps 4 and 6
+bring in the reference's `db.go` and `main.go` hunks, these lines are carried
+over by hand.
+
 ### Fixes from reviewing xwordgame against macondo (step 2)
 
 On 2026-10-10 xwordgame was compared, area by area, against macondo v0.13.5,
@@ -381,7 +411,9 @@ Per step, from `xwordgame_remaining.md`:
    `shadow-turns-mismatch`, `shadow-load-mismatch` (ERROR, each names every
    disagreeing field), `shadow-load-torn`, `shadow-load-count-mismatch`,
    `archive-contract-violation`. Before step 4, torn reads are expected: that
-   is the race step 4 fixes, and the count is the measurement of it.
+   is the race step 4 fixes, and the count is the measurement of it. The
+   hourly `shadow-summary` lines say how many comparisons each shadow made;
+   "quiet" means mismatch 0 with ok well above 0.
 4. *Watch* move error rates; `dual-write-turns-error` should turn into failed
    moves, not appear alongside them. `shadow-load-torn` should go to zero.
 5. *Watch* `ErrGameLockBusy`, `game-unlock-failed`, pool saturation, move
@@ -410,6 +442,9 @@ m=${1:-origin/master}; r=${2:-08da29c33}
 # Each is explained under "Deliberate deviations" in docs/mikado/pr1975_split.md.
 deviations="
 pkg/stores/game/shadowturns_test.go
+pkg/stores/game/shadowsummary.go
+pkg/stores/game/shadowsummary_test.go
+cmd/liwords-api/main.go
 pkg/stores/game/db.go
 pkg/gameplay/end.go
 pkg/mod/automod.go
@@ -529,13 +564,17 @@ else:
 Kept up to date at the top of the stack. `TestStandings` in
 `pkg/pair/standings` also fails on master and is excluded from "full suite".
 
+Migrations reach production when a PR merges (the build's migration task runs
+them); code reaches it only when the API task definition is updated. The
+Deployed column is the code.
+
 
 | # | Branch | PR | Ledger checked | Tests | Merged | Deployed |
 |---|---|---|---|---|---|---|
-| 1 | `referee-split-1-automod` | #2026 | 2026-10-10 (re-cut) | full suite ✅ | ✅ | ✅ 2026-10-10 |
+| 1 | `referee-split-1-automod` | #2026 | 2026-10-10 (re-cut) | full suite ✅ | ✅ | ✅ migration 2026-10-10; code 2026-10-12 (`liwords-api:317`) |
 | 1b | `referee-split-1b-games-uuid` | #2027 | 2026-10-09 | store + gameplay ✅ | ✅ | ✅ 2026-10-10 (index built by hand first; schema `202610090004`) |
-| 2 | `referee-split-2-referee` | #2028 | 2026-10-10 (review fixes) | full suite ✅ (corpus tests skip) | | |
-| 3 | `referee-split-3-shadows` | #2029 | 2026-10-10 | full suite ✅; gameplay with flags on, matches master | | |
+| 2 | `referee-split-2-referee` | #2028 | 2026-10-10 (review fixes) | full suite ✅ (corpus tests skip) | ✅ | ✅ 2026-10-12 (`liwords-api:317`) |
+| 3 | `referee-split-3-shadows` | #2029 | 2026-10-10 | full suite ✅; gameplay with flags on, matches master | ✅ | ✅ 2026-10-12 (`liwords-api:317`, `SHADOW_TURNS` and `SHADOW_TURNS_LOAD` on) |
 | 4 | `referee-split-4-atomic-save` | | | | | |
 | 5 | `referee-split-5-session-lock` | | | | | |
 | 6 | `referee-split-6-no-cache` | | | | | |

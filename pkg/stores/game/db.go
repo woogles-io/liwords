@@ -401,6 +401,7 @@ func (s *DBStore) shadowLoadWork(ctx context.Context, g models.Game, turnEvents 
 		return nil
 	}
 	if len(g.LastKnownRacks) != xwordgame.MaxPlayers {
+		loadShadowCounts.skipped.Add(1)
 		return nil
 	}
 
@@ -412,6 +413,7 @@ func (s *DBStore) shadowLoadWork(ctx context.Context, g models.Game, turnEvents 
 	rules, err := xwordbridge.RulesFor(s.cfg.MacondoConfig(), spec)
 	if err != nil {
 		log.Warn().Err(err).Str("gid", g.Uuid.String).Msg("shadow-load-rules-error")
+		loadShadowCounts.skipped.Add(1)
 		return nil
 	}
 	// Snapshot here, not in the goroutine: entGame is about to be handed to a
@@ -419,6 +421,7 @@ func (s *DBStore) shadowLoadWork(ctx context.Context, g models.Game, turnEvents 
 	want, err := xwordbridge.StateFromGame(&entGame.Game)
 	if err != nil {
 		log.Warn().Err(err).Str("gid", g.Uuid.String).Msg("shadow-load-snapshot-skipped")
+		loadShadowCounts.skipped.Add(1)
 		return nil
 	}
 	racks := append([]string(nil), g.LastKnownRacks...)
@@ -445,12 +448,14 @@ func (s *DBStore) shadowLoadFromTurns(
 	// so the two cannot be from different moments. Re-reading them here would
 	// put the tear back.
 	if len(turns) == 0 {
+		loadShadowCounts.noTurns.Add(1)
 		return // predates dual-write, or no moves yet
 	}
 
 	events, err := xwordbridge.DecodeTurns(turns)
 	if err != nil {
 		log.Err(err).Str("gid", gameID).Msg("shadow-load-decode-error")
+		loadShadowCounts.errored.Add(1)
 		return
 	}
 
@@ -460,6 +465,7 @@ func (s *DBStore) shadowLoadFromTurns(
 	if xwordbridge.HasTerminalEvent(events) {
 		log.Warn().Str("gid", gameID).Int("turns", len(events)).
 			Msg("shadow-load-torn: terminal event in turns while games row says live")
+		loadShadowCounts.torn.Add(1)
 		return
 	}
 	if len(turns) != wantEventCount {
@@ -468,6 +474,9 @@ func (s *DBStore) shadowLoadFromTurns(
 		lvl := log.Warn()
 		if len(turns) > wantEventCount {
 			lvl = log.Error()
+			loadShadowCounts.moreRows.Add(1)
+		} else {
+			loadShadowCounts.fewerRows.Add(1)
 		}
 		lvl.Str("gid", gameID).Int("want", wantEventCount).Int("got", len(turns)).
 			Msg("shadow-load-count-mismatch")
@@ -481,6 +490,7 @@ func (s *DBStore) shadowLoadFromTurns(
 	}, rules, nil)
 	if err != nil {
 		log.Err(err).Str("gid", gameID).Msg("shadow-load-rebuild-error")
+		loadShadowCounts.errored.Add(1)
 		return
 	}
 
@@ -495,8 +505,10 @@ func (s *DBStore) shadowLoadFromTurns(
 		})
 	if len(divs) == 0 {
 		log.Debug().Str("gid", gameID).Int("turns", len(events)).Msg("shadow-load-ok")
+		loadShadowCounts.ok.Add(1)
 		return
 	}
+	loadShadowCounts.mismatch.Add(1)
 	ev := log.Error().Str("gid", gameID).Int("turns", len(events))
 	for _, d := range divs {
 		ev = ev.Str("from_turns."+d.Field, d.Ours).Str("served."+d.Field, d.Theirs)
@@ -595,6 +607,7 @@ func (s *DBStore) SpawnShadowCompare(ctx context.Context, g *entity.Game) {
 	rules, err := xwordbridge.RulesFor(s.cfg.MacondoConfig(), spec)
 	if err != nil {
 		log.Err(err).Str("gameID", g.GameID()).Msg("shadow-spawn-rules-error")
+		turnsShadowCounts.skipped.Add(1)
 		return
 	}
 
@@ -605,6 +618,7 @@ func (s *DBStore) SpawnShadowCompare(ctx context.Context, g *entity.Game) {
 	want, err := xwordbridge.StateFromGame(&g.Game)
 	if err != nil {
 		log.Warn().Err(err).Str("gameID", g.GameID()).Msg("shadow-spawn-snapshot-skipped")
+		turnsShadowCounts.skipped.Add(1)
 		return
 	}
 	// The racks come from the live game rather than from games.last_known_racks,
@@ -652,23 +666,33 @@ func (s *DBStore) shadowCompareTurns(
 	turns, err := s.queries.GetGameTurns(ctx, gameID)
 	if err != nil {
 		log.Err(err).Str("gameID", gameID).Msg("shadow-turns-load-error")
+		turnsShadowCounts.errored.Add(1)
 		return
 	}
+	if len(turns) > wantEventCount {
+		// The game has moved on since the snapshot. This runs in a goroutine, and
+		// the next move can commit its rows before this query runs -- a bot's
+		// reply often does, within milliseconds. Every "more rows than events"
+		// this used to report in production was that: a real-time bot game, one
+		// row over. Rows are only ever inserted while a game is live, so the
+		// first wantEventCount of them are the ones the snapshot was taken
+		// against, and those are what get compared.
+		//
+		// Rows the history genuinely lacks are the load shadow's to catch: it
+		// reads the games row and the turns in one statement, so the game cannot
+		// move on between the two.
+		turns = turns[:wantEventCount]
+	}
 	if len(turns) == 0 {
+		turnsShadowCounts.noTurns.Add(1)
 		return // game predates dual-write or has no moves yet
 	}
-
-	if len(turns) != wantEventCount {
-		if len(turns) < wantEventCount {
-			// In-flight at dual-write cutover -- partial rows, tolerated temporarily.
-			log.Warn().Str("gameID", gameID).
-				Int("want", wantEventCount).Int("got", len(turns)).
-				Msg("shadow-turns-skip: in-flight at dual-write cutover")
-			return
-		}
-		log.Error().Str("gameID", gameID).
+	if len(turns) < wantEventCount {
+		// In-flight at dual-write cutover -- partial rows, tolerated temporarily.
+		log.Warn().Str("gameID", gameID).
 			Int("want", wantEventCount).Int("got", len(turns)).
-			Msg("shadow-turns-mismatch: more rows than events")
+			Msg("shadow-turns-skip: in-flight at dual-write cutover")
+		turnsShadowCounts.fewerRows.Add(1)
 		return
 	}
 
@@ -679,6 +703,7 @@ func (s *DBStore) shadowCompareTurns(
 	events, err := xwordbridge.DecodeTurns(raw)
 	if err != nil {
 		log.Err(err).Str("gameID", gameID).Msg("shadow-turns-unmarshal-error")
+		turnsShadowCounts.errored.Add(1)
 		return
 	}
 
@@ -692,6 +717,7 @@ func (s *DBStore) shadowCompareTurns(
 	}, rules, nil)
 	if err != nil {
 		log.Err(err).Str("gameID", gameID).Msg("shadow-turns-rebuild-error")
+		turnsShadowCounts.errored.Add(1)
 		return
 	}
 
@@ -706,8 +732,10 @@ func (s *DBStore) shadowCompareTurns(
 	divs := withoutTurnCounts(xwordbridge.CompareStates(res.State, want))
 	if len(divs) == 0 {
 		log.Debug().Str("gameID", gameID).Int("turns", len(events)).Msg("shadow-turns-ok")
+		turnsShadowCounts.ok.Add(1)
 		return
 	}
+	turnsShadowCounts.mismatch.Add(1)
 	ev := log.Error().Str("gameID", gameID).Int("turns", len(events))
 	for _, d := range divs {
 		ev = ev.Str("from_turns."+d.Field, d.Ours).Str("live."+d.Field, d.Theirs)
