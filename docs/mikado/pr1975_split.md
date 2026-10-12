@@ -123,6 +123,11 @@ that removes it.
 - **Step 3: `shadowload_test.go` writes turns with `AppendTurns`** instead of
   `StageTurns` + `Set`, two lines, each marked `Split step 3`. Replaced with
   the reference version in 4.
+- **Step 4: `Set`'s comment on serialization stops at "callers hold the
+  game's lock across load, move and save".** The reference names the session
+  lock and `lock.go`, which arrive in step 5; the rest of that comment comes
+  back with them. `tx.go` is the reference file verbatim, so its header
+  already describes step 5's session lock.
 - **Step 3: `pkg/config/config.go` has `ShadowTurnsLoad` but not
   `WriteOngoingGames`.** The reference adds both in the same hunks; the second
   lands with `ongoing_games` in 7.
@@ -416,6 +421,10 @@ Per step, from `xwordgame_remaining.md`:
    "quiet" means mismatch 0 with ok well above 0.
 4. *Watch* move error rates; `dual-write-turns-error` should turn into failed
    moves, not appear alongside them. `shadow-load-torn` should go to zero.
+   Before deploying, check that no live game has more turn rows than history
+   events: its next move would collide with an existing `turn_idx` and fail
+   every time. Checked 2026-10-12: 2,567 live games, 2,530 exact, 37 with no
+   rows, none ahead.
 5. *Watch* `ErrGameLockBusy`, `game-unlock-failed`, pool saturation, move
    latency.
 6. *Watch* p99 load latency, DB CPU.
@@ -575,7 +584,7 @@ Deployed column is the code.
 | 1b | `referee-split-1b-games-uuid` | #2027 | 2026-10-09 | store + gameplay ✅ | ✅ | ✅ 2026-10-10 (index built by hand first; schema `202610090004`) |
 | 2 | `referee-split-2-referee` | #2028 | 2026-10-10 (review fixes) | full suite ✅ (corpus tests skip) | ✅ | ✅ 2026-10-12 (`liwords-api:317`) |
 | 3 | `referee-split-3-shadows` | #2029 | 2026-10-10 | full suite ✅; gameplay with flags on, matches master | ✅ | ✅ 2026-10-12 (`liwords-api:317`, `SHADOW_TURNS` and `SHADOW_TURNS_LOAD` on) |
-| 4 | `referee-split-4-atomic-save` | | | | | |
+| 4 | `referee-split-4-atomic-save` | | 2026-10-12 | full suite ✅; gameplay with flags on: no mismatches | | |
 | 5 | `referee-split-5-session-lock` | | | | | |
 | 6 | `referee-split-6-no-cache` | | | | | |
 | 7 | `referee-split-7-ongoing-games` | | | | | |
