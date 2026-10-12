@@ -70,12 +70,11 @@ def tokenize(word, labels_longest_first):
 
 
 def run_kwgc(kwgc, args, outfile=None):
-    # kwgc exits 0 even when it fails ("bad tile at offset N" + usage), so
-    # success is judged by stderr and by the output file actually appearing.
+    # kwgc exits non-zero when it fails; the output file must also appear.
     if outfile and os.path.exists(outfile):
         os.remove(outfile)
     p = subprocess.run([kwgc] + args, capture_output=True, text=True)
-    if "bad tile" in p.stderr or "args:" in p.stdout or p.returncode != 0:
+    if p.returncode != 0:
         die(f"kwgc {' '.join(args)} failed:\n{p.stderr}\n{p.stdout[:500]}")
     if outfile and (not os.path.exists(outfile) or os.path.getsize(outfile) == 0):
         die(f"kwgc {' '.join(args)} produced no {outfile}:\n{p.stderr}")
@@ -190,13 +189,13 @@ def main():
     # ---- 3. compile
     kwg = os.path.join(a.out, f"{a.name}.kwg")
     kad = os.path.join(a.out, f"{a.name}.kad")
-    run_kwgc(a.kwgc, [f"{a.alphabet}-kwg", src, kwg], kwg)
-    run_kwgc(a.kwgc, [f"{a.alphabet}-kwg-alpha", src, kad], kad)
+    run_kwgc(a.kwgc, ["--tiles", a.alphabet, "kwg", src, kwg], kwg)
+    run_kwgc(a.kwgc, ["--tiles", a.alphabet, "kwg", "--words", "alphagrams", src, kad], kad)
     report.update(kwg_bytes=os.path.getsize(kwg), kad_bytes=os.path.getsize(kad))
 
     # ---- 4. verify: DAWG half of the kwg holds exactly the kept words
     checks = {}
-    dawg = set(dump_lines(run_kwgc(a.kwgc, [f"{a.alphabet}-read-kwg", kwg])))
+    dawg = set(dump_lines(run_kwgc(a.kwgc, ["--tiles", a.alphabet, "read-kwg", kwg, "-"])))
     kept_set = set(kept_sorted)
     checks["kwg_dawg_roundtrip"] = {
         "ok": dawg == kept_set, "count": len(dawg),
@@ -207,13 +206,13 @@ def main():
         [l.strip().split(",")[0] for l in open(os.path.join(LD_DIR, a.alphabet), encoding="utf-8")
          if l.strip()])}
     alphas = {"".join(sorted(t, key=lambda x: order[x])) for t in keep.values()}
-    got_alpha = set(dump_lines(run_kwgc(a.kwgc, [f"{a.alphabet}-read-kwg", kad])))
+    got_alpha = set(dump_lines(run_kwgc(a.kwgc, ["--tiles", a.alphabet, "read-kwg", kad, "-"])))
     checks["kad_roundtrip"] = {
         "ok": got_alpha == alphas, "count": len(got_alpha), "expected": len(alphas),
         "missing": sorted(alphas - got_alpha)[:20], "extra": sorted(got_alpha - alphas)[:20]}
 
     # ---- 6. verify: GADDAG half. For each word and each split point i, the
-    # entry is reverse(tiles[:i]) + "?" + tiles[i:] ("?" omitted when i == n).
+    # entry is reverse(tiles[:i]) + "@" + tiles[i:] ("@" omitted when i == n).
     if not a.skip_gaddag_check:
         exp_path = os.path.join(a.out, ".gaddag.expected")
         got_path = os.path.join(a.out, ".gaddag.got")
@@ -221,9 +220,9 @@ def main():
             for t in keep.values():
                 n = len(t)
                 for i in range(1, n + 1):
-                    f.write("".join(reversed(t[:i])) + ("?" + "".join(t[i:]) if i < n else "") + "\n")
+                    f.write("".join(reversed(t[:i])) + ("@" + "".join(t[i:]) if i < n else "") + "\n")
         with open(got_path, "w", encoding="utf-8") as f:
-            p = subprocess.run([a.kwgc, f"{a.alphabet}-read-kwg-gaddag", kwg], stdout=f,
+            p = subprocess.run([a.kwgc, "--tiles", a.alphabet, "read-kwg", "--graph", "gaddag", kwg, "-"], stdout=f,
                                stderr=subprocess.PIPE, text=True)
         env = dict(os.environ, LC_ALL="C")
         for pth in (exp_path, got_path):
@@ -239,7 +238,7 @@ def main():
 
     # ---- 7. diff against the previous edition
     if a.prev:
-        prev = set(dump_lines(run_kwgc(a.kwgc, [f"{a.alphabet}-read-kwg", a.prev])))
+        prev = set(dump_lines(run_kwgc(a.kwgc, ["--tiles", a.alphabet, "read-kwg", a.prev, "-"])))
         prev_tiles = {w: tokenize(w, labels) for w in prev}
         in_window = {w for w, t in prev_tiles.items()
                      if t and len(t) >= a.min_len and (not a.max_len or len(t) <= a.max_len)}
