@@ -213,17 +213,27 @@ export const BoardPanel = React.memo((props: Props) => {
     !props.boardEditingMode &&
     !props.annotated;
   const gameStarted = gameContext.players.length > 0;
-  // The first automatic placement after loading is not animated.
+  // Follow the live game's turn, not the examined one, so stepping through
+  // the analyzer or leaving it never flips the board by itself.
+  const liveIsMyTurn =
+    gameContext.nickToPlayerOrder[props.username] === `p${gameContext.onturn}`;
+  // The first automatic placement after loading is not animated; after
+  // that, the board flips only when the live turn changes.
   const autoFlipSettledRef = useRef(false);
+  const lastLiveIsMyTurnRef = useRef(liveIsMyTurn);
   useEffect(() => {
-    if (!autoFlip || !gameStarted) return;
-    const flipped = !isMyTurn;
+    if (!gameStarted) return;
+    const turnChanged = lastLiveIsMyTurnRef.current !== liveIsMyTurn;
+    lastLiveIsMyTurnRef.current = liveIsMyTurn;
+    if (!autoFlip) return;
+    if (autoFlipSettledRef.current && !turnChanged) return;
+    const flipped = !liveIsMyTurn;
     const animate = autoFlipSettledRef.current;
     autoFlipSettledRef.current = true;
     setBoardOrientation((o) =>
       o.flipped === flipped ? o : { flipped, animate },
     );
-  }, [autoFlip, gameStarted, isMyTurn]);
+  }, [autoFlip, gameStarted, liveIsMyTurn]);
   // When a player's own game ends, the automatic flip turns the board back
   // upright. Observers are left as they are.
   const autoUprightAtEnd =
