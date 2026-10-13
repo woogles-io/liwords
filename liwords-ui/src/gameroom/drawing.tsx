@@ -78,6 +78,11 @@ export const useDrawing = (dim: number) => {
         0,
         Math.min(1, (evt.clientY - boardSize.top) / boardSize.height),
       );
+      // A board turned around (secret setting) draws its strokes rotated
+      // with it, so map the pointer back into the board's own orientation.
+      if (boardEltRef.current?.closest(".board-flipped")) {
+        return { x: 1 - x, y: 1 - y };
+      }
       return { x, y };
     },
     [boardSize],

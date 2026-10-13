@@ -76,6 +76,7 @@ import {
 } from "../gen/api/proto/ipc/omgwords_pb";
 import { PuzzleStatus } from "../gen/api/proto/puzzle_service/puzzle_service_pb";
 import { useClient } from "../utils/hooks/connect";
+import { useLocalStorageBool } from "../utils/use_local_storage";
 import { GameMetadataService } from "../gen/api/proto/game_service/game_service_pb";
 
 import { RackEditor } from "./rack_editor";
@@ -189,6 +190,69 @@ export const BoardPanel = React.memo((props: Props) => {
     puzzleMode: props.puzzleMode,
     boardEditingMode: props.boardEditingMode,
   });
+
+  // The board can be turned around to face the opponent, as across a real
+  // table: by hand any time (Options > Flip, or the 6 key), and, with the
+  // secret setting, by itself when the turn changes and the board faces the
+  // wrong way. The automatic flip is only for the players of a game in
+  // progress; never for observers, the analyzer, the editor or puzzles.
+  const [boardOrientation, setBoardOrientation] = useState({
+    flipped: false,
+    animate: false,
+  });
+  const flipBoard = useCallback(() => {
+    setBoardOrientation((o) => ({ flipped: !o.flipped, animate: true }));
+  }, []);
+  const [flipBoardOffTurn] = useLocalStorageBool("flipBoardOffTurn");
+  const autoFlip =
+    flipBoardOffTurn &&
+    !observer &&
+    !isExamining &&
+    !props.gameDone &&
+    !props.puzzleMode &&
+    !props.boardEditingMode &&
+    !props.annotated;
+  const gameStarted = gameContext.players.length > 0;
+  // Follow the live game's turn, not the examined one, so stepping through
+  // the analyzer or leaving it never flips the board by itself.
+  const liveIsMyTurn =
+    gameContext.nickToPlayerOrder[props.username] === `p${gameContext.onturn}`;
+  // The first automatic placement after loading is not animated; after
+  // that, the board flips only when the live turn changes.
+  const autoFlipSettledRef = useRef(false);
+  const lastLiveIsMyTurnRef = useRef(liveIsMyTurn);
+  useEffect(() => {
+    if (!gameStarted) return;
+    const turnChanged = lastLiveIsMyTurnRef.current !== liveIsMyTurn;
+    lastLiveIsMyTurnRef.current = liveIsMyTurn;
+    if (!autoFlip) return;
+    if (autoFlipSettledRef.current && !turnChanged) return;
+    const flipped = !liveIsMyTurn;
+    const animate = autoFlipSettledRef.current;
+    autoFlipSettledRef.current = true;
+    setBoardOrientation((o) =>
+      o.flipped === flipped ? o : { flipped, animate },
+    );
+  }, [autoFlip, gameStarted, liveIsMyTurn]);
+  // When a player's own live game ends, the automatic flip turns the board
+  // back upright, once, at the moment it ends. Observers, and a player who
+  // is in the analyzer at that moment, are left as they are.
+  const autoUprightAtEnd =
+    flipBoardOffTurn &&
+    !observer &&
+    !isExamining &&
+    !props.puzzleMode &&
+    !props.boardEditingMode &&
+    !props.annotated;
+  const lastGameDoneRef = useRef(props.gameDone);
+  useEffect(() => {
+    const justEnded = !lastGameDoneRef.current && props.gameDone;
+    lastGameDoneRef.current = props.gameDone;
+    if (!autoUprightAtEnd || !justEnded) return;
+    setBoardOrientation((o) =>
+      o.flipped ? { flipped: false, animate: true } : o,
+    );
+  }, [autoUprightAtEnd, props.gameDone]);
 
   const { recallTiles, shuffleTiles, rearrangeRack } = useTilePlacement({
     arrowProperties,
@@ -746,6 +810,11 @@ export const BoardPanel = React.memo((props: Props) => {
           setCurrentMode("BLIND");
           return;
         }
+        if (key === "6") {
+          evt.preventDefault();
+          flipBoard();
+          return;
+        }
         if (isMyTurn && !props.gameDone) {
           if (key === "2") {
             evt.preventDefault();
@@ -856,6 +925,7 @@ export const BoardPanel = React.memo((props: Props) => {
       examinableGameContext.pool,
       examinableGameContext.turns,
       examinableGameContext.onturn,
+      flipBoard,
       gameContext.pool,
       gameContext.board,
       gameContext.players,
@@ -1304,6 +1374,7 @@ export const BoardPanel = React.memo((props: Props) => {
         onRematch={props.handleAcceptRematch ?? rematch}
         onExamine={() => handleExamineStart(props.gameDone)}
         onExportGCG={handleExportGCG}
+        onFlipBoard={flipBoard}
         showNudge={authedSolvingPuzzle ? false : showNudge}
         showAbort={authedSolvingPuzzle ? false : showAbort}
         showRematch={
@@ -1363,6 +1434,8 @@ export const BoardPanel = React.memo((props: Props) => {
         definitionPopover={props.definitionPopover}
         alphabet={props.alphabet}
         recallOneTile={recallOneTile}
+        flipped={boardOrientation.flipped}
+        animateFlip={boardOrientation.animate}
       />
 
       {gameMetaMessage && !props.puzzleMode ? (
