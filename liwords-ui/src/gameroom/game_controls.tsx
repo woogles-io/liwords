@@ -252,6 +252,7 @@ export type Props = {
   onCommit: () => void;
   onExamine: () => void;
   onExportGCG: () => void;
+  onFlipBoard?: () => void;
   onRematch: () => void;
   gameEndControls: boolean;
   showRematch: boolean;
@@ -456,8 +457,14 @@ const GameControls = React.memo((props: Props) => {
       label: "3D Board",
       key: "view-3d-board",
     });
+    if (props.onFlipBoard) {
+      items.push({
+        label: "Flip (6)",
+        key: "flip-board",
+      });
+    }
     return items;
-  }, [props.showAbort, props.showNudge, props.isLeagueGame]);
+  }, [props.showAbort, props.showNudge, props.isLeagueGame, props.onFlipBoard]);
 
   // this gameDone is slightly different from the one in table.tsx,
   // but it's good enough, otherwise we need to prop-drill further.
@@ -561,6 +568,9 @@ const GameControls = React.memo((props: Props) => {
           ),
         );
         setBoard3DOpen(true);
+        break;
+      case "flip-board":
+        props.onFlipBoard?.();
         break;
     }
   };

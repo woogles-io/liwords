@@ -105,3 +105,22 @@ it("keeps Space advancing the placement arrow in board editing mode", () => {
   expect(container.querySelector("input.rack")).toBeNull();
   expect(selectedIndex()).toBeGreaterThan(0);
 });
+
+it("flips the board clockwise each way on the 6 key", () => {
+  const { container } = renderBoardPanel();
+  const board = () => container.querySelector(".board")!;
+  const press6 = () =>
+    fireEvent.keyDown(container.querySelector(".board-container")!, {
+      key: "6",
+    });
+  // Starts upright, with no spin on load.
+  expect(board().classList.contains("board-flipped")).toBe(false);
+  expect(board().classList.contains("board-spin-down")).toBe(false);
+  press6();
+  expect(board().classList.contains("board-flipped")).toBe(true);
+  expect(board().classList.contains("board-spin-down")).toBe(true);
+  press6();
+  expect(board().classList.contains("board-flipped")).toBe(false);
+  expect(board().classList.contains("board-spin-down")).toBe(false);
+  expect(board().classList.contains("board-spin-up")).toBe(true);
+});

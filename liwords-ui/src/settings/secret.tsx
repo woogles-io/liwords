@@ -140,8 +140,8 @@ export const Secret = React.memo(() => {
             <div className="title">Turn the board around</div>
             <div>
               <div>
-                While it is your opponent's turn in your own game, show the
-                board rotated to face them
+                In your own games, flip the board to face whoever is on turn.
+                Flip it by hand any time with Options &gt; Flip or the 6 key
               </div>
               <Switch
                 checked={flipBoardOffTurn}

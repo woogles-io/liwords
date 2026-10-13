@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import BoardSpaces from "./board_spaces";
 import { useDrawing } from "./drawing";
@@ -48,6 +48,8 @@ type Props = {
   recallOneTile?: (row: number, col: number) => void;
   // Rotate the board 180 degrees, as if turned to face the opponent.
   flipped?: boolean;
+  // Spin into a new orientation rather than jump to it.
+  animateFlip?: boolean;
 };
 
 const Board = React.memo((props: Props) => {
@@ -73,10 +75,26 @@ const Board = React.memo((props: Props) => {
   if (props.gridSize === SuperCrosswordGameGridLayout.length) {
     zomgClass = " zomgboard";
   }
-  const flippedClass = props.flipped ? " board-flipped" : "";
+  const flipped = !!props.flipped;
+  const flippedClass = flipped ? " board-flipped" : "";
+
+  // Each flip plays one fixed clockwise half-turn: 0 to 180 degrees going
+  // upside down, 180 to 360 coming back, so nothing ever winds up. A layout
+  // effect, so the new resting angle is never painted before the spin starts.
+  const [spinClass, setSpinClass] = useState("");
+  const lastFlippedRef = useRef(flipped);
+  useLayoutEffect(() => {
+    if (lastFlippedRef.current === flipped) return;
+    lastFlippedRef.current = flipped;
+    if (!props.animateFlip) {
+      setSpinClass("");
+      return;
+    }
+    setSpinClass(flipped ? " board-spin-down" : " board-spin-up");
+  }, [flipped, props.animateFlip]);
 
   return (
-    <div className={`board${zomgClass}${flippedClass}`}>
+    <div className={`board${zomgClass}${flippedClass}${spinClass}`}>
       <BoardCoordLabels gridDim={props.gridSize} />
       <div
         className="board-spaces-container"

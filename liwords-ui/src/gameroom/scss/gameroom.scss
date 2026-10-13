@@ -837,14 +837,45 @@ p.streak-loss {
 
 .board {
   position: relative;
-  transition: transform 0.25s ease-in-out;
 
   &.board-flipped {
     transform: rotate(180deg);
   }
 
+  &.board-spin-down {
+    animation: board-spin-down 0.25s ease-in-out;
+  }
+
+  &.board-spin-up {
+    animation: board-spin-up 0.25s ease-in-out;
+  }
+
   @media (prefers-reduced-motion: reduce) {
-    transition: none;
+    &.board-spin-down,
+    &.board-spin-up {
+      animation: none;
+    }
+  }
+}
+
+// Both turn clockwise; 360 degrees rests as 0.
+@keyframes board-spin-down {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(180deg);
+  }
+}
+
+@keyframes board-spin-up {
+  from {
+    transform: rotate(180deg);
+  }
+
+  to {
+    transform: rotate(360deg);
   }
 }
 
