@@ -832,6 +832,10 @@ p.streak-loss {
         background: ut($tile-background);
       }
     }
+
+    &.flipped {
+      transform: rotate(180deg);
+    }
   }
 }
 

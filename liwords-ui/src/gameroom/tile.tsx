@@ -118,7 +118,11 @@ export const TilePreview = React.memo((props: TilePreviewProps) => {
       top,
       left,
     };
+    // Over a flipped board, show the tile the way it will land.
+    const flipped = overBoard && !!boardElement.closest(".board-flipped");
     const computedClass = `tile preview${overBoard ? " over-board" : ""}${
+      flipped ? " flipped" : ""
+    }${
       letter && isDesignatedBlankMachineLetter(letter) ? " blank" : ""
     }${playerOfTile ? " tile-p1" : " tile-p0"}`;
     return (
