@@ -50,6 +50,7 @@ const ExamineGameControls = React.memo(
     lexicon: string;
     darkMode: boolean;
     onExportGCG: () => void;
+    onFlipBoard?: () => void;
     gameDone: boolean;
     puzzleMode: boolean;
     exitable: boolean;
@@ -121,8 +122,21 @@ const ExamineGameControls = React.memo(
         key: "view-3d-board",
         disabled: gameHasNotStarted,
       });
+      if (props.onFlipBoard) {
+        items.push({
+          label: "Flip (6)",
+          key: "flip-board",
+          disabled: gameHasNotStarted,
+        });
+      }
       return items;
-    }, [gameDone, gameHasNotStarted, isAtLastTurn, props.editMode]);
+    }, [
+      gameDone,
+      gameHasNotStarted,
+      isAtLastTurn,
+      props.editMode,
+      props.onFlipBoard,
+    ]);
 
     const exportMenuOnClick: MenuProps["onClick"] = ({ key }) => {
       // When at the last move, examineStoreContext.examinedTurn === Infinity.
@@ -162,6 +176,9 @@ const ExamineGameControls = React.memo(
             ),
           );
           setBoard3DOpen(true);
+          break;
+        case "flip-board":
+          props.onFlipBoard?.();
           break;
       }
     };
@@ -476,6 +493,7 @@ const GameControls = React.memo((props: Props) => {
         lexicon={props.lexicon}
         darkMode={darkMode}
         onExportGCG={props.onExportGCG}
+        onFlipBoard={props.onFlipBoard}
         gameDone={gameDone}
         puzzleMode={!!props.puzzleMode}
         exitable={props.exitableExaminer ?? true}
@@ -490,6 +508,7 @@ const GameControls = React.memo((props: Props) => {
         onRematch={props.onRematch}
         onExamine={props.onExamine}
         onExportGCG={props.onExportGCG}
+        onFlipBoard={props.onFlipBoard}
         showRematch={props.showRematch && !props.observer}
         tournamentPairedMode={props.tournamentPairedMode}
         onExit={handleExitToLobby}
@@ -755,6 +774,7 @@ type EGCProps = {
   showRematch: boolean;
   onExamine: () => void;
   onExportGCG: () => void;
+  onFlipBoard?: () => void;
   onExit: () => void;
   tournamentPairedMode?: boolean;
   darkMode: boolean;
@@ -803,6 +823,15 @@ const EndGameControls = (props: EGCProps) => {
                     label: "3D Board",
                     disabled: gameHasNotStarted,
                   },
+                  ...(props.onFlipBoard
+                    ? [
+                        {
+                          key: "flip-board",
+                          label: "Flip (6)",
+                          disabled: gameHasNotStarted,
+                        },
+                      ]
+                    : []),
                 ],
                 onClick: ({ key }) => {
                   switch (key) {
@@ -829,6 +858,9 @@ const EndGameControls = (props: EGCProps) => {
                         ),
                       );
                       setBoard3DOpen(true);
+                      break;
+                    case "flip-board":
+                      props.onFlipBoard?.();
                       break;
                   }
                 },
