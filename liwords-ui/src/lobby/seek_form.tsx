@@ -266,7 +266,8 @@ export const SeekForm = (props: Props) => {
     lexicon: "CSW24",
     challengerule: ChallengeRule.VOID,
     initialtimeslider: initialTimeMinutesToSlider(20),
-    rated: true,
+    // Unrated until the player picks rated, which the form then saves.
+    rated: false,
     extratime: 1,
     friend: "",
     incOrOT: "overtime",
@@ -311,14 +312,14 @@ export const SeekForm = (props: Props) => {
     }
     if (!disableTimeControls) {
       valuesToPassThrough.initialtimeslider =
-        storedValues.initialtimeslider || defaultValues.initialtimeslider;
+        storedValues.initialtimeslider ?? defaultValues.initialtimeslider;
       valuesToPassThrough.extratime =
-        storedValues.extratime || defaultValues.extratime;
+        storedValues.extratime ?? defaultValues.extratime;
       valuesToPassThrough.incOrOT =
         storedValues.incOrOT || defaultValues.incOrOT;
     }
     if (!disableRatedControls) {
-      valuesToPassThrough.rated = storedValues.rated || defaultValues.rated;
+      valuesToPassThrough.rated = storedValues.rated ?? defaultValues.rated;
     }
     initialValues = {
       ...initFormValues,
