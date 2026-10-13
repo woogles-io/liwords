@@ -68,6 +68,14 @@
       heavier (Mulish 700 gets Plex 600). The overrides are Mulish's vertical
       metrics, so a line with an I or an l is no taller where browsers honor
       them.
+
+      The files in /fonts/ are Plex Sans cut down to just I and l, with the
+      hinting removed, and renamed "Woogles IL" because the Plex license
+      reserves its name for unmodified copies (license in /fonts/OFL.txt).
+      Served from Google, Chrome on Linux drew the I a pixel taller than the
+      capitals around it at common sizes, and still did when cut down with the
+      hinting kept; without the hinting it does not. A changed file gets a new version in
+      its name, since /fonts/ is cached for weeks.
     -->
     <style>
       @font-face {
@@ -75,8 +83,7 @@
         font-style: normal;
         font-weight: 400;
         font-display: swap;
-        src: url(https://fonts.gstatic.com/s/ibmplexsans/v23/zYXGKVElMYYaJe8bpLHnCwDKr932-G7dytD-Dmu1swZSAXcomDVmadSD6llDB6g4.woff2)
-          format("woff2");
+        src: url(/fonts/woogles-il-v1-400.woff2) format("woff2");
         unicode-range: U+0049, U+006C;
         ascent-override: 100.5%;
         descent-override: 25%;
@@ -87,8 +94,7 @@
         font-style: normal;
         font-weight: 500;
         font-display: swap;
-        src: url(https://fonts.gstatic.com/s/ibmplexsans/v23/zYXGKVElMYYaJe8bpLHnCwDKr932-G7dytD-Dmu1swZSAXcomDVmadSD6llDB6g4.woff2)
-          format("woff2");
+        src: url(/fonts/woogles-il-v1-400.woff2) format("woff2");
         unicode-range: U+0049, U+006C;
         ascent-override: 100.5%;
         descent-override: 25%;
@@ -99,8 +105,7 @@
         font-style: normal;
         font-weight: 700;
         font-display: swap;
-        src: url(https://fonts.gstatic.com/s/ibmplexsans/v23/zYXGKVElMYYaJe8bpLHnCwDKr932-G7dytD-Dmu1swZSAXcomDVmadSDNF5DB6g4.woff2)
-          format("woff2");
+        src: url(/fonts/woogles-il-v1-600.woff2) format("woff2");
         unicode-range: U+0049, U+006C;
         ascent-override: 100.5%;
         descent-override: 25%;
@@ -111,8 +116,7 @@
         font-style: normal;
         font-weight: 800;
         font-display: swap;
-        src: url(https://fonts.gstatic.com/s/ibmplexsans/v23/zYXGKVElMYYaJe8bpLHnCwDKr932-G7dytD-Dmu1swZSAXcomDVmadSDDV5DB6g4.woff2)
-          format("woff2");
+        src: url(/fonts/woogles-il-v1-700.woff2) format("woff2");
         unicode-range: U+0049, U+006C;
         ascent-override: 100.5%;
         descent-override: 25%;
@@ -123,8 +127,7 @@
         font-style: normal;
         font-weight: 900;
         font-display: swap;
-        src: url(https://fonts.gstatic.com/s/ibmplexsans/v23/zYXGKVElMYYaJe8bpLHnCwDKr932-G7dytD-Dmu1swZSAXcomDVmadSDDV5DB6g4.woff2)
-          format("woff2");
+        src: url(/fonts/woogles-il-v1-700.woff2) format("woff2");
         unicode-range: U+0049, U+006C;
         ascent-override: 100.5%;
         descent-override: 25%;
