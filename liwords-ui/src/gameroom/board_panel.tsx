@@ -234,16 +234,21 @@ export const BoardPanel = React.memo((props: Props) => {
       o.flipped === flipped ? o : { flipped, animate },
     );
   }, [autoFlip, gameStarted, liveIsMyTurn]);
-  // When a player's own game ends, the automatic flip turns the board back
-  // upright. Observers are left as they are.
+  // When a player's own live game ends, the automatic flip turns the board
+  // back upright, once, at the moment it ends. Observers, and a player who
+  // is in the analyzer at that moment, are left as they are.
   const autoUprightAtEnd =
     flipBoardOffTurn &&
     !observer &&
+    !isExamining &&
     !props.puzzleMode &&
     !props.boardEditingMode &&
     !props.annotated;
+  const lastGameDoneRef = useRef(props.gameDone);
   useEffect(() => {
-    if (!autoUprightAtEnd || !props.gameDone) return;
+    const justEnded = !lastGameDoneRef.current && props.gameDone;
+    lastGameDoneRef.current = props.gameDone;
+    if (!autoUprightAtEnd || !justEnded) return;
     setBoardOrientation((o) =>
       o.flipped ? { flipped: false, animate: true } : o,
     );
