@@ -1436,6 +1436,7 @@ export const BoardPanel = React.memo((props: Props) => {
         recallOneTile={recallOneTile}
         flipped={boardOrientation.flipped}
         animateFlip={boardOrientation.animate}
+        onFlipBoard={flipBoard}
       />
 
       {gameMetaMessage && !props.puzzleMode ? (

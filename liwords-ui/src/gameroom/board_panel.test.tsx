@@ -106,7 +106,19 @@ it("keeps Space advancing the placement arrow in board editing mode", () => {
   expect(selectedIndex()).toBeGreaterThan(0);
 });
 
+// Records each spin the board starts, as [from, to] in degrees.
+const mockSpins = (playState: AnimationPlayState) => {
+  const spins: Array<[string, string]> = [];
+  const animate = vi.fn((frames: Array<{ transform: string }>) => {
+    spins.push([frames[0].transform, frames[1].transform]);
+    return { cancel: vi.fn(), playState } as unknown as Animation;
+  });
+  Element.prototype.animate = animate as unknown as Element["animate"];
+  return spins;
+};
+
 it("flips the board clockwise each way on the 6 key", () => {
+  const spins = mockSpins("finished");
   const { container } = renderBoardPanel();
   const board = () => container.querySelector(".board")!;
   const press6 = () =>
@@ -115,12 +127,37 @@ it("flips the board clockwise each way on the 6 key", () => {
     });
   // Starts upright, with no spin on load.
   expect(board().classList.contains("board-flipped")).toBe(false);
-  expect(board().classList.contains("board-spin-down")).toBe(false);
+  expect(spins).toEqual([]);
   press6();
   expect(board().classList.contains("board-flipped")).toBe(true);
-  expect(board().classList.contains("board-spin-down")).toBe(true);
+  expect(spins).toEqual([["rotate(0deg)", "rotate(180deg)"]]);
   press6();
   expect(board().classList.contains("board-flipped")).toBe(false);
-  expect(board().classList.contains("board-spin-down")).toBe(false);
-  expect(board().classList.contains("board-spin-up")).toBe(true);
+  expect(spins[1]).toEqual(["rotate(180deg)", "rotate(360deg)"]);
+});
+
+it("carries a flip that arrives mid-spin on round, clockwise", () => {
+  const spins = mockSpins("running");
+  const { container } = renderBoardPanel();
+  const press6 = () =>
+    fireEvent.keyDown(container.querySelector(".board-container")!, {
+      key: "6",
+    });
+  press6();
+  // 70 degrees into the turn down when the second flip arrives.
+  const rad = (70 * Math.PI) / 180;
+  const real = window.getComputedStyle;
+  vi.spyOn(window, "getComputedStyle").mockImplementation((el) => {
+    const style = real(el);
+    if (!(el as Element).classList.contains("board")) return style;
+    return {
+      ...style,
+      transform: `matrix(${Math.cos(rad)}, ${Math.sin(rad)}, ${-Math.sin(rad)}, ${Math.cos(rad)}, 0, 0)`,
+    } as CSSStyleDeclaration;
+  });
+  press6();
+  vi.restoreAllMocks();
+  const [from, to] = spins[1].map((t) => parseFloat(t.slice(7)));
+  expect(from).toBeCloseTo(70);
+  expect(to).toBeCloseTo(360);
 });

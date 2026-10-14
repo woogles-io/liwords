@@ -564,8 +564,8 @@ export const useDrawing = (dim: number) => {
     [isEnabled, svgProps, currentDrawing],
   );
   const ret = React.useMemo(
-    () => ({ outerDivProps, svgDrawing }),
-    [outerDivProps, svgDrawing],
+    () => ({ outerDivProps, svgDrawing, isDrawingEnabled: isEnabled }),
+    [outerDivProps, svgDrawing, isEnabled],
   );
   return ret;
 };
