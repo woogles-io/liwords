@@ -54,18 +54,16 @@ type Props = {
   onFlipBoard?: () => void;
 };
 
-// The board's angle right now, in degrees from 0 up to 360, as drawn
-// (mid-spin included).
-const currentAngle = (el: HTMLElement) => {
-  const t = getComputedStyle(el).transform;
-  if (!t || t === "none") return 0;
-  // matrix(a, b, ...) or matrix3d(a, b, ...): a = cos, b = sin.
-  const [a, b] = t
-    .slice(t.indexOf("(") + 1)
-    .split(",")
-    .map(parseFloat);
-  const deg = (Math.atan2(b, a) * 180) / Math.PI;
-  return (deg + 360) % 360;
+// A spin under way: its animation, and the angles it runs between.
+type Spin = { anim: Animation; from: number; to: number };
+
+// The angle a spin has reached, worked out from its own (eased) progress,
+// so it is right even before the first frame is drawn. Null once it has
+// stopped.
+const spinAngle = (spin: Spin | null) => {
+  if (!spin || spin.anim.playState !== "running") return null;
+  const progress = spin.anim.effect?.getComputedTiming().progress ?? 0;
+  return spin.from + (spin.to - spin.from) * progress;
 };
 
 const pointerAngle = (e: React.PointerEvent, cx: number, cy: number) =>
@@ -79,17 +77,19 @@ const shortestTurn = (deg: number) => {
 
 const TURNING_Z = "10";
 
-// Spin from an angle to the resting angle of a side: clockwise unless
-// settling after a drag, which takes the shorter way. Speed is that of
-// a 0.25s half-turn, so a short settle is quick.
+// Spin from an angle to the resting angle of a side. A flip goes
+// clockwise and always takes 0.25s from the moment it starts, however
+// far it has to go, so a flip that cuts into another still lands on time.
+// A settle after a drag takes the shorter way, at the speed of a 0.25s
+// half-turn, so a short settle is quick.
 const spinBoard = (
   el: HTMLElement,
-  spinRef: React.MutableRefObject<Animation | null>,
+  spinRef: React.MutableRefObject<Spin | null>,
   from: number,
   flipped: boolean,
   settle: boolean,
 ) => {
-  spinRef.current?.cancel();
+  spinRef.current?.anim.cancel();
   spinRef.current = null;
   const rest = flipped ? 180 : 0;
   const offset = (((rest - from) % 360) + 360) % 360;
@@ -103,16 +103,17 @@ const spinBoard = (
   }
   // While turning, the corners reach past the board's square; keep them
   // above what is around it (but under popups and menus).
-  spinRef.current = el.animate(
+  const anim = el.animate(
     [
       { transform: `rotate(${from}deg)`, zIndex: TURNING_Z },
       { transform: `rotate(${from + turn}deg)`, zIndex: TURNING_Z },
     ],
     {
-      duration: (250 * Math.abs(turn)) / 180,
+      duration: settle ? (250 * Math.abs(turn)) / 180 : 250,
       easing: "ease-out",
     },
   );
+  spinRef.current = { anim, from, to: from + turn };
 };
 
 const Board = React.memo((props: Props) => {
@@ -148,7 +149,7 @@ const Board = React.memo((props: Props) => {
   // round to the new side instead of jumping back to a starting angle.
   // A layout effect, so the new resting angle is never painted first.
   const boardRef = useRef<HTMLDivElement>(null);
-  const spinRef = useRef<Animation | null>(null);
+  const spinRef = useRef<Spin | null>(null);
   // Set when a drag lets go past the halfway point: that spin starts from
   // where the drag left the board and takes the shorter way.
   const settleFromRef = useRef<number | null>(null);
@@ -169,12 +170,13 @@ const Board = React.memo((props: Props) => {
       spinBoard(el, spinRef, settleFrom, flipped, true);
       return;
     }
-    const spinning = spinRef.current?.playState === "running";
+    const spinning = spinAngle(spinRef.current);
     if (!props.animateFlip) {
-      spinRef.current?.cancel();
+      spinRef.current?.anim.cancel();
+      spinRef.current = null;
       return;
     }
-    const from = spinning ? currentAngle(el) : flipped ? 0 : 180;
+    const from = spinning ?? (flipped ? 0 : 180);
     spinBoard(el, spinRef, from, flipped, false);
   }, [flipped, props.animateFlip]);
 
@@ -201,9 +203,9 @@ const Board = React.memo((props: Props) => {
       if (!turnable || !board || !el || e.button !== 0) return;
       if (!(e.target as Element).closest(".coord-labels")) return;
       e.preventDefault();
-      const spinning = spinRef.current?.playState === "running";
-      const angle = spinning ? currentAngle(el) : flipped ? 180 : 0;
-      spinRef.current?.cancel();
+      const angle = spinAngle(spinRef.current) ?? (flipped ? 180 : 0);
+      spinRef.current?.anim.cancel();
+      spinRef.current = null;
       // The squares turn about their own middle, so it stays put mid-spin.
       const rect = el.getBoundingClientRect();
       const centerX = rect.left + rect.width / 2;

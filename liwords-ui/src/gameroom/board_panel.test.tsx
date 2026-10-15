@@ -107,12 +107,25 @@ it("keeps Space advancing the placement arrow in board editing mode", () => {
 });
 
 // Records each spin the board starts, as [from, to] in degrees.
-const mockSpins = (playState: AnimationPlayState) => {
+// Records each spin the board starts, as [from, to] in degrees, and its
+// duration in spinDurations; every spin reports the given state and
+// progress.
+let spinDurations: Array<number> = [];
+const mockSpins = (playState: AnimationPlayState, progress = 0) => {
   const spins: Array<[string, string]> = [];
-  const animate = vi.fn((frames: Array<{ transform: string }>) => {
-    spins.push([frames[0].transform, frames[1].transform]);
-    return { cancel: vi.fn(), playState } as unknown as Animation;
-  });
+  const durations: Array<number> = [];
+  spinDurations = durations;
+  const animate = vi.fn(
+    (frames: Array<{ transform: string }>, opts: { duration: number }) => {
+      spins.push([frames[0].transform, frames[1].transform]);
+      durations.push(opts.duration);
+      return {
+        cancel: vi.fn(),
+        playState,
+        effect: { getComputedTiming: () => ({ progress }) },
+      } as unknown as Animation;
+    },
+  );
   Element.prototype.animate = animate as unknown as Element["animate"];
   return spins;
 };
@@ -144,7 +157,7 @@ it("flips the board clockwise each way on the 6 key", () => {
 });
 
 it("carries a flip that arrives mid-spin on round, clockwise", () => {
-  const spins = mockSpins("running");
+  const spins = mockSpins("running", 70 / 180);
   const { container } = renderBoardPanel();
   const press6 = () =>
     fireEvent.keyDown(container.querySelector(".board-container")!, {
@@ -152,22 +165,12 @@ it("carries a flip that arrives mid-spin on round, clockwise", () => {
     });
   press6();
   // 70 degrees into the turn down when the second flip arrives.
-  const rad = (70 * Math.PI) / 180;
-  const real = window.getComputedStyle;
-  vi.spyOn(window, "getComputedStyle").mockImplementation((el) => {
-    const style = real(el);
-    if (!(el as Element).classList.contains("board-spaces-container"))
-      return style;
-    return {
-      ...style,
-      transform: `matrix(${Math.cos(rad)}, ${Math.sin(rad)}, ${-Math.sin(rad)}, ${Math.cos(rad)}, 0, 0)`,
-    } as CSSStyleDeclaration;
-  });
   press6();
-  vi.restoreAllMocks();
   const [from, to] = spins[1].map((t) => parseFloat(t.slice(7)));
   expect(from).toBeCloseTo(70);
   expect(to).toBeCloseTo(360);
+  // Lands a full 0.25s after the second flip, however far it goes.
+  expect(spinDurations).toEqual([250, 250]);
 });
 
 it("flips the board on a double tap on the coordinate labels", () => {
