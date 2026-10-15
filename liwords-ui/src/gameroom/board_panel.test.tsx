@@ -131,9 +131,16 @@ it("flips the board clockwise each way on the 6 key", () => {
   press6();
   expect(board().classList.contains("board-flipped")).toBe(true);
   expect(spins).toEqual([["rotate(0deg)", "rotate(180deg)"]]);
+  // The labels stay put and count from the far end.
+  const firstLabels = () =>
+    [".coord-labels.horiz", ".coord-labels.vert"].map(
+      (sel) => container.querySelector(sel)!.firstElementChild!.textContent,
+    );
+  expect(firstLabels()).toEqual(["O", "15"]);
   press6();
   expect(board().classList.contains("board-flipped")).toBe(false);
   expect(spins[1]).toEqual(["rotate(180deg)", "rotate(360deg)"]);
+  expect(firstLabels()).toEqual(["A", "1"]);
 });
 
 it("carries a flip that arrives mid-spin on round, clockwise", () => {
@@ -149,7 +156,8 @@ it("carries a flip that arrives mid-spin on round, clockwise", () => {
   const real = window.getComputedStyle;
   vi.spyOn(window, "getComputedStyle").mockImplementation((el) => {
     const style = real(el);
-    if (!(el as Element).classList.contains("board")) return style;
+    if (!(el as Element).classList.contains("board-spaces-container"))
+      return style;
     return {
       ...style,
       transform: `matrix(${Math.cos(rad)}, ${Math.sin(rad)}, ${-Math.sin(rad)}, ${Math.cos(rad)}, 0, 0)`,

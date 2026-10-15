@@ -842,7 +842,7 @@ p.streak-loss {
 .board {
   position: relative;
 
-  &.board-flipped {
+  &.board-flipped .board-spaces-container {
     transform: rotate(180deg);
   }
 

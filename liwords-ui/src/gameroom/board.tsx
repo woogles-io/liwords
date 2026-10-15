@@ -149,29 +149,15 @@ const Board = React.memo((props: Props) => {
   // where the drag left the board and takes the shorter way.
   const settleFromRef = useRef<number | null>(null);
   const lastFlippedRef = useRef(flipped);
-  // Turn about the middle of the squares, not of the whole box, which also
-  // holds the row of column letters above them; otherwise the squares
-  // shift by that row's height when the board is upside down.
-  useLayoutEffect(() => {
-    const el = boardRef.current;
-    const spaces = el?.querySelector<HTMLElement>(".board-spaces-container");
-    if (!el || !spaces) return;
-    const place = () => {
-      el.style.transformOrigin = `${spaces.offsetLeft + spaces.offsetWidth / 2}px ${
-        spaces.offsetTop + spaces.offsetHeight / 2
-      }px`;
-    };
-    place();
-    if (typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver(place);
-    observer.observe(el);
-    observer.observe(spaces);
-    return () => observer.disconnect();
-  }, []);
+  // Only the squares turn; the coordinate labels stay where they are,
+  // upright, and are numbered the other way round instead.
+  const squares = () =>
+    boardRef.current?.querySelector<HTMLElement>(".board-spaces-container") ??
+    null;
   useLayoutEffect(() => {
     if (lastFlippedRef.current === flipped) return;
     lastFlippedRef.current = flipped;
-    const el = boardRef.current;
+    const el = squares();
     const settleFrom = settleFromRef.current;
     settleFromRef.current = null;
     if (!el) return;
@@ -201,17 +187,16 @@ const Board = React.memo((props: Props) => {
   } | null>(null);
   const onPointerDown = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
-      const el = boardRef.current;
-      if (!turnable || !el || e.button !== 0) return;
+      const board = boardRef.current;
+      const el = squares();
+      if (!turnable || !board || !el || e.button !== 0) return;
       if (!(e.target as Element).closest(".coord-labels")) return;
       e.preventDefault();
       const spinning = spinRef.current?.playState === "running";
       const angle = spinning ? currentAngle(el) : flipped ? 180 : 0;
       spinRef.current?.cancel();
       // The squares turn about their own middle, so it stays put mid-spin.
-      const rect = (
-        el.querySelector(".board-spaces-container") ?? el
-      ).getBoundingClientRect();
+      const rect = el.getBoundingClientRect();
       const centerX = rect.left + rect.width / 2;
       const centerY = rect.top + rect.height / 2;
       dragRef.current = {
@@ -221,14 +206,14 @@ const Board = React.memo((props: Props) => {
         lastPointer: pointerAngle(e, centerX, centerY),
         angle,
       };
-      el.setPointerCapture(e.pointerId);
+      board.setPointerCapture(e.pointerId);
       el.style.transform = `rotate(${angle}deg)`;
     },
     [turnable, flipped],
   );
   const onPointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     const drag = dragRef.current;
-    const el = boardRef.current;
+    const el = squares();
     if (!drag || !el || e.pointerId !== drag.pointerId) return;
     const p = pointerAngle(e, drag.centerX, drag.centerY);
     drag.angle += shortestTurn(p - drag.lastPointer);
@@ -238,7 +223,7 @@ const Board = React.memo((props: Props) => {
   const onPointerUp = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
       const drag = dragRef.current;
-      const el = boardRef.current;
+      const el = squares();
       if (!drag || !el || e.pointerId !== drag.pointerId) return;
       dragRef.current = null;
       el.style.transform = "";
@@ -265,7 +250,7 @@ const Board = React.memo((props: Props) => {
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
     >
-      <BoardCoordLabels gridDim={props.gridSize} />
+      <BoardCoordLabels gridDim={props.gridSize} flipped={flipped} />
       <div
         className="board-spaces-container"
         id="board"
