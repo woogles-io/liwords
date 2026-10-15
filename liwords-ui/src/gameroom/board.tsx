@@ -110,7 +110,7 @@ const spinBoard = (
     ],
     {
       duration: (250 * Math.abs(turn)) / 180,
-      easing: settle ? "ease-out" : "ease-in-out",
+      easing: "ease-out",
     },
   );
 };
