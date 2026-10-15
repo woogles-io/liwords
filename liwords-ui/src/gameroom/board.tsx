@@ -183,6 +183,7 @@ const Board = React.memo((props: Props) => {
   // where the drag left the board and takes the shorter way.
   const settleFromRef = useRef<number | null>(null);
   const lastFlippedRef = useRef(flipped);
+  const { handleUnsetHover } = props;
   // Only the squares turn; the coordinate labels stay where they are,
   // upright, and are numbered the other way round instead.
   const squares = () =>
@@ -191,6 +192,9 @@ const Board = React.memo((props: Props) => {
   useLayoutEffect(() => {
     if (lastFlippedRef.current === flipped) return;
     lastFlippedRef.current = flipped;
+    // A definition shown beside a tile would be left pointing at where
+    // the tile was; close it, and hovering again shows it in place.
+    handleUnsetHover?.();
     const el = squares();
     const settleFrom = settleFromRef.current;
     settleFromRef.current = null;
@@ -207,7 +211,7 @@ const Board = React.memo((props: Props) => {
     }
     const from = spinning ?? (flipped ? 0 : 180);
     spinBoard(el, spinRef, from, flipped, false);
-  }, [flipped, props.animateFlip]);
+  }, [flipped, props.animateFlip, handleUnsetHover]);
 
   // Dragging the coordinate labels turns the board by hand; letting go
   // settles it upright or upside down, whichever is nearer.
@@ -232,6 +236,7 @@ const Board = React.memo((props: Props) => {
       if (!turnable || !board || !el || e.button !== 0) return;
       if (!(e.target as Element).closest(".coord-labels")) return;
       e.preventDefault();
+      handleUnsetHover?.();
       const angle = spinAngle(spinRef.current) ?? (flipped ? 180 : 0);
       spinRef.current?.anim.cancel();
       spinRef.current = null;
@@ -253,7 +258,7 @@ const Board = React.memo((props: Props) => {
       el.style.transform = `rotate(${angle}deg)`;
       el.style.zIndex = TURNING_Z;
     },
-    [turnable, flipped],
+    [turnable, flipped, handleUnsetHover],
   );
   const onPointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     const drag = dragRef.current;
