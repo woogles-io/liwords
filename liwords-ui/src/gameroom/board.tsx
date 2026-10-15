@@ -77,6 +77,8 @@ const shortestTurn = (deg: number) => {
   return d > 180 ? d - 360 : d;
 };
 
+const TURNING_Z = "10";
+
 // Spin from an angle to the resting angle of a side: clockwise unless
 // settling after a drag, which takes the shorter way. Speed is that of
 // a 0.25s half-turn, so a short settle is quick.
@@ -99,10 +101,12 @@ const spinBoard = (
   ) {
     return;
   }
+  // While turning, the corners reach past the board's square; keep them
+  // above what is around it (but under popups and menus).
   spinRef.current = el.animate(
     [
-      { transform: `rotate(${from}deg)` },
-      { transform: `rotate(${from + turn}deg)` },
+      { transform: `rotate(${from}deg)`, zIndex: TURNING_Z },
+      { transform: `rotate(${from + turn}deg)`, zIndex: TURNING_Z },
     ],
     {
       duration: (250 * Math.abs(turn)) / 180,
@@ -208,6 +212,7 @@ const Board = React.memo((props: Props) => {
       };
       board.setPointerCapture(e.pointerId);
       el.style.transform = `rotate(${angle}deg)`;
+      el.style.zIndex = TURNING_Z;
     },
     [turnable, flipped],
   );
@@ -227,6 +232,7 @@ const Board = React.memo((props: Props) => {
       if (!drag || !el || e.pointerId !== drag.pointerId) return;
       dragRef.current = null;
       el.style.transform = "";
+      el.style.zIndex = "";
       const rest = ((drag.angle % 360) + 360) % 360;
       const wantFlipped = rest > 90 && rest < 270;
       if (wantFlipped !== flipped && onFlipBoard) {
