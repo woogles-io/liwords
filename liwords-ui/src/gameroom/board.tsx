@@ -151,9 +151,7 @@ const Board = React.memo((props: Props) => {
   // Keep frames the same size, and shrink or grow the
   // board squares as necessary.
 
-  const { outerDivProps, svgDrawing, isDrawingEnabled } = useDrawing(
-    props.gridSize,
-  );
+  const { outerDivProps, svgDrawing } = useDrawing(props.gridSize);
   const { isExamining } = useExamineStoreContext();
 
   // Secret setting: when enabled, premium-square labels (2x letter, 3x word,
@@ -214,7 +212,7 @@ const Board = React.memo((props: Props) => {
   // Dragging the coordinate labels turns the board by hand; letting go
   // settles it upright or upside down, whichever is nearer.
   const { onFlipBoard } = props;
-  const turnable = !!onFlipBoard && !isDrawingEnabled;
+  const turnable = !!onFlipBoard;
   const dragRef = useRef<{
     pointerId: number;
     centerX: number;
