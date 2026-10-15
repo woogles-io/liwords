@@ -846,6 +846,12 @@ p.streak-loss {
     transform: rotate(180deg);
   }
 
+  // Text that is read rather than played turns back upright, in place.
+  &.board-flipped .bonus-label,
+  &.board-flipped .tentative-score {
+    transform: rotate(180deg);
+  }
+
   &.board-turnable .coord-labels {
     cursor: grab;
     touch-action: none;
