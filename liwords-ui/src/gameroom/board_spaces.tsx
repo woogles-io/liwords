@@ -40,14 +40,21 @@ const BoardSpaces = React.memo((props: Props) => {
   const [, drop] = useDrop({
     accept: TILE_TYPE,
     drop: (item: { rackIndex: string; tileIndex: string }, monitor) => {
+      // A square under the pointer has already taken the tile.
+      if (monitor.didDrop()) return;
       const clientOffset = monitor.getClientOffset();
       const boardElement = document.getElementById("board");
       if (clientOffset && handleTileDrop && boardElement) {
-        const { row, col } = calculatePosition(
+        let { row, col } = calculatePosition(
           clientOffset,
           boardElement,
           gridDim,
         );
+        // Upside down, the square on screen is the one diagonally opposite.
+        if (boardElement.closest(".board-flipped")) {
+          row = gridDim - 1 - row;
+          col = gridDim - 1 - col;
+        }
         handleTileDrop(
           row,
           col,
