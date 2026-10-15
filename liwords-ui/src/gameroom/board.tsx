@@ -102,11 +102,10 @@ const shortestTurn = (deg: number) => {
 
 const TURNING_Z = "10";
 
-// Spin from an angle to the resting angle of a side. A flip goes
-// clockwise and always takes 0.25s from the moment it starts, however
-// far it has to go, so a flip that cuts into another still lands on time.
-// A settle after a drag takes the shorter way, at the speed of a 0.25s
-// half-turn, so a short settle is quick.
+// Spin from an angle to the resting angle of a side: a flip clockwise, a
+// settle after a drag the shorter way. Up to a half-turn goes at the speed
+// of a 0.25s half-turn, so a short way is quick; anything longer (a flip
+// that cuts into another) still takes just 0.25s, so it lands on time.
 const spinBoard = (
   el: HTMLElement,
   spinRef: React.MutableRefObject<Spin | null>,
@@ -126,7 +125,7 @@ const spinBoard = (
   ) {
     return;
   }
-  const duration = settle ? (250 * Math.abs(turn)) / 180 : 250;
+  const duration = 250 * Math.min(1, Math.abs(turn) / 180);
   // While turning, the corners reach past the board's square; keep them
   // above what is around it (but under popups and menus).
   const anim = el.animate(

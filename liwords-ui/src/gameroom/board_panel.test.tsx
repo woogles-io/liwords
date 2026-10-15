@@ -173,6 +173,31 @@ it("carries a flip that arrives mid-spin on round, clockwise", () => {
   expect(spinDurations).toEqual([250, 250]);
 });
 
+it("lets a flip with only a little way to go land quickly", () => {
+  const spins = mockSpins("running");
+  let now = 1000;
+  vi.spyOn(performance, "now").mockImplementation(() => now);
+  const { container } = renderBoardPanel();
+  const press6 = () =>
+    fireEvent.keyDown(container.querySelector(".board-container")!, {
+      key: "6",
+    });
+  press6();
+  // Turned back just after starting down, the board swings round toward
+  // 360; still short of 180 on the way, a third flip has only a little
+  // way to go to upside down.
+  now += 10;
+  press6();
+  now += 60;
+  press6();
+  vi.restoreAllMocks();
+  const [from, to] = spins[2].map((t) => parseFloat(t.slice(7)));
+  expect(from).toBeLessThan(180);
+  expect(to).toBeCloseTo(180);
+  expect(spinDurations[2]).toBeCloseTo((250 * (to - from)) / 180);
+  expect(spinDurations[2]).toBeLessThan(250);
+});
+
 it("flips the board on a double tap on the coordinate labels", () => {
   const spins = mockSpins("finished");
   const { container } = renderBoardPanel();
