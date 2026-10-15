@@ -3130,10 +3130,13 @@ func (x *GetBlocksResponse) GetUsers() []*BasicUser {
 // XXX: We should eventually obsolete this and handle blocks purely on
 // the backend but we need to write a lot of hard code for that.
 type GetFullBlocksResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	UserIds       []string               `protobuf:"bytes,1,rep,name=user_ids,json=userIds,proto3" json:"user_ids,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Players who blocked us and players we've blocked, together.
+	UserIds []string `protobuf:"bytes,1,rep,name=user_ids,json=userIds,proto3" json:"user_ids,omitempty"`
+	// The subset of user_ids that we blocked; only these can be unblocked.
+	BlockedUserIds []string `protobuf:"bytes,2,rep,name=blocked_user_ids,json=blockedUserIds,proto3" json:"blocked_user_ids,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *GetFullBlocksResponse) Reset() {
@@ -3169,6 +3172,13 @@ func (*GetFullBlocksResponse) Descriptor() ([]byte, []int) {
 func (x *GetFullBlocksResponse) GetUserIds() []string {
 	if x != nil {
 		return x.UserIds
+	}
+	return nil
+}
+
+func (x *GetFullBlocksResponse) GetBlockedUserIds() []string {
+	if x != nil {
+		return x.BlockedUserIds
 	}
 	return nil
 }
@@ -5993,9 +6003,10 @@ const file_proto_user_service_user_service_proto_rawDesc = "" +
 	"\x12GetFollowsResponse\x125\n" +
 	"\x05users\x18\x01 \x03(\v2\x1f.user_service.BasicFollowedUserR\x05users\"B\n" +
 	"\x11GetBlocksResponse\x12-\n" +
-	"\x05users\x18\x01 \x03(\v2\x17.user_service.BasicUserR\x05users\"2\n" +
+	"\x05users\x18\x01 \x03(\v2\x17.user_service.BasicUserR\x05users\"\\\n" +
 	"\x15GetFullBlocksResponse\x12\x19\n" +
-	"\buser_ids\x18\x01 \x03(\tR\auserIds\"\xf7\x01\n" +
+	"\buser_ids\x18\x01 \x03(\tR\auserIds\x12(\n" +
+	"\x10blocked_user_ids\x18\x02 \x03(\tR\x0eblockedUserIds\"\xf7\x01\n" +
 	"\vIntegration\x12\x12\n" +
 	"\x04uuid\x18\x01 \x01(\tR\x04uuid\x12)\n" +
 	"\x10integration_name\x18\x02 \x01(\tR\x0fintegrationName\x12b\n" +

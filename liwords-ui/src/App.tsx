@@ -160,6 +160,7 @@ const HandoverSignedCookie = () => {
 const App = React.memo(() => {
   const {
     setExcludedPlayers,
+    setBlockedPlayers,
     setExcludedPlayersFetched,
     pendingBlockRefresh,
     setPendingBlockRefresh,
@@ -249,15 +250,18 @@ const App = React.memo(() => {
     void userID; // used only as effect dependency
     (async () => {
       let toExclude = new Set<string>();
+      let blocked = new Set<string>();
       try {
         if (loggedIn) {
           const resp = await socializeClient.getFullBlocks({});
           toExclude = new Set<string>(resp.userIds);
+          blocked = new Set<string>(resp.blockedUserIds);
         }
       } catch (e) {
         console.log(e);
       } finally {
         setExcludedPlayers(toExclude);
+        setBlockedPlayers(blocked);
         setExcludedPlayersFetched(true);
         setPendingBlockRefresh(false);
       }
@@ -266,6 +270,7 @@ const App = React.memo(() => {
     loggedIn,
     userID,
     setExcludedPlayers,
+    setBlockedPlayers,
     setExcludedPlayersFetched,
     setPendingBlockRefresh,
     socializeClient,

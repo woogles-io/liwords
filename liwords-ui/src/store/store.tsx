@@ -87,6 +87,9 @@ type LagStoreData = {
 type ExcludedPlayersStoreData = {
   excludedPlayers: Set<string>;
   setExcludedPlayers: React.Dispatch<React.SetStateAction<Set<string>>>;
+  // the subset of excludedPlayers that we blocked ourselves (the rest blocked us)
+  blockedPlayers: Set<string>;
+  setBlockedPlayers: React.Dispatch<React.SetStateAction<Set<string>>>;
   excludedPlayersFetched: boolean;
   setExcludedPlayersFetched: React.Dispatch<React.SetStateAction<boolean>>;
   pendingBlockRefresh: boolean;
@@ -275,6 +278,8 @@ const ExcludedPlayersContext = createContext<ExcludedPlayersStoreData>({
   // we do not see any messages from excludedPlayers
   excludedPlayers: new Set<string>(),
   setExcludedPlayers: defaultFunction,
+  blockedPlayers: new Set<string>(),
+  setBlockedPlayers: defaultFunction,
   excludedPlayersFetched: false,
   setExcludedPlayersFetched: defaultFunction,
   pendingBlockRefresh: false,
@@ -977,6 +982,7 @@ const RealStore = ({ children, ...props }: Props) => {
     ActiveChatChannels | undefined
   >(undefined);
   const [excludedPlayers, setExcludedPlayers] = useState(new Set<string>());
+  const [blockedPlayers, setBlockedPlayers] = useState(new Set<string>());
   const [friends, setFriends] = useState({});
   const [pendingFriendsRefresh, setPendingFriendsRefresh] = useState(false);
   const [excludedPlayersFetched, setExcludedPlayersFetched] = useState(false);
@@ -1163,6 +1169,8 @@ const RealStore = ({ children, ...props }: Props) => {
     () => ({
       excludedPlayers,
       setExcludedPlayers,
+      blockedPlayers,
+      setBlockedPlayers,
       excludedPlayersFetched,
       setExcludedPlayersFetched,
       pendingBlockRefresh,
@@ -1171,6 +1179,8 @@ const RealStore = ({ children, ...props }: Props) => {
     [
       excludedPlayers,
       setExcludedPlayers,
+      blockedPlayers,
+      setBlockedPlayers,
       excludedPlayersFetched,
       setExcludedPlayersFetched,
       pendingBlockRefresh,
