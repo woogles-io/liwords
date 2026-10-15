@@ -4,6 +4,8 @@ import CoordLabel from "./board_coord_label";
 
 type Props = {
   gridDim: number;
+  // The squares are upside down: label them from the far end.
+  flipped?: boolean;
 };
 
 const BoardCoordLabels = React.memo((props: Props) => {
@@ -12,9 +14,10 @@ const BoardCoordLabels = React.memo((props: Props) => {
 
   // COLUMN labels.
   for (let i = 0; i < props.gridDim; i += 1) {
+    const col = props.flipped ? props.gridDim - 1 - i : i;
     horizLabels.push(
       <CoordLabel
-        label={String.fromCharCode(i + "A".charCodeAt(0))}
+        label={String.fromCharCode(col + "A".charCodeAt(0))}
         key={`collbl${i}`}
       />,
     );
@@ -22,7 +25,8 @@ const BoardCoordLabels = React.memo((props: Props) => {
 
   // ROW labels
   for (let i = 0; i < props.gridDim; i += 1) {
-    vertLabels.push(<CoordLabel label={String(i + 1)} key={`rowlbl${i}`} />);
+    const row = props.flipped ? props.gridDim - 1 - i : i;
+    vertLabels.push(<CoordLabel label={String(row + 1)} key={`rowlbl${i}`} />);
   }
   return (
     <>

@@ -842,44 +842,20 @@ p.streak-loss {
 .board {
   position: relative;
 
-  &.board-flipped {
+  &.board-flipped .board-spaces-container {
     transform: rotate(180deg);
   }
 
-  &.board-spin-down {
-    animation: board-spin-down 0.25s ease-in-out;
-  }
-
-  &.board-spin-up {
-    animation: board-spin-up 0.25s ease-in-out;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    &.board-spin-down,
-    &.board-spin-up {
-      animation: none;
-    }
-  }
-}
-
-// Both turn clockwise; 360 degrees rests as 0.
-@keyframes board-spin-down {
-  from {
-    transform: rotate(0deg);
-  }
-
-  to {
-    transform: rotate(180deg);
-  }
-}
-
-@keyframes board-spin-up {
-  from {
+  // Text that is read rather than played turns back upright, in place.
+  &.board-flipped .bonus-label,
+  &.board-flipped .tentative-score {
     transform: rotate(180deg);
   }
 
-  to {
-    transform: rotate(360deg);
+  &.board-turnable .coord-labels {
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
   }
 }
 

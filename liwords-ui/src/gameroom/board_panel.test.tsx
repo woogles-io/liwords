@@ -106,7 +106,27 @@ it("keeps Space advancing the placement arrow in board editing mode", () => {
   expect(selectedIndex()).toBeGreaterThan(0);
 });
 
+// Records each spin the board starts, as [from, to] in degrees.
+// Records each spin the board starts, as [from, to] in degrees, and its
+// duration in spinDurations; every spin reports the given state.
+let spinDurations: Array<number> = [];
+const mockSpins = (playState: AnimationPlayState) => {
+  const spins: Array<[string, string]> = [];
+  const durations: Array<number> = [];
+  spinDurations = durations;
+  const animate = vi.fn(
+    (frames: Array<{ transform: string }>, opts: { duration: number }) => {
+      spins.push([frames[0].transform, frames[1].transform]);
+      durations.push(opts.duration);
+      return { cancel: vi.fn(), playState } as unknown as Animation;
+    },
+  );
+  Element.prototype.animate = animate as unknown as Element["animate"];
+  return spins;
+};
+
 it("flips the board clockwise each way on the 6 key", () => {
+  const spins = mockSpins("finished");
   const { container } = renderBoardPanel();
   const board = () => container.querySelector(".board")!;
   const press6 = () =>
@@ -115,12 +135,81 @@ it("flips the board clockwise each way on the 6 key", () => {
     });
   // Starts upright, with no spin on load.
   expect(board().classList.contains("board-flipped")).toBe(false);
-  expect(board().classList.contains("board-spin-down")).toBe(false);
+  expect(spins).toEqual([]);
   press6();
   expect(board().classList.contains("board-flipped")).toBe(true);
-  expect(board().classList.contains("board-spin-down")).toBe(true);
+  expect(spins).toEqual([["rotate(0deg)", "rotate(180deg)"]]);
+  // The labels stay put and count from the far end.
+  const firstLabels = () =>
+    [".coord-labels.horiz", ".coord-labels.vert"].map(
+      (sel) => container.querySelector(sel)!.firstElementChild!.textContent,
+    );
+  expect(firstLabels()).toEqual(["O", "15"]);
   press6();
   expect(board().classList.contains("board-flipped")).toBe(false);
-  expect(board().classList.contains("board-spin-down")).toBe(false);
-  expect(board().classList.contains("board-spin-up")).toBe(true);
+  expect(spins[1]).toEqual(["rotate(180deg)", "rotate(360deg)"]);
+  expect(firstLabels()).toEqual(["A", "1"]);
+});
+
+it("carries a flip that arrives mid-spin on round, clockwise", () => {
+  const spins = mockSpins("running");
+  let now = 1000;
+  vi.spyOn(performance, "now").mockImplementation(() => now);
+  const { container } = renderBoardPanel();
+  const press6 = () =>
+    fireEvent.keyDown(container.querySelector(".board-container")!, {
+      key: "6",
+    });
+  press6();
+  // Halfway through the time of the turn down, ease-out has done about
+  // 68% of it (Chrome agrees: 0.6846), when the second flip arrives.
+  now += 125;
+  press6();
+  vi.restoreAllMocks();
+  const [from, to] = spins[1].map((t) => parseFloat(t.slice(7)));
+  expect(from).toBeCloseTo(180 * 0.6846, 0);
+  expect(to).toBeCloseTo(360);
+  // Lands a full 0.25s after the second flip, however far it goes.
+  expect(spinDurations).toEqual([250, 250]);
+});
+
+it("lets a flip with only a little way to go land quickly", () => {
+  const spins = mockSpins("running");
+  let now = 1000;
+  vi.spyOn(performance, "now").mockImplementation(() => now);
+  const { container } = renderBoardPanel();
+  const press6 = () =>
+    fireEvent.keyDown(container.querySelector(".board-container")!, {
+      key: "6",
+    });
+  press6();
+  // Turned back just after starting down, the board swings round toward
+  // 360; still short of 180 on the way, a third flip has only a little
+  // way to go to upside down.
+  now += 10;
+  press6();
+  now += 60;
+  press6();
+  vi.restoreAllMocks();
+  const [from, to] = spins[2].map((t) => parseFloat(t.slice(7)));
+  expect(from).toBeLessThan(180);
+  expect(to).toBeCloseTo(180);
+  expect(spinDurations[2]).toBeCloseTo((250 * (to - from)) / 180);
+  expect(spinDurations[2]).toBeLessThan(250);
+});
+
+it("flips the board on a double tap on the coordinate labels", () => {
+  const spins = mockSpins("finished");
+  const { container } = renderBoardPanel();
+  const board = () => container.querySelector(".board")!;
+  const label = container.querySelector(".coord-labels.horiz .coord-label")!;
+  const tap = () => {
+    fireEvent.pointerDown(label, { button: 0, clientX: 5, clientY: 5 });
+    fireEvent.pointerUp(label, { button: 0, clientX: 5, clientY: 5 });
+  };
+  tap();
+  expect(board().classList.contains("board-flipped")).toBe(false);
+  tap();
+  expect(board().classList.contains("board-flipped")).toBe(true);
+  expect(spins).toEqual([["rotate(0deg)", "rotate(180deg)"]]);
 });
