@@ -54,16 +54,41 @@ type Props = {
   onFlipBoard?: () => void;
 };
 
-// A spin under way: its animation, and the angles it runs between.
-type Spin = { anim: Animation; from: number; to: number };
+// A spin under way: its animation, the angles it runs between, and when
+// it started and how long it takes, in performance.now() milliseconds.
+type Spin = {
+  anim: Animation;
+  from: number;
+  to: number;
+  start: number;
+  duration: number;
+};
 
-// The angle a spin has reached, worked out from its own (eased) progress,
-// so it is right even before the first frame is drawn. Null once it has
-// stopped.
+// CSS ease-out, cubic-bezier(0, 0, 0.58, 1): the share of the turn done
+// after a share x of the time. Bisects the curve's parameter.
+const easeOut = (x: number) => {
+  const bez = (t: number, p1: number, p2: number) =>
+    3 * (1 - t) * (1 - t) * t * p1 + 3 * (1 - t) * t * t * p2 + t * t * t;
+  let lo = 0;
+  let hi = 1;
+  for (let i = 0; i < 30; i += 1) {
+    const mid = (lo + hi) / 2;
+    if (bez(mid, 0, 0.58) < x) lo = mid;
+    else hi = mid;
+  }
+  return bez((lo + hi) / 2, 0, 1);
+};
+
+// The angle a spin has reached, from the clock rather than from the
+// animation's own progress: the browser runs the spin off the main thread,
+// and while the page is busy (as when a move has just come in), the
+// animation can report no progress for frames the board has already
+// turned through. Null once it has stopped.
 const spinAngle = (spin: Spin | null) => {
-  if (!spin || spin.anim.playState !== "running") return null;
-  const progress = spin.anim.effect?.getComputedTiming().progress ?? 0;
-  return spin.from + (spin.to - spin.from) * progress;
+  if (!spin || spin.anim.playState === "finished") return null;
+  if (spin.anim.playState === "idle") return null;
+  const x = Math.min(1, (performance.now() - spin.start) / spin.duration);
+  return spin.from + (spin.to - spin.from) * easeOut(x);
 };
 
 const pointerAngle = (e: React.PointerEvent, cx: number, cy: number) =>
@@ -101,6 +126,7 @@ const spinBoard = (
   ) {
     return;
   }
+  const duration = settle ? (250 * Math.abs(turn)) / 180 : 250;
   // While turning, the corners reach past the board's square; keep them
   // above what is around it (but under popups and menus).
   const anim = el.animate(
@@ -109,11 +135,17 @@ const spinBoard = (
       { transform: `rotate(${from + turn}deg)`, zIndex: TURNING_Z },
     ],
     {
-      duration: settle ? (250 * Math.abs(turn)) / 180 : 250,
+      duration,
       easing: "ease-out",
     },
   );
-  spinRef.current = { anim, from, to: from + turn };
+  spinRef.current = {
+    anim,
+    from,
+    to: from + turn,
+    start: performance.now(),
+    duration,
+  };
 };
 
 const Board = React.memo((props: Props) => {

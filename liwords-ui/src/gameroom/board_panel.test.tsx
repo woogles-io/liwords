@@ -108,10 +108,9 @@ it("keeps Space advancing the placement arrow in board editing mode", () => {
 
 // Records each spin the board starts, as [from, to] in degrees.
 // Records each spin the board starts, as [from, to] in degrees, and its
-// duration in spinDurations; every spin reports the given state and
-// progress.
+// duration in spinDurations; every spin reports the given state.
 let spinDurations: Array<number> = [];
-const mockSpins = (playState: AnimationPlayState, progress = 0) => {
+const mockSpins = (playState: AnimationPlayState) => {
   const spins: Array<[string, string]> = [];
   const durations: Array<number> = [];
   spinDurations = durations;
@@ -119,11 +118,7 @@ const mockSpins = (playState: AnimationPlayState, progress = 0) => {
     (frames: Array<{ transform: string }>, opts: { duration: number }) => {
       spins.push([frames[0].transform, frames[1].transform]);
       durations.push(opts.duration);
-      return {
-        cancel: vi.fn(),
-        playState,
-        effect: { getComputedTiming: () => ({ progress }) },
-      } as unknown as Animation;
+      return { cancel: vi.fn(), playState } as unknown as Animation;
     },
   );
   Element.prototype.animate = animate as unknown as Element["animate"];
@@ -157,17 +152,22 @@ it("flips the board clockwise each way on the 6 key", () => {
 });
 
 it("carries a flip that arrives mid-spin on round, clockwise", () => {
-  const spins = mockSpins("running", 70 / 180);
+  const spins = mockSpins("running");
+  let now = 1000;
+  vi.spyOn(performance, "now").mockImplementation(() => now);
   const { container } = renderBoardPanel();
   const press6 = () =>
     fireEvent.keyDown(container.querySelector(".board-container")!, {
       key: "6",
     });
   press6();
-  // 70 degrees into the turn down when the second flip arrives.
+  // Halfway through the time of the turn down, ease-out has done about
+  // 68% of it (Chrome agrees: 0.6846), when the second flip arrives.
+  now += 125;
   press6();
+  vi.restoreAllMocks();
   const [from, to] = spins[1].map((t) => parseFloat(t.slice(7)));
-  expect(from).toBeCloseTo(70);
+  expect(from).toBeCloseTo(180 * 0.6846, 0);
   expect(to).toBeCloseTo(360);
   // Lands a full 0.25s after the second flip, however far it goes.
   expect(spinDurations).toEqual([250, 250]);
