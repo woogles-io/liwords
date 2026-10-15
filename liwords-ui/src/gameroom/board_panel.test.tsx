@@ -169,3 +169,19 @@ it("carries a flip that arrives mid-spin on round, clockwise", () => {
   expect(from).toBeCloseTo(70);
   expect(to).toBeCloseTo(360);
 });
+
+it("flips the board on a double tap on the coordinate labels", () => {
+  const spins = mockSpins("finished");
+  const { container } = renderBoardPanel();
+  const board = () => container.querySelector(".board")!;
+  const label = container.querySelector(".coord-labels.horiz .coord-label")!;
+  const tap = () => {
+    fireEvent.pointerDown(label, { button: 0, clientX: 5, clientY: 5 });
+    fireEvent.pointerUp(label, { button: 0, clientX: 5, clientY: 5 });
+  };
+  tap();
+  expect(board().classList.contains("board-flipped")).toBe(false);
+  tap();
+  expect(board().classList.contains("board-flipped")).toBe(true);
+  expect(spins).toEqual([["rotate(0deg)", "rotate(180deg)"]]);
+});

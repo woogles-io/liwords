@@ -188,7 +188,12 @@ const Board = React.memo((props: Props) => {
     centerY: number;
     lastPointer: number;
     angle: number;
+    startX: number;
+    startY: number;
+    startTime: number;
   } | null>(null);
+  // A double tap on the labels flips the board, like the 6 key.
+  const lastTapRef = useRef(0);
   const onPointerDown = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
       const board = boardRef.current;
@@ -209,8 +214,11 @@ const Board = React.memo((props: Props) => {
         centerY,
         lastPointer: pointerAngle(e, centerX, centerY),
         angle,
+        startX: e.clientX,
+        startY: e.clientY,
+        startTime: e.timeStamp,
       };
-      board.setPointerCapture(e.pointerId);
+      board.setPointerCapture?.(e.pointerId);
       el.style.transform = `rotate(${angle}deg)`;
       el.style.zIndex = TURNING_Z;
     },
@@ -233,6 +241,20 @@ const Board = React.memo((props: Props) => {
       dragRef.current = null;
       el.style.transform = "";
       el.style.zIndex = "";
+      const tap =
+        Math.hypot(e.clientX - drag.startX, e.clientY - drag.startY) < 8 &&
+        e.timeStamp - drag.startTime < 300;
+      if (tap) {
+        spinBoard(el, spinRef, drag.angle, flipped, true);
+        if (e.timeStamp - lastTapRef.current < 350 && onFlipBoard) {
+          lastTapRef.current = 0;
+          onFlipBoard();
+        } else {
+          lastTapRef.current = e.timeStamp;
+        }
+        return;
+      }
+      lastTapRef.current = 0;
       const rest = ((drag.angle % 360) + 360) % 360;
       const wantFlipped = rest > 90 && rest < 270;
       if (wantFlipped !== flipped && onFlipBoard) {
