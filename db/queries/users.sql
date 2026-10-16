@@ -42,11 +42,13 @@ LIMIT 100;
 -- Accounts whose email domain (after the last @), or a parent domain of it,
 -- is one of @domains, newest first. A bare top-level domain never matches.
 -- Each domain and its parents are joined against the list, so the list is
--- hashed once instead of scanned per account.
-WITH listed AS (
+-- hashed once instead of scanned per account. Both are MATERIALIZED: inlined,
+-- the planner estimates the unnested list at a handful of rows and re-sorts
+-- the whole list once per account.
+WITH listed AS MATERIALIZED (
     SELECT unnest(@domains::text[]) AS domain
 ),
-suffixes AS (
+suffixes AS MATERIALIZED (
     SELECT u.id, array_to_string(labels[i:], '.') AS suffix
     FROM users u
     CROSS JOIN LATERAL string_to_array(lower(substring(u.email from '@([^@]*)$')), '.') AS labels
