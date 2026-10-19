@@ -47,7 +47,7 @@ When `PlacePrizes == 1`, or whenever `wTop == cTop`, M is empty and the behaviou
 2. In CC, replace the two-way `riHopeful != rjHopeful` check with a tier comparison:
    - `tier(r)` is W if `r <= wTop`, M if `r <= cTop`, otherwise R, and Gibsonized players always go to R.
    - If `tier(ri) != tier(rj)`, the edge gets `majorPenalty`. Halve it when `rj` is the first rank of its own tier (`wTop+1` or `cTop+1`), which extends today's halving at `cTop+1`.
-   - Keep the existing early-outs unchanged: L3, the disallowed leader opponent and the bye. Keep the bottom-6 rule for both W and M.
+   - Keep the existing early-outs unchanged: L3, the disallowed leader opponent and the bye. Leave the bottom-6 branch in place, though it can't be reached (see the CC rows in the table below).
 3. Log the tiers once per round, e.g. `Q4 tiers: winners ranks 1-4, cashers ranks 5-8`, so the log explains any cross-tier major-penalty edge.
 
 The rule stays a **weight**, not a constraint. CC's doc comment explains why: stacking hard rules can leave a player with no legal pairing. A soft major penalty means the round always pairs, and in the worst case one pairing crosses a tier.
@@ -64,6 +64,10 @@ Every tier needs an even number of pairable players. Pairable means not Gibsoniz
 
 | Rule | Interaction | Plan |
 |---|---|---|
+| CC: hopeful-vs-hopeful branch (`cop.go:949-962`) | This is the branch being changed | Replace its two-way hopeful/non-hopeful check with the three-way tier check, rather than adding the tier check alongside it. |
+| CC: odd-1st-group leader bar (`cop.go:932-935`) | The player it bars from the leader is the same player W's parity fix promotes into W | Keep it, and keep it ahead of the tier check: the promoted player joins W but stays barred from the leader, so they play another W member. |
+| CC: bottom-6 branch (`cop.go:968-980`) | Unreachable today. The clamp in `hopeToCashBoundary` keeps every hopeful player out of the bottom 6, so a hopeful vs bottom-6 edge always hits the hopeful/non-hopeful mismatch first and returns there | Still unreachable with tiers, because W ⊆ C and C sits above the clamp. Leave it as a safety net; no change. |
+| CC: bye early-out (`cop.go:946-948`) | The bye isn't in any tier | Keep it, so the bye isn't major-penalized against everyone. |
 | F3 (Factor 3) | Forces 1v4 / 2v5 / 3v6 in the 2nd-to-last round, which may cross the W boundary | When `factor3ForcedPairings` is non-empty, skip the W/M split and fall back to today's two-tier CC. Every other leader-group rule already defers to F3. |
 | T4 | A hard version of "W plays W" when W has exactly 4 players | Keep it. The two rules agree. |
 | L3 | Forces leader vs rank 2, which may sit outside W | Already exempt at the top of CC. Keep that. |
