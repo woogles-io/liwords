@@ -2656,3 +2656,206 @@ func TestCCWeightExemptsForcedLeaderVsThird(t *testing.T) {
 	}
 	is.Equal(ccPolicy.handler(pargs, 0, 2), int64(0))
 }
+
+// q4TierTestArgs builds a fourth-quarter (round 10 of 12, 3 rounds
+// remaining) policyArgs for numPlayers players whose group hopeful for 1st
+// ends at winnersBoundary and whose hopeful-to-cash group ends at
+// cashBoundary. numPlayers must be under 12 so hopeToCashBoundary's bottom-6
+// clamp doesn't apply.
+func q4TierTestArgs(numPlayers, winnersBoundary, cashBoundary int) *policyArgs {
+	playerNodes := make([]int, numPlayers)
+	lowestPossibleHopeNth := make([]int, numPlayers)
+	for i := range playerNodes {
+		playerNodes[i] = i
+		lowestPossibleHopeNth[i] = numPlayers - 1
+	}
+	lowestPossibleHopeNth[0] = winnersBoundary
+	return &policyArgs{
+		req: &pb.PairRequest{Rounds: 12},
+		copdata: &copdatapkg.PrecompData{
+			LowestPossibleHopeNth: lowestPossibleHopeNth,
+			GibsonizedPlayers:     make([]bool, numPlayers),
+		},
+		playerNodes:              playerNodes,
+		lowestPossibleHopeCasher: cashBoundary,
+		roundsRemaining:          3,
+		roundPairingsRemaining:   3,
+		topDownByePlayer:         -1,
+		forcedContenderByePlayer: -1,
+		disallowedLeaderOpponent: -1,
+		forcedLeaderVsThird:      -1,
+	}
+}
+
+// TestComputeQ4WinnersTop checks when the CC weight policy splits the
+// fourth-quarter hopeful-to-cash group into hopeful winners and the other
+// hopeful cashers, and where the winners tier ends.
+func TestComputeQ4WinnersTop(t *testing.T) {
+	is := is.New(t)
+
+	checkActive := func(pargs *policyArgs, wantTop int) {
+		t.Helper()
+		top, active, reason := computeQ4WinnersTop(pargs)
+		is.True(active)
+		is.Equal(top, wantTop)
+		is.Equal(reason, "")
+	}
+	checkSkipped := func(pargs *policyArgs, wantReason string) {
+		t.Helper()
+		_, active, reason := computeQ4WinnersTop(pargs)
+		is.True(!active)
+		is.True(strings.Contains(reason, wantReason))
+	}
+
+	// Ranks 0-3 hopeful for 1st, ranks 4-5 the other hopeful cashers.
+	checkActive(q4TierTestArgs(10, 3, 5), 3)
+
+	// Winners and cashers are the same group (e.g. one cash prize): the split
+	// still applies, with no other hopeful cashers.
+	checkActive(q4TierTestArgs(10, 3, 3), 3)
+
+	// An odd group hopeful for 1st (ranks 0-2) pulls rank 3 in to even it
+	// out (computeDisallowedLeaderOpponent); rank 3 joins the winners tier.
+	pargs := q4TierTestArgs(10, 2, 5)
+	pargs.disallowedLeaderOpponent = 3
+	checkActive(pargs, 3)
+
+	// Without that promotion, 3 hopeful winners can't all play each other.
+	checkSkipped(q4TierTestArgs(10, 2, 5), "3 hopeful winner(s) need an opponent")
+
+	// A bye recipient inside the winners tier doesn't need an opponent.
+	pargs = q4TierTestArgs(10, 3, 5)
+	pargs.topDownByePlayer = 2
+	checkSkipped(pargs, "3 hopeful winner(s) need an opponent")
+	pargs = q4TierTestArgs(10, 4, 5)
+	pargs.forcedContenderByePlayer = 2
+	checkActive(pargs, 4)
+
+	// A bye recipient among the other hopeful cashers doesn't affect the
+	// winners tier.
+	pargs = q4TierTestArgs(10, 3, 6)
+	pargs.topDownByePlayer = 5
+	checkActive(pargs, 3)
+
+	// A Gibsonized leader doesn't need a hopeful-winner opponent.
+	pargs = q4TierTestArgs(10, 2, 5)
+	pargs.copdata.GibsonizedPlayers[0] = true
+	checkActive(pargs, 2)
+	// A Gibsonized lone leader with rank 1 pulled in leaves rank 1 alone.
+	pargs = q4TierTestArgs(10, 0, 5)
+	pargs.copdata.GibsonizedPlayers[0] = true
+	pargs.disallowedLeaderOpponent = 1
+	checkSkipped(pargs, "1 hopeful winner(s) need an opponent")
+
+	// The winners tier must fit inside the hopeful-to-cash group.
+	checkSkipped(q4TierTestArgs(10, 4, 3), "extend past the hopeful-to-cash boundary")
+
+	// Factor 3's forced pairings take precedence.
+	pargs = q4TierTestArgs(10, 3, 5)
+	pargs.factor3ForcedPairings = [][2]int{{0, 3}, {1, 4}, {2, 5}}
+	checkSkipped(pargs, "Factor 3 fired")
+
+	// Outside the fourth quarter, and in the final round, CC doesn't group
+	// players at all, so there's nothing to skip (and nothing to log).
+	for _, roundsRemaining := range []int{6, 1} {
+		pargs = q4TierTestArgs(10, 3, 5)
+		pargs.roundsRemaining, pargs.roundPairingsRemaining = roundsRemaining, roundsRemaining
+		_, active, reason := computeQ4WinnersTop(pargs)
+		is.True(!active)
+		is.Equal(reason, "")
+	}
+}
+
+// TestCCWeightQ4Tiers checks the CC weight for each kind of edge between the
+// three fourth-quarter tiers: hopeful winners (ranks 0-3), the other hopeful
+// cashers (ranks 4-5), and everyone else (ranks 6-9).
+func TestCCWeightQ4Tiers(t *testing.T) {
+	is := is.New(t)
+
+	var ccPolicy weightPolicy
+	for _, wp := range weightPolicies {
+		if wp.name == "CC" {
+			ccPolicy = wp
+		}
+	}
+	is.True(ccPolicy.handler != nil)
+
+	pargs := q4TierTestArgs(10, 3, 5)
+	pargs.q4WinnersTop, pargs.q4TiersActive, _ = computeQ4WinnersTop(pargs)
+	is.True(pargs.q4TiersActive)
+
+	// Within a tier: no penalty.
+	is.Equal(ccPolicy.handler(pargs, 0, 3), int64(0))
+	is.Equal(ccPolicy.handler(pargs, 4, 5), int64(0))
+	is.Equal(ccPolicy.handler(pargs, 6, 9), int64(0))
+	// Across tiers: a major penalty, halved for the first rank of the lower tier.
+	is.Equal(ccPolicy.handler(pargs, 1, 5), int64(majorPenalty))
+	is.Equal(ccPolicy.handler(pargs, 1, 4), int64(majorPenalty/2))
+	is.Equal(ccPolicy.handler(pargs, 1, 7), int64(majorPenalty))
+	is.Equal(ccPolicy.handler(pargs, 1, 6), int64(majorPenalty/2))
+	is.Equal(ccPolicy.handler(pargs, 5, 7), int64(majorPenalty))
+	is.Equal(ccPolicy.handler(pargs, 5, 6), int64(majorPenalty/2))
+
+	// A Gibsonized player is in the last tier wherever they rank.
+	pargs.copdata.GibsonizedPlayers[2] = true
+	is.Equal(ccPolicy.handler(pargs, 2, 7), int64(0))
+	is.Equal(ccPolicy.handler(pargs, 0, 2), int64(majorPenalty))
+	pargs.copdata.GibsonizedPlayers[2] = false
+
+	// The barred leader opponent stays barred even inside the winners tier.
+	pargs.disallowedLeaderOpponent = 3
+	is.Equal(ccPolicy.handler(pargs, 0, 3), int64(majorPenalty))
+	pargs.disallowedLeaderOpponent = -1
+
+	// Without the split, all hopeful cashers form one tier, as before.
+	pargs.q4TiersActive = false
+	is.Equal(ccPolicy.handler(pargs, 1, 5), int64(0))
+	is.Equal(ccPolicy.handler(pargs, 1, 4), int64(0))
+	is.Equal(ccPolicy.handler(pargs, 1, 6), int64(majorPenalty/2))
+}
+
+// TestQ4TiersKeepHopefulWinnersTogether checks that in the fourth quarter,
+// hopeful winners play each other, the other hopeful cashers play each
+// other, and everyone else plays each other. Round 10 of 12: P0, P2, P4 and
+// P6 are 8-1 (hopeful to win), P8 and P10 are 6-3 (hopeful to cash but not
+// to win), and the rest are 3-6 or worse. Before the three-tier split, CC
+// grouped all hopeful cashers together, and P2 and P4 played P8 and P10.
+func TestQ4TiersKeepHopefulWinnersTogether(t *testing.T) {
+	is := is.New(t)
+
+	req := &pb.PairRequest{
+		PairMethod:                 pb.PairMethod_COP,
+		PlayerNames:                []string{"P0", "P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8", "P9", "P10", "P11"},
+		PlayerClasses:              make([]int32, 12),
+		GibsonSpread:               200,
+		ControlLossThreshold:       0.25,
+		HopefulnessThreshold:       0.02,
+		AllPlayers:                 12,
+		ValidPlayers:               12,
+		Rounds:                     12,
+		PlacePrizes:                4,
+		DivisionSims:               5000,
+		ControlLossSims:            1000,
+		ControlLossActivationRound: 12,
+		Seed:                       1,
+	}
+	// AddNDummyRounds pairs P0vP1, P2vP3, ..., P10vP11 every round.
+	pairtestutils.AddNDummyRounds(req, 9)
+	for range 6 {
+		pairtestutils.AddRoundResultsStr(req, "450 400 445 400 440 400 435 400 430 400 425 400")
+	}
+	for range 2 {
+		pairtestutils.AddRoundResultsStr(req, "450 400 445 400 440 400 435 400 400 430 400 425")
+	}
+	pairtestutils.AddRoundResultsStr(req, "400 450 400 445 400 440 400 435 400 430 400 425")
+
+	resp := COPPair(req)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	checkSymmetric(t, resp.Pairings)
+	is.True(strings.Contains(resp.Log, "Q4 Tiers: hopeful winners ranks 1-4, other hopeful cashers ranks 5-6"))
+
+	tier := map[int32]int{0: 0, 2: 0, 4: 0, 6: 0, 8: 1, 10: 1, 1: 2, 3: 2, 5: 2, 7: 2, 9: 2, 11: 2}
+	for pi, opp := range resp.Pairings {
+		is.Equal(tier[int32(pi)], tier[opp])
+	}
+}
