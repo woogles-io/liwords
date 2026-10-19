@@ -1503,13 +1503,14 @@ func TestCOPWeights(t *testing.T) {
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
 	is.Equal(resp.Pairings[0], int32(9))
 
-	// In the fourth quarter (roundsRemaining*4 <= Rounds), cashers use PC weight only
+	// In the fourth quarter (round X of N with X/N >= 3/4), cashers use PC weight only
 	// and non-cashers use RD weight only. Outside the fourth quarter, RD applies to all.
 	//
-	// AlmostGibsonized: lowestPossibleHopeCasher = rank 7. Rounds=10 is Q4 (2*4=8 <= 10).
-	// Outside Q4 (Rounds=12, 4*4=16 > 12): RD-only for all players.
+	// AlmostGibsonized (8 rounds complete, so round 9 is being paired):
+	// lowestPossibleHopeCasher = rank 7. Rounds=10 is Q4 (9/10 >= 3/4).
+	// Outside Q4 (Rounds=13, 9/13 < 3/4): RD-only for all players.
 	req = pairtestutils.CreateAlmostGibsonizedPairRequest()
-	req.Rounds = 12
+	req.Rounds = 13
 	req.Seed = 1
 	resp = COPPair(req)
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)

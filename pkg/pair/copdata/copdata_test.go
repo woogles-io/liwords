@@ -333,7 +333,11 @@ func TestRunawayLeadersHalveHopefulness(t *testing.T) {
 	is.True(strings.Contains(logsb.String(), "Leader+2nd combined 1st-place% (80.2%) > 80%"))
 	is.True(strings.Contains(logsb.String(), "halving the hopeful-for-1st/2nd bar to 2% (normally 5%)"))
 	is.Equal(copdata.LowestPossibleHopeNth[0], 2)
-	is.Equal(copdata.LowestPossibleHopeNth[1], 6)
+	// Round 6 of 7 is in the last quarter (6/7 >= 3/4), so the odd
+	// hopeful-to-cash parity fix also extends the halved window (ranks 0-6,
+	// 7 players) by one rank.
+	is.True(strings.Contains(logsb.String(), "Odd number of non-Gibsonized hopeful-to-cash players (7)"))
+	is.Equal(copdata.LowestPossibleHopeNth[1], 7)
 
 	// Before any rounds are played there's no simulation to compute a 1st-
 	// place probability from, so the halving never triggers (guards the

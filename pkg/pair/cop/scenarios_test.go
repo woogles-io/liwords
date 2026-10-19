@@ -1405,7 +1405,7 @@ func TestScenarioMultiRound_AlbanyCSW2025ME_Last16Rounds(t *testing.T) {
 }
 
 // Albany CSW ME July 2026 (wordgameplayers.org/directors/AA003954/2026-07-02-Albany-CSW-ME):
-// show what COP would have paired for the last quarter (rounds 22-28 of 28), given the actual
+// show what COP would have paired for the last quarter (rounds 21-28 of 28), given the actual
 // historical results for all prior rounds. Each round uses only real data - no simulated
 // results, unlike TestScenarioMultiRound_July4th2026.
 // Run with: COP_SCENARIOS=1 go test -run TestScenarioMultiRound_AlbanyCSWJuly2026_LastQuarter
@@ -1417,8 +1417,9 @@ func TestScenarioMultiRound_AlbanyCSWJuly2026_LastQuarter(t *testing.T) {
 
 	base := pairtestutils.CreateAlbanyCSWJuly2026Round28PairRequest()
 
-	// Last quarter: rounds 22-28 of 28 (roundPairingsRemaining*4 <= Rounds starting at round 22).
-	for round := int(base.Rounds)*3/4 + 1; round <= int(base.Rounds); round++ {
+	// Last quarter: rounds 21-28 of 28 (round X of N with X/N >= 3/4, so starting
+	// at round ceil(3N/4) = 21).
+	for round := (int(base.Rounds)*3 + 3) / 4; round <= int(base.Rounds); round++ {
 		gibsonSpread := int32(scenarioGibsonSpread)
 		if round == int(base.Rounds) {
 			gibsonSpread = scenarioLastRoundGibsonSpread
