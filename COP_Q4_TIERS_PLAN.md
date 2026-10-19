@@ -35,7 +35,7 @@ All tiers are rank windows, matching how CC already treats the cash window: ever
 | M | `wTop+1 .. cTop` | `cTop = hopeToCashBoundary(pargs)`, which already includes the Q4 parity promotion, the bye adjustment and the bottom-6 clamp |
 | R | everything else | |
 
-Gibsonized players are never in W or M, which matches today's CC (see Open question 2).
+Gibsonized players are never in W or M, which matches today's CC. A player is Gibsonized only when they're locked into their exact rank (`standings.GetGibsonizedPlayers`), so a Gibsonized player below the leader can't win, and the only Gibsonized player who could fall inside W is a Gibsonized leader. Excluding Gibsonized players from W is therefore a guard, not a policy choice.
 
 Invariant: W ⊆ C (C is the whole cash window, `0..cTop`). If W's promotion pushes `wTop` past `cTop`, raise `cTop` to `wTop`, which leaves M empty.
 
@@ -58,7 +58,7 @@ Every tier needs an even number of pairable players. Pairable means not Gibsoniz
 
 - **W:** `computeDisallowedLeaderOpponent` already detects an odd group hopeful for 1st, after the bye and a Gibsonized leader are taken out, and picks rank `wTop+1` as the extra player. Under the new rule that player **joins W**, so `wTop` grows by one, and stays barred from the leader. Without this, the extra player would be major-penalized against every W opponent and every M opponent at once.
 - **C as a whole:** already kept even by `hopefulToCashExtensionRankIdx` (copdata) and `adjustLowestPossibleHopeCasherForBye`.
-- **M:** if W and C are both even, then M = C \ W is even too, so M needs no separate fix. That only holds if W and C count pairable players the same way. They currently don't: C excludes every Gibsonized player, while the W check excludes only a Gibsonized leader. `computeQ4Tiers` must recount W using C's rule (excluding all Gibsonized players and the bye recipient) and promote when that count is odd. Don't trust the leader-bar result alone (see Open question 2).
+- **M:** if W and C are both even, then M = C \ W is even too, so M needs no separate fix. This relies on W and C counting pairable players the same way. C excludes every Gibsonized player and the W check excludes only a Gibsonized leader, but those agree, because no other Gibsonized player can be in W (see Tier definitions). No recount is needed.
 
 ### Interactions and precedence
 
@@ -82,18 +82,17 @@ Every tier needs an even number of pairable players. Pairable means not Gibsoniz
 Each question has a recommended default, so implementation can start without waiting on answers.
 
 1. **Final round.** Should the tiers apply in the true final round, where CC is disabled today in favour of KOTH? *Recommendation: no. Keep the `!isFinalRound` gate.*
-2. **Gibsonized players.** Should a Gibsonized player who could still win (e.g. locked into the top 2 but not 1st) be in W? *Recommendation: no, put them in R as today's CC does. This also requires W's parity count to exclude them (see Parity).*
-3. **Strength.** A soft `majorPenalty` or a hard constraint? *Recommendation: soft (see "Where the change goes").*
-4. **F3 precedence.** *Recommendation: skip the W/M split when F3 fires (see the table).*
-5. **Definition of "hopeful winner".** *Recommendation: `LowestPossibleHopeNth[0]`, as computed now (this already includes the runaway-leaders halving of the hopefulness bar).*
+2. **Strength.** A soft `majorPenalty` or a hard constraint? *Recommendation: soft (see "Where the change goes").*
+3. **F3 precedence.** *Recommendation: skip the W/M split when F3 fires (see the table).*
+4. **Definition of "hopeful winner".** *Recommendation: `LowestPossibleHopeNth[0]`, as computed now (this already includes the runaway-leaders halving of the hopefulness bar).*
 
 ## Implementation steps
 
 1. Add `wTop` and `cTop` fields to `policyArgs`, plus `computeQ4Tiers`, computed in `copMinWeightMatching` after the existing parity and bye adjustments.
-2. Fold the promoted rank from `computeDisallowedLeaderOpponent` into W, and add W's parity recount for Gibsonized players.
+2. Fold the promoted rank from `computeDisallowedLeaderOpponent` into W.
 3. Update CC's handler and doc comment to use the three tiers. Keep the bottom-6 and leader-bar logic.
 4. Add the tier log line.
-5. Update the CC description in the COP doc (`COP_DOC_UPDATE.md`, Weights block, and the Google Doc).
+5. Update the CC description in the Weights section of the COP Google Doc.
 
 ## Tests
 
@@ -105,7 +104,7 @@ Unit tests in `pkg/pair/cop/cop_test.go`:
   - odd W promotes into W
   - bye recipient in W
   - bye recipient in M
-  - Gibsonized player inside the window
+  - Gibsonized leader (left out of W's parity count)
   - W promotion past `cTop` (C raised to match)
   - F3 fired (no split)
 - **CC weights per edge type:**

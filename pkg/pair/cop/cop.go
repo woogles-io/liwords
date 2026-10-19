@@ -163,14 +163,13 @@ func computeForcedLeaderVsThird(pargs *policyArgs) int {
 // 1st and 2nd are left to play each other via the usual weight policies.
 //
 // The leader (rank 0) doesn't count toward the group's pairable parity if
-// they're Gibsonized: GibsonizedPlayers[0] uniquely means "guaranteed to
-// finish 1st" (nothing beats 1st), so a Gibsonized leader has already
-// settled the race - unlike the hopeful-to-cash boundary's blanket
-// exclusion (any Gibsonized player, at whatever rank, is guaranteed to
-// cash), a Gibson lock at any other rank in this group only guarantees that
-// player won't fall below their current spot and says nothing about
-// whether they can still win outright, so only rank 0's own Gibson status
-// is excluded here, never anyone else's.
+// they're Gibsonized: GibsonizedPlayers[0] means "guaranteed to finish 1st",
+// so a Gibsonized leader has already settled the race. Only rank 0's own
+// Gibson status is checked here. A player is Gibsonized only when they're
+// locked into their exact rank (neither able to catch the player above nor
+// be caught by the player below - see standings.GetGibsonizedPlayers), so a
+// Gibsonized player below the leader can't finish 1st and isn't a genuine
+// contender for it.
 //
 // This must run after computeTopDownByePlayer and computeForcedContenderBye
 // (both already computed by this point - see the call order in
