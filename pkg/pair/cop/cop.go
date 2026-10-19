@@ -332,45 +332,23 @@ func computeTopDownByePlayer(pargs *policyArgs) int {
 
 // computeForcedContenderBye detects when PC (which major-penalizes giving a
 // hopeful-to-cash contender the bye) and BR (which major-penalizes giving
-// anyone a repeat bye, when AllowRepeatByes is false) are in direct conflict:
-// every player who hasn't yet had a bye is a contender, so the bye must
-// either go to a contender (a PC violation) or repeat on someone (a BR
-// violation). When that's the case, this forces the bye onto the
-// lowest-ranked such contender with the fewest prior byes - the mirror image
-// of computeTopDownByePlayer's top-down scan. Returns -1 if there's no clash
-// this round (a bye-repeat-free non-contender is available, so PC and BR
-// don't conflict), or if repeats can't be avoided regardless of who gets the
-// bye (nobody, contender or not, is bye-repeat-free).
+// anyone a repeat bye, when AllowRepeatByes is false) are in direct conflict,
+// and if so returns the player index of the contender forced to take the bye
+// (the lowest-ranked contender with the fewest prior byes), or -1 if there's
+// no such clash this round.
+//
+// This delegates to copdatapkg.ComputeForcedContenderByeRankIdx, which
+// GetPrecompData also calls (before this function ever runs) so the
+// control-loss search can exclude this same rank from being flagged as the
+// destiny child - see that function's doc comment. Both call sites must
+// agree on who gets the bye, so the computation lives in one place.
 func computeForcedContenderBye(pargs *policyArgs) int {
-	numPlayers := len(pargs.playerNodes)
-	if pargs.req.AllowRepeatByes || pargs.playerNodes[numPlayers-1] != pkgstnd.ByePlayerIndex ||
-		pargs.gibsonGetsBye || pargs.topDownByePlayer >= 0 {
+	byeRankIdx := copdatapkg.ComputeForcedContenderByeRankIdx(pargs.req, pargs.copdata.Standings, pargs.copdata.PairingCounts,
+		pargs.lowestPossibleHopeCasher, pargs.copdata.GibsonizedPlayers, pargs.copdata.GibsonGroups, pargs.topDownByePlayer >= 0)
+	if byeRankIdx < 0 {
 		return -1
 	}
-	byePlayer := -1
-	leastByes := int(pargs.req.Rounds + 1)
-	// Scan bottom-up, excluding the bye - the mirror of computeTopDownByePlayer's
-	// top-down scan, so ties favor the lower-ranked (bottom) contender.
-	for playerRankIdx := numPlayers - 2; playerRankIdx >= 0; playerRankIdx-- {
-		pi := pargs.playerNodes[playerRankIdx]
-		numByes := pargs.copdata.PairingCounts[copdatapkg.GetPairingKey(pi, pkgstnd.ByePlayerIndex)]
-		isContender := playerRankIdx <= pargs.lowestPossibleHopeCasher && !pargs.copdata.GibsonizedPlayers[playerRankIdx]
-		if numByes == 0 && !isContender {
-			// A non-contender is still bye-repeat-free; PC and BR don't conflict.
-			return -1
-		}
-		if isContender && numByes < leastByes {
-			leastByes = numByes
-			byePlayer = pi
-		}
-	}
-	// Only force the bye onto a contender if doing so actually avoids a
-	// repeat - if even the least-byed contender already has one, forcing it
-	// on them wouldn't help, so leave it to the weight policies.
-	if byePlayer < 0 || leastByes > 0 {
-		return -1
-	}
-	return byePlayer
+	return pargs.copdata.Standings.GetPlayerIndex(byeRankIdx)
 }
 
 // adjustLowestPossibleHopeCasherForBye corrects the hopeful-to-cash
@@ -1731,18 +1709,7 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 
 	lowestPossibleHopeCasher := copdata.LowestPossibleHopeNth[int(req.PlacePrizes)-1]
 
-	gibsonGetsBye := false
-	if addBye {
-		for i := 0; i < numPlayers; i++ {
-			if playerNodes[i] == pkgstnd.ByePlayerIndex {
-				break
-			}
-			if copdata.GibsonizedPlayers[i] && copdata.GibsonGroups[i] == 0 {
-				gibsonGetsBye = true
-				break
-			}
-		}
-	}
+	gibsonGetsBye := copdatapkg.ComputeGibsonGetsBye(addBye, numPlayers, copdata.GibsonizedPlayers, copdata.GibsonGroups)
 
 	pargs := &policyArgs{
 		req:                      req,

@@ -355,8 +355,7 @@ func ComputeTopDownByeRankIdx(req *pb.PairRequest, standings *pkgstnd.Standings,
 		return -1
 	}
 	numPlayers := standings.GetNumPlayers()
-	_, numForcedByes, _ := ExtractPrepairedPlayers(req)
-	if (numPlayers-numForcedByes)%2 == 0 {
+	if !needsAddedBye(req, numPlayers) {
 		return -1
 	}
 	byeRankIdx := -1
@@ -369,6 +368,83 @@ func ComputeTopDownByeRankIdx(req *pb.PairRequest, standings *pkgstnd.Standings,
 			leastByes = numByes
 			byeRankIdx = rankIdx
 		}
+	}
+	return byeRankIdx
+}
+
+// needsAddedBye reports whether this round needs an added/unforced bye: an
+// odd number of players once forced-bye prepairs are accounted for.
+func needsAddedBye(req *pb.PairRequest, numPlayers int) bool {
+	_, numForcedByes, _ := ExtractPrepairedPlayers(req)
+	return (numPlayers-numForcedByes)%2 == 1
+}
+
+// ComputeGibsonGetsBye reports whether a Gibsonized player in the bottom
+// Gibson group (group 0) is available to take this round's added bye. It
+// is always false when the round doesn't need an added bye.
+func ComputeGibsonGetsBye(addBye bool, numPlayers int, gibsonizedPlayers []bool, gibsonGroups []int) bool {
+	if !addBye {
+		return false
+	}
+	for rankIdx := 0; rankIdx < numPlayers; rankIdx++ {
+		if gibsonizedPlayers[rankIdx] && gibsonGroups[rankIdx] == 0 {
+			return true
+		}
+	}
+	return false
+}
+
+// ComputeForcedContenderByeRankIdx detects when PC (which major-penalizes
+// giving a hopeful-to-cash contender the bye) and BR (which major-penalizes
+// giving anyone a repeat bye, when AllowRepeatByes is false) are in direct
+// conflict: every player who hasn't yet had a bye is a contender, so the bye
+// must either go to a contender (a PC violation) or repeat on someone (a BR
+// violation). When that's the case, this returns the rank of the
+// lowest-ranked such contender with the fewest prior byes - the mirror image
+// of ComputeTopDownByeRankIdx's top-down scan. Returns -1 if there's no clash
+// this round (a bye-repeat-free non-contender is available, so PC and BR
+// don't conflict), if repeats can't be avoided regardless of who gets the
+// bye (nobody, contender or not, is bye-repeat-free), or if the bye is
+// already spoken for by a top-down bye or a Gibson bye.
+//
+// lowestPossibleHopeCasher is the hopeful-to-cash contender boundary
+// (LowestPossibleHopeNth[PlacePrizes-1]) before any bye adjustment.
+//
+// This backs cop.go's computeForcedContenderBye (the "CB" constraint
+// policy, which actually forces the bye pairing), but is also called by
+// GetPrecompData so the control-loss search can exclude this same rank from
+// being flagged as the destiny child, for the same reason as the top-down
+// bye recipient - see ComputeTopDownByeRankIdx.
+func ComputeForcedContenderByeRankIdx(req *pb.PairRequest, standings *pkgstnd.Standings, pairingCounts map[string]int,
+	lowestPossibleHopeCasher int, gibsonizedPlayers []bool, gibsonGroups []int, topDownByeApplies bool) int {
+	numPlayers := standings.GetNumPlayers()
+	addBye := needsAddedBye(req, numPlayers)
+	if req.AllowRepeatByes || !addBye || topDownByeApplies ||
+		ComputeGibsonGetsBye(addBye, numPlayers, gibsonizedPlayers, gibsonGroups) {
+		return -1
+	}
+	byeRankIdx := -1
+	leastByes := int(req.Rounds + 1)
+	// Scan bottom-up - the mirror of ComputeTopDownByeRankIdx's top-down
+	// scan, so ties favor the lower-ranked (bottom) contender.
+	for rankIdx := numPlayers - 1; rankIdx >= 0; rankIdx-- {
+		pi := standings.GetPlayerIndex(rankIdx)
+		numByes := pairingCounts[GetPairingKey(pi, pkgstnd.ByePlayerIndex)]
+		isContender := rankIdx <= lowestPossibleHopeCasher && !gibsonizedPlayers[rankIdx]
+		if numByes == 0 && !isContender {
+			// A non-contender is still bye-repeat-free; PC and BR don't conflict.
+			return -1
+		}
+		if isContender && numByes < leastByes {
+			leastByes = numByes
+			byeRankIdx = rankIdx
+		}
+	}
+	// Only force the bye onto a contender if doing so actually avoids a
+	// repeat - if even the least-byed contender already has one, forcing it
+	// on them wouldn't help, so leave it to the weight policies.
+	if byeRankIdx < 0 || leastByes > 0 {
+		return -1
 	}
 	return byeRankIdx
 }
@@ -487,27 +563,37 @@ completePairingsLoop:
 	var vsFirstWins map[int]int
 	destinysChild := -1
 	if numCompletePairings >= int(req.ControlLossActivationRound) && !improvedFactorSimResults.GibsonizedPlayers[0] && initialFactor > 1 && maxFactor > 0 {
-		topDownByeRankIdx := ComputeTopDownByeRankIdx(req, standings, pairingCounts)
-		if topDownByeRankIdx == 0 {
-			// The leader themselves is receiving this round's top-down bye,
-			// so they aren't playing anyone at all this round - control
-			// loss's entire premise (force the leader to play a specific
-			// opponent) doesn't apply regardless of who the destiny child
-			// would otherwise be. Top-down byes take precedence: skip
-			// control loss outright rather than let CL later disallow every
-			// pairing for the leader (who TB has already forced onto BYE).
+		// Whoever is definitely receiving this round's bye - via a top-down
+		// bye or a forced contender bye (mutually exclusive: the latter
+		// defers to the former) - isn't playing anyone this round.
+		byeRankIdx := ComputeTopDownByeRankIdx(req, standings, pairingCounts)
+		byeKind := "top-down byes"
+		if byeRankIdx < 0 {
+			byeRankIdx = ComputeForcedContenderByeRankIdx(req, standings, pairingCounts,
+				lowestPossibleHopeNth[int(req.PlacePrizes)-1],
+				improvedFactorSimResults.GibsonizedPlayers, improvedFactorSimResults.GibsonGroups, false)
+			byeKind = "the forced contender bye"
+		}
+		if byeRankIdx == 0 {
+			// The leader themselves is receiving this round's bye, so they
+			// aren't playing anyone at all this round - control loss's
+			// entire premise (force the leader to play a specific opponent)
+			// doesn't apply regardless of who the destiny child would
+			// otherwise be. The bye takes precedence: skip control loss
+			// outright rather than let CL later disallow every pairing for
+			// the leader (who TB or CB has already forced onto BYE).
 			logsb.WriteString(fmt.Sprintf(
-				"Control loss skipped: rank 1 (%s) is receiving this round's top-down bye, so there's no opponent to force them to play\n",
-				req.PlayerNames[standings.GetPlayerIndex(0)],
+				"Control loss skipped: rank 1 (%s) is receiving this round's bye via %s, so there's no opponent to force them to play\n",
+				req.PlayerNames[standings.GetPlayerIndex(0)], byeKind,
 			))
 		} else {
-			if topDownByeRankIdx >= 0 {
+			if byeRankIdx >= 0 {
 				logsb.WriteString(fmt.Sprintf(
-					"Control loss: excluding rank %d (%s) from the destiny-child search - top-down byes will assign them this round's bye, so they aren't playing anyone and can't be usefully forced to play 1st\n",
-					topDownByeRankIdx+1, req.PlayerNames[standings.GetPlayerIndex(topDownByeRankIdx)],
+					"Control loss: excluding rank %d (%s) from the destiny-child search - %s will assign them this round's bye, so they aren't playing anyone and can't be usefully forced to play 1st\n",
+					byeRankIdx+1, req.PlayerNames[standings.GetPlayerIndex(byeRankIdx)], byeKind,
 				))
 			}
-			controlLossSimResults, pairErr = standings.SimFactorPairAll(req, copRand, int(req.ControlLossSims), maxFactor, lowestPossibleHopeNth[0], nil, topDownByeRankIdx)
+			controlLossSimResults, pairErr = standings.SimFactorPairAll(req, copRand, int(req.ControlLossSims), maxFactor, lowestPossibleHopeNth[0], nil, byeRankIdx)
 			if pairErr != pb.PairError_SUCCESS {
 				return nil, pairErr
 			}

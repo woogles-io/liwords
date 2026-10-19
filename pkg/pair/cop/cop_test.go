@@ -1375,6 +1375,86 @@ func TestForcedContenderBye(t *testing.T) {
 	is.Equal(resp.Pairings[0], int32(0))
 }
 
+// TestControlLossExcludesForcedContenderByeRecipient is a regression test for
+// https://github.com/woogles-io/liwords/issues/1993: the forced contender bye
+// (CB) and control loss (CL) picked the same player, so CB forced them onto
+// BYE while CL barred the leader from playing anyone else, leaving the
+// leader with no legal opponent (OVERCONSTRAINED). Every player without a
+// prior bye is a hopeful contender after round 1, so CB forces the bye onto
+// the lowest-ranked one, P5, who must therefore be excluded from the
+// destiny-child search.
+func TestControlLossExcludesForcedContenderByeRecipient(t *testing.T) {
+	is := is.New(t)
+
+	req := &pb.PairRequest{
+		PairMethod:                 pb.PairMethod_COP,
+		PlayerNames:                []string{"P0", "P1", "P2", "P3", "P4", "P5", "P6"},
+		PlayerClasses:              make([]int32, 7),
+		GibsonSpread:               250,
+		ControlLossThreshold:       0.3,
+		HopefulnessThreshold:       0.02,
+		AllPlayers:                 7,
+		ValidPlayers:               7,
+		Rounds:                     5,
+		PlacePrizes:                2,
+		DivisionSims:               1000,
+		ControlLossSims:            1000,
+		ControlLossActivationRound: 0,
+		AllowRepeatByes:            false,
+		Seed:                       1,
+	}
+	// R1: P6 byes; P0 beats P1, P2 beats P3, P4 beats P5.
+	pairtestutils.AddRoundResultsAndPairingsStr(req, "1 450 0 400 3 420 2 380 5 500 4 300 6 50")
+
+	resp := COPPair(req)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	checkSymmetric(t, resp.Pairings)
+	is.True(strings.Contains(resp.Log, "Control loss: excluding rank 7 (P5)"))
+	is.True(strings.Contains(resp.Log, "Destinys Child: (none)"))
+	// P5 still takes the forced contender bye.
+	is.Equal(resp.Pairings[5], int32(5))
+}
+
+// TestControlLossSkippedWhenLeaderGetsForcedContenderBye is the forced
+// contender bye counterpart of the leader-is-the-top-down-bye-recipient
+// case: same setup as TestForcedContenderBye (P0 is the sole contender and
+// the only bye-repeat-free player, so CB forces the bye onto P0), but with
+// control loss active. Since the leader isn't playing anyone this round,
+// control loss must be skipped outright rather than barring every pairing
+// for the leader.
+func TestControlLossSkippedWhenLeaderGetsForcedContenderBye(t *testing.T) {
+	is := is.New(t)
+
+	req := &pb.PairRequest{
+		PairMethod:                 pb.PairMethod_COP,
+		PlayerNames:                []string{"P0", "P1", "P2", "P3", "P4"},
+		PlayerClasses:              make([]int32, 5),
+		GibsonSpread:               5000,
+		ControlLossThreshold:       0.25,
+		HopefulnessThreshold:       0.02,
+		AllPlayers:                 5,
+		ValidPlayers:               5,
+		Rounds:                     8,
+		PlacePrizes:                1,
+		DivisionSims:               5000,
+		ControlLossSims:            1000,
+		ControlLossActivationRound: 0,
+		AllowRepeatByes:            false,
+		Seed:                       1,
+	}
+	pairtestutils.AddRoundResultsAndPairingsStr(req, "2 500 1 50 0 300 4 420 3 380")
+	pairtestutils.AddRoundResultsAndPairingsStr(req, "3 500 4 380 2 50 0 300 1 420")
+	pairtestutils.AddRoundResultsAndPairingsStr(req, "4 500 2 420 1 380 3 50 0 300")
+	pairtestutils.AddRoundResultsAndPairingsStr(req, "1 500 0 300 3 420 2 380 4 50")
+
+	resp := COPPair(req)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	checkSymmetric(t, resp.Pairings)
+	is.True(strings.Contains(resp.Log, "Control loss skipped: rank 1 (P0)"))
+	is.True(strings.Contains(resp.Log, "Destinys Child: (none)"))
+	is.Equal(resp.Pairings[0], int32(0))
+}
+
 func TestCOPWeights(t *testing.T) {
 	is := is.New(t)
 
