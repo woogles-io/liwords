@@ -1269,7 +1269,9 @@ func computeFactor3ForcedPairings(req *pb.PairRequest, copdata *copdatapkg.Preco
 	// Build factor-3 pairings for the penultimate round (ranks 0v3, 1v4, 2v5,
 	// then factor M/2 for the remaining players) plus KOTH for the final round.
 	// They come after a row for each round in progress, which the simulations
-	// play with its real pairings instead.
+	// play with its real pairings instead. The penultimate row's ranks are
+	// those before the rounds in progress, the same ranks the forced pairs
+	// below are taken from, and the simulations resolve it that way.
 	// pairingsLen is rounded up to even so simRound can always iterate in pairs
 	// (RunParallelSimForceWinner adds a dummy bye player for odd player counts).
 	pairingsLen := numPlayers

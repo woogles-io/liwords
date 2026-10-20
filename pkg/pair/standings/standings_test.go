@@ -1,6 +1,10 @@
 package standings_test
 
 import (
+	"fmt"
+	"sort"
+	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -520,4 +524,54 @@ func TestPendingByeWithoutEvener(t *testing.T) {
 	is.True(simResults.TotalSims > 0)
 	assertResultSums(is, simResults.FinalRanks, 4, simResults.TotalSims)
 	is.Equal(simResults.FinalRanks[2][2], simResults.TotalSims)
+}
+
+// The round being paired is paired from the standings before the pending
+// round, so the simulations must play the pairing those standings give,
+// even when the pending round reorders the leaders.
+//
+// Ranks after round 1: A (+300), C (+200), E (+100), F (-100), D (-200),
+// B (-300). The pending round pairs A-C, B-D and E-F, so A and C (and E and
+// F) swap places in about half the sims. The round being paired is
+// 1st v 4th, 2nd v 5th and 3rd v 6th, which is A-F, C-D and E-B.
+func TestPairedRoundUsesBasisStandings(t *testing.T) {
+	is := is.New(t)
+	copRand := rand.New(rand.NewSource(0))
+
+	req := createPendingRoundRequest(6, 4, nil, "1 0 3 2 5 4", "600 300 500 300 400 300", "2 3 0 1 5 4")
+	standings := pkgstnd.CreateInitialStandings(req)
+	is.Equal(standings.GetNumPendingRounds(), 1)
+	for rankIdx, playerIdx := range []int{0, 2, 4, 5, 3, 1} {
+		is.Equal(standings.GetPlayerIndex(rankIdx), playerIdx)
+	}
+
+	var mu sync.Mutex
+	pairedRounds := map[string]int{}
+	pkgstnd.SetSimPairedRoundHook(func(pairs [][2]int) {
+		normalized := make([]string, 0, len(pairs))
+		for _, p := range pairs {
+			normalized = append(normalized, fmt.Sprintf("%d-%d", min(p[0], p[1]), max(p[0], p[1])))
+		}
+		sort.Strings(normalized)
+		mu.Lock()
+		pairedRounds[strings.Join(normalized, " ")]++
+		mu.Unlock()
+	})
+	defer pkgstnd.SetSimPairedRoundHook(nil)
+
+	// A placeholder row for the pending round, the round being paired in
+	// ranks before the pending round, then KOTH.
+	pairings := [][]int{{0, 1, 2, 3, 4, 5}, {0, 3, 1, 4, 2, 5}, {0, 1, 2, 3, 4, 5}}
+	_, totalSims, pairErr := standings.RunSimsWithPairings(copRand, 2000, 3, pairings)
+	is.Equal(pairErr, pb.PairError_SUCCESS)
+	is.True(totalSims > 0)
+	is.Equal(pairedRounds, map[string]int{"0-5 1-4 2-3": totalSims})
+
+	// Forcing D (4th... 5th before the pending round) to play 1st means
+	// playing A, who led before the pending round, whoever leads after it.
+	pairedRounds = map[string]int{}
+	numSims := 2000
+	_, pairErr = standings.RunParallelSimForceWinner(copRand, numSims, 3, 3, pairings, 3, true, time.Now().Add(time.Minute).UnixNano())
+	is.Equal(pairErr, pb.PairError_SUCCESS)
+	is.Equal(pairedRounds, map[string]int{"0-3 1-4 2-5": numSims})
 }

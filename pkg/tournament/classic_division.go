@@ -40,6 +40,10 @@ type ClassicDivision struct {
 	// COPGibsonization stores gibsonization data from COP pairing algorithm
 	// Map key is round number, value is array of gibsonized flags indexed by player index
 	COPGibsonization map[int32][]bool `json:"copGibsonization"`
+	// pairingRound is set while PairRound runs. Pairing a round fills in
+	// byes and forfeits through SubmitResult, and those results must not
+	// pair or open other rounds in the middle of that pairing.
+	pairingRound bool
 }
 
 func NewClassicDivision(tournamentName string, divisionName string) *ClassicDivision {
@@ -260,15 +264,20 @@ func (t *ClassicDivision) prepair() (*pb.DivisionPairingsResponse, error) {
 	return pm, nil
 }
 
-func (t *ClassicDivision) SetSingleRoundControls(round int, controls *pb.RoundControl) (*pb.RoundControl, error) {
+// SetSingleRoundControls sets the controls for one round. Changing a round's
+// lag never re-pairs it, but if the round has no pairings and the round it
+// is now paired from is already complete, it is paired right away, since
+// no result will come in to trigger it. With AutoStart on, any round that
+// can then be opened is opened. The returned pairings are those made here.
+func (t *ClassicDivision) SetSingleRoundControls(round int, controls *pb.RoundControl) (*pb.DivisionPairingsResponse, *pb.RoundControl, error) {
 	if round >= len(t.Matrix) || round < 0 {
-		return nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_ROUND_NUMBER_OUT_OF_RANGE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), "SetSingleRoundControls")
+		return nil, nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_ROUND_NUMBER_OUT_OF_RANGE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), "SetSingleRoundControls")
 	}
 
 	totalRounds := len(t.RoundControls)
 	err := validateRoundControl(t, controls, totalRounds)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// COP continuity validation: once COP begins, all subsequent rounds must be COP
@@ -276,7 +285,7 @@ func (t *ClassicDivision) SetSingleRoundControls(round int, controls *pb.RoundCo
 		// Check if any previous round uses COP
 		for i := 0; i < round; i++ {
 			if t.RoundControls[i].PairingMethod == pb.PairingMethod_PAIRING_METHOD_COP {
-				return nil, entity.NewWooglesError(
+				return nil, nil, entity.NewWooglesError(
 					pb.WooglesError_TOURNAMENT_NON_COP_AFTER_COP,
 					t.TournamentName, t.DivisionName,
 					strconv.Itoa(round+1), strconv.Itoa(i+1))
@@ -286,7 +295,7 @@ func (t *ClassicDivision) SetSingleRoundControls(round int, controls *pb.RoundCo
 		// Setting to COP - check if any future round uses non-COP
 		for i := round + 1; i < len(t.RoundControls); i++ {
 			if t.RoundControls[i].PairingMethod != pb.PairingMethod_PAIRING_METHOD_COP {
-				return nil, entity.NewWooglesError(
+				return nil, nil, entity.NewWooglesError(
 					pb.WooglesError_TOURNAMENT_NON_COP_AFTER_COP,
 					t.TournamentName, t.DivisionName,
 					strconv.Itoa(i+1), strconv.Itoa(round+1))
@@ -294,9 +303,36 @@ func (t *ClassicDivision) SetSingleRoundControls(round int, controls *pb.RoundCo
 		}
 	}
 
+	lagChanged := controls.PairingLag != t.RoundControls[round].PairingLag
 	controls.InitialFontes = t.RoundControls[round].InitialFontes
 	t.RoundControls[round] = controls
-	return controls, nil
+
+	pmessage := newPairingsMessage()
+	if !lagChanged || round <= int(t.CurrentRound) || t.hasAnyPairings(round) ||
+		pair.IsStandingsIndependent(controls.PairingMethod) ||
+		(round > 0 && !t.isRoundPaired(round-1)) {
+		return pmessage, controls, nil
+	}
+	prefix, err := t.completePrefix()
+	if err != nil {
+		return nil, nil, err
+	}
+	if t.pairingBasisRound(round) > prefix {
+		return pmessage, controls, nil
+	}
+	pmessage, err = t.PairRound(round, false)
+	if err != nil {
+		return nil, nil, err
+	}
+	if t.DivisionControls.AutoStart {
+		for t.IsRoundStartable() == nil {
+			err = t.StartRound(false)
+			if err != nil {
+				return nil, nil, err
+			}
+		}
+	}
+	return pmessage, controls, nil
 }
 
 func (t *ClassicDivision) SetPairing(playerOne string, playerTwo string, round int,
@@ -676,15 +712,21 @@ func (t *ClassicDivision) SubmitResult(round int,
 
 	// Pair the rounds this result made pairable, unless the tournament is
 	// over. Standings independent rounds were paired when the tournament
-	// was created, so they are skipped.
-	if !finished && !amend {
-		newpmessage, err := t.pairNewlyPairableRounds(prefixBefore, prefixAfter)
+	// was created, so they are skipped. Byes and forfeits filled in while a
+	// round is being paired don't pair or open anything: the pairing that
+	// is in progress pairs the rounds they make pairable once it is done.
+	if !finished && !amend && !t.pairingRound {
+		newpmessage, err := t.pairNewlyPairableRounds(prefixBefore)
 		if err != nil {
 			return nil, err
 		}
 		pmessage = combinePairingMessages(pmessage, newpmessage)
 		pairedRounds := len(newpmessage.DivisionPairings) > 0
 		if t.DivisionControls.AutoStart && (prefixAfter > prefixBefore || pairedRounds) {
+			prefixAfter, err = t.completePrefix()
+			if err != nil {
+				return nil, err
+			}
 			err = t.autoStartRounds(prefixAfter)
 			if err != nil {
 				return nil, err
@@ -727,6 +769,10 @@ func (t *ClassicDivision) canCatch(records []*pb.PlayerStanding, round int, i in
 func (t *ClassicDivision) PairRound(round int, preserveByes bool) (*pb.DivisionPairingsResponse, error) {
 	if round < 0 || round >= len(t.Matrix) {
 		return nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_ROUND_NUMBER_OUT_OF_RANGE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), "PairRound")
+	}
+	if !t.pairingRound {
+		t.pairingRound = true
+		defer func() { t.pairingRound = false }()
 	}
 	roundPairings := t.Matrix[round]
 	pairingMethod := t.RoundControls[round].PairingMethod
@@ -1502,29 +1548,29 @@ func (t *ClassicDivision) isPairedLaggedRoundAhead(round int) bool {
 }
 
 // pairNewlyPairableRounds pairs the unstarted rounds that a result that was
-// just submitted made pairable. prefixBefore and prefixAfter are the
-// complete prefixes from before and after that result. A round is paired
-// when its basis round becomes complete. A round that has no pairings at
-// all is also paired once its basis round is complete, so a round whose
-// basis changed afterwards, for example because its lag was changed, is
-// never left unpaired. Rounds are paired in ascending order so that a
-// lagged round sees the pairings of the round before it, which must be
-// fully paired for its repeats and byes to be counted.
-func (t *ClassicDivision) pairNewlyPairableRounds(prefixBefore int, prefixAfter int) (*pb.DivisionPairingsResponse, error) {
+// just submitted made pairable: the rounds whose basis round became
+// complete. prefixBefore is the complete prefix from before that result.
+// Rounds are paired in ascending order so that a lagged round sees the
+// pairings of the round before it, which must be fully paired for its
+// repeats and byes to be counted. Pairing a round can complete it, when
+// everyone in it has a bye or a forfeit, which makes the rounds after it
+// pairable too, so the complete prefix is checked again for every round.
+func (t *ClassicDivision) pairNewlyPairableRounds(prefixBefore int) (*pb.DivisionPairingsResponse, error) {
 	pmessage := newPairingsMessage()
-	// Results for future rounds are byes and forfeits. If they complete a
-	// future round, the rounds after it become pairable too.
-	lastRound := min(max(int(t.CurrentRound), prefixAfter)+2, len(t.Matrix)-1)
-	for round := int(t.CurrentRound) + 1; round <= lastRound; round++ {
-		pm := t.RoundControls[round].PairingMethod
-		if pair.IsStandingsIndependent(pm) {
+	for round := int(t.CurrentRound) + 1; round < len(t.Matrix); round++ {
+		if round <= int(t.CurrentRound) {
 			continue
+		}
+		prefix, err := t.completePrefix()
+		if err != nil {
+			return nil, err
 		}
 		basis := t.pairingBasisRound(round)
-		if basis > prefixAfter {
-			continue
+		if basis > prefix {
+			// Later rounds have later basis rounds.
+			break
 		}
-		if basis <= prefixBefore && t.hasAnyPairings(round) {
+		if basis <= prefixBefore || pair.IsStandingsIndependent(t.RoundControls[round].PairingMethod) {
 			continue
 		}
 		if round > 0 && !t.isRoundPaired(round-1) {
@@ -1551,6 +1597,10 @@ func (t *ClassicDivision) autoStartRounds(prefix int) error {
 		if err != nil {
 			return err
 		}
+	}
+	finished, err := t.IsFinished()
+	if err != nil || finished {
+		return err
 	}
 	nextRound := int(t.CurrentRound) + 1
 	if nextRound < len(t.Matrix) && int(t.CurrentRound)-t.pairingLag(nextRound) <= prefix {

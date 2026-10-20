@@ -24,8 +24,12 @@ export const hasLaggedRounds = (division: Division): boolean =>
 
 // The last round whose results feed the given round's pairings. A negative
 // basis means the round is paired from the initial standings (by seed).
-export const pairingBasisRound = (division: Division, round: number): number =>
-  round - 1 - pairingLag(division, round);
+// lag defaults to the round's current pairing lag.
+export const pairingBasisRound = (
+  division: Division,
+  round: number,
+  lag: number = pairingLag(division, round),
+): number => round - 1 - lag;
 
 export const pairingHasResult = (pairing: SinglePairing | undefined): boolean =>
   !!pairing?.players &&

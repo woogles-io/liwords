@@ -128,6 +128,8 @@ describe("rounds with no lag", () => {
   it("uses the previous round as the basis", () => {
     const div = makeDivision(1, [0, 0, 0], []);
     expect(pairingBasisRound(div, 2)).toBe(1);
+    // A lag other than the round's own, as when it is about to change.
+    expect(pairingBasisRound(div, 2, 1)).toBe(0);
   });
 
   it("has nothing open before the tournament starts", () => {

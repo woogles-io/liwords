@@ -55,7 +55,19 @@ type Standings struct {
 	// pendingRankScratch maps player index to current rank index while a
 	// pending round is simulated. Each copy gets its own.
 	pendingRankScratch []int
+	// basisOrderScratch holds, while a simulation with pending rounds runs,
+	// the player index at each rank of the standings the round being paired
+	// is paired from: the standings before any pending round is played.
+	// pairedRoundScratch holds that round's row resolved to current ranks.
+	// Each copy gets its own.
+	basisOrderScratch  []int
+	pairedRoundScratch [][]int
 }
+
+// simPairedRoundHook, if set, is called with the player pairs the round
+// being paired is simulated with whenever there are pending rounds. It is
+// only set by tests.
+var simPairedRoundHook func(pairs [][2]int)
 
 type SimResults struct {
 	FinalRanks                [][]int
@@ -620,10 +632,14 @@ func (standings *Standings) evaluatePlayerControlLoss(
 
 // Returns true if the time limit has been exceeded
 func (standings *Standings) simToEndAndRecordResults(roundsRemaining int, copRand *rand.Rand, pairings [][]int, results [][]int, playerIdxToRankIdx map[int]int, stopTimeNano int64) bool {
+	numPendingRounds := len(standings.pendingRounds)
+	standings.captureBasisOrder()
 	for roundIdx := 0; roundIdx < roundsRemaining; roundIdx++ {
 		var timeLimitExceeded bool
-		if roundIdx < len(standings.pendingRounds) {
+		if roundIdx < numPendingRounds {
 			timeLimitExceeded = standings.simPendingRound(copRand, roundIdx, -1, stopTimeNano)
+		} else if roundIdx == numPendingRounds && numPendingRounds > 0 {
+			timeLimitExceeded = standings.simRound(copRand, standings.pairedRoundRow(pairings[roundIdx]), 0, -1, stopTimeNano)
 		} else {
 			timeLimitExceeded = standings.simRound(copRand, pairings, roundIdx, -1, stopTimeNano)
 		}
@@ -767,6 +783,62 @@ func (standings *Standings) simPendingRound(copRand *rand.Rand, pendingRoundIdx 
 	return false
 }
 
+// captureBasisOrder records the player at each rank before any pending
+// round is played, which is the order the round being paired is paired
+// from. It does nothing without pending rounds.
+func (standings *Standings) captureBasisOrder() {
+	if len(standings.pendingRounds) == 0 {
+		return
+	}
+	numRecords := len(standings.records)
+	if cap(standings.basisOrderScratch) < numRecords {
+		standings.basisOrderScratch = make([]int, numRecords)
+	}
+	standings.basisOrderScratch = standings.basisOrderScratch[:numRecords]
+	for rankIdx, record := range standings.records {
+		standings.basisOrderScratch[rankIdx] = getIndex(record)
+	}
+}
+
+// pairedRoundRow resolves row, a row of the round being paired that holds
+// ranks in the standings it is paired from (see captureBasisOrder), to
+// ranks in the current standings, after the pending rounds were played.
+// It returns the resolved row as the only round of a pairings slice.
+func (standings *Standings) pairedRoundRow(row []int) [][]int {
+	if standings.pendingRankScratch == nil {
+		standings.pendingRankScratch = make([]int, int(playerIndexMask)+1)
+	}
+	playerIdxToRankIdx := standings.pendingRankScratch
+	for rankIdx, record := range standings.records {
+		playerIdx := getIndex(record)
+		if playerIdx < len(playerIdxToRankIdx) {
+			playerIdxToRankIdx[playerIdx] = rankIdx
+		}
+	}
+	if len(standings.pairedRoundScratch) == 0 || cap(standings.pairedRoundScratch[0]) < len(row) {
+		standings.pairedRoundScratch = [][]int{make([]int, len(row))}
+	}
+	resolved := standings.pairedRoundScratch[0][:len(row)]
+	standings.pairedRoundScratch[0] = resolved
+	for i, basisRankIdx := range row {
+		playerIdx := standings.basisOrderScratch[basisRankIdx]
+		if playerIdx < len(playerIdxToRankIdx) {
+			resolved[i] = playerIdxToRankIdx[playerIdx]
+		} else {
+			// The evener (ByePlayerIndex) always ranks last.
+			resolved[i] = len(standings.records) - 1
+		}
+	}
+	if simPairedRoundHook != nil {
+		pairs := make([][2]int, 0, len(row)/2)
+		for i := 0; i+1 < len(row); i += 2 {
+			pairs = append(pairs, [2]int{standings.basisOrderScratch[row[i]], standings.basisOrderScratch[row[i+1]]})
+		}
+		simPairedRoundHook(pairs)
+	}
+	return standings.pairedRoundScratch
+}
+
 func (standings *Standings) findRankIdx(playerIdx int) int {
 	numPlayers := len(standings.records)
 	for rankIdx := 0; rankIdx < numPlayers; rankIdx++ {
@@ -779,9 +851,11 @@ func (standings *Standings) findRankIdx(playerIdx int) int {
 
 func (standings *Standings) simForceWinner(copRand *rand.Rand, sims int, roundsRemaining int, maxFactor int, pairings [][]int, forcedWinnerPlayerIdx int, vsFirst bool, stopTimeNano int64) (int, pb.PairError) {
 	tournamentWins := 0
+	numPendingRounds := len(standings.pendingRounds)
 	for simIdx := 0; simIdx < sims; simIdx++ {
+		standings.captureBasisOrder()
 		for roundIdx := 0; roundIdx < roundsRemaining; roundIdx++ {
-			if roundIdx < len(standings.pendingRounds) {
+			if roundIdx < numPendingRounds {
 				// Pending rounds have fixed real pairings, so no vsFirst or
 				// factor-opponent swap applies.
 				if standings.simPendingRound(copRand, roundIdx, forcedWinnerPlayerIdx, stopTimeNano) {
@@ -790,11 +864,19 @@ func (standings *Standings) simForceWinner(copRand *rand.Rand, sims int, roundsR
 				continue
 			}
 			forcedWinnerRankIdx := standings.findRankIdx(forcedWinnerPlayerIdx)
+			// The round being paired is paired from the standings before the
+			// pending rounds, so its swaps are made in those ranks: playing
+			// 1st means playing whoever led before the pending rounds.
+			isPairedRound := roundIdx == numPendingRounds && numPendingRounds > 0
+			swapRankIdx := forcedWinnerRankIdx
+			if isPairedRound {
+				swapRankIdx = slices.Index(standings.basisOrderScratch, forcedWinnerPlayerIdx)
+			}
 
-			// Find the forced winner's current position in this round's pairings.
+			// Find the forced winner's position in this round's pairings.
 			switchPairingIdx := -1
 			for idx, rankIdx := range pairings[roundIdx] {
-				if rankIdx == forcedWinnerRankIdx {
+				if rankIdx == swapRankIdx {
 					switchPairingIdx = idx
 					break
 				}
@@ -815,7 +897,7 @@ func (standings *Standings) simForceWinner(copRand *rand.Rand, sims int, roundsR
 				//   - Otherwise: do 1st vs 2nd, forced winner vs 2nd's opponent.
 				swapIdxA = 1
 				targetRank := 1
-				if forcedWinnerRankIdx == 1 {
+				if swapRankIdx == 1 {
 					targetRank = 2
 				}
 				for idx, rankIdx := range pairings[roundIdx] {
@@ -830,7 +912,12 @@ func (standings *Standings) simForceWinner(copRand *rand.Rand, sims int, roundsR
 				pairings[roundIdx][swapIdxA], pairings[roundIdx][swapIdxB] = pairings[roundIdx][swapIdxB], pairings[roundIdx][swapIdxA]
 			}
 
-			timeLimitExceeded := standings.simRound(copRand, pairings, roundIdx, forcedWinnerRankIdx, stopTimeNano)
+			var timeLimitExceeded bool
+			if isPairedRound {
+				timeLimitExceeded = standings.simRound(copRand, standings.pairedRoundRow(pairings[roundIdx]), 0, forcedWinnerRankIdx, stopTimeNano)
+			} else {
+				timeLimitExceeded = standings.simRound(copRand, pairings, roundIdx, forcedWinnerRankIdx, stopTimeNano)
+			}
 			if timeLimitExceeded {
 				return 0, pb.PairError_TIMEOUT
 			}

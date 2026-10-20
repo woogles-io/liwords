@@ -34,7 +34,10 @@ import { DivisionSelector, showError } from "./shared";
 import { RoundControlFields, rdCtrlFromSetting } from "./round_control_fields";
 import { SingleRoundControlFields } from "./round_control_fields";
 import { Modal } from "../../../utils/focus_modal";
-import { roundsCompleteThrough } from "../../../store/selectors/round_selectors";
+import {
+  pairingBasisRound,
+  roundsCompleteThrough,
+} from "../../../store/selectors/round_selectors";
 
 const SetTournamentControls = (props: { tournamentID: string }) => {
   const [modalVisible, setModalVisible] = useState(false);
@@ -423,25 +426,23 @@ const SetSingleRoundControls = (props: { tournamentID: string }) => {
     }
     rdCtrl.round = userVisibleRound - 1; // round is 0-indexed on backend.
     ctrls.roundControls = rdCtrl;
-    // Changing the lag never re-pairs a round, so tell the director when a
-    // round that already has pairings keeps them. A round with no pairings
-    // whose new basis round is already complete is paired by the server when
-    // the next result comes in, so say that too.
+    // Changing the lag never re-pairs a round that already has pairings, so
+    // tell the director those pairings were kept. A round with no pairings
+    // is paired by the server right away if the round it is now paired from
+    // is complete, and the response says whether that happened. If it
+    // didn't, no result will pair it later, so the director has to.
     const div = tournamentContext.divisions[division];
     const lagChanged =
       (div?.roundControls[rdCtrl.round]?.pairingLag ?? 0) !== rdCtrl.pairingLag;
     const alreadyPaired =
       div?.pairings[rdCtrl.round]?.roundPairings.some((p) => p?.players) ??
       false;
-    const basisComplete =
-      !!div && roundsCompleteThrough(div, rdCtrl.round - 1 - rdCtrl.pairingLag);
-    const pairsWithNextResult =
-      lagChanged &&
-      !alreadyPaired &&
-      basisComplete &&
-      rdCtrl.pairingMethod !== PairingMethod.MANUAL;
+    const basis = div
+      ? pairingBasisRound(div, rdCtrl.round, rdCtrl.pairingLag)
+      : rdCtrl.round - 1;
+    const basisComplete = !!div && roundsCompleteThrough(div, basis);
     try {
-      await tClient.setSingleRoundControls(ctrls);
+      const resp = await tClient.setSingleRoundControls(ctrls);
       message.info({
         content: `Controls set for round ${userVisibleRound}`,
         duration: 3,
@@ -451,9 +452,21 @@ const SetSingleRoundControls = (props: { tournamentID: string }) => {
           content: `Round ${userVisibleRound} pairings were not changed. Use Pair entire round to re-pair it with the new setting.`,
           duration: 10,
         });
-      } else if (pairsWithNextResult) {
+      } else if (resp.paired) {
         message.info({
-          content: `Round ${userVisibleRound} will be paired when the next result comes in. Use Pair entire round to pair it now.`,
+          content:
+            basis < 0
+              ? `Round ${userVisibleRound} was paired from the initial seeding.`
+              : `Round ${userVisibleRound} was paired from the results through round ${basis + 1}.`,
+          duration: 10,
+        });
+      } else if (
+        lagChanged &&
+        basisComplete &&
+        rdCtrl.pairingMethod !== PairingMethod.MANUAL
+      ) {
+        message.info({
+          content: `Round ${userVisibleRound} has no pairings yet. Use Pair entire round to pair it.`,
           duration: 10,
         });
       }

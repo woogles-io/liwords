@@ -110,16 +110,16 @@ func (ts *TournamentService) SetTournamentMetadata(ctx context.Context, req *con
 	return connect.NewResponse(&pb.TournamentResponse{}), nil
 }
 
-func (ts *TournamentService) SetSingleRoundControls(ctx context.Context, req *connect.Request[pb.SingleRoundControlsRequest]) (*connect.Response[pb.TournamentResponse], error) {
+func (ts *TournamentService) SetSingleRoundControls(ctx context.Context, req *connect.Request[pb.SingleRoundControlsRequest]) (*connect.Response[pb.SingleRoundControlsResponse], error) {
 	err := authenticateDirector(ctx, ts, req.Msg.Id, req.Msg, true)
 	if err != nil {
 		return nil, err
 	}
-	err = SetSingleRoundControls(ctx, ts.tournamentStore, req.Msg.Id, req.Msg.Division, int(req.Msg.RoundControls.Round), req.Msg.RoundControls)
+	paired, err := SetSingleRoundControls(ctx, ts.tournamentStore, req.Msg.Id, req.Msg.Division, int(req.Msg.RoundControls.Round), req.Msg.RoundControls)
 	if err != nil {
 		return nil, apiserver.InvalidArg(err.Error())
 	}
-	return connect.NewResponse(&pb.TournamentResponse{}), nil
+	return connect.NewResponse(&pb.SingleRoundControlsResponse{Paired: paired}), nil
 }
 
 func (ts *TournamentService) SetRoundControls(ctx context.Context, req *connect.Request[ipc.DivisionRoundControls]) (*connect.Response[pb.TournamentResponse], error) {

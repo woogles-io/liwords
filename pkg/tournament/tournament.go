@@ -287,53 +287,78 @@ func SetTournamentMetadata(ctx context.Context, ts TournamentStore, meta *pb.Tou
 	return SendTournamentMessage(ctx, ts, meta.Id, wrapped)
 }
 
-func SetSingleRoundControls(ctx context.Context, ts TournamentStore, id string, division string, round int, controls *ipc.RoundControl) error {
+// SetSingleRoundControls sets the controls for a future round. It returns
+// whether the round was paired because of the change (see
+// ClassicDivision.SetSingleRoundControls).
+func SetSingleRoundControls(ctx context.Context, ts TournamentStore, id string, division string, round int, controls *ipc.RoundControl) (bool, error) {
 
 	t, err := ts.Get(ctx, id)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	t.Lock()
 	defer t.Unlock()
 
 	if t.IsFinished {
-		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_FINISHED, t.Name, division)
+		return false, entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_FINISHED, t.Name, division)
 	}
 	if !t.IsStarted {
-		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NOT_STARTED, t.Name, division)
+		return false, entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NOT_STARTED, t.Name, division)
 	}
 
 	divisionObject, ok := t.Divisions[division]
 
 	if !ok {
-		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, division)
+		return false, entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, division)
 	}
 
 	if divisionObject.DivisionManager == nil {
-		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NIL_DIVISION_MANAGER, t.Name, division)
+		return false, entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NIL_DIVISION_MANAGER, t.Name, division)
 	}
 
 	currentRound := divisionObject.DivisionManager.GetCurrentRound()
 	if round < currentRound+1 {
-		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_SET_NON_FUTURE_ROUND_CONTROLS, t.Name, division, strconv.Itoa(currentRound+1))
+		return false, entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_SET_NON_FUTURE_ROUND_CONTROLS, t.Name, division, strconv.Itoa(currentRound+1))
 	}
 
-	newControls, err := divisionObject.DivisionManager.SetSingleRoundControls(round, controls)
+	pairingsResp, newControls, err := divisionObject.DivisionManager.SetSingleRoundControls(round, controls)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	err = ts.Set(ctx, t)
 	if err != nil {
-		return err
+		return false, err
 	}
 	wrapped := entity.WrapEvent(&ipc.DivisionRoundControls{
 		Id:            id,
 		Division:      division,
 		RoundControls: []*ipc.RoundControl{newControls},
 	}, ipc.MessageType_TOURNAMENT_DIVISION_ROUND_CONTROLS_MESSAGE)
-	return SendTournamentMessage(ctx, ts, id, wrapped)
+	err = SendTournamentMessage(ctx, ts, id, wrapped)
+	if err != nil {
+		return false, err
+	}
+
+	paired := len(pairingsResp.DivisionPairings) > 0
+	if paired {
+		pairingsResp.Id = id
+		pairingsResp.Division = division
+		wrapped = entity.WrapEvent(pairingsResp, ipc.MessageType_TOURNAMENT_DIVISION_PAIRINGS_MESSAGE)
+		err = SendTournamentMessage(ctx, ts, id, wrapped)
+		if err != nil {
+			return false, err
+		}
+	}
+	// AutoStart can open the round that was just paired.
+	for r := currentRound + 1; r <= divisionObject.DivisionManager.GetCurrentRound(); r++ {
+		err = sendDivisionStart(ts, t.UUID, division, r)
+		if err != nil {
+			return false, err
+		}
+	}
+	return paired, nil
 }
 
 func SetRoundControls(ctx context.Context, ts TournamentStore, id string, division string, roundControls []*ipc.RoundControl) error {

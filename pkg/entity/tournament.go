@@ -17,7 +17,7 @@ type DivisionManager interface {
 	GetCurrentRound() int
 	GetPlayers() *pb.TournamentPersons
 	SetPairing(string, string, int, pb.TournamentGameResult) (*pb.DivisionPairingsResponse, error)
-	SetSingleRoundControls(int, *pb.RoundControl) (*pb.RoundControl, error)
+	SetSingleRoundControls(int, *pb.RoundControl) (*pb.DivisionPairingsResponse, *pb.RoundControl, error)
 	SetRoundControls([]*pb.RoundControl) (*pb.DivisionPairingsResponse, []*pb.RoundControl, error)
 	SetDivisionControls(*pb.DivisionControls) (*pb.DivisionControls, map[int32]*pb.RoundStandings, error)
 	GetDivisionControls() *pb.DivisionControls

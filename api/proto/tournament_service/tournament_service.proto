@@ -195,6 +195,12 @@ message TournamentStartRoundCountdownRequest {
 }
 
 message TournamentResponse {}
+
+message SingleRoundControlsResponse {
+  // paired is true if the round was paired because its pairing lag changed
+  // and the round it is now paired from was already complete.
+  bool paired = 1;
+}
 message NewTournamentResponse {
   string id = 1;
   string slug = 2;
@@ -316,7 +322,7 @@ service TournamentService {
       returns (TournamentResponse);
   rpc PairRound(PairRoundRequest) returns (TournamentResponse);
   rpc SetSingleRoundControls(SingleRoundControlsRequest)
-      returns (TournamentResponse);
+      returns (SingleRoundControlsResponse);
   rpc SetRoundControls(ipc.DivisionRoundControls) returns (TournamentResponse);
   rpc SetDivisionControls(ipc.DivisionControls) returns (TournamentResponse);
   // Input to AddDirectors should be director usernames.

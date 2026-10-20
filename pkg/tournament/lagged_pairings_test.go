@@ -264,8 +264,7 @@ func TestLaggedPairingsValidation(t *testing.T) {
 	_, err = compactNewClassicDivision(defaultPlayers, copRoundControls(3), false)
 	is.NoErr(err)
 
-	// Changing a round's lag during the tournament is validated too, and
-	// does not pair anything by itself.
+	// Changing a round's lag during the tournament is validated too.
 	tc, err := compactNewClassicDivision(defaultPlayers, laggedRoundControls(kothRounds(3)), false)
 	is.NoErr(err)
 	is.NoErr(tc.StartRound(true))
@@ -273,30 +272,31 @@ func TestLaggedPairingsValidation(t *testing.T) {
 	is.NoErr(submitScore(tc, 0, conrad, jesse, 500, 300))
 	roundTwoPairings := tc.getPlayerPairings(1)
 
-	_, err = tc.SetSingleRoundControls(0, &pb.RoundControl{Round: 0, PairingLag: 1,
+	_, _, err = tc.SetSingleRoundControls(0, &pb.RoundControl{Round: 0, PairingLag: 1,
 		PairingMethod: pb.PairingMethod_KING_OF_THE_HILL, GamesPerRound: 1})
 	is.True(isWooglesError(err, pb.WooglesError_TOURNAMENT_LAGGED_FIRST_ROUND))
 
-	_, err = tc.SetSingleRoundControls(2, &pb.RoundControl{Round: 2, PairingLag: 1,
+	// Lagging the third round makes it pairable from the round 1 results,
+	// which are complete, so it is paired right away. The second round's
+	// pairings are untouched.
+	resp, _, err := tc.SetSingleRoundControls(2, &pb.RoundControl{Round: 2, PairingLag: 1,
 		PairingMethod: pb.PairingMethod_KING_OF_THE_HILL, GamesPerRound: 1})
 	is.NoErr(err)
-	is.NoErr(equalPairingStrings(roundTwoPairings, tc.getPlayerPairings(1)))
-	is.True(!tc.hasAnyPairings(2))
-
-	// The third round is now paired from the round 1 results by the next
-	// result that comes in, and can be opened while round 2 is played.
-	is.NoErr(tc.StartRound(true))
-	is.True(!tc.hasAnyPairings(2))
-	is.NoErr(submitScore(tc, 1, roundTwoPairings[0][0], roundTwoPairings[0][1], 400, 300))
+	is.True(len(resp.DivisionPairings) > 0)
 	is.True(tc.isRoundPaired(2))
+	is.NoErr(equalPairingStrings(roundTwoPairings, tc.getPlayerPairings(1)))
+
+	// It can be opened while round 2 is played.
+	is.NoErr(tc.StartRound(true))
 	is.NoErr(tc.IsRoundStartable())
 
 	// Changing the lag of a round that is already paired leaves its
 	// pairings alone.
 	roundThreePairings := tc.getPlayerPairings(2)
-	_, err = tc.SetSingleRoundControls(2, &pb.RoundControl{Round: 2,
+	resp, _, err = tc.SetSingleRoundControls(2, &pb.RoundControl{Round: 2,
 		PairingMethod: pb.PairingMethod_KING_OF_THE_HILL, GamesPerRound: 1})
 	is.NoErr(err)
+	is.Equal(len(resp.DivisionPairings), 0)
 	is.NoErr(equalPairingStrings(roundThreePairings, tc.getPlayerPairings(2)))
 }
 
@@ -451,15 +451,122 @@ func TestLaggedPairingsLagTurnedOnMidEvent(t *testing.T) {
 	is.NoErr(submitScore(tc, 0, conrad, jesse, 500, 300))
 	is.Equal(tc.GetCurrentRound(), 1)
 
-	// While round 2 is being played, the director lags round 3.
-	_, err = tc.SetSingleRoundControls(2, &pb.RoundControl{Round: 2, PairingLag: 1,
+	// While round 2 is being played, the director lags round 3. It is
+	// paired from the round 1 results right away, and AutoStart opens it.
+	_, _, err = tc.SetSingleRoundControls(2, &pb.RoundControl{Round: 2, PairingLag: 1,
 		PairingMethod: pb.PairingMethod_KING_OF_THE_HILL, GamesPerRound: 1})
 	is.NoErr(err)
-	is.True(!tc.hasAnyPairings(2))
+	is.True(tc.isRoundPaired(2))
+	is.Equal(tc.GetCurrentRound(), 2)
 
 	for _, pairing := range tc.getPlayerPairings(1) {
 		is.NoErr(submitScore(tc, 1, pairing[0], pairing[1], 400, 300))
 	}
-	is.True(tc.isRoundPaired(2))
 	is.Equal(tc.GetCurrentRound(), 2)
+}
+
+// Pairing a round fills in a forfeit for every removed player, which goes
+// through SubmitResult. That must not pair or open other rounds in the
+// middle of the pairing.
+func TestLaggedPairingsRemovedPlayerAutoStart(t *testing.T) {
+	is := is.New(t)
+
+	roundControls := laggedRoundControls([]pb.PairingMethod{
+		pb.PairingMethod_KING_OF_THE_HILL,
+		pb.PairingMethod_KING_OF_THE_HILL,
+		pb.PairingMethod_KING_OF_THE_HILL,
+		pb.PairingMethod_KING_OF_THE_HILL,
+		pb.PairingMethod_KING_OF_THE_HILL,
+	}, 2, 3)
+	tc, err := compactNewClassicDivision(defaultPlayersOdd, roundControls, true)
+	is.NoErr(err)
+	is.NoErr(tc.StartRound(true))
+	_, err = tc.RemovePlayers(makeTournamentPersons(map[string]int32{"Matt": 2000}))
+	is.NoErr(err)
+
+	keysBefore := tc.PairingKeyInt
+	for _, pairing := range tc.getPlayerPairings(0) {
+		if len(pairing) == 2 {
+			_, err = tc.SubmitResult(0, pairing[0], pairing[1], 400, 300,
+				pb.TournamentGameResult_WIN, pb.TournamentGameResult_LOSS,
+				pb.GameEndReason_STANDARD, false, 0, "")
+			is.NoErr(err)
+		}
+	}
+	// Completing round 1 pairs and opens round 2 and the lagged round 3.
+	// Each round is paired once: two games and a forfeit for the removed
+	// player, so six new pairings in all.
+	is.Equal(tc.GetCurrentRound(), 2)
+	is.NoErr(validatePairings(tc, 1))
+	is.NoErr(validatePairings(tc, 2))
+	is.Equal(tc.PairingKeyInt-keysBefore, 6)
+}
+
+// Pairings a director deletes stay deleted until the director pairs the
+// round, even while results for other rounds keep coming in.
+func TestLaggedPairingsDeletedPairingsStayDeleted(t *testing.T) {
+	is := is.New(t)
+
+	roundControls := laggedRoundControls([]pb.PairingMethod{
+		pb.PairingMethod_KING_OF_THE_HILL,
+		pb.PairingMethod_KING_OF_THE_HILL,
+		pb.PairingMethod_KING_OF_THE_HILL,
+		pb.PairingMethod_KING_OF_THE_HILL,
+	}, 2, 3)
+	tc, err := compactNewClassicDivision(defaultPlayers, roundControls, false)
+	is.NoErr(err)
+	is.NoErr(tc.StartRound(true))
+	is.NoErr(submitScore(tc, 0, will, josh, 450, 400))
+	is.NoErr(submitScore(tc, 0, conrad, jesse, 500, 300))
+	is.NoErr(tc.StartRound(true))
+	is.True(tc.isRoundPaired(2))
+
+	is.NoErr(tc.DeletePairings(2))
+	roundTwoPairings := tc.getPlayerPairings(1)
+	is.NoErr(submitScore(tc, 1, roundTwoPairings[0][0], roundTwoPairings[0][1], 400, 300))
+	is.True(!tc.hasAnyPairings(2))
+
+	// Completing round 2 leaves round 3 for the director. The lagged round
+	// 4, whose basis round 2 is, waits too, since its repeats depend on the
+	// round 3 pairings.
+	is.NoErr(submitScore(tc, 1, roundTwoPairings[1][0], roundTwoPairings[1][1], 400, 300))
+	is.True(!tc.hasAnyPairings(2))
+	is.True(!tc.hasAnyPairings(3))
+}
+
+// With every player but one removed, each round is complete as soon as it
+// is paired, so completing one round pairs every round after it. That
+// still happens one round at a time, each round paired once.
+func TestLaggedPairingsByesCascade(t *testing.T) {
+	is := is.New(t)
+
+	roundControls := laggedRoundControls([]pb.PairingMethod{
+		pb.PairingMethod_KING_OF_THE_HILL,
+		pb.PairingMethod_KING_OF_THE_HILL,
+		pb.PairingMethod_KING_OF_THE_HILL,
+		pb.PairingMethod_KING_OF_THE_HILL,
+		pb.PairingMethod_KING_OF_THE_HILL,
+	}, 2, 3)
+	tc, err := compactNewClassicDivision(defaultPlayers, roundControls, true)
+	is.NoErr(err)
+	is.NoErr(tc.StartRound(true))
+	_, err = tc.RemovePlayers(makeTournamentPersons(map[string]int32{josh: 3000, conrad: 2200, jesse: 2100}))
+	is.NoErr(err)
+
+	keysBefore := tc.PairingKeyInt
+	_, err = tc.SubmitResult(0, will, josh, 400, 300, pb.TournamentGameResult_WIN,
+		pb.TournamentGameResult_LOSS, pb.GameEndReason_STANDARD, false, 0, "")
+	is.NoErr(err)
+	_, err = tc.SubmitResult(0, conrad, jesse, 400, 300, pb.TournamentGameResult_WIN,
+		pb.TournamentGameResult_LOSS, pb.GameEndReason_STANDARD, false, 0, "")
+	is.NoErr(err)
+
+	// Rounds 2 to 5 are each paired once, with a bye and three forfeits.
+	is.Equal(tc.PairingKeyInt-keysBefore, 16)
+	for round := 1; round < 5; round++ {
+		is.NoErr(validatePairings(tc, round))
+	}
+	finished, err := tc.IsFinished()
+	is.NoErr(err)
+	is.True(finished)
 }
