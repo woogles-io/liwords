@@ -634,3 +634,31 @@ func TestAutoStartDoesNotRejectResults(t *testing.T) {
 	is.True(complete)
 	is.Equal(tc.GetCurrentRound(), 0)
 }
+
+// laggedRepeatLimitedSwiss returns round controls for two players where
+// the lagged third round can't be paired: it may not repeat a pairing, and
+// the only possible pairing has been played already.
+func laggedRepeatLimitedSwiss(second pb.PairingMethod) []*pb.RoundControl {
+	roundControls := laggedRoundControls([]pb.PairingMethod{
+		pb.PairingMethod_KING_OF_THE_HILL,
+		second,
+		pb.PairingMethod_SWISS,
+	}, 2)
+	roundControls[2].AllowOverMaxRepeats = false
+	roundControls[2].MaxRepeats = 1
+	return roundControls
+}
+
+// Pairing a lagged round is follow-on work, so failing to pair it doesn't
+// reject the result that made it pairable.
+func TestLaggedPairingFailureDoesNotRejectResult(t *testing.T) {
+	is := is.New(t)
+
+	tc, err := compactNewClassicDivision(makeTournamentPersons(map[string]int32{will: 2000, josh: 1000}),
+		laggedRepeatLimitedSwiss(pb.PairingMethod_KING_OF_THE_HILL), false)
+	is.NoErr(err)
+	is.NoErr(tc.StartRound(true))
+	is.NoErr(submitScore(tc, 0, will, josh, 400, 300))
+	is.True(tc.IsRoundPaired(1))
+	is.True(!tc.IsRoundPaired(2))
+}

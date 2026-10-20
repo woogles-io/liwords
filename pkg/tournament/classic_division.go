@@ -1567,7 +1567,15 @@ func (t *ClassicDivision) pairNewlyPairableRounds(prefixBefore int) (*pb.Divisio
 		}
 		newpmessage, err := t.PairRound(round, false)
 		if err != nil {
-			return nil, err
+			if t.pairingLag(round) == 0 {
+				return nil, err
+			}
+			// Pairing a lagged round is follow-on work: the result that
+			// made it pairable still stands, and the director can pair the
+			// round with Pair entire round.
+			log.Err(err).Str("tournament", t.TournamentName).Str("division", t.DivisionName).
+				Int("round", round+1).Msg("auto-pair-lagged-round")
+			continue
 		}
 		pmessage = combinePairingMessages(pmessage, newpmessage)
 	}

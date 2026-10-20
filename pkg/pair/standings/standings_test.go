@@ -1,6 +1,8 @@
 package standings_test
 
 import (
+	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -520,4 +522,75 @@ func TestPendingByeWithoutEvener(t *testing.T) {
 	is.True(simResults.TotalSims > 0)
 	assertResultSums(is, simResults.FinalRanks, 4, simResults.TotalSims)
 	is.Equal(simResults.FinalRanks[2][2], simResults.TotalSims)
+}
+
+// createByeResultsRequest returns a request whose results rounds are all
+// byes, so each player's record can be set directly: a positive score is a
+// win, a negative one a loss and 0 no change. The pending round has the
+// given pairings and no results.
+func createByeResultsRequest(numPlayers int, rounds int, byeScores []string, pendingPairings string) *pb.PairRequest {
+	byes := make([]string, numPlayers)
+	for i := range byes {
+		byes[i] = strconv.Itoa(i)
+	}
+	byePairings := strings.Join(byes, " ")
+	req := createPendingRoundRequest(numPlayers, rounds, nil, byePairings, byeScores[0])
+	for _, scores := range byeScores[1:] {
+		pairtestutils.AddRoundPairingsStr(req, byePairings)
+		pairtestutils.AddRoundResultsStr(req, scores)
+	}
+	pairtestutils.AddRoundPairingsStr(req, pendingPairings)
+	return req
+}
+
+// The round being paired is resolved against the standings before the
+// pending round, not after it. Before the pending round: D (2-0), B (1-1,
+// +20), C (1-1, 0), A (0-2). The pending round is D-C and B-A, and the
+// round being paired is 1st v 3rd and 2nd v 4th of those standings, which
+// is D-C and B-A again. A can only finish 1st if D loses twice, but then C
+// wins twice, so A never finishes 1st. Resolved against the standings after
+// the pending round instead, the pairings would sometimes put A against D,
+// and A could finish 1st.
+func TestPairedRoundResolvedBeforePendingRound(t *testing.T) {
+	is := is.New(t)
+	copRand := rand.New(rand.NewSource(0))
+
+	req := createByeResultsRequest(4, 4, []string{"-10 30 -10 10", "-10 -10 10 10"}, "1 0 3 2")
+	standings := pkgstnd.CreateInitialStandings(req)
+	is.Equal(standings.GetNumPendingRounds(), 1)
+	for rankIdx, playerIdx := range []int{3, 1, 2, 0} {
+		is.Equal(standings.GetPlayerIndex(rankIdx), playerIdx)
+	}
+	pairings := [][]int{{0, 1, 2, 3}, {0, 2, 1, 3}}
+	finalRanks, totalSims, pairErr := standings.RunSimsWithPairings(copRand, 20000, 2, pairings)
+	is.Equal(pairErr, pb.PairError_SUCCESS)
+	is.True(totalSims > 0)
+	// A started 4th.
+	is.Equal(finalRanks[3][0], 0)
+}
+
+// The control-loss simulations make their swap in the ranks before the
+// pending round too: playing 1st means playing whoever led then. Before the
+// pending round: E (2-0, +76), C (2-0, +48), D (1-0), B (1-0), A (0-1,
+// -10), F (0-1, -45). The pending round is A-D and E-F, with byes for B and
+// C. The round being paired is 1st v 4th, 2nd v 5th and 3rd v 6th; with A
+// forced to win every game and to play 1st, it becomes A-E, C-B and F-D.
+// A can reach 2 wins. C and B meet on 3 and 2 wins, so one of them goes into
+// the KOTH final on at least 3, and either they or whoever beats them ends
+// above A. A never wins the tournament. Swapped against the leader after
+// the pending round instead, A sometimes does.
+func TestForcedWinnerPlaysLeaderBeforePendingRound(t *testing.T) {
+	is := is.New(t)
+	copRand := rand.New(rand.NewSource(0))
+
+	req := createByeResultsRequest(6, 5, []string{"-10 17 24 31 38 -45", "0 0 24 0 38 0"}, "3 1 2 0 5 4")
+	standings := pkgstnd.CreateInitialStandings(req)
+	is.Equal(standings.GetNumPendingRounds(), 1)
+	for rankIdx, playerIdx := range []int{4, 2, 3, 1, 0, 5} {
+		is.Equal(standings.GetPlayerIndex(rankIdx), playerIdx)
+	}
+	pairings := [][]int{{0, 1, 2, 3, 4, 5}, {0, 3, 5, 2, 1, 4}, {0, 1, 2, 3, 4, 5}}
+	wins, pairErr := standings.RunParallelSimForceWinner(copRand, 20000, 3, 3, pairings, 0, true, time.Now().Add(time.Minute).UnixNano())
+	is.Equal(pairErr, pb.PairError_SUCCESS)
+	is.Equal(wins, 0)
 }

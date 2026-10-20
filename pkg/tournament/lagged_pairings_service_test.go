@@ -79,6 +79,19 @@ func TestAutoStartIsAnnounced(t *testing.T) {
 
 func setUpLaggedServiceDivision(t *testing.T, autoStart bool, methods []ipc.PairingMethod, laggedRound int) (
 	context.Context, *stores.Stores, *entity.Tournament, chan *entity.EventWrapper) {
+	roundControls := makeRoundControls()[:len(methods)]
+	for i, rc := range roundControls {
+		rc.PairingMethod = methods[i]
+	}
+	roundControls[laggedRound].PairingLag = 1
+	return setUpServiceDivision(t, map[string]int32{"Will": 4000, "Josh": 3000, "Conrad": 2200, "Jesse": 2100},
+		autoStart, roundControls)
+}
+
+// setUpServiceDivision creates a tournament with one division of the given
+// players and round controls, and opens round 1.
+func setUpServiceDivision(t *testing.T, players map[string]int32, autoStart bool, roundControls []*ipc.RoundControl) (
+	context.Context, *stores.Stores, *entity.Tournament, chan *entity.EventWrapper) {
 	is := is.New(t)
 	ctx := context.Background()
 	stores, cfg := recreateDB()
@@ -92,19 +105,83 @@ func setUpLaggedServiceDivision(t *testing.T, autoStart bool, methods []ipc.Pair
 	ty, err := makeTournament(ctx, tstore, cfg, directors, "lagged")
 	is.NoErr(err)
 	is.NoErr(tournament.AddDivision(ctx, tstore, ty.UUID, divOneName))
-	is.NoErr(tournament.AddPlayers(ctx, tstore, us, ty.UUID, divOneName,
-		makeTournamentPersons(map[string]int32{"Will": 4000, "Josh": 3000, "Conrad": 2200, "Jesse": 2100})))
+	is.NoErr(tournament.AddPlayers(ctx, tstore, us, ty.UUID, divOneName, makeTournamentPersons(players)))
 	controls := makeControls()
 	controls.AutoStart = autoStart
 	is.NoErr(tournament.SetDivisionControls(ctx, tstore, ty.UUID, divOneName, controls))
-	roundControls := makeRoundControls()[:len(methods)]
-	for i, rc := range roundControls {
-		rc.PairingMethod = methods[i]
-	}
-	roundControls[laggedRound].PairingLag = 1
 	is.NoErr(tournament.SetRoundControls(ctx, tstore, ty.UUID, divOneName, roundControls))
 	is.NoErr(tournament.StartRoundCountdown(ctx, tstore, ty.UUID, divOneName, 0))
 	return ctx, stores, ty, eventChan
+}
+
+// pairingsSentForRound reports whether a pairings message with pairings for
+// the round was sent.
+func pairingsSentForRound(evts []*entity.EventWrapper, round int32) bool {
+	for _, evt := range evts {
+		if evt.Type != ipc.MessageType_TOURNAMENT_DIVISION_PAIRINGS_MESSAGE {
+			continue
+		}
+		for _, p := range evt.Event.(*ipc.DivisionPairingsResponse).DivisionPairings {
+			if p.Round == round {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// laggedRepeatLimitedSwissControls returns round controls for two players
+// where the lagged third round can't be paired: it may not repeat a
+// pairing, and the only possible pairing has been played already.
+func laggedRepeatLimitedSwissControls(second ipc.PairingMethod) []*ipc.RoundControl {
+	roundControls := makeRoundControls()[:3]
+	roundControls[0].PairingMethod = ipc.PairingMethod_KING_OF_THE_HILL
+	roundControls[1].PairingMethod = second
+	roundControls[2].PairingMethod = ipc.PairingMethod_SWISS
+	roundControls[2].PairingLag = 1
+	roundControls[2].AllowOverMaxRepeats = false
+	roundControls[2].MaxRepeats = 1
+	return roundControls
+}
+
+// Pairing a lagged round after a director's pairings is follow-on work: if
+// it fails, the director's pairings are still saved and sent out.
+func TestLaggedPairingFailureKeepsDirectorPairings(t *testing.T) {
+	players := map[string]int32{"Will": 2000, "Josh": 1000}
+
+	t.Run("SetPairings", func(t *testing.T) {
+		is := is.New(t)
+		ctx, stores, ty, eventChan := setUpServiceDivision(t, players, false,
+			laggedRepeatLimitedSwissControls(ipc.PairingMethod_MANUAL))
+		dm := ty.Divisions[divOneName].DivisionManager
+		is.NoErr(setServiceResult(ctx, stores, ty, 0, "Will", "Josh"))
+		drainEvents(eventChan)
+
+		is.NoErr(tournament.SetPairings(ctx, stores.TournamentStore, ty.UUID, divOneName, []*pb.TournamentPairingRequest{
+			{PlayerOneId: "Will:Will", PlayerTwoId: "Josh:Josh", Round: 1},
+		}))
+		is.True(dm.IsRoundPaired(1))
+		is.True(!dm.IsRoundPaired(2))
+		is.True(pairingsSentForRound(drainEvents(eventChan), 1))
+	})
+
+	t.Run("PairRound", func(t *testing.T) {
+		is := is.New(t)
+		ctx, stores, ty, eventChan := setUpServiceDivision(t, players, false,
+			laggedRepeatLimitedSwissControls(ipc.PairingMethod_KING_OF_THE_HILL))
+		dm := ty.Divisions[divOneName].DivisionManager
+		// Completing round 1 pairs round 2, but not the lagged round 3.
+		is.NoErr(setServiceResult(ctx, stores, ty, 0, "Will", "Josh"))
+		is.True(dm.IsRoundPaired(1))
+		is.True(!dm.IsRoundPaired(2))
+
+		is.NoErr(tournament.DeletePairings(ctx, stores.TournamentStore, ty.UUID, divOneName, 1))
+		drainEvents(eventChan)
+		is.NoErr(tournament.PairRound(ctx, stores.TournamentStore, ty.UUID, divOneName, 1, false))
+		is.True(dm.IsRoundPaired(1))
+		is.True(!dm.IsRoundPaired(2))
+		is.True(pairingsSentForRound(drainEvents(eventChan), 1))
+	})
 }
 
 func setServiceResult(ctx context.Context, stores *stores.Stores, ty *entity.Tournament, round int, p1, p2 string) error {

@@ -1182,9 +1182,13 @@ func SetPairings(ctx context.Context, ts TournamentStore, id string, division st
 		if !dm.IsRoundPaired(round) {
 			continue
 		}
+		// Pairing the lagged round is follow-on work: if it fails, the
+		// director's pairings still stand and are saved and sent out, and
+		// the director can pair the lagged round with Pair entire round.
 		laggedResp, err := dm.PairLaggedRoundAfter(round)
 		if err != nil {
-			return err
+			log.Err(err).Str("tid", id).Str("division", division).Int("round", round+2).Msg("pair-lagged-round-after-set-pairings")
+			continue
 		}
 		pairingsResponse = combinePairingsResponses(pairingsResponse, laggedResp.DivisionPairings)
 		standingsResponse = combineStandingsResponses(standingsResponse, laggedResp.DivisionStandings)
@@ -1606,12 +1610,16 @@ func PairRound(ctx context.Context, ts TournamentStore, id string, division stri
 	}
 	if !wasPaired {
 		// A lagged round after this one may have been waiting for it.
+		// Pairing it is follow-on work: if it fails, this round's pairings
+		// still stand and are saved and sent out, and the director can pair
+		// the lagged round with Pair entire round.
 		laggedResp, err := dm.PairLaggedRoundAfter(round)
 		if err != nil {
-			return err
+			log.Err(err).Str("tid", id).Str("division", division).Int("round", round+2).Msg("pair-lagged-round-after-pair-round")
+		} else {
+			pairingsResp.DivisionPairings = combinePairingsResponses(pairingsResp.DivisionPairings, laggedResp.DivisionPairings)
+			pairingsResp.DivisionStandings = combineStandingsResponses(pairingsResp.DivisionStandings, laggedResp.DivisionStandings)
 		}
-		pairingsResp.DivisionPairings = combinePairingsResponses(pairingsResp.DivisionPairings, laggedResp.DivisionPairings)
-		pairingsResp.DivisionStandings = combineStandingsResponses(pairingsResp.DivisionStandings, laggedResp.DivisionStandings)
 	}
 
 	err = ts.Set(ctx, t)
