@@ -379,7 +379,10 @@ func GetPrecompData(req *pb.PairRequest, copRand *rand.Rand, logsb *strings.Buil
 	writePendingRoundsToLog(req, logsb)
 
 	// Use the initial results to get a tighter bound on the maximum factor
-	initialFactor := pkgstnd.GetRoundsRemaining(req)
+	// The factor is a decision about the round being paired, so it is
+	// bounded by the rounds left to pair rather than the games left to
+	// play, which also include rounds in progress.
+	initialFactor := pkgstnd.GetPairingRoundsRemaining(req)
 	initialSimResults, pairErr := standings.SimFactorPairAll(req, copRand, int(req.DivisionSims), initialFactor, -1, nil, -1)
 	if pairErr != pb.PairError_SUCCESS {
 		return nil, pairErr

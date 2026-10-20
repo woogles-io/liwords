@@ -114,8 +114,12 @@ func (t *ClassicDivision) SetDivisionControls(divisionControls *pb.DivisionContr
 	standingsMap := make(map[int32]*pb.RoundStandings)
 	// Update the gibsonizations if the controls have changed
 	if gibsonChanged {
+		prefix, err := t.gibsonCompletePrefix()
+		if err != nil {
+			return nil, nil, err
+		}
 		for i := 0; i <= t.GetCurrentRound(); i++ {
-			standings, _, err := t.GetStandings(i)
+			standings, _, err := t.getStandings(i, prefix)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -242,7 +246,7 @@ func (t *ClassicDivision) prepair() (*pb.DivisionPairingsResponse, error) {
 			// Don't pair Initial Fontes round if there are more initial fontes
 			// rounds than players
 			if (pair.IsStandingsIndependent(pairingMethod) ||
-				(t.pairingBasisRound(i) < 0 && t.hasAnyPairings(i-1))) &&
+				(t.pairingBasisRound(i) < 0 && t.isRoundPaired(i-1))) &&
 				numberOfPlayers >= int(initFontes)+1 &&
 				pairingMethod != pb.PairingMethod_MANUAL {
 				newpm, err := t.PairRound(i, false)
@@ -586,15 +590,11 @@ func (t *ClassicDivision) SubmitResult(round int,
 		return nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_RESULT_ALREADY_SUBMITTED, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), p1, p2)
 	}
 
-	// In a lagged division, rounds are paired when their basis round
-	// becomes complete, so note which rounds were complete beforehand.
-	hasLaggedRounds := t.hasLaggedRounds()
-	prefixBefore := -1
-	if hasLaggedRounds {
-		prefixBefore, err = t.completePrefix()
-		if err != nil {
-			return nil, err
-		}
+	// Rounds are paired when their basis round becomes complete, so note
+	// which rounds were complete beforehand.
+	prefixBefore, err := t.completePrefix()
+	if err != nil {
+		return nil, err
 	}
 
 	if amend && gid == "" {
@@ -649,10 +649,6 @@ func (t *ClassicDivision) SubmitResult(round int,
 		pairing.Outcomes[1-p1Index] = p2Result
 	}
 
-	roundComplete, err := t.IsRoundComplete(round)
-	if err != nil {
-		return nil, err
-	}
 	finished, err := t.IsFinished()
 	if err != nil {
 		return nil, err
@@ -662,56 +658,34 @@ func (t *ClassicDivision) SubmitResult(round int,
 	pmessage.DivisionPairings = []*pb.Pairing{pairing}
 	pmessage.DivisionStandings = map[int32]*pb.RoundStandings{}
 
+	prefixAfter, err := t.completePrefix()
+	if err != nil {
+		return nil, err
+	}
+
 	// A lagged round two rounds ahead may already be paired, so its
 	// standings need refreshing as well.
-	lastStandingsRound := int(t.CurrentRound) + 1
-	if hasLaggedRounds {
-		lastStandingsRound++
-	}
+	lastStandingsRound := int(t.CurrentRound) + 1 + t.pairingLag(int(t.CurrentRound)+2)
 	for i := round; i <= lastStandingsRound && i < len(t.Matrix); i++ {
-		standings, _, err := t.GetStandings(i)
+		standings, _, err := t.getStandings(i, prefixAfter)
 		if err != nil {
 			return nil, err
 		}
 		pmessage.DivisionStandings[int32(i)] = standings
 	}
 
-	// Only pair if this round is complete and the tournament
-	// is not over. Don't pair for standings independent pairings since those pairings
-	// were made when the tournament was created.
-	if hasLaggedRounds {
-		// In a lagged division, a result can make up to two rounds
-		// pairable: the next round and a lagged round after it. Byes and
-		// forfeits that are filled in while a future round is being paired
-		// must not pair or open rounds in the middle of that pairing.
-		if !finished && !amend && round <= int(t.CurrentRound) {
-			newpmessage, err := t.pairNewlyPairableRounds(prefixBefore)
-			if err != nil {
-				return nil, err
-			}
-			pmessage = combinePairingMessages(pmessage, newpmessage)
-			if t.DivisionControls.AutoStart {
-				// Open every round that can be opened. A lagged round
-				// can open while the round before it is still being
-				// played.
-				for t.IsRoundStartable() == nil {
-					err = t.StartRound(false)
-					if err != nil {
-						return nil, err
-					}
-				}
-			}
+	// Pair the rounds this result made pairable, unless the tournament is
+	// over. Standings independent rounds were paired when the tournament
+	// was created, so they are skipped.
+	if !finished && !amend {
+		newpmessage, err := t.pairNewlyPairableRounds(prefixBefore, prefixAfter)
+		if err != nil {
+			return nil, err
 		}
-	} else if roundComplete && !finished && !amend {
-		if !pair.IsStandingsIndependent(t.RoundControls[round+1].PairingMethod) {
-			newpmessage, err := t.PairRound(round+1, false)
-			if err != nil {
-				return nil, err
-			}
-			pmessage = combinePairingMessages(pmessage, newpmessage)
-		}
-		if t.DivisionControls.AutoStart {
-			err = t.StartRound(true)
+		pmessage = combinePairingMessages(pmessage, newpmessage)
+		pairedRounds := len(newpmessage.DivisionPairings) > 0
+		if t.DivisionControls.AutoStart && (prefixAfter > prefixBefore || pairedRounds) {
+			err = t.autoStartRounds(prefixAfter)
 			if err != nil {
 				return nil, err
 			}
@@ -1207,8 +1181,12 @@ func (t *ClassicDivision) DeletePairings(round int) error {
 func (t *ClassicDivision) RecalculateStandings() (*pb.DivisionPairingsResponse, error) {
 	pairingsMessage := newPairingsMessage()
 
+	prefix, err := t.gibsonCompletePrefix()
+	if err != nil {
+		return nil, err
+	}
 	for i := 0; i < len(t.Matrix); i++ {
-		roundStandings, _, err := t.GetStandings(i)
+		roundStandings, _, err := t.getStandings(i, prefix)
 		if err != nil {
 			return nil, err
 		}
@@ -1249,6 +1227,9 @@ func (t *ClassicDivision) AddPlayers(players *pb.TournamentPersons) (*pb.Divisio
 		if int(t.CurrentRound) == len(t.Matrix)-1 {
 			return nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_ADD_PLAYERS_LAST_ROUND, t.TournamentName, t.DivisionName, strconv.Itoa(int(t.CurrentRound+1)))
 		}
+		// Check this before the new players are added to the pairing
+		// matrix, after which no round is fully paired.
+		repairLaggedRoundAhead := t.isPairedLaggedRoundAhead(int(t.CurrentRound) + 2)
 		for _, player := range players.Persons {
 			_, playerExists := t.PlayerIndexMap[player.Id]
 			if !playerExists {
@@ -1294,7 +1275,8 @@ func (t *ClassicDivision) AddPlayers(players *pb.TournamentPersons) (*pb.Divisio
 				}
 			} else {
 				pm := t.RoundControls[i].PairingMethod
-				if (i == int(t.CurrentRound)+1 || pair.IsStandingsIndependent(pm) || t.isPairedLaggedRoundAhead(i)) && pm != pb.PairingMethod_MANUAL {
+				laggedRoundAhead := i == int(t.CurrentRound)+2 && repairLaggedRoundAhead
+				if (i == int(t.CurrentRound)+1 || pair.IsStandingsIndependent(pm) || laggedRoundAhead) && pm != pb.PairingMethod_MANUAL {
 					newpmessage, err := t.PairRound(i, false)
 					if err != nil {
 						return nil, err
@@ -1456,28 +1438,15 @@ func (t *ClassicDivision) pairingLag(round int) int {
 }
 
 // pairingBasisRound returns the last round whose results are used to pair
-// the given round. A negative basis round means the round is paired from
-// the initial standings.
+// the given round. See PairingBasisRound.
 func (t *ClassicDivision) pairingBasisRound(round int) int {
-	return round - 1 - t.pairingLag(round)
-}
-
-// hasLaggedRounds reports whether any round in the division is lagged.
-// Code paths that only make sense with lagged rounds are gated on this so
-// that divisions without lag behave exactly as they always have.
-func (t *ClassicDivision) hasLaggedRounds() bool {
-	for _, rc := range t.RoundControls {
-		if rc.PairingLag > 0 {
-			return true
-		}
-	}
-	return false
+	return PairingBasisRound(t.RoundControls, round)
 }
 
 // completePrefix returns the largest round k such that rounds 0 through k
 // are all complete, or -1 if round 0 is not complete. Results entered by
-// hand can complete a later round before an earlier one, so lagged
-// divisions use this instead of the completeness of a single round.
+// hand can complete a later round before an earlier one when rounds are
+// lagged, so this is used instead of the completeness of a single round.
 func (t *ClassicDivision) completePrefix() (int, error) {
 	for i := 0; i < len(t.Matrix); i++ {
 		complete, err := t.IsRoundComplete(i)
@@ -1529,33 +1498,38 @@ func (t *ClassicDivision) hasAnyPairings(round int) bool {
 // has to be re-paired when players are added or removed, just like the
 // next round.
 func (t *ClassicDivision) isPairedLaggedRoundAhead(round int) bool {
-	return round == int(t.CurrentRound)+2 && t.pairingLag(round) > 0 && t.hasAnyPairings(round)
+	return round == int(t.CurrentRound)+2 && t.pairingLag(round) > 0 && t.isRoundPaired(round)
 }
 
-// pairNewlyPairableRounds pairs the unstarted rounds whose basis round
-// became complete because of a result that was just submitted.
-// prefixBefore is the complete prefix from before that result. Rounds are
-// paired in ascending order so that a lagged round sees the pairings of
-// the round before it.
-func (t *ClassicDivision) pairNewlyPairableRounds(prefixBefore int) (*pb.DivisionPairingsResponse, error) {
+// pairNewlyPairableRounds pairs the unstarted rounds that a result that was
+// just submitted made pairable. prefixBefore and prefixAfter are the
+// complete prefixes from before and after that result. A round is paired
+// when its basis round becomes complete. A round that has no pairings at
+// all is also paired once its basis round is complete, so a round whose
+// basis changed afterwards, for example because its lag was changed, is
+// never left unpaired. Rounds are paired in ascending order so that a
+// lagged round sees the pairings of the round before it, which must be
+// fully paired for its repeats and byes to be counted.
+func (t *ClassicDivision) pairNewlyPairableRounds(prefixBefore int, prefixAfter int) (*pb.DivisionPairingsResponse, error) {
 	pmessage := newPairingsMessage()
-	prefixAfter, err := t.completePrefix()
-	if err != nil {
-		return nil, err
-	}
-	lastRound := min(int(t.CurrentRound)+2, len(t.Matrix)-1)
+	// Results for future rounds are byes and forfeits. If they complete a
+	// future round, the rounds after it become pairable too.
+	lastRound := min(max(int(t.CurrentRound), prefixAfter)+2, len(t.Matrix)-1)
 	for round := int(t.CurrentRound) + 1; round <= lastRound; round++ {
 		pm := t.RoundControls[round].PairingMethod
 		if pair.IsStandingsIndependent(pm) {
 			continue
 		}
 		basis := t.pairingBasisRound(round)
-		if basis <= prefixBefore || basis > prefixAfter {
+		if basis > prefixAfter {
 			continue
 		}
-		if round > 0 && !t.hasAnyPairings(round-1) {
+		if basis <= prefixBefore && t.hasAnyPairings(round) {
+			continue
+		}
+		if round > 0 && !t.isRoundPaired(round-1) {
 			log.Info().Str("tournament", t.TournamentName).Str("division", t.DivisionName).
-				Int("round", round+1).Msg("skip-auto-pair-previous-round-unpaired")
+				Int("round", round+1).Msg("skip-auto-pair-previous-round-not-fully-paired")
 			continue
 		}
 		newpmessage, err := t.PairRound(round, false)
@@ -1565,6 +1539,24 @@ func (t *ClassicDivision) pairNewlyPairableRounds(prefixBefore int) (*pb.Divisio
 		pmessage = combinePairingMessages(pmessage, newpmessage)
 	}
 	return pmessage, nil
+}
+
+// autoStartRounds opens every round that can be opened. A lagged round can
+// open while the round before it is still being played. If the next round
+// was due to open, because the round it requires is complete, but cannot
+// be opened, the reason is returned, as AutoStart always has.
+func (t *ClassicDivision) autoStartRounds(prefix int) error {
+	for t.IsRoundStartable() == nil {
+		err := t.StartRound(false)
+		if err != nil {
+			return err
+		}
+	}
+	nextRound := int(t.CurrentRound) + 1
+	if nextRound < len(t.Matrix) && int(t.CurrentRound)-t.pairingLag(nextRound) <= prefix {
+		return t.IsRoundStartable()
+	}
+	return nil
 }
 
 func (t *ClassicDivision) GetPlayers() *pb.TournamentPersons {
@@ -1709,8 +1701,33 @@ func (t *ClassicDivision) initialStandings() *pb.RoundStandings {
 	return &pb.RoundStandings{Standings: records}
 }
 
-// XXX: this function should probably not modify things. (see gibsonization stuff)
+// GetStandings returns the standings after the given round, along with the
+// lowest gibsonized rank, or -1 if nobody is gibsonized.
 func (t *ClassicDivision) GetStandings(round int) (*pb.RoundStandings, int, error) {
+	prefix, err := t.gibsonCompletePrefix()
+	if err != nil {
+		return nil, -1, err
+	}
+	return t.getStandings(round, prefix)
+}
+
+// gibsonCompletePrefix returns the complete prefix that getStandings needs
+// for gibsonizations, or -1 without scanning any rounds if the division
+// doesn't gibsonize.
+func (t *ClassicDivision) gibsonCompletePrefix() (int, error) {
+	if !t.DivisionControls.Gibsonize {
+		return -1, nil
+	}
+	return t.completePrefix()
+}
+
+// getStandings is GetStandings for callers that already know the complete
+// prefix (see completePrefix). Gibsonizations are only based on rounds that
+// are complete along with every round before them. Callers that compute
+// standings for several rounds should compute the prefix once.
+//
+// XXX: this function should probably not modify things. (see gibsonization stuff)
+func (t *ClassicDivision) getStandings(round int, completePrefix int) (*pb.RoundStandings, int, error) {
 	if round < 0 || round >= len(t.Matrix) {
 		return nil, -1, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_ROUND_NUMBER_OUT_OF_RANGE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), "GetStandings")
 	}
@@ -1745,30 +1762,12 @@ func (t *ClassicDivision) GetStandings(round int) (*pb.RoundStandings, int, erro
 	} else if !isCOPRound && t.DivisionControls.Gibsonize && len(t.Matrix) != 1 {
 		// Use classic gibsonization logic (canCatch)
 
-		lastCompleteRound := round + 1
-		isComplete := false
-
-		if t.hasLaggedRounds() {
-			// Results entered by hand can complete a round before the
-			// round ahead of it, so only use rounds that are complete
-			// along with every round before them.
-			prefix, err := t.completePrefix()
-			if err != nil {
-				return nil, -1, err
-			}
-			lastCompleteRound = min(prefix, round)
-			isComplete = lastCompleteRound >= 0
-		}
-
-		// Only based gibsonizations on the last complete round
-		for !isComplete && lastCompleteRound > 0 {
-			lastCompleteRound--
-			isCompleteTmp, err := t.IsRoundComplete(lastCompleteRound)
-			if err != nil {
-				return nil, -1, err
-			}
-			isComplete = isCompleteTmp
-		}
+		// Only base gibsonizations on the last complete round. Results
+		// entered by hand can complete a lagged round before the round
+		// ahead of it, so only rounds that are complete along with every
+		// round before them count.
+		lastCompleteRound := min(completePrefix, round)
+		isComplete := lastCompleteRound >= 0
 
 		if isComplete {
 			gibsonRound := round
@@ -2031,20 +2030,17 @@ func (t *ClassicDivision) IsFinished() (bool, error) {
 	if len(t.Matrix) < 1 {
 		return false, nil
 	}
-	if t.hasLaggedRounds() {
-		// Results entered by hand can complete the last round before an
-		// earlier one, so every round has to be complete.
-		prefix, err := t.completePrefix()
-		if err != nil {
-			return false, err
-		}
-		return prefix == len(t.Matrix)-1, nil
-	}
 	complete, err := t.IsRoundComplete(len(t.Matrix) - 1)
+	if err != nil || !complete {
+		return false, err
+	}
+	// Results entered by hand can complete the last round before an
+	// earlier lagged one, so every round has to be complete.
+	prefix, err := t.completePrefix()
 	if err != nil {
 		return false, err
 	}
-	return complete, nil
+	return prefix == len(t.Matrix)-1, nil
 }
 
 func (t *ClassicDivision) IsStarted() bool {

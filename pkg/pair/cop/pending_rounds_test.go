@@ -100,13 +100,12 @@ func TestPendingRoundLeaderMatchup(t *testing.T) {
 	assertValidRoundPairings(is, req, resp.Pairings)
 }
 
-// The scenario from TestFactor3HopefulnessUsesAtLeastNotExact fires Factor 3
-// when it pairs round 7 with round 6 complete. Lagged, the same results with
-// round 7 in progress mean round 8 (the final round) is being paired, so
-// Factor 3 must not fire.
-func TestPendingRoundSkipsFactor3(t *testing.T) {
-	is := is.New(t)
-
+// createLaggedFactor3Request builds the scenario from
+// TestFactor3HopefulnessUsesAtLeastNotExact, which fires Factor 3 when it
+// pairs round 7 of 8 with round 6 complete, but lagged: round 7 is paired
+// and still in progress, so round 8 is being paired from the round 6
+// results.
+func createLaggedFactor3Request(rounds int32) *pb.PairRequest {
 	req := &pb.PairRequest{
 		PairMethod:                 pb.PairMethod_COP,
 		PlayerNames:                []string{"P0", "P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8", "P9", "P10", "P11"},
@@ -117,7 +116,7 @@ func TestPendingRoundSkipsFactor3(t *testing.T) {
 		HopefulnessThreshold:       0.10,
 		AllPlayers:                 12,
 		ValidPlayers:               12,
-		Rounds:                     8,
+		Rounds:                     rounds,
 		PlacePrizes:                3,
 		DivisionSims:               20000,
 		ControlLossSims:            2000,
@@ -135,15 +134,49 @@ func TestPendingRoundSkipsFactor3(t *testing.T) {
 	}
 	pairtestutils.AddRoundResultsStr(req, mk(18, 13, 8, -1, -1, -100))
 	pairtestutils.AddRoundResultsStr(req, mk(-18, -13, -8, -1, -1, -100))
+	return req
+}
+
+// A lagged final round is still the final round: its pairing decisions use
+// the rounds left to pair, not the games left to play, so the final round
+// KOTH applies and the penultimate round policies don't.
+func TestPendingRoundLaggedFinalRound(t *testing.T) {
+	is := is.New(t)
+
+	req := createLaggedFactor3Request(8)
+	is.True(verifyreq.Verify(req) == nil)
 	is.Equal(pkgstnd.GetRoundsRemaining(req), 2)
+	is.Equal(pkgstnd.GetPairingRoundsRemaining(req), 1)
 	is.Equal(pkgstnd.GetNumPendingRounds(req), 1)
 
 	resp := COPPair(req)
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
 	is.True(strings.Contains(resp.Log, "Pending rounds: 1\n"))
-	is.True(strings.Contains(resp.Log, "Factor 3 skipped: round in progress"))
-	is.True(!strings.Contains(resp.Log, "Factor 3 expansion:"))
-	is.True(!strings.Contains(resp.Log, "Factor 3 Sim Results"))
+	is.True(strings.Contains(resp.Log, "Rounds Remaining: 1\n"))
+	is.True(strings.Contains(resp.Log, "Factor 3 skipped: not 2 rounds remaining"))
+	is.True(!strings.Contains(resp.Log, "Top 4 Lock:"))
+	assertValidRoundPairings(is, req, resp.Pairings)
+	// KOTH among the contenders: 1st (P0) plays 2nd (P2), and 3rd (P4)
+	// plays 4th (P10, whose spread puts them ahead of P6 and P8).
+	is.Equal(resp.Pairings[0], int32(2))
+	is.Equal(resp.Pairings[4], int32(10))
+}
+
+// A lagged penultimate round gets Factor 3 like an unlagged one, with its
+// simulations playing the round in progress with its real pairings first.
+func TestPendingRoundLaggedPenultimateRound(t *testing.T) {
+	is := is.New(t)
+
+	req := createLaggedFactor3Request(9)
+	is.True(verifyreq.Verify(req) == nil)
+	is.Equal(pkgstnd.GetRoundsRemaining(req), 3)
+	is.Equal(pkgstnd.GetPairingRoundsRemaining(req), 2)
+
+	resp := COPPair(req)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	is.True(strings.Contains(resp.Log, "Rounds Remaining: 2\n"))
+	is.True(!strings.Contains(resp.Log, "Factor 3 skipped: not 2 rounds remaining"))
+	is.True(strings.Contains(resp.Log, "Factor 3 Sim Results"))
 	assertValidRoundPairings(is, req, resp.Pairings)
 }
 

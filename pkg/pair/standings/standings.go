@@ -84,6 +84,17 @@ func GetRoundsRemaining(req *pb.PairRequest) int {
 	return int(req.Rounds) - len(req.DivisionResults)
 }
 
+// GetPairingRoundsRemaining returns the number of rounds left to pair,
+// including the round being paired. GetRoundsRemaining counts the games
+// left to play instead, which also includes rounds that are paired but
+// still in progress (see GetNumPendingRounds). Simulations, gibsonization
+// and catch-up checks need the games left to play; decisions about the
+// round being paired, such as whether it is the final round, need the
+// rounds left to pair. The two are equal when no round is in progress.
+func GetPairingRoundsRemaining(req *pb.PairRequest) int {
+	return int(req.Rounds) - GetNumCompletePairings(req)
+}
+
 // GetNumCompletePairings returns the number of fully paired rounds at the
 // start of req.DivisionPairings, stopping at the first round with an
 // unpaired (-1) entry.
@@ -385,6 +396,9 @@ func (standings *Standings) evenedSimFactorPairAll(req *pb.PairRequest, copRand 
 		results[i] = make([]int, numPlayers)
 	}
 	roundsRemaining := GetRoundsRemaining(req)
+	// The control-loss decisions below are about the round being paired, so
+	// they use the rounds left to pair; the simulations play every game left.
+	pairingRoundsRemaining := GetPairingRoundsRemaining(req)
 	pairings := make([][]int, roundsRemaining)
 	for i := 0; i < roundsRemaining; i++ {
 		pairings[i] = make([]int, numPlayers)
@@ -500,10 +514,10 @@ func (standings *Standings) evenedSimFactorPairAll(req *pb.PairRequest, copRand 
 				return nil, pairErr
 			}
 			totalSims += newSims
-			// With many rounds remaining, control loss requires a perfect
-			// vsFirst record; otherwise a below-threshold vsFirst win rate
-			// on its own isn't evidence of a control loss.
-			if roundsRemaining > controlLossWinAllVsFirstRoundsThresh && vsFirstTournamentWins < sims {
+			// With many rounds left to pair, control loss requires a
+			// perfect vsFirst record; otherwise a below-threshold vsFirst
+			// win rate on its own isn't evidence of a control loss.
+			if pairingRoundsRemaining > controlLossWinAllVsFirstRoundsThresh && vsFirstTournamentWins < sims {
 				continue
 			}
 			if float64(vsFirstTournamentWins-vsFactorPairTournamentWins) >= req.ControlLossThreshold*float64(sims) {
@@ -523,7 +537,7 @@ func (standings *Standings) evenedSimFactorPairAll(req *pb.PairRequest, copRand 
 		// opponent) is the only way to test whether they're truly still in
 		// contention. All ranks were evaluated above, so this only reads
 		// cached results - it doesn't run any new sims.
-		if highestControlLossRankIdx == -1 && roundsRemaining == 2 {
+		if highestControlLossRankIdx == -1 && pairingRoundsRemaining == 2 {
 			lowestFullWinRankIdx := -1
 			for rankIdx := 1; rankIdx <= lowestHopeControlLosser; rankIdx++ {
 				if rankIdx == skipRankIdx {

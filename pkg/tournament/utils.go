@@ -21,12 +21,27 @@ type COPIntermediateConfig struct {
 	PlacePrizes                int    `yaml:"place_prizes"`
 }
 
+// PairingBasisRound returns the last round whose results are used to pair
+// the given round: the round before it, or the round before that if the
+// round is lagged (see RoundControl.pairing_lag). A negative basis round
+// means the round is paired from the initial standings. Rounds are 0-based.
+func PairingBasisRound(roundControls []*ipc.RoundControl, round int) int {
+	lag := 0
+	if round >= 0 && round < len(roundControls) {
+		lag = int(roundControls[round].PairingLag)
+	}
+	return round - 1 - lag
+}
+
 // TournamentDivisionToCOPRequest converts a TournamentDivisionDataResponse to a COPRequest.
 // The round that is passed in must be 0-indexed. basisRound is the last
 // round whose results are sent: round-1 normally, or round-2 if the round is
 // lagged. Pairings are always sent through round-1, so for a lagged round
-// COP sees the round in progress as paired but without results, which is
-// how TSH sends lagged ("based on round") requests as well.
+// COP sees the round in progress as paired but without results. This is the
+// shape TSH's COP client (COP.pm) sends for "pair round R based on round S":
+// division_pairings through the last paired round and division_results
+// through the based-on round. The gibson spread and hopefulness are chosen
+// by the rounds left to pair, as COP.pm does too.
 func TournamentDivisionToCOPRequest(
 	division *ipc.TournamentDivisionDataResponse,
 	round int64,

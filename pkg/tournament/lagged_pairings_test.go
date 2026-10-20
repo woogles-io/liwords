@@ -61,7 +61,6 @@ func TestLaggedPairings(t *testing.T) {
 	}, 2, 3)
 	tc, err := compactNewClassicDivision(defaultPlayers, roundControls, false)
 	is.NoErr(err)
-	is.True(tc.hasLaggedRounds())
 	is.NoErr(tc.StartRound(true))
 
 	is.NoErr(submitScore(tc, 0, will, josh, 450, 400))
@@ -266,7 +265,7 @@ func TestLaggedPairingsValidation(t *testing.T) {
 	is.NoErr(err)
 
 	// Changing a round's lag during the tournament is validated too, and
-	// does not pair anything.
+	// does not pair anything by itself.
 	tc, err := compactNewClassicDivision(defaultPlayers, laggedRoundControls(kothRounds(3)), false)
 	is.NoErr(err)
 	is.NoErr(tc.StartRound(true))
@@ -284,12 +283,21 @@ func TestLaggedPairingsValidation(t *testing.T) {
 	is.NoErr(equalPairingStrings(roundTwoPairings, tc.getPlayerPairings(1)))
 	is.True(!tc.hasAnyPairings(2))
 
-	// The new lag lets the third round be paired and opened from the
-	// round 1 results.
-	_, err = tc.PairRound(2, false)
-	is.NoErr(err)
+	// The third round is now paired from the round 1 results by the next
+	// result that comes in, and can be opened while round 2 is played.
 	is.NoErr(tc.StartRound(true))
+	is.True(!tc.hasAnyPairings(2))
+	is.NoErr(submitScore(tc, 1, roundTwoPairings[0][0], roundTwoPairings[0][1], 400, 300))
+	is.True(tc.isRoundPaired(2))
 	is.NoErr(tc.IsRoundStartable())
+
+	// Changing the lag of a round that is already paired leaves its
+	// pairings alone.
+	roundThreePairings := tc.getPlayerPairings(2)
+	_, err = tc.SetSingleRoundControls(2, &pb.RoundControl{Round: 2,
+		PairingMethod: pb.PairingMethod_KING_OF_THE_HILL, GamesPerRound: 1})
+	is.NoErr(err)
+	is.NoErr(equalPairingStrings(roundThreePairings, tc.getPlayerPairings(2)))
 }
 
 func TestLaggedPairingsAutoStart(t *testing.T) {
@@ -393,7 +401,9 @@ func TestPreLagDivisionFixture(t *testing.T) {
 	is.NoErr(err)
 	tc := &ClassicDivision{}
 	is.NoErr(json.Unmarshal(bts, tc))
-	is.True(!tc.hasLaggedRounds())
+	for _, rc := range tc.RoundControls {
+		is.Equal(rc.PairingLag, uint32(0))
+	}
 	is.Equal(tc.GetCurrentRound(), 0)
 
 	// Round 2 was already paired from the round 1 results.
@@ -421,4 +431,35 @@ func TestPreLagDivisionFixture(t *testing.T) {
 	bts, err = json.Marshal(tc)
 	is.NoErr(err)
 	is.True(!strings.Contains(string(bts), "pairing_lag"))
+}
+
+// Turning on lag for a future round in the middle of an event must not
+// leave that round unpaired.
+func TestLaggedPairingsLagTurnedOnMidEvent(t *testing.T) {
+	is := is.New(t)
+
+	roundControls := laggedRoundControls([]pb.PairingMethod{
+		pb.PairingMethod_KING_OF_THE_HILL,
+		pb.PairingMethod_KING_OF_THE_HILL,
+		pb.PairingMethod_KING_OF_THE_HILL,
+		pb.PairingMethod_KING_OF_THE_HILL,
+	})
+	tc, err := compactNewClassicDivision(defaultPlayers, roundControls, true)
+	is.NoErr(err)
+	is.NoErr(tc.StartRound(true))
+	is.NoErr(submitScore(tc, 0, will, josh, 450, 400))
+	is.NoErr(submitScore(tc, 0, conrad, jesse, 500, 300))
+	is.Equal(tc.GetCurrentRound(), 1)
+
+	// While round 2 is being played, the director lags round 3.
+	_, err = tc.SetSingleRoundControls(2, &pb.RoundControl{Round: 2, PairingLag: 1,
+		PairingMethod: pb.PairingMethod_KING_OF_THE_HILL, GamesPerRound: 1})
+	is.NoErr(err)
+	is.True(!tc.hasAnyPairings(2))
+
+	for _, pairing := range tc.getPlayerPairings(1) {
+		is.NoErr(submitScore(tc, 1, pairing[0], pairing[1], 400, 300))
+	}
+	is.True(tc.isRoundPaired(2))
+	is.Equal(tc.GetCurrentRound(), 2)
 }

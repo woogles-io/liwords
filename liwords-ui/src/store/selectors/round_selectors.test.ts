@@ -14,6 +14,7 @@ import {
 } from "../reducers/tournament_reducer";
 import {
   hasLaggedRounds,
+  isCalledToRound,
   isRoundComplete,
   openRounds,
   pairingBasisRound,
@@ -165,6 +166,21 @@ describe("a lagged round", () => {
   it("falls back to the current round once a player is done", () => {
     const div = makeDivision(1, [0, 1, 0], [[0], [0]]);
     expect(playerActiveRound(div, "a1:alice")).toBe(1);
+  });
+});
+
+describe("calling players to a round that just opened", () => {
+  it("calls everyone who is not in a game without lag", () => {
+    const div = makeDivision(0, [0, 0, 0], [[0, 1]]);
+    expect(isCalledToRound(div, 1, "a1:alice", false)).toBe(true);
+    expect(isCalledToRound(div, 1, "a1:alice", true)).toBe(false);
+  });
+
+  it("only calls players who finished the round before a lagged round", () => {
+    // alice and bob are done with round 1; carol and dave are not.
+    const div = makeDivision(0, [0, 1, 0], [[0]]);
+    expect(isCalledToRound(div, 1, "a1:alice", false)).toBe(true);
+    expect(isCalledToRound(div, 1, "c3:carol", false)).toBe(false);
   });
 });
 

@@ -6,7 +6,6 @@ import { signed } from "./format";
 import { PlayerScorecardModal } from "./player_scorecard_modal";
 import { competitionRanks, rankLabel } from "./ranks";
 import {
-  hasLaggedRounds,
   isOpenRound,
   isRoundComplete,
 } from "../store/selectors/round_selectors";
@@ -51,10 +50,9 @@ export const Standings = (props: Props) => {
     return null;
   }
 
-  // In a division with lagged rounds, two rounds can be in progress at once,
-  // so say when the standings on screen are still missing results.
+  // Say when the standings on screen are still missing results: the round
+  // is in progress, or, with lagged pairings, the round before it still is.
   const partial =
-    hasLaggedRounds(division) &&
     isOpenRound(division, props.selectedRound) &&
     !isRoundComplete(division, props.selectedRound);
 

@@ -211,8 +211,17 @@ describe("standings for the selected round", () => {
     expect(screen.queryByText(/standings are partial/)).toBeNull();
   });
 
-  it("marks nothing as partial without lagged rounds", () => {
+  it("marks the current round as partial without lagged rounds", () => {
     renderAt(7, 7);
+    expect(
+      screen.getByText(
+        "Round 8 is still in progress, so these standings are partial.",
+      ),
+    ).toBeVisible();
+  });
+
+  it("marks only the current round as partial without lagged rounds", () => {
+    renderAt(7, 6);
     expect(screen.queryByText(/standings are partial/)).toBeNull();
   });
 

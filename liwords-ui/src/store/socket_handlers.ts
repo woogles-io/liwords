@@ -139,6 +139,7 @@ import { GameDocumentEvent } from "../gen/api/proto/ipc/omgwords_pb";
 import { App } from "antd";
 import { fromBinary } from "@bufbuild/protobuf";
 import { useTournamentCompetitorState } from "../hooks/use_tournament_competitor_state";
+import { isCalledToRound } from "./selectors/round_selectors";
 // Feature flag.
 export const enableShowSocket =
   localStorage?.getItem("enableShowSocket") === "true";
@@ -619,7 +620,23 @@ export const useOnSocketMsg = () => {
               },
             });
             if (tourneyCompetitorState.division === trs.division) {
-              BoopSounds.playSound("startTourneyRoundSound");
+              const division = tournamentContext.divisions[trs.division];
+              const inGame = tournamentContext.activeGames.some(
+                (ag) =>
+                  ag.players[0].displayName === loginState.username ||
+                  ag.players[1].displayName === loginState.username,
+              );
+              if (
+                !division ||
+                isCalledToRound(
+                  division,
+                  trs.round,
+                  `${loginState.userID}:${loginState.username}`,
+                  inGame,
+                )
+              ) {
+                BoopSounds.playSound("startTourneyRoundSound");
+              }
             }
             break;
           }

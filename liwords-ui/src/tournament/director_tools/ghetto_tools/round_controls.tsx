@@ -34,6 +34,7 @@ import { DivisionSelector, showError } from "./shared";
 import { RoundControlFields, rdCtrlFromSetting } from "./round_control_fields";
 import { SingleRoundControlFields } from "./round_control_fields";
 import { Modal } from "../../../utils/focus_modal";
+import { roundsCompleteThrough } from "../../../store/selectors/round_selectors";
 
 const SetTournamentControls = (props: { tournamentID: string }) => {
   const [modalVisible, setModalVisible] = useState(false);
@@ -423,13 +424,22 @@ const SetSingleRoundControls = (props: { tournamentID: string }) => {
     rdCtrl.round = userVisibleRound - 1; // round is 0-indexed on backend.
     ctrls.roundControls = rdCtrl;
     // Changing the lag never re-pairs a round, so tell the director when a
-    // round that already has pairings keeps them.
+    // round that already has pairings keeps them. A round with no pairings
+    // whose new basis round is already complete is paired by the server when
+    // the next result comes in, so say that too.
     const div = tournamentContext.divisions[division];
     const lagChanged =
       (div?.roundControls[rdCtrl.round]?.pairingLag ?? 0) !== rdCtrl.pairingLag;
     const alreadyPaired =
       div?.pairings[rdCtrl.round]?.roundPairings.some((p) => p?.players) ??
       false;
+    const basisComplete =
+      !!div && roundsCompleteThrough(div, rdCtrl.round - 1 - rdCtrl.pairingLag);
+    const pairsWithNextResult =
+      lagChanged &&
+      !alreadyPaired &&
+      basisComplete &&
+      rdCtrl.pairingMethod !== PairingMethod.MANUAL;
     try {
       await tClient.setSingleRoundControls(ctrls);
       message.info({
@@ -439,6 +449,11 @@ const SetSingleRoundControls = (props: { tournamentID: string }) => {
       if (lagChanged && alreadyPaired) {
         message.warning({
           content: `Round ${userVisibleRound} pairings were not changed. Use Pair entire round to re-pair it with the new setting.`,
+          duration: 10,
+        });
+      } else if (pairsWithNextResult) {
+        message.info({
+          content: `Round ${userVisibleRound} will be paired when the next result comes in. Use Pair entire round to pair it now.`,
           duration: 10,
         });
       }

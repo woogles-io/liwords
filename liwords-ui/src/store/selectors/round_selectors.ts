@@ -79,6 +79,20 @@ export const openRounds = (division: Division): Array<number> => {
 export const isOpenRound = (division: Division, round: number): boolean =>
   openRounds(division).includes(round);
 
+// Whether a round that just opened should call the player to it, with a
+// sound: not if they are in the middle of a game, or if they still owe a
+// game in the round before it, as happens when a lagged round opens before
+// the round ahead of it is finished.
+export const isCalledToRound = (
+  division: Division,
+  round: number,
+  fullPlayerID: string,
+  inGame: boolean,
+): boolean =>
+  !inGame &&
+  playerActiveRound({ ...division, currentRound: round }, fullPlayerID) ===
+    round;
+
 // The round a player is playing now: the earliest open round where their
 // pairing has no result yet, or else currentRound. A player can only ready up
 // for a round once their previous round's game has a result, so this is the
