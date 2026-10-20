@@ -64,8 +64,8 @@ func TestLaggedPairings(t *testing.T) {
 	is.NoErr(tc.StartRound(true))
 
 	is.NoErr(submitScore(tc, 0, will, josh, 450, 400))
-	is.True(!tc.isRoundPaired(1))
-	is.True(!tc.isRoundPaired(2))
+	is.True(!tc.IsRoundPaired(1))
+	is.True(!tc.IsRoundPaired(2))
 
 	// Completing round 1 pairs round 2 and also round 3, which is lagged
 	// and so is paired from the results through round 1.
@@ -73,7 +73,7 @@ func TestLaggedPairings(t *testing.T) {
 	is.NoErr(equalPairingStrings([][]string{{conrad, will}, {jesse, josh}}, tc.getPlayerPairings(1)))
 	// Round 3 avoids both the round 1 and round 2 matchups.
 	is.NoErr(equalPairingStrings([][]string{{conrad, josh}, {jesse, will}}, tc.getPlayerPairings(2)))
-	is.True(!tc.isRoundPaired(3))
+	is.True(!tc.IsRoundPaired(3))
 
 	// Round 3 can be opened while round 2 is still being played.
 	is.NoErr(tc.StartRound(true))
@@ -95,7 +95,7 @@ func TestLaggedPairings(t *testing.T) {
 	// to pair round 4.
 	is.NoErr(submitScore(tc, 2, will, jesse, 400, 900))
 	is.NoErr(submitScore(tc, 2, conrad, josh, 300, 600))
-	is.True(!tc.isRoundPaired(3))
+	is.True(!tc.IsRoundPaired(3))
 	finished, err := tc.IsFinished()
 	is.NoErr(err)
 	is.True(!finished)
@@ -283,7 +283,7 @@ func TestLaggedPairingsValidation(t *testing.T) {
 		PairingMethod: pb.PairingMethod_KING_OF_THE_HILL, GamesPerRound: 1})
 	is.NoErr(err)
 	is.True(len(resp.DivisionPairings) > 0)
-	is.True(tc.isRoundPaired(2))
+	is.True(tc.IsRoundPaired(2))
 	is.NoErr(equalPairingStrings(roundTwoPairings, tc.getPlayerPairings(1)))
 
 	// It can be opened while round 2 is played.
@@ -334,8 +334,8 @@ func TestLaggedPairingsAddAndRemovePlayers(t *testing.T) {
 	is.NoErr(tc.StartRound(true))
 	is.NoErr(submitScore(tc, 0, will, josh, 450, 400))
 	is.NoErr(submitScore(tc, 0, conrad, jesse, 500, 300))
-	is.True(tc.isRoundPaired(1))
-	is.True(tc.isRoundPaired(2))
+	is.True(tc.IsRoundPaired(1))
+	is.True(tc.IsRoundPaired(2))
 
 	// The lagged third round is already paired, so it is re-paired along
 	// with the second round.
@@ -456,7 +456,7 @@ func TestLaggedPairingsLagTurnedOnMidEvent(t *testing.T) {
 	_, _, err = tc.SetSingleRoundControls(2, &pb.RoundControl{Round: 2, PairingLag: 1,
 		PairingMethod: pb.PairingMethod_KING_OF_THE_HILL, GamesPerRound: 1})
 	is.NoErr(err)
-	is.True(tc.isRoundPaired(2))
+	is.True(tc.IsRoundPaired(2))
 	is.Equal(tc.GetCurrentRound(), 2)
 
 	for _, pairing := range tc.getPlayerPairings(1) {
@@ -519,7 +519,7 @@ func TestLaggedPairingsDeletedPairingsStayDeleted(t *testing.T) {
 	is.NoErr(submitScore(tc, 0, will, josh, 450, 400))
 	is.NoErr(submitScore(tc, 0, conrad, jesse, 500, 300))
 	is.NoErr(tc.StartRound(true))
-	is.True(tc.isRoundPaired(2))
+	is.True(tc.IsRoundPaired(2))
 
 	is.NoErr(tc.DeletePairings(2))
 	roundTwoPairings := tc.getPlayerPairings(1)
@@ -569,4 +569,68 @@ func TestLaggedPairingsByesCascade(t *testing.T) {
 	finished, err := tc.IsFinished()
 	is.NoErr(err)
 	is.True(finished)
+}
+
+// A lagged round whose basis round completes while the round before it
+// still has to be paired by hand is paired once a director pairs that
+// round, and AutoStart never rejects a result because a round can't open.
+func TestLaggedPairingsWaitingOnPreviousRound(t *testing.T) {
+	is := is.New(t)
+
+	roundControls := laggedRoundControls([]pb.PairingMethod{
+		pb.PairingMethod_KING_OF_THE_HILL,
+		pb.PairingMethod_MANUAL,
+		pb.PairingMethod_KING_OF_THE_HILL,
+		pb.PairingMethod_KING_OF_THE_HILL,
+	}, 2)
+	tc, err := compactNewClassicDivision(defaultPlayers, roundControls, true)
+	is.NoErr(err)
+	is.NoErr(tc.StartRound(true))
+	is.NoErr(submitScore(tc, 0, will, josh, 450, 400))
+	// Round 2 is MANUAL and unpaired, so AutoStart can't open it, and
+	// round 3, whose basis round 1 now is, waits for round 2's pairings.
+	is.NoErr(submitScore(tc, 0, conrad, jesse, 500, 300))
+	is.Equal(tc.GetCurrentRound(), 0)
+	is.True(!tc.hasAnyPairings(2))
+
+	// The director pairs round 2 by hand, which makes round 3 pairable.
+	_, err = tc.SetPairing(will, conrad, 1, pb.TournamentGameResult_NO_RESULT)
+	is.NoErr(err)
+	resp, err := tc.PairLaggedRoundAfter(1)
+	is.NoErr(err)
+	is.Equal(len(resp.DivisionPairings), 0) // round 2 isn't fully paired yet
+	_, err = tc.SetPairing(josh, jesse, 1, pb.TournamentGameResult_NO_RESULT)
+	is.NoErr(err)
+	resp, err = tc.PairLaggedRoundAfter(1)
+	is.NoErr(err)
+	is.True(len(resp.DivisionPairings) > 0)
+	is.True(tc.IsRoundPaired(2))
+
+	// Once round 2 is open, AutoStart opens round 3 alongside it.
+	is.NoErr(tc.StartRound(true))
+	is.NoErr(submitScore(tc, 1, will, conrad, 400, 300))
+	is.Equal(tc.GetCurrentRound(), 2)
+	is.NoErr(submitScore(tc, 1, josh, jesse, 400, 300))
+}
+
+// Without lag, AutoStart that can't open the next round, because it is a
+// MANUAL round nobody has paired, doesn't reject the result that completed
+// the round.
+func TestAutoStartDoesNotRejectResults(t *testing.T) {
+	is := is.New(t)
+
+	roundControls := laggedRoundControls([]pb.PairingMethod{
+		pb.PairingMethod_KING_OF_THE_HILL,
+		pb.PairingMethod_MANUAL,
+		pb.PairingMethod_KING_OF_THE_HILL,
+	})
+	tc, err := compactNewClassicDivision(defaultPlayers, roundControls, true)
+	is.NoErr(err)
+	is.NoErr(tc.StartRound(true))
+	is.NoErr(submitScore(tc, 0, will, josh, 450, 400))
+	is.NoErr(submitScore(tc, 0, conrad, jesse, 500, 300))
+	complete, err := tc.IsRoundComplete(0)
+	is.NoErr(err)
+	is.True(complete)
+	is.Equal(tc.GetCurrentRound(), 0)
 }

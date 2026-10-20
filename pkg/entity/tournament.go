@@ -27,6 +27,8 @@ type DivisionManager interface {
 	SetPlayerRating(string, int32) error
 	RenamePlayer(oldID, newID string) error
 	IsRoundReady(int) error
+	IsRoundPaired(int) bool
+	PairLaggedRoundAfter(int) (*pb.DivisionPairingsResponse, error)
 	IsRoundComplete(int) (bool, error)
 	IsStarted() bool
 	IsFinished() (bool, error)

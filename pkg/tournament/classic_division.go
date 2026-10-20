@@ -250,7 +250,7 @@ func (t *ClassicDivision) prepair() (*pb.DivisionPairingsResponse, error) {
 			// Don't pair Initial Fontes round if there are more initial fontes
 			// rounds than players
 			if (pair.IsStandingsIndependent(pairingMethod) ||
-				(t.pairingBasisRound(i) < 0 && t.isRoundPaired(i-1))) &&
+				(t.pairingBasisRound(i) < 0 && t.IsRoundPaired(i-1))) &&
 				numberOfPlayers >= int(initFontes)+1 &&
 				pairingMethod != pb.PairingMethod_MANUAL {
 				newpm, err := t.PairRound(i, false)
@@ -310,7 +310,7 @@ func (t *ClassicDivision) SetSingleRoundControls(round int, controls *pb.RoundCo
 	pmessage := newPairingsMessage()
 	if !lagChanged || round <= int(t.CurrentRound) || t.hasAnyPairings(round) ||
 		pair.IsStandingsIndependent(controls.PairingMethod) ||
-		(round > 0 && !t.isRoundPaired(round-1)) {
+		(round > 0 && !t.IsRoundPaired(round-1)) {
 		return pmessage, controls, nil
 	}
 	prefix, err := t.completePrefix()
@@ -325,12 +325,7 @@ func (t *ClassicDivision) SetSingleRoundControls(round int, controls *pb.RoundCo
 		return nil, nil, err
 	}
 	if t.DivisionControls.AutoStart {
-		for t.IsRoundStartable() == nil {
-			err = t.StartRound(false)
-			if err != nil {
-				return nil, nil, err
-			}
-		}
+		t.autoStartRounds()
 	}
 	return pmessage, controls, nil
 }
@@ -721,16 +716,11 @@ func (t *ClassicDivision) SubmitResult(round int,
 			return nil, err
 		}
 		pmessage = combinePairingMessages(pmessage, newpmessage)
-		pairedRounds := len(newpmessage.DivisionPairings) > 0
-		if t.DivisionControls.AutoStart && (prefixAfter > prefixBefore || pairedRounds) {
-			prefixAfter, err = t.completePrefix()
-			if err != nil {
-				return nil, err
-			}
-			err = t.autoStartRounds(prefixAfter)
-			if err != nil {
-				return nil, err
-			}
+		// AutoStart reacts to results for rounds that have started. Byes
+		// and forfeits filled in for future rounds, or before the
+		// tournament starts, don't open anything.
+		if t.DivisionControls.AutoStart && round <= int(t.CurrentRound) {
+			t.autoStartRounds()
 		}
 	}
 
@@ -1513,8 +1503,8 @@ func (t *ClassicDivision) firstOpenRound() int {
 	return int(t.CurrentRound) - t.pairingLag(int(t.CurrentRound))
 }
 
-// isRoundPaired reports whether every player has a pairing in the round.
-func (t *ClassicDivision) isRoundPaired(round int) bool {
+// IsRoundPaired reports whether every player has a pairing in the round.
+func (t *ClassicDivision) IsRoundPaired(round int) bool {
 	if round < 0 || round >= len(t.Matrix) {
 		return false
 	}
@@ -1544,7 +1534,7 @@ func (t *ClassicDivision) hasAnyPairings(round int) bool {
 // has to be re-paired when players are added or removed, just like the
 // next round.
 func (t *ClassicDivision) isPairedLaggedRoundAhead(round int) bool {
-	return round == int(t.CurrentRound)+2 && t.pairingLag(round) > 0 && t.isRoundPaired(round)
+	return round == int(t.CurrentRound)+2 && t.pairingLag(round) > 0 && t.IsRoundPaired(round)
 }
 
 // pairNewlyPairableRounds pairs the unstarted rounds that a result that was
@@ -1558,9 +1548,6 @@ func (t *ClassicDivision) isPairedLaggedRoundAhead(round int) bool {
 func (t *ClassicDivision) pairNewlyPairableRounds(prefixBefore int) (*pb.DivisionPairingsResponse, error) {
 	pmessage := newPairingsMessage()
 	for round := int(t.CurrentRound) + 1; round < len(t.Matrix); round++ {
-		if round <= int(t.CurrentRound) {
-			continue
-		}
 		prefix, err := t.completePrefix()
 		if err != nil {
 			return nil, err
@@ -1573,7 +1560,7 @@ func (t *ClassicDivision) pairNewlyPairableRounds(prefixBefore int) (*pb.Divisio
 		if basis <= prefixBefore || pair.IsStandingsIndependent(t.RoundControls[round].PairingMethod) {
 			continue
 		}
-		if round > 0 && !t.isRoundPaired(round-1) {
+		if round > 0 && !t.IsRoundPaired(round-1) {
 			log.Info().Str("tournament", t.TournamentName).Str("division", t.DivisionName).
 				Int("round", round+1).Msg("skip-auto-pair-previous-round-not-fully-paired")
 			continue
@@ -1587,26 +1574,58 @@ func (t *ClassicDivision) pairNewlyPairableRounds(prefixBefore int) (*pb.Divisio
 	return pmessage, nil
 }
 
-// autoStartRounds opens every round that can be opened. A lagged round can
-// open while the round before it is still being played. If the next round
-// was due to open, because the round it requires is complete, but cannot
-// be opened, the reason is returned, as AutoStart always has.
-func (t *ClassicDivision) autoStartRounds(prefix int) error {
+// PairLaggedRoundAfter is called when a director's pairings have just made
+// round fully paired. Results pair a round when its basis round becomes
+// complete, but only if the round before it is fully paired by then, so a
+// lagged round whose basis round completed while the round before it was
+// still being paired by hand is paired here instead: if it has not started,
+// has no pairings and its basis round is complete. A lagged round whose own
+// pairings were deleted while the round before it stayed fully paired is
+// left for the director.
+func (t *ClassicDivision) PairLaggedRoundAfter(round int) (*pb.DivisionPairingsResponse, error) {
+	pmessage := newPairingsMessage()
+	next := round + 1
+	if next >= len(t.Matrix) || next <= int(t.CurrentRound) || t.pairingLag(next) == 0 ||
+		t.hasAnyPairings(next) || pair.IsStandingsIndependent(t.RoundControls[next].PairingMethod) ||
+		!t.IsRoundPaired(round) {
+		return pmessage, nil
+	}
+	prefix, err := t.completePrefix()
+	if err != nil {
+		return nil, err
+	}
+	if t.pairingBasisRound(next) > prefix {
+		return pmessage, nil
+	}
+	return t.PairRound(next, false)
+}
+
+// autoStartRounds opens every round that can be opened, for AutoStart. A
+// lagged round can open while the round before it is still being played.
+// If the next round was due to open, because the round it requires is
+// complete, but can't be, for example because it is a MANUAL round nobody
+// has paired yet, the reason is logged. That is not an error: the result
+// or change that got here must still be saved and sent out.
+func (t *ClassicDivision) autoStartRounds() {
 	for t.IsRoundStartable() == nil {
-		err := t.StartRound(false)
-		if err != nil {
-			return err
+		if err := t.StartRound(false); err != nil {
+			log.Err(err).Str("tournament", t.TournamentName).Str("division", t.DivisionName).Msg("autostart-start-round")
+			return
 		}
 	}
-	finished, err := t.IsFinished()
-	if err != nil || finished {
-		return err
-	}
 	nextRound := int(t.CurrentRound) + 1
-	if nextRound < len(t.Matrix) && int(t.CurrentRound)-t.pairingLag(nextRound) <= prefix {
-		return t.IsRoundStartable()
+	if nextRound >= len(t.Matrix) {
+		return
 	}
-	return nil
+	prefix, err := t.completePrefix()
+	if err != nil || int(t.CurrentRound)-t.pairingLag(nextRound) > prefix {
+		return
+	}
+	if finished, err := t.IsFinished(); err != nil || finished {
+		return
+	}
+	log.Warn().Err(t.IsRoundStartable()).Str("tournament", t.TournamentName).Str("division", t.DivisionName).
+		Int("round", nextRound+1).Msg("autostart-could-not-open-due-round")
 }
 
 func (t *ClassicDivision) GetPlayers() *pb.TournamentPersons {

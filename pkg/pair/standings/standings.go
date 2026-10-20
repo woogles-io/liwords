@@ -64,11 +64,6 @@ type Standings struct {
 	pairedRoundScratch [][]int
 }
 
-// simPairedRoundHook, if set, is called with the player pairs the round
-// being paired is simulated with whenever there are pending rounds. It is
-// only set by tests.
-var simPairedRoundHook func(pairs [][2]int)
-
 type SimResults struct {
 	FinalRanks                [][]int
 	Pairings                  [][]int
@@ -808,35 +803,66 @@ func (standings *Standings) pairedRoundRow(row []int) [][]int {
 	if standings.pendingRankScratch == nil {
 		standings.pendingRankScratch = make([]int, int(playerIndexMask)+1)
 	}
-	playerIdxToRankIdx := standings.pendingRankScratch
-	for rankIdx, record := range standings.records {
-		playerIdx := getIndex(record)
-		if playerIdx < len(playerIdxToRankIdx) {
-			playerIdxToRankIdx[playerIdx] = rankIdx
-		}
-	}
 	if len(standings.pairedRoundScratch) == 0 || cap(standings.pairedRoundScratch[0]) < len(row) {
 		standings.pairedRoundScratch = [][]int{make([]int, len(row))}
 	}
-	resolved := standings.pairedRoundScratch[0][:len(row)]
-	standings.pairedRoundScratch[0] = resolved
-	for i, basisRankIdx := range row {
-		playerIdx := standings.basisOrderScratch[basisRankIdx]
-		if playerIdx < len(playerIdxToRankIdx) {
-			resolved[i] = playerIdxToRankIdx[playerIdx]
-		} else {
-			// The evener (ByePlayerIndex) always ranks last.
-			resolved[i] = len(standings.records) - 1
-		}
-	}
-	if simPairedRoundHook != nil {
-		pairs := make([][2]int, 0, len(row)/2)
-		for i := 0; i+1 < len(row); i += 2 {
-			pairs = append(pairs, [2]int{standings.basisOrderScratch[row[i]], standings.basisOrderScratch[row[i+1]]})
-		}
-		simPairedRoundHook(pairs)
-	}
+	standings.pairedRoundScratch[0] = standings.pairedRoundScratch[0][:len(row)]
+	resolvePairedRoundRow(standings.basisOrderScratch, standings.records, row,
+		standings.pendingRankScratch, standings.pairedRoundScratch[0])
 	return standings.pairedRoundScratch
+}
+
+// resolvePairedRoundRow resolves row, which holds ranks in the standings
+// the round being paired is paired from, to ranks in records, the current
+// standings, writing them to resolved. basisOrder holds the player index at
+// each rank of the standings the round is paired from. playerRank is
+// scratch space indexed by player index; players beyond it, which can only
+// be the evener (ByePlayerIndex), always rank last.
+func resolvePairedRoundRow(basisOrder []int, records []uint64, row []int, playerRank []int, resolved []int) {
+	for rankIdx, record := range records {
+		playerIdx := getIndex(record)
+		if playerIdx < len(playerRank) {
+			playerRank[playerIdx] = rankIdx
+		}
+	}
+	for i, basisRankIdx := range row {
+		playerIdx := basisOrder[basisRankIdx]
+		if playerIdx < len(playerRank) {
+			resolved[i] = playerRank[playerIdx]
+		} else {
+			resolved[i] = len(records) - 1
+		}
+	}
+}
+
+// forcedWinnerSwap returns the two positions of row to exchange before the
+// forced winner, at rank forcedRankIdx in the ranks row uses, plays that
+// round, or -1, -1 for none. With vsFirst they play rank 0, who row puts at
+// position 0. Otherwise, if row already has them playing rank 0, they are
+// swapped away so they play their factor-pair opponent instead. No swap is
+// made in the final round (canSwap false), which is always KOTH.
+func forcedWinnerSwap(row []int, forcedRankIdx int, vsFirst bool, canSwap bool) (int, int) {
+	if !canSwap {
+		return -1, -1
+	}
+	// Find the forced winner's position in this round's pairings.
+	switchPairingIdx := slices.Index(row, forcedRankIdx)
+	if vsFirst {
+		// Move forced winner to position 1 so they play rank 0 (1st place).
+		return 1, switchPairingIdx
+	}
+	if switchPairingIdx == 1 {
+		// Forced winner is currently rank 0's factor-pair opponent.
+		// Instead of having them play 1st, swap with another pairing:
+		//   - If forced winner is 2nd (rank 1): do 1st vs 3rd, 2nd vs 3rd's opponent.
+		//   - Otherwise: do 1st vs 2nd, forced winner vs 2nd's opponent.
+		targetRank := 1
+		if forcedRankIdx == 1 {
+			targetRank = 2
+		}
+		return 1, slices.Index(row, targetRank)
+	}
+	return -1, -1
 }
 
 func (standings *Standings) findRankIdx(playerIdx int) int {
@@ -873,40 +899,8 @@ func (standings *Standings) simForceWinner(copRand *rand.Rand, sims int, roundsR
 				swapRankIdx = slices.Index(standings.basisOrderScratch, forcedWinnerPlayerIdx)
 			}
 
-			// Find the forced winner's position in this round's pairings.
-			switchPairingIdx := -1
-			for idx, rankIdx := range pairings[roundIdx] {
-				if rankIdx == swapRankIdx {
-					switchPairingIdx = idx
-					break
-				}
-			}
-
-			// Determine which swap (if any) to apply before simulating the round.
-			// swapIdxA and swapIdxB are the two positions to exchange.
-			swapIdxA, swapIdxB := -1, -1
-			if vsFirst && roundIdx < roundsRemaining-1 {
-				// Move forced winner to position 1 so they play rank 0 (1st place).
-				// Skip the final round: it is always KOTH and resolves naturally.
-				swapIdxA = 1
-				swapIdxB = switchPairingIdx
-			} else if switchPairingIdx == 1 && roundIdx < roundsRemaining-1 {
-				// Forced winner is currently rank 0's factor-pair opponent.
-				// Instead of having them play 1st, swap with another pairing:
-				//   - If forced winner is 2nd (rank 1): do 1st vs 3rd, 2nd vs 3rd's opponent.
-				//   - Otherwise: do 1st vs 2nd, forced winner vs 2nd's opponent.
-				swapIdxA = 1
-				targetRank := 1
-				if swapRankIdx == 1 {
-					targetRank = 2
-				}
-				for idx, rankIdx := range pairings[roundIdx] {
-					if rankIdx == targetRank {
-						swapIdxB = idx
-						break
-					}
-				}
-			}
+			// Skip the final round: it is always KOTH and resolves naturally.
+			swapIdxA, swapIdxB := forcedWinnerSwap(pairings[roundIdx], swapRankIdx, vsFirst, roundIdx < roundsRemaining-1)
 
 			if swapIdxA >= 0 && swapIdxB >= 0 {
 				pairings[roundIdx][swapIdxA], pairings[roundIdx][swapIdxB] = pairings[roundIdx][swapIdxB], pairings[roundIdx][swapIdxA]

@@ -1142,6 +1142,15 @@ func SetPairings(ctx context.Context, ts TournamentStore, id string, division st
 	pairingsResponse := []*ipc.Pairing{}
 	standingsResponse := make(map[int32]*ipc.RoundStandings)
 
+	// Note which rounds were not fully paired, since a lagged round after a
+	// round these pairings complete may have been waiting for it.
+	wasPaired := map[int]bool{}
+	if divisionObject, ok := t.Divisions[division]; ok && divisionObject.DivisionManager != nil {
+		for _, pairing := range pairings {
+			wasPaired[int(pairing.Round)] = divisionObject.DivisionManager.IsRoundPaired(int(pairing.Round))
+		}
+	}
+
 	for _, pairing := range pairings {
 		divisionObject, ok := t.Divisions[division]
 
@@ -1160,6 +1169,25 @@ func SetPairings(ctx context.Context, ts TournamentStore, id string, division st
 		}
 		pairingsResponse = combinePairingsResponses(pairingsResponse, pairingsResp.DivisionPairings)
 		standingsResponse = combineStandingsResponses(standingsResponse, pairingsResp.DivisionStandings)
+	}
+	rounds := []int{}
+	for round, paired := range wasPaired {
+		if !paired {
+			rounds = append(rounds, round)
+		}
+	}
+	sort.Ints(rounds)
+	for _, round := range rounds {
+		dm := t.Divisions[division].DivisionManager
+		if !dm.IsRoundPaired(round) {
+			continue
+		}
+		laggedResp, err := dm.PairLaggedRoundAfter(round)
+		if err != nil {
+			return err
+		}
+		pairingsResponse = combinePairingsResponses(pairingsResponse, laggedResp.DivisionPairings)
+		standingsResponse = combineStandingsResponses(standingsResponse, laggedResp.DivisionStandings)
 	}
 	err = possiblyEndTournament(ctx, ts, t, division)
 	if err != nil {
@@ -1569,10 +1597,21 @@ func PairRound(ctx context.Context, ts TournamentStore, id string, division stri
 		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_PAIR_NON_FUTURE_ROUND, t.Name, division, strconv.Itoa(round+1), strconv.Itoa(currentRound+1))
 	}
 
-	pairingsResp, err := divisionObject.DivisionManager.PairRound(round, preserveByes)
+	dm := divisionObject.DivisionManager
+	wasPaired := dm.IsRoundPaired(round)
+	pairingsResp, err := dm.PairRound(round, preserveByes)
 
 	if err != nil {
 		return err
+	}
+	if !wasPaired {
+		// A lagged round after this one may have been waiting for it.
+		laggedResp, err := dm.PairLaggedRoundAfter(round)
+		if err != nil {
+			return err
+		}
+		pairingsResp.DivisionPairings = combinePairingsResponses(pairingsResp.DivisionPairings, laggedResp.DivisionPairings)
+		pairingsResp.DivisionStandings = combineStandingsResponses(pairingsResp.DivisionStandings, laggedResp.DivisionStandings)
 	}
 
 	err = ts.Set(ctx, t)
