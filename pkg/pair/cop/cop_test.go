@@ -12,6 +12,7 @@ import (
 	"github.com/woogles-io/liwords/pkg/pair/verifyreq"
 
 	copdatapkg "github.com/woogles-io/liwords/pkg/pair/copdata"
+	pkgstnd "github.com/woogles-io/liwords/pkg/pair/standings"
 	pairtestutils "github.com/woogles-io/liwords/pkg/pair/testutils"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
@@ -2858,4 +2859,85 @@ func TestQ4TiersKeepHopefulWinnersTogether(t *testing.T) {
 	for pi, opp := range resp.Pairings {
 		is.Equal(tier[int32(pi)], tier[opp])
 	}
+}
+
+// TestFactor3YieldsToForcedContenderBye reproduces a real round (Lake George
+// 2026 WOW, division E, round 5 of 5 paired from round 3's results) where
+// Factor 3 forced Ida Ann Shapiro vs Buffy Hogan while the forced contender
+// bye (CB) forced Buffy Hogan onto the bye, leaving the round
+// OVERCONSTRAINED. Factor 3 must back down instead.
+func TestFactor3YieldsToForcedContenderBye(t *testing.T) {
+	is := is.New(t)
+
+	req := &pb.PairRequest{
+		PairMethod:                 pb.PairMethod_COP,
+		PlayerNames:                []string{"Sally Reeser", "Shubha Kamath", "Buffy Hogan", "Ellie Parker", "Cynthia Scotti", "Ida Ann Shapiro", "Monica Little"},
+		PlayerClasses:              make([]int32, 7),
+		GibsonSpread:               250,
+		ControlLossThreshold:       0.3,
+		HopefulnessThreshold:       0.02,
+		AllPlayers:                 7,
+		ValidPlayers:               7,
+		Rounds:                     5,
+		PlacePrizes:                2,
+		DivisionSims:               100000,
+		ControlLossSims:            25000,
+		ControlLossActivationRound: 3,
+		Seed:                       -1535541601166689806,
+	}
+	pairtestutils.AddRoundPairings(req, []int32{6, 1, 4, 5, 2, 3, 0})
+	pairtestutils.AddRoundPairings(req, []int32{2, 3, 0, 1, 6, 5, 4})
+	pairtestutils.AddRoundPairings(req, []int32{4, 5, 6, 3, 0, 1, 2})
+	pairtestutils.AddRoundPairings(req, []int32{1, 0, 3, 2, 5, 4, 6})
+	pairtestutils.AddRoundResultsStr(req, "338 50 332 348 445 419 253")
+	pairtestutils.AddRoundResultsStr(req, "362 319 280 364 417 50 282")
+	pairtestutils.AddRoundResultsStr(req, "444 356 383 50 360 349 314")
+
+	resp := COPPair(req)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	checkSymmetric(t, resp.Pairings)
+	is.True(strings.Contains(resp.Log, "Factor 3 expansion: forcing Sally Reeser vs Ellie Parker, Cynthia Scotti vs Shubha Kamath, Ida Ann Shapiro vs Buffy Hogan"))
+	is.True(strings.Contains(resp.Log, "Factor 3 canceled: Factor 3 forces Buffy Hogan vs Ida Ann Shapiro, but CB forces Buffy Hogan vs BYE"))
+	// Buffy Hogan still takes the forced contender bye.
+	is.Equal(resp.Pairings[2], int32(2))
+}
+
+// TestFactor3Conflict checks that factor3Conflict detects another constraint
+// policy forcing a Factor 3 player into a different pairing, or disallowing
+// a Factor 3 pairing.
+func TestFactor3Conflict(t *testing.T) {
+	is := is.New(t)
+
+	newPargs := func() *policyArgs {
+		playerNodes := []int{0, 1, 2, 3, 4, 5, 6, pkgstnd.ByePlayerIndex}
+		return &policyArgs{
+			req:                      &pb.PairRequest{PlayerNames: []string{"P0", "P1", "P2", "P3", "P4", "P5", "P6"}},
+			copdata:                  &copdatapkg.PrecompData{GibsonGroups: make([]int, 8), GibsonizedPlayers: make([]bool, 8), DestinysChild: -1},
+			playerNodes:              playerNodes,
+			roundsRemaining:          2,
+			prepairedRoundIdx:        -1,
+			topDownByePlayer:         -1,
+			forcedContenderByePlayer: -1,
+			forcedLeaderVsThird:      -1,
+			disallowedLeaderOpponent: -1,
+			factor3ForcedPairings:    [][2]int{{0, 3}, {1, 4}, {2, 5}},
+		}
+	}
+
+	is.Equal(factor3Conflict(newPargs()), "")
+
+	pargs := newPargs()
+	pargs.forcedContenderByePlayer = 5
+	is.Equal(factor3Conflict(pargs), "Factor 3 forces P5 vs P2, but CB forces P5 vs BYE")
+
+	pargs = newPargs()
+	pargs.prepairedRoundIdx = 4
+	pargs.prepairedPlayerIndexes = map[int]int{3: 6, 6: 3}
+	is.True(strings.Contains(factor3Conflict(pargs), "but PP disallows that pairing"))
+
+	// No Factor 3 pairings, nothing to conflict with.
+	pargs = newPargs()
+	pargs.factor3ForcedPairings = nil
+	pargs.forcedContenderByePlayer = 5
+	is.Equal(factor3Conflict(pargs), "")
 }

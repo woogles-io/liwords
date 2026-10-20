@@ -1270,10 +1270,28 @@ func copMethodPair(req *pb.PairRequest, logsb *strings.Builder) *pb.PairResponse
 	}
 
 	factor3ForcedPairings, factor3FinalRanks, factor3TotalSims := computeFactor3ForcedPairings(req, copdata, copRand, logsb)
+	// ApplyFactor3Sim replaces (rather than modifies) the fields it updates,
+	// so this shallow copy is enough to undo it if Factor 3 backs down.
+	baselineCopdata := *copdata
 	if factor3FinalRanks != nil {
 		copdata.ApplyFactor3Sim(req, factor3FinalRanks, factor3TotalSims, logsb)
 	}
-	pairings, resp := copMinWeightMatching(req, copdata, factor3ForcedPairings, logsb)
+	// Factor 3 yields to every other constraint policy: if its forced
+	// pairings conflict with any of them (see factor3Conflict), cancel it,
+	// restore the pre-Factor-3 rank boundaries, and pair the round again
+	// without it. The canceled attempt's log is discarded.
+	attemptLogsb := &strings.Builder{}
+	pairings, resp, factor3ConflictStr := copMinWeightMatching(req, copdata, factor3ForcedPairings, attemptLogsb)
+	if factor3ConflictStr != "" {
+		logsb.WriteString(fmt.Sprintf("Factor 3 canceled: %s, which takes precedence over Factor 3\n", factor3ConflictStr))
+		if factor3FinalRanks != nil {
+			*copdata = baselineCopdata
+			logsb.WriteString("Factor 3 canceled: restoring the hopeful/absolute rank boundaries from before the Factor-3 sim\n")
+		}
+		attemptLogsb.Reset()
+		pairings, resp, _ = copMinWeightMatching(req, copdata, nil, attemptLogsb)
+	}
+	logsb.WriteString(attemptLogsb.String())
 
 	if resp != nil {
 		return resp
@@ -1494,6 +1512,55 @@ func computeFactor3ForcedPairings(req *pb.PairRequest, copdata *copdatapkg.Preco
 		req.PlayerNames[p2], req.PlayerNames[p5],
 	))
 	return [][2]int{{p0, p3}, {p1, p4}, {p2, p5}}, factor3FinalRanks, totalSims
+}
+
+// factor3Conflict reports whether Factor 3's forced pairings conflict with any
+// other constraint policy - another policy forces one of the Factor 3 players
+// into a different pairing (e.g. CB forcing them onto the bye), or disallows
+// one of the Factor 3 pairings outright (e.g. PP for a prepaired player).
+// Either would leave a player with no legal pairing. Factor 3 has the lowest
+// precedence of the constraint policies, so the caller cancels it when this
+// returns a non-empty description of the first conflict found.
+//
+// Policies that already stand down when Factor 3 fires (CL, T4, L3, and the
+// odd-hopeful-group leader bar) produce no constraints here, so they never
+// conflict.
+func factor3Conflict(pargs *policyArgs) string {
+	if len(pargs.factor3ForcedPairings) == 0 {
+		return ""
+	}
+	factor3Opponent := map[int]int{}
+	for _, fp := range pargs.factor3ForcedPairings {
+		factor3Opponent[fp[0]] = fp[1]
+		factor3Opponent[fp[1]] = fp[0]
+	}
+	name := func(pi int) string {
+		if pi == pkgstnd.ByePlayerIndex {
+			return "BYE"
+		}
+		return pargs.req.PlayerNames[pi]
+	}
+	for _, cPol := range constraintPolicies {
+		if cPol.name == "F3" {
+			continue
+		}
+		forced, disallowed := cPol.handler(pargs)
+		for _, fp := range forced {
+			for k, pi := range fp {
+				if opp, ok := factor3Opponent[pi]; ok && opp != fp[1-k] {
+					return fmt.Sprintf("Factor 3 forces %s vs %s, but %s forces %s vs %s",
+						name(pi), name(opp), cPol.name, name(fp[0]), name(fp[1]))
+				}
+			}
+		}
+		for _, dp := range disallowed {
+			if opp, ok := factor3Opponent[dp[0]]; ok && opp == dp[1] {
+				return fmt.Sprintf("Factor 3 forces %s vs %s, but %s disallows that pairing",
+					name(dp[0]), name(dp[1]), cPol.name)
+			}
+		}
+	}
+	return ""
 }
 
 // currentRoundIndex returns the index of the round being paired.
@@ -1755,7 +1822,11 @@ func restoreAutoPairReqFields(req *pb.PairRequest, origMethod pb.PairMethod, ori
 	req.InitialNonperfRounds = origInitialNonperfRounds
 }
 
-func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, factor3ForcedPairings [][2]int, logsb *strings.Builder) ([]int32, *pb.PairResponse) {
+// copMinWeightMatching pairs the round. If factor3ForcedPairings conflict
+// with another constraint policy, it stops before matching and returns a
+// description of the conflict instead (see factor3Conflict), so the caller
+// can cancel Factor 3 and try again without it.
+func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, factor3ForcedPairings [][2]int, logsb *strings.Builder) ([]int32, *pb.PairResponse, string) {
 	prepairedPlayerIndexes, numForcedByes, prepairedRoundIdx := copdatapkg.ExtractPrepairedPlayers(req)
 
 	for playerIdx, oppIdx := range prepairedPlayerIndexes {
@@ -1830,6 +1901,10 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 	q4WinnersTop, q4TiersActive, q4SkipReason := computeQ4WinnersTop(pargs)
 	pargs.q4WinnersTop = q4WinnersTop
 	pargs.q4TiersActive = q4TiersActive
+
+	if conflict := factor3Conflict(pargs); conflict != "" {
+		return nil, nil, conflict
+	}
 
 	logsb.WriteString(fmt.Sprintf("Control Loss Sims: %d\n", req.ControlLossSims))
 	logsb.WriteString(fmt.Sprintf("Lowest Hopeful Casher: %s\n", req.PlayerNames[playerNodes[pargs.lowestPossibleHopeCasher]]))
@@ -1979,7 +2054,7 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 			return nil, &pb.PairResponse{
 				ErrorCode:    pb.PairError_MIN_WEIGHT_MATCHING,
 				ErrorMessage: fmt.Sprintf("min weight matching error: %s\n", err.Error()),
-			}
+			}, ""
 		}
 
 		if addBye {
@@ -1990,7 +2065,7 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 			return nil, &pb.PairResponse{
 				ErrorCode:    pb.PairError_INVALID_PAIRINGS_LENGTH,
 				ErrorMessage: fmt.Sprintf("invalid pairings length %d for %d players", len(pairings), numPlayers),
-			}
+			}, ""
 		} else if len(pairings) < numPlayers {
 			numUnpairedAtBottom := numPlayers - len(pairings)
 			unpairedIndexes := make([]int, numUnpairedAtBottom)
@@ -2100,7 +2175,7 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 			return nil, &pb.PairResponse{
 				ErrorCode:    pb.PairError_OVERCONSTRAINED,
 				ErrorMessage: fmt.Sprintf("player %s is prepaired but was still paired by COP", req.PlayerNames[playerIdx]),
-			}
+			}, ""
 		} else {
 			oppIdx := playerNodes[oppRankIdx]
 			if oppIdx == pkgstnd.ByePlayerIndex {
@@ -2120,7 +2195,7 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 			return nil, &pb.PairResponse{
 				ErrorCode:    pb.PairError_OVERCONSTRAINED,
 				ErrorMessage: fmt.Sprintf("player %s was removed but was still paired by COP", req.PlayerNames[removedPlayerIdx]),
-			}
+			}, ""
 		}
 		removedPlayersStr += fmt.Sprintf("(#%d) %s\n", removedPlayerIdx+1, req.PlayerNames[removedPlayerIdx])
 	}
@@ -2138,10 +2213,10 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 		return nil, &pb.PairResponse{
 			ErrorCode:    pb.PairError_OVERCONSTRAINED,
 			ErrorMessage: msg,
-		}
+		}, ""
 	}
 
-	return allPlayerPairings, nil
+	return allPlayerPairings, nil, ""
 }
 
 // classLetter renders a player's class (0-indexed: 0 is the top, unprized
