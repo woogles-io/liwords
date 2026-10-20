@@ -2,6 +2,7 @@ package standings_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/matryer/is"
 	pkgstnd "github.com/woogles-io/liwords/pkg/pair/standings"
@@ -365,4 +366,158 @@ func assertResultSums(is *is.I, results [][]int, dim int, total int) {
 		is.Equal(colSum, total)
 	}
 
+}
+
+// createPendingRoundRequest returns a request whose first round has results
+// and whose remaining complete pairing rows are pending (paired, no results).
+// GibsonSpread is small so the sims' spreads can't overturn the record gaps
+// the tests below rely on.
+func createPendingRoundRequest(numPlayers int, rounds int, removedPlayers []int32, resultPairings string, results string, pendingPairings ...string) *pb.PairRequest {
+	names := make([]string, numPlayers)
+	classes := make([]int32, numPlayers)
+	for i := range names {
+		names[i] = string(rune('A' + i))
+	}
+	req := &pb.PairRequest{
+		PairMethod:                 pb.PairMethod_COP,
+		PlayerNames:                names,
+		PlayerClasses:              classes,
+		ClassPrizes:                []int32{},
+		GibsonSpread:               100,
+		ControlLossThreshold:       0.25,
+		HopefulnessThreshold:       0.02,
+		AllPlayers:                 int32(numPlayers),
+		ValidPlayers:               int32(numPlayers - len(removedPlayers)),
+		RemovedPlayers:             removedPlayers,
+		Rounds:                     int32(rounds),
+		PlacePrizes:                1,
+		DivisionSims:               1000,
+		ControlLossSims:            1000,
+		ControlLossActivationRound: 0,
+	}
+	pairtestutils.AddRoundPairingsStr(req, resultPairings)
+	pairtestutils.AddRoundResultsStr(req, results)
+	for _, pending := range pendingPairings {
+		pairtestutils.AddRoundPairingsStr(req, pending)
+	}
+	return req
+}
+
+func TestPendingRoundPairs(t *testing.T) {
+	is := is.New(t)
+
+	// No pending rounds: same as every unlagged request.
+	req := createPendingRoundRequest(4, 3, nil, "1 0 3 2", "300 500 200 500")
+	is.Equal(pkgstnd.GetNumCompletePairings(req), 1)
+	is.Equal(pkgstnd.GetNumPendingRounds(req), 0)
+	is.True(pkgstnd.GetPendingRoundPairs(req) == nil)
+	is.Equal(pkgstnd.CreateInitialStandings(req).GetNumPendingRounds(), 0)
+
+	// Two pending rounds followed by a partially prepaired round, which is
+	// not pending.
+	req = createPendingRoundRequest(5, 6, []int32{4}, "1 0 3 2 4", "400 100 390 400 50",
+		"1 0 2 4 3", "2 3 0 1 4", "-1 -1 -1 -1 -1")
+	is.Equal(pkgstnd.GetNumCompletePairings(req), 3)
+	is.Equal(pkgstnd.GetNumPendingRounds(req), 2)
+	// Pairs involving the removed player 4 are skipped.
+	is.Equal(pkgstnd.GetPendingRoundPairs(req), [][][2]int{
+		{{0, 1}, {2, 2}},
+		{{0, 2}, {1, 3}},
+	})
+	is.Equal(pkgstnd.CreateInitialStandings(req).GetNumPendingRounds(), 2)
+}
+
+// Ranks after round 1: D (+300), B (+200), A (-200), C (-300). The pending
+// round pairs D-C and B-A (1st vs 4th, 2nd vs 3rd), which the sims must play
+// instead of the KOTH rows they generate for the final game.
+func TestPendingRoundUsesRealPairings(t *testing.T) {
+	is := is.New(t)
+	copRand := rand.New(rand.NewSource(0))
+
+	req := createPendingRoundRequest(4, 2, nil, "1 0 3 2", "300 500 200 500", "1 0 3 2")
+	standings := pkgstnd.CreateInitialStandings(req)
+	is.Equal(standings.GetNumPendingRounds(), 1)
+	is.Equal(standings.GetPlayerIndex(0), 3)
+	is.Equal(standings.GetPlayerIndex(1), 1)
+	simResults, pairErr := standings.SimFactorPairAll(req, copRand, 10000, 2, -1, nil, -1)
+	is.Equal(pairErr, pb.PairError_SUCCESS)
+	assertResultSums(is, simResults.FinalRanks, 4, simResults.TotalSims)
+	// B finishes 1st only by beating A while D does not beat C: about 25%.
+	bFirst := float64(simResults.FinalRanks[1][0]) / float64(simResults.TotalSims)
+	is.True(bFirst > 0.2 && bFirst < 0.3)
+	// A and C can never finish 1st.
+	is.Equal(simResults.FinalRanks[2][0], 0)
+	is.Equal(simResults.FinalRanks[3][0], 0)
+
+	// Without the pending round, the final game is KOTH (D vs B), so B
+	// finishes 1st about half the time.
+	req = createPendingRoundRequest(4, 2, nil, "1 0 3 2", "300 500 200 500")
+	standings = pkgstnd.CreateInitialStandings(req)
+	is.Equal(standings.GetNumPendingRounds(), 0)
+	simResults, pairErr = standings.SimFactorPairAll(req, copRand, 10000, 2, -1, nil, -1)
+	is.Equal(pairErr, pb.PairError_SUCCESS)
+	bFirst = float64(simResults.FinalRanks[1][0]) / float64(simResults.TotalSims)
+	is.True(bFirst > 0.45 && bFirst < 0.55)
+
+	// The forced-winner sims also play the real pending pairing: B always
+	// beats A, but only wins the tournament when D does not beat C. Under
+	// KOTH, B would beat D and always win.
+	req = createPendingRoundRequest(4, 2, nil, "1 0 3 2", "300 500 200 500", "1 0 3 2")
+	standings = pkgstnd.CreateInitialStandings(req)
+	kothPairings := [][]int{{0, 1, 2, 3}}
+	numSims := 10000
+	wins, pairErr := standings.RunParallelSimForceWinner(copRand, numSims, 1, 2, kothPairings, 1, true, time.Now().Add(time.Minute).UnixNano())
+	is.Equal(pairErr, pb.PairError_SUCCESS)
+	winPct := float64(wins) / float64(numSims)
+	is.True(winPct > 0.45 && winPct < 0.6)
+	// Forcing A, who can't finish 1st even after beating B, never wins.
+	wins, pairErr = standings.RunParallelSimForceWinner(copRand, numSims, 1, 2, kothPairings, 0, true, time.Now().Add(time.Minute).UnixNano())
+	is.Equal(pairErr, pb.PairError_SUCCESS)
+	is.Equal(wins, 0)
+
+	// RunSimsWithPairings plays the pending round in place of the first row
+	// of the pairings it is given.
+	finalRanks, totalSims, pairErr := standings.RunSimsWithPairings(copRand, 10000, 1, kothPairings)
+	is.Equal(pairErr, pb.PairError_SUCCESS)
+	bFirst = float64(finalRanks[1][0]) / float64(totalSims)
+	is.True(bFirst > 0.2 && bFirst < 0.3)
+}
+
+// A pending bye is always a win. Ranks after round 1: B (1-0 +200),
+// C (0-1 -50, a forfeit bye), A (0-1 -200). C has the bye in the pending
+// round, so C always ends 1-1 and always finishes exactly 2nd: with a coin
+// flip, C would finish last whenever B beat A.
+func TestPendingByeAlwaysWins(t *testing.T) {
+	is := is.New(t)
+	copRand := rand.New(rand.NewSource(0))
+
+	req := createPendingRoundRequest(3, 2, nil, "1 0 2", "300 500 -50", "1 0 2")
+	standings := pkgstnd.CreateInitialStandings(req)
+	is.Equal(standings.GetPlayerIndex(1), 2)
+	// The odd field gets an evener player in the sims.
+	simResults, pairErr := standings.SimFactorPairAll(req, copRand, 10000, 1, -1, nil, -1)
+	is.Equal(pairErr, pb.PairError_SUCCESS)
+	is.True(simResults.TotalSims > 0)
+	assertResultSums(is, simResults.FinalRanks, 3, simResults.TotalSims)
+	is.Equal(simResults.FinalRanks[1][1], simResults.TotalSims)
+}
+
+// A pending bye still counts as a win when the sims have no evener player,
+// which happens when a removal makes the field even. E is removed: D's
+// pending game against E is skipped, and C's pending bye is credited without
+// an opponent. Ranks after round 1: A (+300), D (+10), C (-10), B (-300).
+// C ends 1-1 and always finishes exactly 3rd.
+func TestPendingByeWithoutEvener(t *testing.T) {
+	is := is.New(t)
+	copRand := rand.New(rand.NewSource(0))
+
+	req := createPendingRoundRequest(5, 2, []int32{4}, "1 0 3 2 4", "400 100 390 400 50", "1 0 2 4 3")
+	standings := pkgstnd.CreateInitialStandings(req)
+	is.Equal(standings.GetNumPlayers(), 4)
+	is.Equal(standings.GetPlayerIndex(2), 2)
+	simResults, pairErr := standings.SimFactorPairAll(req, copRand, 10000, 2, -1, nil, -1)
+	is.Equal(pairErr, pb.PairError_SUCCESS)
+	is.True(simResults.TotalSims > 0)
+	assertResultSums(is, simResults.FinalRanks, 4, simResults.TotalSims)
+	is.Equal(simResults.FinalRanks[2][2], simResults.TotalSims)
 }

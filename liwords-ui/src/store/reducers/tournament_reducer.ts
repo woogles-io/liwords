@@ -33,6 +33,7 @@ import {
 import { LoginState } from "../login_state";
 import { ActiveGame } from "./lobby_reducer";
 import { MonitoringData } from "../../tournament/monitoring/types";
+import { openRounds } from "../selectors/round_selectors";
 
 type TournamentGame = {
   scores: Array<number>;
@@ -72,6 +73,7 @@ export const defaultCompetitorState = {
   isRegistered: false,
   isCheckedIn: false,
   currentRound: -1,
+  activeRound: -1,
 };
 
 export type MonitoringUIState = {
@@ -709,10 +711,11 @@ export function TournamentReducer(
 
       const division = state.divisions[m.ready.division];
       const fullPlayerID = `${m.loginState.userID}:${m.loginState.username}`;
-      if (m.ready.round !== division.currentRound) {
-        // this should not happen, the ready state should always be for the
-        // current round.
-        console.error("ready state current round does not match");
+      if (!openRounds(division).includes(m.ready.round)) {
+        // this should not happen, the ready state should always be for an
+        // open round: the current round, or the round before it while a
+        // lagged current round runs alongside it.
+        console.error("ready state round is not an open round");
         return state;
       }
 

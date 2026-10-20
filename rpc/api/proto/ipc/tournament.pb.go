@@ -703,7 +703,13 @@ type RoundControl struct {
 	// forgives every prior meeting (King-of-the-Hill). When even a strict
 	// pairing is impossible the reset point is relaxed upward one round at a
 	// time.
-	ResetRound    uint32 `protobuf:"varint,20,opt,name=reset_round,json=resetRound,proto3" json:"reset_round,omitempty"`
+	ResetRound uint32 `protobuf:"varint,20,opt,name=reset_round,json=resetRound,proto3" json:"reset_round,omitempty"`
+	// pairing_lag is how many extra rounds of results this round's pairings
+	// lag behind: 0 (the default) pairs round R from results through round R-1,
+	// and 1 pairs it from results through round R-2, so that round R can be
+	// paired and opened while round R-1 is still being played. Only 0 and 1 are
+	// valid.
+	PairingLag    uint32 `protobuf:"varint,21,opt,name=pairing_lag,json=pairingLag,proto3" json:"pairing_lag,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -867,6 +873,13 @@ func (x *RoundControl) GetPlacePrizes() int32 {
 func (x *RoundControl) GetResetRound() uint32 {
 	if x != nil {
 		return x.ResetRound
+	}
+	return 0
+}
+
+func (x *RoundControl) GetPairingLag() uint32 {
+	if x != nil {
+		return x.PairingLag
 	}
 	return 0
 }
@@ -2345,7 +2358,7 @@ const file_proto_ipc_tournament_proto_rawDesc = "" +
 	"\x11TournamentPersons\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1a\n" +
 	"\bdivision\x18\x02 \x01(\tR\bdivision\x12/\n" +
-	"\apersons\x18\x03 \x03(\v2\x15.ipc.TournamentPersonR\apersons\"\x8b\a\n" +
+	"\apersons\x18\x03 \x03(\v2\x15.ipc.TournamentPersonR\apersons\"\xac\a\n" +
 	"\fRoundControl\x129\n" +
 	"\x0epairing_method\x18\x01 \x01(\x0e2\x12.ipc.PairingMethodR\rpairingMethod\x123\n" +
 	"\ffirst_method\x18\x02 \x01(\x0e2\x10.ipc.FirstMethodR\vfirstMethod\x12&\n" +
@@ -2368,7 +2381,9 @@ const file_proto_ipc_tournament_proto_rawDesc = "" +
 	"\x1dcontrol_loss_activation_round\x18\x12 \x01(\x05R\x1acontrolLossActivationRound\x12!\n" +
 	"\fplace_prizes\x18\x13 \x01(\x05R\vplacePrizes\x12\x1f\n" +
 	"\vreset_round\x18\x14 \x01(\rR\n" +
-	"resetRoundB\x16\n" +
+	"resetRound\x12\x1f\n" +
+	"\vpairing_lag\x18\x15 \x01(\rR\n" +
+	"pairingLagB\x16\n" +
 	"\x14_spread_cap_overrideJ\x04\b\v\x10\f\"\xc6\x03\n" +
 	"\x10DivisionControls\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1a\n" +

@@ -29,6 +29,11 @@ import { TournamentService } from "../gen/api/proto/tournament_service/tournamen
 import { flashTournamentError } from "./tournament_error";
 import { useTournamentCompetitorState } from "../hooks/use_tournament_competitor_state";
 import { PairingMethod } from "../gen/api/proto/ipc/tournament_pb";
+import {
+  isLaggedRound,
+  pairingBasisRound,
+  roundsCompleteThrough,
+} from "../store/selectors/round_selectors";
 // import { CheckIn } from './check_in';
 
 const PAGE_SIZE = 30;
@@ -268,11 +273,20 @@ export const ActionsPanel = React.memo((props: Props) => {
     ].includes(pairingMethod);
 
     if (selectedRound > -1 && tournamentContext.divisions[selectedDivision]) {
-      return (
-        selectedRound >
-          tournamentContext.divisions[selectedDivision].currentRound &&
-        potentiallyTentative
-      );
+      const division = tournamentContext.divisions[selectedDivision];
+      // A lagged round's pairings are final once its basis round (and every
+      // round before it) is complete, even before the round is opened, so
+      // that players finishing the previous round can see where to go.
+      if (
+        isLaggedRound(division, selectedRound) &&
+        roundsCompleteThrough(
+          division,
+          pairingBasisRound(division, selectedRound),
+        )
+      ) {
+        return false;
+      }
+      return selectedRound > division.currentRound && potentiallyTentative;
     }
     return false;
   }, [
@@ -497,6 +511,10 @@ export const ActionsPanel = React.memo((props: Props) => {
         <div className="round-label">
           {/* The current zero-indexed round converted to 1-indexed */}
           Round {selectedRound + 1}
+          {isLaggedRound(
+            tournamentContext.divisions[selectedDivision],
+            selectedRound,
+          ) && " (lagged)"}
         </div>,
       );
       if (lastRound === selectedRound) {

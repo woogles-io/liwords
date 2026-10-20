@@ -3,6 +3,7 @@ package standings
 import (
 	"fmt"
 	"runtime"
+	"slices"
 	"sort"
 	"strconv"
 	"sync"
@@ -42,6 +43,18 @@ type Standings struct {
 	tieResults         int
 	roundsPlayed       int
 	roundsPlayedBackup int
+	// pendingRounds holds the real pairings of the pending rounds: rounds
+	// that are fully paired but have no results yet (see GetNumPendingRounds).
+	// Each round is a list of player-index pairs (not rank indexes, since
+	// the standings are re-sorted after every simulated round); a bye is a
+	// player paired with themselves. Pairs involving a removed player are
+	// left out. Every simulation plays these rounds first, in order, before
+	// the generated factor-paired rounds. It is shared read-only between
+	// copies.
+	pendingRounds [][][2]int
+	// pendingRankScratch maps player index to current rank index while a
+	// pending round is simulated. Each copy gets its own.
+	pendingRankScratch []int
 }
 
 type SimResults struct {
@@ -69,6 +82,67 @@ type SimResults struct {
 
 func GetRoundsRemaining(req *pb.PairRequest) int {
 	return int(req.Rounds) - len(req.DivisionResults)
+}
+
+// GetNumCompletePairings returns the number of fully paired rounds at the
+// start of req.DivisionPairings, stopping at the first round with an
+// unpaired (-1) entry.
+func GetNumCompletePairings(req *pb.PairRequest) int {
+	numCompletePairings := 0
+	for _, roundPairings := range req.DivisionPairings {
+		if slices.Contains(roundPairings.Pairings, -1) {
+			break
+		}
+		numCompletePairings++
+	}
+	return numCompletePairings
+}
+
+// GetNumPendingRounds returns the number of rounds that are fully paired but
+// have no results yet. These are the rounds still in progress when the
+// pairings are lagged; it is 0 for every unlagged request.
+func GetNumPendingRounds(req *pb.PairRequest) int {
+	numPendingRounds := GetNumCompletePairings(req) - len(req.DivisionResults)
+	if numPendingRounds < 0 {
+		return 0
+	}
+	return numPendingRounds
+}
+
+// GetPendingRoundPairs returns the real pairings of each pending round as
+// player-index pairs (a bye is a player paired with themselves), in round
+// order. Pairs that involve a removed player are skipped, the same way
+// CreateInitialStandings leaves removed players out of the standings.
+func GetPendingRoundPairs(req *pb.PairRequest) [][][2]int {
+	numPendingRounds := GetNumPendingRounds(req)
+	if numPendingRounds == 0 {
+		return nil
+	}
+	removedPlayersMap := make(map[int]struct{}, len(req.RemovedPlayers))
+	for _, removedPlayer := range req.RemovedPlayers {
+		removedPlayersMap[int(removedPlayer)] = struct{}{}
+	}
+	pendingRounds := make([][][2]int, numPendingRounds)
+	firstPendingRoundIdx := len(req.DivisionResults)
+	for i := range numPendingRounds {
+		roundPairings := req.DivisionPairings[firstPendingRoundIdx+i].Pairings
+		pairs := [][2]int{}
+		for playerIdx, opp := range roundPairings {
+			oppIdx := int(opp)
+			if oppIdx < playerIdx {
+				continue
+			}
+			if _, removed := removedPlayersMap[playerIdx]; removed {
+				continue
+			}
+			if _, removed := removedPlayersMap[oppIdx]; removed {
+				continue
+			}
+			pairs = append(pairs, [2]int{playerIdx, oppIdx})
+		}
+		pendingRounds[i] = pairs
+	}
+	return pendingRounds
 }
 
 func CreateInitialStandings(req *pb.PairRequest) *Standings {
@@ -143,9 +217,20 @@ func CreateInitialStandings(req *pb.PairRequest) *Standings {
 	standings.records = validRecords
 	standings.recordsBackup = make([]uint64, int(req.ValidPlayers))
 
+	standings.pendingRounds = GetPendingRoundPairs(req)
+	if len(standings.pendingRounds) > 0 {
+		standings.pendingRankScratch = make([]int, int(req.AllPlayers))
+	}
+
 	standings.Sort()
 
 	return standings
+}
+
+// GetNumPendingRounds returns the number of pending rounds the simulations
+// play with their real pairings before the generated rounds.
+func (standings *Standings) GetNumPendingRounds() int {
+	return len(standings.pendingRounds)
 }
 
 func (standings *Standings) Copy() *Standings {
@@ -156,6 +241,10 @@ func (standings *Standings) Copy() *Standings {
 		tieResults:         standings.tieResults,
 		roundsPlayed:       standings.roundsPlayed,
 		roundsPlayedBackup: standings.roundsPlayedBackup,
+		pendingRounds:      standings.pendingRounds,
+	}
+	if standings.pendingRankScratch != nil {
+		standingsCopy.pendingRankScratch = make([]int, len(standings.pendingRankScratch))
 	}
 	copy(standingsCopy.records, standings.records)
 	copy(standingsCopy.recordsBackup, standings.recordsBackup)
@@ -250,6 +339,10 @@ func (standings *Standings) Sort() {
 // sense, and would conflict with the bye's own forced pairing - see
 // copdata.ComputeTopDownByeRankIdx. Pass -1 when there's no such player, or
 // when lowestHopeControlLosser < 0 (skipRankIdx is ignored in that case).
+//
+// The generated pairings cover every remaining game, but each simulation
+// plays the pending rounds (see GetNumPendingRounds) with their real
+// pairings in place of the first generated rows.
 func (standings *Standings) SimFactorPairAll(req *pb.PairRequest, copRand *rand.Rand, sims int, maxFactor int, lowestHopeControlLosser int, prevSegmentRoundFactors []int, skipRankIdx int) (*SimResults, pb.PairError) {
 	numPlayers := standings.GetNumPlayers()
 	roundsRemaining := GetRoundsRemaining(req)
@@ -514,7 +607,12 @@ func (standings *Standings) evaluatePlayerControlLoss(
 // Returns true if the time limit has been exceeded
 func (standings *Standings) simToEndAndRecordResults(roundsRemaining int, copRand *rand.Rand, pairings [][]int, results [][]int, playerIdxToRankIdx map[int]int, stopTimeNano int64) bool {
 	for roundIdx := 0; roundIdx < roundsRemaining; roundIdx++ {
-		timeLimitExceeded := standings.simRound(copRand, pairings, roundIdx, -1, stopTimeNano)
+		var timeLimitExceeded bool
+		if roundIdx < len(standings.pendingRounds) {
+			timeLimitExceeded = standings.simPendingRound(copRand, roundIdx, -1, stopTimeNano)
+		} else {
+			timeLimitExceeded = standings.simRound(copRand, pairings, roundIdx, -1, stopTimeNano)
+		}
 		if timeLimitExceeded {
 			standings.RestoreFromBackup()
 			return true
@@ -589,6 +687,72 @@ func (standings *Standings) simRound(copRand *rand.Rand, pairings [][]int, round
 	return false
 }
 
+// simPendingRound simulates pending round pendingRoundIdx with its real
+// pairings. Player indexes are translated to current rank indexes first,
+// since the standings are re-sorted after every simulated round.
+//
+// A bye is always a win for the player, with a non-tie spread drawn the same
+// way as a forced winner's in simRound. The bye is credited without an
+// opponent, so it works whether or not the evener (ByePlayerIndex) player is
+// present: the evener always stays last, so crediting it with the loss
+// would change nothing. Games are otherwise drawn exactly as in simRound,
+// and forcedWinnerPlayerIdx (a player index, or -1 for none) always wins
+// their game with a non-tie spread.
+//
+// Returns true if the time limit has been exceeded.
+func (standings *Standings) simPendingRound(copRand *rand.Rand, pendingRoundIdx int, forcedWinnerPlayerIdx int, stopTimeNano int64) bool {
+	currentTimeNano := time.Now().UnixNano()
+	if currentTimeNano > stopTimeNano {
+		return true
+	}
+	if standings.pendingRankScratch == nil {
+		standings.pendingRankScratch = make([]int, int(playerIndexMask)+1)
+	}
+	playerIdxToRankIdx := standings.pendingRankScratch
+	for rankIdx, record := range standings.records {
+		playerIdx := getIndex(record)
+		if playerIdx < len(playerIdxToRankIdx) {
+			playerIdxToRankIdx[playerIdx] = rankIdx
+		}
+	}
+	numScoreDiffs := len(standings.possibleResults)
+	numNonTieScoreDiffs := numScoreDiffs - standings.tieResults
+	for _, pair := range standings.pendingRounds[pendingRoundIdx] {
+		p1 := playerIdxToRankIdx[pair[0]]
+		if pair[0] == pair[1] {
+			// Bye: always a win, never a tie
+			record := standings.possibleResults[copRand.Intn(numNonTieScoreDiffs)+standings.tieResults]
+			standings.incrementPlayerRecord(p1, record)
+			continue
+		}
+		p2 := playerIdxToRankIdx[pair[1]]
+		var winner int
+		var loser int
+		var randResultIdx int
+		if pair[0] == forcedWinnerPlayerIdx {
+			winner = p1
+			loser = p2
+			// Prevent tie scores for the forced winner
+			randResultIdx = copRand.Intn(numNonTieScoreDiffs) + standings.tieResults
+		} else if pair[1] == forcedWinnerPlayerIdx {
+			winner = p2
+			loser = p1
+			// Prevent tie scores for the forced winner
+			randResultIdx = copRand.Intn(numNonTieScoreDiffs) + standings.tieResults
+		} else {
+			randomResult := copRand.Intn(2)
+			winner = p1*(1-randomResult) + p2*randomResult
+			loser = p2*(1-randomResult) + p1*randomResult
+			randResultIdx = copRand.Intn(numScoreDiffs)
+		}
+		record := standings.possibleResults[randResultIdx]
+		standings.incrementPlayerRecord(winner, record)
+		standings.decrementPlayerRecord(loser, record)
+	}
+	standings.Sort()
+	return false
+}
+
 func (standings *Standings) findRankIdx(playerIdx int) int {
 	numPlayers := len(standings.records)
 	for rankIdx := 0; rankIdx < numPlayers; rankIdx++ {
@@ -603,6 +767,14 @@ func (standings *Standings) simForceWinner(copRand *rand.Rand, sims int, roundsR
 	tournamentWins := 0
 	for simIdx := 0; simIdx < sims; simIdx++ {
 		for roundIdx := 0; roundIdx < roundsRemaining; roundIdx++ {
+			if roundIdx < len(standings.pendingRounds) {
+				// Pending rounds have fixed real pairings, so no vsFirst or
+				// factor-opponent swap applies.
+				if standings.simPendingRound(copRand, roundIdx, forcedWinnerPlayerIdx, stopTimeNano) {
+					return 0, pb.PairError_TIMEOUT
+				}
+				continue
+			}
 			forcedWinnerRankIdx := standings.findRankIdx(forcedWinnerPlayerIdx)
 
 			// Find the forced winner's current position in this round's pairings.
@@ -786,6 +958,9 @@ func (standings *Standings) runParallelSimForceWinner(
 // When the standings have an odd number of players, a dummy bye player is temporarily appended
 // (mirroring SimFactorPairAll) so simRound can iterate in pairs. The caller must supply pairings
 // with an even number of entries per round (pairingsLen = numPlayers rounded up to even).
+//
+// As in every simulation, the pending rounds (see GetNumPendingRounds) are played first with their
+// real pairings in place of the first rows of pairings, with no vsFirst swap.
 func (standings *Standings) RunParallelSimForceWinner(copRand *rand.Rand, sims int, roundsRemaining int, maxFactor int, pairings [][]int, forcedWinnerPlayerIdx int, vsFirst bool, stopTimeNano int64) (int, pb.PairError) {
 	numPlayers := standings.GetNumPlayers()
 	evenerAdded := false
@@ -808,7 +983,9 @@ func (standings *Standings) RunParallelSimForceWinner(copRand *rand.Rand, sims i
 
 // RunSimsWithPairings runs parallel sims using the provided pre-built pairings and returns
 // (FinalRanks, totalSims, error). This is used when the pairings have already been constructed
-// externally (e.g. factor-3 pairings where roundsRemaining < maxFactor).
+// externally (e.g. factor-3 pairings where roundsRemaining < maxFactor). The pending rounds (see
+// GetNumPendingRounds) are played first with their real pairings in place of the first rows of
+// pairings.
 func (standings *Standings) RunSimsWithPairings(copRand *rand.Rand, sims int, roundsRemaining int, pairings [][]int) ([][]int, int, pb.PairError) {
 	numPlayers := standings.GetNumPlayers()
 	evenerAdded := false

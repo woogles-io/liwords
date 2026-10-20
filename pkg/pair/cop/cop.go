@@ -1238,6 +1238,13 @@ func copMethodPair(req *pb.PairRequest, logsb *strings.Builder) *pb.PairResponse
 // doesn't lock in the full factor-3 structure the simulation assumed, so
 // that simulation isn't an accurate stand-in for the rest of the field.
 func computeFactor3ForcedPairings(req *pb.PairRequest, copdata *copdatapkg.PrecompData, copRand *rand.Rand, logsb *strings.Builder) ([][2]int, [][]int, int) {
+	// With a round in progress (lagged pairings), two games remaining means
+	// the round being paired is the final round, not the penultimate round
+	// Factor 3 models.
+	if copdata.Standings.GetNumPendingRounds() > 0 {
+		logsb.WriteString("Factor 3 skipped: round in progress\n")
+		return nil, nil, 0
+	}
 	if pkgstnd.GetRoundsRemaining(req) != 2 {
 		logsb.WriteString("Factor 3 skipped: not 2 rounds remaining\n")
 		return nil, nil, 0

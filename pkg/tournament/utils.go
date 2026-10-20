@@ -22,12 +22,20 @@ type COPIntermediateConfig struct {
 }
 
 // TournamentDivisionToCOPRequest converts a TournamentDivisionDataResponse to a COPRequest.
-// The round that is passed in must be 0-indexed.
+// The round that is passed in must be 0-indexed. basisRound is the last
+// round whose results are sent: round-1 normally, or round-2 if the round is
+// lagged. Pairings are always sent through round-1, so for a lagged round
+// COP sees the round in progress as paired but without results, which is
+// how TSH sends lagged ("based on round") requests as well.
 func TournamentDivisionToCOPRequest(
 	division *ipc.TournamentDivisionDataResponse,
 	round int64,
+	basisRound int64,
 	cfg *COPIntermediateConfig,
 ) (*ipc.PairRequest, error) {
+	if basisRound >= round {
+		return nil, fmt.Errorf("basis round %d must be before round %d", basisRound+1, round+1)
+	}
 
 	// Build DivisionPairings for each round up to the current round
 	divisionPairings := make([]*ipc.RoundPairings, int(round))
@@ -50,8 +58,9 @@ func TournamentDivisionToCOPRequest(
 		divisionPairings[r] = &ipc.RoundPairings{Pairings: pairings}
 	}
 
-	divisionResults := make([]*ipc.RoundResults, int(round))
-	for r := 0; r < int(round); r++ {
+	numResultRounds := max(int(basisRound)+1, 0)
+	divisionResults := make([]*ipc.RoundResults, numResultRounds)
+	for r := 0; r < numResultRounds; r++ {
 		// Initialize results for this round with -1 (no result)
 		results := make([]int32, len(division.Players.Persons))
 		for i := range results {

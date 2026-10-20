@@ -146,6 +146,13 @@ message RoundControl {
   // pairing is impossible the reset point is relaxed upward one round at a
   // time.
   uint32 reset_round = 20;
+
+  // pairing_lag is how many extra rounds of results this round's pairings
+  // lag behind: 0 (the default) pairs round R from results through round R-1,
+  // and 1 pairs it from results through round R-2, so that round R can be
+  // paired and opened while round R-1 is still being played. Only 0 and 1 are
+  // valid.
+  uint32 pairing_lag = 21;
 }
 
 message DivisionControls {

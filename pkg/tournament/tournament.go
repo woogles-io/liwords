@@ -1278,6 +1278,9 @@ func SetResult(ctx context.Context,
 	}
 	span.AddEvent("about-to-submit-result")
 
+	// AutoStart can open rounds when a result comes in, so note the
+	// current round to announce any rounds that were opened.
+	roundBefore := divisionObject.DivisionManager.GetCurrentRound()
 	pairingsResp, err := divisionObject.DivisionManager.SubmitResult(round,
 		p1TID,
 		p2TID,
@@ -1308,7 +1311,18 @@ func SetResult(ctx context.Context,
 	pairingsResp.Id = id
 	pairingsResp.Division = division
 	wrapped := entity.WrapEvent(pairingsResp, ipc.MessageType_TOURNAMENT_DIVISION_PAIRINGS_MESSAGE)
-	return SendTournamentMessage(ctx, ts, id, wrapped)
+	err = SendTournamentMessage(ctx, ts, id, wrapped)
+	if err != nil {
+		return err
+	}
+
+	for r := roundBefore + 1; r <= divisionObject.DivisionManager.GetCurrentRound(); r++ {
+		err = sendDivisionStart(ts, t.UUID, division, r)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func possiblyEndTournament(ctx context.Context, ts TournamentStore, t *entity.Tournament,
