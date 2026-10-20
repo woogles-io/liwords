@@ -118,6 +118,7 @@ const (
 	WooglesError_TOURNAMENT_LAGGED_ELIMINATION                          WooglesError = 1107
 	WooglesError_TOURNAMENT_LAGGED_COP_LAST_ROUNDS                      WooglesError = 1108
 	WooglesError_TOURNAMENT_PREVIOUS_GAME_UNFINISHED                    WooglesError = 1109
+	WooglesError_TOURNAMENT_AUTO_PAIR_FAILED                            WooglesError = 1110
 	WooglesError_PUZZLE_VOTE_INVALID                                    WooglesError = 1074
 	WooglesError_PUZZLE_GET_RANDOM_PUZZLE_ID_NOT_FOUND                  WooglesError = 1075
 	WooglesError_PUZZLE_GET_RANDOM_PUZZLE_NOT_FOUND                     WooglesError = 1076
@@ -233,6 +234,7 @@ var (
 		1107: "TOURNAMENT_LAGGED_ELIMINATION",
 		1108: "TOURNAMENT_LAGGED_COP_LAST_ROUNDS",
 		1109: "TOURNAMENT_PREVIOUS_GAME_UNFINISHED",
+		1110: "TOURNAMENT_AUTO_PAIR_FAILED",
 		1074: "PUZZLE_VOTE_INVALID",
 		1075: "PUZZLE_GET_RANDOM_PUZZLE_ID_NOT_FOUND",
 		1076: "PUZZLE_GET_RANDOM_PUZZLE_NOT_FOUND",
@@ -345,6 +347,7 @@ var (
 		"TOURNAMENT_LAGGED_ELIMINATION":                          1107,
 		"TOURNAMENT_LAGGED_COP_LAST_ROUNDS":                      1108,
 		"TOURNAMENT_PREVIOUS_GAME_UNFINISHED":                    1109,
+		"TOURNAMENT_AUTO_PAIR_FAILED":                            1110,
 		"PUZZLE_VOTE_INVALID":                                    1074,
 		"PUZZLE_GET_RANDOM_PUZZLE_ID_NOT_FOUND":                  1075,
 		"PUZZLE_GET_RANDOM_PUZZLE_NOT_FOUND":                     1076,
@@ -441,7 +444,7 @@ const file_proto_ipc_errors_proto_rawDesc = "" +
 	"\n" +
 	"\x16proto/ipc/errors.proto\x12\x03ipc\"(\n" +
 	"\fErrorMessage\x12\x18\n" +
-	"\amessage\x18\x01 \x01(\tR\amessage*\xf4!\n" +
+	"\amessage\x18\x01 \x01(\tR\amessage*\x96\"\n" +
 	"\fWooglesError\x12\v\n" +
 	"\aDEFAULT\x10\x00\x12*\n" +
 	"%TOURNAMENT_NEGATIVE_MAX_BYE_PLACEMENT\x10\xe9\a\x12&\n" +
@@ -536,7 +539,8 @@ const file_proto_ipc_errors_proto_rawDesc = "" +
 	"\x1dTOURNAMENT_LAGGED_FIRST_ROUND\x10\xd2\b\x12\"\n" +
 	"\x1dTOURNAMENT_LAGGED_ELIMINATION\x10\xd3\b\x12&\n" +
 	"!TOURNAMENT_LAGGED_COP_LAST_ROUNDS\x10\xd4\b\x12(\n" +
-	"#TOURNAMENT_PREVIOUS_GAME_UNFINISHED\x10\xd5\b\x12\x18\n" +
+	"#TOURNAMENT_PREVIOUS_GAME_UNFINISHED\x10\xd5\b\x12 \n" +
+	"\x1bTOURNAMENT_AUTO_PAIR_FAILED\x10\xd6\b\x12\x18\n" +
 	"\x13PUZZLE_VOTE_INVALID\x10\xb2\b\x12*\n" +
 	"%PUZZLE_GET_RANDOM_PUZZLE_ID_NOT_FOUND\x10\xb3\b\x12'\n" +
 	"\"PUZZLE_GET_RANDOM_PUZZLE_NOT_FOUND\x10\xb4\b\x12%\n" +

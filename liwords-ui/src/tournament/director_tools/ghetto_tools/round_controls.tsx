@@ -26,7 +26,11 @@ import {
   TournamentService,
 } from "../../../gen/api/proto/tournament_service/tournament_service_pb";
 import { useTournamentStoreContext } from "../../../store/store";
-import { flashError, useClient } from "../../../utils/hooks/connect";
+import {
+  flashError,
+  flashWarnings,
+  useClient,
+} from "../../../utils/hooks/connect";
 import { DisplayedGameSetting, SettingsForm } from "../game_settings_form";
 import { HelptipLabel } from "../helptip_label";
 import { RoundSetting, settingsEqual } from "../pairing_methods";
@@ -460,6 +464,9 @@ const SetSingleRoundControls = (props: { tournamentID: string }) => {
               : `Round ${userVisibleRound} was paired from the results through round ${basis + 1}.`,
           duration: 10,
         });
+      } else if (resp.warnings.length > 0) {
+        // Pairing the round failed; the warning says what to do.
+        flashWarnings(resp.warnings);
       } else if (
         lagChanged &&
         basisComplete &&

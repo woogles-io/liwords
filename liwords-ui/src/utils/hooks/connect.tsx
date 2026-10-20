@@ -63,6 +63,17 @@ export const flashError = (e: unknown, time = 5) => {
   }
 };
 
+// flashWarnings shows the warnings a request returned: WooglesError strings
+// for follow-on work that failed without failing the request.
+export const flashWarnings = (warnings: Array<string>, time = 10) => {
+  warnings.forEach((warning) => {
+    message.warning({
+      content: parseWooglesError(warning),
+      duration: time,
+    });
+  });
+};
+
 export const connectErrorMessage = (e: unknown) => {
   return (e as ConnectError).rawMessage;
 };

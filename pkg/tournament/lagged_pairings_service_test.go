@@ -2,6 +2,8 @@ package tournament_test
 
 import (
 	"context"
+	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/matryer/is"
@@ -157,9 +159,11 @@ func TestLaggedPairingFailureKeepsDirectorPairings(t *testing.T) {
 		is.NoErr(setServiceResult(ctx, stores, ty, 0, "Will", "Josh"))
 		drainEvents(eventChan)
 
-		is.NoErr(tournament.SetPairings(ctx, stores.TournamentStore, ty.UUID, divOneName, []*pb.TournamentPairingRequest{
+		warnings, err := tournament.SetPairings(ctx, stores.TournamentStore, ty.UUID, divOneName, []*pb.TournamentPairingRequest{
 			{PlayerOneId: "Will:Will", PlayerTwoId: "Josh:Josh", Round: 1},
-		}))
+		})
+		is.NoErr(err)
+		is.Equal(warnings, []string{autoPairFailed(3)})
 		is.True(dm.IsRoundPaired(1))
 		is.True(!dm.IsRoundPaired(2))
 		is.True(pairingsSentForRound(drainEvents(eventChan), 1))
@@ -170,18 +174,49 @@ func TestLaggedPairingFailureKeepsDirectorPairings(t *testing.T) {
 		ctx, stores, ty, eventChan := setUpServiceDivision(t, players, false,
 			laggedRepeatLimitedSwissControls(ipc.PairingMethod_KING_OF_THE_HILL))
 		dm := ty.Divisions[divOneName].DivisionManager
-		// Completing round 1 pairs round 2, but not the lagged round 3.
+		// Completing round 1 pairs round 2, but not the lagged round 3,
+		// and nobody is waiting on the result, so the directors are told.
 		is.NoErr(setServiceResult(ctx, stores, ty, 0, "Will", "Josh"))
 		is.True(dm.IsRoundPaired(1))
 		is.True(!dm.IsRoundPaired(2))
+		is.Equal(directorNotices(drainEvents(eventChan)), []string{"user.Kieran: " + autoPairFailed(3)})
 
 		is.NoErr(tournament.DeletePairings(ctx, stores.TournamentStore, ty.UUID, divOneName, 1))
 		drainEvents(eventChan)
-		is.NoErr(tournament.PairRound(ctx, stores.TournamentStore, ty.UUID, divOneName, 1, false))
+		warnings, err := tournament.PairRound(ctx, stores.TournamentStore, ty.UUID, divOneName, 1, false)
+		is.NoErr(err)
+		is.Equal(warnings, []string{autoPairFailed(3)})
 		is.True(dm.IsRoundPaired(1))
 		is.True(!dm.IsRoundPaired(2))
 		is.True(pairingsSentForRound(drainEvents(eventChan), 1))
 	})
+}
+
+// autoPairFailed is the warning for follow-on pairing that failed to pair
+// the 1-based round.
+func autoPairFailed(round int) string {
+	return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_AUTO_PAIR_FAILED, tournamentName, divOneName, strconv.Itoa(round)).Error()
+}
+
+// directorNotices returns the error messages sent to users, as
+// "audience: message".
+func directorNotices(evts []*entity.EventWrapper) []string {
+	notices := []string{}
+	for _, evt := range evts {
+		if evt.Type == ipc.MessageType_ERROR_MESSAGE {
+			notices = append(notices, strings.Join(evt.Audience(), ",")+": "+evt.Event.(*ipc.ErrorMessage).Message)
+		}
+	}
+	return notices
+}
+
+// noWarnings checks that a director request succeeded without warnings.
+func noWarnings(is *is.I) func([]string, error) {
+	return func(warnings []string, err error) {
+		is.Helper()
+		is.NoErr(err)
+		is.Equal(len(warnings), 0)
+	}
 }
 
 func setServiceResult(ctx context.Context, stores *stores.Stores, ty *entity.Tournament, round int, p1, p2 string) error {
@@ -226,7 +261,7 @@ func TestLaggedRoundWaitingOnManualRound(t *testing.T) {
 	is.True(!dm.IsRoundPaired(2))
 
 	// Pairing the MANUAL round by hand pairs the lagged round after it.
-	is.NoErr(tournament.SetPairings(ctx, stores.TournamentStore, ty.UUID, divOneName, []*pb.TournamentPairingRequest{
+	noWarnings(is)(tournament.SetPairings(ctx, stores.TournamentStore, ty.UUID, divOneName, []*pb.TournamentPairingRequest{
 		{PlayerOneId: "Will:Will", PlayerTwoId: "Conrad:Conrad", Round: 1},
 		{PlayerOneId: "Josh:Josh", PlayerTwoId: "Jesse:Jesse", Round: 1},
 	}))
@@ -253,10 +288,10 @@ func TestLaggedRoundDeletedPairingsStayDeleted(t *testing.T) {
 	is.True(dm.IsRoundPaired(2))
 
 	is.NoErr(tournament.DeletePairings(ctx, stores.TournamentStore, ty.UUID, divOneName, 2))
-	is.NoErr(tournament.SetPairings(ctx, stores.TournamentStore, ty.UUID, divOneName, []*pb.TournamentPairingRequest{
+	noWarnings(is)(tournament.SetPairings(ctx, stores.TournamentStore, ty.UUID, divOneName, []*pb.TournamentPairingRequest{
 		{PlayerOneId: "Will:Will", PlayerTwoId: "Conrad:Conrad", Round: 1},
 		{PlayerOneId: "Josh:Josh", PlayerTwoId: "Jesse:Jesse", Round: 1},
 	}))
-	is.NoErr(tournament.PairRound(ctx, stores.TournamentStore, ty.UUID, divOneName, 1, false))
+	noWarnings(is)(tournament.PairRound(ctx, stores.TournamentStore, ty.UUID, divOneName, 1, false))
 	is.True(!dm.IsRoundPaired(2))
 }

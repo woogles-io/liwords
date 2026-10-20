@@ -1371,7 +1371,11 @@ func (x *TournamentStartRoundCountdownRequest) GetStartAllRounds() bool {
 }
 
 type TournamentResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// warnings are WooglesError strings for follow-on work that failed
+	// without failing the request, such as pairing a lagged round that was
+	// waiting for the round the request paired.
+	Warnings      []string `protobuf:"bytes,1,rep,name=warnings,proto3" json:"warnings,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1406,11 +1410,20 @@ func (*TournamentResponse) Descriptor() ([]byte, []int) {
 	return file_proto_tournament_service_tournament_service_proto_rawDescGZIP(), []int{16}
 }
 
+func (x *TournamentResponse) GetWarnings() []string {
+	if x != nil {
+		return x.Warnings
+	}
+	return nil
+}
+
 type SingleRoundControlsResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// paired is true if the round was paired because its pairing lag changed
 	// and the round it is now paired from was already complete.
-	Paired        bool `protobuf:"varint,1,opt,name=paired,proto3" json:"paired,omitempty"`
+	Paired bool `protobuf:"varint,1,opt,name=paired,proto3" json:"paired,omitempty"`
+	// warnings are as in TournamentResponse.
+	Warnings      []string `protobuf:"bytes,2,rep,name=warnings,proto3" json:"warnings,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1450,6 +1463,13 @@ func (x *SingleRoundControlsResponse) GetPaired() bool {
 		return x.Paired
 	}
 	return false
+}
+
+func (x *SingleRoundControlsResponse) GetWarnings() []string {
+	if x != nil {
+		return x.Warnings
+	}
+	return nil
 }
 
 type NewTournamentResponse struct {
@@ -3454,10 +3474,12 @@ const file_proto_tournament_service_tournament_service_proto_rawDesc = "" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1a\n" +
 	"\bdivision\x18\x02 \x01(\tR\bdivision\x12\x14\n" +
 	"\x05round\x18\x03 \x01(\x05R\x05round\x12(\n" +
-	"\x10start_all_rounds\x18\x04 \x01(\bR\x0estartAllRounds\"\x14\n" +
-	"\x12TournamentResponse\"5\n" +
+	"\x10start_all_rounds\x18\x04 \x01(\bR\x0estartAllRounds\"0\n" +
+	"\x12TournamentResponse\x12\x1a\n" +
+	"\bwarnings\x18\x01 \x03(\tR\bwarnings\"Q\n" +
 	"\x1bSingleRoundControlsResponse\x12\x16\n" +
-	"\x06paired\x18\x01 \x01(\bR\x06paired\";\n" +
+	"\x06paired\x18\x01 \x01(\bR\x06paired\x12\x1a\n" +
+	"\bwarnings\x18\x02 \x03(\tR\bwarnings\";\n" +
 	"\x15NewTournamentResponse\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04slug\x18\x02 \x01(\tR\x04slug\"B\n" +

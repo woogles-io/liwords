@@ -541,4 +541,8 @@ export const errorMap: Map<number, string> = new Map<number, string>([
   ],
   // $3 is the previous round, the one whose game is unfinished.
   [1109, "You must finish your round $3 game before starting your next game."],
+  [
+    1110,
+    "Round $3 could not be paired automatically, so it kept the pairings it had. Use Pair entire round to pair it and see why.",
+  ],
 ]);

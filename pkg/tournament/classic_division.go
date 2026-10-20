@@ -3,7 +3,9 @@ package tournament
 import (
 	"context"
 	"fmt"
+	"maps"
 	"math/rand"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -44,6 +46,11 @@ type ClassicDivision struct {
 	// byes and forfeits through SubmitResult, and those results must not
 	// pair or open other rounds in the middle of that pairing.
 	pairingRound bool
+	// autoPairingFailures holds the rounds that follow-on pairing, such as
+	// pairing a lagged round a result made pairable, failed to pair since
+	// the last TakeAutoPairingFailures. Those failures don't fail the
+	// action that triggered them, so the caller reports them instead.
+	autoPairingFailures []int
 }
 
 func NewClassicDivision(tournamentName string, divisionName string) *ClassicDivision {
@@ -320,9 +327,12 @@ func (t *ClassicDivision) SetSingleRoundControls(round int, controls *pb.RoundCo
 	if t.pairingBasisRound(round) > prefix {
 		return pmessage, controls, nil
 	}
+	// Pairing the round is follow-on work for the controls change, so a
+	// failure is recorded for the caller to report rather than returned.
 	pmessage, err = t.PairRound(round, false)
 	if err != nil {
-		return nil, nil, err
+		t.recordAutoPairingFailure(round, err)
+		return newPairingsMessage(), controls, nil
 	}
 	if t.DivisionControls.AutoStart {
 		t.autoStartRounds()
@@ -756,6 +766,8 @@ func (t *ClassicDivision) canCatch(records []*pb.PlayerStanding, round int, i in
 	return canCatch, nil
 }
 
+// PairRound pairs the round. Pairing clears the round before it pairs it,
+// so if pairing fails, the round is put back the way it was.
 func (t *ClassicDivision) PairRound(round int, preserveByes bool) (*pb.DivisionPairingsResponse, error) {
 	if round < 0 || round >= len(t.Matrix) {
 		return nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_ROUND_NUMBER_OUT_OF_RANGE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), "PairRound")
@@ -764,6 +776,45 @@ func (t *ClassicDivision) PairRound(round int, preserveByes bool) (*pb.DivisionP
 		t.pairingRound = true
 		defer func() { t.pairingRound = false }()
 	}
+	matrixRow := slices.Clone(t.Matrix[round])
+	pairings := map[string]*pb.Pairing{}
+	for _, key := range matrixRow {
+		if pairing, ok := t.PairingMap[key]; ok {
+			pairings[key] = pairing
+		}
+	}
+	copGibsonization, hadCOPGibsonization := t.COPGibsonization[int32(round)]
+
+	pmessage, err := t.pairRound(round, preserveByes)
+	if err == nil {
+		return pmessage, nil
+	}
+	for _, key := range t.Matrix[round] {
+		if _, existed := pairings[key]; !existed {
+			delete(t.PairingMap, key)
+		}
+	}
+	t.Matrix[round] = matrixRow
+	maps.Copy(t.PairingMap, pairings)
+	if hadCOPGibsonization {
+		t.COPGibsonization[int32(round)] = copGibsonization
+	} else if t.COPGibsonization != nil {
+		delete(t.COPGibsonization, int32(round))
+	}
+	// Byes filled in while pairing updated the standings from this round
+	// on, so bring them back in line with the restored pairings.
+	prefix, prefixErr := t.gibsonCompletePrefix()
+	if prefixErr == nil {
+		for i := round; i < len(t.Matrix); i++ {
+			if _, _, standingsErr := t.getStandings(i, prefix); standingsErr != nil {
+				break
+			}
+		}
+	}
+	return nil, err
+}
+
+func (t *ClassicDivision) pairRound(round int, preserveByes bool) (*pb.DivisionPairingsResponse, error) {
 	roundPairings := t.Matrix[round]
 	pairingMethod := t.RoundControls[round].PairingMethod
 	// This automatic pairing could be the result of an
@@ -1571,10 +1622,9 @@ func (t *ClassicDivision) pairNewlyPairableRounds(prefixBefore int) (*pb.Divisio
 				return nil, err
 			}
 			// Pairing a lagged round is follow-on work: the result that
-			// made it pairable still stands, and the director can pair the
-			// round with Pair entire round.
-			log.Err(err).Str("tournament", t.TournamentName).Str("division", t.DivisionName).
-				Int("round", round+1).Msg("auto-pair-lagged-round")
+			// made it pairable still stands, and the round keeps the
+			// pairings it had. The failure is reported to the directors.
+			t.recordAutoPairingFailure(round, err)
 			continue
 		}
 		pmessage = combinePairingMessages(pmessage, newpmessage)
@@ -1605,7 +1655,30 @@ func (t *ClassicDivision) PairLaggedRoundAfter(round int) (*pb.DivisionPairingsR
 	if t.pairingBasisRound(next) > prefix {
 		return pmessage, nil
 	}
-	return t.PairRound(next, false)
+	// This is follow-on work for the director's pairings, so a failure is
+	// recorded for the caller to report rather than returned.
+	newpmessage, err := t.PairRound(next, false)
+	if err != nil {
+		t.recordAutoPairingFailure(next, err)
+		return pmessage, nil
+	}
+	return newpmessage, nil
+}
+
+// recordAutoPairingFailure notes that follow-on pairing failed to pair the
+// round, which keeps the pairings it had. See TakeAutoPairingFailures.
+func (t *ClassicDivision) recordAutoPairingFailure(round int, err error) {
+	log.Err(err).Str("tournament", t.TournamentName).Str("division", t.DivisionName).
+		Int("round", round+1).Msg("auto-pair-failed")
+	t.autoPairingFailures = append(t.autoPairingFailures, round)
+}
+
+// TakeAutoPairingFailures returns the rounds that follow-on pairing failed
+// to pair since the last call, and forgets them.
+func (t *ClassicDivision) TakeAutoPairingFailures() []int {
+	failures := t.autoPairingFailures
+	t.autoPairingFailures = nil
+	return failures
 }
 
 // autoStartRounds opens every round that can be opened, for AutoStart. A

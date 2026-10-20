@@ -29,6 +29,7 @@ type DivisionManager interface {
 	IsRoundReady(int) error
 	IsRoundPaired(int) bool
 	PairLaggedRoundAfter(int) (*pb.DivisionPairingsResponse, error)
+	TakeAutoPairingFailures() []int
 	IsRoundComplete(int) (bool, error)
 	IsStarted() bool
 	IsFinished() (bool, error)

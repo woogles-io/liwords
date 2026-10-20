@@ -3,6 +3,7 @@ package tournament
 import (
 	"encoding/json"
 	"os"
+	"slices"
 	"strings"
 	"testing"
 
@@ -661,4 +662,43 @@ func TestLaggedPairingFailureDoesNotRejectResult(t *testing.T) {
 	is.NoErr(submitScore(tc, 0, will, josh, 400, 300))
 	is.True(tc.IsRoundPaired(1))
 	is.True(!tc.IsRoundPaired(2))
+}
+
+// Pairing a round clears it first, so a failed pairing must put the round
+// back: a lagged round the director paired by hand keeps those pairings
+// when re-pairing it from a result fails, and nothing in the response
+// suggests otherwise.
+func TestFailedPairingKeepsRoundPairings(t *testing.T) {
+	is := is.New(t)
+
+	tc, err := compactNewClassicDivision(makeTournamentPersons(map[string]int32{will: 2000, josh: 1000}),
+		laggedRepeatLimitedSwiss(pb.PairingMethod_KING_OF_THE_HILL), false)
+	is.NoErr(err)
+	is.NoErr(tc.StartRound(true))
+	// The director pairs the lagged round 3 by hand, repeat and all.
+	_, err = tc.SetPairing(will, josh, 2, pb.TournamentGameResult_NO_RESULT)
+	is.NoErr(err)
+	is.True(tc.IsRoundPaired(2))
+	roundThree := slices.Clone(tc.Matrix[2])
+
+	// The result completing round 1 makes round 3 pairable, and the Swiss
+	// pairing fails, since it may not repeat a pairing.
+	resp, err := tc.SubmitResult(0, will, josh, 400, 300, pb.TournamentGameResult_WIN,
+		pb.TournamentGameResult_LOSS, pb.GameEndReason_STANDARD, false, 0, "")
+	is.NoErr(err)
+	is.Equal(tc.TakeAutoPairingFailures(), []int{2})
+	is.Equal(tc.Matrix[2], roundThree)
+	for _, key := range roundThree {
+		is.True(tc.PairingMap[key] != nil)
+	}
+	is.NoErr(validatePairings(tc, 2))
+	for _, pairing := range resp.DivisionPairings {
+		is.True(pairing.Round != 2)
+	}
+
+	// Asking for it directly fails the same way, and also leaves it alone.
+	_, err = tc.PairRound(2, false)
+	is.True(err != nil)
+	is.Equal(tc.Matrix[2], roundThree)
+	is.NoErr(validatePairings(tc, 2))
 }
