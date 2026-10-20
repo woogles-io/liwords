@@ -28,10 +28,12 @@ const (
 // IsLastQuarter reports whether roundPairingsRemaining rounds still to be
 // paired puts the tournament in its last quarter of rounds: the round being
 // paired, X (1-indexed), of N rounds is in the last quarter when
-// X/N >= 3/4.
+// X/N > 3/4. The comparison is strict so that when N is a multiple of 4 the
+// round ending exactly at the 3/4 mark (e.g. round 21 of 28) stays in the
+// third quarter.
 func IsLastQuarter(roundPairingsRemaining int, rounds int32) bool {
 	round := int(rounds) - roundPairingsRemaining + 1
-	return round*4 >= int(rounds)*3
+	return round*4 > int(rounds)*3
 }
 
 type PrecompData struct {

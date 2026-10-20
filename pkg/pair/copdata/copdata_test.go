@@ -333,7 +333,7 @@ func TestRunawayLeadersHalveHopefulness(t *testing.T) {
 	is.True(strings.Contains(logsb.String(), "Leader+2nd combined 1st-place% (80.2%) > 80%"))
 	is.True(strings.Contains(logsb.String(), "halving the hopeful-for-1st/2nd bar to 2% (normally 5%)"))
 	is.Equal(copdata.LowestPossibleHopeNth[0], 2)
-	// Round 6 of 7 is in the last quarter (6/7 >= 3/4), so the odd
+	// Round 6 of 7 is in the last quarter (6/7 > 3/4), so the odd
 	// hopeful-to-cash parity fix also extends the halved window (ranks 0-6,
 	// 7 players) by one rank.
 	is.True(strings.Contains(logsb.String(), "Odd number of non-Gibsonized hopeful-to-cash players (7)"))
@@ -446,5 +446,20 @@ func TestHopefulToCashExtensionRankIdx_GibsonizedPlayersExcluded(t *testing.T) {
 	}
 	if extendedRankIdx != 6 {
 		t.Fatalf("got %d, want 6 (a Gibsonized player inside the window should make an otherwise-even window odd)", extendedRankIdx)
+	}
+}
+
+// TestIsLastQuarter checks the first last-quarter round: round X of N is in
+// the last quarter when X/N > 3/4, so a round ending exactly at the 3/4 mark
+// (round 21 of 28) is still in the third quarter.
+func TestIsLastQuarter(t *testing.T) {
+	is := is.New(t)
+
+	firstLastQuarterRound := map[int32]int{28: 22, 15: 12, 10: 8, 8: 7, 7: 6, 4: 4}
+	for rounds, first := range firstLastQuarterRound {
+		for round := 1; round <= int(rounds); round++ {
+			roundPairingsRemaining := int(rounds) - round + 1
+			is.Equal(IsLastQuarter(roundPairingsRemaining, rounds), round >= first)
+		}
 	}
 }
