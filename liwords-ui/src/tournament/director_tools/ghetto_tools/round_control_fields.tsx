@@ -239,10 +239,7 @@ export const SingleRoundControlFields = (
       <Form.Item
         {...formItemLayout}
         label={
-          <HelptipLabel
-            labelText="Pair from results through"
-            help={pairingLagHelptip}
-          />
+          <HelptipLabel labelText="Paired from" help={pairingLagHelptip} />
         }
       >
         <Select
