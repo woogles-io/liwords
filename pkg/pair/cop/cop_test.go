@@ -3032,3 +3032,87 @@ func TestForcedFirstVsSecondTakesPrecedenceOverGibsonBye(t *testing.T) {
 	is.Equal(resp.Pairings[0], int32(2))
 	is.Equal(resp.Pairings[1], int32(1))
 }
+
+// TestPCWeightMiddleQ4TierFavorsClosePlayers checks that in the fourth
+// quarter, hopeful cashers who can't win (ranks 4-7 here, below the hopeful
+// winners in ranks 0-3) are pulled toward the players closest to them,
+// while hopeful winners are still pulled toward the lowest contender for
+// their place.
+func TestPCWeightMiddleQ4TierFavorsClosePlayers(t *testing.T) {
+	is := is.New(t)
+
+	var pcPolicy weightPolicy
+	for _, wp := range weightPolicies {
+		if wp.name == "PC" {
+			pcPolicy = wp
+		}
+	}
+	is.True(pcPolicy.handler != nil)
+
+	pargs := q4TierTestArgs(10, 3, 7)
+	pargs.q4WinnersTop, pargs.q4TiersActive, _ = computeQ4WinnersTop(pargs)
+	is.True(pargs.q4TiersActive)
+
+	// Middle tier: the closer the opponent, the lower the weight.
+	is.Equal(pcPolicy.handler(pargs, 4, 5), int64(2))
+	is.Equal(pcPolicy.handler(pargs, 4, 6), int64(16))
+	is.Equal(pcPolicy.handler(pargs, 4, 7), int64(54))
+	// Hopeful winners: still the inverse distance to the lowest contender for
+	// their place (rank 9, since q4TierTestArgs keeps every window wide).
+	is.Equal(pcPolicy.handler(pargs, 1, 2), int64(686))
+	is.Equal(pcPolicy.handler(pargs, 1, 3), int64(432))
+
+	// Without the tier split, the middle-tier players use the inverse
+	// distance too, favoring the farthest player instead.
+	pargs.q4TiersActive = false
+	is.Equal(pcPolicy.handler(pargs, 4, 5), int64(128))
+	is.Equal(pcPolicy.handler(pargs, 4, 7), int64(16))
+}
+
+// TestQ4MiddleTierPlaysClosePlayers checks that hopeful cashers who can't
+// win play the players next to them in their tier. Round 10 of 12 with 16
+// players: P0, P2, P4 and P6 are 8-1 (hopeful winners) and P8, P10, P12 and
+// P14 are 6-3, in that order (hopeful to cash but not to win). Before the
+// middle tier favored close players, P8 played P12 and P10 played P14.
+func TestQ4MiddleTierPlaysClosePlayers(t *testing.T) {
+	is := is.New(t)
+
+	names := make([]string, 16)
+	for i := range names {
+		names[i] = fmt.Sprintf("P%d", i)
+	}
+	req := &pb.PairRequest{
+		PairMethod:                 pb.PairMethod_COP,
+		PlayerNames:                names,
+		PlayerClasses:              make([]int32, 16),
+		GibsonSpread:               200,
+		ControlLossThreshold:       0.25,
+		HopefulnessThreshold:       0.02,
+		AllPlayers:                 16,
+		ValidPlayers:               16,
+		Rounds:                     12,
+		PlacePrizes:                4,
+		DivisionSims:               5000,
+		ControlLossSims:            1000,
+		ControlLossActivationRound: 12,
+		Seed:                       1,
+	}
+	// AddNDummyRounds pairs P0vP1, P2vP3, ..., P14vP15 every round. The even
+	// player of each pair wins rounds 1-8 (P0-P6) or rounds 1-6 (P8-P14),
+	// by a margin that shrinks down the standings.
+	pairtestutils.AddNDummyRounds(req, 9)
+	for range 6 {
+		pairtestutils.AddRoundResultsStr(req, "460 400 455 400 450 400 445 400 440 400 435 400 430 400 425 400")
+	}
+	for range 2 {
+		pairtestutils.AddRoundResultsStr(req, "460 400 455 400 450 400 445 400 400 440 400 435 400 430 400 425")
+	}
+	pairtestutils.AddRoundResultsStr(req, "400 460 400 455 400 450 400 445 400 440 400 435 400 430 400 425")
+
+	resp := COPPair(req)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	checkSymmetric(t, resp.Pairings)
+	is.True(strings.Contains(resp.Log, "Q4 Tiers: hopeful winners ranks 1-4, other hopeful cashers ranks 5-8"))
+	is.Equal(resp.Pairings[8], int32(10))
+	is.Equal(resp.Pairings[12], int32(14))
+}

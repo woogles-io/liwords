@@ -988,6 +988,12 @@ var weightPolicies = []weightPolicy{
 				if !isLastQuarter(pargs) {
 					return 0
 				}
+				// Hopeful cashers who can't win (CC's middle fourth-quarter
+				// tier) favor the players closest to them rather than the
+				// lowest contender for their place.
+				if pargs.q4TiersActive && getQ4Tier(pargs, ri, hopeToCashBoundary(pargs)) == q4TierCashers {
+					return int64(math.Pow(float64(rj-ri), 3) * 2)
+				}
 				// Calculate the inverse distance penalty
 				casherDiff := lowestContender - rj
 				if casherDiff < 0 {
