@@ -918,7 +918,10 @@ func TestTopDownByeTakesPrecedenceOverGibsonBye(t *testing.T) {
 	// 3 players. P0 gets a big enough lead (and a prior bye in round 1) to
 	// clinch 1st with 1 round left. P2 gets byes in rounds 2 and 3 (allowed
 	// to repeat since these are historical, already-played rounds), so P1 is
-	// the only player with zero prior byes going into the final round.
+	// the only player with zero prior byes going into the final round. P0
+	// beats P1 narrowly enough that P1 (3rd) can still catch P2 (2nd), so
+	// 1st and 2nd aren't forced to play each other (FS) - see
+	// TestForcedFirstVsSecondTakesPrecedenceOverGibsonBye for that case.
 	buildReq := func() *pb.PairRequest {
 		req := &pb.PairRequest{
 			PairMethod:                 pb.PairMethod_COP,
@@ -940,13 +943,14 @@ func TestTopDownByeTakesPrecedenceOverGibsonBye(t *testing.T) {
 		// Round 1: P0 bye. P1 beats P2 by 100.
 		pairtestutils.AddRoundPairingsStr(req, "0 2 1")
 		pairtestutils.AddRoundResultsStr(req, "50 300 200")
-		// Round 2: P2 bye. P0 crushes P1.
+		// Round 2: P2 bye. P0 beats P1 by 100.
 		pairtestutils.AddRoundPairingsStr(req, "1 0 2")
-		pairtestutils.AddRoundResultsStr(req, "800 100 50")
-		// Round 3: P2 bye again. P0 crushes P1 again. Going into round 4, P0
-		// has 1 prior bye, P1 has 0, and P0 is clinched for 1st.
+		pairtestutils.AddRoundResultsStr(req, "400 300 50")
+		// Round 3: P2 bye again. P0 beats P1 by 100 again. Going into round
+		// 4, P0 (3-0, +250) has 1 prior bye, P1 (1-2, -100) has 0, P2 (2-1,
+		// 0) has 2, and P0 is clinched for 1st.
 		pairtestutils.AddRoundPairingsStr(req, "1 0 2")
-		pairtestutils.AddRoundResultsStr(req, "800 100 50")
+		pairtestutils.AddRoundResultsStr(req, "400 300 50")
 		return req
 	}
 
@@ -2940,4 +2944,91 @@ func TestFactor3Conflict(t *testing.T) {
 	pargs.factor3ForcedPairings = nil
 	pargs.forcedContenderByePlayer = 5
 	is.Equal(factor3Conflict(pargs), "")
+}
+
+// TestForcedFirstVsSecondWhenBothGibsonized checks that when only 1st and
+// 2nd can finish 1st or 2nd, they play each other even when both are
+// Gibsonized by spread, since 2nd is still no more games behind 1st than
+// there are rounds left. Final round of 7: P0 is 6-0 (+900) and P2 is 5-1
+// (+200), one game behind but too far back on spread to catch P0; everyone
+// else is 3-3 or worse, two games behind P2. Before FS, the Gibsonized
+// leader P0 was barred from P2 and played P7 instead.
+func TestForcedFirstVsSecondWhenBothGibsonized(t *testing.T) {
+	is := is.New(t)
+
+	req := &pb.PairRequest{
+		PairMethod:                 pb.PairMethod_COP,
+		PlayerNames:                []string{"P0", "P1", "P2", "P3", "P4", "P5", "P6", "P7"},
+		PlayerClasses:              make([]int32, 8),
+		GibsonSpread:               200,
+		ControlLossThreshold:       0.25,
+		HopefulnessThreshold:       0.02,
+		AllPlayers:                 8,
+		ValidPlayers:               8,
+		Rounds:                     7,
+		PlacePrizes:                2,
+		DivisionSims:               5000,
+		ControlLossSims:            1000,
+		ControlLossActivationRound: 7,
+		Seed:                       1,
+	}
+	// AddNDummyRounds pairs P0vP1, P2vP3, P4vP5, P6vP7 every round.
+	pairtestutils.AddNDummyRounds(req, 6)
+	for range 3 {
+		pairtestutils.AddRoundResultsStr(req, "550 400 450 400 450 400 450 400")
+	}
+	for range 2 {
+		pairtestutils.AddRoundResultsStr(req, "550 400 450 400 400 450 400 450")
+	}
+	pairtestutils.AddRoundResultsStr(req, "550 400 400 450 400 450 400 450")
+
+	resp := COPPair(req)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	checkSymmetric(t, resp.Pairings)
+	is.True(strings.Contains(resp.Log, "Forced 1st vs 2nd: only P0 and P2 can finish 1st or 2nd"))
+	is.Equal(resp.Pairings[0], int32(2))
+}
+
+// TestForcedFirstVsSecondTakesPrecedenceOverGibsonBye checks that when 1st
+// and 2nd are forced to play each other, the Gibson bye doesn't go to
+// either of them. Final round of 4 with 3 players: P0 3-0 is clinched for
+// 1st, P2 2-1 is one game behind, and P1 1-2 is too far back on spread to
+// catch P2. Without FS, GB would give the Gibsonized leader P0 the bye (see
+// TestTopDownByeTakesPrecedenceOverGibsonBye); instead P0 plays P2 and P1
+// takes the bye.
+func TestForcedFirstVsSecondTakesPrecedenceOverGibsonBye(t *testing.T) {
+	is := is.New(t)
+
+	req := &pb.PairRequest{
+		PairMethod:                 pb.PairMethod_COP,
+		PlayerNames:                []string{"P0", "P1", "P2"},
+		PlayerClasses:              []int32{0, 0, 0},
+		GibsonSpread:               50,
+		ControlLossThreshold:       0.25,
+		HopefulnessThreshold:       0.02,
+		AllPlayers:                 3,
+		ValidPlayers:               3,
+		Rounds:                     4,
+		PlacePrizes:                1,
+		DivisionSims:               10000,
+		ControlLossSims:            2000,
+		ControlLossActivationRound: 10,
+		AllowRepeatByes:            false,
+		Seed:                       1,
+	}
+	// Round 1: P0 bye. P1 beats P2 by 100.
+	pairtestutils.AddRoundPairingsStr(req, "0 2 1")
+	pairtestutils.AddRoundResultsStr(req, "50 300 200")
+	// Rounds 2 and 3: P2 byes, and P0 crushes P1.
+	for range 2 {
+		pairtestutils.AddRoundPairingsStr(req, "1 0 2")
+		pairtestutils.AddRoundResultsStr(req, "800 100 50")
+	}
+
+	resp := COPPair(req)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	checkSymmetric(t, resp.Pairings)
+	is.True(strings.Contains(resp.Log, "Forced 1st vs 2nd: only P0 and P2 can finish 1st or 2nd"))
+	is.Equal(resp.Pairings[0], int32(2))
+	is.Equal(resp.Pairings[1], int32(1))
 }

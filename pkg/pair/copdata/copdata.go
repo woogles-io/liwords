@@ -386,12 +386,18 @@ func needsAddedBye(req *pb.PairRequest, numPlayers int) bool {
 
 // ComputeGibsonGetsBye reports whether a Gibsonized player in the bottom
 // Gibson group (group 0) is available to take this round's added bye. It
-// is always false when the round doesn't need an added bye.
-func ComputeGibsonGetsBye(addBye bool, numPlayers int, gibsonizedPlayers []bool, gibsonGroups []int) bool {
+// is always false when the round doesn't need an added bye. When 1st and
+// 2nd are forced to play each other (see ComputeForcedFirstVsSecond),
+// neither is available for the bye.
+func ComputeGibsonGetsBye(addBye bool, numPlayers int, gibsonizedPlayers []bool, gibsonGroups []int, forcedFirstVsSecond bool) bool {
 	if !addBye {
 		return false
 	}
-	for rankIdx := 0; rankIdx < numPlayers; rankIdx++ {
+	startRankIdx := 0
+	if forcedFirstVsSecond {
+		startRankIdx = 2
+	}
+	for rankIdx := startRankIdx; rankIdx < numPlayers; rankIdx++ {
 		if gibsonizedPlayers[rankIdx] && gibsonGroups[rankIdx] == 0 {
 			return true
 		}
@@ -413,7 +419,9 @@ func ComputeGibsonGetsBye(addBye bool, numPlayers int, gibsonizedPlayers []bool,
 // already spoken for by a top-down bye or a Gibson bye.
 //
 // lowestPossibleHopeCasher is the hopeful-to-cash contender boundary
-// (LowestPossibleHopeNth[PlacePrizes-1]) before any bye adjustment.
+// (LowestPossibleHopeNth[PlacePrizes-1]) before any bye adjustment. When 1st
+// and 2nd are forced to play each other (forcedFirstVsSecond, see
+// ComputeForcedFirstVsSecond), neither can take the bye, so they're left out.
 //
 // This backs cop.go's computeForcedContenderBye (the "CB" constraint
 // policy, which actually forces the bye pairing), but is also called by
@@ -421,18 +429,22 @@ func ComputeGibsonGetsBye(addBye bool, numPlayers int, gibsonizedPlayers []bool,
 // being flagged as the destiny child, for the same reason as the top-down
 // bye recipient - see ComputeTopDownByeRankIdx.
 func ComputeForcedContenderByeRankIdx(req *pb.PairRequest, standings *pkgstnd.Standings, pairingCounts map[string]int,
-	lowestPossibleHopeCasher int, gibsonizedPlayers []bool, gibsonGroups []int, topDownByeApplies bool) int {
+	lowestPossibleHopeCasher int, gibsonizedPlayers []bool, gibsonGroups []int, topDownByeApplies bool, forcedFirstVsSecond bool) int {
 	numPlayers := standings.GetNumPlayers()
 	addBye := needsAddedBye(req, numPlayers)
 	if req.AllowRepeatByes || !addBye || topDownByeApplies ||
-		ComputeGibsonGetsBye(addBye, numPlayers, gibsonizedPlayers, gibsonGroups) {
+		ComputeGibsonGetsBye(addBye, numPlayers, gibsonizedPlayers, gibsonGroups, forcedFirstVsSecond) {
 		return -1
+	}
+	lowestScannedRankIdx := 0
+	if forcedFirstVsSecond {
+		lowestScannedRankIdx = 2
 	}
 	byeRankIdx := -1
 	leastByes := int(req.Rounds + 1)
 	// Scan bottom-up - the mirror of ComputeTopDownByeRankIdx's top-down
 	// scan, so ties favor the lower-ranked (bottom) contender.
-	for rankIdx := numPlayers - 1; rankIdx >= 0; rankIdx-- {
+	for rankIdx := numPlayers - 1; rankIdx >= lowestScannedRankIdx; rankIdx-- {
 		pi := standings.GetPlayerIndex(rankIdx)
 		numByes := pairingCounts[GetPairingKey(pi, pkgstnd.ByePlayerIndex)]
 		isContender := rankIdx <= lowestPossibleHopeCasher && !gibsonizedPlayers[rankIdx]
@@ -452,6 +464,42 @@ func ComputeForcedContenderByeRankIdx(req *pb.PairRequest, standings *pkgstnd.St
 		return -1
 	}
 	return byeRankIdx
+}
+
+// ComputeForcedFirstVsSecond reports whether 1st and 2nd must play each other
+// this round (the "FS" constraint policy in cop.go). That's the case when only
+// they can still finish 1st or 2nd - 3rd can't catch 2nd, by the same test
+// Gibsonization uses - and 2nd can still catch 1st on wins alone: with N
+// rounds remaining, 2nd is at most N games behind. 2nd then has nothing left
+// to play for but 1st, so they play 1st even when catching them would take
+// an unlikely spread swing (e.g. both are Gibsonized by spread). If 2nd is
+// more than N games behind, they're Gibsonized by games, and this doesn't
+// apply.
+//
+// Prepaired pairings and top-down byes take precedence: this doesn't apply
+// when 1st or 2nd is prepaired this round or receiving the top-down bye.
+func ComputeForcedFirstVsSecond(req *pb.PairRequest, standings *pkgstnd.Standings, pairingCounts map[string]int) bool {
+	numPlayers := standings.GetNumPlayers()
+	roundsRemaining := pkgstnd.GetRoundsRemaining(req)
+	if numPlayers < 2 || roundsRemaining < 1 {
+		return false
+	}
+	if numPlayers >= 3 && standings.CanCatchForGibson(req, 1, 2) {
+		return false
+	}
+	if standings.GetPlayerWinsIntTimesTwo(0)-standings.GetPlayerWinsIntTimesTwo(1) > 2*roundsRemaining {
+		return false
+	}
+	if topDownByeRankIdx := ComputeTopDownByeRankIdx(req, standings, pairingCounts); topDownByeRankIdx == 0 || topDownByeRankIdx == 1 {
+		return false
+	}
+	prepairedPlayerIndexes, _, _ := ExtractPrepairedPlayers(req)
+	for rankIdx := 0; rankIdx <= 1; rankIdx++ {
+		if _, ok := prepairedPlayerIndexes[standings.GetPlayerIndex(rankIdx)]; ok {
+			return false
+		}
+	}
+	return true
 }
 
 func GetPrecompData(req *pb.PairRequest, copRand *rand.Rand, logsb *strings.Builder) (*PrecompData, pb.PairError) {
@@ -571,15 +619,24 @@ completePairingsLoop:
 		// Whoever is definitely receiving this round's bye - via a top-down
 		// bye or a forced contender bye (mutually exclusive: the latter
 		// defers to the former) - isn't playing anyone this round.
+		forcedFirstVsSecond := ComputeForcedFirstVsSecond(req, standings, pairingCounts)
 		byeRankIdx := ComputeTopDownByeRankIdx(req, standings, pairingCounts)
 		byeKind := "top-down byes"
 		if byeRankIdx < 0 {
 			byeRankIdx = ComputeForcedContenderByeRankIdx(req, standings, pairingCounts,
 				lowestPossibleHopeNth[int(req.PlacePrizes)-1],
-				improvedFactorSimResults.GibsonizedPlayers, improvedFactorSimResults.GibsonGroups, false)
+				improvedFactorSimResults.GibsonizedPlayers, improvedFactorSimResults.GibsonGroups, false, forcedFirstVsSecond)
 			byeKind = "the forced contender bye"
 		}
-		if byeRankIdx == 0 {
+		if forcedFirstVsSecond {
+			// 1st's opponent this round is already decided: 2nd (see
+			// ComputeForcedFirstVsSecond), so there's no destiny child to
+			// force them onto.
+			logsb.WriteString(fmt.Sprintf(
+				"Control loss skipped: only rank 1 (%s) and rank 2 (%s) can finish 1st or 2nd, so they play each other\n",
+				req.PlayerNames[standings.GetPlayerIndex(0)], req.PlayerNames[standings.GetPlayerIndex(1)],
+			))
+		} else if byeRankIdx == 0 {
 			// The leader themselves is receiving this round's bye, so they
 			// aren't playing anyone at all this round - control loss's
 			// entire premise (force the leader to play a specific opponent)

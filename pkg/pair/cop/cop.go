@@ -103,6 +103,12 @@ type policyArgs struct {
 	// When false, CC groups all hopeful cashers together.
 	q4TiersActive bool
 	q4WinnersTop  int
+	// forcedFirstVsSecond reports whether 1st and 2nd must play each other
+	// this round (see copdatapkg.ComputeForcedFirstVsSecond and the "FS"
+	// constraint policy). When it's set, the other policies leave 1st and
+	// 2nd alone: neither can take the bye, be KOTH-paired with anyone else,
+	// or be kept apart by their Gibson groups or the odd-group leader bar.
+	forcedFirstVsSecond bool
 }
 
 // computeForcedLeaderVsThird handles rank 2 receiving this round's bye while
@@ -188,6 +194,10 @@ func computeDisallowedLeaderOpponent(pargs *policyArgs) int {
 	// Factor 3 expansion already constrains the top-6 pairings (including the
 	// leader's); applying this rule on top of it would overconstrain the matching.
 	if len(pargs.factor3ForcedPairings) > 0 {
+		return -1
+	}
+	// The leader's opponent is already decided: 2nd (see the FS policy).
+	if pargs.forcedFirstVsSecond {
 		return -1
 	}
 	// computeForcedLeaderVsThird handles the narrower rank-2-bye case of
@@ -429,7 +439,8 @@ func computeTopDownByePlayer(pargs *policyArgs) int {
 // agree on who gets the bye, so the computation lives in one place.
 func computeForcedContenderBye(pargs *policyArgs) int {
 	byeRankIdx := copdatapkg.ComputeForcedContenderByeRankIdx(pargs.req, pargs.copdata.Standings, pargs.copdata.PairingCounts,
-		pargs.lowestPossibleHopeCasher, pargs.copdata.GibsonizedPlayers, pargs.copdata.GibsonGroups, pargs.topDownByePlayer >= 0)
+		pargs.lowestPossibleHopeCasher, pargs.copdata.GibsonizedPlayers, pargs.copdata.GibsonGroups, pargs.topDownByePlayer >= 0,
+		pargs.forcedFirstVsSecond)
 	if byeRankIdx < 0 {
 		return -1
 	}
@@ -588,9 +599,14 @@ var constraintPolicies = []constraintPolicy{
 			// against rank 12 and leaving rank 9 unpaired by KOTH altogether,
 			// so they fall through to the general weighted matching and can
 			// end up paired with someone far outside contention.
+			// 1st and 2nd are skipped the same way when FS already forces them
+			// to play each other.
 			rankIdxs := make([]int, 0, numPlayers)
 			for ri := 0; ri < numPlayers; ri++ {
 				if pargs.topDownByePlayer >= 0 && pargs.playerNodes[ri] == pargs.topDownByePlayer {
+					continue
+				}
+				if pargs.forcedFirstVsSecond && ri <= 1 {
 					continue
 				}
 				rankIdxs = append(rankIdxs, ri)
@@ -660,12 +676,12 @@ var constraintPolicies = []constraintPolicy{
 					// around them, forcing the next two available class contenders
 					// together instead of dropping the forced pairing altogether.
 					for ri < numPlayers && (int(pargs.req.PlayerClasses[pargs.playerNodes[ri]]) != classIdx ||
-						pargs.playerNodes[ri] == pargs.topDownByePlayer) {
+						pargs.playerNodes[ri] == pargs.topDownByePlayer || (pargs.forcedFirstVsSecond && ri <= 1)) {
 						ri++
 					}
 					rj := ri + 1
 					for rj < numPlayers && (int(pargs.req.PlayerClasses[pargs.playerNodes[rj]]) != classIdx ||
-						pargs.playerNodes[rj] == pargs.topDownByePlayer) {
+						pargs.playerNodes[rj] == pargs.topDownByePlayer || (pargs.forcedFirstVsSecond && rj <= 1)) {
 						rj++
 					}
 					if rj >= numPlayers {
@@ -739,6 +755,10 @@ var constraintPolicies = []constraintPolicy{
 			disallowedPairings := [][2]int{}
 			for pri := 0; pri < numPlayers; pri++ {
 				for prj := pri + 1; prj < numPlayers; prj++ {
+					// FS forcing 1st vs 2nd takes precedence over their Gibson groups.
+					if pargs.forcedFirstVsSecond && pri == 0 && prj == 1 {
+						continue
+					}
 					if pargs.copdata.GibsonGroups[pri] != pargs.copdata.GibsonGroups[prj] {
 						disallowedPairings = append(disallowedPairings, [2]int{pargs.playerNodes[pri], pargs.playerNodes[prj]})
 					}
@@ -792,6 +812,18 @@ var constraintPolicies = []constraintPolicy{
 				return [][2]int{}, [][2]int{}
 			}
 			return [][2]int{{pargs.forcedContenderByePlayer, pkgstnd.ByePlayerIndex}}, [][2]int{}
+		},
+	},
+	{
+		// 1st vs 2nd: when only 1st and 2nd can finish 1st or 2nd and 2nd can
+		// still catch 1st on wins, they play each other - see
+		// copdatapkg.ComputeForcedFirstVsSecond.
+		name: "FS",
+		handler: func(pargs *policyArgs) ([][2]int, [][2]int) {
+			if !pargs.forcedFirstVsSecond {
+				return [][2]int{}, [][2]int{}
+			}
+			return [][2]int{{pargs.playerNodes[0], pargs.playerNodes[1]}}, [][2]int{}
 		},
 	},
 	{
@@ -1868,7 +1900,8 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 
 	lowestPossibleHopeCasher := copdata.LowestPossibleHopeNth[int(req.PlacePrizes)-1]
 
-	gibsonGetsBye := copdatapkg.ComputeGibsonGetsBye(addBye, numPlayers, copdata.GibsonizedPlayers, copdata.GibsonGroups)
+	forcedFirstVsSecond := copdatapkg.ComputeForcedFirstVsSecond(req, copdata.Standings, copdata.PairingCounts)
+	gibsonGetsBye := copdatapkg.ComputeGibsonGetsBye(addBye, numPlayers, copdata.GibsonizedPlayers, copdata.GibsonGroups, forcedFirstVsSecond)
 
 	pargs := &policyArgs{
 		req:                      req,
@@ -1882,6 +1915,7 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 		prepairedRoundIdx:        prepairedRoundIdx,
 		prepairedPlayerIndexes:   prepairedPlayerIndexes,
 		factor3ForcedPairings:    factor3ForcedPairings,
+		forcedFirstVsSecond:      forcedFirstVsSecond,
 	}
 	pargs.topDownByePlayer = computeTopDownByePlayer(pargs)
 	pargs.forcedContenderByePlayer = computeForcedContenderBye(pargs)
@@ -1928,6 +1962,12 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 				"and Factor 3 did not fire - all 4 are barred from playing outside this group this round\n",
 			req.PlayerNames[playerNodes[0]], req.PlayerNames[playerNodes[1]],
 			req.PlayerNames[playerNodes[2]], req.PlayerNames[playerNodes[3]]))
+	}
+	if pargs.forcedFirstVsSecond {
+		logsb.WriteString(fmt.Sprintf(
+			"Forced 1st vs 2nd: only %s and %s can finish 1st or 2nd, and %s can still catch %s on wins, so they play each other\n",
+			req.PlayerNames[playerNodes[0]], req.PlayerNames[playerNodes[1]],
+			req.PlayerNames[playerNodes[1]], req.PlayerNames[playerNodes[0]]))
 	}
 	if pargs.q4TiersActive {
 		hopeCasherBoundary := hopeToCashBoundary(pargs)

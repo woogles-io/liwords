@@ -2,6 +2,7 @@ package copdata
 
 import (
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -462,4 +463,86 @@ func TestIsLastQuarter(t *testing.T) {
 			is.Equal(IsLastQuarter(roundPairingsRemaining, rounds), round >= first)
 		}
 	}
+}
+
+// firstVsSecondReq builds a request where AddNDummyRounds pairs P0vP1,
+// P2vP3, ... every round, with roundResults as each round's results.
+func firstVsSecondReq(numPlayers int, rounds int32, roundResults []string) *pb.PairRequest {
+	names := make([]string, numPlayers)
+	for i := range names {
+		names[i] = "P" + strconv.Itoa(i)
+	}
+	req := &pb.PairRequest{
+		PairMethod:                 pb.PairMethod_COP,
+		PlayerNames:                names,
+		PlayerClasses:              make([]int32, numPlayers),
+		GibsonSpread:               200,
+		ControlLossThreshold:       0.25,
+		HopefulnessThreshold:       0.02,
+		AllPlayers:                 int32(numPlayers),
+		ValidPlayers:               int32(numPlayers),
+		Rounds:                     rounds,
+		PlacePrizes:                2,
+		DivisionSims:               1000,
+		ControlLossSims:            1000,
+		ControlLossActivationRound: rounds,
+	}
+	pairtestutils.AddNDummyRounds(req, len(roundResults))
+	for _, results := range roundResults {
+		pairtestutils.AddRoundResultsStr(req, results)
+	}
+	return req
+}
+
+// TestComputeForcedFirstVsSecond checks when 1st and 2nd are forced to play
+// each other: only they can finish 1st or 2nd, and 2nd is at most as many
+// games behind 1st as there are rounds left.
+func TestComputeForcedFirstVsSecond(t *testing.T) {
+	is := is.New(t)
+
+	forced := func(req *pb.PairRequest) bool {
+		t.Helper()
+		var logsb strings.Builder
+		pd, pairErr := GetPrecompData(req, rand.New(rand.NewSource(1)), &logsb)
+		is.Equal(pairErr, pb.PairError_SUCCESS)
+		return ComputeForcedFirstVsSecond(req, pd.Standings, pd.PairingCounts)
+	}
+
+	// After 6 rounds: P0 6-0, P2 5-1 (+1490), P3 1-5, P1 0-6.
+	fiveOne := []string{
+		"450 400 700 400", "450 400 700 400", "450 400 700 400", "450 400 700 400", "450 400 700 400",
+		"450 400 400 410",
+	}
+	// After 6 rounds: P0 6-0, P2 4-2 (+1180), P3 2-4 (-1180), P1 0-6.
+	fourTwo := []string{
+		"450 400 700 400", "450 400 700 400", "450 400 700 400", "450 400 700 400",
+		"450 400 400 410", "450 400 400 410",
+	}
+
+	// 1 round left: P2 is 1 game behind P0 and P3 can't catch P2, so P0 and
+	// P2 play each other.
+	is.True(forced(firstVsSecondReq(4, 7, fiveOne)))
+	// 2 rounds left: P2 is 2 games behind P0, and P3, also 2 games behind P2,
+	// can't catch them on spread.
+	is.True(forced(firstVsSecondReq(4, 8, fourTwo)))
+	// 1 round left: P2 is 2 games behind P0 - Gibsonized by games.
+	is.True(!forced(firstVsSecondReq(4, 7, fourTwo)))
+	// 4 rounds left: P3 can still catch P2.
+	is.True(!forced(firstVsSecondReq(4, 10, fourTwo)))
+
+	// Top-down byes take precedence: with P4 having taken every bye so far,
+	// P0 (rank 1) receives this round's top-down bye.
+	withBye := make([]string, len(fiveOne))
+	for i, results := range fiveOne {
+		withBye[i] = results + " -50"
+	}
+	is.True(forced(firstVsSecondReq(5, 7, withBye)))
+	req := firstVsSecondReq(5, 7, withBye)
+	req.TopDownByes = true
+	is.True(!forced(req))
+
+	// Prepaired pairings take precedence too: P0 is prepaired against P3.
+	req = firstVsSecondReq(4, 7, fiveOne)
+	pairtestutils.AddRoundPairings(req, []int32{3, -1, -1, 0})
+	is.True(!forced(req))
 }

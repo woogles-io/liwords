@@ -214,6 +214,14 @@ func (standings *Standings) CanCatch(roundsRemaining int, cumeGibsonSpread int, 
 	return (piSpread - pjSpread) <= uint64(cumeGibsonSpread)
 }
 
+// CanCatchForGibson reports whether the player at rank j can still catch the
+// player at rank i, using the same test (and cumulative Gibson spread) that
+// GetGibsonizedPlayers uses. Assumes the standings are already sorted and
+// i < j.
+func (standings *Standings) CanCatchForGibson(req *pb.PairRequest, i int, j int) bool {
+	return standings.CanCatch(GetRoundsRemaining(req), getCumeGibsonSpread(req), i, j)
+}
+
 // Assumes the standings are already sorted
 func (standings *Standings) GetGibsonizedPlayers(req *pb.PairRequest) []bool {
 	numPlayers := len(standings.records)
