@@ -136,7 +136,7 @@ func performEndgameDuties(ctx context.Context, g *entity.Game,
 	}
 	if cfg, cfgErr := config.Ctx(ctx); cfgErr == nil && cfg.DualWriteTurns {
 		if penaltyEvts := g.History().Events[evtIdxBeforePenalties:]; len(penaltyEvts) > 0 {
-			if dwtErr := stores.GameStore.AppendTurns(ctx, g.GameID(), evtIdxBeforePenalties, penaltyEvts); dwtErr != nil {
+			if dwtErr := stores.GameStore.StageTurns(g, evtIdxBeforePenalties, penaltyEvts); dwtErr != nil {
 				log.Err(dwtErr).Str("gameID", g.GameID()).Msg("dual-write-turns-error-penalty")
 			}
 		}
@@ -169,7 +169,7 @@ func performEndgameDuties(ctx context.Context, g *entity.Game,
 	}
 	if cfg, cfgErr := config.Ctx(ctx); cfgErr == nil && cfg.DualWriteTurns {
 		if finalScoreEvts := g.History().Events[evtIdxBeforeFinalScores:]; len(finalScoreEvts) > 0 {
-			if dwtErr := stores.GameStore.AppendTurns(ctx, g.GameID(), evtIdxBeforeFinalScores, finalScoreEvts); dwtErr != nil {
+			if dwtErr := stores.GameStore.StageTurns(g, evtIdxBeforeFinalScores, finalScoreEvts); dwtErr != nil {
 				log.Err(dwtErr).Str("gameID", g.GameID()).Msg("dual-write-turns-error-final-scores")
 			}
 		}

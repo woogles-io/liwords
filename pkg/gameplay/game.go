@@ -460,7 +460,7 @@ func handleChallenge(ctx context.Context, entGame *entity.Game, stores *stores.S
 		entGame.SendChange(evt)
 	}
 	if cfg, cfgErr := config.Ctx(ctx); cfgErr == nil && cfg.DualWriteTurns {
-		if dwtErr := stores.GameStore.AppendTurns(ctx, entGame.GameID(), numEvts, newEvts[numEvts:]); dwtErr != nil {
+		if dwtErr := stores.GameStore.StageTurns(entGame, numEvts, newEvts[numEvts:]); dwtErr != nil {
 			log.Err(dwtErr).Str("gameID", entGame.GameID()).Msg("dual-write-turns-error-challenge")
 		}
 	}
@@ -556,13 +556,8 @@ func PlayMove(ctx context.Context,
 		log.Debug().Msg("more than one turn appended")
 	}
 	if cfg, cfgErr := config.Ctx(ctx); cfgErr == nil && cfg.DualWriteTurns {
-		if dwtErr := stores.GameStore.AppendTurns(ctx, entGame.GameID(), oldTurnLength, turns); dwtErr != nil {
+		if dwtErr := stores.GameStore.StageTurns(entGame, oldTurnLength, turns); dwtErr != nil {
 			log.Err(dwtErr).Str("gameID", entGame.GameID()).Msg("dual-write-turns-error")
-		} else if entGame.Game.Playing() != macondopb.PlayState_GAME_OVER {
-			// Skip shadow compare on game-over: END_RACK_POINTS events are written
-			// to game_turns by performEndgameDuties below, so game_turns is
-			// incomplete here. ArchiveAndCleanup does a full proto.Equal check instead.
-			stores.GameStore.SpawnShadowCompare(ctx, entGame)
 		}
 	}
 	// Create a set of ServerGameplayEvents to send back.

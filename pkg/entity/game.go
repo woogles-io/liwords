@@ -262,6 +262,69 @@ type Game struct {
 	SeasonID                 *uuid.UUID
 	LeagueDivisionID         *uuid.UUID
 	LeagueStandingsProcessed bool // Set to true after league standings have been updated for this game
+
+	// pendingTurns holds the game_turns rows for moves played into this game
+	// but not yet written. See StageTurns.
+	//
+	// Concurrency: exactly like every other mutable field here -- Timers,
+	// GameEndReason, MetaEvents -- callers hold the Game's write lock while the
+	// move path runs (HandleEvent takes it and defers Unlock across both the
+	// move and the save). It deliberately does NOT get a mutex of its own. The
+	// Game's own RWMutex cannot be reused, because it is already held and is
+	// not reentrant, and adding a second lock for one field would give the
+	// false impression that this field is guarded when its neighbours are not.
+	//
+	// The real fix is upstream: this mutex exists only because the LRU cache
+	// shares one *Game between goroutines. When the cache goes, each request
+	// loads its own game and there is nothing to guard. A pg advisory lock does
+	// not help here and never could -- it serializes writers across app
+	// servers, which is a different problem from two goroutines writing the
+	// same Go struct.
+	pendingTurns []PendingTurn
+}
+
+// PendingTurn is one already-marshaled game_turns row waiting to be written.
+//
+// The bytes are captured when the move is played rather than when it is saved,
+// because the history is mutated in between -- ComputeGameStats edits it during
+// the end-of-game sequence -- and the log must record the event as it happened.
+type PendingTurn struct {
+	Idx   int32
+	Event []byte
+}
+
+// StageTurns queues rows to be written to game_turns by the next save.
+//
+// They are staged rather than written immediately so that the event rows and
+// the games row land in one transaction. Writing them at the point the move is
+// played put them in the database several hundred milliseconds before
+// game_end_reason arrived -- through two user-mutex acquisitions, a ratings
+// computation and a NATS publish -- and a load in that window saw a finished
+// event log beside a row claiming the game was still in progress.
+func (g *Game) StageTurns(turns []PendingTurn) {
+	if len(turns) == 0 {
+		return
+	}
+	g.pendingTurns = append(g.pendingTurns, turns...)
+}
+
+// PendingTurns returns the staged rows.
+func (g *Game) PendingTurns() []PendingTurn {
+	return g.pendingTurns
+}
+
+// ClearPendingTurns drops the first n staged rows, which the caller has
+// committed.
+//
+// Only the ones it wrote: a save reads the queue, commits, and clears exactly
+// that many, so a move staged while the transaction was in flight is kept for
+// the next save rather than silently dropped.
+func (g *Game) ClearPendingTurns(n int) {
+	if n >= len(g.pendingTurns) {
+		g.pendingTurns = nil
+		return
+	}
+	g.pendingTurns = append([]PendingTurn(nil), g.pendingTurns[n:]...)
 }
 
 // GameTimer uses the standard library's `time` package to determine how much time
