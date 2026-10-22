@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -52,6 +53,12 @@ type DBStore struct {
 	cfg     *config.Config
 	dbPool  *pgxpool.Pool
 	queries *models.Queries
+
+	// Bounds how many game locks this process holds at once; see
+	// lockSemaphore. Lazily built so a DBStore assembled without the
+	// constructor is still bounded rather than unbounded.
+	lockSlotsOnce sync.Once
+	lockSlots     chan struct{}
 
 	userStore pkguser.Store
 
@@ -1233,7 +1240,9 @@ func (s *DBStore) Set(ctx context.Context, g *entity.Game) error {
 	// different route.
 	//
 	// Serialization between writers is a separate concern and lives a level up:
-	// callers hold the game's lock across load, move and save.
+	// callers hold the game's session lock across load, move and save. Taking an
+	// advisory lock here as well would deadlock against it -- this transaction
+	// runs on a different pooled connection, so a different session. See lock.go.
 	if err := withGameTx(ctx, s.dbPool, func(ctx context.Context, q *models.Queries) error {
 		if len(pending) > 0 {
 			raw := make([][]byte, len(pending))
