@@ -30,44 +30,61 @@ func PerformEndgameDuties(ctx context.Context, g *entity.Game,
 // AdjudicateGame finishes a game by adjudication based on current scores.
 // This is used when a league season ends or when players mutually agree to adjudicate.
 // The winner is determined by the current score.
-func AdjudicateGame(ctx context.Context, g *entity.Game, stores *stores.Stores) error {
-	log := zerolog.Ctx(ctx)
+func AdjudicateGame(ctx context.Context, gameID string, stores *stores.Stores) error {
+	return withLockedGame(ctx, stores, gameID, func(g *entity.Game) error {
+		// Set game end reason to ADJUDICATED
+		g.SetGameEndReason(pb.GameEndReason_ADJUDICATED)
 
-	// Lock the game
-	g.Lock()
-	defer g.Unlock()
+		// Get scores - winner/loser will be determined by performEndgameDuties
+		// We don't set winner/loser here because performEndgameDuties will do it
 
-	// Check if game is already finished
-	if g.GameEndReason != pb.GameEndReason_NONE {
-		log.Debug().Str("gameID", g.GameID()).Interface("reason", g.GameEndReason).Msg("game already finished")
-		return nil
-	}
-
-	// Set game end reason to ADJUDICATED
-	g.SetGameEndReason(pb.GameEndReason_ADJUDICATED)
-
-	// Get scores - winner/loser will be determined by performEndgameDuties
-	// We don't set winner/loser here because performEndgameDuties will do it
-
-	// Let performEndgameDuties handle everything else
-	return performEndgameDuties(ctx, g, stores)
+		// Let performEndgameDuties handle everything else
+		return performEndgameDuties(ctx, g, stores)
+	})
 }
 
 // ForfeitGame ends a game with FORCE_FORFEIT, with the given player index as the loser.
 // The opponent automatically wins regardless of score.
-func ForfeitGame(ctx context.Context, g *entity.Game, loserIdx int, stores *stores.Stores) error {
+func ForfeitGame(ctx context.Context, gameID string, loserIdx int, stores *stores.Stores) error {
+	return withLockedGame(ctx, stores, gameID, func(g *entity.Game) error {
+		g.SetGameEndReason(pb.GameEndReason_FORCE_FORFEIT)
+		g.SetWinnerIdx(1 - loserIdx)
+		g.SetLoserIdx(loserIdx)
+
+		return performEndgameDuties(ctx, g, stores)
+	})
+}
+
+// withLockedGame takes the game's lock, loads the game inside it, and runs end
+// on it unless the game has already ended.
+//
+// The functions above take a game id rather than a loaded game for this
+// reason. A game loaded before the lock is taken can be out of date by the time
+// the lock is held: a correspondence game is a fresh copy on every load, so its
+// own mutex protects nothing, and ending the game from that copy would save
+// over any move made in between.
+func withLockedGame(ctx context.Context, stores *stores.Stores, gameID string,
+	end func(g *entity.Game) error) error {
+
+	gameLock, err := stores.GameStore.LockGame(ctx, gameID)
+	if err != nil {
+		return err
+	}
+	defer gameLock.Unlock(ctx)
+
+	g, err := stores.GameStore.Get(ctx, gameID)
+	if err != nil {
+		return err
+	}
 	g.Lock()
 	defer g.Unlock()
 
 	if g.GameEndReason != pb.GameEndReason_NONE {
-		return nil // already finished
+		zerolog.Ctx(ctx).Debug().Str("gameID", gameID).Interface("reason", g.GameEndReason).
+			Msg("game already finished")
+		return nil
 	}
-
-	g.SetGameEndReason(pb.GameEndReason_FORCE_FORFEIT)
-	g.SetWinnerIdx(1 - loserIdx)
-	g.SetLoserIdx(loserIdx)
-
-	return performEndgameDuties(ctx, g, stores)
+	return end(g)
 }
 
 func performEndgameDuties(ctx context.Context, g *entity.Game,

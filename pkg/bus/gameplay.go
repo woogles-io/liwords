@@ -577,19 +577,32 @@ func (b *Bus) adjudicateGames(ctx context.Context, correspondenceOnly bool) erro
 					Interface("created", entGame.CreatedAt).
 					Msg("canceling-never-started")
 
-					// need to lock game to abort? maybe lock inside AbortGame?
 				log.Debug().Str("gid", g.GameId).Msg("locking")
 				gameLock, lerr := b.stores.GameStore.LockGame(ctx, g.GameId)
 				if lerr != nil {
 					log.Err(lerr).Str("gid", g.GameId).Msg("cant-lock-for-abort")
 					continue
 				}
-				entGame.Lock()
-				err = gameplay.AbortGame(ctx, b.stores, entGame, pb.GameEndReason_CANCELLED)
-				log.Err(err).Str("gid", g.GameId).Msg("adjudicating-after-abort-game")
-				entGame.Unlock()
+				// Load again inside the lock. entGame was read without it, and
+				// the game may have started or ended since.
+				lockedGame, gerr := b.stores.GameStore.Get(ctx, g.GameId)
+				if gerr != nil {
+					log.Err(gerr).Str("gid", g.GameId).Msg("cant-reload-for-abort")
+					gameLock.Unlock(ctx)
+					continue
+				}
+				lockedGame.Lock()
+				stillUnstarted := !lockedGame.Started && lockedGame.GameEndReason == pb.GameEndReason_NONE
+				if stillUnstarted {
+					err = gameplay.AbortGame(ctx, b.stores, lockedGame, pb.GameEndReason_CANCELLED)
+					log.Err(err).Str("gid", g.GameId).Msg("adjudicating-after-abort-game")
+				}
+				lockedGame.Unlock()
 				gameLock.Unlock(ctx)
 				log.Debug().Str("gid", g.GameId).Msg("unlocking")
+				if !stillUnstarted {
+					continue
+				}
 
 				// Delete the game from the lobby. We do this here instead
 				// of inside the gameplay package because the game event channel
