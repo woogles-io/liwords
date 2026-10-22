@@ -61,6 +61,11 @@ type Config struct {
 	// VDO.Ninja monitoring
 	VDOPollingIntervalSeconds int
 
+	// Human check (Cloudflare Turnstile). The endpoint is disabled unless
+	// both are set; the cookie key must match the one the CDN edge uses.
+	TurnstileSecret     string
+	HumanCheckCookieKey string
+
 	Debug                 bool
 	SecureCookies         bool
 	SkipEmailVerification bool
@@ -128,6 +133,8 @@ func (c *Config) Load(args []string) error {
 	fs.StringVar(&c.TwitchRedirectURI, "twitch-redirect-uri", "", "The Twitch redirect URI")
 
 	// VDO.Ninja monitoring
+	fs.StringVar(&c.TurnstileSecret, "turnstile-secret", "", "Cloudflare Turnstile secret key for the human check")
+	fs.StringVar(&c.HumanCheckCookieKey, "human-check-cookie-key", "", "HMAC key for the cookie set after a passed human check")
 	fs.IntVar(&c.VDOPollingIntervalSeconds, "vdo-polling-interval-seconds", 60, "VDO.Ninja stream polling interval midpoint in seconds (with ±25% jitter)")
 
 	// For password hashing:
