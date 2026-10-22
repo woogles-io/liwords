@@ -1395,12 +1395,9 @@ func (s *DBStore) CommitArchival(ctx context.Context, gameUUID string, s3Key str
 		// The rows were read, assembled and uploaded before this ran, and the
 		// upload is far too slow to hold a lock across. So check that the log is
 		// still the one that was archived. A move landing in that window would
-		// otherwise be deleted here and exist only in an S3 object written
-		// before it.
-		//
-		// This is the likeliest explanation for the three games in production
-		// that are archived and still have turn rows: the counts stopped
-		// matching and nothing noticed.
+		// otherwise be deleted here, and the S3 object, written before it, would
+		// not have it either. Failing leaves the rows and the bytea history in
+		// place, and the game unarchived.
 		n, err := q.CountGameTurns(ctx, gameUUID)
 		if err != nil {
 			return err
