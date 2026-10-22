@@ -643,8 +643,8 @@ Deployed column is the code.
 | 1b | `referee-split-1b-games-uuid` | #2027 | 2026-10-09 | store + gameplay ✅ | ✅ | ✅ 2026-10-10 (index built by hand first; schema `202610090004`) |
 | 2 | `referee-split-2-referee` | #2028 | 2026-10-10 (review fixes) | full suite ✅ (corpus tests skip) | ✅ | ✅ 2026-10-12 (`liwords-api:317`) |
 | 3 | `referee-split-3-shadows` | #2029 | 2026-10-10 | full suite ✅; gameplay with flags on, matches master | ✅ | ✅ 2026-10-12 (`liwords-api:317`, `SHADOW_TURNS` and `SHADOW_TURNS_LOAD` on) |
-| 4 | `referee-split-4-atomic-save` | #2053 | 2026-10-12 | full suite ✅; gameplay with flags on: no mismatches | | |
-| 5 | `referee-split-5-session-lock` | | | | | |
+| 4 | `referee-split-4-atomic-save` | #2053 | 2026-10-12 | full suite ✅; gameplay with flags on: no mismatches | ✅ 2026-10-22 | |
+| 5 | `referee-split-5-session-lock` | #2065 | 2026-10-22 | full suite ✅; gameplay with flags on: no mismatches | | |
 | 6 | `referee-split-6-no-cache` | | | | | |
 | 7 | `referee-split-7-ongoing-games` | | | | | |
 
