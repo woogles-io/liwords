@@ -418,7 +418,7 @@ export const errorMap: Map<number, string> = new Map<number, string>([
   [1036, "Removing this player would create an empty division."],
   // how?
   [1037, "Gibson round seems to be negative!"],
-  [1038, "This round cannot be opened because round $3 is not complete."],
+  [1038, "This round cannot be opened until round $3 is complete."],
   [1039, "This tournament has already finished."],
   [
     1040,
@@ -529,4 +529,20 @@ export const errorMap: Map<number, string> = new Map<number, string>([
   ],
   [1089, "Game is no longer available."],
   [1104, "You cannot use non-COP pairings after COP pairings."],
+  [1105, "Round $3 has an invalid pairing lag of $4. The lag must be 0 or 1."],
+  [1106, "The first round cannot be lagged."],
+  [
+    1107,
+    "Round $3 cannot be lagged because elimination rounds need the previous round's results.",
+  ],
+  [
+    1108,
+    "Round $3 cannot be lagged because COP rounds in the last two rounds of a division must use the previous round's results.",
+  ],
+  // $3 is the previous round, the one whose game is unfinished.
+  [1109, "You must finish your round $3 game before starting your next game."],
+  [
+    1110,
+    "Round $3 could not be paired automatically, so it kept the pairings it had. Use Pair entire round to pair it and see why.",
+  ],
 ]);

@@ -376,8 +376,13 @@ func ComputeTopDownByeRankIdx(req *pb.PairRequest, standings *pkgstnd.Standings,
 func GetPrecompData(req *pb.PairRequest, copRand *rand.Rand, logsb *strings.Builder) (*PrecompData, pb.PairError) {
 	standings := pkgstnd.CreateInitialStandings(req)
 
+	writePendingRoundsToLog(req, logsb)
+
 	// Use the initial results to get a tighter bound on the maximum factor
-	initialFactor := pkgstnd.GetRoundsRemaining(req)
+	// The factor is a decision about the round being paired, so it is
+	// bounded by the rounds left to pair rather than the games left to
+	// play, which also include rounds in progress.
+	initialFactor := pkgstnd.GetPairingRoundsRemaining(req)
 	initialSimResults, pairErr := standings.SimFactorPairAll(req, copRand, int(req.DivisionSims), initialFactor, -1, nil, -1)
 	if pairErr != pb.PairError_SUCCESS {
 		return nil, pairErr
@@ -440,17 +445,7 @@ func GetPrecompData(req *pb.PairRequest, copRand *rand.Rand, logsb *strings.Buil
 
 	// numCompletePairings is needed early to compute the leader/2nd win% below;
 	// it's recomputed (identically) further down alongside pairingCounts.
-	numCompletePairings := 0
-completePairingsLoop:
-	for _, roundPairings := range req.DivisionPairings {
-		for playerIdx := range roundPairings.Pairings {
-			oppIdx := int(roundPairings.Pairings[playerIdx])
-			if oppIdx == -1 {
-				break completePairingsLoop
-			}
-		}
-		numCompletePairings++
-	}
+	numCompletePairings := pkgstnd.GetNumCompletePairings(req)
 
 	hrd := computeHopefulRankData(req, standings, numCompletePairings,
 		improvedFactorSimResults.FinalRanks, improvedFactorSimResults.TotalSims, improvedFactorSimResults.GibsonizedPlayers,
@@ -557,6 +552,31 @@ completePairingsLoop:
 		BaselineFinalRanks:                 improvedFactorSimResults.FinalRanks,
 		BaselineTotalSims:                  improvedFactorSimResults.TotalSims,
 	}, pb.PairError_SUCCESS
+}
+
+// writePendingRoundsToLog logs the number of pending rounds (fully paired
+// rounds with no results yet, which the simulations play with their real
+// pairings before the generated rounds) and, if there are any, their
+// pairings.
+func writePendingRoundsToLog(req *pb.PairRequest, logsb *strings.Builder) {
+	numPendingRounds := pkgstnd.GetNumPendingRounds(req)
+	logsb.WriteString(fmt.Sprintf("Pending rounds: %d\n", numPendingRounds))
+	if numPendingRounds == 0 {
+		logsb.WriteString("\n")
+		return
+	}
+	firstPendingRoundIdx := len(req.DivisionResults)
+	for i, pairs := range pkgstnd.GetPendingRoundPairs(req) {
+		logsb.WriteString(fmt.Sprintf("\nPending round %d pairings (simulated with these real pairings, byes always win):\n", firstPendingRoundIdx+i+1))
+		for _, pair := range pairs {
+			if pair[0] == pair[1] {
+				logsb.WriteString(fmt.Sprintf("  (#%d) %s vs BYE\n", pair[0]+1, req.PlayerNames[pair[0]]))
+			} else {
+				logsb.WriteString(fmt.Sprintf("  (#%d) %s vs (#%d) %s\n", pair[0]+1, req.PlayerNames[pair[0]], pair[1]+1, req.PlayerNames[pair[1]]))
+			}
+		}
+	}
+	logsb.WriteString("\n")
 }
 
 func GetPairingKey(playerIdx int, oppIdx int) string {

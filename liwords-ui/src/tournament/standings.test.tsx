@@ -83,12 +83,18 @@ const nwlDivision = (): Division => {
   return state.divisions["NWL"];
 };
 
+// laggedRound, if given, is a round whose pairings lag one round behind.
 const renderAt = (
   currentRound: number,
   selectedRound: number,
   irlMode = false,
+  laggedRound?: number,
 ) => {
-  divisions.value = { NWL: { ...nwlDivision(), currentRound } };
+  const nwl = nwlDivision();
+  const roundControls = nwl.roundControls.map((rc, idx) =>
+    idx === laggedRound ? { ...rc, pairingLag: 1 } : rc,
+  );
+  divisions.value = { NWL: { ...nwl, currentRound, roundControls } };
   metadata.value = { irlMode };
   render(<Standings selectedDivision="NWL" selectedRound={selectedRound} />);
 };
@@ -178,6 +184,45 @@ describe("standings for the selected round", () => {
   it("keeps both for an online division", () => {
     renderAt(7, 2);
     expect(omitsFor("josh")).toBe("");
+  });
+
+  it("marks the round before a lagged round as partial while it is open", () => {
+    // No game in the fixture has a result, so round 7 is still being played
+    // while the lagged round 8 is open.
+    renderAt(7, 6, false, 7);
+    expect(
+      screen.getByText(
+        "Round 7 is still in progress, so these standings are partial.",
+      ),
+    ).toBeVisible();
+  });
+
+  it("marks the lagged round itself as partial", () => {
+    renderAt(7, 7, false, 7);
+    expect(
+      screen.getByText(
+        "Round 8 is still in progress, so these standings are partial.",
+      ),
+    ).toBeVisible();
+  });
+
+  it("does not mark a closed round as partial", () => {
+    renderAt(7, 5, false, 7);
+    expect(screen.queryByText(/standings are partial/)).toBeNull();
+  });
+
+  it("marks the current round as partial without lagged rounds", () => {
+    renderAt(7, 7);
+    expect(
+      screen.getByText(
+        "Round 8 is still in progress, so these standings are partial.",
+      ),
+    ).toBeVisible();
+  });
+
+  it("marks only the current round as partial without lagged rounds", () => {
+    renderAt(7, 6);
+    expect(screen.queryByText(/standings are partial/)).toBeNull();
   });
 
   it("opens a scorecard covering the rounds up to the one on screen", async () => {

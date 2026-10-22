@@ -7,7 +7,11 @@ import { GameEndReason } from "../../../gen/api/proto/ipc/omgwords_pb";
 import { TournamentGameResult } from "../../../gen/api/proto/ipc/tournament_pb";
 import { TournamentService } from "../../../gen/api/proto/tournament_service/tournament_service_pb";
 import { useTournamentStoreContext } from "../../../store/store";
-import { flashError, useClient } from "../../../utils/hooks/connect";
+import {
+  flashError,
+  flashWarnings,
+  useClient,
+} from "../../../utils/hooks/connect";
 import { getEnumValue } from "../../../utils/protobuf";
 import {
   DivisionFormItem,
@@ -61,11 +65,12 @@ export const SetPairing = (props: { tournamentID: string }) => {
       ],
     };
     try {
-      await tClient.setPairing(obj);
+      const resp = await tClient.setPairing(obj);
       message.info({
         content: "Pairing set",
         duration: 3,
       });
+      flashWarnings(resp.warnings);
     } catch (e) {
       flashError(e);
     }
@@ -307,11 +312,12 @@ export const PairRound = (props: { tournamentID: string }) => {
       preserveByes: vals.preserveByes,
     };
     try {
-      await tClient.pairRound(obj);
+      const resp = await tClient.pairRound(obj);
       message.info({
         content: "Pair round completed",
         duration: 3,
       });
+      flashWarnings(resp.warnings);
     } catch (e) {
       flashError(e);
     }

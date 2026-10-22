@@ -6,6 +6,7 @@ import {
   defaultCompetitorState,
   getPairing,
 } from "../reducers/tournament_reducer";
+import { openRounds, playerActiveRound } from "./round_selectors";
 
 export enum TourneyStatus {
   PRETOURNEY = "PRETOURNEY",
@@ -28,6 +29,10 @@ export type CompetitorState = {
   division?: string;
   status?: TourneyStatus;
   currentRound: number;
+  // The round this player is playing now (see playerActiveRound). It is the
+  // same as currentRound unless the division has a lagged round open while
+  // the player's previous game is unfinished.
+  activeRound: number;
 };
 
 // The "Ready" button and pairings should be displayed based on:
@@ -54,7 +59,10 @@ export const tourneyStatus = (
     return TourneyStatus.NOT_CHECKED_IN;
   }
 
-  const pairing = getPairing(division.currentRound, fullPlayerID, division);
+  // The player's active round is the current round, except in a lagged round
+  // that opened while the player's previous game was still being played.
+  const round = playerActiveRound(division, fullPlayerID);
+  const pairing = getPairing(round, fullPlayerID, division);
 
   if (!pairing || !pairing.players) {
     return TourneyStatus.PRETOURNEY;
@@ -76,17 +84,20 @@ export const tourneyStatus = (
     return TourneyStatus.PRETOURNEY;
   }
   if (pairing.games[0] && pairing.games[0].gameEndReason) {
-    if (division.currentRound === division.numRounds - 1) {
+    if (round === division.numRounds - 1) {
       return TourneyStatus.POSTTOURNEY;
     }
     // Game already finished
     return TourneyStatus.ROUND_GAME_FINISHED;
   }
+  // With two rounds open, only a game in the player's active round counts.
+  const twoRoundsOpen = openRounds(division).length > 1;
   if (
     tournamentContext.activeGames.find((ag) => {
       return (
-        ag.players[0].displayName === loginContext.username ||
-        ag.players[1].displayName === loginContext.username
+        (ag.players[0].displayName === loginContext.username ||
+          ag.players[1].displayName === loginContext.username) &&
+        (!twoRoundsOpen || ag.tournamentRound === round)
       );
     })
   ) {
@@ -154,6 +165,7 @@ export const getCompetitorState = (
       false,
     division: divisionID,
     currentRound: userDivision.currentRound,
+    activeRound: playerActiveRound(userDivision, fullPlayerID),
     status: tourneyStatus(userDivision, loginState, state),
   };
 };

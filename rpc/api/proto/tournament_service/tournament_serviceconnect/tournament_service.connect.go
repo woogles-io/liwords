@@ -177,7 +177,7 @@ type TournamentServiceClient interface {
 	FinishTournament(context.Context, *connect.Request[tournament_service.FinishTournamentRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
 	SetTournamentMetadata(context.Context, *connect.Request[tournament_service.SetTournamentMetadataRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
 	PairRound(context.Context, *connect.Request[tournament_service.PairRoundRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
-	SetSingleRoundControls(context.Context, *connect.Request[tournament_service.SingleRoundControlsRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
+	SetSingleRoundControls(context.Context, *connect.Request[tournament_service.SingleRoundControlsRequest]) (*connect.Response[tournament_service.SingleRoundControlsResponse], error)
 	SetRoundControls(context.Context, *connect.Request[ipc.DivisionRoundControls]) (*connect.Response[tournament_service.TournamentResponse], error)
 	SetDivisionControls(context.Context, *connect.Request[ipc.DivisionControls]) (*connect.Response[tournament_service.TournamentResponse], error)
 	// Input to AddDirectors should be director usernames.
@@ -281,7 +281,7 @@ func NewTournamentServiceClient(httpClient connect.HTTPClient, baseURL string, o
 			connect.WithSchema(tournamentServiceMethods.ByName("PairRound")),
 			connect.WithClientOptions(opts...),
 		),
-		setSingleRoundControls: connect.NewClient[tournament_service.SingleRoundControlsRequest, tournament_service.TournamentResponse](
+		setSingleRoundControls: connect.NewClient[tournament_service.SingleRoundControlsRequest, tournament_service.SingleRoundControlsResponse](
 			httpClient,
 			baseURL+TournamentServiceSetSingleRoundControlsProcedure,
 			connect.WithSchema(tournamentServiceMethods.ByName("SetSingleRoundControls")),
@@ -523,7 +523,7 @@ type tournamentServiceClient struct {
 	finishTournament                *connect.Client[tournament_service.FinishTournamentRequest, tournament_service.TournamentResponse]
 	setTournamentMetadata           *connect.Client[tournament_service.SetTournamentMetadataRequest, tournament_service.TournamentResponse]
 	pairRound                       *connect.Client[tournament_service.PairRoundRequest, tournament_service.TournamentResponse]
-	setSingleRoundControls          *connect.Client[tournament_service.SingleRoundControlsRequest, tournament_service.TournamentResponse]
+	setSingleRoundControls          *connect.Client[tournament_service.SingleRoundControlsRequest, tournament_service.SingleRoundControlsResponse]
 	setRoundControls                *connect.Client[ipc.DivisionRoundControls, tournament_service.TournamentResponse]
 	setDivisionControls             *connect.Client[ipc.DivisionControls, tournament_service.TournamentResponse]
 	addDirectors                    *connect.Client[ipc.TournamentPersons, tournament_service.TournamentResponse]
@@ -598,7 +598,7 @@ func (c *tournamentServiceClient) PairRound(ctx context.Context, req *connect.Re
 }
 
 // SetSingleRoundControls calls tournament_service.TournamentService.SetSingleRoundControls.
-func (c *tournamentServiceClient) SetSingleRoundControls(ctx context.Context, req *connect.Request[tournament_service.SingleRoundControlsRequest]) (*connect.Response[tournament_service.TournamentResponse], error) {
+func (c *tournamentServiceClient) SetSingleRoundControls(ctx context.Context, req *connect.Request[tournament_service.SingleRoundControlsRequest]) (*connect.Response[tournament_service.SingleRoundControlsResponse], error) {
 	return c.setSingleRoundControls.CallUnary(ctx, req)
 }
 
@@ -794,7 +794,7 @@ type TournamentServiceHandler interface {
 	FinishTournament(context.Context, *connect.Request[tournament_service.FinishTournamentRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
 	SetTournamentMetadata(context.Context, *connect.Request[tournament_service.SetTournamentMetadataRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
 	PairRound(context.Context, *connect.Request[tournament_service.PairRoundRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
-	SetSingleRoundControls(context.Context, *connect.Request[tournament_service.SingleRoundControlsRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
+	SetSingleRoundControls(context.Context, *connect.Request[tournament_service.SingleRoundControlsRequest]) (*connect.Response[tournament_service.SingleRoundControlsResponse], error)
 	SetRoundControls(context.Context, *connect.Request[ipc.DivisionRoundControls]) (*connect.Response[tournament_service.TournamentResponse], error)
 	SetDivisionControls(context.Context, *connect.Request[ipc.DivisionControls]) (*connect.Response[tournament_service.TournamentResponse], error)
 	// Input to AddDirectors should be director usernames.
@@ -1251,7 +1251,7 @@ func (UnimplementedTournamentServiceHandler) PairRound(context.Context, *connect
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tournament_service.TournamentService.PairRound is not implemented"))
 }
 
-func (UnimplementedTournamentServiceHandler) SetSingleRoundControls(context.Context, *connect.Request[tournament_service.SingleRoundControlsRequest]) (*connect.Response[tournament_service.TournamentResponse], error) {
+func (UnimplementedTournamentServiceHandler) SetSingleRoundControls(context.Context, *connect.Request[tournament_service.SingleRoundControlsRequest]) (*connect.Response[tournament_service.SingleRoundControlsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tournament_service.TournamentService.SetSingleRoundControls is not implemented"))
 }
 

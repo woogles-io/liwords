@@ -110,16 +110,16 @@ func (ts *TournamentService) SetTournamentMetadata(ctx context.Context, req *con
 	return connect.NewResponse(&pb.TournamentResponse{}), nil
 }
 
-func (ts *TournamentService) SetSingleRoundControls(ctx context.Context, req *connect.Request[pb.SingleRoundControlsRequest]) (*connect.Response[pb.TournamentResponse], error) {
+func (ts *TournamentService) SetSingleRoundControls(ctx context.Context, req *connect.Request[pb.SingleRoundControlsRequest]) (*connect.Response[pb.SingleRoundControlsResponse], error) {
 	err := authenticateDirector(ctx, ts, req.Msg.Id, req.Msg, true)
 	if err != nil {
 		return nil, err
 	}
-	err = SetSingleRoundControls(ctx, ts.tournamentStore, req.Msg.Id, req.Msg.Division, int(req.Msg.RoundControls.Round), req.Msg.RoundControls)
+	paired, warnings, err := SetSingleRoundControls(ctx, ts.tournamentStore, req.Msg.Id, req.Msg.Division, int(req.Msg.RoundControls.Round), req.Msg.RoundControls)
 	if err != nil {
 		return nil, apiserver.InvalidArg(err.Error())
 	}
-	return connect.NewResponse(&pb.TournamentResponse{}), nil
+	return connect.NewResponse(&pb.SingleRoundControlsResponse{Paired: paired, Warnings: warnings}), nil
 }
 
 func (ts *TournamentService) SetRoundControls(ctx context.Context, req *connect.Request[ipc.DivisionRoundControls]) (*connect.Response[pb.TournamentResponse], error) {
@@ -494,12 +494,12 @@ func (ts *TournamentService) SetPairing(ctx context.Context, req *connect.Reques
 		return nil, err
 	}
 
-	err = SetPairings(ctx, ts.tournamentStore, req.Msg.Id, req.Msg.Division, req.Msg.Pairings)
+	warnings, err := SetPairings(ctx, ts.tournamentStore, req.Msg.Id, req.Msg.Division, req.Msg.Pairings)
 	if err != nil {
 		return nil, apiserver.InvalidArg(err.Error())
 	}
 
-	return connect.NewResponse(&pb.TournamentResponse{}), nil
+	return connect.NewResponse(&pb.TournamentResponse{Warnings: warnings}), nil
 }
 
 func (ts *TournamentService) SetResult(ctx context.Context, req *connect.Request[pb.TournamentResultOverrideRequest],
@@ -551,15 +551,16 @@ func (ts *TournamentService) PairRound(ctx context.Context, req *connect.Request
 	if err != nil {
 		return nil, err
 	}
+	var warnings []string
 	if req.Msg.DeletePairings {
 		err = DeletePairings(ctx, ts.tournamentStore, req.Msg.Id, req.Msg.Division, int(req.Msg.Round))
 	} else {
-		err = PairRound(ctx, ts.tournamentStore, req.Msg.Id, req.Msg.Division, int(req.Msg.Round), req.Msg.PreserveByes)
+		warnings, err = PairRound(ctx, ts.tournamentStore, req.Msg.Id, req.Msg.Division, int(req.Msg.Round), req.Msg.PreserveByes)
 	}
 	if err != nil {
 		return nil, apiserver.InvalidArg(err.Error())
 	}
-	return connect.NewResponse(&pb.TournamentResponse{}), nil
+	return connect.NewResponse(&pb.TournamentResponse{Warnings: warnings}), nil
 }
 
 func (ts *TournamentService) RecentGames(ctx context.Context, req *connect.Request[pb.RecentGamesRequest]) (*connect.Response[pb.RecentGamesResponse], error) {

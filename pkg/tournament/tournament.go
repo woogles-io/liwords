@@ -287,53 +287,78 @@ func SetTournamentMetadata(ctx context.Context, ts TournamentStore, meta *pb.Tou
 	return SendTournamentMessage(ctx, ts, meta.Id, wrapped)
 }
 
-func SetSingleRoundControls(ctx context.Context, ts TournamentStore, id string, division string, round int, controls *ipc.RoundControl) error {
+// SetSingleRoundControls sets the controls for a future round. It returns
+// whether the round was paired because of the change (see
+// ClassicDivision.SetSingleRoundControls).
+func SetSingleRoundControls(ctx context.Context, ts TournamentStore, id string, division string, round int, controls *ipc.RoundControl) (bool, []string, error) {
 
 	t, err := ts.Get(ctx, id)
 	if err != nil {
-		return err
+		return false, nil, err
 	}
 
 	t.Lock()
 	defer t.Unlock()
 
 	if t.IsFinished {
-		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_FINISHED, t.Name, division)
+		return false, nil, entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_FINISHED, t.Name, division)
 	}
 	if !t.IsStarted {
-		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NOT_STARTED, t.Name, division)
+		return false, nil, entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NOT_STARTED, t.Name, division)
 	}
 
 	divisionObject, ok := t.Divisions[division]
 
 	if !ok {
-		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, division)
+		return false, nil, entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, division)
 	}
 
 	if divisionObject.DivisionManager == nil {
-		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NIL_DIVISION_MANAGER, t.Name, division)
+		return false, nil, entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NIL_DIVISION_MANAGER, t.Name, division)
 	}
 
 	currentRound := divisionObject.DivisionManager.GetCurrentRound()
 	if round < currentRound+1 {
-		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_SET_NON_FUTURE_ROUND_CONTROLS, t.Name, division, strconv.Itoa(currentRound+1))
+		return false, nil, entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_SET_NON_FUTURE_ROUND_CONTROLS, t.Name, division, strconv.Itoa(currentRound+1))
 	}
 
-	newControls, err := divisionObject.DivisionManager.SetSingleRoundControls(round, controls)
+	pairingsResp, newControls, err := divisionObject.DivisionManager.SetSingleRoundControls(round, controls)
 	if err != nil {
-		return err
+		return false, nil, err
 	}
 
 	err = ts.Set(ctx, t)
 	if err != nil {
-		return err
+		return false, nil, err
 	}
 	wrapped := entity.WrapEvent(&ipc.DivisionRoundControls{
 		Id:            id,
 		Division:      division,
 		RoundControls: []*ipc.RoundControl{newControls},
 	}, ipc.MessageType_TOURNAMENT_DIVISION_ROUND_CONTROLS_MESSAGE)
-	return SendTournamentMessage(ctx, ts, id, wrapped)
+	err = SendTournamentMessage(ctx, ts, id, wrapped)
+	if err != nil {
+		return false, nil, err
+	}
+
+	paired := len(pairingsResp.DivisionPairings) > 0
+	if paired {
+		pairingsResp.Id = id
+		pairingsResp.Division = division
+		wrapped = entity.WrapEvent(pairingsResp, ipc.MessageType_TOURNAMENT_DIVISION_PAIRINGS_MESSAGE)
+		err = SendTournamentMessage(ctx, ts, id, wrapped)
+		if err != nil {
+			return false, nil, err
+		}
+	}
+	// AutoStart can open the round that was just paired.
+	for r := currentRound + 1; r <= divisionObject.DivisionManager.GetCurrentRound(); r++ {
+		err = sendDivisionStart(ts, t.UUID, division, r)
+		if err != nil {
+			return false, nil, err
+		}
+	}
+	return paired, autoPairingWarnings(t, division), nil
 }
 
 func SetRoundControls(ctx context.Context, ts TournamentStore, id string, division string, roundControls []*ipc.RoundControl) error {
@@ -761,7 +786,12 @@ func AddPlayers(ctx context.Context, ts TournamentStore, us user.Store, id strin
 		DivisionPairings:  pairingsResp.DivisionPairings,
 		DivisionStandings: pairingsResp.DivisionStandings}
 	wrapped := entity.WrapEvent(addPlayersMessage, ipc.MessageType_TOURNAMENT_DIVISION_PLAYER_CHANGE_MESSAGE)
-	return SendTournamentMessage(ctx, ts, id, wrapped)
+	err = SendTournamentMessage(ctx, ts, id, wrapped)
+	if err != nil {
+		return err
+	}
+	notifyDirectors(ts, t, autoPairingWarnings(t, division))
+	return nil
 }
 
 func RemovePlayers(ctx context.Context, ts TournamentStore, us user.Store, id string, division string, players *ipc.TournamentPersons) error {
@@ -829,7 +859,12 @@ func RemovePlayers(ctx context.Context, ts TournamentStore, us user.Store, id st
 		DivisionPairings:  pairingsResp.DivisionPairings,
 		DivisionStandings: pairingsResp.DivisionStandings}
 	wrapped := entity.WrapEvent(removePlayersMessage, ipc.MessageType_TOURNAMENT_DIVISION_PLAYER_CHANGE_MESSAGE)
-	return SendTournamentMessage(ctx, ts, id, wrapped)
+	err = SendTournamentMessage(ctx, ts, id, wrapped)
+	if err != nil {
+		return err
+	}
+	notifyDirectors(ts, t, autoPairingWarnings(t, division))
+	return nil
 }
 
 // EditPlayer changes an existing player's details. playerID is the
@@ -1101,52 +1136,86 @@ func MovePlayer(ctx context.Context, ts TournamentStore, us user.Store, id strin
 }
 
 // SetPairings is only called by the API
-func SetPairings(ctx context.Context, ts TournamentStore, id string, division string, pairings []*pb.TournamentPairingRequest) error {
+// SetPairings sets pairings for a director. It returns warnings for
+// follow-on work that failed without failing the request.
+func SetPairings(ctx context.Context, ts TournamentStore, id string, division string, pairings []*pb.TournamentPairingRequest) ([]string, error) {
 
 	t, err := ts.Get(ctx, id)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	t.Lock()
 	defer t.Unlock()
 
 	if t.IsFinished {
-		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_FINISHED, t.Name, division)
+		return nil, entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_FINISHED, t.Name, division)
 	}
 	pairingsResponse := []*ipc.Pairing{}
 	standingsResponse := make(map[int32]*ipc.RoundStandings)
+
+	// Note which rounds were not fully paired, since a lagged round after a
+	// round these pairings complete may have been waiting for it.
+	wasPaired := map[int]bool{}
+	if divisionObject, ok := t.Divisions[division]; ok && divisionObject.DivisionManager != nil {
+		for _, pairing := range pairings {
+			wasPaired[int(pairing.Round)] = divisionObject.DivisionManager.IsRoundPaired(int(pairing.Round))
+		}
+	}
 
 	for _, pairing := range pairings {
 		divisionObject, ok := t.Divisions[division]
 
 		if !ok {
-			return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, division)
+			return nil, entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, division)
 		}
 
 		if divisionObject.DivisionManager == nil {
 			// Not enough players or rounds to make a manager, most likely
-			return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NIL_DIVISION_MANAGER, t.Name, division)
+			return nil, entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NIL_DIVISION_MANAGER, t.Name, division)
 		}
 
 		pairingsResp, err := divisionObject.DivisionManager.SetPairing(pairing.PlayerOneId, pairing.PlayerTwoId, int(pairing.Round), pairing.SelfPlayResult)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		pairingsResponse = combinePairingsResponses(pairingsResponse, pairingsResp.DivisionPairings)
 		standingsResponse = combineStandingsResponses(standingsResponse, pairingsResp.DivisionStandings)
 	}
+	rounds := []int{}
+	for round, paired := range wasPaired {
+		if !paired {
+			rounds = append(rounds, round)
+		}
+	}
+	sort.Ints(rounds)
+	for _, round := range rounds {
+		dm := t.Divisions[division].DivisionManager
+		if !dm.IsRoundPaired(round) {
+			continue
+		}
+		// Pairing the lagged round is follow-on work: if it fails, the
+		// director's pairings still stand and are saved and sent out, and
+		// the director can pair the lagged round with Pair entire round.
+		laggedResp, err := dm.PairLaggedRoundAfter(round)
+		if err != nil {
+			log.Err(err).Str("tid", id).Str("division", division).Int("round", round+2).Msg("pair-lagged-round-after-set-pairings")
+			continue
+		}
+		pairingsResponse = combinePairingsResponses(pairingsResponse, laggedResp.DivisionPairings)
+		standingsResponse = combineStandingsResponses(standingsResponse, laggedResp.DivisionStandings)
+	}
 	err = possiblyEndTournament(ctx, ts, t, division)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	err = ts.Set(ctx, t)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	pairingsMessage := PairingsToResponse(id, division, pairingsResponse, standingsResponse)
 	wrapped := entity.WrapEvent(pairingsMessage, ipc.MessageType_TOURNAMENT_DIVISION_PAIRINGS_MESSAGE)
-	return SendTournamentMessage(ctx, ts, id, wrapped)
+	return autoPairingWarnings(t, division), SendTournamentMessage(ctx, ts, id, wrapped)
 }
 
 // SetResult sets the result for the game. Note: playerOne and playerTwo
@@ -1278,6 +1347,9 @@ func SetResult(ctx context.Context,
 	}
 	span.AddEvent("about-to-submit-result")
 
+	// AutoStart can open rounds when a result comes in, so note the
+	// current round to announce any rounds that were opened.
+	roundBefore := divisionObject.DivisionManager.GetCurrentRound()
 	pairingsResp, err := divisionObject.DivisionManager.SubmitResult(round,
 		p1TID,
 		p2TID,
@@ -1308,7 +1380,53 @@ func SetResult(ctx context.Context,
 	pairingsResp.Id = id
 	pairingsResp.Division = division
 	wrapped := entity.WrapEvent(pairingsResp, ipc.MessageType_TOURNAMENT_DIVISION_PAIRINGS_MESSAGE)
-	return SendTournamentMessage(ctx, ts, id, wrapped)
+	err = SendTournamentMessage(ctx, ts, id, wrapped)
+	if err != nil {
+		return err
+	}
+
+	for r := roundBefore + 1; r <= divisionObject.DivisionManager.GetCurrentRound(); r++ {
+		err = sendDivisionStart(ts, t.UUID, division, r)
+		if err != nil {
+			return err
+		}
+	}
+	// Nobody is waiting on a result to hear that follow-on pairing failed,
+	// so tell the directors.
+	notifyDirectors(ts, t, autoPairingWarnings(t, division))
+	return nil
+}
+
+// autoPairingWarnings returns WooglesError strings for the rounds that
+// follow-on pairing in the division failed to pair (see
+// ClassicDivision.TakeAutoPairingFailures). Those rounds kept the pairings
+// they had.
+func autoPairingWarnings(t *entity.Tournament, division string) []string {
+	divisionObject, ok := t.Divisions[division]
+	if !ok || divisionObject.DivisionManager == nil {
+		return nil
+	}
+	warnings := []string{}
+	for _, round := range divisionObject.DivisionManager.TakeAutoPairingFailures() {
+		warnings = append(warnings, entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_AUTO_PAIR_FAILED,
+			t.Name, division, strconv.Itoa(round+1)).Error())
+	}
+	return warnings
+}
+
+// notifyDirectors sends each warning to every director of the tournament.
+func notifyDirectors(ts TournamentStore, t *entity.Tournament, warnings []string) {
+	eventChannel := ts.TournamentEventChan()
+	if eventChannel == nil || t.Directors == nil {
+		return
+	}
+	for _, warning := range warnings {
+		for _, director := range t.Directors.Persons {
+			evt := entity.WrapEvent(&ipc.ErrorMessage{Message: warning}, ipc.MessageType_ERROR_MESSAGE)
+			evt.AddAudience(entity.AudUser, strings.Split(director.Id, ":")[0])
+			eventChannel <- evt
+		}
+	}
 }
 
 func possiblyEndTournament(ctx context.Context, ts TournamentStore, t *entity.Tournament,
@@ -1503,49 +1621,66 @@ func DivisionChannelName(tid, division string) string {
 	return base64.URLEncoding.EncodeToString([]byte(tid + ":" + division))
 }
 
-func PairRound(ctx context.Context, ts TournamentStore, id string, division string, round int, preserveByes bool) error {
+// PairRound pairs the round for a director. It returns warnings for
+// follow-on work that failed without failing the request.
+func PairRound(ctx context.Context, ts TournamentStore, id string, division string, round int, preserveByes bool) ([]string, error) {
 	t, err := ts.Get(ctx, id)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	t.Lock()
 	defer t.Unlock()
 
 	if t.IsFinished {
-		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_FINISHED, t.Name, division)
+		return nil, entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_FINISHED, t.Name, division)
 	}
 	divisionObject, ok := t.Divisions[division]
 
 	if !ok {
-		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, division)
+		return nil, entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, division)
 	}
 
 	if !t.IsStarted {
-		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NOT_STARTED, t.Name, division)
+		return nil, entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NOT_STARTED, t.Name, division)
 	}
 
 	currentRound := divisionObject.DivisionManager.GetCurrentRound()
 	if round < currentRound+1 {
-		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_PAIR_NON_FUTURE_ROUND, t.Name, division, strconv.Itoa(round+1), strconv.Itoa(currentRound+1))
+		return nil, entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_PAIR_NON_FUTURE_ROUND, t.Name, division, strconv.Itoa(round+1), strconv.Itoa(currentRound+1))
 	}
 
-	pairingsResp, err := divisionObject.DivisionManager.PairRound(round, preserveByes)
+	dm := divisionObject.DivisionManager
+	wasPaired := dm.IsRoundPaired(round)
+	pairingsResp, err := dm.PairRound(round, preserveByes)
 
 	if err != nil {
-		return err
+		return nil, err
+	}
+	if !wasPaired {
+		// A lagged round after this one may have been waiting for it.
+		// Pairing it is follow-on work: if it fails, this round's pairings
+		// still stand and are saved and sent out, and the director can pair
+		// the lagged round with Pair entire round.
+		laggedResp, err := dm.PairLaggedRoundAfter(round)
+		if err != nil {
+			log.Err(err).Str("tid", id).Str("division", division).Int("round", round+2).Msg("pair-lagged-round-after-pair-round")
+		} else {
+			pairingsResp.DivisionPairings = combinePairingsResponses(pairingsResp.DivisionPairings, laggedResp.DivisionPairings)
+			pairingsResp.DivisionStandings = combineStandingsResponses(pairingsResp.DivisionStandings, laggedResp.DivisionStandings)
+		}
 	}
 
 	err = ts.Set(ctx, t)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	pairingsResp.Id = id
 	pairingsResp.Division = division
 	wrapped := entity.WrapEvent(pairingsResp, ipc.MessageType_TOURNAMENT_DIVISION_PAIRINGS_MESSAGE)
 
-	return SendTournamentMessage(ctx, ts, id, wrapped)
+	return autoPairingWarnings(t, division), SendTournamentMessage(ctx, ts, id, wrapped)
 }
 
 func DeletePairings(ctx context.Context, ts TournamentStore, id string, division string, round int) error {

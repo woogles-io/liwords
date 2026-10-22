@@ -194,7 +194,20 @@ message TournamentStartRoundCountdownRequest {
   bool start_all_rounds = 4;
 }
 
-message TournamentResponse {}
+message TournamentResponse {
+  // warnings are WooglesError strings for follow-on work that failed
+  // without failing the request, such as pairing a lagged round that was
+  // waiting for the round the request paired.
+  repeated string warnings = 1;
+}
+
+message SingleRoundControlsResponse {
+  // paired is true if the round was paired because its pairing lag changed
+  // and the round it is now paired from was already complete.
+  bool paired = 1;
+  // warnings are as in TournamentResponse.
+  repeated string warnings = 2;
+}
 message NewTournamentResponse {
   string id = 1;
   string slug = 2;
@@ -316,7 +329,7 @@ service TournamentService {
       returns (TournamentResponse);
   rpc PairRound(PairRoundRequest) returns (TournamentResponse);
   rpc SetSingleRoundControls(SingleRoundControlsRequest)
-      returns (TournamentResponse);
+      returns (SingleRoundControlsResponse);
   rpc SetRoundControls(ipc.DivisionRoundControls) returns (TournamentResponse);
   rpc SetDivisionControls(ipc.DivisionControls) returns (TournamentResponse);
   // Input to AddDirectors should be director usernames.

@@ -21,6 +21,32 @@ import {
   getCOPDefaults,
 } from "./cop_fields";
 
+// Why rounds beginRound..endRound (1-based) cannot have a pairing lag with
+// the given pairing method, or undefined if they can. The server enforces the
+// same rules.
+export const pairingLagDisabledReason = (
+  pairingMethod: PairingMethod,
+  beginRound?: number,
+  endRound?: number,
+  totalRounds?: number,
+): string | undefined => {
+  if (beginRound !== undefined && beginRound <= 1) {
+    return "The first round cannot be lagged, because there are no earlier results to pair from.";
+  }
+  if (pairingMethod === PairingMethod.ELIMINATION) {
+    return "Elimination rounds cannot be lagged, because they need the previous round's results.";
+  }
+  if (
+    pairingMethod === PairingMethod.PAIRING_METHOD_COP &&
+    endRound !== undefined &&
+    totalRounds !== undefined &&
+    endRound >= totalRounds - 1
+  ) {
+    return "COP rounds in the last two rounds of a division cannot be lagged, because they must use the previous round's results.";
+  }
+  return undefined;
+};
+
 export type RdCtrlFieldsProps = {
   setting: RoundSetting;
   onChange: (
@@ -31,8 +57,16 @@ export type RdCtrlFieldsProps = {
   totalRounds?: number;
 };
 
-export const SingleRoundControlFields = (props: SingleRdCtrlFieldsProps) => {
-  const { setting, beginRound, endRound, totalRounds } = props;
+type SingleRoundControlFieldsProps = SingleRdCtrlFieldsProps & {
+  // The 1-based round being edited, when editing a single round rather than a
+  // range. Only used to decide whether the round can be lagged.
+  round?: number;
+};
+
+export const SingleRoundControlFields = (
+  props: SingleRoundControlFieldsProps,
+) => {
+  const { setting, beginRound, endRound, totalRounds, round } = props;
   const addlFields = fieldsForMethod(setting.pairingMethod);
 
   // Determine if COP should be disabled (only allowed for second half)
@@ -45,6 +79,13 @@ export const SingleRoundControlFields = (props: SingleRdCtrlFieldsProps) => {
     const halfwayPoint = Math.ceil(totalRounds / 2);
     return beginRound <= halfwayPoint;
   }, [beginRound, totalRounds]);
+
+  const lagDisabledReason = pairingLagDisabledReason(
+    setting.pairingMethod,
+    beginRound ?? round,
+    endRound ?? round,
+    totalRounds,
+  );
 
   const formItemLayout = {
     labelCol: {
@@ -113,6 +154,27 @@ export const SingleRoundControlFields = (props: SingleRdCtrlFieldsProps) => {
     </>
   );
 
+  const pairingLagHelptip = (
+    <>
+      <p>
+        Which results this round's pairings are based on. Rounds are normally
+        paired from the results through the previous round, so they cannot be
+        paired until every game of the previous round is over.
+      </p>
+      <p>
+        A round paired from the results through two rounds back is paired as
+        soon as the round before the previous one is complete. It can then be
+        opened while the previous round is still being played, so players who
+        finish early do not wait for the slowest game. Each player still has to
+        finish their previous game before starting this one.
+      </p>
+      <p>
+        This cannot be used for the first round, for Elimination rounds, or for
+        COP rounds that are one of the last two rounds.
+      </p>
+    </>
+  );
+
   return (
     <>
       <Form.Item
@@ -174,6 +236,37 @@ export const SingleRoundControlFields = (props: SingleRdCtrlFieldsProps) => {
             {Math.ceil(totalRounds / 2) + 1} and later).
           </p>
         )}
+      <Form.Item
+        {...formItemLayout}
+        label={
+          <HelptipLabel labelText="Paired from" help={pairingLagHelptip} />
+        }
+      >
+        <Select
+          value={setting.pairingLag || 0}
+          // Leave it enabled while it is set, so that an invalid lag can be
+          // turned off.
+          disabled={!!lagDisabledReason && !setting.pairingLag}
+          onChange={(e) => {
+            props.onChange("pairingLag", e);
+          }}
+        >
+          <Select.Option value={0}>Previous round</Select.Option>
+          <Select.Option value={1}>Two rounds back</Select.Option>
+        </Select>
+      </Form.Item>
+      {lagDisabledReason && (
+        <p
+          style={{
+            fontSize: "12px",
+            color: setting.pairingLag ? "#ff4d4f" : "#666",
+            marginTop: "-8px",
+            marginBottom: "8px",
+          }}
+        >
+          {lagDisabledReason}
+        </p>
+      )}
       <p></p>
       {/* potential additional fields */}
       {addlFields.map((v: PairingMethodField, idx) => {
@@ -237,6 +330,12 @@ export const RoundControlFields = (props: RdCtrlFieldsProps) => {
   const { setting, totalRounds } = props;
   return (
     <>
+      <h5 className="readable-text-color">
+        {setting.beginRound === setting.endRound
+          ? `Round ${setting.beginRound}`
+          : `Rounds ${setting.beginRound} to ${setting.endRound}`}
+        {setting.setting.pairingLag > 0 && " (lagged)"}
+      </h5>
       <Form size="small">
         <Form.Item label="First round">
           <InputNumber
@@ -270,15 +369,39 @@ export const RoundControlFields = (props: RdCtrlFieldsProps) => {
   );
 };
 
+// round is the 1-based round this control is for, when known. It is only used
+// to validate the pairing lag.
 export const rdCtrlFromSetting = (
   rdSetting: RoundControl,
   totalRounds?: number,
+  round?: number,
 ): RoundControl => {
   const rdCtrl = create(RoundControlSchema, {
     firstMethod: FirstMethod.AUTOMATIC_FIRST,
     gamesPerRound: 1,
     pairingMethod: rdSetting.pairingMethod,
   });
+
+  // The pairing lag applies to every pairing method.
+  rdCtrl.pairingLag = rdSetting.pairingLag || 0;
+  if (rdCtrl.pairingLag > 1) {
+    throw new Error(
+      `${round !== undefined ? `Round ${round} has` : "This round has"} an invalid pairing lag of ${rdCtrl.pairingLag}. The lag must be 0 or 1.`,
+    );
+  }
+  if (rdCtrl.pairingLag > 0) {
+    const reason = pairingLagDisabledReason(
+      rdCtrl.pairingMethod,
+      round,
+      round,
+      totalRounds,
+    );
+    if (reason) {
+      throw new Error(
+        round !== undefined ? `Round ${round}: ${reason}` : reason,
+      );
+    }
+  }
 
   switch (rdSetting.pairingMethod) {
     case PairingMethod.SWISS:

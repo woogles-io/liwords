@@ -14,6 +14,11 @@ import { create } from "@bufbuild/protobuf";
 import { useTournamentCompetitorState } from "../hooks/use_tournament_competitor_state";
 import { TourneyStatus } from "../store/selectors/tournament_selectors";
 import { ScoreEditPopover } from "./score_edit_popover";
+import {
+  isLaggedRound,
+  openRounds,
+  pairingBasisRound,
+} from "../store/selectors/round_selectors";
 // import { PlayerTag } from './player_tags';
 
 const usernameFromPlayerEntry = (p: string) =>
@@ -165,6 +170,16 @@ export const Pairings = React.memo((props: Props) => {
         : competitorState.currentRound,
     [props.selectedDivision, divisions, competitorState],
   );
+  // The rounds being played: the current round, and the round before it
+  // while a lagged current round runs alongside it.
+  const open = useMemo(
+    () =>
+      props.selectedDivision && divisions[props.selectedDivision]
+        ? openRounds(divisions[props.selectedDivision])
+        : [currentRound],
+    [props.selectedDivision, divisions, currentRound],
+  );
+  const selectedRoundIsOpen = open.includes(props.selectedRound);
 
   if (!props.selectedDivision) {
     return null;
@@ -192,7 +207,11 @@ export const Pairings = React.memo((props: Props) => {
     const findGameIdFromActive = (playerName: string) => {
       //This assumes one game per round per user
       const game = tournamentContext.activeGames.find((game) => {
-        return game.players.map((pm) => pm.displayName).includes(playerName);
+        return (
+          game.players.map((pm) => pm.displayName).includes(playerName) &&
+          // With two rounds open, a player's game may be in either one.
+          (open.length < 2 || game.tournamentRound === round)
+        );
       });
       return game?.gameID;
     };
@@ -302,10 +321,16 @@ export const Pairings = React.memo((props: Props) => {
             </div>
           );
         let actions;
-        //Current round gets special buttons
-        if (round === currentRound) {
+        //Open rounds get special buttons
+        if (open.includes(round)) {
           if (isMyGame && status) {
+            // The player's status is for their active round only.
             if (
+              competitorState.division === props.selectedDivision &&
+              round !== competitorState.activeRound
+            ) {
+              // No special buttons for my game in the other open round.
+            } else if (
               [
                 TourneyStatus.ROUND_OPEN,
                 TourneyStatus.ROUND_LATE,
@@ -533,8 +558,22 @@ export const Pairings = React.memo((props: Props) => {
     pairings,
   );
 
+  const selectedDivisionData = divisions[props.selectedDivision];
+  const laggedBasis =
+    selectedDivisionData &&
+    isLaggedRound(selectedDivisionData, props.selectedRound)
+      ? pairingBasisRound(selectedDivisionData, props.selectedRound)
+      : null;
+
   return (
     <>
+      {laggedBasis !== null && (
+        <p className="readable-text-color lagged-pairings-note">
+          {laggedBasis < 0
+            ? "Paired from the initial seeding, before any results"
+            : `Paired from results through round ${laggedBasis + 1}`}
+        </p>
+      )}
       {props.tentative && tableData.length > 0 && (
         <Affix offsetTop={10}>
           <Alert
@@ -576,7 +615,7 @@ export const Pairings = React.memo((props: Props) => {
         className={`pairings ${
           currentRound < props.selectedRound
             ? "future"
-            : currentRound > props.selectedRound
+            : currentRound > props.selectedRound && !selectedRoundIsOpen
               ? "completed"
               : "current"
         }`}
@@ -594,7 +633,7 @@ export const Pairings = React.memo((props: Props) => {
           if (record.isMine) {
             computedClass += " mine";
           }
-          if (props.selectedRound === currentRound) {
+          if (selectedRoundIsOpen) {
             computedClass += " current";
           }
           return computedClass;

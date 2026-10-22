@@ -17,7 +17,7 @@ type DivisionManager interface {
 	GetCurrentRound() int
 	GetPlayers() *pb.TournamentPersons
 	SetPairing(string, string, int, pb.TournamentGameResult) (*pb.DivisionPairingsResponse, error)
-	SetSingleRoundControls(int, *pb.RoundControl) (*pb.RoundControl, error)
+	SetSingleRoundControls(int, *pb.RoundControl) (*pb.DivisionPairingsResponse, *pb.RoundControl, error)
 	SetRoundControls([]*pb.RoundControl) (*pb.DivisionPairingsResponse, []*pb.RoundControl, error)
 	SetDivisionControls(*pb.DivisionControls) (*pb.DivisionControls, map[int32]*pb.RoundStandings, error)
 	GetDivisionControls() *pb.DivisionControls
@@ -27,6 +27,9 @@ type DivisionManager interface {
 	SetPlayerRating(string, int32) error
 	RenamePlayer(oldID, newID string) error
 	IsRoundReady(int) error
+	IsRoundPaired(int) bool
+	PairLaggedRoundAfter(int) (*pb.DivisionPairingsResponse, error)
+	TakeAutoPairingFailures() []int
 	IsRoundComplete(int) (bool, error)
 	IsStarted() bool
 	IsFinished() (bool, error)

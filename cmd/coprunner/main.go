@@ -68,7 +68,8 @@ func main() {
 	if division == nil {
 		log.Fatalf("Division %s not found in tournament %s", cfg.DivisionName, cfg.TournamentID)
 	}
-	pairRequest, err := tournament.TournamentDivisionToCOPRequest(division, rdnum, cfg)
+	basisRound := tournament.PairingBasisRound(division.RoundControls, int(rdnum))
+	pairRequest, err := tournament.TournamentDivisionToCOPRequest(division, rdnum, int64(basisRound), cfg)
 	if err != nil {
 		log.Fatalf("Failed to convert division to COP request: %v", err)
 	}
