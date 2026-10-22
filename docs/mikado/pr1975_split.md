@@ -89,7 +89,7 @@ are split by hunk; the step that finishes a file is in **bold**.
 | `db/migrations/*_automod_verdicts.*`, `db/queries/mod.sql`, `pkg/stores/mod/db.go`, `pkg/stores/models/mod.sql.go`, `pkg/mod/automod_apply_test.go` | never: dropped, see below |
 | `db/migrations/*_games_uuid_unique.*` | **1b** |
 | `db/queries/games.sql` | 1 (`ready_flag`), **3** (`GetGameWithTurns`) |
-| `pkg/gameplay/end.go` | **4** (`StageTurns`); the automod-after-save hunks are dropped |
+| `pkg/gameplay/end.go` | 4 (`StageTurns`); the automod-after-save hunks are dropped; **5** (`AdjudicateGame` and `ForfeitGame` lock, then load: deviation) |
 | `pkg/stores/game/db.go` | 1 (`ReadyFlag` param), 3 (shadows, `gameFromRow`, `GetHistory` comment), 4 (`StageTurns`/`AppendTurns`, transaction in `Set`, `CommitArchival`), 5 (`lockSlots`), **7** (`syncOngoingGame` in `Set`) |
 | `go.mod` (xxhash direct) | **2** |
 | `pkg/xwordgame/*`, `pkg/xwordbridge/*` | **2** |
@@ -103,7 +103,8 @@ are split by hunk; the step that finishes a file is in **bold**.
 | `db/queries/game_turns.sql`, `pkg/stores/game/tx.go`, `atomicity_test.go` | **4** |
 | `pkg/stores/game/cache.go` | 4 (`StageTurns`, `CommitArchival`, interface), 5 (`LockGame`), **6** (LRU removed) |
 | `db/queries/game_lock.sql`, `pkg/stores/game/lock.go`, `lock_test.go` | **5** |
-| `pkg/bus/gameplay.go`, `pkg/gameplay/meta_events.go` | **5** |
+| `pkg/bus/gameplay.go`, `pkg/gameplay/meta_events.go` | **5**; `bus/gameplay.go` also reloads before the never-started abort (deviation) |
+| `pkg/league/force_finish_games.go`, `pkg/league/service.go`, `pkg/gameplay/end_lock_test.go` | **5** (deviation; the reference never touches them) |
 | `cmd/liwords-api/main.go` (gameCacheSize expvar) | **6** |
 | `pkg/gameplay/common_test.go`, `game_playing_test.go`, `meta_events_test.go` | **6** |
 | `db/migrations/*_ongoing_games.*`, `db/queries/ongoing_games.sql`, `pkg/stores/game/ongoing.go`, `ongoing_test.go` | **7** |
@@ -126,7 +127,7 @@ that removes it.
 - **Step 4: `Set`'s comment on serialization stops at "callers hold the
   game's lock across load, move and save".** The reference names the session
   lock and `lock.go`, which arrive in step 5; the rest of that comment comes
-  back with them. `tx.go` is the reference file verbatim, so its header
+  back with them. (Done in step 5.) `tx.go` is the reference file verbatim, so its header
   already describes step 5's session lock.
 - **Step 4: `Cache.setOrCreate` drops the game from the LRU when a save
   fails.** Step 4 stages turn rows on the game object and `Set` writes them.
@@ -138,6 +139,11 @@ that removes it.
   the second and third saves fail with the duplicate key. Step 6 deletes the
   LRU and the line with it. The test stays, because it checks the same thing
   without a cache.
+- **Step 5: the game LRU is still there, beside the session lock.** The
+  reference removes both the in-process lock map and the LRU in one commit;
+  step 5 removes only the lock map and points `Cache.LockGame` at the
+  database lock. The cache's own comment still describes caching. Step 6
+  removes the LRU.
 - **Step 3: `pkg/config/config.go` has `ShadowTurnsLoad` but not
   `WriteOngoingGames`.** The reference adds both in the same hunks; the second
   lands with `ongoing_games` in 7.
@@ -210,7 +216,7 @@ What went where:
    the protection is the game lock held from load to save (step 5): a second
    `TimedOut` waits for the first, reloads, and sees the game ended. That
    only holds for entry points that take `LockGame` *before* loading. Three do
-   not, and need fixing in step 5 or 6 (a further deviation, to be recorded):
+   not; step 5 fixes them (see "End-of-game entry points lock, then load"):
    - `bus.adjudicateGames`' abort branch loads the game, then locks;
    - `league` `ForfeitGame` callers (`pkg/league/service.go`) and
      `force_finish_games.go` load the game and take only the in-memory
@@ -279,6 +285,41 @@ a count assertion and the moved-on test in `shadowturns_test.go`, and the
 `RunShadowSummary` goroutine in `cmd/liwords-api/main.go`. When steps 4 and 6
 bring in the reference's `db.go` and `main.go` hunks, these lines are carried
 over by hand.
+
+### End-of-game entry points lock, then load (step 5)
+
+The reference moves every `LockGame` call to the session lock but leaves three
+places that load the game first and lock it (or only its in-memory mutex)
+afterwards:
+
+- season-end force-finish (`ForceFinishUnfinishedGames`) loads each game and
+  calls `AdjudicateGame`, which takes only `g.Lock()`;
+- the league's forfeit of a removed player's games (`pkg/league/service.go`)
+  does the same with `ForfeitGame`;
+- `bus.adjudicateGames` loads a never-started game, then locks it to abort.
+
+A correspondence game is a fresh copy on every load, so a copy read before the
+lock can be out of date by the time the lock is held, and ending the game from
+it saves over whatever happened in between. Once step 6 removes the cache,
+real-time games are the same.
+
+`AdjudicateGame` and `ForfeitGame` now take a game id instead of a loaded game
+and go through one helper, `withLockedGame`: take the lock, load inside it,
+return early if the game has already ended. Each had one caller and no tests,
+so a caller can no longer hand them a stale copy. The abort branch loads the
+game again inside the lock and aborts only if it is still unstarted and not
+ended. `RepairForceFinishedGames` is left alone: it only touches games that
+have already ended, which nothing else writes.
+
+Test: `TestAdjudicateLoadsTheGameInsideTheLock` holds the lock, starts an
+adjudication, plays a pass under the lock, then releases it. The adjudication
+must wait, and the finished game must keep the pass. With the load moved above
+the lock, the finished game has no moves at all. It also checks that ending a
+finished game again does nothing.
+
+Deviation from the reference: `pkg/gameplay/end.go`,
+`pkg/league/force_finish_games.go`, `pkg/league/service.go`,
+`pkg/bus/gameplay.go` and the new `pkg/gameplay/end_lock_test.go`.
 
 ### Fixes from reviewing xwordgame against macondo (step 2)
 
@@ -435,8 +476,11 @@ Per step, from `xwordgame_remaining.md`:
    events: its next move would collide with an existing `turn_idx` and fail
    every time. Checked 2026-10-12: 2,567 live games, 2,530 exact, 37 with no
    rows, none ahead.
-5. *Watch* `ErrGameLockBusy`, `game-unlock-failed`, pool saturation, move
-   latency.
+5. *Watch* `ErrGameLockBusy` (as `handle-event-lock-failed`,
+   `timed-out-lock-failed`, `cant-lock-for-bot-move`, `cant-lock-for-abort`),
+   `game-unlock-failed`, pool saturation, move latency. Season-end
+   force-finish now takes the lock per game, so watch the first rollover
+   after the deploy.
 6. *Watch* p99 load latency, DB CPU.
 7. Turn on `WRITE_ONGOING_GAMES`. *Watch* move errors, and
    `SELECT count(*) FROM ongoing_games` against unfinished games in `games`.
@@ -467,6 +511,10 @@ pkg/stores/game/cache_failedsave_test.go
 cmd/liwords-api/main.go
 pkg/stores/game/db.go
 pkg/gameplay/end.go
+pkg/gameplay/end_lock_test.go
+pkg/bus/gameplay.go
+pkg/league/force_finish_games.go
+pkg/league/service.go
 pkg/mod/automod.go
 pkg/stores/models/models.go
 db/migrations/202610090003_notoriousgames_unique.up.sql
@@ -595,7 +643,7 @@ Deployed column is the code.
 | 1b | `referee-split-1b-games-uuid` | #2027 | 2026-10-09 | store + gameplay ✅ | ✅ | ✅ 2026-10-10 (index built by hand first; schema `202610090004`) |
 | 2 | `referee-split-2-referee` | #2028 | 2026-10-10 (review fixes) | full suite ✅ (corpus tests skip) | ✅ | ✅ 2026-10-12 (`liwords-api:317`) |
 | 3 | `referee-split-3-shadows` | #2029 | 2026-10-10 | full suite ✅; gameplay with flags on, matches master | ✅ | ✅ 2026-10-12 (`liwords-api:317`, `SHADOW_TURNS` and `SHADOW_TURNS_LOAD` on) |
-| 4 | `referee-split-4-atomic-save` | | 2026-10-12 | full suite ✅; gameplay with flags on: no mismatches | | |
+| 4 | `referee-split-4-atomic-save` | #2053 | 2026-10-12 | full suite ✅; gameplay with flags on: no mismatches | | |
 | 5 | `referee-split-5-session-lock` | | | | | |
 | 6 | `referee-split-6-no-cache` | | | | | |
 | 7 | `referee-split-7-ongoing-games` | | | | | |
