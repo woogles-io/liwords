@@ -56,6 +56,7 @@ import (
 	"github.com/woogles-io/liwords/pkg/disposableemail"
 	"github.com/woogles-io/liwords/pkg/embed"
 	"github.com/woogles-io/liwords/pkg/gameplay"
+	"github.com/woogles-io/liwords/pkg/humancheck"
 	"github.com/woogles-io/liwords/pkg/integrations"
 	"github.com/woogles-io/liwords/pkg/league"
 	"github.com/woogles-io/liwords/pkg/memento"
@@ -359,6 +360,15 @@ func main() {
 		"vdo-webhook-api",
 		otelhttp.WithSpanNameFormatter(customHTTPSpanNameFormatter),
 	))
+
+	if hc := humancheck.NewService(cfg.TurnstileSecret, cfg.HumanCheckCookieKey,
+		cfg.SecureCookies, []string{"woogles.io", "www.woogles.io", "localhost"}); hc != nil {
+		router.Handle(humancheck.Prefix, otelhttp.NewHandler(
+			hc,
+			"human-check-api",
+			otelhttp.WithSpanNameFormatter(customHTTPSpanNameFormatter),
+		))
+	}
 
 	interceptors := connect.WithInterceptors(otcInterceptor)
 	// We want to emit default values for backwards compatibility.
