@@ -104,7 +104,7 @@ are split by hunk; the step that finishes a file is in **bold**.
 | `pkg/stores/game/cache.go` | 4 (`StageTurns`, `CommitArchival`, interface), 5 (`LockGame`), **6** (LRU removed) |
 | `db/queries/game_lock.sql`, `pkg/stores/game/lock.go`, `lock_test.go` | **5** |
 | `pkg/bus/gameplay.go`, `pkg/gameplay/meta_events.go` | **5**; `bus/gameplay.go` also reloads before the never-started abort (deviation) |
-| `pkg/league/force_finish_games.go`, `pkg/league/service.go`, `pkg/gameplay/end_lock_test.go` | **5** (deviation; the reference never touches them) |
+| `pkg/league/force_finish_games.go`, `pkg/league/service.go`, `pkg/gameplay/end_lock_test.go`, `pkg/league/force_finish_test.go` | **5** (deviation; the reference never touches them) |
 | `cmd/liwords-api/main.go` (gameCacheSize expvar) | **6** |
 | `pkg/gameplay/common_test.go`, `game_playing_test.go`, `meta_events_test.go` | **6** |
 | `db/migrations/*_ongoing_games.*`, `db/queries/ongoing_games.sql`, `pkg/stores/game/ongoing.go`, `ongoing_test.go` | **7** |
@@ -317,6 +317,18 @@ must wait, and the finished game must keep the pass. With the load moved above
 the lock, the finished game has no moves at all. It also checks that ending a
 finished game again does nothing.
 
+Season close had no test, and it runs in a separate process: the hourly
+`league-hourly-runner` maintenance task, on its own `liwords-maintenance`
+image, which only changes when that task definition is updated.
+`TestForceFinishUnfinishedGames` holds one game's lock through a whole
+force-finish run: the other games are adjudicated, the held one is reported
+as `ErrGameLockBusy` after the ten-second wait, and an already-finished game
+is not picked up. A second run, as the next hourly run would, ends only the
+held game and leaves the rest alone. (The runner retries because a failed
+close leaves the season ACTIVE with no `closed_at`; see `lifecycle_runner.go`.)
+With the lock removed from `withLockedGame`, the first run ends the held game
+too and the test fails.
+
 Deviation from the reference: `pkg/gameplay/end.go`,
 `pkg/league/force_finish_games.go`, `pkg/league/service.go`,
 `pkg/bus/gameplay.go` and the new `pkg/gameplay/end_lock_test.go`.
@@ -479,8 +491,9 @@ Per step, from `xwordgame_remaining.md`:
 5. *Watch* `ErrGameLockBusy` (as `handle-event-lock-failed`,
    `timed-out-lock-failed`, `cant-lock-for-bot-move`, `cant-lock-for-abort`),
    `game-unlock-failed`, pool saturation, move latency. Season-end
-   force-finish now takes the lock per game, so watch the first rollover
-   after the deploy.
+   force-finish takes the lock per game, but it runs in the
+   `liwords-maintenance` task, so it changes only when that task definition
+   is pointed at a build with step 5. Update it on a day with no rollover.
 6. *Watch* p99 load latency, DB CPU.
 7. Turn on `WRITE_ONGOING_GAMES`. *Watch* move errors, and
    `SELECT count(*) FROM ongoing_games` against unfinished games in `games`.
@@ -512,6 +525,7 @@ cmd/liwords-api/main.go
 pkg/stores/game/db.go
 pkg/gameplay/end.go
 pkg/gameplay/end_lock_test.go
+pkg/league/force_finish_test.go
 pkg/bus/gameplay.go
 pkg/league/force_finish_games.go
 pkg/league/service.go
