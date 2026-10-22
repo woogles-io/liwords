@@ -721,15 +721,22 @@ func (s *DBStore) shadowCompareTurns(
 		return
 	}
 
-	// One exclusion: per-player turn counts. want is often not a game macondo
-	// played live but one it rebuilt from history -- every correspondence game,
-	// and every game once the cache is gone -- and macondo's replay loses those
-	// counts. In v0.13.5 playMove increments players[i].turns for placements
-	// and passes (game/game.go:582, :644), while PlayTurn, which NewFromHistory
-	// replays through, increments it only for exchanges (:1144). Nothing in
-	// liwords reads the count, so diffing it only buries real mismatches under
-	// false ones. Everything else is compared.
-	divs := withoutTurnCounts(xwordbridge.CompareStates(res.State, want))
+	// Two exclusions. First, per-player turn counts. want is often not a game
+	// macondo played live but one it rebuilt from history -- every
+	// correspondence game, and every game once the cache is gone -- and
+	// macondo's replay loses those counts. In v0.13.5 playMove increments
+	// players[i].turns for placements and passes (game/game.go:582, :644),
+	// while PlayTurn, which NewFromHistory replays through, increments it only
+	// for exchanges (:1144). Nothing in liwords reads the count, so diffing it
+	// only buries real mismatches under false ones.
+	//
+	// Second, the last play's words once both sides agree the game is over.
+	// Ending a game drops them here, since nothing can be challenged any more,
+	// while macondo keeps them. Set runs this for the save that ends a game, so
+	// without the exclusion every game ending on a tile play would be reported.
+	// Everything else is compared, play state included.
+	divs := withoutReplayNoise(xwordbridge.CompareStates(res.State, want),
+		res.State.PlayState == xwordgame.GameOver && want.PlayState == xwordgame.GameOver)
 	if len(divs) == 0 {
 		log.Debug().Str("gameID", gameID).Int("turns", len(events)).Msg("shadow-turns-ok")
 		turnsShadowCounts.ok.Add(1)
@@ -743,14 +750,19 @@ func (s *DBStore) shadowCompareTurns(
 	ev.Msg("shadow-turns-mismatch")
 }
 
-// withoutTurnCounts drops the per-player turn-count fields from a comparison.
-// See shadowCompareTurns for why.
-func withoutTurnCounts(divs []xwordbridge.Divergence) []xwordbridge.Divergence {
+// withoutReplayNoise drops the per-player turn-count fields from a comparison,
+// and the last play's words when the game is over. See shadowCompareTurns for
+// why.
+func withoutReplayNoise(divs []xwordbridge.Divergence, gameOver bool) []xwordbridge.Divergence {
 	out := divs[:0]
 	for _, d := range divs {
-		if !strings.HasPrefix(d.Field, "turns[") {
-			out = append(out, d)
+		if strings.HasPrefix(d.Field, "turns[") {
+			continue
 		}
+		if gameOver && d.Field == "lastWordsFormed" {
+			continue
+		}
+		out = append(out, d)
 	}
 	return out
 }

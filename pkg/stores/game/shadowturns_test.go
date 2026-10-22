@@ -144,3 +144,61 @@ func TestShadowTurnsComparesSnapshotWhenGameMovedOn(t *testing.T) {
 	is.True(!hasPrefix(msgs, "shadow-turns-mismatch"))
 	is.Equal(turnsShadowCounts.ok.Load()-okBefore, int64(1))
 }
+
+// The shadow runs for finished games too, since the save that ends a game is
+// the one that commits its last rows. In a finished position the replay drops
+// the last play's words -- nothing can be challenged once the game is over --
+// while macondo's live game keeps them. That is not a mismatch.
+func TestShadowTurnsIgnoresWordsFormedInFinishedGame(t *testing.T) {
+	is := is.New(t)
+	ustore, gstore := recreateDB()
+	defer gstore.Disconnect()
+	defer ustore.(*user.DBStore).Disconnect()
+
+	const gid = "wJxURccCgSAPivUvj4QdYL"
+	ctx := context.Background()
+
+	live, err := gstore.Get(ctx, gid)
+	is.NoErr(err)
+	before := len(live.History().Events)
+	_, err = live.PlayScoringMove("8E", "AGUE", true)
+	is.NoErr(err)
+	is.NoErr(gstore.AppendTurns(ctx, gid, before, live.History().Events[before:]))
+	is.NoErr(gstore.Set(ctx, live))
+
+	want, err := xwordbridge.StateFromGame(&live.Game)
+	is.NoErr(err)
+	// The game ending on that play, as macondo reports it: over, with the
+	// play's words still attached.
+	want.PlayState = xwordgame.GameOver
+	is.True(len(want.LastWordsFormed) > 0)
+
+	racks := make([]string, xwordgame.MaxPlayers)
+	for p := range racks {
+		racks[p] = live.Game.RackLettersFor(p)
+	}
+	spec := xwordbridge.SpecFromHistory(live.History())
+	if spec.Lexicon == "" && live.GameReq != nil {
+		spec.Lexicon = live.GameReq.Lexicon
+	}
+	rules, err := xwordbridge.RulesFor(gstore.cfg.MacondoConfig(), spec)
+	is.NoErr(err)
+
+	var buf syncBuffer
+	logged := zerolog.New(&buf).Level(zerolog.DebugLevel).WithContext(ctx)
+	okBefore := turnsShadowCounts.ok.Load()
+	gstore.shadowCompareTurns(logged, gid, rules, want, racks, len(live.History().Events))
+
+	var msgs []string
+	for _, line := range strings.Split(strings.TrimSpace(buf.String()), "\n") {
+		var rec struct {
+			Message string `json:"message"`
+		}
+		is.NoErr(json.Unmarshal([]byte(line), &rec))
+		msgs = append(msgs, rec.Message)
+		t.Log(line)
+	}
+	is.True(hasPrefix(msgs, "shadow-turns-ok"))
+	is.True(!hasPrefix(msgs, "shadow-turns-mismatch"))
+	is.Equal(turnsShadowCounts.ok.Load()-okBefore, int64(1))
+}
