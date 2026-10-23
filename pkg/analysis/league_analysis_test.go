@@ -782,3 +782,55 @@ func TestPlayerSeasonGamesOpponentMistakeIndex(t *testing.T) {
 		}
 	}
 }
+
+// TestDivisionCrosstableGames covers the crosstable's game list: finished
+// games with game_players scores, games in progress with their history, and
+// aborted or canceled games left out.
+func TestDivisionCrosstableGames(t *testing.T) {
+	is := is.New(t)
+	ctx := context.Background()
+
+	pool, queries := setupTestDB(t)
+	defer pool.Close()
+
+	createTestUsers(t, pool)
+	leagueID, seasonID, divisionID := createMinimalLeague(t, ctx, queries)
+
+	now := time.Now()
+	finished := insertLeagueGame(t, ctx, pool, leagueID, seasonID, divisionID, now.Add(-2*time.Hour), 400, 380)
+	_, err := pool.Exec(ctx, `UPDATE games SET winner_idx = 0 WHERE uuid = $1`, finished)
+	is.NoErr(err)
+	live := insertLeagueGame(t, ctx, pool, leagueID, seasonID, divisionID, now.Add(-time.Hour), 0, 0)
+	_, err = pool.Exec(ctx, `UPDATE games SET game_end_reason = 0, player_on_turn = 1, history = '\x0102' WHERE uuid = $1`, live)
+	is.NoErr(err)
+	for _, reason := range []ipc.GameEndReason{ipc.GameEndReason_ABORTED, ipc.GameEndReason_CANCELLED} {
+		gone := insertLeagueGame(t, ctx, pool, leagueID, seasonID, divisionID, now, 0, 0)
+		_, err = pool.Exec(ctx, `UPDATE games SET game_end_reason = $2 WHERE uuid = $1`, gone, int(reason))
+		is.NoErr(err)
+	}
+
+	rows, err := queries.GetDivisionCrosstableGames(ctx, divisionID)
+	is.NoErr(err)
+	is.Equal(len(rows), 2)
+	for _, r := range rows {
+		is.Equal(r.Player0Uuid, "test-uuid-1")
+		is.Equal(r.Player1Uuid, "test-uuid-2")
+		switch r.GameUuid.String {
+		case finished:
+			is.Equal(r.Player0Score, int32(400))
+			is.Equal(r.Player1Score, int32(380))
+			is.Equal(r.WinnerIdx.Int32, int32(0))
+			is.Equal(len(r.History), 0) // not read for finished games
+		case live:
+			is.Equal(r.GameEndReason.Int32, int32(0))
+			is.Equal(r.PlayerOnTurn.Int32, int32(1))
+			is.Equal(r.History, []byte{1, 2})
+		default:
+			t.Fatalf("unexpected game %s", r.GameUuid.String)
+		}
+	}
+
+	rows, err = queries.GetDivisionCrosstableGames(ctx, uuid.New())
+	is.NoErr(err)
+	is.Equal(len(rows), 0)
+}
