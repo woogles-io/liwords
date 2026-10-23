@@ -2,6 +2,7 @@ package gameplay
 
 import (
 	"context"
+	"net/http"
 	"regexp"
 	"strings"
 
@@ -249,12 +250,28 @@ func (gs *GameService) GetRecentCorrespondenceGames(ctx context.Context, req *co
 	return connect.NewResponse(resp), nil
 }
 
+// logHistoryLookupFailure records enough about a failed history request to
+// tell where it came from -- the app, a stale link, a crawler -- without
+// logging the client's address.
+func logHistoryLookupFailure(ctx context.Context, method, gameID string, h http.Header, err error) {
+	_, sessErr := apiserver.GetSession(ctx)
+	log.Warn().Err(err).
+		Str("method", method).
+		Str("gameID", gameID).
+		Int("gameIDLen", len(gameID)).
+		Bool("hasSession", sessErr == nil).
+		Str("userAgent", h.Get("User-Agent")).
+		Str("referer", h.Get("Referer")).
+		Msg("history-lookup-failed")
+}
+
 // GetGCG downloads a GCG for a full native game, or a partial GCG
 // for an annotated game.
 func (gs *GameService) GetGCG(ctx context.Context, req *connect.Request[pb.GCGRequest],
 ) (*connect.Response[pb.GCGResponse], error) {
 	hist, err := gs.gameStore.GetHistory(ctx, req.Msg.GameId)
 	if err != nil {
+		logHistoryLookupFailure(ctx, "GetGCG", req.Msg.GameId, req.Header(), err)
 		return nil, apiserver.InvalidArg(err.Error())
 	}
 	anno := false
@@ -288,6 +305,7 @@ func (gs *GameService) GetGameHistory(ctx context.Context, req *connect.Request[
 ) (*connect.Response[pb.GameHistoryResponse], error) {
 	hist, err := gs.gameStore.GetHistory(ctx, req.Msg.GameId)
 	if err != nil {
+		logHistoryLookupFailure(ctx, "GetGameHistory", req.Msg.GameId, req.Header(), err)
 		return nil, apiserver.InvalidArg(err.Error())
 	}
 	if len(hist.Players) == 0 {
