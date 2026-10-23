@@ -1832,7 +1832,13 @@ func (s *DBStore) GetHistory(ctx context.Context, id string) (*macondopb.GameHis
 	row, err := s.queries.GetHistory(ctx, common.ToPGTypeText(id))
 	if err != nil {
 		span.RecordError(err)
-		log.Err(err).Msg("error-get-history")
+		if errors.Is(err, pgx.ErrNoRows) {
+			// Usually a request for a game that never existed or has been
+			// deleted, not a database problem. The callers log who asked.
+			log.Warn().Str("gameID", id).Msg("game-history-not-found")
+			return nil, err
+		}
+		log.Err(err).Str("gameID", id).Msg("error-get-history")
 		return nil, err
 	}
 
