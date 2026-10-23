@@ -5,12 +5,16 @@ import { Division } from "../gen/api/proto/ipc/league_pb";
 import { GameEndReason } from "../gen/api/proto/ipc/omgwords_pb";
 import { getDivisionCrosstable } from "../gen/api/proto/league_service/league_service-LeagueService_connectquery";
 import { CrosstableGame } from "../gen/api/proto/league_service/league_service_pb";
+import { UsernameWithContext } from "../shared/usernameWithContext";
+import { endReasonLabel } from "./player_game_history_modal";
 
 const { Text } = Typography;
 
 // One game as seen by the row player.
 export type CrosstableCell = {
   gameId: string;
+  opponentId: string;
+  endReason: GameEndReason;
   myScore: number;
   theirScore: number;
   // "win", "loss" or "draw" once finished; "turn" (the row player's) or
@@ -49,6 +53,8 @@ export const buildCrosstable = (
       }
       const cell: CrosstableCell = {
         gameId: g.gameId,
+        opponentId: them,
+        endReason: g.gameEndReason,
         myScore: idx === 0 ? g.player0Score : g.player1Score,
         theirScore: idx === 0 ? g.player1Score : g.player0Score,
         result,
@@ -86,6 +92,38 @@ export const notStarted = (g: CrosstableCell): boolean =>
   g.myScore === 0 &&
   g.theirScore === 0;
 
+// A letter after the score when a game did not end by being played out, so a
+// win on time while behind on score reads as what it was.
+export const endMark = (reason: GameEndReason): string => {
+  switch (reason) {
+    case GameEndReason.TIME:
+      return "T";
+    case GameEndReason.RESIGNED:
+      return "R";
+    case GameEndReason.FORCE_FORFEIT:
+      return "F";
+    case GameEndReason.TRIPLE_CHALLENGE:
+      return "3";
+    case GameEndReason.ADJUDICATED:
+      return "A";
+    case GameEndReason.CONSECUTIVE_ZEROES:
+      return "Z";
+    default:
+      return "";
+  }
+};
+
+// Whether every player in the division has a game against every other: the
+// grid then reads well. A division where each plays only some of the others
+// (the uncapped bottom one) is shown as a list per player instead.
+export const isFullRoundRobin = (
+  userIds: Array<string>,
+  cells: Map<string, Array<CrosstableCell>>,
+): boolean =>
+  userIds.every((a) =>
+    userIds.every((b) => a === b || cells.has(cellKey(a, b))),
+  );
+
 const resultLabel = (result: CrosstableCell["result"]): string => {
   switch (result) {
     case "turn":
@@ -104,10 +142,52 @@ type Row = {
   rank: number;
 };
 
-// Every pairing of a division in one grid: row player's score first, green for
-// a win, red for a loss, gray (with * when the row player is on turn) for a
-// game in progress. A cell opens its game.
-export const DivisionCrosstable = (props: { division: Division }) => {
+// One game's score as the row player sees it, linked to the game. The hover
+// says who played, how it ended and by how much.
+const GameScore = (props: {
+  g: CrosstableCell;
+  me: string;
+  them: string;
+  prefix?: string;
+}) => {
+  const { g } = props;
+  const spread = g.myScore - g.theirScore;
+  const how = endReasonLabel(g.endReason);
+  const live = g.result === "turn" || g.result === "waiting";
+  const title = `${props.me} vs ${props.them}: ${resultLabel(g.result)}${
+    !live && how ? ` (${how})` : ""
+  }${notStarted(g) ? "" : `, ${spread >= 0 ? "+" : ""}${spread}`}`;
+  return (
+    <Tooltip title={title}>
+      <a
+        href={`/game/${g.gameId}`}
+        target="_blank"
+        rel="noreferrer"
+        style={{ whiteSpace: "nowrap" }}
+      >
+        <Text
+          type={resultType(g.result)}
+          className={g.result === "draw" ? "crosstable-draw" : undefined}
+        >
+          {props.prefix}
+          {notStarted(g) ? "\u00b7" : `${g.myScore}-${g.theirScore}`}
+          {live ? "" : endMark(g.endReason)}
+          {g.result === "turn" ? "*" : ""}
+        </Text>
+      </a>
+    </Tooltip>
+  );
+};
+
+// Every pairing of a division: row player's score first, green for a win, red
+// for a loss, blue for a draw, gray (with * when the row player is on turn)
+// for a game in progress; a letter after the score says how a game ended when
+// it was not played out. A full round robin is a grid; otherwise each player
+// gets a list of their games, by opponent rank.
+export const DivisionCrosstable = (props: {
+  division: Division;
+  onChat?: (uuid: string, username: string) => void;
+}) => {
   const { data, isLoading, error } = useQuery(getDivisionCrosstable, {
     divisionId: props.division.uuid,
   });
@@ -118,6 +198,7 @@ export const DivisionCrosstable = (props: { division: Division }) => {
     username: s.username,
     rank: i + 1,
   }));
+  const byId = new Map(rows.map((r) => [r.userId, r]));
   const cells = buildCrosstable(
     rows.map((r) => r.userId),
     data?.games ?? [],
@@ -132,56 +213,80 @@ export const DivisionCrosstable = (props: { division: Division }) => {
     );
   }
 
-  const columns: TableColumnsType<Row> = [
+  const fixedColumns: TableColumnsType<Row> = [
     { title: "#", dataIndex: "rank", key: "rank", fixed: "left" as const },
     {
       title: "Player",
-      dataIndex: "username",
       key: "username",
       fixed: "left" as const,
-    },
-    ...rows.map((col) => ({
-      title: (
-        <Tooltip title={col.username}>
-          <span style={{ cursor: "help" }}>{col.rank}</span>
-        </Tooltip>
+      render: (_: unknown, row: Row) => (
+        <UsernameWithContext
+          username={row.username}
+          userID={row.userId}
+          sendMessage={props.onChat}
+          omitSendMessage={!props.onChat}
+        />
       ),
-      key: col.userId,
-      align: "center" as const,
-      render: (_: unknown, row: Row) => {
-        if (row.userId === col.userId) {
-          return <Text type="secondary">-</Text>;
-        }
-        const games = cells.get(cellKey(row.userId, col.userId)) ?? [];
-        if (games.length === 0) {
-          return null;
-        }
-        return (
-          <React.Fragment>
-            {games.map((g) => (
-              <div key={g.gameId}>
-                <Tooltip
-                  title={`${row.username} vs ${col.username}: ${resultLabel(g.result)}`}
-                >
-                  <a
-                    href={`/game/${g.gameId}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    style={{ whiteSpace: "nowrap" }}
-                  >
-                    <Text type={resultType(g.result)}>
-                      {notStarted(g) ? "\u00b7" : `${g.myScore}-${g.theirScore}`}
-                      {g.result === "turn" ? "*" : ""}
-                    </Text>
-                  </a>
-                </Tooltip>
-              </div>
-            ))}
-          </React.Fragment>
-        );
-      },
-    })),
+    },
   ];
+
+  const grid = isFullRoundRobin(
+    rows.map((r) => r.userId),
+    cells,
+  );
+  const columns: TableColumnsType<Row> = grid
+    ? [
+        ...fixedColumns,
+        ...rows.map((col) => ({
+          title: (
+            <Tooltip title={col.username}>
+              <span style={{ cursor: "help" }}>{col.rank}</span>
+            </Tooltip>
+          ),
+          key: col.userId,
+          align: "center" as const,
+          render: (_: unknown, row: Row) => {
+            if (row.userId === col.userId) {
+              return <Text type="secondary">-</Text>;
+            }
+            return (cells.get(cellKey(row.userId, col.userId)) ?? []).map(
+              (g) => (
+                <div key={g.gameId}>
+                  <GameScore g={g} me={row.username} them={col.username} />
+                </div>
+              ),
+            );
+          },
+        })),
+      ]
+    : [
+        ...fixedColumns,
+        {
+          title: "Games (by opponent's rank)",
+          key: "games",
+          render: (_: unknown, row: Row) => {
+            const games = rows
+              .filter((r) => r.userId !== row.userId)
+              .flatMap((opp) =>
+                (cells.get(cellKey(row.userId, opp.userId)) ?? []).map((g) => ({
+                  g,
+                  opp,
+                })),
+              );
+            return games.map(({ g, opp }, i) => (
+              <React.Fragment key={g.gameId}>
+                {i > 0 && " "}
+                <GameScore
+                  g={g}
+                  me={row.username}
+                  them={byId.get(opp.userId)?.username ?? opp.username}
+                  prefix={`#${opp.rank} `}
+                />
+              </React.Fragment>
+            ));
+          },
+        },
+      ];
 
   return (
     <Table

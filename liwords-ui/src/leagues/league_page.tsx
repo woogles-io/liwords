@@ -932,7 +932,10 @@ export const LeaguePage = (props: Props) => {
                             key: "crosstable",
                             label: "Crosstable",
                             children: (
-                              <DivisionCrosstable division={division} />
+                              <DivisionCrosstable
+                                division={division}
+                                onChat={openDirectMessage}
+                              />
                             ),
                           },
                         ]}

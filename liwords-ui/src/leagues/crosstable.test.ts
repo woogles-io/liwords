@@ -2,7 +2,12 @@ import { create } from "@bufbuild/protobuf";
 import { describe, expect, it } from "vitest";
 import { GameEndReason } from "../gen/api/proto/ipc/omgwords_pb";
 import { CrosstableGameSchema } from "../gen/api/proto/league_service/league_service_pb";
-import { buildCrosstable, notStarted } from "./crosstable";
+import {
+  buildCrosstable,
+  endMark,
+  isFullRoundRobin,
+  notStarted,
+} from "./crosstable";
 
 const game = (
   o: Partial<Parameters<typeof create<typeof CrosstableGameSchema>>[1]>,
@@ -22,11 +27,26 @@ const game = (
 describe("buildCrosstable", () => {
   it("shows a game from each side", () => {
     const cells = buildCrosstable(["a", "b"], [game({})]);
+    const std = GameEndReason.STANDARD;
     expect(cells.get("a|b")).toEqual([
-      { gameId: "g", myScore: 400, theirScore: 350, result: "win" },
+      {
+        gameId: "g",
+        opponentId: "b",
+        endReason: std,
+        myScore: 400,
+        theirScore: 350,
+        result: "win",
+      },
     ]);
     expect(cells.get("b|a")).toEqual([
-      { gameId: "g", myScore: 350, theirScore: 400, result: "loss" },
+      {
+        gameId: "g",
+        opponentId: "a",
+        endReason: std,
+        myScore: 350,
+        theirScore: 400,
+        result: "loss",
+      },
     ]);
   });
 
@@ -66,10 +86,41 @@ describe("buildCrosstable", () => {
 
 describe("notStarted", () => {
   it("is a live game with no score", () => {
-    const cell = { gameId: "g", myScore: 0, theirScore: 0 };
+    const cell = {
+      gameId: "g",
+      opponentId: "b",
+      endReason: GameEndReason.NONE,
+      myScore: 0,
+      theirScore: 0,
+    };
     expect(notStarted({ ...cell, result: "turn" })).toBe(true);
     expect(notStarted({ ...cell, result: "waiting" })).toBe(true);
     expect(notStarted({ ...cell, myScore: 12, result: "waiting" })).toBe(false);
     expect(notStarted({ ...cell, result: "draw" })).toBe(false);
+  });
+});
+
+describe("endMark", () => {
+  it("marks games that were not played out", () => {
+    expect(endMark(GameEndReason.TIME)).toBe("T");
+    expect(endMark(GameEndReason.RESIGNED)).toBe("R");
+    expect(endMark(GameEndReason.FORCE_FORFEIT)).toBe("F");
+    expect(endMark(GameEndReason.STANDARD)).toBe("");
+  });
+});
+
+describe("isFullRoundRobin", () => {
+  it("is true only when every pair has a game", () => {
+    const three = ["a", "b", "c"];
+    const all = buildCrosstable(three, [
+      game({ gameId: "1", player0UserId: "a", player1UserId: "b" }),
+      game({ gameId: "2", player0UserId: "a", player1UserId: "c" }),
+      game({ gameId: "3", player0UserId: "b", player1UserId: "c" }),
+    ]);
+    expect(isFullRoundRobin(three, all)).toBe(true);
+    const partial = buildCrosstable(three, [
+      game({ gameId: "1", player0UserId: "a", player1UserId: "b" }),
+    ]);
+    expect(isFullRoundRobin(three, partial)).toBe(false);
   });
 });

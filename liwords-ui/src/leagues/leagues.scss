@@ -934,3 +934,8 @@
 
   color: m($gray-medium);
 }
+
+// A drawn game in the crosstable: blue, like the Draw tag elsewhere.
+.division-crosstable .crosstable-draw {
+  color: #1677ff;
+}
