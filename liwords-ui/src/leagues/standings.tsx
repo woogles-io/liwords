@@ -309,6 +309,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
     totalOpponentTilesPlayed: standing.totalOpponentTilesPlayed,
     placementStatus: standing.placementStatus,
     avgMistakeIndex: standing.avgMistakeIndex,
+    avgOpponentMistakeIndex: standing.avgOpponentMistakeIndex,
     gamesAnalyzed: standing.gamesAnalyzed,
   }));
 
@@ -630,6 +631,32 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
         _: unknown,
         record: { avgMistakeIndex: number; gamesAnalyzed: number },
       ) => (record.gamesAnalyzed > 0 ? record.avgMistakeIndex.toFixed(1) : "-"),
+    },
+    {
+      title: (
+        <ColHeader
+          title={isMiaow ? "OMiaow" : "OMiAV"}
+          tooltip="Average opponent Mistake Index, over the same analyzed games (higher means opponents erred more; - if no analysis)"
+        />
+      ),
+      key: "avgOpponentMistakeIndex",
+      width: 50,
+      sorter: (a: StandingRecord, b: StandingRecord) => {
+        // Players with no analysis sort to the bottom
+        if (a.gamesAnalyzed === 0 && b.gamesAnalyzed === 0) return 0;
+        if (a.gamesAnalyzed === 0) return 1;
+        if (b.gamesAnalyzed === 0) return -1;
+        return a.avgOpponentMistakeIndex - b.avgOpponentMistakeIndex;
+      },
+      sortDirections: ["ascend", "descend"] as SortOrder[],
+      sortIcon: noSortIcon,
+      render: (
+        _: unknown,
+        record: { avgOpponentMistakeIndex: number; gamesAnalyzed: number },
+      ) =>
+        record.gamesAnalyzed > 0
+          ? record.avgOpponentMistakeIndex.toFixed(1)
+          : "-",
     },
     {
       title: (
