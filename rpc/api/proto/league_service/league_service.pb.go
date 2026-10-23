@@ -1727,6 +1727,7 @@ type LeagueRosterSeason struct {
 	Draws          int32                  `protobuf:"varint,6,opt,name=draws,proto3" json:"draws,omitempty"`
 	Spread         int32                  `protobuf:"varint,7,opt,name=spread,proto3" json:"spread,omitempty"`
 	Result         ipc.StandingResult     `protobuf:"varint,8,opt,name=result,proto3,enum=ipc.StandingResult" json:"result,omitempty"` // Promoted, relegated, stayed, champion
+	Timeouts       int32                  `protobuf:"varint,9,opt,name=timeouts,proto3" json:"timeouts,omitempty"`                     // Games lost on time that season
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -1815,6 +1816,13 @@ func (x *LeagueRosterSeason) GetResult() ipc.StandingResult {
 		return x.Result
 	}
 	return ipc.StandingResult(0)
+}
+
+func (x *LeagueRosterSeason) GetTimeouts() int32 {
+	if x != nil {
+		return x.Timeouts
+	}
+	return 0
 }
 
 type LeagueStatisticsResponse struct {
@@ -3714,7 +3722,7 @@ const file_proto_league_service_league_service_proto_rawDesc = "" +
 	"\x12LeagueRosterPlayer\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x1a\n" +
 	"\busername\x18\x02 \x01(\tR\busername\x12<\n" +
-	"\aseasons\x18\x03 \x03(\v2\".league_service.LeagueRosterSeasonR\aseasons\"\xfd\x01\n" +
+	"\aseasons\x18\x03 \x03(\v2\".league_service.LeagueRosterSeasonR\aseasons\"\x99\x02\n" +
 	"\x12LeagueRosterSeason\x12#\n" +
 	"\rseason_number\x18\x01 \x01(\x05R\fseasonNumber\x12'\n" +
 	"\x0fdivision_number\x18\x02 \x01(\x05R\x0edivisionNumber\x12\x12\n" +
@@ -3723,7 +3731,8 @@ const file_proto_league_service_league_service_proto_rawDesc = "" +
 	"\x06losses\x18\x05 \x01(\x05R\x06losses\x12\x14\n" +
 	"\x05draws\x18\x06 \x01(\x05R\x05draws\x12\x16\n" +
 	"\x06spread\x18\a \x01(\x05R\x06spread\x12+\n" +
-	"\x06result\x18\b \x01(\x0e2\x13.ipc.StandingResultR\x06result\"L\n" +
+	"\x06result\x18\b \x01(\x0e2\x13.ipc.StandingResultR\x06result\x12\x1a\n" +
+	"\btimeouts\x18\t \x01(\x05R\btimeouts\"L\n" +
 	"\x18LeagueStatisticsResponse\x120\n" +
 	"\x05stats\x18\x01 \x03(\v2\x1a.league_service.LeagueStatR\x05stats\"\xb6\x01\n" +
 	"\n" +

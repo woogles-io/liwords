@@ -2049,6 +2049,7 @@ func (ls *LeagueService) GetLeagueRoster(
 				Draws:          row.Draws,
 				Spread:         row.Spread,
 				Result:         ipc.StandingResult(row.Result),
+				Timeouts:       row.Timeouts,
 			})
 		}
 		players[i] = &pb.LeagueRosterPlayer{
