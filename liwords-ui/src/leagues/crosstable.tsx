@@ -71,19 +71,18 @@ export const buildCrosstable = (
   return cells;
 };
 
-const resultType = (
-  result: CrosstableCell["result"],
-): "success" | "danger" | "secondary" | undefined => {
-  switch (result) {
-    case "win":
-      return "success";
-    case "loss":
-      return "danger";
-    case "draw":
-      return undefined;
-    default:
-      return "secondary";
-  }
+// Green ahead or won, red behind or lost, gray when level (as elsewhere on
+// the site). A finished game goes by its result, so a win on time while
+// behind is still green; a live one by its current score.
+export const scoreType = (
+  g: CrosstableCell,
+): "success" | "danger" | "secondary" => {
+  if (g.result === "win") return "success";
+  if (g.result === "loss") return "danger";
+  if (g.result === "draw") return "secondary";
+  if (g.myScore > g.theirScore) return "success";
+  if (g.myScore < g.theirScore) return "danger";
+  return "secondary";
 };
 
 // A game in progress with no score yet shows as a dot, not as 0-0.
@@ -150,10 +149,7 @@ const GameScore = (props: { g: CrosstableCell; me: string; them: string }) => {
         rel="noreferrer"
         style={{ whiteSpace: "nowrap" }}
       >
-        <Text
-          type={resultType(g.result)}
-          className={g.result === "draw" ? "crosstable-draw" : undefined}
-        >
+        <Text type={scoreType(g)} italic={live}>
           {notStarted(g) ? "\u00b7" : `${g.myScore}-${g.theirScore}`}
           {live ? "" : endMark(g.endReason)}
           {g.result === "turn" ? "*" : ""}
@@ -163,9 +159,8 @@ const GameScore = (props: { g: CrosstableCell; me: string; them: string }) => {
   );
 };
 
-// Every pairing of a division: row player's score first, green for a win, red
-// for a loss, blue for a draw, gray (with * when the row player is on turn)
-// for a game in progress; a letter after the score says how a game ended when
+// Every pairing of a division: row player's score first, colored by scoreType;
+// a game in progress is in italics (with * when the row player is on turn); a letter after the score says how a game ended when
 // it was not played out. Always a grid, however wide: a player's games as a
 // list are in the standings' game history.
 export const DivisionCrosstable = (props: {

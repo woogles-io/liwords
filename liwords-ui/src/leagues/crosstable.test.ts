@@ -2,7 +2,7 @@ import { create } from "@bufbuild/protobuf";
 import { describe, expect, it } from "vitest";
 import { GameEndReason } from "../gen/api/proto/ipc/omgwords_pb";
 import { CrosstableGameSchema } from "../gen/api/proto/league_service/league_service_pb";
-import { buildCrosstable, endMark, notStarted } from "./crosstable";
+import { buildCrosstable, endMark, notStarted, scoreType } from "./crosstable";
 
 const game = (
   o: Partial<Parameters<typeof create<typeof CrosstableGameSchema>>[1]>,
@@ -102,5 +102,39 @@ describe("endMark", () => {
     expect(endMark(GameEndReason.FORCE_FORFEIT)).toBe("F");
     expect(endMark(GameEndReason.TRIPLE_CHALLENGE)).toBe("C");
     expect(endMark(GameEndReason.STANDARD)).toBe("");
+  });
+});
+
+describe("scoreType", () => {
+  const cell = {
+    gameId: "g",
+    opponentId: "b",
+    endReason: GameEndReason.NONE,
+  };
+  it("colors a live game by who is ahead", () => {
+    expect(
+      scoreType({ ...cell, result: "turn", myScore: 300, theirScore: 250 }),
+    ).toBe("success");
+    expect(
+      scoreType({ ...cell, result: "waiting", myScore: 200, theirScore: 250 }),
+    ).toBe("danger");
+    expect(
+      scoreType({ ...cell, result: "waiting", myScore: 0, theirScore: 0 }),
+    ).toBe("secondary");
+  });
+  it("colors a finished game by its result", () => {
+    // won on time while behind
+    expect(
+      scoreType({
+        ...cell,
+        endReason: GameEndReason.TIME,
+        result: "win",
+        myScore: 300,
+        theirScore: 350,
+      }),
+    ).toBe("success");
+    expect(
+      scoreType({ ...cell, result: "draw", myScore: 400, theirScore: 400 }),
+    ).toBe("secondary");
   });
 });
