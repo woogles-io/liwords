@@ -2,6 +2,7 @@ import React, {
   useCallback,
   useEffect,
   useImperativeHandle,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -101,19 +102,27 @@ const getDefaultTab = (
   return "PLAYERS";
 };
 
-// How much taller a textarea is than one row of it: its height less one
-// line and its vertical padding and border.
-export const chatInputGrowth = (ta: HTMLTextAreaElement): number => {
-  const cs = window.getComputedStyle(ta);
-  const px = (v: string) => parseFloat(v) || 0;
-  const oneRow =
-    px(cs.lineHeight) +
-    px(cs.paddingTop) +
-    px(cs.paddingBottom) +
-    px(cs.borderTopWidth) +
-    px(cs.borderBottomWidth);
-  return Math.max(0, Math.round(ta.offsetHeight - oneRow));
-};
+// The height the message list may take without reaching under the input:
+// from the list's top down to the input's top.
+export const roomAboveInput = (list: HTMLElement, input: HTMLElement): number =>
+  Math.max(
+    0,
+    Math.floor(
+      input.getBoundingClientRect().top - list.getBoundingClientRect().top,
+    ),
+  );
+
+// The list's max height: the layout's own cap, if any, further capped so the
+// list (and its scrollbar) ends where the input begins.
+export const entitiesMaxHeight = (
+  layoutCap: number | undefined,
+  room: number | undefined,
+): number | undefined =>
+  layoutCap === undefined
+    ? room
+    : room === undefined
+      ? layoutCap
+      : Math.min(layoutCap, room);
 
 export const Chat = React.memo((props: Props) => {
   const { loginState } = useLoginStateStoreContext();
@@ -236,18 +245,28 @@ export const Chat = React.memo((props: Props) => {
   }, [chatFontControl.scale]);
 
   // The input sits over the bottom of the message list and grows upward as a
-  // message gets longer. Pad the list by that growth, so the latest messages
-  // (the ones most likely being replied to) can still be scrolled into view.
-  const [inputGrowth, setInputGrowth] = useState(0);
+  // message gets longer. Stop the list where the input begins, so the latest
+  // messages (the ones most likely being replied to) stay in view and the
+  // scrollbar ends where the messages do.
+  const [inputRoom, setInputRoom] = useState<number | undefined>(undefined);
   useEffect(() => {
     const ta = chatInputRef.current?.resizableTextArea?.textArea;
-    if (!ta || typeof ResizeObserver === "undefined") return;
-    const ro = new ResizeObserver(() => {
-      setInputGrowth(chatInputGrowth(ta));
-    });
+    if (!ta || !chatTab || typeof ResizeObserver === "undefined") return;
+    const measure = () => setInputRoom(roomAboveInput(chatTab, ta));
+    const ro = new ResizeObserver(measure);
     ro.observe(ta);
-    return () => ro.disconnect();
+    window.addEventListener("resize", measure);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", measure);
+    };
   }, [chatTab]);
+  // The list moves too when the player list opens or the layout's own cap
+  // changes, without the input resizing; measure again then.
+  useLayoutEffect(() => {
+    const ta = chatInputRef.current?.resizableTextArea?.textArea;
+    if (ta && chatTab) setInputRoom(roomAboveInput(chatTab, ta));
+  }, [chatTab, presenceVisible, maxEntitiesHeight, channel]);
 
   const onChange = useCallback(
     (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -291,7 +310,7 @@ export const Chat = React.memo((props: Props) => {
   // reader has scrolled up.
   useEffect(() => {
     doChatAutoScroll();
-  }, [inputGrowth, doChatAutoScroll]);
+  }, [inputRoom, doChatAutoScroll]);
 
   const setHeight = useCallback(() => {
     const tabPaneHeight = document.getElementById("chat")?.clientHeight;
@@ -1030,12 +1049,12 @@ export const Chat = React.memo((props: Props) => {
                   <div
                     className={`entities ${channelType}`}
                     style={{
-                      ...(maxEntitiesHeight && channelType !== "league"
-                        ? { maxHeight: maxEntitiesHeight }
-                        : {}),
-                      ...(inputGrowth > 0
-                        ? { paddingBottom: inputGrowth }
-                        : {}),
+                      maxHeight: entitiesMaxHeight(
+                        maxEntitiesHeight && channelType !== "league"
+                          ? maxEntitiesHeight
+                          : undefined,
+                        inputRoom,
+                      ),
                     }}
                     ref={setTabContainerElement}
                     onScroll={handleChatScrolled}
