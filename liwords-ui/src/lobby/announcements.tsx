@@ -743,7 +743,7 @@ export const AnnouncementsWidget = () => {
 
   return (
     <Card className="announcements-card">
-      <Tabs defaultActiveKey="tournaments-leagues" items={items} centered />
+      <Tabs defaultActiveKey="announcements" items={items} centered />
     </Card>
   );
 };
