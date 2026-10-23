@@ -9,6 +9,9 @@ type Props = {
   channel: string;
   playerInfoMap?: Map<string, string>;
   onInfoTextClick?: (userId: string) => void;
+  // When each username was first seen in this channel (useFirstSeen). Kept by
+  // the always-mounted chat, since this list mounts only when it is shown.
+  firstSeen: Map<string, number>;
 };
 
 // How long a newcomer stays highlighted.
@@ -28,6 +31,30 @@ export const updateFirstSeen = (
     next.set(name, prev.get(name) ?? (initial ? 0 : now));
   }
   return next;
+};
+
+// Tracks first-seen times for the logged-in players of a channel, starting
+// over when the channel changes.
+export const useFirstSeen = (
+  players: Array<PresenceEntity>,
+  channel: string,
+): Map<string, number> => {
+  const tracked = React.useRef<{
+    channel: string;
+    seen: Map<string, number>;
+  } | null>(null);
+  const usernames = players
+    .filter((p) => p.channel === channel && !p.anon)
+    .map((p) => p.username);
+  const initial = tracked.current?.channel !== channel;
+  const seen = updateFirstSeen(
+    initial ? new Map() : tracked.current!.seen,
+    usernames,
+    Date.now(),
+    initial,
+  );
+  tracked.current = { channel, seen };
+  return seen;
 };
 
 export const sortByUsername = (players: Array<PresenceEntity>) =>
@@ -61,15 +88,8 @@ export const Presences = React.memo((props: Props) => {
   const knownUsers = sortByUsername(
     currentChannelPresences.filter((p) => !p.anon),
   );
-  const firstSeen = React.useRef<Map<string, number> | null>(null);
   const now = Date.now();
-  firstSeen.current = updateFirstSeen(
-    firstSeen.current ?? new Map(),
-    knownUsers.map((u) => u.username),
-    now,
-    firstSeen.current === null,
-  );
-  const seen = firstSeen.current;
+  const seen = props.firstSeen;
   const isRecent = (username: string) =>
     now - (seen.get(username) ?? 0) < ARRIVAL_HIGHLIGHT_MS;
   // Re-render when the oldest highlight should fade.

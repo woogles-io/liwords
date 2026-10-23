@@ -7,6 +7,7 @@ import {
   Presences,
   sortByUsername,
   updateFirstSeen,
+  useFirstSeen,
 } from "./presences";
 
 vi.mock("../shared/usernameWithContext", () => ({
@@ -50,18 +51,29 @@ describe("presence helpers", () => {
   });
 });
 
+// Like chat.tsx: the tracking lives in the always-mounted parent, and the
+// list itself may be shown only later.
+const Chat = (props: { players: Array<PresenceEntity>; shown: boolean }) => {
+  const channel = "chat.tournament.t";
+  const firstSeen = useFirstSeen(props.players, channel);
+  return props.shown ? (
+    <Presences
+      players={props.players}
+      channel={channel}
+      firstSeen={firstSeen}
+    />
+  ) : null;
+};
+
 it("lists names alphabetically and highlights a newcomer for a while", () => {
   vi.useFakeTimers();
-  const channel = "chat.tournament.t";
   const { container, rerender } = render(
-    <Presences players={[p("zed"), p("amy")]} channel={channel} />,
+    <Chat players={[p("zed"), p("amy")]} shown />,
   );
   expect(container.textContent).toBe("amy, zed");
   expect(container.querySelectorAll(".recent-arrival").length).toBe(0);
 
-  rerender(
-    <Presences players={[p("zed"), p("amy"), p("Bea")]} channel={channel} />,
-  );
+  rerender(<Chat players={[p("zed"), p("amy"), p("Bea")]} shown />);
   expect(container.textContent).toBe("amy, Bea, zed");
   const recent = container.querySelectorAll(".recent-arrival");
   expect(recent.length).toBe(1);
@@ -71,4 +83,16 @@ it("lists names alphabetically and highlights a newcomer for a while", () => {
     vi.advanceTimersByTime(ARRIVAL_HIGHLIGHT_MS + 1);
   });
   expect(container.querySelectorAll(".recent-arrival").length).toBe(0);
+});
+
+it("highlights someone who arrived while the list was hidden", () => {
+  vi.useFakeTimers();
+  const { container, rerender } = render(
+    <Chat players={[p("zed"), p("amy")]} shown={false} />,
+  );
+  rerender(<Chat players={[p("zed"), p("amy"), p("Bea")]} shown={false} />);
+  rerender(<Chat players={[p("zed"), p("amy"), p("Bea")]} shown />);
+  const recent = container.querySelectorAll(".recent-arrival");
+  expect(recent.length).toBe(1);
+  expect(recent[0].textContent).toBe("Bea");
 });
