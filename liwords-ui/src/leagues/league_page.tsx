@@ -32,6 +32,7 @@ import { TopBar } from "../navigation/topbar";
 import { Chat, ChatHandle } from "../chat/chat";
 import {
   getLeague,
+  getLeagueRoster,
   getAllSeasons,
   getAllDivisionStandings,
   getSeasonRegistrations,
@@ -185,6 +186,13 @@ export const LeaguePage = (props: Props) => {
 
   // Data processing - get all seasons and find the active one
   const league = leagueData?.league;
+  // Every player's seasons, so a name in the standings can be followed. The
+  // roster asks the same, so the two share one fetch.
+  const { data: rosterData } = useQuery(
+    getLeagueRoster,
+    { leagueId: league?.uuid ?? "" },
+    { enabled: !!league },
+  );
   const allSeasons = useMemo(() => {
     const seasons = allSeasonsData?.seasons || [];
     // Sort by season number descending (newest first)
@@ -909,6 +917,12 @@ export const LeaguePage = (props: Props) => {
                         seasonStartDate={displayedSeason?.startDate}
                         currentUserId={userID}
                         highlightUserId={following ? following.userId : userID}
+                        onFollow={(followUserId) => {
+                          const player = rosterData?.players.find(
+                            (p) => p.userId === followUserId,
+                          );
+                          if (player) setFollowing(followPlayer(player));
+                        }}
                         onChat={openDirectMessage}
                         promotionFormula={displayedSeason?.promotionFormula}
                         timeBankWarnings={timeBankWarningsMap}

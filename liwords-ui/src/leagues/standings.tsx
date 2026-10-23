@@ -110,6 +110,8 @@ type DivisionStandingsProps = {
   seasonActive?: boolean;
   onRegister?: () => void; // Callback to navigate to registration
   onChat?: (uuid: string, username: string) => void; // Open a direct message
+  // Follow a player through their seasons (the bar above the standings).
+  onFollow?: (userId: string) => void;
 };
 
 export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
@@ -126,6 +128,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
   seasonActive,
   onRegister,
   onChat,
+  onFollow,
 }) => {
   const [selectedPlayer, setSelectedPlayer] = useState<{
     userId: string;
@@ -456,6 +459,17 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
                   infoText="View game history"
                   handleInfoText={() =>
                     handlePlayerClick(record.userId, username)
+                  }
+                  extraItems={
+                    onFollow
+                      ? [
+                          {
+                            key: "follow",
+                            label: "Follow",
+                            onClick: () => onFollow(record.userId),
+                          },
+                        ]
+                      : undefined
                   }
                 />
               )}
