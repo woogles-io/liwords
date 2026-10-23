@@ -6,6 +6,7 @@ import {
   channelSubject,
   chatsToCSV,
   formatTime,
+  mergeRows,
   summariesToCSV,
 } from "./chat_review";
 
@@ -54,5 +55,16 @@ describe("chat review", () => {
     expect(csv.split("\n")[1]).toBe(
       "chat.game.abc,3,2023-11-14T22:13:20.123Z,2023-11-14T22:13:20.123Z,mina:2 cesar:1",
     );
+  });
+
+  it("skips channels already listed", () => {
+    const row = (channel: string) =>
+      create(ChatChannelSummarySchema, { channel });
+    expect(
+      mergeRows(
+        [row("chat.game.a"), row("chat.game.b")],
+        [row("chat.game.b"), row("chat.game.c")],
+      ).map((r) => r.channel),
+    ).toEqual(["chat.game.a", "chat.game.b", "chat.game.c"]);
   });
 });

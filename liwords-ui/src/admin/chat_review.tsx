@@ -1,5 +1,5 @@
 import { create } from "@bufbuild/protobuf";
-import { Button, Input, Select, Space, Table } from "antd";
+import { Button, Input, Select, Space, Table, Tag } from "antd";
 import React, { useState } from "react";
 import { Link } from "react-router";
 import { ChatMessage } from "../gen/api/proto/ipc/chat_pb";
@@ -26,6 +26,15 @@ export const channelSubject = (channel: string): string =>
 
 export const formatTime = (ms: bigint): string =>
   ms ? new Date(Number(ms)).toISOString() : "";
+
+// Adds a later page of channels, skipping any already listed.
+export const mergeRows = (
+  prev: Array<ChatChannelSummary>,
+  more: Array<ChatChannelSummary>,
+): Array<ChatChannelSummary> => {
+  const seen = new Set(prev.map((r) => r.channel));
+  return [...prev, ...more.filter((r) => !seen.has(r.channel))];
+};
 
 const csvField = (s: string): string =>
   /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
@@ -170,7 +179,7 @@ export const ChatReview = () => {
         cursor: fromCursor,
       });
       setRows((prev) =>
-        fromCursor === "" ? resp.channels : [...prev, ...resp.channels],
+        fromCursor === "" ? resp.channels : mergeRows(prev, resp.channels),
       );
       setCursor(resp.nextCursor);
     } catch (e) {
@@ -245,8 +254,9 @@ export const ChatReview = () => {
       </Space>
       <p>
         Only chats from the last 14 days, and not deleted ones. A game with no
-        chat at all is not listed. A username finds only the channels that user
-        wrote in (or their private chats), so search the other player too.
+        chat at all is not listed. A username finds the chat of every game that
+        user played (marked "played"), whoever wrote in it, plus the other
+        channels they wrote in and their private chats.
         {cursor === "0" && rows.length > 0 && " Scan complete."}
       </p>
       <Table
@@ -261,7 +271,14 @@ export const ChatReview = () => {
           {
             title: "Channel",
             key: "channel",
-            render: (_, r) => <ChannelLink channel={r.channel} />,
+            render: (_, r) => (
+              <React.Fragment>
+                <ChannelLink channel={r.channel} />
+                {r.userPlayed && (
+                  <Tag className="chat-review-played">played</Tag>
+                )}
+              </React.Fragment>
+            ),
           },
           {
             title: "Msgs",
