@@ -1,5 +1,5 @@
 import React from "react";
-import { Card, Table, Tag, Spin, Empty } from "antd";
+import { Collapse, Table, Tag, Spin, Empty } from "antd";
 import { useQuery } from "@connectrpc/connect-query";
 import { getSeasonPlayersWithUnstartedGames } from "../gen/api/proto/league_service/league_service-LeagueService_connectquery";
 import { Division } from "../gen/api/proto/ipc/league_pb";
@@ -117,11 +117,11 @@ export const ZeroMoveGamesDashboard: React.FC<ZeroMoveGamesDashboardProps> = ({
       };
     }) || [];
 
-  return (
-    <Card
-      title={`Players Needing to Start Games - Season ${seasonNumber}`}
-      style={{ marginBottom: 24 }}
-    >
+  // Collapsed, with the count in the header, so it does not push the page
+  // down; the count is known once the query is back, whether or not open.
+  const count = isLoading || error ? null : dataSource.length;
+  const body = (
+    <React.Fragment>
       {isLoading && (
         <div style={{ textAlign: "center", padding: "40px" }}>
           <Spin size="large" />
@@ -157,6 +157,20 @@ export const ZeroMoveGamesDashboard: React.FC<ZeroMoveGamesDashboardProps> = ({
           )}
         </>
       )}
-    </Card>
+    </React.Fragment>
+  );
+  return (
+    <Collapse
+      style={{ marginBottom: 24 }}
+      items={[
+        {
+          key: "players-needing-to-start",
+          label: `Players Needing to Start Games - Season ${seasonNumber}${
+            count === null ? "" : ` (${count})`
+          }`,
+          children: body,
+        },
+      ]}
+    />
   );
 };
