@@ -100,6 +100,7 @@ describe("endMark", () => {
     expect(endMark(GameEndReason.TIME)).toBe("T");
     expect(endMark(GameEndReason.RESIGNED)).toBe("R");
     expect(endMark(GameEndReason.FORCE_FORFEIT)).toBe("F");
+    expect(endMark(GameEndReason.TRIPLE_CHALLENGE)).toBe("C");
     expect(endMark(GameEndReason.STANDARD)).toBe("");
   });
 });

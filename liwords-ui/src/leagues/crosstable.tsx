@@ -103,7 +103,8 @@ export const endMark = (reason: GameEndReason): string => {
     case GameEndReason.FORCE_FORFEIT:
       return "F";
     case GameEndReason.TRIPLE_CHALLENGE:
-      return "3";
+      // Not "3": a digit after the score would read as part of it.
+      return "C";
     case GameEndReason.ADJUDICATED:
       return "A";
     case GameEndReason.CONSECUTIVE_ZEROES:
