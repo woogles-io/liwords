@@ -2,7 +2,7 @@ import { create } from "@bufbuild/protobuf";
 import { describe, expect, it } from "vitest";
 import { GameEndReason } from "../gen/api/proto/ipc/omgwords_pb";
 import { CrosstableGameSchema } from "../gen/api/proto/league_service/league_service_pb";
-import { buildCrosstable } from "./crosstable";
+import { buildCrosstable, notStarted } from "./crosstable";
 
 const game = (
   o: Partial<Parameters<typeof create<typeof CrosstableGameSchema>>[1]>,
@@ -61,5 +61,15 @@ describe("buildCrosstable", () => {
     expect(cells.get("a|b")?.map((c) => c.gameId)).toEqual(["1", "2"]);
     expect(cells.get("a|stranger")).toBeUndefined();
     expect(cells.size).toBe(2);
+  });
+});
+
+describe("notStarted", () => {
+  it("is a live game with no score", () => {
+    const cell = { gameId: "g", myScore: 0, theirScore: 0 };
+    expect(notStarted({ ...cell, result: "turn" })).toBe(true);
+    expect(notStarted({ ...cell, result: "waiting" })).toBe(true);
+    expect(notStarted({ ...cell, myScore: 12, result: "waiting" })).toBe(false);
+    expect(notStarted({ ...cell, result: "draw" })).toBe(false);
   });
 });

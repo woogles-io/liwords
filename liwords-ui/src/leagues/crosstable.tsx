@@ -80,6 +80,12 @@ const resultType = (
   }
 };
 
+// A game in progress with no score yet shows as a dot, not as 0-0.
+export const notStarted = (g: CrosstableCell): boolean =>
+  (g.result === "turn" || g.result === "waiting") &&
+  g.myScore === 0 &&
+  g.theirScore === 0;
+
 const resultLabel = (result: CrosstableCell["result"]): string => {
   switch (result) {
     case "turn":
@@ -164,7 +170,7 @@ export const DivisionCrosstable = (props: { division: Division }) => {
                     style={{ whiteSpace: "nowrap" }}
                   >
                     <Text type={resultType(g.result)}>
-                      {g.myScore}-{g.theirScore}
+                      {notStarted(g) ? "\u00b7" : `${g.myScore}-${g.theirScore}`}
                       {g.result === "turn" ? "*" : ""}
                     </Text>
                   </a>
