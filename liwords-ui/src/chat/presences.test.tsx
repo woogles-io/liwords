@@ -96,3 +96,13 @@ it("highlights someone who arrived while the list was hidden", () => {
   expect(recent.length).toBe(1);
   expect(recent[0].textContent).toBe("Bea");
 });
+
+it("does not take the first presences to arrive for newcomers", () => {
+  vi.useFakeTimers();
+  // The chat opens before the channel's presence list comes in.
+  const { container, rerender } = render(<Chat players={[]} shown />);
+  rerender(<Chat players={[p("zed"), p("amy")]} shown />);
+  expect(container.querySelectorAll(".recent-arrival").length).toBe(0);
+  rerender(<Chat players={[p("zed"), p("amy"), p("Bea")]} shown />);
+  expect(container.querySelectorAll(".recent-arrival").length).toBe(1);
+});

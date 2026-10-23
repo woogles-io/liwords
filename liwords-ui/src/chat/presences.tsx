@@ -46,7 +46,10 @@ export const useFirstSeen = (
   const usernames = players
     .filter((p) => p.channel === channel && !p.anon)
     .map((p) => p.username);
-  const initial = tracked.current?.channel !== channel;
+  // The channel's presences arrive after the chat opens, so the first
+  // non-empty list counts as those already there, not as arrivals.
+  const initial =
+    tracked.current?.channel !== channel || tracked.current.seen.size === 0;
   const seen = updateFirstSeen(
     initial ? new Map() : tracked.current!.seen,
     usernames,
