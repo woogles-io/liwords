@@ -7,6 +7,7 @@ import React, {
 } from "react";
 import {
   Col,
+  Collapse,
   Row,
   Card,
   Spin,
@@ -40,6 +41,7 @@ import {
 } from "../gen/api/proto/league_service/league_service-LeagueService_connectquery";
 import { hasPermission, Perm } from "../mod/perms";
 import { DivisionStandings } from "./standings";
+import { DivisionCrosstable } from "./crosstable";
 import { LeagueRoster } from "./league_roster";
 import { LeagueCorrespondenceGames } from "./league_correspondence_games";
 import { FollowBar } from "./follow_bar";
@@ -916,6 +918,24 @@ export const LeaguePage = (props: Props) => {
                                 setSelectedSeasonId(registrationOpenSeason.uuid)
                             : undefined
                         }
+                      />
+                    ))}
+                  {/* Mounted only when opened, so the games load on demand. */}
+                  {standingsData.divisions
+                    .filter((division) => division.uuid === selectedDivisionId)
+                    .map((division) => (
+                      <Collapse
+                        key={division.uuid}
+                        style={{ marginBottom: 24 }}
+                        items={[
+                          {
+                            key: "crosstable",
+                            label: "Crosstable",
+                            children: (
+                              <DivisionCrosstable division={division} />
+                            ),
+                          },
+                        ]}
                       />
                     ))}
                   <div className="standings-legend">
