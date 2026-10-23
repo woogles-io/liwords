@@ -245,7 +245,8 @@ export const ChatReview = () => {
       </Space>
       <p>
         Only chats from the last 14 days, and not deleted ones. A game with no
-        chat at all is not listed.
+        chat at all is not listed. A username finds only the channels that user
+        wrote in (or their private chats), so search the other player too.
         {cursor === "0" && rows.length > 0 && " Scan complete."}
       </p>
       <Table
