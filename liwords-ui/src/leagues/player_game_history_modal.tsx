@@ -516,7 +516,7 @@ export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
       open={visible}
       onCancel={onClose}
       footer={null}
-      width={700}
+      width={840}
       zIndex={2000}
     >
       <div ref={bodyRef} tabIndex={-1} style={{ outline: "none" }}>
