@@ -101,6 +101,20 @@ const getDefaultTab = (
   return "PLAYERS";
 };
 
+// How much taller a textarea is than one row of it: its height less one
+// line and its vertical padding and border.
+export const chatInputGrowth = (ta: HTMLTextAreaElement): number => {
+  const cs = window.getComputedStyle(ta);
+  const px = (v: string) => parseFloat(v) || 0;
+  const oneRow =
+    px(cs.lineHeight) +
+    px(cs.paddingTop) +
+    px(cs.paddingBottom) +
+    px(cs.borderTopWidth) +
+    px(cs.borderBottomWidth);
+  return Math.max(0, Math.round(ta.offsetHeight - oneRow));
+};
+
 export const Chat = React.memo((props: Props) => {
   const { loginState } = useLoginStateStoreContext();
   const competitorState = useTournamentCompetitorState();
@@ -221,6 +235,20 @@ export const Chat = React.memo((props: Props) => {
     if (ta) ta.style.height = `${ta.offsetHeight + 1}px`;
   }, [chatFontControl.scale]);
 
+  // The input sits over the bottom of the message list and grows upward as a
+  // message gets longer. Pad the list by that growth, so the latest messages
+  // (the ones most likely being replied to) can still be scrolled into view.
+  const [inputGrowth, setInputGrowth] = useState(0);
+  useEffect(() => {
+    const ta = chatInputRef.current?.resizableTextArea?.textArea;
+    if (!ta || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => {
+      setInputGrowth(chatInputGrowth(ta));
+    });
+    ro.observe(ta);
+    return () => ro.disconnect();
+  }, [chatTab]);
+
   const onChange = useCallback(
     (e: React.ChangeEvent<HTMLTextAreaElement>) => {
       // Collapse any newlines (e.g. from a paste) into spaces so messages
@@ -258,6 +286,12 @@ export const Chat = React.memo((props: Props) => {
     },
     [chatAutoScroll, chatTab],
   );
+
+  // Keep the newest message in view as the input grows or shrinks, unless the
+  // reader has scrolled up.
+  useEffect(() => {
+    doChatAutoScroll();
+  }, [inputGrowth, doChatAutoScroll]);
 
   const setHeight = useCallback(() => {
     const tabPaneHeight = document.getElementById("chat")?.clientHeight;
@@ -995,13 +1029,14 @@ export const Chat = React.memo((props: Props) => {
                 <React.Fragment key="chat-enabled">
                   <div
                     className={`entities ${channelType}`}
-                    style={
-                      maxEntitiesHeight && channelType !== "league"
-                        ? {
-                            maxHeight: maxEntitiesHeight,
-                          }
-                        : undefined
-                    }
+                    style={{
+                      ...(maxEntitiesHeight && channelType !== "league"
+                        ? { maxHeight: maxEntitiesHeight }
+                        : {}),
+                      ...(inputGrowth > 0
+                        ? { paddingBottom: inputGrowth }
+                        : {}),
+                    }}
                     ref={setTabContainerElement}
                     onScroll={handleChatScrolled}
                   >
