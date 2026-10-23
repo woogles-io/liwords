@@ -1134,6 +1134,19 @@ func (ls *LeagueService) GetAllDivisionStandings(
 	if err != nil {
 		return nil, apiserver.InternalErr(fmt.Errorf("failed to get season standings: %w", err))
 	}
+
+	// Average opponent mistake index per player (users.id), over the same
+	// analyzed games as the player's own average.
+	oppMIRows, err := ls.store.GetSeasonOpponentMistakeIndex(ctx, seasonID)
+	if err != nil {
+		return nil, apiserver.InternalErr(fmt.Errorf("failed to get opponent mistake index: %w", err))
+	}
+	avgOpponentMistakeIndex := make(map[int32]float64, len(oppMIRows))
+	for _, r := range oppMIRows {
+		if r.N > 0 {
+			avgOpponentMistakeIndex[r.UserID] = r.Total / float64(r.N)
+		}
+	}
 	divisions := snapshot.Divisions
 
 	// Split the batched, division_number-ordered rows into per-division buckets
@@ -1266,6 +1279,7 @@ func (ls *LeagueService) GetAllDivisionStandings(
 					TotalOpponentTilesPlayed: standing.TotalOpponentTilesPlayed.Int32,
 					PlacementStatus:          placementStatus,
 					AvgMistakeIndex:          avgMistakeIndex,
+					AvgOpponentMistakeIndex:  avgOpponentMistakeIndex[standing.UserID],
 					GamesAnalyzed:            standing.GamesAnalyzed.Int32,
 				}
 			}

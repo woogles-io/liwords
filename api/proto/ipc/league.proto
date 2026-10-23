@@ -106,6 +106,7 @@ message LeaguePlayerStanding {
     int32 games_analyzed = 24;              // Number of games with completed BestBot analysis
     int32 best_rank = 25;                   // Best possible finishing rank (computed from remaining pairings)
     int32 worst_rank = 26;                  // Worst possible finishing rank (computed from remaining pairings)
+    double avg_opponent_mistake_index = 27; // Average mistake index of this player's opponents, over the same analyzed games
 }
 
 enum StandingResult {

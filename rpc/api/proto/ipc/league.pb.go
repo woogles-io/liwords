@@ -796,6 +796,7 @@ type LeaguePlayerStanding struct {
 	GamesAnalyzed            int32           `protobuf:"varint,24,opt,name=games_analyzed,json=gamesAnalyzed,proto3" json:"games_analyzed,omitempty"`                                      // Number of games with completed BestBot analysis
 	BestRank                 int32           `protobuf:"varint,25,opt,name=best_rank,json=bestRank,proto3" json:"best_rank,omitempty"`                                                     // Best possible finishing rank (computed from remaining pairings)
 	WorstRank                int32           `protobuf:"varint,26,opt,name=worst_rank,json=worstRank,proto3" json:"worst_rank,omitempty"`                                                  // Worst possible finishing rank (computed from remaining pairings)
+	AvgOpponentMistakeIndex  float64         `protobuf:"fixed64,27,opt,name=avg_opponent_mistake_index,json=avgOpponentMistakeIndex,proto3" json:"avg_opponent_mistake_index,omitempty"`   // Average mistake index of this player's opponents, over the same analyzed games
 	unknownFields            protoimpl.UnknownFields
 	sizeCache                protoimpl.SizeCache
 }
@@ -1012,6 +1013,13 @@ func (x *LeaguePlayerStanding) GetWorstRank() int32 {
 	return 0
 }
 
+func (x *LeaguePlayerStanding) GetAvgOpponentMistakeIndex() float64 {
+	if x != nil {
+		return x.AvgOpponentMistakeIndex
+	}
+	return 0
+}
+
 type TimeBankWarning struct {
 	state                protoimpl.MessageState `protogen:"open.v1"`
 	UserId               string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
@@ -1219,7 +1227,7 @@ const file_proto_ipc_league_proto_rawDesc = "" +
 	"divisionId\x12G\n" +
 	"\x11registration_date\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\x10registrationDate\x12!\n" +
 	"\ffirsts_count\x18\x05 \x01(\x05R\vfirstsCount\x12\x16\n" +
-	"\x06status\x18\x06 \x01(\tR\x06status\"\xb5\a\n" +
+	"\x06status\x18\x06 \x01(\tR\x06status\"\xf2\a\n" +
 	"\x14LeaguePlayerStanding\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x1a\n" +
 	"\busername\x18\x02 \x01(\tR\busername\x12\x12\n" +
@@ -1250,7 +1258,8 @@ const file_proto_ipc_league_proto_rawDesc = "" +
 	"\x0egames_analyzed\x18\x18 \x01(\x05R\rgamesAnalyzed\x12\x1b\n" +
 	"\tbest_rank\x18\x19 \x01(\x05R\bbestRank\x12\x1d\n" +
 	"\n" +
-	"worst_rank\x18\x1a \x01(\x05R\tworstRank\"}\n" +
+	"worst_rank\x18\x1a \x01(\x05R\tworstRank\x12;\n" +
+	"\x1aavg_opponent_mistake_index\x18\x1b \x01(\x01R\x17avgOpponentMistakeIndex\"}\n" +
 	"\x0fTimeBankWarning\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x1a\n" +
 	"\busername\x18\x02 \x01(\tR\busername\x125\n" +
