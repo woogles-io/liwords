@@ -2,12 +2,7 @@ import { create } from "@bufbuild/protobuf";
 import { describe, expect, it } from "vitest";
 import { GameEndReason } from "../gen/api/proto/ipc/omgwords_pb";
 import { CrosstableGameSchema } from "../gen/api/proto/league_service/league_service_pb";
-import {
-  buildCrosstable,
-  endMark,
-  isFullRoundRobin,
-  notStarted,
-} from "./crosstable";
+import { buildCrosstable, endMark, notStarted } from "./crosstable";
 
 const game = (
   o: Partial<Parameters<typeof create<typeof CrosstableGameSchema>>[1]>,
@@ -106,21 +101,5 @@ describe("endMark", () => {
     expect(endMark(GameEndReason.RESIGNED)).toBe("R");
     expect(endMark(GameEndReason.FORCE_FORFEIT)).toBe("F");
     expect(endMark(GameEndReason.STANDARD)).toBe("");
-  });
-});
-
-describe("isFullRoundRobin", () => {
-  it("is true only when every pair has a game", () => {
-    const three = ["a", "b", "c"];
-    const all = buildCrosstable(three, [
-      game({ gameId: "1", player0UserId: "a", player1UserId: "b" }),
-      game({ gameId: "2", player0UserId: "a", player1UserId: "c" }),
-      game({ gameId: "3", player0UserId: "b", player1UserId: "c" }),
-    ]);
-    expect(isFullRoundRobin(three, all)).toBe(true);
-    const partial = buildCrosstable(three, [
-      game({ gameId: "1", player0UserId: "a", player1UserId: "b" }),
-    ]);
-    expect(isFullRoundRobin(three, partial)).toBe(false);
   });
 });

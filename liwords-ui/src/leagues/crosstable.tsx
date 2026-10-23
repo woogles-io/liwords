@@ -113,17 +113,6 @@ export const endMark = (reason: GameEndReason): string => {
   }
 };
 
-// Whether every player in the division has a game against every other: the
-// grid then reads well. A division where each plays only some of the others
-// (the uncapped bottom one) is shown as a list per player instead.
-export const isFullRoundRobin = (
-  userIds: Array<string>,
-  cells: Map<string, Array<CrosstableCell>>,
-): boolean =>
-  userIds.every((a) =>
-    userIds.every((b) => a === b || cells.has(cellKey(a, b))),
-  );
-
 const resultLabel = (result: CrosstableCell["result"]): string => {
   switch (result) {
     case "turn":
@@ -144,12 +133,7 @@ type Row = {
 
 // One game's score as the row player sees it, linked to the game. The hover
 // says who played, how it ended and by how much.
-const GameScore = (props: {
-  g: CrosstableCell;
-  me: string;
-  them: string;
-  prefix?: string;
-}) => {
+const GameScore = (props: { g: CrosstableCell; me: string; them: string }) => {
   const { g } = props;
   const spread = g.myScore - g.theirScore;
   const how = endReasonLabel(g.endReason);
@@ -169,7 +153,6 @@ const GameScore = (props: {
           type={resultType(g.result)}
           className={g.result === "draw" ? "crosstable-draw" : undefined}
         >
-          {props.prefix}
           {notStarted(g) ? "\u00b7" : `${g.myScore}-${g.theirScore}`}
           {live ? "" : endMark(g.endReason)}
           {g.result === "turn" ? "*" : ""}
@@ -182,8 +165,8 @@ const GameScore = (props: {
 // Every pairing of a division: row player's score first, green for a win, red
 // for a loss, blue for a draw, gray (with * when the row player is on turn)
 // for a game in progress; a letter after the score says how a game ended when
-// it was not played out. A full round robin is a grid; otherwise each player
-// gets a list of their games, by opponent rank.
+// it was not played out. Always a grid, however wide: a player's games as a
+// list are in the standings' game history.
 export const DivisionCrosstable = (props: {
   division: Division;
   onChat?: (uuid: string, username: string) => void;
@@ -198,7 +181,6 @@ export const DivisionCrosstable = (props: {
     username: s.username,
     rank: i + 1,
   }));
-  const byId = new Map(rows.map((r) => [r.userId, r]));
   const cells = buildCrosstable(
     rows.map((r) => r.userId),
     data?.games ?? [],
@@ -230,63 +212,28 @@ export const DivisionCrosstable = (props: {
     },
   ];
 
-  const grid = isFullRoundRobin(
-    rows.map((r) => r.userId),
-    cells,
-  );
-  const columns: TableColumnsType<Row> = grid
-    ? [
-        ...fixedColumns,
-        ...rows.map((col) => ({
-          title: (
-            <Tooltip title={col.username}>
-              <span style={{ cursor: "help" }}>{col.rank}</span>
-            </Tooltip>
-          ),
-          key: col.userId,
-          align: "center" as const,
-          render: (_: unknown, row: Row) => {
-            if (row.userId === col.userId) {
-              return <Text type="secondary">-</Text>;
-            }
-            return (cells.get(cellKey(row.userId, col.userId)) ?? []).map(
-              (g) => (
-                <div key={g.gameId}>
-                  <GameScore g={g} me={row.username} them={col.username} />
-                </div>
-              ),
-            );
-          },
-        })),
-      ]
-    : [
-        ...fixedColumns,
-        {
-          title: "Games (by opponent's rank)",
-          key: "games",
-          render: (_: unknown, row: Row) => {
-            const games = rows
-              .filter((r) => r.userId !== row.userId)
-              .flatMap((opp) =>
-                (cells.get(cellKey(row.userId, opp.userId)) ?? []).map((g) => ({
-                  g,
-                  opp,
-                })),
-              );
-            return games.map(({ g, opp }, i) => (
-              <React.Fragment key={g.gameId}>
-                {i > 0 && " "}
-                <GameScore
-                  g={g}
-                  me={row.username}
-                  them={byId.get(opp.userId)?.username ?? opp.username}
-                  prefix={`#${opp.rank} `}
-                />
-              </React.Fragment>
-            ));
-          },
-        },
-      ];
+  const columns: TableColumnsType<Row> = [
+    ...fixedColumns,
+    ...rows.map((col) => ({
+      title: (
+        <Tooltip title={col.username}>
+          <span style={{ cursor: "help" }}>{col.rank}</span>
+        </Tooltip>
+      ),
+      key: col.userId,
+      align: "center" as const,
+      render: (_: unknown, row: Row) => {
+        if (row.userId === col.userId) {
+          return <Text type="secondary">-</Text>;
+        }
+        return (cells.get(cellKey(row.userId, col.userId)) ?? []).map((g) => (
+          <div key={g.gameId}>
+            <GameScore g={g} me={row.username} them={col.username} />
+          </div>
+        ));
+      },
+    })),
+  ];
 
   return (
     <Table
