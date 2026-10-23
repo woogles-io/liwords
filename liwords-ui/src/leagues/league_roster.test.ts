@@ -4,7 +4,7 @@ import {
   LeagueRosterPlayerSchema,
   LeagueRosterSeasonSchema,
 } from "../gen/api/proto/league_service/league_service_pb";
-import { peakRepeats } from "./league_roster";
+import { peakRepeats, totalTimeouts } from "./league_roster";
 
 const season = (seasonNumber: number, divisionNumber: number, rank: number) =>
   create(LeagueRosterSeasonSchema, { seasonNumber, divisionNumber, rank });
@@ -46,5 +46,18 @@ describe("peakRepeats", () => {
         new Map(),
       ),
     ).toEqual([1]);
+  });
+});
+
+describe("totalTimeouts", () => {
+  it("adds up every season", () => {
+    const player = create(LeagueRosterPlayerSchema, {
+      seasons: [
+        create(LeagueRosterSeasonSchema, { seasonNumber: 1, timeouts: 2 }),
+        create(LeagueRosterSeasonSchema, { seasonNumber: 2 }),
+        create(LeagueRosterSeasonSchema, { seasonNumber: 3, timeouts: 1 }),
+      ],
+    });
+    expect(totalTimeouts(player)).toBe(3);
   });
 });

@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from "react";
 import { Input, Table, Tag, Tooltip } from "antd";
 import type { SortOrder } from "antd/es/table/interface";
 import {
+  ClockCircleOutlined,
   StarOutlined,
   ArrowUpOutlined,
   ArrowDownOutlined,
@@ -65,6 +66,17 @@ const resultLabel = (result: StandingResult): string | null => {
   }
 };
 
+// Timeouts that season: a red clock, with the count when more than one.
+const TimeoutMark = (props: { count: number }) => (
+  <span className="roster-timeout">
+    <ClockCircleOutlined />
+    {props.count > 1 ? props.count : null}
+  </span>
+);
+
+export const totalTimeouts = (player: LeagueRosterPlayer): number =>
+  player.seasons.reduce((n, s) => n + s.timeouts, 0);
+
 const formatSeason = (
   season: LeagueRosterSeason | undefined,
   compRank?: number,
@@ -79,9 +91,13 @@ const formatSeason = (
   const spread = season.spread > 0 ? `+${season.spread}` : `${season.spread}`;
   const displayRank = compRank ?? season.rank;
   const label = hideResult ? null : resultLabel(season.result);
+  const timeouts =
+    season.timeouts > 0
+      ? ` \u00b7 ${season.timeouts} timeout${season.timeouts === 1 ? "" : "s"}`
+      : "";
   const seasonLine = label
-    ? `${record} (${spread}) · ${label}`
-    : `${record} (${spread})`;
+    ? `${record} (${spread}) \u00b7 ${label}${timeouts}`
+    : `${record} (${spread})${timeouts}`;
   const tooltip = h2hTooltip ? (
     <>
       {seasonLine}
@@ -107,6 +123,7 @@ const formatSeason = (
         </Tag>
         {displayRank > 0 && <span className="roster-rank">#{displayRank}</span>}
         {!hideResult && resultIcon(season.result)}
+        {season.timeouts > 0 && <TimeoutMark count={season.timeouts} />}
       </span>
     </Tooltip>
   );
@@ -507,6 +524,29 @@ export const LeagueRoster: React.FC<Props> = ({
         a.seasons.length - b.seasons.length,
       sortDirections: ["descend", "ascend"] as SortOrder[],
       sortOrder: sortKey === "count" ? sortOrder : undefined,
+    },
+    {
+      title: <Tooltip title="Timeouts, all seasons">#TO</Tooltip>,
+      key: "timeouts",
+      width: 48,
+      render: (_: unknown, record: LeagueRosterPlayer) => {
+        const total = totalTimeouts(record);
+        if (total === 0) return <span className="roster-empty">-</span>;
+        return (
+          <Tooltip
+            title={record.seasons
+              .filter((s) => s.timeouts > 0)
+              .map((s) => `S${s.seasonNumber}: ${s.timeouts}`)
+              .join(", ")}
+          >
+            <span style={{ cursor: "help" }}>{total}</span>
+          </Tooltip>
+        );
+      },
+      sorter: (a: LeagueRosterPlayer, b: LeagueRosterPlayer) =>
+        totalTimeouts(a) - totalTimeouts(b),
+      sortDirections: ["descend", "ascend"] as SortOrder[],
+      sortOrder: sortKey === "timeouts" ? sortOrder : undefined,
     },
     {
       title: (
