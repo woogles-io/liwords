@@ -1,6 +1,7 @@
 syntax = "proto3";
 package mod_service;
 
+import "proto/ipc/chat.proto";
 import "google/protobuf/timestamp.proto";
 
 // Moderation
@@ -76,6 +77,42 @@ message NotorietyReport {
   repeated NotoriousGame games = 2;
 }
 
+// Chat review: read-only views over the chat channels still held in Redis.
+
+message ListChatChannelsRequest {
+  // channel_prefix narrows the scan, e.g. "chat.game.", "chat.gametv.",
+  // "chat.pm.", "chat.tournament.", "chat.league.". Empty means all.
+  string channel_prefix = 1;
+  // username, if set, keeps only channels this user chatted in (or, for
+  // private chats, is a party to).
+  string username = 2;
+  // cursor is the Redis SCAN cursor; empty or "0" starts a new scan.
+  string cursor = 3;
+}
+
+message ChatSenderCount {
+  string user_id = 1;
+  string username = 2;
+  int32 count = 3;
+}
+
+message ChatChannelSummary {
+  string channel = 1;
+  int32 message_count = 2;
+  // in milliseconds, like ChatMessage.timestamp.
+  int64 first_timestamp = 3;
+  int64 last_timestamp = 4;
+  repeated ChatSenderCount senders = 5;
+}
+
+message ListChatChannelsResponse {
+  repeated ChatChannelSummary channels = 1;
+  // next_cursor is "0" when the scan is complete.
+  string next_cursor = 2;
+}
+
+message GetChannelChatsRequest { string channel = 1; }
+
 service ModService {
   rpc ApplyActions(ModActionsList) returns (ModActionResponse);
   rpc RemoveActions(ModActionsList) returns (ModActionResponse);
@@ -83,4 +120,7 @@ service ModService {
   rpc GetActionHistory(GetActionsRequest) returns (ModActionsList);
   rpc GetNotorietyReport(GetNotorietyReportRequest) returns (NotorietyReport);
   rpc ResetNotoriety(ResetNotorietyRequest) returns (ResetNotorietyResponse);
+  rpc ListChatChannels(ListChatChannelsRequest)
+      returns (ListChatChannelsResponse);
+  rpc GetChannelChats(GetChannelChatsRequest) returns (ipc.ChatMessages);
 }
