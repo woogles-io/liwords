@@ -1869,6 +1869,10 @@ func (ls *LeagueService) GetPlayerSeasonGames(
 			mi := row.PlayerMistakeIndex
 			game.MistakeIndex = &mi
 		}
+		if row.HasOpponentMistakeIndex {
+			omi := row.OpponentMistakeIndex
+			game.OpponentMistakeIndex = &omi
+		}
 		allGames = append(allGames, game)
 	}
 
@@ -1925,6 +1929,14 @@ func (ls *LeagueService) GetPlayerSeasonGames(
 			onTurn := int(row.PlayerOnTurn.Int32)
 			if onTurn >= 0 && onTurn < len(row.Timers.TimeBank) {
 				psg.OnTurnTimeBankMs = row.Timers.TimeBank[onTurn]
+			}
+			if played, unplayed, ok := tileProgressFromBytes(ls.cfg, row.History); ok {
+				if userIsPlayer0 {
+					psg.PlayerTilesPlayed, psg.OpponentTilesPlayed = played[0], played[1]
+				} else {
+					psg.PlayerTilesPlayed, psg.OpponentTilesPlayed = played[1], played[0]
+				}
+				psg.TilesUnplayed = unplayed
 			}
 		}
 

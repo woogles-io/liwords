@@ -246,6 +246,15 @@ message PlayerSeasonGame {
   // the game has completed analysis; when absent the client should show a
   // placeholder rather than 0, since 0 is itself a meaningful (perfect) value.
   optional double mistake_index = 13;
+  // opponent_mistake_index is the opponent's, under the same rules.
+  optional double opponent_mistake_index = 14;
+
+  // Tile progress, populated only for in-progress games: the tiles each
+  // player has on the board, and the tiles not yet played (bag and both
+  // racks). A game's tiles are the sum of the three.
+  int32 player_tiles_played = 15;
+  int32 opponent_tiles_played = 16;
+  int32 tiles_unplayed = 17;
 }
 
 message InviteUserRequest {

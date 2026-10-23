@@ -1917,9 +1917,17 @@ type PlayerSeasonGame struct {
 	// analysis (lower is better; 0 is a perfect game). It is only present once
 	// the game has completed analysis; when absent the client should show a
 	// placeholder rather than 0, since 0 is itself a meaningful (perfect) value.
-	MistakeIndex  *float64 `protobuf:"fixed64,13,opt,name=mistake_index,json=mistakeIndex,proto3,oneof" json:"mistake_index,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	MistakeIndex *float64 `protobuf:"fixed64,13,opt,name=mistake_index,json=mistakeIndex,proto3,oneof" json:"mistake_index,omitempty"`
+	// opponent_mistake_index is the opponent's, under the same rules.
+	OpponentMistakeIndex *float64 `protobuf:"fixed64,14,opt,name=opponent_mistake_index,json=opponentMistakeIndex,proto3,oneof" json:"opponent_mistake_index,omitempty"`
+	// Tile progress, populated only for in-progress games: the tiles each
+	// player has on the board, and the tiles not yet played (bag and both
+	// racks). A game's tiles are the sum of the three.
+	PlayerTilesPlayed   int32 `protobuf:"varint,15,opt,name=player_tiles_played,json=playerTilesPlayed,proto3" json:"player_tiles_played,omitempty"`
+	OpponentTilesPlayed int32 `protobuf:"varint,16,opt,name=opponent_tiles_played,json=opponentTilesPlayed,proto3" json:"opponent_tiles_played,omitempty"`
+	TilesUnplayed       int32 `protobuf:"varint,17,opt,name=tiles_unplayed,json=tilesUnplayed,proto3" json:"tiles_unplayed,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *PlayerSeasonGame) Reset() {
@@ -2039,6 +2047,34 @@ func (x *PlayerSeasonGame) GetOnTurnTimeBankMs() int64 {
 func (x *PlayerSeasonGame) GetMistakeIndex() float64 {
 	if x != nil && x.MistakeIndex != nil {
 		return *x.MistakeIndex
+	}
+	return 0
+}
+
+func (x *PlayerSeasonGame) GetOpponentMistakeIndex() float64 {
+	if x != nil && x.OpponentMistakeIndex != nil {
+		return *x.OpponentMistakeIndex
+	}
+	return 0
+}
+
+func (x *PlayerSeasonGame) GetPlayerTilesPlayed() int32 {
+	if x != nil {
+		return x.PlayerTilesPlayed
+	}
+	return 0
+}
+
+func (x *PlayerSeasonGame) GetOpponentTilesPlayed() int32 {
+	if x != nil {
+		return x.OpponentTilesPlayed
+	}
+	return 0
+}
+
+func (x *PlayerSeasonGame) GetTilesUnplayed() int32 {
+	if x != nil {
+		return x.TilesUnplayed
 	}
 	return 0
 }
@@ -3542,7 +3578,7 @@ const file_proto_league_service_league_service_proto_rawDesc = "" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x1b\n" +
 	"\tseason_id\x18\x02 \x01(\tR\bseasonId\"V\n" +
 	"\x1cGetPlayerSeasonGamesResponse\x126\n" +
-	"\x05games\x18\x01 \x03(\v2 .league_service.PlayerSeasonGameR\x05games\"\xbf\x04\n" +
+	"\x05games\x18\x01 \x03(\v2 .league_service.PlayerSeasonGameR\x05games\"\xa0\x06\n" +
 	"\x10PlayerSeasonGame\x12\x17\n" +
 	"\agame_id\x18\x01 \x01(\tR\x06gameId\x12(\n" +
 	"\x10opponent_user_id\x18\x02 \x01(\tR\x0eopponentUserId\x12+\n" +
@@ -3558,8 +3594,13 @@ const file_proto_league_service_league_service_proto_rawDesc = "" +
 	"lastUpdate\x12%\n" +
 	"\x0eincrement_secs\x18\v \x01(\x05R\rincrementSecs\x12.\n" +
 	"\x14on_turn_time_bank_ms\x18\f \x01(\x03R\x10onTurnTimeBankMs\x12(\n" +
-	"\rmistake_index\x18\r \x01(\x01H\x00R\fmistakeIndex\x88\x01\x01B\x10\n" +
-	"\x0e_mistake_index\",\n" +
+	"\rmistake_index\x18\r \x01(\x01H\x00R\fmistakeIndex\x88\x01\x01\x129\n" +
+	"\x16opponent_mistake_index\x18\x0e \x01(\x01H\x01R\x14opponentMistakeIndex\x88\x01\x01\x12.\n" +
+	"\x13player_tiles_played\x18\x0f \x01(\x05R\x11playerTilesPlayed\x122\n" +
+	"\x15opponent_tiles_played\x18\x10 \x01(\x05R\x13opponentTilesPlayed\x12%\n" +
+	"\x0etiles_unplayed\x18\x11 \x01(\x05R\rtilesUnplayedB\x10\n" +
+	"\x0e_mistake_indexB\x19\n" +
+	"\x17_opponent_mistake_index\",\n" +
 	"\x11InviteUserRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\"H\n" +
 	"\x12InviteUserResponse\x12\x18\n" +
