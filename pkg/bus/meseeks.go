@@ -460,6 +460,9 @@ func (b *Bus) newBotGame(ctx context.Context, req *pb.SeekRequest, botUserID str
 				if errors.Is(err, integrations.ErrNotPaidTier) || errors.Is(err, integrations.ErrNotSubscribed) {
 					return errors.New("You don't currently appear to be subscribed to a paid Patreon tier. Please sign up at https://woogles.io/donate to have access to BestBot.")
 				}
+				if errors.Is(err, integrations.ErrMembershipCheckUnavailable) {
+					return errors.New("We couldn't reach Patreon to check your membership. Please try again in a few minutes.")
+				}
 				var papierr *integrations.PatreonAPIError
 				if errors.As(err, &papierr) {
 					log.Err(papierr).Msg("patreon-api-error")
