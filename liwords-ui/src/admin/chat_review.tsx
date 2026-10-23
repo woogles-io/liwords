@@ -98,10 +98,22 @@ const Name = (props: { username: string; userId: string }) =>
 // or club), linked to where it lives, with the raw channel name beneath.
 const ChannelCell = (props: { r: ChatChannelSummary }) => {
   const ctx = props.r.context;
+  const isPM = props.r.channel.startsWith("chat.pm.") && !!ctx?.parties.length;
   const label = ctx?.label || props.r.channel;
   return (
     <React.Fragment>
-      {ctx?.link ? (
+      {isPM ? (
+        // A private chat is its two users, each with their menu.
+        <React.Fragment>
+          Private:{" "}
+          {ctx!.parties.map((p, i) => (
+            <React.Fragment key={p.userId}>
+              {i > 0 && " & "}
+              <Name username={p.username} userId={p.userId} />
+            </React.Fragment>
+          ))}
+        </React.Fragment>
+      ) : ctx?.link ? (
         <Link to={ctx.link} target="_blank">
           {label}
         </Link>
@@ -109,16 +121,6 @@ const ChannelCell = (props: { r: ChatChannelSummary }) => {
         label
       )}
       {props.r.userPlayed && <Tag className="chat-review-played">played</Tag>}
-      {props.r.channel.startsWith("chat.pm.") && ctx?.parties.length ? (
-        <div>
-          {ctx.parties.map((p, i) => (
-            <React.Fragment key={p.userId}>
-              {i > 0 && " & "}
-              <Name username={p.username} userId={p.userId} />
-            </React.Fragment>
-          ))}
-        </div>
-      ) : null}
       <div>
         <Typography.Text type="secondary" style={{ fontSize: 12 }}>
           {props.r.channel}
