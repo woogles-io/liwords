@@ -4,13 +4,19 @@ import (
 	"context"
 	"sort"
 	"strings"
+	"time"
 
 	"connectrpc.com/connect"
 
 	"github.com/woogles-io/liwords/pkg/apiserver"
+	"github.com/woogles-io/liwords/pkg/entity"
+	"github.com/woogles-io/liwords/pkg/stores/models"
 	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/mod_service"
 )
+
+// chatReviewNow is the clock the recent-game window is measured on.
+var chatReviewNow = time.Now
 
 // The channel prefixes a mod may scan. Anything else is refused, so a request
 // cannot smuggle glob characters into the SCAN pattern.
@@ -33,6 +39,12 @@ const (
 	chatScanMaxChannels = 100
 	// streams are capped near 500 messages; this reads all of one.
 	chatReviewMaxMessages = 1000
+	// game chat expires 14 days after its last message; a day more covers
+	// a game that ended a little after its last chat.
+	chatReviewGameWindow = 15 * 24 * time.Hour
+	// ended games are read this many at a time, up to the cap.
+	chatReviewGamePage      = 100
+	chatReviewMaxEndedGames = 2000
 )
 
 // summarizeChannel counts a channel's messages per sender. ok is false when
@@ -87,19 +99,50 @@ func (ms *ModService) ListChatChannels(ctx context.Context, req *connect.Request
 	}
 	username := strings.TrimSpace(req.Msg.Username)
 	uid := ""
+	resp := &pb.ListChatChannelsResponse{}
+	cursor := req.Msg.Cursor
+	freshScan := cursor == "" || cursor == "0"
+	if cursor == "" {
+		cursor = "0"
+	}
+	// The channels of the games this user played. A game's chat is listed
+	// even when the user wrote nothing in it, so a complaint about an
+	// unnamed game or opponent still turns it up.
+	played := map[string]bool{}
+	playedListed := 0
 	if username != "" {
 		u, err := ms.userStore.Get(ctx, username)
 		if err != nil {
 			return nil, apiserver.InvalidArg("user not found: " + username)
 		}
 		uid = u.UUID
+		if prefix == "" || prefix == "chat.game." || prefix == "chat.gametv." {
+			gameIDs, err := ms.userGameIDs(ctx, u)
+			if err != nil {
+				return nil, err
+			}
+			for _, gid := range gameIDs {
+				for _, p := range []string{"chat.game.", "chat.gametv."} {
+					if prefix == "" || prefix == p {
+						played[p+gid] = true
+					}
+				}
+			}
+		}
+		if freshScan {
+			for ch := range played {
+				msgs, err := ms.chatStore.OldChats(ctx, ch, chatReviewMaxMessages)
+				if err != nil || len(msgs) == 0 {
+					continue
+				}
+				summary, _ := summarizeChannel(ch, msgs, uid, username)
+				summary.UserPlayed = true
+				resp.Channels = append(resp.Channels, summary)
+				playedListed++
+			}
+		}
 	}
 
-	resp := &pb.ListChatChannelsResponse{}
-	cursor := req.Msg.Cursor
-	if cursor == "" {
-		cursor = "0"
-	}
 	for step := 0; step < chatScanMaxSteps; step++ {
 		channels, next, err := ms.chatStore.ScanChannels(ctx, cursor, prefix, chatScanStepCount)
 		if err != nil {
@@ -107,6 +150,9 @@ func (ms *ModService) ListChatChannels(ctx context.Context, req *connect.Request
 		}
 		cursor = next
 		for _, ch := range channels {
+			if played[ch] {
+				continue
+			}
 			msgs, err := ms.chatStore.OldChats(ctx, ch, chatReviewMaxMessages)
 			if err != nil {
 				// the key may have expired between SCAN and XREVRANGE.
@@ -119,7 +165,7 @@ func (ms *ModService) ListChatChannels(ctx context.Context, req *connect.Request
 				resp.Channels = append(resp.Channels, summary)
 			}
 		}
-		if cursor == "0" || len(resp.Channels) >= chatScanMaxChannels {
+		if cursor == "0" || len(resp.Channels)-playedListed >= chatScanMaxChannels {
 			break
 		}
 	}
@@ -142,4 +188,50 @@ func (ms *ModService) GetChannelChats(ctx context.Context, req *connect.Request[
 		return nil, err
 	}
 	return connect.NewResponse(&ipc.ChatMessages{Messages: msgs}), nil
+}
+
+// userGameIDs lists the games u played whose chat may still be in Redis:
+// games in progress, and games that ended within the chat expiry.
+func (ms *ModService) userGameIDs(ctx context.Context, u *entity.User) ([]string, error) {
+	var ids []string
+	active, err := ms.queries.ListActiveGames(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for _, g := range active {
+		for _, pi := range g.Quickdata.PlayerInfo {
+			if pi.UserId == u.UUID {
+				ids = append(ids, g.Uuid.String)
+				break
+			}
+		}
+	}
+	corres, err := ms.queries.ListActiveCorrespondenceGamesForUser(ctx, u.UUID)
+	if err != nil {
+		return nil, err
+	}
+	for _, g := range corres {
+		ids = append(ids, g.Uuid.String)
+	}
+	cutoff := chatReviewNow().Add(-chatReviewGameWindow)
+	for offset := 0; offset < chatReviewMaxEndedGames; offset += chatReviewGamePage {
+		games, err := ms.queries.GetRecentGamesByUserId(ctx, models.GetRecentGamesByUserIdParams{
+			UserID:      int32(u.ID),
+			NumGames:    chatReviewGamePage,
+			OffsetGames: int32(offset),
+		})
+		if err != nil {
+			return nil, err
+		}
+		for _, g := range games {
+			if g.UpdatedAt.Time.Before(cutoff) {
+				return ids, nil
+			}
+			ids = append(ids, g.Uuid.String)
+		}
+		if len(games) < chatReviewGamePage {
+			break
+		}
+	}
+	return ids, nil
 }

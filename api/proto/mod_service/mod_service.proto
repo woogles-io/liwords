@@ -84,7 +84,8 @@ message ListChatChannelsRequest {
   // "chat.pm.", "chat.tournament.", "chat.league.". Empty means all.
   string channel_prefix = 1;
   // username, if set, keeps only channels this user chatted in (or, for
-  // private chats, is a party to).
+  // private chats, is a party to), and adds the chat of every game this user
+  // played that may still be in Redis, even where they wrote nothing.
   string username = 2;
   // cursor is the Redis SCAN cursor; empty or "0" starts a new scan.
   string cursor = 3;
@@ -103,6 +104,9 @@ message ChatChannelSummary {
   int64 first_timestamp = 3;
   int64 last_timestamp = 4;
   repeated ChatSenderCount senders = 5;
+  // user_played is set when the channel belongs to a game the requested user
+  // played, whether or not they wrote in it.
+  bool user_played = 6;
 }
 
 message ListChatChannelsResponse {

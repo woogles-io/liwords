@@ -748,7 +748,8 @@ type ListChatChannelsRequest struct {
 	// "chat.pm.", "chat.tournament.", "chat.league.". Empty means all.
 	ChannelPrefix string `protobuf:"bytes,1,opt,name=channel_prefix,json=channelPrefix,proto3" json:"channel_prefix,omitempty"`
 	// username, if set, keeps only channels this user chatted in (or, for
-	// private chats, is a party to).
+	// private chats, is a party to), and adds the chat of every game this user
+	// played that may still be in Redis, even where they wrote nothing.
 	Username string `protobuf:"bytes,2,opt,name=username,proto3" json:"username,omitempty"`
 	// cursor is the Redis SCAN cursor; empty or "0" starts a new scan.
 	Cursor        string `protobuf:"bytes,3,opt,name=cursor,proto3" json:"cursor,omitempty"`
@@ -875,8 +876,11 @@ type ChatChannelSummary struct {
 	FirstTimestamp int64              `protobuf:"varint,3,opt,name=first_timestamp,json=firstTimestamp,proto3" json:"first_timestamp,omitempty"`
 	LastTimestamp  int64              `protobuf:"varint,4,opt,name=last_timestamp,json=lastTimestamp,proto3" json:"last_timestamp,omitempty"`
 	Senders        []*ChatSenderCount `protobuf:"bytes,5,rep,name=senders,proto3" json:"senders,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// user_played is set when the channel belongs to a game the requested user
+	// played, whether or not they wrote in it.
+	UserPlayed    bool `protobuf:"varint,6,opt,name=user_played,json=userPlayed,proto3" json:"user_played,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ChatChannelSummary) Reset() {
@@ -942,6 +946,13 @@ func (x *ChatChannelSummary) GetSenders() []*ChatSenderCount {
 		return x.Senders
 	}
 	return nil
+}
+
+func (x *ChatChannelSummary) GetUserPlayed() bool {
+	if x != nil {
+		return x.UserPlayed
+	}
+	return false
 }
 
 type ListChatChannelsResponse struct {
@@ -1094,13 +1105,15 @@ const file_proto_mod_service_mod_service_proto_rawDesc = "" +
 	"\x0fChatSenderCount\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x1a\n" +
 	"\busername\x18\x02 \x01(\tR\busername\x12\x14\n" +
-	"\x05count\x18\x03 \x01(\x05R\x05count\"\xdb\x01\n" +
+	"\x05count\x18\x03 \x01(\x05R\x05count\"\xfc\x01\n" +
 	"\x12ChatChannelSummary\x12\x18\n" +
 	"\achannel\x18\x01 \x01(\tR\achannel\x12#\n" +
 	"\rmessage_count\x18\x02 \x01(\x05R\fmessageCount\x12'\n" +
 	"\x0ffirst_timestamp\x18\x03 \x01(\x03R\x0efirstTimestamp\x12%\n" +
 	"\x0elast_timestamp\x18\x04 \x01(\x03R\rlastTimestamp\x126\n" +
-	"\asenders\x18\x05 \x03(\v2\x1c.mod_service.ChatSenderCountR\asenders\"x\n" +
+	"\asenders\x18\x05 \x03(\v2\x1c.mod_service.ChatSenderCountR\asenders\x12\x1f\n" +
+	"\vuser_played\x18\x06 \x01(\bR\n" +
+	"userPlayed\"x\n" +
 	"\x18ListChatChannelsResponse\x12;\n" +
 	"\bchannels\x18\x01 \x03(\v2\x1f.mod_service.ChatChannelSummaryR\bchannels\x12\x1f\n" +
 	"\vnext_cursor\x18\x02 \x01(\tR\n" +
