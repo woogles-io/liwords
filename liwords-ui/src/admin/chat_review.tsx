@@ -1,13 +1,13 @@
-import { create } from "@bufbuild/protobuf";
-import { Button, Input, Select, Space, Table, Tag } from "antd";
+import { Button, Input, Select, Space, Table, Tag, Typography } from "antd";
 import React, { useState } from "react";
 import { Link } from "react-router";
 import { ChatMessage } from "../gen/api/proto/ipc/chat_pb";
 import {
   ChatChannelSummary,
-  ChatChannelSummarySchema,
   ModService,
 } from "../gen/api/proto/mod_service/mod_service_pb";
+import { moderateUser } from "../mod/moderate";
+import { UsernameWithContext } from "../shared/usernameWithContext";
 import { flashError, useClient } from "../utils/hooks/connect";
 
 const channelTypes = [
@@ -19,10 +19,6 @@ const channelTypes = [
   { value: "chat.lobby", label: "Lobby" },
   { value: "", label: "All" },
 ];
-
-// The id after the channel's type, e.g. the game id of chat.game.<id>.
-export const channelSubject = (channel: string): string =>
-  channel.split(".").slice(2).join(".");
 
 export const formatTime = (ms: bigint): string =>
   ms ? new Date(Number(ms)).toISOString() : "";
@@ -58,14 +54,17 @@ export const chatsToCSV = (msgs: Array<ChatMessage>): string =>
 
 export const summariesToCSV = (rows: Array<ChatChannelSummary>): string =>
   [
-    "channel,messages,first_utc,last_utc,senders",
+    "channel,label,messages,first_utc,last_utc,senders,game_created_utc,game_updated_utc",
     ...rows.map((r) =>
       [
         r.channel,
+        r.context?.label ?? "",
         String(r.messageCount),
         formatTime(r.firstTimestamp),
         formatTime(r.lastTimestamp),
         r.senders.map((s) => `${s.username}:${s.count}`).join(" "),
+        formatTime(r.context?.gameCreatedAt ?? BigInt(0)),
+        formatTime(r.context?.gameUpdatedAt ?? BigInt(0)),
       ]
         .map(csvField)
         .join(","),
@@ -81,15 +80,52 @@ const download = (filename: string, body: string, type: string) => {
   window.URL.revokeObjectURL(url);
 };
 
-const ChannelLink = (props: { channel: string }) => {
-  const subject = channelSubject(props.channel);
-  if (
-    props.channel.startsWith("chat.game.") ||
-    props.channel.startsWith("chat.gametv.")
-  ) {
-    return <Link to={`/game/${subject}`}>{props.channel}</Link>;
-  }
-  return <React.Fragment>{props.channel}</React.Fragment>;
+// A user's name with the usual menu: profile, moderation, and the rest.
+const Name = (props: { username: string; userId: string }) =>
+  props.userId ? (
+    <UsernameWithContext
+      username={props.username || props.userId}
+      userID={props.userId}
+      omitSendMessage
+      showModTools
+      moderate={moderateUser}
+    />
+  ) : (
+    <React.Fragment>{props.username}</React.Fragment>
+  );
+
+// What the channel is (a game's players, a private chat's two users, a league
+// or club), linked to where it lives, with the raw channel name beneath.
+const ChannelCell = (props: { r: ChatChannelSummary }) => {
+  const ctx = props.r.context;
+  const label = ctx?.label || props.r.channel;
+  return (
+    <React.Fragment>
+      {ctx?.link ? (
+        <Link to={ctx.link} target="_blank">
+          {label}
+        </Link>
+      ) : (
+        label
+      )}
+      {props.r.userPlayed && <Tag className="chat-review-played">played</Tag>}
+      {props.r.channel.startsWith("chat.pm.") && ctx?.parties.length ? (
+        <div>
+          {ctx.parties.map((p, i) => (
+            <React.Fragment key={p.userId}>
+              {i > 0 && " & "}
+              <Name username={p.username} userId={p.userId} />
+            </React.Fragment>
+          ))}
+        </div>
+      ) : null}
+      <div>
+        <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+          {props.r.channel}
+        </Typography.Text>
+      </div>
+    </React.Fragment>
+  );
 };
 
 const ChannelChats = (props: { channel: string }) => {
@@ -151,7 +187,11 @@ const ChannelChats = (props: { channel: string }) => {
             key: "time",
             render: (_, m) => formatTime(m.timestamp),
           },
-          { title: "User", dataIndex: "username", key: "username" },
+          {
+            title: "User",
+            key: "username",
+            render: (_, m) => <Name username={m.username} userId={m.userId} />,
+          },
           { title: "Message", dataIndex: "message", key: "message" },
         ]}
       />
@@ -189,7 +229,7 @@ export const ChatReview = () => {
     }
   };
 
-  const showLookup = () => {
+  const showLookup = async () => {
     const id = lookup.trim();
     if (!id) {
       return;
@@ -198,10 +238,13 @@ export const ChatReview = () => {
     const channels = id.startsWith("chat.")
       ? [id]
       : [`chat.game.${id}`, `chat.gametv.${id}`];
-    setRows(
-      channels.map((channel) => create(ChatChannelSummarySchema, { channel })),
-    );
-    setCursor("0");
+    try {
+      const resp = await modClient.listChatChannels({ channels });
+      setRows(resp.channels);
+      setCursor("0");
+    } catch (e) {
+      flashError(e);
+    }
   };
 
   const sorted = [...rows].sort((a, b) =>
@@ -271,14 +314,7 @@ export const ChatReview = () => {
           {
             title: "Channel",
             key: "channel",
-            render: (_, r) => (
-              <React.Fragment>
-                <ChannelLink channel={r.channel} />
-                {r.userPlayed && (
-                  <Tag className="chat-review-played">played</Tag>
-                )}
-              </React.Fragment>
-            ),
+            render: (_, r) => <ChannelCell r={r} />,
           },
           {
             title: "Msgs",
@@ -296,7 +332,12 @@ export const ChatReview = () => {
             onFilter: (value, r) =>
               value === 3 ? r.senders.length >= 3 : r.senders.length === value,
             render: (_, r) =>
-              r.senders.map((s) => `${s.username} (${s.count})`).join(", "),
+              r.senders.map((s, i) => (
+                <React.Fragment key={s.userId || s.username}>
+                  {i > 0 && ", "}
+                  <Name username={s.username} userId={s.userId} /> ({s.count})
+                </React.Fragment>
+              )),
           },
           {
             title: "First (UTC)",
@@ -307,6 +348,17 @@ export const ChatReview = () => {
             title: "Last (UTC)",
             key: "last",
             render: (_, r) => formatTime(r.lastTimestamp),
+          },
+          {
+            title: "Game created / last updated (UTC)",
+            key: "game",
+            render: (_, r) =>
+              r.context?.gameCreatedAt ? (
+                <React.Fragment>
+                  <div>{formatTime(r.context.gameCreatedAt)}</div>
+                  <div>{formatTime(r.context.gameUpdatedAt)}</div>
+                </React.Fragment>
+              ) : null,
           },
         ]}
       />

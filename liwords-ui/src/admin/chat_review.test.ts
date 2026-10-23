@@ -3,7 +3,6 @@ import { describe, expect, it } from "vitest";
 import { ChatMessageSchema } from "../gen/api/proto/ipc/chat_pb";
 import { ChatChannelSummarySchema } from "../gen/api/proto/mod_service/mod_service_pb";
 import {
-  channelSubject,
   chatsToCSV,
   formatTime,
   mergeRows,
@@ -11,12 +10,6 @@ import {
 } from "./chat_review";
 
 describe("chat review", () => {
-  it("takes the id after the channel type", () => {
-    expect(channelSubject("chat.game.abc")).toBe("abc");
-    expect(channelSubject("chat.pm.u1_u2")).toBe("u1_u2");
-    expect(channelSubject("chat.lobby")).toBe("");
-  });
-
   it("writes UTC times from milliseconds", () => {
     expect(formatTime(BigInt(1700000000123))).toBe("2023-11-14T22:13:20.123Z");
     expect(formatTime(BigInt(0))).toBe("");
@@ -53,7 +46,7 @@ describe("chat review", () => {
       }),
     ]);
     expect(csv.split("\n")[1]).toBe(
-      "chat.game.abc,3,2023-11-14T22:13:20.123Z,2023-11-14T22:13:20.123Z,mina:2 cesar:1",
+      "chat.game.abc,,3,2023-11-14T22:13:20.123Z,2023-11-14T22:13:20.123Z,mina:2 cesar:1,,",
     );
   });
 
@@ -66,5 +59,22 @@ describe("chat review", () => {
         [row("chat.game.b"), row("chat.game.c")],
       ).map((r) => r.channel),
     ).toEqual(["chat.game.a", "chat.game.b", "chat.game.c"]);
+  });
+
+  it("adds the decoded label and the game's times", () => {
+    const csv = summariesToCSV([
+      create(ChatChannelSummarySchema, {
+        channel: "chat.game.abc",
+        messageCount: 1,
+        context: {
+          label: "mina vs cesar",
+          gameCreatedAt: BigInt(1700000000123),
+          gameUpdatedAt: BigInt(1700000060123),
+        },
+      }),
+    ]);
+    expect(csv.split("\n")[1]).toBe(
+      "chat.game.abc,mina vs cesar,1,,,,2023-11-14T22:13:20.123Z,2023-11-14T22:14:20.123Z",
+    );
   });
 });
