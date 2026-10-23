@@ -82,6 +82,8 @@ const formatSeason = (
   compRank?: number,
   hideResult?: boolean,
   h2hTooltip?: string,
+  // The Peak column is about the finish, so it leaves the timeouts out.
+  hideTimeouts?: boolean,
 ) => {
   if (!season) return <span className="roster-empty">—</span>;
   if (season.divisionNumber === 0) {
@@ -123,7 +125,9 @@ const formatSeason = (
         </Tag>
         {displayRank > 0 && <span className="roster-rank">#{displayRank}</span>}
         {!hideResult && resultIcon(season.result)}
-        {season.timeouts > 0 && <TimeoutMark count={season.timeouts} />}
+        {!hideTimeouts && season.timeouts > 0 && (
+          <TimeoutMark count={season.timeouts} />
+        )}
       </span>
     </Tooltip>
   );
@@ -564,6 +568,9 @@ export const LeagueRoster: React.FC<Props> = ({
             {formatSeason(
               peak.season,
               compRankMap.get(`${peak.season.seasonNumber}:${record.userId}`),
+              undefined,
+              undefined,
+              true,
             )}
             <span style={{ fontSize: 11, opacity: 0.65, marginLeft: 2 }}>
               ·S{peak.season.seasonNumber}
