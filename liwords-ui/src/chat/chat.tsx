@@ -128,6 +128,23 @@ export const inputMaxHeight = (list: HTMLElement, input: HTMLElement): number =>
     ),
   );
 
+// How many rows (1 to 6) of input fit in a height, given the input's line
+// height and its vertical padding and border.
+export const rowsThatFit = (
+  ta: HTMLTextAreaElement,
+  height: number,
+): number => {
+  const cs = window.getComputedStyle(ta);
+  const px = (v: string) => parseFloat(v) || 0;
+  const frame =
+    px(cs.paddingTop) +
+    px(cs.paddingBottom) +
+    px(cs.borderTopWidth) +
+    px(cs.borderBottomWidth);
+  const line = px(cs.lineHeight) || 22;
+  return Math.max(1, Math.min(6, Math.floor((height - frame) / line)));
+};
+
 // The list's max height: the layout's own cap, if any, further capped so the
 // list (and its scrollbar) ends where the input begins.
 export const entitiesMaxHeight = (
@@ -267,13 +284,13 @@ export const Chat = React.memo((props: Props) => {
   const [inputRoom, setInputRoom] = useState<number | undefined>(undefined);
   // On a short chat panel, six rows of input would leave no messages in view;
   // past this height the input scrolls inside itself instead.
-  const [inputMax, setInputMax] = useState<number | undefined>(undefined);
+  const [inputMaxRows, setInputMaxRows] = useState(6);
   useEffect(() => {
     const ta = chatInputRef.current?.resizableTextArea?.textArea;
     if (!ta || !chatTab || typeof ResizeObserver === "undefined") return;
     const measure = () => {
       setInputRoom(roomAboveInput(chatTab, ta));
-      setInputMax(inputMaxHeight(chatTab, ta));
+      setInputMaxRows(rowsThatFit(ta, inputMaxHeight(chatTab, ta)));
     };
     const ro = new ResizeObserver(measure);
     ro.observe(ta);
@@ -293,7 +310,7 @@ export const Chat = React.memo((props: Props) => {
     const ta = chatInputRef.current?.resizableTextArea?.textArea;
     if (ta && chatTab) {
       setInputRoom(roomAboveInput(chatTab, ta));
-      setInputMax(inputMaxHeight(chatTab, ta));
+      setInputMaxRows(rowsThatFit(ta, inputMaxHeight(chatTab, ta)));
     }
   }, [chatTab, presenceVisible, maxEntitiesHeight, channel]);
 
@@ -1095,12 +1112,7 @@ export const Chat = React.memo((props: Props) => {
                       ref={chatInputRef}
                       autoFocus={!defaultChannel.startsWith("chat.game")}
                       autoComplete="off"
-                      autoSize={{ minRows: 1, maxRows: 6 }}
-                      style={
-                        inputMax !== undefined
-                          ? { maxHeight: inputMax }
-                          : undefined
-                      }
+                      autoSize={{ minRows: 1, maxRows: inputMaxRows }}
                       placeholder={
                         channel === "chat.lobby"
                           ? "Ask or answer question..."

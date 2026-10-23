@@ -4,6 +4,7 @@ import {
   inputMaxHeight,
   MIN_CHAT_LIST_PX,
   roomAboveInput,
+  rowsThatFit,
 } from "./chat";
 
 const at = (top: number, bottom = top) =>
@@ -44,5 +45,26 @@ describe("inputMaxHeight", () => {
 
   it("is never negative", () => {
     expect(inputMaxHeight(at(400), at(410, 420))).toBe(0);
+  });
+});
+
+describe("rowsThatFit", () => {
+  const ta = () => {
+    const el = document.createElement("textarea");
+    el.style.lineHeight = "22px";
+    el.style.padding = "4px 11px";
+    el.style.border = "1px solid black";
+    document.body.appendChild(el);
+    return el;
+  };
+
+  it("counts whole rows inside the padding and border", () => {
+    // 10px of frame, then 22px a row
+    expect(rowsThatFit(ta(), 10 + 3 * 22 + 5)).toBe(3);
+  });
+
+  it("stays between one and six", () => {
+    expect(rowsThatFit(ta(), 5)).toBe(1);
+    expect(rowsThatFit(ta(), 1000)).toBe(6);
   });
 });
