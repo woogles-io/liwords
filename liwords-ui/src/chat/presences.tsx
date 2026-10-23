@@ -11,6 +11,30 @@ type Props = {
   onInfoTextClick?: (userId: string) => void;
 };
 
+// How long a newcomer stays highlighted.
+export const ARRIVAL_HIGHLIGHT_MS = 2 * 60 * 1000;
+
+// Records when each username was first seen in the list, and forgets anyone
+// who has left (so a return counts as a new arrival). Those present when the
+// list is first shown get time 0: they did not just arrive.
+export const updateFirstSeen = (
+  prev: Map<string, number>,
+  usernames: Array<string>,
+  now: number,
+  initial: boolean,
+): Map<string, number> => {
+  const next = new Map<string, number>();
+  for (const name of usernames) {
+    next.set(name, prev.get(name) ?? (initial ? 0 : now));
+  }
+  return next;
+};
+
+export const sortByUsername = (players: Array<PresenceEntity>) =>
+  [...players].sort((a, b) =>
+    a.username.localeCompare(b.username, undefined, { sensitivity: "base" }),
+  );
+
 export const Presences = React.memo((props: Props) => {
   const profileLink = (player: PresenceEntity) => (
     <UsernameWithContext
@@ -32,12 +56,43 @@ export const Presences = React.memo((props: Props) => {
   const currentChannelPresences = props.players.filter(
     (p) => p.channel === props.channel,
   );
-  const knownUsers = currentChannelPresences.filter((p) => !p.anon);
+  // Alphabetical, so a host can see who is missing; anyone who arrived in the
+  // last couple of minutes is highlighted, so arrivals still stand out.
+  const knownUsers = sortByUsername(
+    currentChannelPresences.filter((p) => !p.anon),
+  );
+  const firstSeen = React.useRef<Map<string, number> | null>(null);
+  const now = Date.now();
+  firstSeen.current = updateFirstSeen(
+    firstSeen.current ?? new Map(),
+    knownUsers.map((u) => u.username),
+    now,
+    firstSeen.current === null,
+  );
+  const seen = firstSeen.current;
+  const isRecent = (username: string) =>
+    now - (seen.get(username) ?? 0) < ARRIVAL_HIGHLIGHT_MS;
+  // Re-render when the oldest highlight should fade.
+  const [, setTick] = React.useState(0);
+  const nextFade = Math.min(
+    ...knownUsers
+      .map((u) => (seen.get(u.username) ?? 0) + ARRIVAL_HIGHLIGHT_MS - now)
+      .filter((ms) => ms > 0),
+  );
+  React.useEffect(() => {
+    if (!Number.isFinite(nextFade)) return;
+    const t = setTimeout(() => setTick((n) => n + 1), nextFade);
+    return () => clearTimeout(t);
+  }, [nextFade]);
   const presences = knownUsers.length
     ? knownUsers.map<React.ReactNode>((u, i) => (
         <React.Fragment key={u.username}>
           {i > 0 && ", "}
-          {profileLink(u)}
+          {isRecent(u.username) ? (
+            <span className="recent-arrival">{profileLink(u)}</span>
+          ) : (
+            profileLink(u)
+          )}
         </React.Fragment>
       ))
     : null;
