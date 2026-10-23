@@ -89,12 +89,28 @@ message ListChatChannelsRequest {
   string username = 2;
   // cursor is the Redis SCAN cursor; empty or "0" starts a new scan.
   string cursor = 3;
+  // channels, if set, summarizes exactly these channels instead of scanning.
+  repeated string channels = 4;
 }
 
 message ChatSenderCount {
   string user_id = 1;
   string username = 2;
   int32 count = 3;
+}
+
+// What a channel is about, decoded from its name.
+message ChatChannelContext {
+  // e.g. "alice vs bob", "League: Smoke League", "Club: Philly Mondays".
+  string label = 1;
+  // The site path it belongs to, e.g. /game/<id>, /leagues/<slug>, /club/<x>.
+  string link = 2;
+  // The people it is between: a private chat's two users, a game's players.
+  repeated ChatSenderCount parties = 3;
+  // For game channels, in milliseconds: when the game was created and when it
+  // was last updated (for a finished game, about when it ended).
+  int64 game_created_at = 4;
+  int64 game_updated_at = 5;
 }
 
 message ChatChannelSummary {
@@ -107,6 +123,7 @@ message ChatChannelSummary {
   // user_played is set when the channel belongs to a game the requested user
   // played, whether or not they wrote in it.
   bool user_played = 6;
+  ChatChannelContext context = 7;
 }
 
 message ListChatChannelsResponse {

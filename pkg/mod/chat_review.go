@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/woogles-io/liwords/pkg/apiserver"
 	"github.com/woogles-io/liwords/pkg/entity"
@@ -87,6 +89,72 @@ func summarizeChannel(channel string, msgs []*ipc.ChatMessage, uid, username str
 	return summary, matched
 }
 
+// channelContext decodes a channel name into what it is about: a game's
+// players and times, a private chat's two users, a league or tournament room.
+// Lookups that fail leave the parts they would have filled empty.
+func (ms *ModService) channelContext(ctx context.Context, channel string) *pb.ChatChannelContext {
+	c := &pb.ChatChannelContext{}
+	userParty := func(uid string) *pb.ChatSenderCount {
+		p := &pb.ChatSenderCount{UserId: uid}
+		if u, err := ms.userStore.GetByUUID(ctx, uid); err == nil {
+			p.Username = u.Username
+		}
+		return p
+	}
+	switch {
+	case strings.HasPrefix(channel, "chat.game.") || strings.HasPrefix(channel, "chat.gametv."):
+		gid := channel[strings.LastIndex(channel, ".")+1:]
+		c.Link = "/game/" + gid
+		g, err := ms.queries.GetGameMetadata(ctx, pgtype.Text{String: gid, Valid: true})
+		if err != nil {
+			return c
+		}
+		c.GameCreatedAt = g.CreatedAt.Time.UnixMilli()
+		c.GameUpdatedAt = g.UpdatedAt.Time.UnixMilli()
+		var names []string
+		for _, pi := range g.Quickdata.PlayerInfo {
+			c.Parties = append(c.Parties, &pb.ChatSenderCount{UserId: pi.UserId, Username: pi.Nickname})
+			names = append(names, pi.Nickname)
+		}
+		c.Label = strings.Join(names, " vs ")
+		if strings.HasPrefix(channel, "chat.gametv.") {
+			c.Label += " (viewers)"
+		}
+	case strings.HasPrefix(channel, "chat.pm."):
+		var names []string
+		for _, uid := range strings.Split(strings.TrimPrefix(channel, "chat.pm."), "_") {
+			p := userParty(uid)
+			c.Parties = append(c.Parties, p)
+			names = append(names, p.Username)
+		}
+		c.Label = "Private: " + strings.Join(names, " & ")
+	case strings.HasPrefix(channel, "chat.league."):
+		id, err := uuid.Parse(strings.TrimPrefix(channel, "chat.league."))
+		if err != nil {
+			return c
+		}
+		if lg, err := ms.queries.GetLeagueByUUID(ctx, id); err == nil {
+			c.Label = "League: " + lg.Name
+			c.Link = "/leagues/" + lg.Slug
+		}
+	case strings.HasPrefix(channel, "chat.tournament."):
+		t, err := ms.queries.GetTournamentNameAndSlug(ctx, pgtype.Text{String: strings.TrimPrefix(channel, "chat.tournament."), Valid: true})
+		if err != nil {
+			return c
+		}
+		c.Link = t.Slug.String
+		kind := "Tournament"
+		if strings.HasPrefix(t.Slug.String, "/club/") {
+			kind = "Club"
+		}
+		c.Label = kind + ": " + t.Name.String
+	case channel == "chat.lobby":
+		c.Label = "Lobby"
+		c.Link = "/"
+	}
+	return c
+}
+
 func (ms *ModService) ListChatChannels(ctx context.Context, req *connect.Request[pb.ListChatChannelsRequest],
 ) (*connect.Response[pb.ListChatChannelsResponse], error) {
 	_, err := authenticateMod(ctx, ms, nil)
@@ -100,6 +168,26 @@ func (ms *ModService) ListChatChannels(ctx context.Context, req *connect.Request
 	username := strings.TrimSpace(req.Msg.Username)
 	uid := ""
 	resp := &pb.ListChatChannelsResponse{}
+
+	// Named channels (a game id or channel looked up directly): summarize
+	// just those, listing them even when they hold no chat.
+	if len(req.Msg.Channels) > 0 {
+		for _, ch := range req.Msg.Channels {
+			if !strings.HasPrefix(ch, "chat.") {
+				return nil, apiserver.InvalidArg("channel must start with chat.")
+			}
+			msgs, err := ms.chatStore.OldChats(ctx, ch, chatReviewMaxMessages)
+			if err != nil {
+				return nil, err
+			}
+			summary, _ := summarizeChannel(ch, msgs, "", "")
+			summary.Context = ms.channelContext(ctx, ch)
+			resp.Channels = append(resp.Channels, summary)
+		}
+		resp.NextCursor = "0"
+		return connect.NewResponse(resp), nil
+	}
+
 	cursor := req.Msg.Cursor
 	freshScan := cursor == "" || cursor == "0"
 	if cursor == "" {
@@ -168,6 +256,9 @@ func (ms *ModService) ListChatChannels(ctx context.Context, req *connect.Request
 		if cursor == "0" || len(resp.Channels)-playedListed >= chatScanMaxChannels {
 			break
 		}
+	}
+	for _, summary := range resp.Channels {
+		summary.Context = ms.channelContext(ctx, summary.Channel)
 	}
 	resp.NextCursor = cursor
 	return connect.NewResponse(resp), nil

@@ -752,7 +752,9 @@ type ListChatChannelsRequest struct {
 	// played that may still be in Redis, even where they wrote nothing.
 	Username string `protobuf:"bytes,2,opt,name=username,proto3" json:"username,omitempty"`
 	// cursor is the Redis SCAN cursor; empty or "0" starts a new scan.
-	Cursor        string `protobuf:"bytes,3,opt,name=cursor,proto3" json:"cursor,omitempty"`
+	Cursor string `protobuf:"bytes,3,opt,name=cursor,proto3" json:"cursor,omitempty"`
+	// channels, if set, summarizes exactly these channels instead of scanning.
+	Channels      []string `protobuf:"bytes,4,rep,name=channels,proto3" json:"channels,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -806,6 +808,13 @@ func (x *ListChatChannelsRequest) GetCursor() string {
 		return x.Cursor
 	}
 	return ""
+}
+
+func (x *ListChatChannelsRequest) GetChannels() []string {
+	if x != nil {
+		return x.Channels
+	}
+	return nil
 }
 
 type ChatSenderCount struct {
@@ -868,6 +877,88 @@ func (x *ChatSenderCount) GetCount() int32 {
 	return 0
 }
 
+// What a channel is about, decoded from its name.
+type ChatChannelContext struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// e.g. "alice vs bob", "League: Smoke League", "Club: Philly Mondays".
+	Label string `protobuf:"bytes,1,opt,name=label,proto3" json:"label,omitempty"`
+	// The site path it belongs to, e.g. /game/<id>, /leagues/<slug>, /club/<x>.
+	Link string `protobuf:"bytes,2,opt,name=link,proto3" json:"link,omitempty"`
+	// The people it is between: a private chat's two users, a game's players.
+	Parties []*ChatSenderCount `protobuf:"bytes,3,rep,name=parties,proto3" json:"parties,omitempty"`
+	// For game channels, in milliseconds: when the game was created and when it
+	// was last updated (for a finished game, about when it ended).
+	GameCreatedAt int64 `protobuf:"varint,4,opt,name=game_created_at,json=gameCreatedAt,proto3" json:"game_created_at,omitempty"`
+	GameUpdatedAt int64 `protobuf:"varint,5,opt,name=game_updated_at,json=gameUpdatedAt,proto3" json:"game_updated_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ChatChannelContext) Reset() {
+	*x = ChatChannelContext{}
+	mi := &file_proto_mod_service_mod_service_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ChatChannelContext) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ChatChannelContext) ProtoMessage() {}
+
+func (x *ChatChannelContext) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_mod_service_mod_service_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ChatChannelContext.ProtoReflect.Descriptor instead.
+func (*ChatChannelContext) Descriptor() ([]byte, []int) {
+	return file_proto_mod_service_mod_service_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *ChatChannelContext) GetLabel() string {
+	if x != nil {
+		return x.Label
+	}
+	return ""
+}
+
+func (x *ChatChannelContext) GetLink() string {
+	if x != nil {
+		return x.Link
+	}
+	return ""
+}
+
+func (x *ChatChannelContext) GetParties() []*ChatSenderCount {
+	if x != nil {
+		return x.Parties
+	}
+	return nil
+}
+
+func (x *ChatChannelContext) GetGameCreatedAt() int64 {
+	if x != nil {
+		return x.GameCreatedAt
+	}
+	return 0
+}
+
+func (x *ChatChannelContext) GetGameUpdatedAt() int64 {
+	if x != nil {
+		return x.GameUpdatedAt
+	}
+	return 0
+}
+
 type ChatChannelSummary struct {
 	state        protoimpl.MessageState `protogen:"open.v1"`
 	Channel      string                 `protobuf:"bytes,1,opt,name=channel,proto3" json:"channel,omitempty"`
@@ -878,14 +969,15 @@ type ChatChannelSummary struct {
 	Senders        []*ChatSenderCount `protobuf:"bytes,5,rep,name=senders,proto3" json:"senders,omitempty"`
 	// user_played is set when the channel belongs to a game the requested user
 	// played, whether or not they wrote in it.
-	UserPlayed    bool `protobuf:"varint,6,opt,name=user_played,json=userPlayed,proto3" json:"user_played,omitempty"`
+	UserPlayed    bool                `protobuf:"varint,6,opt,name=user_played,json=userPlayed,proto3" json:"user_played,omitempty"`
+	Context       *ChatChannelContext `protobuf:"bytes,7,opt,name=context,proto3" json:"context,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ChatChannelSummary) Reset() {
 	*x = ChatChannelSummary{}
-	mi := &file_proto_mod_service_mod_service_proto_msgTypes[12]
+	mi := &file_proto_mod_service_mod_service_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -897,7 +989,7 @@ func (x *ChatChannelSummary) String() string {
 func (*ChatChannelSummary) ProtoMessage() {}
 
 func (x *ChatChannelSummary) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mod_service_mod_service_proto_msgTypes[12]
+	mi := &file_proto_mod_service_mod_service_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -910,7 +1002,7 @@ func (x *ChatChannelSummary) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ChatChannelSummary.ProtoReflect.Descriptor instead.
 func (*ChatChannelSummary) Descriptor() ([]byte, []int) {
-	return file_proto_mod_service_mod_service_proto_rawDescGZIP(), []int{12}
+	return file_proto_mod_service_mod_service_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *ChatChannelSummary) GetChannel() string {
@@ -955,6 +1047,13 @@ func (x *ChatChannelSummary) GetUserPlayed() bool {
 	return false
 }
 
+func (x *ChatChannelSummary) GetContext() *ChatChannelContext {
+	if x != nil {
+		return x.Context
+	}
+	return nil
+}
+
 type ListChatChannelsResponse struct {
 	state    protoimpl.MessageState `protogen:"open.v1"`
 	Channels []*ChatChannelSummary  `protobuf:"bytes,1,rep,name=channels,proto3" json:"channels,omitempty"`
@@ -966,7 +1065,7 @@ type ListChatChannelsResponse struct {
 
 func (x *ListChatChannelsResponse) Reset() {
 	*x = ListChatChannelsResponse{}
-	mi := &file_proto_mod_service_mod_service_proto_msgTypes[13]
+	mi := &file_proto_mod_service_mod_service_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -978,7 +1077,7 @@ func (x *ListChatChannelsResponse) String() string {
 func (*ListChatChannelsResponse) ProtoMessage() {}
 
 func (x *ListChatChannelsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mod_service_mod_service_proto_msgTypes[13]
+	mi := &file_proto_mod_service_mod_service_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -991,7 +1090,7 @@ func (x *ListChatChannelsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListChatChannelsResponse.ProtoReflect.Descriptor instead.
 func (*ListChatChannelsResponse) Descriptor() ([]byte, []int) {
-	return file_proto_mod_service_mod_service_proto_rawDescGZIP(), []int{13}
+	return file_proto_mod_service_mod_service_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *ListChatChannelsResponse) GetChannels() []*ChatChannelSummary {
@@ -1017,7 +1116,7 @@ type GetChannelChatsRequest struct {
 
 func (x *GetChannelChatsRequest) Reset() {
 	*x = GetChannelChatsRequest{}
-	mi := &file_proto_mod_service_mod_service_proto_msgTypes[14]
+	mi := &file_proto_mod_service_mod_service_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1029,7 +1128,7 @@ func (x *GetChannelChatsRequest) String() string {
 func (*GetChannelChatsRequest) ProtoMessage() {}
 
 func (x *GetChannelChatsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mod_service_mod_service_proto_msgTypes[14]
+	mi := &file_proto_mod_service_mod_service_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1042,7 +1141,7 @@ func (x *GetChannelChatsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetChannelChatsRequest.ProtoReflect.Descriptor instead.
 func (*GetChannelChatsRequest) Descriptor() ([]byte, []int) {
-	return file_proto_mod_service_mod_service_proto_rawDescGZIP(), []int{14}
+	return file_proto_mod_service_mod_service_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *GetChannelChatsRequest) GetChannel() string {
@@ -1097,15 +1196,22 @@ const file_proto_mod_service_mod_service_proto_rawDesc = "" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\"Y\n" +
 	"\x0fNotorietyReport\x12\x14\n" +
 	"\x05score\x18\x01 \x01(\x05R\x05score\x120\n" +
-	"\x05games\x18\x02 \x03(\v2\x1a.mod_service.NotoriousGameR\x05games\"t\n" +
+	"\x05games\x18\x02 \x03(\v2\x1a.mod_service.NotoriousGameR\x05games\"\x90\x01\n" +
 	"\x17ListChatChannelsRequest\x12%\n" +
 	"\x0echannel_prefix\x18\x01 \x01(\tR\rchannelPrefix\x12\x1a\n" +
 	"\busername\x18\x02 \x01(\tR\busername\x12\x16\n" +
-	"\x06cursor\x18\x03 \x01(\tR\x06cursor\"\\\n" +
+	"\x06cursor\x18\x03 \x01(\tR\x06cursor\x12\x1a\n" +
+	"\bchannels\x18\x04 \x03(\tR\bchannels\"\\\n" +
 	"\x0fChatSenderCount\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x1a\n" +
 	"\busername\x18\x02 \x01(\tR\busername\x12\x14\n" +
-	"\x05count\x18\x03 \x01(\x05R\x05count\"\xfc\x01\n" +
+	"\x05count\x18\x03 \x01(\x05R\x05count\"\xc6\x01\n" +
+	"\x12ChatChannelContext\x12\x14\n" +
+	"\x05label\x18\x01 \x01(\tR\x05label\x12\x12\n" +
+	"\x04link\x18\x02 \x01(\tR\x04link\x126\n" +
+	"\aparties\x18\x03 \x03(\v2\x1c.mod_service.ChatSenderCountR\aparties\x12&\n" +
+	"\x0fgame_created_at\x18\x04 \x01(\x03R\rgameCreatedAt\x12&\n" +
+	"\x0fgame_updated_at\x18\x05 \x01(\x03R\rgameUpdatedAt\"\xb7\x02\n" +
 	"\x12ChatChannelSummary\x12\x18\n" +
 	"\achannel\x18\x01 \x01(\tR\achannel\x12#\n" +
 	"\rmessage_count\x18\x02 \x01(\x05R\fmessageCount\x12'\n" +
@@ -1113,7 +1219,8 @@ const file_proto_mod_service_mod_service_proto_rawDesc = "" +
 	"\x0elast_timestamp\x18\x04 \x01(\x03R\rlastTimestamp\x126\n" +
 	"\asenders\x18\x05 \x03(\v2\x1c.mod_service.ChatSenderCountR\asenders\x12\x1f\n" +
 	"\vuser_played\x18\x06 \x01(\bR\n" +
-	"userPlayed\"x\n" +
+	"userPlayed\x129\n" +
+	"\acontext\x18\a \x01(\v2\x1f.mod_service.ChatChannelContextR\acontext\"x\n" +
 	"\x18ListChatChannelsResponse\x12;\n" +
 	"\bchannels\x18\x01 \x03(\v2\x1f.mod_service.ChatChannelSummaryR\bchannels\x12\x1f\n" +
 	"\vnext_cursor\x18\x02 \x01(\tR\n" +
@@ -1170,7 +1277,7 @@ func file_proto_mod_service_mod_service_proto_rawDescGZIP() []byte {
 }
 
 var file_proto_mod_service_mod_service_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_proto_mod_service_mod_service_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
+var file_proto_mod_service_mod_service_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
 var file_proto_mod_service_mod_service_proto_goTypes = []any{
 	(ModActionType)(0),                // 0: mod_service.ModActionType
 	(EmailType)(0),                    // 1: mod_service.EmailType
@@ -1187,48 +1294,51 @@ var file_proto_mod_service_mod_service_proto_goTypes = []any{
 	(*NotorietyReport)(nil),           // 12: mod_service.NotorietyReport
 	(*ListChatChannelsRequest)(nil),   // 13: mod_service.ListChatChannelsRequest
 	(*ChatSenderCount)(nil),           // 14: mod_service.ChatSenderCount
-	(*ChatChannelSummary)(nil),        // 15: mod_service.ChatChannelSummary
-	(*ListChatChannelsResponse)(nil),  // 16: mod_service.ListChatChannelsResponse
-	(*GetChannelChatsRequest)(nil),    // 17: mod_service.GetChannelChatsRequest
-	nil,                               // 18: mod_service.ModActionsMap.ActionsEntry
-	(*timestamppb.Timestamp)(nil),     // 19: google.protobuf.Timestamp
-	(*ipc.ChatMessages)(nil),          // 20: ipc.ChatMessages
+	(*ChatChannelContext)(nil),        // 15: mod_service.ChatChannelContext
+	(*ChatChannelSummary)(nil),        // 16: mod_service.ChatChannelSummary
+	(*ListChatChannelsResponse)(nil),  // 17: mod_service.ListChatChannelsResponse
+	(*GetChannelChatsRequest)(nil),    // 18: mod_service.GetChannelChatsRequest
+	nil,                               // 19: mod_service.ModActionsMap.ActionsEntry
+	(*timestamppb.Timestamp)(nil),     // 20: google.protobuf.Timestamp
+	(*ipc.ChatMessages)(nil),          // 21: ipc.ChatMessages
 }
 var file_proto_mod_service_mod_service_proto_depIdxs = []int32{
 	0,  // 0: mod_service.ModAction.type:type_name -> mod_service.ModActionType
-	19, // 1: mod_service.ModAction.start_time:type_name -> google.protobuf.Timestamp
-	19, // 2: mod_service.ModAction.end_time:type_name -> google.protobuf.Timestamp
-	19, // 3: mod_service.ModAction.removed_time:type_name -> google.protobuf.Timestamp
+	20, // 1: mod_service.ModAction.start_time:type_name -> google.protobuf.Timestamp
+	20, // 2: mod_service.ModAction.end_time:type_name -> google.protobuf.Timestamp
+	20, // 3: mod_service.ModAction.removed_time:type_name -> google.protobuf.Timestamp
 	1,  // 4: mod_service.ModAction.email_type:type_name -> mod_service.EmailType
-	18, // 5: mod_service.ModActionsMap.actions:type_name -> mod_service.ModActionsMap.ActionsEntry
+	19, // 5: mod_service.ModActionsMap.actions:type_name -> mod_service.ModActionsMap.ActionsEntry
 	3,  // 6: mod_service.ModActionsList.actions:type_name -> mod_service.ModAction
 	2,  // 7: mod_service.NotoriousGame.type:type_name -> mod_service.NotoriousGameType
-	19, // 8: mod_service.NotoriousGame.created_at:type_name -> google.protobuf.Timestamp
+	20, // 8: mod_service.NotoriousGame.created_at:type_name -> google.protobuf.Timestamp
 	8,  // 9: mod_service.NotorietyReport.games:type_name -> mod_service.NotoriousGame
-	14, // 10: mod_service.ChatChannelSummary.senders:type_name -> mod_service.ChatSenderCount
-	15, // 11: mod_service.ListChatChannelsResponse.channels:type_name -> mod_service.ChatChannelSummary
-	3,  // 12: mod_service.ModActionsMap.ActionsEntry.value:type_name -> mod_service.ModAction
-	5,  // 13: mod_service.ModService.ApplyActions:input_type -> mod_service.ModActionsList
-	5,  // 14: mod_service.ModService.RemoveActions:input_type -> mod_service.ModActionsList
-	6,  // 15: mod_service.ModService.GetActions:input_type -> mod_service.GetActionsRequest
-	6,  // 16: mod_service.ModService.GetActionHistory:input_type -> mod_service.GetActionsRequest
-	11, // 17: mod_service.ModService.GetNotorietyReport:input_type -> mod_service.GetNotorietyReportRequest
-	9,  // 18: mod_service.ModService.ResetNotoriety:input_type -> mod_service.ResetNotorietyRequest
-	13, // 19: mod_service.ModService.ListChatChannels:input_type -> mod_service.ListChatChannelsRequest
-	17, // 20: mod_service.ModService.GetChannelChats:input_type -> mod_service.GetChannelChatsRequest
-	7,  // 21: mod_service.ModService.ApplyActions:output_type -> mod_service.ModActionResponse
-	7,  // 22: mod_service.ModService.RemoveActions:output_type -> mod_service.ModActionResponse
-	4,  // 23: mod_service.ModService.GetActions:output_type -> mod_service.ModActionsMap
-	5,  // 24: mod_service.ModService.GetActionHistory:output_type -> mod_service.ModActionsList
-	12, // 25: mod_service.ModService.GetNotorietyReport:output_type -> mod_service.NotorietyReport
-	10, // 26: mod_service.ModService.ResetNotoriety:output_type -> mod_service.ResetNotorietyResponse
-	16, // 27: mod_service.ModService.ListChatChannels:output_type -> mod_service.ListChatChannelsResponse
-	20, // 28: mod_service.ModService.GetChannelChats:output_type -> ipc.ChatMessages
-	21, // [21:29] is the sub-list for method output_type
-	13, // [13:21] is the sub-list for method input_type
-	13, // [13:13] is the sub-list for extension type_name
-	13, // [13:13] is the sub-list for extension extendee
-	0,  // [0:13] is the sub-list for field type_name
+	14, // 10: mod_service.ChatChannelContext.parties:type_name -> mod_service.ChatSenderCount
+	14, // 11: mod_service.ChatChannelSummary.senders:type_name -> mod_service.ChatSenderCount
+	15, // 12: mod_service.ChatChannelSummary.context:type_name -> mod_service.ChatChannelContext
+	16, // 13: mod_service.ListChatChannelsResponse.channels:type_name -> mod_service.ChatChannelSummary
+	3,  // 14: mod_service.ModActionsMap.ActionsEntry.value:type_name -> mod_service.ModAction
+	5,  // 15: mod_service.ModService.ApplyActions:input_type -> mod_service.ModActionsList
+	5,  // 16: mod_service.ModService.RemoveActions:input_type -> mod_service.ModActionsList
+	6,  // 17: mod_service.ModService.GetActions:input_type -> mod_service.GetActionsRequest
+	6,  // 18: mod_service.ModService.GetActionHistory:input_type -> mod_service.GetActionsRequest
+	11, // 19: mod_service.ModService.GetNotorietyReport:input_type -> mod_service.GetNotorietyReportRequest
+	9,  // 20: mod_service.ModService.ResetNotoriety:input_type -> mod_service.ResetNotorietyRequest
+	13, // 21: mod_service.ModService.ListChatChannels:input_type -> mod_service.ListChatChannelsRequest
+	18, // 22: mod_service.ModService.GetChannelChats:input_type -> mod_service.GetChannelChatsRequest
+	7,  // 23: mod_service.ModService.ApplyActions:output_type -> mod_service.ModActionResponse
+	7,  // 24: mod_service.ModService.RemoveActions:output_type -> mod_service.ModActionResponse
+	4,  // 25: mod_service.ModService.GetActions:output_type -> mod_service.ModActionsMap
+	5,  // 26: mod_service.ModService.GetActionHistory:output_type -> mod_service.ModActionsList
+	12, // 27: mod_service.ModService.GetNotorietyReport:output_type -> mod_service.NotorietyReport
+	10, // 28: mod_service.ModService.ResetNotoriety:output_type -> mod_service.ResetNotorietyResponse
+	17, // 29: mod_service.ModService.ListChatChannels:output_type -> mod_service.ListChatChannelsResponse
+	21, // 30: mod_service.ModService.GetChannelChats:output_type -> ipc.ChatMessages
+	23, // [23:31] is the sub-list for method output_type
+	15, // [15:23] is the sub-list for method input_type
+	15, // [15:15] is the sub-list for extension type_name
+	15, // [15:15] is the sub-list for extension extendee
+	0,  // [0:15] is the sub-list for field type_name
 }
 
 func init() { file_proto_mod_service_mod_service_proto_init() }
@@ -1242,7 +1352,7 @@ func file_proto_mod_service_mod_service_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_mod_service_mod_service_proto_rawDesc), len(file_proto_mod_service_mod_service_proto_rawDesc)),
 			NumEnums:      3,
-			NumMessages:   16,
+			NumMessages:   17,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

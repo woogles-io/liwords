@@ -61,3 +61,43 @@ func TestUserGameIDs(t *testing.T) {
 	cancel()
 	<-donechan
 }
+
+func TestChannelContext(t *testing.T) {
+	is := is.New(t)
+	_, stores, cfg := recreateDB()
+	defer stores.Disconnect()
+	ctx := DefaultConfig.WithContext(context.Background())
+	ms := mod.NewModService(stores.UserStore, stores.ChatStore, stores.Queries)
+
+	g, _, cancel, donechan, _ := makeGame(cfg, stores, 60, pb.RatingMode_RATED)
+	defer func() {
+		cancel()
+		<-donechan
+	}()
+
+	c := mod.ChannelContext(ms, ctx, "chat.game."+g.GameID())
+	is.Equal(c.Link, "/game/"+g.GameID())
+	is.Equal(c.Label, "cesar vs jesse")
+	is.Equal(len(c.Parties), 2)
+	is.True(c.GameCreatedAt > 0)
+	is.True(c.GameUpdatedAt != 0) // the fake clock dates it 1970
+
+	c = mod.ChannelContext(ms, ctx, "chat.gametv."+g.GameID())
+	is.Equal(c.Label, "cesar vs jesse (viewers)")
+
+	cesar, err := stores.UserStore.Get(ctx, "cesar")
+	is.NoErr(err)
+	jesse, err := stores.UserStore.Get(ctx, "jesse")
+	is.NoErr(err)
+	c = mod.ChannelContext(ms, ctx, "chat.pm."+cesar.UUID+"_"+jesse.UUID)
+	is.Equal(c.Label, "Private: cesar & jesse")
+	is.Equal(c.Parties[1].UserId, jesse.UUID)
+
+	// Unknown rooms decode to nothing rather than failing.
+	c = mod.ChannelContext(ms, ctx, "chat.league.00000000000000000000000000000000")
+	is.Equal(c.Label, "")
+	c = mod.ChannelContext(ms, ctx, "chat.tournament.nope")
+	is.Equal(c.Label, "")
+	c = mod.ChannelContext(ms, ctx, "chat.lobby")
+	is.Equal(c.Link, "/")
+}

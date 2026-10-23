@@ -12,3 +12,6 @@ func SetChatReviewNow(now func() time.Time) func() {
 	chatReviewNow = now
 	return func() { chatReviewNow = old }
 }
+
+// ChannelContext exposes channelContext to the mod_test package.
+var ChannelContext = (*ModService).channelContext
