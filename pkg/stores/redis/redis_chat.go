@@ -172,6 +172,40 @@ func (r *RedisChatStore) OldChats(ctx context.Context, channel string, n int) ([
 	return messages, nil
 }
 
+// ScanChannels runs one SCAN step over the chat streams whose channel names
+// start with prefix (e.g. "chat.game."), returning those channel names and
+// the cursor for the next step ("0" once the scan is complete). SCAN, unlike
+// KEYS, only walks about count keys per call, so Redis is never blocked.
+func (r *RedisChatStore) ScanChannels(ctx context.Context, cursor, prefix string, count int) ([]string, string, error) {
+	if cursor == "" {
+		cursor = "0"
+	}
+	match := "chat:" + strings.TrimPrefix(prefix, "chat.") + "*"
+	conn := r.redisPool.Get()
+	defer conn.Close()
+
+	vals, err := redis.Values(conn.Do("SCAN", cursor, "MATCH", match, "COUNT", count))
+	if err != nil {
+		return nil, "", err
+	}
+	if len(vals) != 2 {
+		return nil, "", fmt.Errorf("unexpected SCAN reply length: %d", len(vals))
+	}
+	next, err := redis.String(vals[0], nil)
+	if err != nil {
+		return nil, "", err
+	}
+	keys, err := redis.Strings(vals[1], nil)
+	if err != nil {
+		return nil, "", err
+	}
+	channels := make([]string, len(keys))
+	for i, k := range keys {
+		channels[i] = "chat." + strings.TrimPrefix(k, "chat:")
+	}
+	return channels, next, nil
+}
+
 func rstreamMsgToChatMsg(v interface{}) (*pb.ChatMessage, error) {
 	// This is kind of gross and fragile, but redigo doesn't have stream support yet 😥
 	msg := &pb.ChatMessage{}

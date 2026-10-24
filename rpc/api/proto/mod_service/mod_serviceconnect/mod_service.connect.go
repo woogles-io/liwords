@@ -8,6 +8,7 @@ import (
 	connect "connectrpc.com/connect"
 	context "context"
 	errors "errors"
+	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 	mod_service "github.com/woogles-io/liwords/rpc/api/proto/mod_service"
 	http "net/http"
 	strings "strings"
@@ -49,6 +50,12 @@ const (
 	// ModServiceResetNotorietyProcedure is the fully-qualified name of the ModService's ResetNotoriety
 	// RPC.
 	ModServiceResetNotorietyProcedure = "/mod_service.ModService/ResetNotoriety"
+	// ModServiceListChatChannelsProcedure is the fully-qualified name of the ModService's
+	// ListChatChannels RPC.
+	ModServiceListChatChannelsProcedure = "/mod_service.ModService/ListChatChannels"
+	// ModServiceGetChannelChatsProcedure is the fully-qualified name of the ModService's
+	// GetChannelChats RPC.
+	ModServiceGetChannelChatsProcedure = "/mod_service.ModService/GetChannelChats"
 )
 
 // ModServiceClient is a client for the mod_service.ModService service.
@@ -59,6 +66,8 @@ type ModServiceClient interface {
 	GetActionHistory(context.Context, *connect.Request[mod_service.GetActionsRequest]) (*connect.Response[mod_service.ModActionsList], error)
 	GetNotorietyReport(context.Context, *connect.Request[mod_service.GetNotorietyReportRequest]) (*connect.Response[mod_service.NotorietyReport], error)
 	ResetNotoriety(context.Context, *connect.Request[mod_service.ResetNotorietyRequest]) (*connect.Response[mod_service.ResetNotorietyResponse], error)
+	ListChatChannels(context.Context, *connect.Request[mod_service.ListChatChannelsRequest]) (*connect.Response[mod_service.ListChatChannelsResponse], error)
+	GetChannelChats(context.Context, *connect.Request[mod_service.GetChannelChatsRequest]) (*connect.Response[ipc.ChatMessages], error)
 }
 
 // NewModServiceClient constructs a client for the mod_service.ModService service. By default, it
@@ -108,6 +117,18 @@ func NewModServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...
 			connect.WithSchema(modServiceMethods.ByName("ResetNotoriety")),
 			connect.WithClientOptions(opts...),
 		),
+		listChatChannels: connect.NewClient[mod_service.ListChatChannelsRequest, mod_service.ListChatChannelsResponse](
+			httpClient,
+			baseURL+ModServiceListChatChannelsProcedure,
+			connect.WithSchema(modServiceMethods.ByName("ListChatChannels")),
+			connect.WithClientOptions(opts...),
+		),
+		getChannelChats: connect.NewClient[mod_service.GetChannelChatsRequest, ipc.ChatMessages](
+			httpClient,
+			baseURL+ModServiceGetChannelChatsProcedure,
+			connect.WithSchema(modServiceMethods.ByName("GetChannelChats")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -119,6 +140,8 @@ type modServiceClient struct {
 	getActionHistory   *connect.Client[mod_service.GetActionsRequest, mod_service.ModActionsList]
 	getNotorietyReport *connect.Client[mod_service.GetNotorietyReportRequest, mod_service.NotorietyReport]
 	resetNotoriety     *connect.Client[mod_service.ResetNotorietyRequest, mod_service.ResetNotorietyResponse]
+	listChatChannels   *connect.Client[mod_service.ListChatChannelsRequest, mod_service.ListChatChannelsResponse]
+	getChannelChats    *connect.Client[mod_service.GetChannelChatsRequest, ipc.ChatMessages]
 }
 
 // ApplyActions calls mod_service.ModService.ApplyActions.
@@ -151,6 +174,16 @@ func (c *modServiceClient) ResetNotoriety(ctx context.Context, req *connect.Requ
 	return c.resetNotoriety.CallUnary(ctx, req)
 }
 
+// ListChatChannels calls mod_service.ModService.ListChatChannels.
+func (c *modServiceClient) ListChatChannels(ctx context.Context, req *connect.Request[mod_service.ListChatChannelsRequest]) (*connect.Response[mod_service.ListChatChannelsResponse], error) {
+	return c.listChatChannels.CallUnary(ctx, req)
+}
+
+// GetChannelChats calls mod_service.ModService.GetChannelChats.
+func (c *modServiceClient) GetChannelChats(ctx context.Context, req *connect.Request[mod_service.GetChannelChatsRequest]) (*connect.Response[ipc.ChatMessages], error) {
+	return c.getChannelChats.CallUnary(ctx, req)
+}
+
 // ModServiceHandler is an implementation of the mod_service.ModService service.
 type ModServiceHandler interface {
 	ApplyActions(context.Context, *connect.Request[mod_service.ModActionsList]) (*connect.Response[mod_service.ModActionResponse], error)
@@ -159,6 +192,8 @@ type ModServiceHandler interface {
 	GetActionHistory(context.Context, *connect.Request[mod_service.GetActionsRequest]) (*connect.Response[mod_service.ModActionsList], error)
 	GetNotorietyReport(context.Context, *connect.Request[mod_service.GetNotorietyReportRequest]) (*connect.Response[mod_service.NotorietyReport], error)
 	ResetNotoriety(context.Context, *connect.Request[mod_service.ResetNotorietyRequest]) (*connect.Response[mod_service.ResetNotorietyResponse], error)
+	ListChatChannels(context.Context, *connect.Request[mod_service.ListChatChannelsRequest]) (*connect.Response[mod_service.ListChatChannelsResponse], error)
+	GetChannelChats(context.Context, *connect.Request[mod_service.GetChannelChatsRequest]) (*connect.Response[ipc.ChatMessages], error)
 }
 
 // NewModServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -204,6 +239,18 @@ func NewModServiceHandler(svc ModServiceHandler, opts ...connect.HandlerOption) 
 		connect.WithSchema(modServiceMethods.ByName("ResetNotoriety")),
 		connect.WithHandlerOptions(opts...),
 	)
+	modServiceListChatChannelsHandler := connect.NewUnaryHandler(
+		ModServiceListChatChannelsProcedure,
+		svc.ListChatChannels,
+		connect.WithSchema(modServiceMethods.ByName("ListChatChannels")),
+		connect.WithHandlerOptions(opts...),
+	)
+	modServiceGetChannelChatsHandler := connect.NewUnaryHandler(
+		ModServiceGetChannelChatsProcedure,
+		svc.GetChannelChats,
+		connect.WithSchema(modServiceMethods.ByName("GetChannelChats")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/mod_service.ModService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ModServiceApplyActionsProcedure:
@@ -218,6 +265,10 @@ func NewModServiceHandler(svc ModServiceHandler, opts ...connect.HandlerOption) 
 			modServiceGetNotorietyReportHandler.ServeHTTP(w, r)
 		case ModServiceResetNotorietyProcedure:
 			modServiceResetNotorietyHandler.ServeHTTP(w, r)
+		case ModServiceListChatChannelsProcedure:
+			modServiceListChatChannelsHandler.ServeHTTP(w, r)
+		case ModServiceGetChannelChatsProcedure:
+			modServiceGetChannelChatsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -249,4 +300,12 @@ func (UnimplementedModServiceHandler) GetNotorietyReport(context.Context, *conne
 
 func (UnimplementedModServiceHandler) ResetNotoriety(context.Context, *connect.Request[mod_service.ResetNotorietyRequest]) (*connect.Response[mod_service.ResetNotorietyResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mod_service.ModService.ResetNotoriety is not implemented"))
+}
+
+func (UnimplementedModServiceHandler) ListChatChannels(context.Context, *connect.Request[mod_service.ListChatChannelsRequest]) (*connect.Response[mod_service.ListChatChannelsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mod_service.ModService.ListChatChannels is not implemented"))
+}
+
+func (UnimplementedModServiceHandler) GetChannelChats(context.Context, *connect.Request[mod_service.GetChannelChatsRequest]) (*connect.Response[ipc.ChatMessages], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mod_service.ModService.GetChannelChats is not implemented"))
 }

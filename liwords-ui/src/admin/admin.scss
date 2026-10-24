@@ -11,3 +11,10 @@
 .ant-layout {
   background-color: m($background);
 }
+
+// The tag on the searched user's own games. The site sets every tag's text to
+// a fixed dark gray, which a dark theme's plain tag background swallows.
+.chat-review .ant-tag.chat-review-played {
+  color: m($gray-extreme);
+  margin-left: 8px;
+}
