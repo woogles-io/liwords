@@ -51,6 +51,7 @@ type Props = {
   events: Array<GameEvent>;
   allEvents?: Array<GameEvent>; // full game events, used for two-col view in examination mode
   allBoard?: Board; // full final board, used for two-col view in examination mode
+  eventTimes?: Array<number | undefined>; // when each of allEvents was made
   board: Board;
   poolFormat: PoolFormatType;
   playerMeta: Array<PlayerInfo>;
@@ -85,6 +86,7 @@ type turnProps = {
   timeBankP0?: number;
   timeBankP1?: number;
   eventIndex: number; // Index in the full events array (not turn index)
+  eventTimes?: Array<number | undefined>; // when each of this turn's events was made
   onSeek?: () => void;
   isSelected?: boolean;
 };
@@ -166,6 +168,43 @@ const displayType = (evt: GameEvent) => {
       return <span className="other">&nbsp;</span>;
   }
 };
+
+const eventVerb = (type: GameEvent_Type): string => {
+  switch (type) {
+    case GameEvent_Type.PASS:
+      return "Passed";
+    case GameEvent_Type.EXCHANGE:
+      return "Exchanged";
+    case GameEvent_Type.CHALLENGE:
+    case GameEvent_Type.PHONY_TILES_RETURNED:
+    case GameEvent_Type.CHALLENGE_BONUS:
+    case GameEvent_Type.UNSUCCESSFUL_CHALLENGE_TURN_LOSS:
+      return "Challenged";
+    default:
+      return "Played";
+  }
+};
+
+// When each event of a turn was made, approximately: the move, then any
+// challenge of it. Local time, with UTC beneath.
+const TurnTimes = (props: {
+  events: Array<GameEvent>;
+  times: Array<number | undefined>;
+}) => (
+  <React.Fragment>
+    {props.events.map((e, i) => {
+      const t = props.times[i];
+      if (t === undefined) return null;
+      const d = new Date(t);
+      return (
+        <div key={i}>
+          {eventVerb(e.type)} &asymp; {d.toLocaleString()}
+          <div>{d.toISOString()}</div>
+        </div>
+      );
+    })}
+  </React.Fragment>
+);
 
 // same as player_cards.tsx
 const makeTimeRemainingFragment = (
@@ -342,12 +381,23 @@ const ScorecardTurn = (props: turnProps) => {
           ) : (
             <p className="move-type">{memoizedTurn.moveType}</p>
           )}
-          <p className="time-left">
-            {memoizedTurn.timeRemaining}
-            {memoizedTurn.isUsingTimeBank && (
-              <HourglassOutlined className="time-bank-icon" />
-            )}
-          </p>
+          <Tooltip
+            title={
+              props.eventTimes?.some((t) => t !== undefined) ? (
+                <TurnTimes
+                  events={props.turn.events}
+                  times={props.eventTimes}
+                />
+              ) : null
+            }
+          >
+            <p className="time-left">
+              {memoizedTurn.timeRemaining}
+              {memoizedTurn.isUsingTimeBank && (
+                <HourglassOutlined className="time-bank-icon" />
+              )}
+            </p>
+          </Tooltip>
         </div>
         <div className="play">
           <p
@@ -860,6 +910,10 @@ export const ScoreCard = React.memo((props: Props) => {
             timeBankP0={timeBankState?.p0TimeBank}
             timeBankP1={timeBankState?.p1TimeBank}
             eventIndex={eventIdx}
+            eventTimes={props.eventTimes?.slice(
+              t.firstEvtIdx,
+              t.firstEvtIdx + t.events.length,
+            )}
             onSeek={seek ? () => seek(t.firstEvtIdx) : undefined}
             isSelected={
               props.isExamining &&

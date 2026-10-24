@@ -63,6 +63,7 @@ import { CompetitorStatus } from "../tournament/competitor_status";
 import { MonitoringWidget } from "../tournament/monitoring/monitoring_widget";
 import { MonitoringModal } from "../tournament/monitoring/monitoring_modal";
 import { MetaEventControl } from "./meta_event_control";
+import { moveTimes } from "./move_times";
 import { useTourneyMetadata } from "../tournament/utils";
 import { Disclaimer } from "./disclaimer";
 import { alphabetFromName } from "../constants/alphabets";
@@ -529,6 +530,34 @@ export const Table = React.memo((props: Props) => {
   const omgClient = useClient(GameEventService);
   const gameDone =
     gameContext.playState === PlayState.GAME_OVER && !!gameContext.gameID;
+
+  // When each move of a finished game was made, replayed from its clocks.
+  const eventTimes = useMemo(() => {
+    const req = gameInfo.gameRequest;
+    if (
+      !gameDone ||
+      props.annotated ||
+      gameInfo.type === GameType.ANNOTATED ||
+      !req ||
+      !gameInfo.timeStarted
+    ) {
+      return undefined;
+    }
+    return moveTimes(gameContext.turns, {
+      timeStarted: Number(gameInfo.timeStarted),
+      initialMs: req.initialTimeSeconds * 1000,
+      incrementMs: req.incrementSeconds * 1000,
+      resetToIncrement: req.gameMode === GameMode.CORRESPONDENCE,
+      maxOvertimeMs: req.maxOvertimeMinutes * 60000,
+    });
+  }, [
+    gameDone,
+    props.annotated,
+    gameInfo.type,
+    gameInfo.gameRequest,
+    gameInfo.timeStarted,
+    gameContext.turns,
+  ]);
 
   // Can add time if: unrated casual real-time game only (not tournament, league, correspondence, rated, or vs bot)
   const canAddTime = useMemo(() => {
@@ -1491,6 +1520,7 @@ export const Table = React.memo((props: Props) => {
             isInMobileView={isInMobileView}
             events={examinableGameContext.turns}
             allEvents={gameContext.turns}
+            eventTimes={eventTimes}
             allBoard={gameContext.board}
             board={examinableGameContext.board}
             playerMeta={gameInfo.players}
