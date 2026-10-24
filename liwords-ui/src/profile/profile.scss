@@ -420,6 +420,17 @@
   padding: 6px;
 }
 
+.game-history-jump {
+  align-items: center;
+  display: flex;
+  gap: 4px;
+  margin-left: 12px;
+  // as tall as the Prev/Next buttons beside it.
+  .ant-picker {
+    height: 36px;
+  }
+}
+
 .not-found {
   font-size: 16px;
   height: 50vh;
