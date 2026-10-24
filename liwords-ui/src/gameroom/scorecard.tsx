@@ -169,15 +169,19 @@ const displayType = (evt: GameEvent) => {
   }
 };
 
-const eventVerb = (type: GameEvent_Type): string => {
-  switch (type) {
+const eventVerb = (e: GameEvent): string => {
+  switch (e.type) {
     case GameEvent_Type.PASS:
       return "Passed";
     case GameEvent_Type.EXCHANGE:
       return "Exchanged";
-    case GameEvent_Type.CHALLENGE:
     case GameEvent_Type.PHONY_TILES_RETURNED:
+      // played_tiles marks played-through squares with "."; only the
+      // player's own tiles went back to their rack.
+      return `Challenged off, returned ${e.playedTiles.replace(/\./g, "")}`;
     case GameEvent_Type.CHALLENGE_BONUS:
+      return "Challenged, play stands";
+    case GameEvent_Type.CHALLENGE:
     case GameEvent_Type.UNSUCCESSFUL_CHALLENGE_TURN_LOSS:
       return "Challenged";
     default:
@@ -198,7 +202,7 @@ const TurnTimes = (props: {
       const d = new Date(t);
       return (
         <div key={i}>
-          {eventVerb(e.type)} &asymp; {d.toLocaleString()}
+          {eventVerb(e)} &asymp; {d.toLocaleString()}
           <div>{d.toISOString()}</div>
         </div>
       );
