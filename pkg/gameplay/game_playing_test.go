@@ -123,6 +123,13 @@ func makeGame(cfg *config.Config, stores *stores.Stores, opts ...TestGameOption)
 
 	nower := entity.NewFakeNower(1234)
 	g.SetTimerModule(nower)
+	// Games are no longer held in memory, so every load builds a fresh entity
+	// and installs a timer module from this factory. Without it a reloaded game
+	// gets a real clock and the fake one only ever applies to the copy the test
+	// happens to hold.
+	stores.GameStore.SetTimerModuleCreator(func() entity.Nower {
+		return nower
+	})
 
 	gameplay.StartGame(ctx, stores, ch, g)
 
@@ -182,6 +189,9 @@ func Test5ptBadWord(t *testing.T) {
 		tilemapping.RackFromString("ABEJNOR", gs.g.Alphabet()),
 		tilemapping.RackFromString("AGLSYYZ", gs.g.Alphabet()),
 	})
+	// Save them: HandleEvent loads its own copy of the game, and these racks
+	// only exist in this one until they are written.
+	is.NoErr(gs.stores.GameStore.Set(ctx, gs.g))
 	// "jesse" plays a word after some time
 	gs.nower.Sleep(3750) // 3.75 secs
 	_, err := gameplay.HandleEvent(ctx, gs.stores, "3xpEkpRAy3AizbVmDg3kdi", cge)
@@ -216,10 +226,14 @@ func TestDoubleChallengeBadWord(t *testing.T) {
 		MachineLetters: []byte{2, 1, 14, 10, 15, 5, 18}, // BANJOER
 	}
 	gs.g.SetChallengeRule(macondopb.ChallengeRule_DOUBLE)
+	is.NoErr(gs.stores.GameStore.Set(ctx, gs.g))
 	gs.g.SetRacksForBoth([]*tilemapping.Rack{
 		tilemapping.RackFromString("ABEJNOR", gs.g.Alphabet()),
 		tilemapping.RackFromString("AGLSYYZ", gs.g.Alphabet()),
 	})
+	// Save them: HandleEvent loads its own copy of the game, and these racks
+	// only exist in this one until they are written.
+	is.NoErr(gs.stores.GameStore.Set(ctx, gs.g))
 	// "jesse" plays a word after some time
 	gs.nower.Sleep(3750) // 3.75 secs
 	_, err := gameplay.HandleEvent(ctx, gs.stores, "3xpEkpRAy3AizbVmDg3kdi", cge)
@@ -349,10 +363,21 @@ func TestEndOfGameChallengeBadWord(t *testing.T) {
 		MachineLetters: []byte{18, 9, 16, 21, 18, 9 | 0x80, 1, 0}, // RIPURiA(N)*
 	}
 
-	_, err := gameplay.HandleEvent(ctx, gs.stores, "xjCWug7EZtDxDHX5fRZTLo", cge)
+	entGame, err := gameplay.HandleEvent(ctx, gs.stores, "xjCWug7EZtDxDHX5fRZTLo", cge)
 	is.NoErr(err)
+	// Use what the store handed back. Games are no longer shared in memory, so
+	// gs.g is a different object that HandleEvent never touched -- the rest of
+	// this test already works this way.
+	gs.g = entGame
 	is.Equal(gs.g.Game.Playing(), macondopb.PlayState_WAITING_FOR_FINAL_PASS)
 	is.Equal(gs.g.Game.History().PlayState, macondopb.PlayState_WAITING_FOR_FINAL_PASS)
+
+	// And it must survive a reload, which is the whole point: this is the state
+	// the May 2026 incident destroyed.
+	reloaded, err := gs.stores.GameStore.Get(ctx, gs.g.GameID())
+	is.NoErr(err)
+	is.Equal(reloaded.Game.Playing(), macondopb.PlayState_WAITING_FOR_FINAL_PASS)
+	is.Equal(reloaded.Game.History().PlayState, macondopb.PlayState_WAITING_FOR_FINAL_PASS)
 
 	fmt.Println(gs.g.Game.ToDisplayText())
 
@@ -361,7 +386,7 @@ func TestEndOfGameChallengeBadWord(t *testing.T) {
 	// unload the game to simulate a restart
 	gs.stores.GameStore.Unload(ctx, gs.g.GameID())
 
-	entGame, err := gameplay.HandleEvent(ctx, gs.stores,
+	entGame, err = gameplay.HandleEvent(ctx, gs.stores,
 		"qUQkST8CendYA3baHNoPjk", &pb.ClientGameplayEvent{
 			Type:   pb.ClientGameplayEvent_CHALLENGE_PLAY,
 			GameId: gs.g.GameID(),
@@ -459,10 +484,14 @@ func TestDoubleChallengeGoodWord(t *testing.T) {
 		MachineLetters: []byte{2, 1, 14, 10, 15},
 	}
 	gs.g.SetChallengeRule(macondopb.ChallengeRule_DOUBLE)
+	is.NoErr(gs.stores.GameStore.Set(ctx, gs.g))
 	gs.g.SetRacksForBoth([]*tilemapping.Rack{
 		tilemapping.RackFromString("ABEJNOR", gs.g.Alphabet()),
 		tilemapping.RackFromString("AGLSYYZ", gs.g.Alphabet()),
 	})
+	// Save them: HandleEvent loads its own copy of the game, and these racks
+	// only exist in this one until they are written.
+	is.NoErr(gs.stores.GameStore.Set(ctx, gs.g))
 	// "jesse" plays a word after some time
 	gs.nower.Sleep(3750) // 3.75 secs
 	_, err := gameplay.HandleEvent(ctx, gs.stores, "3xpEkpRAy3AizbVmDg3kdi", cge)
@@ -518,10 +547,14 @@ func TestQuickdata(t *testing.T) {
 		MachineLetters: []byte{19, 25, 26, 25, 7, 1, 12}, // SYZYGAL
 	}
 	gs.g.SetChallengeRule(macondopb.ChallengeRule_TRIPLE)
+	is.NoErr(gs.stores.GameStore.Set(ctx, gs.g))
 	gs.g.SetRacksForBoth([]*tilemapping.Rack{
 		tilemapping.RackFromString("ABEJNOR", gs.g.Alphabet()),
 		tilemapping.RackFromString("AGLSYYZ", gs.g.Alphabet()),
 	})
+	// Save them: HandleEvent loads its own copy of the game, and these racks
+	// only exist in this one until they are written.
+	is.NoErr(gs.stores.GameStore.Set(ctx, gs.g))
 	// "jesse" plays a word after some time
 	gs.nower.Sleep(3750) // 3.75 secs
 	_, err := gameplay.HandleEvent(ctx, gs.stores, "3xpEkpRAy3AizbVmDg3kdi", cge1)
