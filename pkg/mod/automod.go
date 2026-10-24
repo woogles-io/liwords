@@ -67,6 +67,14 @@ func Automod(ctx context.Context, us user.Store, ns NotorietyStore, u0 *entity.U
 	history := g.History()
 	// Perhaps too cute, but solves cases where g.LoserIdex is -1
 	nonNegativeLoserIdx := g.LoserIdx * g.LoserIdx
+	// An auto-passed abandonment ends the game by score, so the score-loser is
+	// not necessarily the bad actor -- the player who abandoned (was auto-
+	// passed on timeout) is, even if they happened to be ahead on the board and
+	// "won". Attribute notoriety to the abandoner instead of the score-loser.
+	isAbandonment := g.AutopassAbandonerIdx() >= 0
+	if isAbandonment {
+		nonNegativeLoserIdx = g.AutopassAbandonerIdx()
+	}
 	loserId := history.Players[nonNegativeLoserIdx].UserId
 	winnerIdx := 1 - nonNegativeLoserIdx
 
@@ -77,11 +85,15 @@ func Automod(ctx context.Context, us user.Store, ns NotorietyStore, u0 *entity.U
 
 	isBotGame := u0.IsBot || u1.IsBot
 
-	if (g.GameEndReason == ipc.GameEndReason_TIME || g.GameEndReason == ipc.GameEndReason_RESIGNED) &&
-		totalGameTime > int32(UnreasonableTime) && !isBotGame {
+	// Auto-passed abandonment enters this block regardless of the time control
+	// (a correspondence game abandons over days, but its nominal time control
+	// can be tiny), so the UnreasonableTime gate only applies to TIME/RESIGNED.
+	if (((g.GameEndReason == ipc.GameEndReason_TIME || g.GameEndReason == ipc.GameEndReason_RESIGNED) &&
+		totalGameTime > int32(UnreasonableTime)) || isAbandonment) && !isBotGame {
 		// g.LoserIdx should never be -1, but if it is somehow, then the whole app will
-		// crash, so let's just be sure
-		if g.LoserIdx == -1 {
+		// crash, so let's just be sure. For an abandonment we already resolved a
+		// valid abandoner index above, so a score tie (LoserIdx == -1) is fine.
+		if !isAbandonment && g.LoserIdx == -1 {
 			return errors.New("game ended in resignation but does not have a winner")
 		}
 		// Someone lost on time, determine if the loser made no plays at all
