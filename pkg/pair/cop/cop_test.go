@@ -2692,82 +2692,103 @@ func q4TierTestArgs(numPlayers, winnersBoundary, cashBoundary int) *policyArgs {
 	}
 }
 
-// TestComputeQ4WinnersTop checks when the CC weight policy splits the
-// fourth-quarter hopeful-to-cash group into hopeful winners and the other
-// hopeful cashers, and where the winners tier ends.
+// TestComputeQ4WinnersTop checks where the hopeful winners tier of the CC
+// weight policy's fourth-quarter grouping ends, including how it's adjusted
+// so its players can pair among themselves.
 func TestComputeQ4WinnersTop(t *testing.T) {
 	is := is.New(t)
 
-	checkActive := func(pargs *policyArgs, wantTop int) {
+	check := func(pargs *policyArgs, wantTop int, wantNote string) {
 		t.Helper()
-		top, active, reason := computeQ4WinnersTop(pargs)
-		is.True(active)
+		top, note := computeQ4WinnersTop(pargs)
 		is.Equal(top, wantTop)
-		is.Equal(reason, "")
-	}
-	checkSkipped := func(pargs *policyArgs, wantReason string) {
-		t.Helper()
-		_, active, reason := computeQ4WinnersTop(pargs)
-		is.True(!active)
-		is.True(strings.Contains(reason, wantReason))
+		if wantNote == "" {
+			is.Equal(note, "")
+		} else {
+			is.True(strings.Contains(note, wantNote))
+		}
 	}
 
 	// Ranks 0-3 hopeful for 1st, ranks 4-5 the other hopeful cashers.
-	checkActive(q4TierTestArgs(10, 3, 5), 3)
+	check(q4TierTestArgs(10, 3, 5), 3, "")
 
-	// Winners and cashers are the same group (e.g. one cash prize): the split
-	// still applies, with no other hopeful cashers.
-	checkActive(q4TierTestArgs(10, 3, 3), 3)
+	// Winners and cashers are the same group (e.g. one cash prize): there
+	// are no other hopeful cashers.
+	check(q4TierTestArgs(10, 3, 3), 3, "")
 
 	// An odd group hopeful for 1st (ranks 0-2) pulls rank 3 in to even it
 	// out (computeDisallowedLeaderOpponent); rank 3 joins the winners tier.
 	pargs := q4TierTestArgs(10, 2, 5)
 	pargs.disallowedLeaderOpponent = 3
-	checkActive(pargs, 3)
+	check(pargs, 3, "")
 
-	// Without that promotion, 3 hopeful winners can't all play each other.
-	checkSkipped(q4TierTestArgs(10, 2, 5), "3 hopeful winner(s) need an opponent")
+	// Without that promotion, the 3 hopeful winners pull in rank 3 anyway.
+	check(q4TierTestArgs(10, 2, 5), 3, "3 hopeful winner(s) need an opponent, so the winners tier extends to rank 4")
 
 	// A bye recipient inside the winners tier doesn't need an opponent.
 	pargs = q4TierTestArgs(10, 3, 5)
 	pargs.topDownByePlayer = 2
-	checkSkipped(pargs, "3 hopeful winner(s) need an opponent")
+	check(pargs, 4, "extends to rank 5")
 	pargs = q4TierTestArgs(10, 4, 5)
 	pargs.forcedContenderByePlayer = 2
-	checkActive(pargs, 4)
+	check(pargs, 4, "")
 
 	// A bye recipient among the other hopeful cashers doesn't affect the
 	// winners tier.
 	pargs = q4TierTestArgs(10, 3, 6)
 	pargs.topDownByePlayer = 5
-	checkActive(pargs, 3)
+	check(pargs, 3, "")
 
 	// A Gibsonized leader doesn't need a hopeful-winner opponent.
 	pargs = q4TierTestArgs(10, 2, 5)
 	pargs.copdata.GibsonizedPlayers[0] = true
-	checkActive(pargs, 2)
-	// A Gibsonized lone leader with rank 1 pulled in leaves rank 1 alone.
+	check(pargs, 2, "")
+	// A Gibsonized lone leader with rank 1 pulled in pulls in rank 2 too, so
+	// rank 1 has an opponent.
 	pargs = q4TierTestArgs(10, 0, 5)
 	pargs.copdata.GibsonizedPlayers[0] = true
 	pargs.disallowedLeaderOpponent = 1
-	checkSkipped(pargs, "1 hopeful winner(s) need an opponent")
+	check(pargs, 2, "1 hopeful winner(s) need an opponent, so the winners tier extends to rank 3")
 
-	// The winners tier must fit inside the hopeful-to-cash group.
-	checkSkipped(q4TierTestArgs(10, 4, 3), "extend past the hopeful-to-cash boundary")
+	// Evening out the tier skips players below it who don't need an opponent.
+	pargs = q4TierTestArgs(10, 2, 5)
+	pargs.copdata.GibsonizedPlayers[3] = true
+	check(pargs, 4, "extends to rank 5")
 
-	// Factor 3's forced pairings take precedence.
+	// With no hopeful casher left to pull in, the tier stays odd.
+	check(q4TierTestArgs(10, 2, 2), 2, "no hopeful casher below is free to even them out")
+
+	// The winners tier stops at the hopeful-to-cash boundary.
+	check(q4TierTestArgs(10, 4, 3), 3, "the winners tier stops at rank 4")
+
+	// Factor 3's forced players already have their opponents. With the
+	// expansion, that's all of ranks 0-5, so a winners tier of ranks 0-6
+	// pulls in rank 7 for rank 6.
 	pargs = q4TierTestArgs(10, 3, 5)
 	pargs.factor3ForcedPairings = [][2]int{{0, 3}, {1, 4}, {2, 5}}
-	checkSkipped(pargs, "Factor 3 fired")
+	check(pargs, 3, "")
+	pargs = q4TierTestArgs(10, 6, 9)
+	pargs.factor3ForcedPairings = [][2]int{{0, 3}, {1, 4}, {2, 5}}
+	check(pargs, 7, "1 hopeful winner(s) need an opponent, so the winners tier extends to rank 8")
+	// A single control-loss pairing leaves the rest of the tier even.
+	pargs = q4TierTestArgs(10, 3, 5)
+	pargs.factor3ForcedPairings = [][2]int{{0, 2}}
+	check(pargs, 3, "")
+
+	// So do 1st vs 2nd under FS, and prepaired players.
+	pargs = q4TierTestArgs(10, 1, 5)
+	pargs.forcedFirstVsSecond = true
+	check(pargs, 1, "")
+	pargs = q4TierTestArgs(10, 3, 5)
+	pargs.prepairedPlayerIndexes = map[int]int{1: 6, 6: 1}
+	check(pargs, 4, "extends to rank 5")
 
 	// Outside the fourth quarter, and in the final round, CC doesn't group
-	// players at all, so there's nothing to skip (and nothing to log).
+	// players at all.
 	for _, roundsRemaining := range []int{6, 1} {
 		pargs = q4TierTestArgs(10, 3, 5)
 		pargs.roundsRemaining, pargs.roundPairingsRemaining = roundsRemaining, roundsRemaining
-		_, active, reason := computeQ4WinnersTop(pargs)
-		is.True(!active)
-		is.Equal(reason, "")
+		check(pargs, -1, "")
 	}
 }
 
@@ -2786,8 +2807,8 @@ func TestCCWeightQ4Tiers(t *testing.T) {
 	is.True(ccPolicy.handler != nil)
 
 	pargs := q4TierTestArgs(10, 3, 5)
-	pargs.q4WinnersTop, pargs.q4TiersActive, _ = computeQ4WinnersTop(pargs)
-	is.True(pargs.q4TiersActive)
+	pargs.q4WinnersTop, _ = computeQ4WinnersTop(pargs)
+	is.Equal(pargs.q4WinnersTop, 3)
 
 	// Within a tier: no penalty.
 	is.Equal(ccPolicy.handler(pargs, 0, 3), int64(0))
@@ -2812,11 +2833,13 @@ func TestCCWeightQ4Tiers(t *testing.T) {
 	is.Equal(ccPolicy.handler(pargs, 0, 3), int64(majorPenalty))
 	pargs.disallowedLeaderOpponent = -1
 
-	// Without the split, all hopeful cashers form one tier, as before.
-	pargs.q4TiersActive = false
-	is.Equal(ccPolicy.handler(pargs, 1, 5), int64(0))
+	// Factor 3's forced pairings are exempt from the tier penalties, but other
+	// pairings across the same boundaries aren't.
+	pargs.factor3ForcedPairings = [][2]int{{0, 3}, {1, 4}, {2, 5}}
 	is.Equal(ccPolicy.handler(pargs, 1, 4), int64(0))
-	is.Equal(ccPolicy.handler(pargs, 1, 6), int64(majorPenalty/2))
+	is.Equal(ccPolicy.handler(pargs, 2, 5), int64(0))
+	is.Equal(ccPolicy.handler(pargs, 1, 5), int64(majorPenalty))
+	is.Equal(ccPolicy.handler(pargs, 2, 4), int64(majorPenalty/2))
 }
 
 // TestQ4TiersKeepHopefulWinnersTogether checks that in the fourth quarter,
@@ -3050,8 +3073,8 @@ func TestPCWeightMiddleQ4TierFavorsClosePlayers(t *testing.T) {
 	is.True(pcPolicy.handler != nil)
 
 	pargs := q4TierTestArgs(10, 3, 7)
-	pargs.q4WinnersTop, pargs.q4TiersActive, _ = computeQ4WinnersTop(pargs)
-	is.True(pargs.q4TiersActive)
+	pargs.q4WinnersTop, _ = computeQ4WinnersTop(pargs)
+	is.Equal(pargs.q4WinnersTop, 3)
 
 	// Middle tier: the closer the opponent, the lower the weight.
 	is.Equal(pcPolicy.handler(pargs, 4, 5), int64(2))
@@ -3062,11 +3085,16 @@ func TestPCWeightMiddleQ4TierFavorsClosePlayers(t *testing.T) {
 	is.Equal(pcPolicy.handler(pargs, 1, 2), int64(686))
 	is.Equal(pcPolicy.handler(pargs, 1, 3), int64(432))
 
-	// Without the tier split, the middle-tier players use the inverse
-	// distance too, favoring the farthest player instead.
-	pargs.q4TiersActive = false
-	is.Equal(pcPolicy.handler(pargs, 4, 5), int64(128))
-	is.Equal(pcPolicy.handler(pargs, 4, 7), int64(16))
+	// The middle tier still favors close players when Factor 3 forces some
+	// of this round's pairings, whether its 1v4/2v5/3v6 expansion or a single
+	// control-loss pairing.
+	for _, f3 := range [][][2]int{{{0, 3}, {1, 4}, {2, 5}}, {{0, 1}}} {
+		pargs.factor3ForcedPairings = f3
+		pargs.q4WinnersTop, _ = computeQ4WinnersTop(pargs)
+		is.Equal(pargs.q4WinnersTop, 3)
+		is.Equal(pcPolicy.handler(pargs, 6, 7), int64(2))
+		is.Equal(pcPolicy.handler(pargs, 4, 7), int64(54))
+	}
 }
 
 // TestQ4MiddleTierPlaysClosePlayers checks that hopeful cashers who can't

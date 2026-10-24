@@ -97,12 +97,10 @@ type policyArgs struct {
 	// effect this round: exactly 4 players are still hopeful contenders for
 	// 1st in the 2nd-to-last round, and Factor 3 didn't fire.
 	top4LockActive bool
-	// q4TiersActive reports whether the CC weight policy splits the
-	// hopeful-to-cash group into hopeful winners (ranks 0..q4WinnersTop) and
-	// the hopeful cashers below them this round (see computeQ4WinnersTop).
-	// When false, CC groups all hopeful cashers together.
-	q4TiersActive bool
-	q4WinnersTop  int
+	// q4WinnersTop is the last rank of the hopeful winners tier in the CC
+	// weight policy's fourth-quarter grouping (see computeQ4WinnersTop), or -1
+	// outside the rounds that grouping applies to.
+	q4WinnersTop int
 	// forcedFirstVsSecond reports whether 1st and 2nd must play each other
 	// this round (see copdatapkg.ComputeForcedFirstVsSecond and the "FS"
 	// constraint policy). When it's set, the other policies leave 1st and
@@ -325,13 +323,12 @@ func computeTop4LockActive(pargs *policyArgs) bool {
 	return true
 }
 
-// computeQ4WinnersTop decides whether the CC weight policy's fourth-quarter
-// grouping uses three tiers this round - hopeful winners play each other,
-// hopeful cashers who aren't hopeful winners play each other, and everyone
-// else plays each other - and if so, returns the last rank of the hopeful
-// winners tier. When it returns active == false, CC keeps its two-tier
-// grouping (hopeful cashers vs everyone else); skipReason explains why for
-// the log, and is empty outside the rounds CC's grouping applies to at all.
+// computeQ4WinnersTop returns the last rank of the hopeful winners tier in
+// the CC weight policy's fourth-quarter grouping, where hopeful winners play
+// each other, hopeful cashers who aren't hopeful winners play each other, and
+// everyone else plays each other. It returns -1 outside the rounds that
+// grouping applies to (fourth-quarter rounds before the final round). note
+// describes any adjustment to the tier for the log, and is empty otherwise.
 //
 // The winners tier starts as the group hopeful for 1st,
 // [0..LowestPossibleHopeNth[0]]. When computeDisallowedLeaderOpponent pulls
@@ -340,48 +337,95 @@ func computeTop4LockActive(pargs *policyArgs) bool {
 // and after adjustLowestPossibleHopeCasherForBye, so the hopeful-to-cash
 // boundary below the tier is final.
 //
-// The split is skipped when:
-//   - this isn't a fourth-quarter round before the final round, the only
-//     rounds CC's grouping applies to;
-//   - Factor 3 fired, since its forced 1v4/2v5/3v6 pairings can cross the
-//     winners boundary (every other leader-group rule defers to it too);
-//   - the winners tier would extend past the hopeful-to-cash boundary (e.g.
-//     because of the bottom-6 clamp in hopeToCashBoundary);
-//   - the winners tier doesn't have an even number (at least 2) of players
-//     who need an opponent this round - not Gibsonized and not receiving the
-//     bye - since one of them would then have no opponent inside the tier.
-func computeQ4WinnersTop(pargs *policyArgs) (winnersTop int, active bool, skipReason string) {
+// The tiers always apply in those rounds. Two cases adjust the winners tier
+// instead:
+//   - If it would extend past the hopeful-to-cash boundary (e.g. because of
+//     the bottom-6 clamp in hopeToCashBoundary), it stops at the boundary,
+//     leaving no other hopeful cashers.
+//   - If an odd number of its players need an opponent from inside it (see
+//     getQ4PlacedPlayers for who doesn't), the next hopeful casher below who
+//     does is pulled in to even it out. The hopeful-to-cash group as a whole
+//     is already even, so this evens out the hopeful cashers below too. If no
+//     such hopeful casher is left, the tier stays odd and one hopeful winner
+//     plays outside it.
+//
+// Factor 3's forced pairings can cross the winners boundary; CC exempts them
+// from the tier penalties instead (see isFactor3ForcedPair).
+func computeQ4WinnersTop(pargs *policyArgs) (winnersTop int, note string) {
 	if !isLastQuarter(pargs) || isFinalRound(pargs) {
-		return -1, false, ""
+		return -1, ""
 	}
-	if len(pargs.factor3ForcedPairings) > 0 {
-		return -1, false, "Factor 3 fired"
-	}
+	hopeCasherBoundary := hopeToCashBoundary(pargs)
 	winnersTop = pargs.copdata.LowestPossibleHopeNth[0]
 	if pargs.disallowedLeaderOpponent >= 0 {
 		winnersTop++
 	}
-	if winnersTop > hopeToCashBoundary(pargs) {
-		return -1, false, "the hopeful winners extend past the hopeful-to-cash boundary"
+	if winnersTop > hopeCasherBoundary {
+		return hopeCasherBoundary, fmt.Sprintf(
+			"the hopeful winners reach past the hopeful-to-cash boundary, so the winners tier stops at rank %d", hopeCasherBoundary+1)
 	}
-	byeRecipient := -1
-	switch {
-	case pargs.topDownByePlayer >= 0:
-		byeRecipient = pargs.topDownByePlayer
-	case pargs.forcedContenderByePlayer >= 0:
-		byeRecipient = pargs.forcedContenderByePlayer
+	placedPlayers := getQ4PlacedPlayers(pargs)
+	needsOpponent := func(rankIdx int) bool {
+		return !pargs.copdata.GibsonizedPlayers[rankIdx] && !placedPlayers[pargs.playerNodes[rankIdx]]
 	}
 	numNeedingOpponent := 0
 	for rankIdx := 0; rankIdx <= winnersTop; rankIdx++ {
-		if pargs.copdata.GibsonizedPlayers[rankIdx] || pargs.playerNodes[rankIdx] == byeRecipient {
-			continue
+		if needsOpponent(rankIdx) {
+			numNeedingOpponent++
 		}
-		numNeedingOpponent++
 	}
-	if numNeedingOpponent < 2 || numNeedingOpponent%2 == 1 {
-		return -1, false, fmt.Sprintf("%d hopeful winner(s) need an opponent, so they can't all play each other", numNeedingOpponent)
+	if numNeedingOpponent%2 == 0 {
+		return winnersTop, ""
 	}
-	return winnersTop, true, ""
+	for rankIdx := winnersTop + 1; rankIdx <= hopeCasherBoundary; rankIdx++ {
+		if needsOpponent(rankIdx) {
+			return rankIdx, fmt.Sprintf(
+				"%d hopeful winner(s) need an opponent, so the winners tier extends to rank %d to even them out", numNeedingOpponent, rankIdx+1)
+		}
+	}
+	return winnersTop, fmt.Sprintf(
+		"%d hopeful winner(s) need an opponent and no hopeful casher below is free to even them out, so one plays outside the tier", numNeedingOpponent)
+}
+
+// getQ4PlacedPlayers returns the players whose opponent this round is already
+// settled by something other than the weighted matching: prepaired players,
+// the bye recipient, and the players in a forced pairing (FS, L3 or Factor
+// 3). They don't need an opponent from inside their Q4 tier, so
+// computeQ4WinnersTop leaves them out of the winners tier's parity.
+func getQ4PlacedPlayers(pargs *policyArgs) map[int]bool {
+	placed := map[int]bool{}
+	for playerIdx := range pargs.prepairedPlayerIndexes {
+		placed[playerIdx] = true
+	}
+	for _, byePlayer := range []int{pargs.topDownByePlayer, pargs.forcedContenderByePlayer} {
+		if byePlayer >= 0 {
+			placed[byePlayer] = true
+		}
+	}
+	if pargs.forcedFirstVsSecond {
+		placed[pargs.playerNodes[0]] = true
+		placed[pargs.playerNodes[1]] = true
+	}
+	if pargs.forcedLeaderVsThird >= 0 {
+		placed[pargs.playerNodes[0]] = true
+		placed[pargs.forcedLeaderVsThird] = true
+	}
+	for _, fp := range pargs.factor3ForcedPairings {
+		placed[fp[0]] = true
+		placed[fp[1]] = true
+	}
+	return placed
+}
+
+// isFactor3ForcedPair reports whether players pi and pj are one of Factor 3's
+// forced pairings this round.
+func isFactor3ForcedPair(pargs *policyArgs, pi int, pj int) bool {
+	for _, fp := range pargs.factor3ForcedPairings {
+		if (fp[0] == pi && fp[1] == pj) || (fp[0] == pj && fp[1] == pi) {
+			return true
+		}
+	}
+	return false
 }
 
 type q4Tier int
@@ -393,13 +437,13 @@ const (
 )
 
 // getQ4Tier returns which of CC's fourth-quarter tiers the player at rankIdx
-// is in: hopeful winners (only when pargs.q4TiersActive), hopeful cashers,
-// or everyone else. Gibsonized players are never in either hopeful tier.
+// is in: hopeful winners, the other hopeful cashers, or everyone else.
+// Gibsonized players are never in either hopeful tier.
 func getQ4Tier(pargs *policyArgs, rankIdx int, hopeCasherBoundary int) q4Tier {
 	if rankIdx > hopeCasherBoundary || pargs.copdata.GibsonizedPlayers[rankIdx] {
 		return q4TierRest
 	}
-	if pargs.q4TiersActive && rankIdx <= pargs.q4WinnersTop {
+	if rankIdx <= pargs.q4WinnersTop {
 		return q4TierWinners
 	}
 	return q4TierCashers
@@ -991,7 +1035,7 @@ var weightPolicies = []weightPolicy{
 				// Hopeful cashers who can't win (CC's middle fourth-quarter
 				// tier) favor the players closest to them rather than the
 				// lowest contender for their place.
-				if pargs.q4TiersActive && getQ4Tier(pargs, ri, hopeToCashBoundary(pargs)) == q4TierCashers {
+				if getQ4Tier(pargs, ri, hopeToCashBoundary(pargs)) == q4TierCashers {
 					return int64(math.Pow(float64(rj-ri), 3) * 2)
 				}
 				// Calculate the inverse distance penalty
@@ -1024,9 +1068,9 @@ var weightPolicies = []weightPolicy{
 		//   - Tiers (4th quarter only): players who are hopeful to win should
 		//     play other hopeful winners, players who are hopeful to cash but
 		//     not to win should play each other, and everyone else should
-		//     play each other. When the hopeful winners can't all be paired
-		//     among themselves (see computeQ4WinnersTop), the first two tiers
-		//     merge, so hopeful cashers play hopeful cashers.
+		//     play each other. computeQ4WinnersTop sizes the winners tier so
+		//     its players can pair among themselves. Factor 3's forced
+		//     pairings are exempt, since they can cross a tier boundary.
 		//   - Hopeful-to-cash vs bottom 6 (divisions of 12+ players, 4th
 		//     quarter only): discourage hopeful-to-cash players from playing
 		//     players in the bottom 6 of the standings.
@@ -1049,6 +1093,12 @@ var weightPolicies = []weightPolicy{
 			// policy, so it must never be penalized here.
 			if ri == 0 && pargs.forcedLeaderVsThird >= 0 &&
 				pargs.playerNodes[rj] == pargs.forcedLeaderVsThird {
+				return 0
+			}
+			// Factor 3's forced pairings are constraints the matcher takes
+			// whatever they weigh here, so don't penalize one that crosses a
+			// tier boundary.
+			if isFactor3ForcedPair(pargs, pargs.playerNodes[ri], pargs.playerNodes[rj]) {
 				return 0
 			}
 			// Odd hopeful-contender-group for 1st: bar the added player from
@@ -1079,7 +1129,7 @@ var weightPolicies = []weightPolicy{
 				// so this can only be rj) gets a halved major penalty instead
 				// of the full one - same rationale as PC's halved penalty for
 				// the first rank outside its contention window.
-				if rj == hopeCasherBoundary+1 || (pargs.q4TiersActive && rj == pargs.q4WinnersTop+1) {
+				if rj == hopeCasherBoundary+1 || rj == pargs.q4WinnersTop+1 {
 					return majorPenalty / 2
 				}
 				return majorPenalty
@@ -1938,9 +1988,8 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 
 	// This must run after computeDisallowedLeaderOpponent and the bye
 	// adjustment above - see computeQ4WinnersTop.
-	q4WinnersTop, q4TiersActive, q4SkipReason := computeQ4WinnersTop(pargs)
+	q4WinnersTop, q4Note := computeQ4WinnersTop(pargs)
 	pargs.q4WinnersTop = q4WinnersTop
-	pargs.q4TiersActive = q4TiersActive
 
 	if conflict := factor3Conflict(pargs); conflict != "" {
 		return nil, nil, conflict
@@ -1975,7 +2024,7 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 			req.PlayerNames[playerNodes[0]], req.PlayerNames[playerNodes[1]],
 			req.PlayerNames[playerNodes[1]], req.PlayerNames[playerNodes[0]]))
 	}
-	if pargs.q4TiersActive {
+	if pargs.q4WinnersTop >= 0 {
 		hopeCasherBoundary := hopeToCashBoundary(pargs)
 		cashersStr := "none"
 		if hopeCasherBoundary > pargs.q4WinnersTop {
@@ -1985,9 +2034,20 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 			"Q4 Tiers: hopeful winners ranks 1-%d, other hopeful cashers %s, everyone else below - "+
 				"each tier plays within itself (Gibsonized players are in the last tier)\n",
 			pargs.q4WinnersTop+1, cashersStr))
-	} else if q4SkipReason != "" {
-		logsb.WriteString(fmt.Sprintf(
-			"Q4 Tiers: not splitting hopeful winners from other hopeful cashers this round (%s)\n", q4SkipReason))
+		if q4Note != "" {
+			logsb.WriteString(fmt.Sprintf("Q4 Tiers: %s\n", q4Note))
+		}
+		for _, fp := range pargs.factor3ForcedPairings {
+			var fpRankIdxs [2]int
+			for k, pi := range fp {
+				fpRankIdxs[k] = slices.Index(playerNodes, pi)
+			}
+			if getQ4Tier(pargs, fpRankIdxs[0], hopeCasherBoundary) != getQ4Tier(pargs, fpRankIdxs[1], hopeCasherBoundary) {
+				logsb.WriteString(fmt.Sprintf(
+					"Q4 Tiers: Factor 3's forced pairing %s vs %s crosses a tier boundary and is exempt from the tier penalty\n",
+					req.PlayerNames[fp[0]], req.PlayerNames[fp[1]]))
+			}
+		}
 	}
 	if pargs.forcedLeaderVsThird >= 0 {
 		logsb.WriteString(fmt.Sprintf(
