@@ -911,11 +911,13 @@ func (q *Queries) ListActiveCorrespondenceForArchivalAudit(ctx context.Context, 
 }
 
 const listActiveCorrespondenceGames = `-- name: ListActiveCorrespondenceGames :many
-SELECT quickdata, uuid, started, tournament_data, game_request, player_on_turn, timers, type, updated_at, league_id, season_id, league_division_id
-FROM games
-WHERE game_end_reason = 0 -- NONE (ongoing games)
-    AND (game_request->>'game_mode')::int = 1 -- Only CORRESPONDENCE games
-ORDER BY id
+SELECT g.quickdata, g.uuid, g.started, g.tournament_data, g.game_request, g.player_on_turn, g.timers, g.type, g.updated_at, g.league_id, g.season_id, g.league_division_id,
+    COALESCE(l.slug, '')::text AS league_slug
+FROM games g
+LEFT JOIN leagues l ON l.uuid = g.league_id
+WHERE g.game_end_reason = 0 -- NONE (ongoing games)
+    AND (g.game_request->>'game_mode')::int = 1 -- Only CORRESPONDENCE games
+ORDER BY g.id
 `
 
 type ListActiveCorrespondenceGamesRow struct {
@@ -931,6 +933,7 @@ type ListActiveCorrespondenceGamesRow struct {
 	LeagueID         pgtype.UUID
 	SeasonID         pgtype.UUID
 	LeagueDivisionID pgtype.UUID
+	LeagueSlug       string
 }
 
 func (q *Queries) ListActiveCorrespondenceGames(ctx context.Context) ([]ListActiveCorrespondenceGamesRow, error) {
@@ -955,6 +958,7 @@ func (q *Queries) ListActiveCorrespondenceGames(ctx context.Context) ([]ListActi
 			&i.LeagueID,
 			&i.SeasonID,
 			&i.LeagueDivisionID,
+			&i.LeagueSlug,
 		); err != nil {
 			return nil, err
 		}
@@ -967,15 +971,17 @@ func (q *Queries) ListActiveCorrespondenceGames(ctx context.Context) ([]ListActi
 }
 
 const listActiveCorrespondenceGamesForUser = `-- name: ListActiveCorrespondenceGamesForUser :many
-SELECT quickdata, uuid, started, tournament_data, game_request, player_on_turn, timers, updated_at, league_id, season_id, league_division_id, history
-FROM games
-WHERE game_end_reason = 0 -- NONE (ongoing games)
-    AND (game_request->>'game_mode')::int = 1 -- Only CORRESPONDENCE games
+SELECT g.quickdata, g.uuid, g.started, g.tournament_data, g.game_request, g.player_on_turn, g.timers, g.updated_at, g.league_id, g.season_id, g.league_division_id, g.history,
+    COALESCE(l.slug, '')::text AS league_slug
+FROM games g
+LEFT JOIN leagues l ON l.uuid = g.league_id
+WHERE g.game_end_reason = 0 -- NONE (ongoing games)
+    AND (g.game_request->>'game_mode')::int = 1 -- Only CORRESPONDENCE games
     AND (
-        player0_id = (SELECT id FROM users WHERE uuid = $1::text)
-        OR player1_id = (SELECT id FROM users WHERE uuid = $1::text)
+        g.player0_id = (SELECT id FROM users WHERE uuid = $1::text)
+        OR g.player1_id = (SELECT id FROM users WHERE uuid = $1::text)
     )
-ORDER BY id
+ORDER BY g.id
 `
 
 type ListActiveCorrespondenceGamesForUserRow struct {
@@ -991,6 +997,7 @@ type ListActiveCorrespondenceGamesForUserRow struct {
 	SeasonID         pgtype.UUID
 	LeagueDivisionID pgtype.UUID
 	History          []byte
+	LeagueSlug       string
 }
 
 func (q *Queries) ListActiveCorrespondenceGamesForUser(ctx context.Context, userUuid string) ([]ListActiveCorrespondenceGamesForUserRow, error) {
@@ -1015,6 +1022,7 @@ func (q *Queries) ListActiveCorrespondenceGamesForUser(ctx context.Context, user
 			&i.SeasonID,
 			&i.LeagueDivisionID,
 			&i.History,
+			&i.LeagueSlug,
 		); err != nil {
 			return nil, err
 		}

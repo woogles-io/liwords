@@ -240,22 +240,26 @@ WHERE game_end_reason = 0 -- NONE (ongoing games)
 ORDER BY id;
 
 -- name: ListActiveCorrespondenceGames :many
-SELECT quickdata, uuid, started, tournament_data, game_request, player_on_turn, timers, type, updated_at, league_id, season_id, league_division_id
-FROM games
-WHERE game_end_reason = 0 -- NONE (ongoing games)
-    AND (game_request->>'game_mode')::int = 1 -- Only CORRESPONDENCE games
-ORDER BY id;
+SELECT g.quickdata, g.uuid, g.started, g.tournament_data, g.game_request, g.player_on_turn, g.timers, g.type, g.updated_at, g.league_id, g.season_id, g.league_division_id,
+    COALESCE(l.slug, '')::text AS league_slug
+FROM games g
+LEFT JOIN leagues l ON l.uuid = g.league_id
+WHERE g.game_end_reason = 0 -- NONE (ongoing games)
+    AND (g.game_request->>'game_mode')::int = 1 -- Only CORRESPONDENCE games
+ORDER BY g.id;
 
 -- name: ListActiveCorrespondenceGamesForUser :many
-SELECT quickdata, uuid, started, tournament_data, game_request, player_on_turn, timers, updated_at, league_id, season_id, league_division_id, history
-FROM games
-WHERE game_end_reason = 0 -- NONE (ongoing games)
-    AND (game_request->>'game_mode')::int = 1 -- Only CORRESPONDENCE games
+SELECT g.quickdata, g.uuid, g.started, g.tournament_data, g.game_request, g.player_on_turn, g.timers, g.updated_at, g.league_id, g.season_id, g.league_division_id, g.history,
+    COALESCE(l.slug, '')::text AS league_slug
+FROM games g
+LEFT JOIN leagues l ON l.uuid = g.league_id
+WHERE g.game_end_reason = 0 -- NONE (ongoing games)
+    AND (g.game_request->>'game_mode')::int = 1 -- Only CORRESPONDENCE games
     AND (
-        player0_id = (SELECT id FROM users WHERE uuid = @user_uuid::text)
-        OR player1_id = (SELECT id FROM users WHERE uuid = @user_uuid::text)
+        g.player0_id = (SELECT id FROM users WHERE uuid = @user_uuid::text)
+        OR g.player1_id = (SELECT id FROM users WHERE uuid = @user_uuid::text)
     )
-ORDER BY id;
+ORDER BY g.id;
 
 -- name: ListActiveCorrespondenceGamesForUserAndLeague :many
 SELECT quickdata, uuid, started, tournament_data, game_request, player_on_turn, timers, updated_at, league_id, season_id, league_division_id, history
