@@ -20,6 +20,9 @@ const channelTypes = [
   { value: "chat.lobby", label: "Lobby" },
 ];
 
+// between the requests of one search.
+const SEARCH_PAUSE_MS = 300;
+
 export const formatTime = (ms: bigint): string =>
   ms ? new Date(Number(ms)).toISOString() : "";
 
@@ -236,7 +239,8 @@ export const ChatReview = () => {
   const [lookup, setLookup] = useState("");
 
   // Redis is searched a batch of keys per request; keep asking until it has
-  // all been searched or Stop is pressed.
+  // all been searched or Stop is pressed, pausing between batches so a long
+  // search does not keep the live Redis busy.
   const search = async (forUser: string, forPrefix: string) => {
     const run = ++runRef.current;
     stopRef.current = false;
@@ -255,6 +259,9 @@ export const ChatReview = () => {
         if (run !== runRef.current) return;
         setRows((prev) => mergeRows(prev, resp.channels));
         cursor = resp.nextCursor;
+        if (cursor !== "0" && !stopRef.current) {
+          await new Promise((r) => setTimeout(r, SEARCH_PAUSE_MS));
+        }
       } while (cursor !== "0" && !stopRef.current);
       setComplete(cursor === "0");
     } catch (e) {

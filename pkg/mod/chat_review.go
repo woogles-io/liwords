@@ -36,7 +36,10 @@ const (
 	// keys SCAN is asked to walk per step.
 	chatScanStepCount = 500
 	// steps per request; the client asks again with the returned cursor.
-	chatScanMaxSteps = 20
+	// Every channel walked is read in full (one XREVRANGE each), so a request
+	// is kept to about a thousand short commands, and the client pauses
+	// between requests, leaving Redis free for everybody else.
+	chatScanMaxSteps = 2
 	// a request stops early once it has this many channels to return.
 	chatScanMaxChannels = 100
 	// streams are capped near 500 messages; this reads all of one.
