@@ -14,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/woogles-io/liwords/pkg/apiserver"
@@ -2049,6 +2050,7 @@ func (ls *LeagueService) GetLeagueRoster(
 				Draws:          row.Draws,
 				Spread:         row.Spread,
 				Result:         ipc.StandingResult(row.Result),
+				Timeouts:       proto.Int32(row.Timeouts),
 			})
 		}
 		players[i] = &pb.LeagueRosterPlayer{

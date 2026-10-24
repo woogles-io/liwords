@@ -41,6 +41,13 @@
     }
   }
 
+  // The roster's timeouts mark: a clock in the theme's out-of-time red.
+  .roster-timeout {
+    color: m($timer-out-dark);
+    font-size: 11px;
+    margin-left: 3px;
+  }
+
   h1 {
     font-size: 32px;
     margin-bottom: 16px;
