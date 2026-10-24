@@ -1,4 +1,10 @@
+import { create } from "@bufbuild/protobuf";
 import {
+  GameEvent_Type,
+  GameEventSchema,
+} from "../gen/api/proto/vendored/macondo/macondo_pb";
+import {
+  calculateHistoricalTimeBanks,
   nextPin,
   onTurnCountdowns,
   pickNextCorresGame,
@@ -139,4 +145,58 @@ it("nextPin: repicks when the pinned game leaves the on-turn set", () => {
   expect(nextPin("b", new Set(["a", "c"]), "c")).toBe("c");
   // Nothing left to pin.
   expect(nextPin("b", new Set<string>(), null)).toBe(null);
+});
+
+const bankEvt = (type: GameEvent_Type, playerIndex: number, millis: number) =>
+  create(GameEventSchema, { type, playerIndex, millisRemaining: millis });
+
+const hour = 3_600_000;
+
+it("calculateHistoricalTimeBanks: a challenge's clock is the challenger's", () => {
+  // p0 overruns by 3h; p1 challenges (the bonus event names p0 but carries
+  // p1's clock), then p1 moves on time.
+  const h = calculateHistoricalTimeBanks(
+    [
+      bankEvt(GameEvent_Type.TILE_PLACEMENT_MOVE, 0, -3 * hour),
+      bankEvt(GameEvent_Type.CHALLENGE_BONUS, 0, 7 * hour),
+      bankEvt(GameEvent_Type.TILE_PLACEMENT_MOVE, 1, 6 * hour),
+    ],
+    72 * hour,
+    72 * hour,
+  );
+  expect(h.get(1)).toMatchObject({
+    p0Time: -3 * hour,
+    p1Time: 7 * hour,
+    p0TimeBank: 69 * hour,
+    p1TimeBank: 72 * hour,
+    p0UsingTimeBank: true,
+    p1UsingTimeBank: false,
+  });
+});
+
+it("calculateHistoricalTimeBanks: a player who has not moved is not using the bank", () => {
+  const h = calculateHistoricalTimeBanks(
+    [bankEvt(GameEvent_Type.TILE_PLACEMENT_MOVE, 0, 5 * hour)],
+    72 * hour,
+    72 * hour,
+  );
+  expect(h.get(0)?.p1UsingTimeBank).toBe(false);
+  expect(h.get(0)?.p0UsingTimeBank).toBe(false);
+});
+
+it("calculateHistoricalTimeBanks: an overrun is charged once, when the turn ends", () => {
+  // p1 is 1h over when challenging (phony comes off, p1's turn goes on), then
+  // moves 2h over in all: 2h comes out of the bank, not 3h.
+  const h = calculateHistoricalTimeBanks(
+    [
+      bankEvt(GameEvent_Type.TILE_PLACEMENT_MOVE, 0, 5 * hour),
+      bankEvt(GameEvent_Type.PHONY_TILES_RETURNED, 0, -1 * hour),
+      bankEvt(GameEvent_Type.TILE_PLACEMENT_MOVE, 1, -2 * hour),
+    ],
+    72 * hour,
+    72 * hour,
+  );
+  expect(h.get(1)?.p1UsingTimeBank).toBe(true);
+  expect(h.get(1)?.p1TimeBank).toBe(72 * hour);
+  expect(h.get(2)?.p1TimeBank).toBe(70 * hour);
 });
