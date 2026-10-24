@@ -242,54 +242,158 @@ func TestGetShirtsVsSkinsPairings(t *testing.T) {
 	}
 }
 
+// initialFontesGroups returns the pairings of every Initial Fontes round and
+// the groups they were drawn from: two players are in the same group if they
+// are connected through those rounds' pairings. Each group is in rank order,
+// and groups are ordered by their best-ranked player.
+func initialFontesGroups(t *testing.T, numberOfPlayers, numberOfNtiles int, seed uint64) ([][]int, [][]int) {
+	t.Helper()
+	parent := make([]int, numberOfPlayers)
+	for i := range parent {
+		parent[i] = i
+	}
+	var find func(int) int
+	find = func(x int) int {
+		if parent[x] != x {
+			parent[x] = find(parent[x])
+		}
+		return parent[x]
+	}
+	rounds := [][]int{}
+	for round := 0; round < numberOfNtiles-1; round++ {
+		pairings, err := getInitialFontesPairings(numberOfPlayers, numberOfNtiles, round, seed)
+		if err != nil {
+			t.Fatal(err)
+		}
+		rounds = append(rounds, pairings)
+		for player, opponent := range pairings {
+			if opponent >= 0 {
+				parent[find(player)] = find(opponent)
+			}
+		}
+	}
+	groupIdxByRoot := map[int]int{}
+	groups := [][]int{}
+	for player := 0; player < numberOfPlayers; player++ {
+		root := find(player)
+		groupIdx, ok := groupIdxByRoot[root]
+		if !ok {
+			groupIdx = len(groups)
+			groupIdxByRoot[root] = groupIdx
+			groups = append(groups, []int{})
+		}
+		groups[groupIdx] = append(groups[groupIdx], player)
+	}
+	return rounds, groups
+}
+
+func TestInitialFontesRandomizesNtileSelection(t *testing.T) {
+	is := is.New(t)
+
+	// 16 players, InitialFontes = 3 (numberOfNtiles = 4, i.e. quartiles):
+	// 4 groups of 4, each with one player from each of ranks 1-4, 5-8, 9-12,
+	// and 13-16. Which player from each quartile is randomized by the seed,
+	// rather than always grouping ranks 1, 5, 9, 13 and so on.
+	distinctGroupings := map[string]bool{}
+	for seed := uint64(0); seed < 20; seed++ {
+		_, groups := initialFontesGroups(t, 16, 4, seed)
+		is.Equal(len(groups), 4)
+		for _, group := range groups {
+			is.Equal(len(group), 4)
+			for quartile, player := range group {
+				is.Equal(player/4, quartile)
+			}
+		}
+		distinctGroupings[fmt.Sprint(groups)] = true
+
+		// The same seed always produces the same groups.
+		_, again := initialFontesGroups(t, 16, 4, seed)
+		is.Equal(fmt.Sprint(again), fmt.Sprint(groups))
+	}
+	is.True(len(distinctGroupings) > 1)
+}
+
 func TestInitialFontesRemainderGroupUsesShirtsVsSkins(t *testing.T) {
 	is := is.New(t)
 
 	// 18 players, InitialFontes = 3 (numberOfNtiles = 4, i.e. quartiles).
 	// With a remainder of 2, the oversized remainder group has size 6
 	// (numberOfNtiles + remainder), built from 6 mini-groups of 3 ranks each
-	// (1-3, 4-6, ..., 16-18): the worst-ranked (last) player of each mini-group
-	// is pulled into the remainder group, and the rest are distributed round
-	// robin across the other 3 standard-size groups:
-	//   group 0: 0,4,9,13
-	//   group 1: 1,6,10,15
-	//   group 2: 3,7,12,16
-	//   group 3 (remainder): 2,5,8,11,14,17
-	// Group 3 (size 6, k=3) has enough capacity for all 3 fontes rounds, so it
-	// should be paired via the shirts-vs-skins cross pattern instead of round
-	// robin: Team A = {2,8,14} (local ranks 1,3,5), Team B = {5,11,17} (local
-	// ranks 2,4,6).
-	round0, err := getInitialFontesPairings(18, 4, 0, 0)
-	is.NoErr(err)
-	is.Equal(round0[2], 5)
-	is.Equal(round0[8], 11)
-	is.Equal(round0[14], 17)
+	// (1-3, 4-6, ..., 16-18): one random player of each mini-group is pulled
+	// into the remainder group. The other 12 players, in rank order, form
+	// 4 N-tiles of 3, and each of the 3 standard-size groups takes one random
+	// player from each of those N-tiles.
+	distinctGroupings := map[string]bool{}
+	for seed := uint64(0); seed < 20; seed++ {
+		rounds, groups := initialFontesGroups(t, 18, 4, seed)
+		is.Equal(len(groups), 4)
+		distinctGroupings[fmt.Sprint(groups)] = true
 
-	round1, err := getInitialFontesPairings(18, 4, 1, 0)
-	is.NoErr(err)
-	is.Equal(round1[2], 11)
-	is.Equal(round1[8], 17)
-	is.Equal(round1[5], 14)
-
-	round2, err := getInitialFontesPairings(18, 4, 2, 0)
-	is.NoErr(err)
-	is.Equal(round2[2], 17)
-	is.Equal(round2[5], 8)
-	is.Equal(round2[11], 14)
-
-	// No pairing among the remainder group should repeat across the 3 rounds.
-	seen := map[string]bool{}
-	for _, pairings := range [][]int{round0, round1, round2} {
-		for _, player := range []int{2, 5, 8, 11, 14, 17} {
-			opponent := pairings[player]
-			if player > opponent {
-				continue
+		var remainder []int
+		standardPlayers := []int{}
+		standardGroups := [][]int{}
+		for _, group := range groups {
+			if len(group) == 6 {
+				is.True(remainder == nil)
+				remainder = group
+			} else {
+				is.Equal(len(group), 4)
+				standardGroups = append(standardGroups, group)
 			}
-			key := fmt.Sprintf("%d-%d", player, opponent)
-			is.True(!seen[key])
-			seen[key] = true
+		}
+		is.True(remainder != nil)
+		for miniGroup, player := range remainder {
+			is.Equal(player/3, miniGroup)
+		}
+		inRemainder := map[int]bool{}
+		for _, player := range remainder {
+			inRemainder[player] = true
+		}
+		for player := 0; player < 18; player++ {
+			if !inRemainder[player] {
+				standardPlayers = append(standardPlayers, player)
+			}
+		}
+		ntileOf := map[int]int{}
+		for i, player := range standardPlayers {
+			ntileOf[player] = i / 3
+		}
+		for _, group := range standardGroups {
+			for ntile, player := range group {
+				is.Equal(ntileOf[player], ntile)
+			}
+		}
+
+		// The remainder group (size 6, k=3) has enough capacity for all 3
+		// fontes rounds, so it is paired via the shirts-vs-skins cross pattern
+		// instead of round robin: Team A = local ranks 1,3,5 and Team B = local
+		// ranks 2,4,6.
+		r := remainder
+		is.Equal(rounds[0][r[0]], r[1])
+		is.Equal(rounds[0][r[2]], r[3])
+		is.Equal(rounds[0][r[4]], r[5])
+		is.Equal(rounds[1][r[0]], r[3])
+		is.Equal(rounds[1][r[2]], r[5])
+		is.Equal(rounds[1][r[1]], r[4])
+		is.Equal(rounds[2][r[0]], r[5])
+		is.Equal(rounds[2][r[1]], r[2])
+		is.Equal(rounds[2][r[3]], r[4])
+
+		// No pairing among the remainder group should repeat across the 3 rounds.
+		seen := map[string]bool{}
+		for _, pairings := range rounds {
+			for _, player := range remainder {
+				opponent := pairings[player]
+				if player > opponent {
+					continue
+				}
+				key := fmt.Sprintf("%d-%d", player, opponent)
+				is.True(!seen[key])
+				seen[key] = true
+			}
 		}
 	}
+	is.True(len(distinctGroupings) > 1)
 }
 
 func TestInitialFontesGeneralizedNtiles(t *testing.T) {
