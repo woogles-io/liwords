@@ -676,7 +676,9 @@ SELECT
     u_player1.uuid as player1_uuid,
     u_player1.username as player1_username,
     g.player_on_turn,
-    g.history
+    g.history,
+    g.timers,
+    g.game_request
 FROM games g
 INNER JOIN users u_player0 ON g.player0_id = u_player0.id
 INNER JOIN users u_player1 ON g.player1_id = u_player1.id
