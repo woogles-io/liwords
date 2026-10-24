@@ -211,6 +211,15 @@ const TurnTimes = (props: {
   </React.Fragment>
 );
 
+// The hover for a turn's times, or none when there are no times to show.
+const turnTimesTitle = (
+  events: Array<GameEvent>,
+  times: Array<number | undefined> | undefined,
+): React.ReactNode =>
+  times?.some((t) => t !== undefined) ? (
+    <TurnTimes events={events} times={times} />
+  ) : null;
+
 // same as player_cards.tsx
 const makeTimeRemainingFragment = (
   timeRemainingMillis: number,
@@ -383,16 +392,7 @@ const ScorecardTurn = (props: turnProps) => {
         >
           {/* When the turn was made, on the coordinate rather than the
               clock, which has its own hover. */}
-          <Tooltip
-            title={
-              props.eventTimes?.some((t) => t !== undefined) ? (
-                <TurnTimes
-                  events={props.turn.events}
-                  times={props.eventTimes}
-                />
-              ) : null
-            }
-          >
+          <Tooltip title={turnTimesTitle(props.turn.events, props.eventTimes)}>
             {memoizedTurn.coords ? (
               <p className="coord">{memoizedTurn.coords}</p>
             ) : (
@@ -470,6 +470,7 @@ type TwoColTurnProps = {
   comments?: Array<GameComment>;
   onOpenCommentsDrawer?: (turnIndex: number) => void;
   turnIndex?: number;
+  eventTimes?: Array<number | undefined>; // when each of this turn's events was made
 };
 
 // Build the compact score text for the two-column scorecard. A single turn can
@@ -543,7 +544,11 @@ export const TwoColTurn = React.memo((props: TwoColTurnProps) => {
     <div
       className={`two-col-turn${isSelected ? " two-col-turn-selected" : ""}`}
     >
-      <div className="two-col-coord">{coords}</div>
+      {/* a pass or exchange has no coordinate; the empty cell still
+          carries the hover. */}
+      <Tooltip title={turnTimesTitle(turn.events, props.eventTimes)}>
+        <div className="two-col-coord">{coords}</div>
+      </Tooltip>
       <div
         className={`two-col-word${onSeek ? " two-col-word-seekable" : ""}`}
         onClick={onSeek}
@@ -720,6 +725,11 @@ export const ScoreCard = React.memo((props: Props) => {
   const { gameContext } = useGameContextStoreContext();
   const { handleExamineGoTo, examinedTurn } = useExamineStoreContext();
   const seek = props.isExamining ? handleExamineGoTo : props.onSeek;
+  // A turn's event times, only while examining: in play they are clutter.
+  const turnEventTimes = (t: Turn) =>
+    props.isExamining
+      ? props.eventTimes?.slice(t.firstEvtIdx, t.firstEvtIdx + t.events.length)
+      : undefined;
 
   // Scroll selected turn into view when examinedTurn changes (arrow navigation).
   // Skip on mobile: the scorecard is below the board in a single-column stack,
@@ -822,6 +832,7 @@ export const ScoreCard = React.memo((props: Props) => {
                   {left ? (
                     <TwoColTurn
                       turn={left.turn}
+                      eventTimes={turnEventTimes(left.turn)}
                       board={props.allBoard ?? props.board}
                       alphabet={gameContext.alphabet}
                       onSeek={
@@ -853,6 +864,7 @@ export const ScoreCard = React.memo((props: Props) => {
                   {right ? (
                     <TwoColTurn
                       turn={right.turn}
+                      eventTimes={turnEventTimes(right.turn)}
                       board={props.allBoard ?? props.board}
                       alphabet={gameContext.alphabet}
                       onSeek={
@@ -917,15 +929,7 @@ export const ScoreCard = React.memo((props: Props) => {
             timeBankP0={timeBankState?.p0TimeBank}
             timeBankP1={timeBankState?.p1TimeBank}
             eventIndex={eventIdx}
-            /* only while examining: in play the times are clutter. */
-            eventTimes={
-              props.isExamining
-                ? props.eventTimes?.slice(
-                    t.firstEvtIdx,
-                    t.firstEvtIdx + t.events.length,
-                  )
-                : undefined
-            }
+            eventTimes={turnEventTimes(t)}
             onSeek={seek ? () => seek(t.firstEvtIdx) : undefined}
             isSelected={
               props.isExamining &&
