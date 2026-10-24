@@ -6,7 +6,7 @@ import { Modal } from "../utils/focus_modal";
 import { SoughtGames } from "./sought_games";
 import { ActiveGames } from "./active_games";
 import { CorrespondenceGames } from "./correspondence_games";
-import { findMyRealtimeRequest } from "./realtime_request";
+import { findMyRealtimeRequests } from "./realtime_request";
 import { SeekForm } from "./seek_form";
 import {
   useContextMatchContext,
@@ -157,11 +157,11 @@ export const GameLists = React.memo((props: Props) => {
   ]);
 
   // The correspondence tab doesn't list real-time seeks, so it says when the
-  // user has one open; otherwise posting a correspondence seek (which opens
-  // that tab) makes it look canceled.
-  const myRealtimeRequest = React.useMemo(
+  // user has some open; otherwise posting a correspondence seek (which opens
+  // that tab) makes them look canceled.
+  const myRealtimeRequests = React.useMemo(
     () =>
-      findMyRealtimeRequest(
+      findMyRealtimeRequests(
         lobbyContext.soughtGames || [],
         lobbyContext.matchRequests || [],
         userID,
@@ -181,7 +181,7 @@ export const GameLists = React.memo((props: Props) => {
           newGame={newGame}
           declineGame={declineGame}
           ratings={lobbyContext?.profile?.ratings}
-          myRealtimeRequest={myRealtimeRequest}
+          myRealtimeRequests={myRealtimeRequests}
           showRealtimeRequest={() => setSelectedGameTab("PLAY")}
         />
       );

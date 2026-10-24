@@ -609,6 +609,25 @@ func (b *Bus) gameAccepted(ctx context.Context, evt *pb.SoughtGameProcessEvent,
 		return nil
 	}
 
+	// Take the seek, so that it starts one game only. A real-time one takes
+	// the seeker's other real-time seeks with it: of two accepted at the same
+	// moment, the second finds its seek gone, and the seeker does not end up
+	// in a game they were never sent to.
+	_, others, err := b.stores.SoughtGameStore.Claim(ctx, evt.RequestId)
+	if errors.Is(err, entity.ErrSeekGone) {
+		b.pubToConnectionID(connID, userID, entity.WrapEvent(&pb.ErrorMessage{
+			Message: err.Error(),
+		}, pb.MessageType_ERROR_MESSAGE))
+		return nil
+	} else if err != nil {
+		return err
+	}
+	for _, o := range others {
+		if err := b.sendSoughtGameDeletion(ctx, o); err != nil {
+			return err
+		}
+	}
+
 	// Otherwise create a game
 	if gameReq.GameMode == pb.GameMode_CORRESPONDENCE {
 		// The new game opens in the accepting tab, and in the seeking tab if
@@ -812,20 +831,21 @@ func (b *Bus) broadcastGameCreation(g *entity.Game, acceptor, requester *entity.
 }
 
 func (b *Bus) deleteSoughtForUser(ctx context.Context, userID string) error {
-	req, err := b.stores.SoughtGameStore.DeleteForUser(ctx, userID)
+	reqs, err := b.stores.SoughtGameStore.DeleteForUser(ctx, userID)
 	if err != nil {
 		return err
 	}
-	if req == nil {
+	if len(reqs) == 0 {
 		return nil
 	}
-	log.Debug().Interface("req", req).Str("userID", userID).Msg("deleting-sought")
-	err = b.sendSoughtGameDeletion(ctx, req)
-	if err != nil {
-		return err
+	for _, req := range reqs {
+		log.Debug().Interface("req", req).Str("userID", userID).Msg("deleting-sought")
+		if err := b.sendSoughtGameDeletion(ctx, req); err != nil {
+			return err
+		}
 	}
 
-	req, err = b.stores.SoughtGameStore.UpdateForReceiver(ctx, userID)
+	req, err := b.stores.SoughtGameStore.UpdateForReceiver(ctx, userID)
 	if err != nil {
 		return err
 	}
@@ -837,20 +857,21 @@ func (b *Bus) deleteSoughtForUser(ctx context.Context, userID string) error {
 }
 
 func (b *Bus) deleteSoughtForConnID(ctx context.Context, connID string) error {
-	req, err := b.stores.SoughtGameStore.DeleteForSeekerConnID(ctx, connID)
+	reqs, err := b.stores.SoughtGameStore.DeleteForSeekerConnID(ctx, connID)
 	if err != nil {
 		return err
 	}
-	if req == nil {
+	if len(reqs) == 0 {
 		return nil
 	}
-	log.Debug().Interface("req", req).Str("connID", connID).Msg("deleting-sought-for-connid")
-	err = b.sendSoughtGameDeletion(ctx, req)
-	if err != nil {
-		return err
+	for _, req := range reqs {
+		log.Debug().Interface("req", req).Str("connID", connID).Msg("deleting-sought-for-connid")
+		if err := b.sendSoughtGameDeletion(ctx, req); err != nil {
+			return err
+		}
 	}
 
-	req, err = b.stores.SoughtGameStore.UpdateForReceiverConnID(ctx, connID)
+	req, err := b.stores.SoughtGameStore.UpdateForReceiverConnID(ctx, connID)
 	if err != nil {
 		return err
 	}
@@ -861,23 +882,20 @@ func (b *Bus) deleteSoughtForConnID(ctx context.Context, connID string) error {
 	return b.sendReceiverAbsent(ctx, req)
 }
 
-// cancelRealtimeSeeksOfConns cancels the real-time seek made from each of the
-// given connections, if there is one, and returns what it canceled.
-// Correspondence seeks stay. An empty connection ID is skipped, since it
-// names no tab.
+// cancelRealtimeSeeksOfConns cancels the real-time seeks made from each of
+// the given connections and returns what it canceled. Correspondence seeks
+// stay. An empty connection ID is skipped, since it names no tab.
 func (b *Bus) cancelRealtimeSeeksOfConns(ctx context.Context, connIDs ...string) ([]*entity.SoughtGame, error) {
 	var canceled []*entity.SoughtGame
 	for _, connID := range connIDs {
 		if connID == "" {
 			continue
 		}
-		sg, err := b.stores.SoughtGameStore.DeleteForSeekerConnID(ctx, connID)
+		sgs, err := b.stores.SoughtGameStore.DeleteForSeekerConnID(ctx, connID)
 		if err != nil {
 			return canceled, err
 		}
-		if sg != nil {
-			canceled = append(canceled, sg)
-		}
+		canceled = append(canceled, sgs...)
 	}
 	return canceled, nil
 }
