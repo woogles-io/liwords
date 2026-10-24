@@ -1255,6 +1255,13 @@ func (ls *LeagueService) GetAllDivisionStandings(
 					avgMistakeIndex = standing.TotalMistakeIndex.Float64 / float64(standing.GamesAnalyzed.Int32)
 				}
 
+				// Set only for players with analyzed games, so a client can
+				// tell "none" from 0.
+				var avgOpponentMI *float64
+				if v, ok := avgOpponentMistakeIndex[standing.UserID]; ok {
+					avgOpponentMI = &v
+				}
+
 				protoStandings[j] = &ipc.LeaguePlayerStanding{
 					UserId:                   userUUID,
 					Username:                 username,
@@ -1279,7 +1286,7 @@ func (ls *LeagueService) GetAllDivisionStandings(
 					TotalOpponentTilesPlayed: standing.TotalOpponentTilesPlayed.Int32,
 					PlacementStatus:          placementStatus,
 					AvgMistakeIndex:          avgMistakeIndex,
-					AvgOpponentMistakeIndex:  avgOpponentMistakeIndex[standing.UserID],
+					AvgOpponentMistakeIndex:  avgOpponentMI,
 					GamesAnalyzed:            standing.GamesAnalyzed.Int32,
 				}
 			}
