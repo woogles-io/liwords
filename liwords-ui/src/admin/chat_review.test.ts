@@ -6,6 +6,7 @@ import {
   chatsToCSV,
   formatTime,
   mergeRows,
+  sortRows,
   summariesToCSV,
 } from "./chat_review";
 
@@ -46,8 +47,24 @@ describe("chat review", () => {
       }),
     ]);
     expect(csv.split("\n")[1]).toBe(
-      "chat.game.abc,,3,2023-11-14T22:13:20.123Z,2023-11-14T22:13:20.123Z,mina:2 cesar:1,,",
+      "chat.game.abc,,3,2023-11-14T22:13:20.123Z,2023-11-14T22:13:20.123Z,mina:2 cesar:1,,,",
     );
+  });
+
+  it("orders by the searched user's last word when there is one", () => {
+    const row = (channel: string, last: number, userLast: number) =>
+      create(ChatChannelSummarySchema, {
+        channel,
+        lastTimestamp: BigInt(last),
+        userLastTimestamp: BigInt(userLast),
+      });
+    const rows = [row("a", 100, 10), row("b", 50, 40), row("c", 200, 0)];
+    expect(sortRows(rows, false).map((r) => r.channel)).toEqual([
+      "c",
+      "a",
+      "b",
+    ]);
+    expect(sortRows(rows, true).map((r) => r.channel)).toEqual(["b", "a", "c"]);
   });
 
   it("skips channels already listed", () => {
@@ -74,7 +91,7 @@ describe("chat review", () => {
       }),
     ]);
     expect(csv.split("\n")[1]).toBe(
-      "chat.game.abc,mina vs cesar,1,,,,2023-11-14T22:13:20.123Z,2023-11-14T22:14:20.123Z",
+      "chat.game.abc,mina vs cesar,1,,,,2023-11-14T22:13:20.123Z,2023-11-14T22:14:20.123Z,",
     );
   });
 });

@@ -1,6 +1,6 @@
 import { Button, Input, Select, Space, Table, Tag, Typography } from "antd";
-import React, { useState } from "react";
-import { Link } from "react-router";
+import React, { useEffect, useRef, useState } from "react";
+import { Link, useSearchParams } from "react-router";
 import { ChatMessage } from "../gen/api/proto/ipc/chat_pb";
 import {
   ChatChannelSummary,
@@ -11,13 +11,13 @@ import { UsernameWithContext } from "../shared/usernameWithContext";
 import { flashError, useClient } from "../utils/hooks/connect";
 
 const channelTypes = [
+  { value: "", label: "All channels" },
   { value: "chat.game.", label: "Game (players)" },
   { value: "chat.gametv.", label: "Game (viewers)" },
   { value: "chat.pm.", label: "Private" },
   { value: "chat.tournament.", label: "Tournament / club" },
   { value: "chat.league.", label: "League" },
   { value: "chat.lobby", label: "Lobby" },
-  { value: "", label: "All" },
 ];
 
 export const formatTime = (ms: bigint): string =>
@@ -54,7 +54,7 @@ export const chatsToCSV = (msgs: Array<ChatMessage>): string =>
 
 export const summariesToCSV = (rows: Array<ChatChannelSummary>): string =>
   [
-    "channel,label,messages,first_utc,last_utc,senders,game_created_utc,game_updated_utc",
+    "channel,label,messages,first_utc,last_utc,senders,game_created_utc,game_updated_utc,user_last_utc",
     ...rows.map((r) =>
       [
         r.channel,
@@ -65,11 +65,25 @@ export const summariesToCSV = (rows: Array<ChatChannelSummary>): string =>
         r.senders.map((s) => `${s.username}:${s.count}`).join(" "),
         formatTime(r.context?.gameCreatedAt ?? BigInt(0)),
         formatTime(r.context?.gameUpdatedAt ?? BigInt(0)),
+        formatTime(r.userLastTimestamp),
       ]
         .map(csvField)
         .join(","),
     ),
   ].join("\n") + "\n";
+
+// Newest first. With a user searched, by when that user last wrote, so a
+// channel does not move up because others answered; channels they never
+// wrote in (games they played) follow, newest first.
+export const sortRows = (
+  rows: Array<ChatChannelSummary>,
+  byUser: boolean,
+): Array<ChatChannelSummary> =>
+  [...rows].sort(
+    (a, b) =>
+      (byUser ? Number(b.userLastTimestamp - a.userLastTimestamp) : 0) ||
+      Number(b.lastTimestamp - a.lastTimestamp),
+  );
 
 const download = (filename: string, body: string, type: string) => {
   const url = window.URL.createObjectURL(new Blob([body], { type }));
@@ -202,34 +216,62 @@ const ChannelChats = (props: { channel: string }) => {
 };
 
 // Review the chats Redis still holds (up to 14 days): find the channels by
-// type and sender, see who spoke, read and export a channel's messages.
+// type and user, see who spoke, read and export a channel's messages. A
+// user's menu links here with ?username=, which searches all channels at once.
 export const ChatReview = () => {
   const modClient = useClient(ModService);
-  const [prefix, setPrefix] = useState("chat.game.");
-  const [username, setUsername] = useState("");
+  const [searchParams] = useSearchParams();
+  const linkedUsername = searchParams.get("username") ?? "";
+  const [prefix, setPrefix] = useState(linkedUsername ? "" : "chat.game.");
+  const [username, setUsername] = useState(linkedUsername);
+  // the user the rows were searched for, which the input may no longer say.
+  const [searchedUser, setSearchedUser] = useState("");
   const [rows, setRows] = useState<Array<ChatChannelSummary>>([]);
-  const [cursor, setCursor] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [searching, setSearching] = useState(false);
+  const [complete, setComplete] = useState(false);
+  const stopRef = useRef(false);
+  // bumped by each search or lookup, so an older search's late replies are
+  // dropped instead of mixed in.
+  const runRef = useRef(0);
   const [lookup, setLookup] = useState("");
 
-  const scan = async (fromCursor: string) => {
-    setLoading(true);
+  // Redis is searched a batch of keys per request; keep asking until it has
+  // all been searched or Stop is pressed.
+  const search = async (forUser: string, forPrefix: string) => {
+    const run = ++runRef.current;
+    stopRef.current = false;
+    setSearching(true);
+    setComplete(false);
+    setSearchedUser(forUser.trim());
+    setRows([]);
+    let cursor = "";
     try {
-      const resp = await modClient.listChatChannels({
-        channelPrefix: prefix,
-        username,
-        cursor: fromCursor,
-      });
-      setRows((prev) =>
-        fromCursor === "" ? resp.channels : mergeRows(prev, resp.channels),
-      );
-      setCursor(resp.nextCursor);
+      do {
+        const resp = await modClient.listChatChannels({
+          channelPrefix: forPrefix,
+          username: forUser,
+          cursor,
+        });
+        if (run !== runRef.current) return;
+        setRows((prev) => mergeRows(prev, resp.channels));
+        cursor = resp.nextCursor;
+      } while (cursor !== "0" && !stopRef.current);
+      setComplete(cursor === "0");
     } catch (e) {
-      flashError(e);
+      if (run === runRef.current) flashError(e);
     } finally {
-      setLoading(false);
+      if (run === runRef.current) setSearching(false);
     }
   };
+
+  const searchedLinked = useRef(false);
+  useEffect(() => {
+    if (!linkedUsername || searchedLinked.current) return;
+    searchedLinked.current = true;
+    search(linkedUsername, "");
+    // search is remade each render; this runs once for the linked user.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [linkedUsername]);
 
   const showLookup = async () => {
     const id = lookup.trim();
@@ -240,70 +282,86 @@ export const ChatReview = () => {
     const channels = id.startsWith("chat.")
       ? [id]
       : [`chat.game.${id}`, `chat.gametv.${id}`];
+    const run = ++runRef.current;
+    setSearching(false);
     try {
       const resp = await modClient.listChatChannels({ channels });
+      if (run !== runRef.current) return;
+      setSearchedUser("");
       setRows(resp.channels);
-      setCursor("0");
+      setComplete(true);
     } catch (e) {
       flashError(e);
     }
   };
 
-  const sorted = [...rows].sort((a, b) =>
-    Number(b.lastTimestamp - a.lastTimestamp),
-  );
+  const sorted = sortRows(rows, !!searchedUser);
 
   return (
     <div className="chat-review">
       <h3>Chat review</h3>
-      <Space wrap style={{ marginBottom: 12 }}>
+      <p>
+        Only chats from the last 14 days, and not deleted ones. A game with no
+        chat at all is not listed.
+      </p>
+      <h4>Search</h4>
+      <Space wrap style={{ marginBottom: 4 }}>
+        <Input
+          placeholder="User (blank: anyone)"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          onPressEnter={() => search(username, prefix)}
+          style={{ width: 200 }}
+        />
         <Select
           value={prefix}
           onChange={setPrefix}
           options={channelTypes}
           style={{ width: 200 }}
         />
-        <Input
-          placeholder="Username (optional)"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          onPressEnter={() => scan("")}
-          style={{ width: 200 }}
-        />
-        <Button type="primary" loading={loading} onClick={() => scan("")}>
-          Scan
-        </Button>
-        {cursor !== "" && cursor !== "0" && (
-          <Button loading={loading} onClick={() => scan(cursor)}>
-            Scan more
+        {searching ? (
+          <Button onClick={() => (stopRef.current = true)}>Stop</Button>
+        ) : (
+          <Button type="primary" onClick={() => search(username, prefix)}>
+            Search
           </Button>
         )}
+      </Space>
+      <p>
+        <Typography.Text type="secondary">
+          With a user: every game they played (marked &quot;played&quot;),
+          whoever wrote in it, plus the other channels they wrote in and their
+          private chats, by when they last wrote there.
+        </Typography.Text>
+      </p>
+      <h4>Or show one game</h4>
+      <Space wrap style={{ marginBottom: 12 }}>
+        <Input
+          placeholder="Game id, or a chat... channel name"
+          value={lookup}
+          onChange={(e) => setLookup(e.target.value)}
+          onPressEnter={showLookup}
+          style={{ width: 300 }}
+        />
+        <Button onClick={showLookup}>Show</Button>
+      </Space>
+      <Space wrap style={{ marginBottom: 8 }}>
+        <span>
+          {searching
+            ? `Searching... ${rows.length} found so far`
+            : `${rows.length} channel${rows.length === 1 ? "" : "s"}${
+                rows.length > 0 && !complete ? " (search stopped early)" : ""
+              }`}
+        </span>
         <Button
           disabled={rows.length === 0}
           onClick={() =>
             download("chat-channels.csv", summariesToCSV(sorted), "text/csv")
           }
         >
-          Export list
+          Download this table (CSV)
         </Button>
       </Space>
-      <Space wrap style={{ marginBottom: 12 }}>
-        <Input
-          placeholder="Game id or channel"
-          value={lookup}
-          onChange={(e) => setLookup(e.target.value)}
-          onPressEnter={showLookup}
-          style={{ width: 300 }}
-        />
-        <Button onClick={showLookup}>Open</Button>
-      </Space>
-      <p>
-        Only chats from the last 14 days, and not deleted ones. A game with no
-        chat at all is not listed. A username finds the chat of every game that
-        user played (marked "played"), whoever wrote in it, plus the other
-        channels they wrote in and their private chats.
-        {cursor === "0" && rows.length > 0 && " Scan complete."}
-      </p>
       <Table
         dataSource={sorted}
         rowKey="channel"
@@ -318,6 +376,16 @@ export const ChatReview = () => {
             key: "channel",
             render: (_, r) => <ChannelCell r={r} />,
           },
+          ...(searchedUser
+            ? [
+                {
+                  title: `${searchedUser} last wrote (UTC)`,
+                  key: "userLast",
+                  render: (_: unknown, r: ChatChannelSummary) =>
+                    formatTime(r.userLastTimestamp),
+                },
+              ]
+            : []),
           {
             title: "Msgs",
             dataIndex: "messageCount",
