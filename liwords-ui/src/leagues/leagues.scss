@@ -394,17 +394,22 @@
     }
   }
 
-  // Previous / next season of the player followed from the roster
+  // Previous / next season of the player tracked from the roster or standings
   .league-follow-bar {
     align-items: center;
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
-    margin-bottom: 16px;
+    font-size: 13px;
+    gap: 4px;
+    margin-bottom: 8px;
     padding: 0 16px;
 
+    .ant-btn {
+      padding: 0 4px;
+    }
+
     .league-follow-name {
-      font-weight: 600;
+      opacity: 0.75;
     }
   }
 

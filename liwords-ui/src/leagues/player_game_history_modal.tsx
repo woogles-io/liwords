@@ -1,5 +1,6 @@
 import React from "react";
 import {
+  Button,
   Modal,
   Spin,
   Table,
@@ -58,6 +59,9 @@ type PlayerGameHistoryModalProps = {
   // Swaps the modal over to another player's games, so an opponent can be
   // followed without going back to the standings.
   onSelectPlayer: (userId: string, username: string) => void;
+  // Tracks this player through the seasons they played (the bar above the
+  // standings); offered for anyone, the viewer included.
+  onTrack?: (userId: string) => void;
 };
 
 // One row of the season game list. Finished games carry scores, a result and an
@@ -203,6 +207,7 @@ export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
   seasonStartDate,
   onChat,
   onSelectPlayer,
+  onTrack,
 }) => {
   const { data, isLoading, error } = useQuery(getPlayerSeasonGames, {
     userId,
@@ -503,6 +508,13 @@ export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
           />
           's Season {seasonNumber} Games
           {seasonRange ? ` (${seasonRange})` : null}
+          {onTrack && (
+            <Tooltip title="Step through the seasons this player played">
+              <Button type="link" size="small" onClick={() => onTrack(userId)}>
+                Track
+              </Button>
+            </Tooltip>
+          )}
         </React.Fragment>
       }
       open={visible}

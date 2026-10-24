@@ -465,7 +465,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
                       ? [
                           {
                             key: "follow",
-                            label: "Follow",
+                            label: "Track",
                             onClick: () => onFollow(record.userId),
                           },
                         ]
@@ -954,6 +954,14 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
           seasonStartDate={seasonStartDate}
           onChat={onChat}
           onSelectPlayer={handlePlayerClick}
+          onTrack={
+            onFollow
+              ? (id) => {
+                  onFollow(id);
+                  handleModalClose();
+                }
+              : undefined
+          }
         />
       )}
     </div>
