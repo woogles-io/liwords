@@ -416,8 +416,10 @@
 .game-history-controls {
   align-items: center;
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   padding: 6px;
+  row-gap: 6px;
   // the page number box, as tall as the Prev/Next buttons beside it.
   .ant-input-number {
     height: 36px;
@@ -427,14 +429,17 @@
   }
 }
 
+// On a narrow screen the date box and Go wrap onto their own line rather
+// than squeezing the date.
 .game-history-jump {
   align-items: center;
   display: flex;
   gap: 4px;
   margin-left: 12px;
-  // as tall as the Prev/Next buttons beside it.
+  // as tall as the Prev/Next buttons beside it, and wide enough for the date.
   .ant-picker {
     height: 36px;
+    min-width: 172px;
   }
 }
 
