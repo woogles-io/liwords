@@ -969,10 +969,13 @@ type ChatChannelSummary struct {
 	Senders        []*ChatSenderCount `protobuf:"bytes,5,rep,name=senders,proto3" json:"senders,omitempty"`
 	// user_played is set when the channel belongs to a game the requested user
 	// played, whether or not they wrote in it.
-	UserPlayed    bool                `protobuf:"varint,6,opt,name=user_played,json=userPlayed,proto3" json:"user_played,omitempty"`
-	Context       *ChatChannelContext `protobuf:"bytes,7,opt,name=context,proto3" json:"context,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	UserPlayed bool                `protobuf:"varint,6,opt,name=user_played,json=userPlayed,proto3" json:"user_played,omitempty"`
+	Context    *ChatChannelContext `protobuf:"bytes,7,opt,name=context,proto3" json:"context,omitempty"`
+	// user_last_timestamp is when the requested user last wrote here (0 if
+	// never), so channels can be ordered by the user's own last word.
+	UserLastTimestamp int64 `protobuf:"varint,8,opt,name=user_last_timestamp,json=userLastTimestamp,proto3" json:"user_last_timestamp,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *ChatChannelSummary) Reset() {
@@ -1052,6 +1055,13 @@ func (x *ChatChannelSummary) GetContext() *ChatChannelContext {
 		return x.Context
 	}
 	return nil
+}
+
+func (x *ChatChannelSummary) GetUserLastTimestamp() int64 {
+	if x != nil {
+		return x.UserLastTimestamp
+	}
+	return 0
 }
 
 type ListChatChannelsResponse struct {
@@ -1211,7 +1221,7 @@ const file_proto_mod_service_mod_service_proto_rawDesc = "" +
 	"\x04link\x18\x02 \x01(\tR\x04link\x126\n" +
 	"\aparties\x18\x03 \x03(\v2\x1c.mod_service.ChatSenderCountR\aparties\x12&\n" +
 	"\x0fgame_created_at\x18\x04 \x01(\x03R\rgameCreatedAt\x12&\n" +
-	"\x0fgame_updated_at\x18\x05 \x01(\x03R\rgameUpdatedAt\"\xb7\x02\n" +
+	"\x0fgame_updated_at\x18\x05 \x01(\x03R\rgameUpdatedAt\"\xe7\x02\n" +
 	"\x12ChatChannelSummary\x12\x18\n" +
 	"\achannel\x18\x01 \x01(\tR\achannel\x12#\n" +
 	"\rmessage_count\x18\x02 \x01(\x05R\fmessageCount\x12'\n" +
@@ -1220,7 +1230,8 @@ const file_proto_mod_service_mod_service_proto_rawDesc = "" +
 	"\asenders\x18\x05 \x03(\v2\x1c.mod_service.ChatSenderCountR\asenders\x12\x1f\n" +
 	"\vuser_played\x18\x06 \x01(\bR\n" +
 	"userPlayed\x129\n" +
-	"\acontext\x18\a \x01(\v2\x1f.mod_service.ChatChannelContextR\acontext\"x\n" +
+	"\acontext\x18\a \x01(\v2\x1f.mod_service.ChatChannelContextR\acontext\x12.\n" +
+	"\x13user_last_timestamp\x18\b \x01(\x03R\x11userLastTimestamp\"x\n" +
 	"\x18ListChatChannelsResponse\x12;\n" +
 	"\bchannels\x18\x01 \x03(\v2\x1f.mod_service.ChatChannelSummaryR\bchannels\x12\x1f\n" +
 	"\vnext_cursor\x18\x02 \x01(\tR\n" +

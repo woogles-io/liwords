@@ -124,6 +124,9 @@ message ChatChannelSummary {
   // played, whether or not they wrote in it.
   bool user_played = 6;
   ChatChannelContext context = 7;
+  // user_last_timestamp is when the requested user last wrote here (0 if
+  // never), so channels can be ordered by the user's own last word.
+  int64 user_last_timestamp = 8;
 }
 
 message ListChatChannelsResponse {

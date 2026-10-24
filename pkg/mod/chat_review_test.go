@@ -25,10 +25,17 @@ func TestSummarizeChannel(t *testing.T) {
 	is.Equal(s.Senders[0].Username, "mina")
 	is.Equal(s.Senders[0].Count, int32(2))
 
-	_, ok = summarizeChannel("chat.game.g1", msgs, "u1", "Cesar")
+	is.Equal(s.UserLastTimestamp, int64(0))
+
+	s, ok = summarizeChannel("chat.game.g1", msgs, "u1", "Cesar")
 	is.True(ok)
-	_, ok = summarizeChannel("chat.game.g1", msgs, "u3", "josh")
+	is.Equal(s.UserLastTimestamp, int64(1000))
+	// the user's own last message, not the channel's.
+	s, _ = summarizeChannel("chat.game.g1", msgs, "u2", "mina")
+	is.Equal(s.UserLastTimestamp, int64(3000))
+	s, ok = summarizeChannel("chat.game.g1", msgs, "u3", "josh")
 	is.True(!ok)
+	is.Equal(s.UserLastTimestamp, int64(0))
 	// a private chat names both parties, even one who never wrote.
 	_, ok = summarizeChannel("chat.pm.u2_u3", msgs[1:], "u3", "josh")
 	is.True(ok)

@@ -79,8 +79,9 @@ func summarizeChannel(channel string, msgs []*ipc.ChatMessage, uid, username str
 			summary.Senders = append(summary.Senders, sc)
 		}
 		sc.Count++
-		if !matched && ((uid != "" && m.UserId == uid) || strings.EqualFold(m.Username, username)) {
+		if username != "" && ((uid != "" && m.UserId == uid) || strings.EqualFold(m.Username, username)) {
 			matched = true
+			summary.UserLastTimestamp = m.Timestamp
 		}
 	}
 	sort.SliceStable(summary.Senders, func(i, j int) bool {
