@@ -89,10 +89,12 @@ export const sendSeek = (
 export const sendAccept = (
   seekID: string,
   sendSocketMsg: (msg: Uint8Array) => void,
+  alternatives: Array<string> = [],
 ): void => {
   // Eventually use the ID.
   const sa = create(SoughtGameProcessEventSchema, {});
   sa.requestId = seekID;
+  sa.alternatives = alternatives;
   sendSocketMsg(
     encodeToSocketFmt(
       MessageType.SOUGHT_GAME_PROCESS_EVENT,
