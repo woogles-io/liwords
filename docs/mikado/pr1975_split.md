@@ -351,7 +351,10 @@ across 20 games at once with production's turn-row and shadow flags on. Each
 move must be accepted exactly once, history and turn rows must agree, and no
 shadow may complain. With the lock made a no-op, both servers play the move;
 the turn rows' primary key (step 4) still rejects the second save, so the game
-stays intact, but the test fails on the duplicate-key error it logs.
+stays intact, but the test fails on the duplicate-key error it logs. The same
+helper runs on one server: correspondence games fail the same way without the
+lock, since each load is a fresh copy; real-time games pass without it, because
+the cached object's own mutex serializes them -- until step 6.
 
 Deviation from the reference: `pkg/stores/game/lock.go`,
 `pkg/stores/game/lock_test.go`, `pkg/gameplay/concurrent_moves_test.go`, and

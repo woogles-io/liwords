@@ -53,25 +53,52 @@ func drainEvents(ctx context.Context) chan *entity.EventWrapper {
 	return ch
 }
 
+// Each contested move must be accepted exactly once, and at the end the saved
+// history, the turn rows and the shadows must all agree. Many games run at
+// once, so every variant also runs well past the per-process limit on held
+// locks.
+
 // Two app servers -- separate connection pools, separate caches, one database
 // -- each receive the same move for the same game at the same moment, the way
 // a double-click or two open tabs can deliver it. For correspondence games,
 // which every server loads fresh from the database, the game lock is all that
-// keeps the two from both playing it. Many games run at once, so this also
-// runs well past the per-process limit on held locks.
-//
-// Each contested move must be accepted exactly once, and at the end the saved
-// history, the turn rows and the shadows must all agree.
+// keeps the two from both playing it.
 func TestConcurrentMovesFromTwoServers(t *testing.T) {
+	contestedMoves(t, 2, pb.GameMode_CORRESPONDENCE)
+}
+
+// The same on one server. A correspondence game is still a fresh copy on every
+// load, so two goroutines on the same server are as independent as two
+// servers, and only the game lock keeps them apart.
+func TestConcurrentMovesOnOneServerCorrespondence(t *testing.T) {
+	contestedMoves(t, 1, pb.GameMode_CORRESPONDENCE)
+}
+
+// A real-time game on one server, which is production today: the cache hands
+// both goroutines the same object, and that object's own mutex already keeps
+// them apart -- this passes with the game lock disabled. It becomes a test of
+// the game lock once the cache is gone and every load is a fresh copy.
+func TestConcurrentMovesOnOneServerRealTime(t *testing.T) {
+	contestedMoves(t, 1, pb.GameMode_REAL_TIME)
+}
+
+// contestedMoves plays rounds of contested moves on many games at once. Each
+// move is handed to two callers at the same moment: on two store stacks
+// (separate pools and caches, one database) when servers is 2, or twice on the
+// same one when it is 1.
+func contestedMoves(t *testing.T, servers int, mode pb.GameMode) {
 	is := is.New(t)
 
-	_, storesA, cfg := recreateDB()
+	pool, storesA, cfg := recreateDB()
 	defer storesA.Disconnect()
-	poolB, err := common.OpenTestingDB(pkg)
-	is.NoErr(err)
-	storesB, err := stores.NewInitializedStores(poolB, nil, cfg)
-	is.NoErr(err)
-	defer storesB.Disconnect()
+	storesB := storesA
+	if servers == 2 {
+		poolB, err := common.OpenTestingDB(pkg)
+		is.NoErr(err)
+		storesB, err = stores.NewInitializedStores(poolB, nil, cfg)
+		is.NoErr(err)
+		defer storesB.Disconnect()
+	}
 
 	// Production's flags: turn rows written with every save, and both shadows on.
 	runCfg := *cfg
@@ -83,9 +110,11 @@ func TestConcurrentMovesFromTwoServers(t *testing.T) {
 	ctx, cancel := context.WithCancel(runCfg.WithContext(logger.WithContext(context.Background())))
 	defer cancel()
 
-	chA, chB := drainEvents(ctx), drainEvents(ctx)
+	chA := drainEvents(ctx)
 	storesA.GameStore.SetGameEventChan(chA)
-	storesB.GameStore.SetGameEventChan(chB)
+	if storesB != storesA {
+		storesB.GameStore.SetGameEventChan(drainEvents(ctx))
+	}
 
 	jesse, err := storesA.UserStore.Get(ctx, "jesse")
 	is.NoErr(err)
@@ -99,11 +128,13 @@ func TestConcurrentMovesFromTwoServers(t *testing.T) {
 	gameIDs := make([]string, games)
 	for i := range gameIDs {
 		gr := proto.Clone(gameReq).(*pb.GameRequest)
-		withCorrespondence(gr)
-		// Correspondence timing: the increment is the time allowed per turn.
-		gr.InitialTimeSeconds = 3 * 24 * 3600
-		gr.IncrementSeconds = 3 * 24 * 3600
-		gr.MaxOvertimeMinutes = 0
+		if mode == pb.GameMode_CORRESPONDENCE {
+			withCorrespondence(gr)
+			// Correspondence timing: the increment is the time allowed per turn.
+			gr.InitialTimeSeconds = 3 * 24 * 3600
+			gr.IncrementSeconds = 3 * 24 * 3600
+			gr.MaxOvertimeMinutes = 0
+		}
 		gr.RequestId = fmt.Sprintf("concurrent-%d", i)
 		g, err := gameplay.InstantiateNewGame(ctx, storesA.GameStore, &runCfg,
 			[2]*entity.User{jesse, cesar}, gr, nil)
@@ -129,10 +160,12 @@ func TestConcurrentMovesFromTwoServers(t *testing.T) {
 					results <- outcome{game: gi, round: r, errs: []string{err.Error()}}
 					return
 				}
+				g.RLock()
 				onTurn := g.Game.PlayerIDOnTurn()
+				g.RUnlock()
 				cge := &pb.ClientGameplayEvent{Type: pb.ClientGameplayEvent_PASS, GameId: gid}
 
-				// Both servers are released together.
+				// Both callers are released together.
 				start := make(chan struct{})
 				var mu sync.Mutex
 				var errs []string
@@ -179,10 +212,13 @@ func TestConcurrentMovesFromTwoServers(t *testing.T) {
 		for _, st := range []*stores.Stores{storesA, storesB} {
 			g, err := st.GameStore.Get(ctx, gid)
 			is.NoErr(err)
-			is.Equal(len(g.History().Events), rounds)
+			g.RLock()
+			n := len(g.History().Events)
+			g.RUnlock()
+			is.Equal(n, rounds)
 		}
 		var rows int
-		is.NoErr(poolB.QueryRow(ctx,
+		is.NoErr(pool.QueryRow(ctx,
 			"SELECT count(*) FROM game_turns WHERE game_uuid = $1", gid).Scan(&rows))
 		is.Equal(rows, rounds)
 	}
