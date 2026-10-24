@@ -693,3 +693,45 @@ func TestPerfectGameReadsBackAsAnalyzed(t *testing.T) {
 // This integration is tested manually and in production. A full automated integration
 // test would require setting up: UserStore, GameStore (cache), game entities, and the
 // complete game-ending flow, which is beyond the scope of these focused queue tests.
+
+// TestSeasonOpponentMistakeIndex covers the per-player sum of the opponents'
+// mistake indexes, over the same games the player's own average counts.
+func TestSeasonOpponentMistakeIndex(t *testing.T) {
+	is := is.New(t)
+	ctx := context.Background()
+
+	pool, queries := setupTestDB(t)
+	defer pool.Close()
+
+	createTestUsers(t, pool)
+	leagueID, seasonID, divisionID := createMinimalLeague(t, ctx, queries)
+
+	now := time.Now()
+	gameA := insertLeagueGame(t, ctx, pool, leagueID, seasonID, divisionID, now.Add(-3*time.Hour), 400, 380)
+	gameB := insertLeagueGame(t, ctx, pool, leagueID, seasonID, divisionID, now.Add(-2*time.Hour), 450, 300)
+	// Never analyzed: must not count.
+	insertLeagueGame(t, ctx, pool, leagueID, seasonID, divisionID, now.Add(-time.Hour), 350, 390)
+
+	completeAnalysis(t, ctx, queries, gameA, analysisResult(3.0, 4.0))
+	completeAnalysis(t, ctx, queries, gameB, analysisResult(1.5, 2.5))
+	// A newer job for the same game replaces the older one.
+	completeAnalysis(t, ctx, queries, gameB, analysisResult(2.0, 2.0))
+
+	rows, err := queries.GetSeasonOpponentMistakeIndex(ctx, seasonID)
+	is.NoErr(err)
+	got := map[int32]models.GetSeasonOpponentMistakeIndexRow{}
+	for _, r := range rows {
+		got[r.UserID] = r
+	}
+	is.Equal(len(got), 2)
+	// Player 1's opponent scored 4.0 and 2.0; player 2's opponent 3.0 and 2.0.
+	is.Equal(got[1].N, int32(2))
+	is.Equal(got[1].Total, 6.0)
+	is.Equal(got[2].N, int32(2))
+	is.Equal(got[2].Total, 5.0)
+
+	// Another season's games stay out.
+	rows, err = queries.GetSeasonOpponentMistakeIndex(ctx, uuid.New())
+	is.NoErr(err)
+	is.Equal(len(rows), 0)
+}

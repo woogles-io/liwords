@@ -309,6 +309,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
     totalOpponentTilesPlayed: standing.totalOpponentTilesPlayed,
     placementStatus: standing.placementStatus,
     avgMistakeIndex: standing.avgMistakeIndex,
+    avgOpponentMistakeIndex: standing.avgOpponentMistakeIndex,
     gamesAnalyzed: standing.gamesAnalyzed,
   }));
 
@@ -361,6 +362,9 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
   // Hide sort icons while keeping sort functionality
   const noSortIcon = () => null;
 
+  const hasOpponentMistakeIndex = division.standings.some(
+    (s) => s.avgOpponentMistakeIndex !== undefined,
+  );
   const columns = [
     {
       title: <ColHeader title="#" tooltip="Rank in division" />,
@@ -631,6 +635,36 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
         record: { avgMistakeIndex: number; gamesAnalyzed: number },
       ) => (record.gamesAnalyzed > 0 ? record.avgMistakeIndex.toFixed(1) : "-"),
     },
+    // A server that predates OMiAV sends none at all: leave the column out.
+    ...(hasOpponentMistakeIndex
+      ? [
+          {
+            title: (
+              <ColHeader
+                title={isMiaow ? "OMiaow" : "OMiAV"}
+                tooltip="Average opponent Mistake Index, over the same analyzed games (higher means opponents erred more; - if no analysis)"
+              />
+            ),
+            key: "avgOpponentMistakeIndex",
+            width: 50,
+            sorter: (a: StandingRecord, b: StandingRecord) => {
+              // Players with no analysis sort to the bottom
+              const x = a.avgOpponentMistakeIndex;
+              const y = b.avgOpponentMistakeIndex;
+              if (x === undefined && y === undefined) return 0;
+              if (x === undefined) return 1;
+              if (y === undefined) return -1;
+              return x - y;
+            },
+            sortDirections: ["ascend", "descend"] as SortOrder[],
+            sortIcon: noSortIcon,
+            render: (
+              _: unknown,
+              record: { avgOpponentMistakeIndex?: number },
+            ) => record.avgOpponentMistakeIndex?.toFixed(1) ?? "-",
+          },
+        ]
+      : []),
     {
       title: (
         <ColHeader

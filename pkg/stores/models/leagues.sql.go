@@ -1923,6 +1923,61 @@ func (q *Queries) GetSeasonChampion(ctx context.Context, seasonID uuid.UUID) (Ge
 	return i, err
 }
 
+const getSeasonOpponentMistakeIndex = `-- name: GetSeasonOpponentMistakeIndex :many
+WITH latest AS (
+    SELECT DISTINCT ON (aj.game_id)
+        g.player0_id,
+        g.player1_id,
+        aj.player0_mistake_index AS mi0,
+        aj.player1_mistake_index AS mi1
+    FROM analysis_jobs aj
+    JOIN games g ON g.uuid = aj.game_id
+    WHERE g.season_id = $1::uuid
+      AND aj.player0_mistake_index IS NOT NULL
+      AND aj.player1_mistake_index IS NOT NULL
+    ORDER BY aj.game_id, aj.created_at DESC
+),
+per_player AS (
+    SELECT player0_id AS user_id, mi1 AS opponent_mi FROM latest WHERE player0_id IS NOT NULL
+    UNION ALL
+    SELECT player1_id AS user_id, mi0 AS opponent_mi FROM latest WHERE player1_id IS NOT NULL
+)
+SELECT user_id::INT AS user_id, SUM(opponent_mi)::FLOAT8 AS total, COUNT(*)::INT AS n
+FROM per_player
+GROUP BY user_id
+`
+
+type GetSeasonOpponentMistakeIndexRow struct {
+	UserID int32
+	Total  float64
+	N      int32
+}
+
+// Sums, per player, the mistake index their opponents scored in the season's
+// analyzed games. It counts the same games as RefreshDivisionMistakeIndex
+// (each game once, its newest job with both players' indexes), so dividing
+// by n gives the average opponent mistake index over the player's analyzed
+// games.
+func (q *Queries) GetSeasonOpponentMistakeIndex(ctx context.Context, seasonID uuid.UUID) ([]GetSeasonOpponentMistakeIndexRow, error) {
+	rows, err := q.db.Query(ctx, getSeasonOpponentMistakeIndex, seasonID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetSeasonOpponentMistakeIndexRow
+	for rows.Next() {
+		var i GetSeasonOpponentMistakeIndexRow
+		if err := rows.Scan(&i.UserID, &i.Total, &i.N); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getSeasonPlayersWithUnstartedGames = `-- name: GetSeasonPlayersWithUnstartedGames :many
 SELECT
     u.uuid as user_uuid,

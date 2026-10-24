@@ -84,6 +84,7 @@ type Store interface {
 	GetDivisionGameResults(ctx context.Context, divisionID uuid.UUID) ([]models.GetDivisionGameResultsRow, error)
 	GetDivisionGamesWithStats(ctx context.Context, divisionID uuid.UUID) ([]models.GetDivisionGamesWithStatsRow, error)
 	RefreshDivisionMistakeIndex(ctx context.Context, divisionID uuid.UUID) error
+	GetSeasonOpponentMistakeIndex(ctx context.Context, seasonID uuid.UUID) ([]models.GetSeasonOpponentMistakeIndexRow, error)
 	GetUnfinishedLeagueGames(ctx context.Context, seasonID uuid.UUID) ([]models.GetUnfinishedLeagueGamesRow, error)
 	GetUnfinishedDivisionGames(ctx context.Context, divisionID uuid.UUID) ([]models.GetUnfinishedDivisionGamesRow, error)
 	ForceFinishGame(ctx context.Context, arg models.ForceFinishGameParams) error
@@ -431,6 +432,10 @@ func (s *DBStore) GetDivisionGamesWithStats(ctx context.Context, divisionID uuid
 
 func (s *DBStore) RefreshDivisionMistakeIndex(ctx context.Context, divisionID uuid.UUID) error {
 	return s.queries.RefreshDivisionMistakeIndex(ctx, divisionID)
+}
+
+func (s *DBStore) GetSeasonOpponentMistakeIndex(ctx context.Context, seasonID uuid.UUID) ([]models.GetSeasonOpponentMistakeIndexRow, error) {
+	return s.queries.GetSeasonOpponentMistakeIndex(ctx, seasonID)
 }
 
 func (s *DBStore) GetUnfinishedLeagueGames(ctx context.Context, seasonID uuid.UUID) ([]models.GetUnfinishedLeagueGamesRow, error) {
