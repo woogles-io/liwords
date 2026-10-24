@@ -391,13 +391,8 @@ it("works out a live game's tile progress", () => {
     opponentTilesPlayed: 33,
     tilesUnplayed: 37,
   });
-  // 63 of 100 on the board; this player's 30 of the 67 the opponent has not
-  // played.
-  expect(tileProgress(live)).toEqual({
-    onBoard: 63,
-    total: 100,
-    share: 30 / 67,
-  });
+  // 63 of 100 on the board, 37 left.
+  expect(tileProgress(live)).toEqual({ onBoard: 63, total: 100, left: 37 });
   expect(tileProgress({ ...live, result: "win" })).toBeNull();
   expect(tileProgress(mkRow({ result: "turn" }))).toBeNull();
   expect(
@@ -443,7 +438,7 @@ it("shows the opponent's mistakes and a live game's tiles", () => {
   expect(headers.some((h) => h.includes("Tiles"))).toBe(true);
   const text = screen.getByRole("table").textContent ?? "";
   expect(text).toContain("1.3"); // 1.25 to one place
-  expect(text).toContain("63/100 (45%)");
+  expect(text).toContain("37 left");
 });
 
 it("hides the Tiles column when no live game has tile counts", () => {

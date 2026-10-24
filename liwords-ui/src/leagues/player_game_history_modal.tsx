@@ -90,21 +90,16 @@ export type GameRow = {
 const isLive = (record: { result: string }): boolean =>
   record.result === "turn" || record.result === "in_progress";
 
-// A live game's progress: the tiles on the board out of the game's total, and
-// this player's share of the tiles the opponent has not played (theirs on the
-// board plus those still unplayed). Null when no tile counts came back.
+// A live game's progress: the tiles on the board out of the game's total,
+// and the tiles left (bag and both racks). Null when no tile counts came
+// back.
 export const tileProgress = (
   record: GameRow,
-): { onBoard: number; total: number; share: number } | null => {
+): { onBoard: number; total: number; left: number } | null => {
   const onBoard = record.playerTilesPlayed + record.opponentTilesPlayed;
   const total = onBoard + record.tilesUnplayed;
   if (!isLive(record) || total === 0) return null;
-  const open = record.playerTilesPlayed + record.tilesUnplayed;
-  return {
-    onBoard,
-    total,
-    share: open > 0 ? record.playerTilesPlayed / open : 0,
-  };
+  return { onBoard, total, left: record.tilesUnplayed };
 };
 
 // Sort rank for the Result column: live games first (they are the actionable
@@ -315,7 +310,7 @@ export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
   };
   const tilesColumn: TableColumnsType<GameRow>[number] = {
     title: (
-      <Tooltip title="Tiles on the board out of the game's total, and in brackets this player's tiles as a share of theirs plus all tiles not yet played.">
+      <Tooltip title="Tiles left in a live game: in the bag and on both racks.">
         <span style={{ cursor: "help" }}>Tiles</span>
       </Tooltip>
     ),
@@ -328,12 +323,9 @@ export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
       }
       return (
         <Tooltip
-          title={`${username} ${record.playerTilesPlayed}, ${record.opponentUsername} ${record.opponentTilesPlayed}, not yet played ${record.tilesUnplayed}`}
+          title={`${progress.onBoard}/${progress.total} on the board: ${username} ${record.playerTilesPlayed}, ${record.opponentUsername} ${record.opponentTilesPlayed}`}
         >
-          <span style={{ whiteSpace: "nowrap" }}>
-            {progress.onBoard}/{progress.total} (
-            {Math.round(progress.share * 100)}%)
-          </span>
+          <span style={{ whiteSpace: "nowrap" }}>{progress.left} left</span>
         </Tooltip>
       );
     },
