@@ -2532,18 +2532,13 @@ func (ls *LeagueService) CancelPlayerResults(
 
 	gamesForfeited := int32(0)
 	for _, gameRow := range ongoingGames {
-		gameEntity, err := ls.stores.GameStore.Get(ctx, gameRow.GameID.String)
-		if err != nil {
-			return nil, apiserver.InternalErr(fmt.Errorf("failed to load game %s: %w", gameRow.GameID.String, err))
-		}
-
 		// Determine which player index is the cheater
 		loserIdx := 0
 		if gameRow.Player1ID.Int32 == cheaterDBID {
 			loserIdx = 1
 		}
 
-		if err := gameplay.ForfeitGame(ctx, gameEntity, loserIdx, ls.stores); err != nil {
+		if err := gameplay.ForfeitGame(ctx, gameRow.GameID.String, loserIdx, ls.stores); err != nil {
 			return nil, apiserver.InternalErr(fmt.Errorf("failed to forfeit game %s: %w", gameRow.GameID.String, err))
 		}
 		gamesForfeited++
