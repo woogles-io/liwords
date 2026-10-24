@@ -88,6 +88,77 @@ export const sortRows = (
       Number(b.lastTimestamp - a.lastTimestamp),
   );
 
+// One table row: a channel, or a game's players' and viewers' chats together
+// (each expires on its own, so either may be missing).
+export type ReviewRow = { key: string; parts: Array<ChatChannelSummary> };
+
+const gameChannel = /^chat\.(game|gametv)\.(.+)$/;
+
+export const groupRows = (
+  rows: Array<ChatChannelSummary>,
+): Array<ReviewRow> => {
+  const out: Array<ReviewRow> = [];
+  const games = new Map<string, ReviewRow>();
+  for (const r of rows) {
+    const m = gameChannel.exec(r.channel);
+    if (!m) {
+      out.push({ key: r.channel, parts: [r] });
+      continue;
+    }
+    let g = games.get(m[2]);
+    if (!g) {
+      g = { key: `game:${m[2]}`, parts: [] };
+      games.set(m[2], g);
+      out.push(g);
+    }
+    // players first, then viewers.
+    if (m[1] === "game") g.parts.unshift(r);
+    else g.parts.push(r);
+  }
+  return out;
+};
+
+const latest = (r: ReviewRow, f: (s: ChatChannelSummary) => bigint): bigint =>
+  r.parts.reduce((t, s) => (f(s) > t ? f(s) : t), BigInt(0));
+
+// Like sortRows, a game going by the later of its two chats.
+export const sortGroups = (
+  rows: Array<ReviewRow>,
+  byUser: boolean,
+): Array<ReviewRow> =>
+  [...rows].sort(
+    (a, b) =>
+      (byUser
+        ? Number(
+            latest(b, (s) => s.userLastTimestamp) -
+              latest(a, (s) => s.userLastTimestamp),
+          )
+        : 0) ||
+      Number(
+        latest(b, (s) => s.lastTimestamp) - latest(a, (s) => s.lastTimestamp),
+      ),
+  );
+
+const partKind = (s: ChatChannelSummary): string =>
+  s.channel.startsWith("chat.gametv.") ? "viewers" : "players";
+
+// One line per chat of the row, named when a game has both.
+const PerPart = (props: {
+  r: ReviewRow;
+  render: (s: ChatChannelSummary) => React.ReactNode;
+}) => (
+  <React.Fragment>
+    {props.r.parts.map((s) => (
+      <div key={s.channel}>
+        {props.r.parts.length > 1 && (
+          <Typography.Text type="secondary">{partKind(s)}: </Typography.Text>
+        )}
+        {props.render(s)}
+      </div>
+    ))}
+  </React.Fragment>
+);
+
 const download = (filename: string, body: string, type: string) => {
   const url = window.URL.createObjectURL(new Blob([body], { type }));
   const a = document.createElement("a");
@@ -113,10 +184,15 @@ const Name = (props: { username: string; userId: string }) =>
 
 // What the channel is (a game's players, a private chat's two users, a league
 // or club), linked to where it lives, with the raw channel name beneath.
-const ChannelCell = (props: { r: ChatChannelSummary }) => {
-  const ctx = props.r.context;
-  const isPM = props.r.channel.startsWith("chat.pm.") && !!ctx?.parties.length;
-  const label = ctx?.label || props.r.channel;
+const ChannelCell = (props: { row: ReviewRow }) => {
+  const r = props.row.parts[0];
+  const ctx = r.context;
+  const isPM = r.channel.startsWith("chat.pm.") && !!ctx?.parties.length;
+  // a game with both chats is named for its players.
+  const label =
+    (props.row.parts.length > 1
+      ? ctx?.label.replace(/ \(viewers\)$/, "")
+      : ctx?.label) || r.channel;
   return (
     <React.Fragment>
       {isPM ? (
@@ -137,12 +213,16 @@ const ChannelCell = (props: { r: ChatChannelSummary }) => {
       ) : (
         label
       )}
-      {props.r.userPlayed && <Tag className="chat-review-played">played</Tag>}
-      <div>
-        <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-          {props.r.channel}
-        </Typography.Text>
-      </div>
+      {props.row.parts.some((s) => s.userPlayed) && (
+        <Tag className="chat-review-played">played</Tag>
+      )}
+      {props.row.parts.map((s) => (
+        <div key={s.channel}>
+          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+            {s.channel}
+          </Typography.Text>
+        </div>
+      ))}
     </React.Fragment>
   );
 };
@@ -303,6 +383,7 @@ export const ChatReview = () => {
   };
 
   const sorted = sortRows(rows, !!searchedUser);
+  const grouped = sortGroups(groupRows(rows), !!searchedUser);
 
   return (
     <div className="chat-review">
@@ -355,7 +436,7 @@ export const ChatReview = () => {
       <Space wrap style={{ marginBottom: 8 }}>
         <span>
           {searching
-            ? `Searching... ${rows.length} found so far`
+            ? `Searching... ${rows.length} channels found so far`
             : `${rows.length} channel${rows.length === 1 ? "" : "s"}${
                 rows.length > 0 && !complete ? " (search stopped early)" : ""
               }`}
@@ -370,33 +451,44 @@ export const ChatReview = () => {
         </Button>
       </Space>
       <Table
-        dataSource={sorted}
-        rowKey="channel"
+        dataSource={grouped}
+        rowKey="key"
         size="small"
         pagination={{ pageSize: 50 }}
         expandable={{
-          expandedRowRender: (r) => <ChannelChats channel={r.channel} />,
+          expandedRowRender: (r) => (
+            <React.Fragment>
+              {r.parts.map((s) => (
+                <div key={s.channel} style={{ marginBottom: 12 }}>
+                  {r.parts.length > 1 && <h4>{partKind(s)}' chat</h4>}
+                  <ChannelChats channel={s.channel} />
+                </div>
+              ))}
+            </React.Fragment>
+          ),
         }}
         columns={[
           {
             title: "Channel",
             key: "channel",
-            render: (_, r) => <ChannelCell r={r} />,
+            render: (_, r) => <ChannelCell row={r} />,
           },
           ...(searchedUser
             ? [
                 {
                   title: `${searchedUser} last wrote (UTC)`,
                   key: "userLast",
-                  render: (_: unknown, r: ChatChannelSummary) =>
-                    formatTime(r.userLastTimestamp),
+                  render: (_: unknown, r: ReviewRow) =>
+                    formatTime(latest(r, (s) => s.userLastTimestamp)),
                 },
               ]
             : []),
           {
             title: "Msgs",
-            dataIndex: "messageCount",
             key: "messageCount",
+            render: (_, r) => (
+              <PerPart r={r} render={(s) => String(s.messageCount)} />
+            ),
           },
           {
             title: "Who spoke",
@@ -406,34 +498,49 @@ export const ChatReview = () => {
               { text: "2 speakers", value: 2 },
               { text: "3+ speakers", value: 3 },
             ],
-            onFilter: (value, r) =>
-              value === 3 ? r.senders.length >= 3 : r.senders.length === value,
-            render: (_, r) =>
-              r.senders.map((s, i) => (
-                <React.Fragment key={s.userId || s.username}>
-                  {i > 0 && ", "}
-                  <Name username={s.username} userId={s.userId} /> ({s.count})
-                </React.Fragment>
-              )),
+            onFilter: (value, r) => {
+              const n = new Set(
+                r.parts.flatMap((s) =>
+                  s.senders.map((x) => x.userId || x.username),
+                ),
+              ).size;
+              return value === 3 ? n >= 3 : n === value;
+            },
+            render: (_, r) => (
+              <PerPart
+                r={r}
+                render={(s) =>
+                  s.senders.map((x, i) => (
+                    <React.Fragment key={x.userId || x.username}>
+                      {i > 0 && ", "}
+                      <Name username={x.username} userId={x.userId} /> (
+                      {x.count})
+                    </React.Fragment>
+                  ))
+                }
+              />
+            ),
           },
           {
-            title: "First (UTC)",
-            key: "first",
-            render: (_, r) => formatTime(r.firstTimestamp),
-          },
-          {
-            title: "Last (UTC)",
-            key: "last",
-            render: (_, r) => formatTime(r.lastTimestamp),
+            title: "First / last (UTC)",
+            key: "times",
+            render: (_, r) => (
+              <PerPart
+                r={r}
+                render={(s) =>
+                  `${formatTime(s.firstTimestamp)} / ${formatTime(s.lastTimestamp)}`
+                }
+              />
+            ),
           },
           {
             title: "Game created / last updated (UTC)",
             key: "game",
             render: (_, r) =>
-              r.context?.gameCreatedAt ? (
+              r.parts[0].context?.gameCreatedAt ? (
                 <React.Fragment>
-                  <div>{formatTime(r.context.gameCreatedAt)}</div>
-                  <div>{formatTime(r.context.gameUpdatedAt)}</div>
+                  <div>{formatTime(r.parts[0].context.gameCreatedAt)}</div>
+                  <div>{formatTime(r.parts[0].context.gameUpdatedAt)}</div>
                 </React.Fragment>
               ) : null,
           },

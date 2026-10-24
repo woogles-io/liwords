@@ -5,7 +5,9 @@ import { ChatChannelSummarySchema } from "../gen/api/proto/mod_service/mod_servi
 import {
   chatsToCSV,
   formatTime,
+  groupRows,
   mergeRows,
+  sortGroups,
   sortRows,
   summariesToCSV,
 } from "./chat_review";
@@ -65,6 +67,31 @@ describe("chat review", () => {
       "b",
     ]);
     expect(sortRows(rows, true).map((r) => r.channel)).toEqual(["b", "a", "c"]);
+  });
+
+  it("puts a game's players' and viewers' chats in one row", () => {
+    const row = (channel: string, last: number) =>
+      create(ChatChannelSummarySchema, {
+        channel,
+        lastTimestamp: BigInt(last),
+      });
+    const groups = groupRows([
+      row("chat.gametv.g1", 300),
+      row("chat.pm.a_b", 200),
+      row("chat.game.g1", 100),
+      row("chat.gametv.g2", 50),
+    ]);
+    expect(groups.map((g) => [g.key, g.parts.map((p) => p.channel)])).toEqual([
+      ["game:g1", ["chat.game.g1", "chat.gametv.g1"]],
+      ["chat.pm.a_b", ["chat.pm.a_b"]],
+      ["game:g2", ["chat.gametv.g2"]],
+    ]);
+    // a game goes by its later chat.
+    expect(sortGroups(groups, false).map((g) => g.key)).toEqual([
+      "game:g1",
+      "chat.pm.a_b",
+      "game:g2",
+    ]);
   });
 
   it("skips channels already listed", () => {
