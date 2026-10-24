@@ -6,6 +6,7 @@ import { GameEndReason } from "../gen/api/proto/ipc/omgwords_pb";
 import { getDivisionCrosstable } from "../gen/api/proto/league_service/league_service-LeagueService_connectquery";
 import { CrosstableGame } from "../gen/api/proto/league_service/league_service_pb";
 import { UsernameWithContext } from "../shared/usernameWithContext";
+import { trackMenuItem } from "./follow_bar";
 import { endReasonLabel } from "./player_game_history_modal";
 
 const { Text } = Typography;
@@ -185,6 +186,8 @@ export const DivisionCrosstable = (props: {
   // called when the crosstable cannot be loaded, e.g. from a server that
   // does not have it yet, so the page can drop it.
   onError?: () => void;
+  // tracks a player through their seasons, from their name's menu.
+  onTrack?: (userId: string) => void;
 }) => {
   const { data, isLoading, error } = useQuery(
     getDivisionCrosstable,
@@ -243,6 +246,11 @@ export const DivisionCrosstable = (props: {
           userID={row.userId}
           sendMessage={props.onChat}
           omitSendMessage={!props.onChat}
+          extraItems={
+            props.onTrack
+              ? [trackMenuItem(() => props.onTrack?.(row.userId))]
+              : undefined
+          }
         />
       ),
     },
