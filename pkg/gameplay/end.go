@@ -28,8 +28,8 @@ func PerformEndgameDuties(ctx context.Context, g *entity.Game,
 }
 
 // AdjudicateGame finishes a game by adjudication based on current scores.
-// This is used when a league season ends or when players mutually agree to adjudicate.
-// The winner is determined by the current score.
+// This is used when a league season ends. The winner is determined by the
+// current score. It takes the game's lock; see withLockedGame.
 func AdjudicateGame(ctx context.Context, gameID string, stores *stores.Stores) error {
 	return withLockedGame(ctx, stores, gameID, func(g *entity.Game) error {
 		// Set game end reason to ADJUDICATED

@@ -333,6 +333,21 @@ Deviation from the reference: `pkg/gameplay/end.go`,
 `pkg/league/force_finish_games.go`, `pkg/league/service.go`,
 `pkg/bus/gameplay.go` and the new `pkg/gameplay/end_lock_test.go`.
 
+### The lock's deadline covers the whole wait (step 5)
+
+The reference's `LockGame` applies `GameLockMaxWait` only to polling for the
+advisory lock. Waiting for a semaphore slot and for a pool connection used the
+caller's context alone, and a move's context has no deadline, so with every
+slot held by stuck holders each later move would have queued forever rather
+than failing with `ErrGameLockBusy` as the comments promise. Step 5 puts the
+whole wait under one deadline. `TestLockGameGivesUpWaitingForASlot` holds every
+slot and expects `ErrGameLockBusy` within the limit; against the reference's
+`lock.go` it hangs until the test binary times out.
+
+Deviation from the reference: `pkg/stores/game/lock.go`,
+`pkg/stores/game/lock_test.go`, and the SQL comment in `db/queries/game_lock.sql`
+(it described a transaction-scoped lock).
+
 ### Fixes from reviewing xwordgame against macondo (step 2)
 
 On 2026-10-10 xwordgame was compared, area by area, against macondo v0.13.5,
@@ -529,6 +544,10 @@ pkg/league/force_finish_test.go
 pkg/bus/gameplay.go
 pkg/league/force_finish_games.go
 pkg/league/service.go
+pkg/stores/game/lock.go
+pkg/stores/game/lock_test.go
+db/queries/game_lock.sql
+pkg/stores/models/game_lock.sql.go
 pkg/mod/automod.go
 pkg/stores/models/models.go
 db/migrations/202610090003_notoriousgames_unique.up.sql

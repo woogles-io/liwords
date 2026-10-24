@@ -252,3 +252,30 @@ func TestLockGameLeavesConnectionsForWork(t *testing.T) {
 	_, err := store.LockGame(shorter, "burst-overflow")
 	is.True(err != nil)
 }
+
+// The wait for a slot is bounded like the wait for the lock. A move's context
+// has no deadline, so if it were not, stuck holders would leave every later
+// move hanging instead of failing.
+func TestLockGameGivesUpWaitingForASlot(t *testing.T) {
+	is := is.New(t)
+	pool := lockTestPool(t)
+	store := &DBStore{dbPool: pool}
+	ctx := context.Background()
+
+	var locks []*GameLock
+	for i := range cap(store.lockSemaphore()) {
+		l, err := store.LockGame(ctx, fmt.Sprintf("slot-%d", i))
+		is.NoErr(err)
+		locks = append(locks, l)
+	}
+	defer func() {
+		for _, l := range locks {
+			l.Unlock(ctx)
+		}
+	}()
+
+	start := time.Now()
+	_, err := store.LockGame(ctx, "slot-overflow")
+	is.True(errors.Is(err, ErrGameLockBusy))
+	is.True(time.Since(start) < GameLockMaxWait+2*time.Second)
+}

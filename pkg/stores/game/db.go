@@ -1240,8 +1240,8 @@ func (s *DBStore) Set(ctx context.Context, g *entity.Game) error {
 	// different route.
 	//
 	// Serialization between writers is a separate concern and lives a level up:
-	// callers hold the game's session lock across load, move and save. Taking an
-	// advisory lock here as well would deadlock against it -- this transaction
+	// every move path holds the game's session lock across load, move and save.
+	// Taking an advisory lock here as well would deadlock against it -- this transaction
 	// runs on a different pooled connection, so a different session. See lock.go.
 	if err := withGameTx(ctx, s.dbPool, func(ctx context.Context, q *models.Queries) error {
 		if len(pending) > 0 {

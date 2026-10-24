@@ -20,8 +20,11 @@ package game
 // runs while a GameLock is held must NOT take pg_advisory_xact_lock on the same
 // game -- it would run on a different pooled connection and wait for a lock its
 // own caller is holding, which is a deadlock every single time, not a race.
-// That is why Set and CommitArchival use a plain transaction: they are always
-// called underneath one of these.
+// That is why Set and CommitArchival use a plain transaction: every move path
+// calls them underneath one of these. (Not every caller holds one -- saving a
+// game that has just been created, repairing finished games and archiving after
+// an abort have no concurrent mover to exclude -- but they must work for the
+// callers that do.)
 
 import (
 	"context"
@@ -43,11 +46,15 @@ import (
 // process outright: every connection held by a waiter that cannot proceed
 // without one more.
 //
-// The bound is half the pool. At most N/2 connections are held as locks, which
-// leaves at least N/2 for the N/2 holders to run their queries -- one each,
-// which is all a save needs. That is a proof rather than a guess, and it is
-// derived from the pool's own configuration rather than a constant that would
-// drift away from it.
+// The bound is half the pool. At most N/2 connections are held as locks (or by
+// waiters for one, which take their slot first), which leaves at least N/2 for
+// the N/2 holders to run their queries -- one each. That rests on one
+// assumption: a holder never needs two connections at once, i.e. nothing under
+// the lock runs a pool query while it has a transaction open. The move and
+// end-of-game paths do not; keep it that way. Callers that hold no lock never
+// wait on one while holding a connection, so they always finish and give theirs
+// back. The bound is derived from the pool's own configuration rather than a
+// constant that would drift away from it.
 func (s *DBStore) lockSemaphore() chan struct{} {
 	s.lockSlotsOnce.Do(func() {
 		n := 1
@@ -69,8 +76,9 @@ func (s *DBStore) lockSemaphore() chan struct{} {
 var ErrGameLockBusy = errors.New("game: could not acquire the game lock in time")
 
 const (
-	// GameLockMaxWait bounds how long LockGame will keep trying when the
-	// context carries no earlier deadline.
+	// GameLockMaxWait bounds how long LockGame waits in all -- for a slot, a
+	// connection and the lock itself -- when the context carries no earlier
+	// deadline.
 	GameLockMaxWait = 10 * time.Second
 	// The poll interval grows from min to max. Contention on one game is rare
 	// -- it needs two writers on the same game at the same moment -- so the
@@ -114,19 +122,31 @@ func (s *DBStore) LockGame(ctx context.Context, gameID string) (*GameLock, error
 		deadline = d
 	}
 
+	// The deadline covers the whole wait, not only the polling below. A move's
+	// context has no deadline of its own, so without this a few stuck holders
+	// would leave every later move queued on the semaphore indefinitely.
+	waitCtx, cancel := context.WithDeadline(ctx, deadline)
+	defer cancel()
+	busy := func(err error) error {
+		if ctx.Err() == nil && errors.Is(err, context.DeadlineExceeded) {
+			return fmt.Errorf("%w: %s", ErrGameLockBusy, gameID)
+		}
+		return err
+	}
+
 	// Take a slot before a connection, which is the whole point of the bound.
 	slots := s.lockSemaphore()
 	select {
 	case slots <- struct{}{}:
-	case <-ctx.Done():
-		return nil, ctx.Err()
+	case <-waitCtx.Done():
+		return nil, busy(waitCtx.Err())
 	}
 	release := func() { <-slots }
 
-	conn, err := s.dbPool.Acquire(ctx)
+	conn, err := s.dbPool.Acquire(waitCtx)
 	if err != nil {
 		release()
-		return nil, err
+		return nil, busy(err)
 	}
 	q := models.New(conn)
 
@@ -154,10 +174,10 @@ func (s *DBStore) LockGame(ctx context.Context, gameID string) (*GameLock, error
 		// Jittered, so that several waiters do not retry in lockstep.
 		jitter := time.Duration(rand.Int64N(int64(poll / 2)))
 		select {
-		case <-ctx.Done():
+		case <-waitCtx.Done():
 			conn.Release()
 			release()
-			return nil, ctx.Err()
+			return nil, busy(waitCtx.Err())
 		case <-time.After(poll + jitter):
 		}
 		if poll < gameLockMaxPoll {
