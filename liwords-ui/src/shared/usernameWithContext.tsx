@@ -231,6 +231,22 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
       ),
     });
   }
+  // The user's chats in the admin chat review, for mods.
+  if (props.username && hasPermission(permissions, Perm.CanModerateUsers)) {
+    userMenuOptions.push({
+      key: `chatreview-${props.userID}`,
+      label: (
+        <Link
+          to={`/admin?tab=chat-review&username=${encodeURIComponent(
+            props.username,
+          )}`}
+          target="_blank"
+        >
+          Chat review
+        </Link>
+      ),
+    });
+  }
   const { modal } = App.useApp();
   // const userMenu = <ul>{userMenuOptions}</ul>;
   return (
