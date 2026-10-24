@@ -23,7 +23,7 @@ import "../shared/gameLists.scss";
 
 type Props = {
   loggedIn: boolean;
-  newGame: (seekID: string) => void;
+  newGame: (seekID: string, alternatives?: Array<string>) => void;
   declineGame?: (seekID: string) => void;
   userID?: string;
   username?: string;

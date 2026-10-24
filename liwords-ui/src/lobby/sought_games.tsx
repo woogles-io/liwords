@@ -28,7 +28,7 @@ import { ProfileUpdate_Rating } from "../gen/api/proto/ipc/users_pb";
 import { useLobbyStoreContext } from "../store/store";
 import { ActionType } from "../actions/actions";
 import { DisplayUserBadges } from "../profile/badge";
-import { collapseIdenticalSeeks, pickSeek } from "./seek_collapse";
+import { collapseIdenticalSeeks, identicalSeekIDs } from "./seek_collapse";
 import { SeekConfirmModal } from "./seek_confirm_modal";
 import { normalizeVariant, VariantSectionHeader } from "./variant_utils";
 
@@ -89,7 +89,8 @@ export const PlayerDisplay = (props: PlayerProps) => {
 type Props = {
   isMatch?: boolean;
   isClubMatch?: boolean;
-  newGame: (seekID: string) => void;
+  // alternatives: seeks identical to seekID, tried if it is already gone.
+  newGame: (seekID: string, alternatives?: Array<string>) => void;
   declineGame?: (seekID: string) => void;
   userID?: string;
   username?: string;
@@ -200,7 +201,6 @@ export const SoughtGames = (props: Props) => {
     seekID: string;
     soughtGame: SoughtGame; // Keep reference to full object
     count: number; // identical seeks shown as this one row
-    all: Array<SoughtGame>; // those seeks, so accepting can take any one
   };
 
   // Group games by variant
@@ -242,7 +242,7 @@ export const SoughtGames = (props: Props) => {
     const gameData: SoughtGameTableData[] = collapseIdenticalSeeks(
       shown,
       props.username,
-    ).map(({ sg, count, all }): SoughtGameTableData => {
+    ).map(({ sg, count }): SoughtGameTableData => {
       const outgoing = sg.seeker === props.username;
       const getDetails = () => {
         return (
@@ -327,7 +327,6 @@ export const SoughtGames = (props: Props) => {
         lexiconCode: sg.lexicon,
         soughtGame: sg,
         count,
-        all,
       };
     });
     return gameData;
@@ -496,7 +495,7 @@ export const SoughtGames = (props: Props) => {
                 onClick: () => {
                   if (!record.outgoing) {
                     // Show confirmation modal for all incoming game requests
-                    setSelectedSeek(pickSeek(record));
+                    setSelectedSeek(record.soughtGame);
                     setConfirmModalVisible(true);
                   } else if (cancelVisibleSeekID === null) {
                     setCancelVisibleSeekID(record.seekID);
@@ -520,7 +519,10 @@ export const SoughtGames = (props: Props) => {
         seek={selectedSeek}
         onAccept={() => {
           if (selectedSeek) {
-            props.newGame(selectedSeek.seekID);
+            props.newGame(
+              selectedSeek.seekID,
+              identicalSeekIDs(selectedSeek, props.requests),
+            );
           }
           setConfirmModalVisible(false);
           setSelectedSeek(null);

@@ -23,22 +23,23 @@ export const seekKey = (sg: SoughtGame): string =>
     sg.onlyFollowedPlayers,
   ]);
 
-export type SeekGroup = {
-  sg: SoughtGame;
-  count: number;
-  all: Array<SoughtGame>;
+export type SeekGroup = { sg: SoughtGame; count: number };
+
+// The other open seeks identical to this one, sent along with an accept: if
+// the seek is gone by the time the server reads it (someone else took it,
+// or it was canceled), the server takes the first of these still there.
+export const identicalSeekIDs = (
+  sg: SoughtGame,
+  seeks: Array<SoughtGame>,
+): Array<string> => {
+  const key = seekKey(sg);
+  return seeks
+    .filter((o) => o.seekID !== sg.seekID && seekKey(o) === key)
+    .map((o) => o.seekID);
 };
 
-// One seek of a group, at random: two players accepting the same row at
-// once then rarely reach for the same seek (the server lets only one of
-// them have any one seek).
-export const pickSeek = (
-  g: Pick<SeekGroup, "all">,
-  rand: () => number = Math.random,
-): SoughtGame => g.all[Math.floor(rand() * g.all.length)];
-
 // Someone else's identical open correspondence seeks are shown once, with a
-// count; all keeps every seek of the group, so accepting can take any one. Match requests, real-time seeks
+// count. Match requests, real-time seeks
 // and the viewer's own seeks (each of which they may want to cancel) are
 // left as they are. Order is kept, each group where its first seek was.
 export const collapseIdenticalSeeks = (
@@ -53,17 +54,16 @@ export const collapseIdenticalSeeks = (
       sg.receiverIsPermanent ||
       sg.seeker === username
     ) {
-      out.push({ sg, count: 1, all: [sg] });
+      out.push({ sg, count: 1 });
       continue;
     }
     const key = seekKey(sg);
     const g = groups.get(key);
     if (g) {
       g.count++;
-      g.all.push(sg);
       continue;
     }
-    const entry = { sg, count: 1, all: [sg] };
+    const entry = { sg, count: 1 };
     groups.set(key, entry);
     out.push(entry);
   }

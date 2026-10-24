@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { GameMode } from "../gen/api/proto/ipc/omgwords_pb";
 import { SoughtGame } from "../store/reducers/lobby_reducer";
-import { collapseIdenticalSeeks, pickSeek } from "./seek_collapse";
+import { collapseIdenticalSeeks, identicalSeekIDs } from "./seek_collapse";
 
 const seek = (over: Partial<SoughtGame>): SoughtGame =>
   ({
@@ -92,15 +92,20 @@ describe("collapseIdenticalSeeks", () => {
   });
 });
 
-describe("pickSeek", () => {
-  it("can take any seek of a group", () => {
-    const group = collapseIdenticalSeeks([
+describe("identicalSeekIDs", () => {
+  it("lists the other open seeks identical to one", () => {
+    const seeks = [
       seek({ seekID: "a" }),
-      seek({ seekID: "b" }),
+      seek({ seekID: "b", lexicon: "NWL23" }),
       seek({ seekID: "c" }),
-    ])[0];
-    expect(pickSeek(group, () => 0).seekID).toBe("a");
-    expect(pickSeek(group, () => 0.5).seekID).toBe("b");
-    expect(pickSeek(group, () => 0.99).seekID).toBe("c");
+      seek({ seekID: "d" }),
+    ];
+    expect(identicalSeekIDs(seeks[0], seeks)).toEqual(["c", "d"]);
+    // a seek no longer listed still finds its twins.
+    expect(identicalSeekIDs(seek({ seekID: "gone" }), seeks)).toEqual([
+      "a",
+      "c",
+      "d",
+    ]);
   });
 });

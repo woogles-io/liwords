@@ -51,7 +51,13 @@ message SeekRequest {
 // A SoughtGameProcessEvent gets sent when a match request (or seek request)
 // get accepted (from client to server), or canceled -- when sent from server to
 // client.
-message SoughtGameProcessEvent { string request_id = 1; }
+message SoughtGameProcessEvent {
+  string request_id = 1;
+  // alternatives are seeks the accepting client saw as identical to
+  // request_id (same seeker and settings), tried in order if it is already
+  // gone, so accepting one of several identical seeks still finds a game.
+  repeated string alternatives = 2;
+}
 
 // SeekRequests sends all open seek requests.
 message SeekRequests { repeated SeekRequest requests = 1; }

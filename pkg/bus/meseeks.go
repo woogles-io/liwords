@@ -497,9 +497,31 @@ func (b *Bus) sendSoughtGameDeletion(ctx context.Context, sg *entity.SoughtGame)
 	return b.broadcastSeekDeletion(sg)
 }
 
+// maxSeekAlternatives bounds the seeks one accept may try.
+const maxSeekAlternatives = 50
+
+// gameAccepted accepts the seek, or, if it is already gone, the first of the
+// alternatives (seeks the client saw as identical to it) still there.
 func (b *Bus) gameAccepted(ctx context.Context, evt *pb.SoughtGameProcessEvent,
 	userID, connID string) error {
-	sg, err := b.stores.SoughtGameStore.Get(ctx, evt.RequestId)
+	// Each one is checked like a seek accepted directly, so an alternative
+	// gets no one past a rating range, a block or a followed-only seek.
+	alternatives := evt.Alternatives
+	if len(alternatives) > maxSeekAlternatives {
+		alternatives = alternatives[:maxSeekAlternatives]
+	}
+	var err error
+	for _, id := range append([]string{evt.RequestId}, alternatives...) {
+		err = b.acceptSeek(ctx, id, userID, connID)
+		if !entity.IsSeekGone(err) {
+			return err
+		}
+	}
+	return err
+}
+
+func (b *Bus) acceptSeek(ctx context.Context, requestID, userID, connID string) error {
+	sg, err := b.stores.SoughtGameStore.Get(ctx, requestID)
 	if err != nil {
 		return err
 	}
@@ -514,7 +536,7 @@ func (b *Bus) gameAccepted(ctx context.Context, evt *pb.SoughtGameProcessEvent,
 
 	if requester == userID {
 		log.Info().Str("sender", requester).Msg("canceling seek")
-		err := gameplay.CancelSoughtGame(ctx, b.stores.SoughtGameStore, evt.RequestId)
+		err := gameplay.CancelSoughtGame(ctx, b.stores.SoughtGameStore, requestID)
 		if err != nil {
 			return err
 		}
@@ -613,12 +635,10 @@ func (b *Bus) gameAccepted(ctx context.Context, evt *pb.SoughtGameProcessEvent,
 	// the seeker's other real-time seeks with it: of two accepted at the same
 	// moment, the second finds its seek gone, and the seeker does not end up
 	// in a game they were never sent to.
-	_, others, err := b.stores.SoughtGameStore.Claim(ctx, evt.RequestId)
+	_, others, err := b.stores.SoughtGameStore.Claim(ctx, requestID)
 	if errors.Is(err, entity.ErrSeekGone) {
-		b.pubToConnectionID(connID, userID, entity.WrapEvent(&pb.ErrorMessage{
-			Message: err.Error(),
-		}, pb.MessageType_ERROR_MESSAGE))
-		return nil
+		// told like a seek that was gone when it was read.
+		return entity.NewWooglesError(pb.WooglesError_GAME_NO_LONGER_AVAILABLE)
 	} else if err != nil {
 		return err
 	}
@@ -657,7 +677,7 @@ func (b *Bus) gameAccepted(ctx context.Context, evt *pb.SoughtGameProcessEvent,
 		}
 	}
 
-	return b.instantiateAndStartGame(ctx, accUser, requester, gameReq, sg, evt.RequestId, connID)
+	return b.instantiateAndStartGame(ctx, accUser, requester, gameReq, sg, requestID, connID)
 }
 
 // Return 0 if reqUser blocks accUser, 1 if accUser blocks reqUser, and -1 if neither blocks
