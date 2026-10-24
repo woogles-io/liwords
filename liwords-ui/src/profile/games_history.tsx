@@ -12,6 +12,7 @@ import { GameEndReason } from "../gen/api/proto/ipc/omgwords_pb";
 import { ChallengeRule } from "../gen/api/proto/vendored/macondo/macondo_pb";
 import { lexiconCodeToProfileRatingName } from "../shared/lexica";
 import { useLocalStorageBool } from "../utils/use_local_storage";
+import { ABSOLUTE_TIMES_KEY } from "./history_prefs";
 import { timestampDate } from "@bufbuild/protobuf/wkt";
 
 type Props = {
@@ -27,8 +28,6 @@ type Props = {
   desiredPageSize: number;
   onChangePageNumber: (value: number | string | null) => void;
 };
-
-const ABSOLUTE_TIMES_KEY = "gameHistoryAbsoluteTimes";
 
 export const GamesHistoryCard = React.memo((props: Props) => {
   const {
