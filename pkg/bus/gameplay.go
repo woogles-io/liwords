@@ -243,6 +243,15 @@ func (b *Bus) readyForGame(ctx context.Context, evt *pb.ReadyForGame, userID str
 	if g.Playing() == macondopb.PlayState_GAME_OVER {
 		return errors.New("game is over")
 	}
+	// The client sends this every time a player opens the game room, not only
+	// before the start. Once the game has started there is nothing to do, and
+	// going on would try to start it again: a bot game on every page load, and
+	// a correspondence game (started without the ready step) the first time
+	// both players have opened it.
+	if g.Started {
+		log.Debug().Str("gameID", evt.GameId).Msg("ready-for-started-game")
+		return nil
+	}
 
 	var readyID int
 
@@ -269,7 +278,6 @@ func (b *Bus) readyForGame(ctx context.Context, evt *pb.ReadyForGame, userID str
 		if err != nil {
 			log.Err(err).Msg("starting-game")
 		} else {
-			// Note: for PlayerVsBot, readyForGame is called twice when player is ready and every time player refreshes, why? :-(
 			g.SendChange(g.NewActiveGameEntry(true))
 		}
 
