@@ -1615,14 +1615,7 @@ func (s *DBStore) ListActiveCorrespondence(ctx context.Context) (*pb.GameInfoRes
 		if g.LeagueID.Valid {
 			leagueUUID := uuid.UUID(g.LeagueID.Bytes)
 			info.LeagueId = leagueUUID.String()
-
-			// Fetch league slug from database
-			league, err := s.queries.GetLeagueByUUID(ctx, leagueUUID)
-			if err == nil {
-				info.LeagueSlug = league.Slug
-			} else {
-				log.Warn().Err(err).Str("league_id", leagueUUID.String()).Msg("failed to fetch league slug")
-			}
+			info.LeagueSlug = g.LeagueSlug
 		}
 
 		responses = append(responses, info)
@@ -1700,14 +1693,7 @@ func (s *DBStore) ListActiveCorrespondenceForUser(ctx context.Context, userID st
 		if g.LeagueID.Valid {
 			leagueUUID := uuid.UUID(g.LeagueID.Bytes)
 			info.LeagueId = leagueUUID.String()
-
-			// Fetch league slug from database
-			league, err := s.queries.GetLeagueByUUID(ctx, leagueUUID)
-			if err == nil {
-				info.LeagueSlug = league.Slug
-			} else {
-				log.Warn().Err(err).Str("league_id", leagueUUID.String()).Msg("failed to fetch league slug")
-			}
+			info.LeagueSlug = g.LeagueSlug
 		}
 
 		responses = append(responses, info)
