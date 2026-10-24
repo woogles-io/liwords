@@ -127,7 +127,7 @@ message DivisionRequest { string division_id = 1; }
 
 message DivisionStandingsResponse { ipc.Division division = 1; }
 
-// One game of a division, for the crosstable. Scores are final once the game
+// One game of a division, for the cross-table. Scores are final once the game
 // has ended, and the running scores while it is in progress.
 message CrosstableGame {
   string game_id = 1;
