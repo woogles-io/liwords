@@ -558,9 +558,11 @@ WITH recent_game_uuids AS (
 SELECT g.id, g.uuid, g.type, g.player0_id, g.player1_id,
        g.timers, g.started, g.game_end_reason, g.winner_idx, g.loser_idx,
        g.quickdata, g.tournament_data, g.created_at, g.updated_at,
-       g.game_request, g.league_id, g.season_id, g.league_division_id
+       g.game_request, g.league_id, g.season_id, g.league_division_id,
+       COALESCE(l.slug, '')::text AS league_slug
 FROM recent_game_uuids rgu
 JOIN games g ON rgu.game_uuid = g.uuid
+LEFT JOIN leagues l ON l.uuid = g.league_id
 ORDER BY rgu.updated_at DESC
 `
 
@@ -589,6 +591,7 @@ type GetRecentGamesByUserIdRow struct {
 	LeagueID         pgtype.UUID
 	SeasonID         pgtype.UUID
 	LeagueDivisionID pgtype.UUID
+	LeagueSlug       string
 }
 
 func (q *Queries) GetRecentGamesByUserId(ctx context.Context, arg GetRecentGamesByUserIdParams) ([]GetRecentGamesByUserIdRow, error) {
@@ -619,6 +622,7 @@ func (q *Queries) GetRecentGamesByUserId(ctx context.Context, arg GetRecentGames
 			&i.LeagueID,
 			&i.SeasonID,
 			&i.LeagueDivisionID,
+			&i.LeagueSlug,
 		); err != nil {
 			return nil, err
 		}
