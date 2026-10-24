@@ -375,7 +375,7 @@ export const DivisionStandingsResponseSchema: GenMessage<DivisionStandingsRespon
   messageDesc(file_proto_league_service_league_service, 16);
 
 /**
- * One game of a division, for the crosstable. Scores are final once the game
+ * One game of a division, for the cross-table. Scores are final once the game
  * has ended, and the running scores while it is in progress.
  *
  * @generated from message league_service.CrosstableGame

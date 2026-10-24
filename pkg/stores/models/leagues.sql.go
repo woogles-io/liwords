@@ -435,7 +435,7 @@ type GetDivisionCrosstableGamesRow struct {
 
 // Exclude CANCELLED
 // Every game of a division that is in progress or finished (not aborted or
-// canceled), for the crosstable. Finished games take their scores from
+// canceled), for the cross-table. Finished games take their scores from
 // game_players; games in progress carry their history for the running score.
 func (q *Queries) GetDivisionCrosstableGames(ctx context.Context, divisionID uuid.UUID) ([]GetDivisionCrosstableGamesRow, error) {
 	rows, err := q.db.Query(ctx, getDivisionCrosstableGames, divisionID)

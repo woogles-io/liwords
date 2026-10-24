@@ -639,7 +639,7 @@ WHERE g.league_division_id = $1
 
 -- name: GetDivisionCrosstableGames :many
 -- Every game of a division that is in progress or finished (not aborted or
--- canceled), for the crosstable. Finished games take their scores from
+-- canceled), for the cross-table. Finished games take their scores from
 -- game_players; games in progress carry their history for the running score.
 SELECT
     g.uuid AS game_uuid,

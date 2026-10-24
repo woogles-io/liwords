@@ -265,7 +265,7 @@ const PIN_TOTALS_WIDTH = 480;
 export const DivisionCrosstable = (props: {
   division: Division;
   onChat?: (uuid: string, username: string) => void;
-  // called when the crosstable cannot be loaded, e.g. from a server that
+  // called when the cross-table cannot be loaded, e.g. from a server that
   // does not have it yet, so the page can drop it.
   onError?: () => void;
   // tracks a player through their seasons, from their name's menu.
