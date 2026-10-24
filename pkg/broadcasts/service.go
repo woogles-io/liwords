@@ -30,11 +30,16 @@ import (
 
 const feedCacheTTL = 30 * time.Minute
 
+// feedFailureTTL is how long a failed feed fetch is remembered, so a dead or
+// misconfigured URL isn't refetched on every request that touches the cache.
+const feedFailureTTL = 5 * time.Minute
+
 // feedCacheEntry holds all divisions for a single broadcast URL fetch.
 // One HTTP request populates all divisions at once.
 type feedCacheEntry struct {
 	divisions map[string]*FeedData // division name → FeedData (e.g. "A", "B")
 	expiresAt time.Time
+	failed    bool // the last fetch failed; treated as a miss until expiresAt
 }
 
 // slugRoundDivKey is the cache key for GetBroadcastGames.
@@ -1406,7 +1411,9 @@ func (bs *BroadcastService) GetActiveBroadcasts(ctx context.Context, req *connec
 			row.Lexicon, row.BoardLayout, row.LetterDistribution, row.ChallengeRule,
 			row.Active, row.CreatedAt, row.CreatorUsername,
 		)
-		if entry := bs.getCachedEntry(row.Slug, row.BroadcastUrl, row.BroadcastUrlFormat); entry != nil {
+		// Cache only: fetching here would hit every feed URL serially. The
+		// poller keeps active broadcasts warm.
+		if entry := bs.peekCachedEntry(row.Slug); entry != nil {
 			// Use first division's current round for the broadcast list.
 			div := firstDivision(entry)
 			if fd := entry.divisions[div]; fd != nil {
@@ -1436,7 +1443,9 @@ func (bs *BroadcastService) GetAllBroadcasts(ctx context.Context, req *connect.R
 			row.Lexicon, row.BoardLayout, row.LetterDistribution, row.ChallengeRule,
 			row.Active, row.CreatedAt, row.CreatorUsername,
 		)
-		if entry := bs.getCachedEntry(row.Slug, row.BroadcastUrl, row.BroadcastUrlFormat); entry != nil {
+		// Cache only: fetching here would hit every feed URL serially. The
+		// poller keeps active broadcasts warm.
+		if entry := bs.peekCachedEntry(row.Slug); entry != nil {
 			div := firstDivision(entry)
 			if fd := entry.divisions[div]; fd != nil {
 				b.CurrentRound = int32(fd.CurrentRound)
@@ -1589,17 +1598,38 @@ func (bs *BroadcastService) fetchAndCacheAllDivisions(slug, broadcastURL, format
 	return divs, nil
 }
 
+// peekCachedEntry returns the cache entry for a slug without fetching, or nil
+// if there is no fresh, successful entry.
+func (bs *BroadcastService) peekCachedEntry(slug string) *feedCacheEntry {
+	bs.feedCacheMu.RLock()
+	entry, ok := bs.feedCache[slug]
+	bs.feedCacheMu.RUnlock()
+	if !ok || entry.failed || !time.Now().Before(entry.expiresAt) {
+		return nil
+	}
+	return entry
+}
+
 // getCachedEntry returns the cache entry for a slug, fetching on miss.
 func (bs *BroadcastService) getCachedEntry(slug, broadcastURL, format string) *feedCacheEntry {
 	bs.feedCacheMu.RLock()
 	entry, ok := bs.feedCache[slug]
 	bs.feedCacheMu.RUnlock()
 	if ok && time.Now().Before(entry.expiresAt) {
+		if entry.failed {
+			return nil
+		}
 		return entry
 	}
 
 	result, err, _ := bs.sfGroup.Do(slug, func() (any, error) {
-		return bs.fetchAndCacheAllDivisions(slug, broadcastURL, format)
+		divs, err := bs.fetchAndCacheAllDivisions(slug, broadcastURL, format)
+		if err != nil {
+			bs.feedCacheMu.Lock()
+			bs.feedCache[slug] = &feedCacheEntry{failed: true, expiresAt: time.Now().Add(feedFailureTTL)}
+			bs.feedCacheMu.Unlock()
+		}
+		return divs, err
 	})
 	if err != nil {
 		log.Err(err).Str("slug", slug).Msg("feed-cache-miss-fetch-failed")

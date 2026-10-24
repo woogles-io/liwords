@@ -74,6 +74,23 @@ func NewDBStore(config *config.Config, gs *game.Cache) (*DBStore, error) {
 	return &DBStore{db: db, gameStore: gs, cfg: config}, nil
 }
 
+// listingColumns selects a tournament with the bulky per-division state --
+// pairings, standings, the pairing matrix -- stripped out of its divisions.
+// The listings only build TournamentMetadata, which needs each division's
+// players and controls; decoding the full divisions of every tournament in a
+// listing took ~100ms. Entities loaded this way must never be cached or saved.
+const listingColumns = `tournaments.id, tournaments.created_at, tournaments.updated_at,
+	tournaments.deleted_at, tournaments.uuid, tournaments.name, tournaments.description,
+	tournaments.alias_of, tournaments.directors, tournaments.is_started,
+	tournaments.is_finished, tournaments.slug, tournaments.extra_meta, tournaments.type,
+	tournaments.parent, tournaments.scheduled_start_time, tournaments.scheduled_end_time,
+	tournaments.created_by,
+	COALESCE((
+		SELECT jsonb_object_agg(d.key, jsonb_set(d.value, '{json}',
+			COALESCE(d.value->'json', '{}'::jsonb) - 'pairingMap' - 'standings' - 'matrix' - 'pidxMap'))
+		FROM jsonb_each(tournaments.divisions) d
+	), '{}'::jsonb) AS divisions`
+
 func (s *DBStore) dbObjToEntity(tm *tournament) (*entity.Tournament, error) {
 	var divisions map[string]*entity.TournamentDivision
 	err := json.Unmarshal(tm.Divisions, &divisions)
@@ -318,7 +335,7 @@ func (s *DBStore) GetRecentAndUpcomingTournaments(ctx context.Context) ([]*entit
 	oneWeekAgo := time.Now().AddDate(0, 0, -7)
 	oneWeekFromNow := time.Now().AddDate(0, 0, 7)
 
-	result := ctxDB.Where(`
+	result := ctxDB.Select(listingColumns).Where(`
 		(scheduled_start_time IS NOT NULL AND scheduled_start_time BETWEEN ? AND ?)
 		OR
 		(scheduled_end_time IS NOT NULL AND scheduled_end_time BETWEEN ? AND ?)
@@ -350,7 +367,7 @@ func (s *DBStore) GetPastTournaments(ctx context.Context, limit int32) ([]*entit
 	thirtyDaysAgo := time.Now().AddDate(0, 0, -30)
 	now := time.Now()
 
-	query := ctxDB.Where(`
+	query := ctxDB.Select(listingColumns).Where(`
 		scheduled_end_time IS NOT NULL
 		AND scheduled_end_time BETWEEN ? AND ?
 		`,
@@ -404,7 +421,7 @@ func (s *DBStore) CountRecentTournamentsByUser(ctx context.Context, userID uint)
 func (s *DBStore) GetTournamentsByDirector(ctx context.Context, userID uint) ([]*entity.Tournament, error) {
 	var tournaments []*tournament
 	ctxDB := s.db.WithContext(ctx)
-	result := ctxDB.
+	result := ctxDB.Select(listingColumns).
 		Joins("INNER JOIN tournament_directors td ON td.tournament_id = tournaments.id").
 		Where("td.user_id = ?", userID).
 		Order("tournaments.created_at DESC").

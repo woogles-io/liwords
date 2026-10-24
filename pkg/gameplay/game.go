@@ -874,21 +874,14 @@ func TimedOut(ctx context.Context, stores *stores.Stores, timedout string, gameI
 	return setTimedOut(ctx, entGame, onTurn, stores)
 }
 
-func statsForUser(ctx context.Context, id string, stores *stores.Stores,
-	variantKey entity.VariantKey) (*entity.Stats, error) {
-
-	u, err := stores.UserStore.GetByUUID(ctx, id)
-	if err != nil {
-		return nil, err
-	}
+func profileStatsFor(u *entity.User, variantKey entity.VariantKey) *entity.Stats {
 	userStats, ok := u.Profile.Stats.Data[variantKey]
 	if !ok {
-		log.Debug().Str("variantKey", string(variantKey)).Str("pid", id).Msg("instantiating new; no data for variant")
+		log.Debug().Str("variantKey", string(variantKey)).Str("pid", u.UUID).Msg("instantiating new; no data for variant")
 		// The second user ID does not matter; this is the per user stat.
-		userStats = stats.InstantiateNewStats(id, "")
+		userStats = stats.InstantiateNewStats(u.UUID, "")
 	}
-
-	return userStats, nil
+	return userStats
 }
 
 // PotentiallySendBotMoveRequest sends a request to the internal Macondo bot to move if user on turn is a bot.

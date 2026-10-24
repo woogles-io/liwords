@@ -976,11 +976,7 @@ func (s *DBStore) GetRecentGames(ctx context.Context, username string, numGames 
 		if g.LeagueID.Valid {
 			leagueUUID := uuid.UUID(g.LeagueID.Bytes)
 			info.LeagueId = leagueUUID.String()
-
-			league, err := qtx.GetLeagueByUUID(ctx, leagueUUID)
-			if err == nil {
-				info.LeagueSlug = league.Slug
-			}
+			info.LeagueSlug = g.LeagueSlug
 		}
 
 		responses = append(responses, info)

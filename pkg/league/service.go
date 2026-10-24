@@ -1895,20 +1895,15 @@ func (ls *LeagueService) GetPlayerSeasonGames(
 		}
 
 		// Populate the live clock anchor so clients can tick the on-turn
-		// player's deadline. The per-turn allowance and time bank live on the
-		// game entity (not the in-progress row), so load it; this only runs for
-		// a player's handful of in-progress league games on modal open, so the
-		// per-game load is fine. On a load error the clock is simply left empty.
-		if game, gerr := ls.stores.GameStore.Get(ctx, row.GameUuid.String); gerr == nil && game != nil {
-			psg.LastUpdate = timestamppb.New(time.UnixMilli(game.Timers.TimeOfLastUpdate))
-			if game.GameReq != nil {
-				psg.IncrementSecs = game.GameReq.IncrementSeconds
-			}
-			if row.PlayerOnTurn.Valid {
-				onTurn := int(row.PlayerOnTurn.Int32)
-				if onTurn >= 0 && onTurn < len(game.Timers.TimeBank) {
-					psg.OnTurnTimeBankMs = game.Timers.TimeBank[onTurn]
-				}
+		// player's deadline.
+		psg.LastUpdate = timestamppb.New(time.UnixMilli(row.Timers.TimeOfLastUpdate))
+		if row.GameRequest.GameRequest != nil {
+			psg.IncrementSecs = row.GameRequest.GameRequest.IncrementSeconds
+		}
+		if row.PlayerOnTurn.Valid {
+			onTurn := int(row.PlayerOnTurn.Int32)
+			if onTurn >= 0 && onTurn < len(row.Timers.TimeBank) {
+				psg.OnTurnTimeBankMs = row.Timers.TimeBank[onTurn]
 			}
 		}
 

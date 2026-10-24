@@ -230,7 +230,7 @@ func performEndgameDuties(ctx context.Context, g *entity.Game,
 	defer users[1-firstLockingIndex].Unlock()
 
 	// Send a gameEndedEvent, which rates the game.
-	evt := proto.Clone(gameEndedEvent(ctx, g, stores.UserStore)).(*pb.GameEndedEvent)
+	evt := proto.Clone(gameEndedEvent(ctx, g, users, stores.UserStore)).(*pb.GameEndedEvent)
 	wrapped := entity.WrapEvent(evt, pb.MessageType_GAME_ENDED_EVENT)
 	for _, p := range players(g) {
 		wrapped.AddAudience(entity.AudUser, p+".game."+g.GameID())
@@ -242,8 +242,8 @@ func performEndgameDuties(ctx context.Context, g *entity.Game,
 	if err != nil {
 		log.Err(err).Str("gid", g.GameID()).Msg("getting variant key")
 	} else {
-		gameStats, err := ComputeGameStats(ctx, g.History(), g.GameReq.GameRequest, variantKey,
-			evt, stores)
+		gameStats, err := computeGameStats(ctx, g.History(), g.GameReq.GameRequest, variantKey,
+			evt, stores, users)
 		if err != nil {
 			log.Err(err).Str("gid", g.GameID()).Msg("computing stats")
 		} else {
@@ -339,6 +339,15 @@ func sendProfileUpdate(ctx context.Context, g *entity.Game, users []*entity.User
 
 func ComputeGameStats(ctx context.Context, history *macondopb.GameHistory, req *pb.GameRequest,
 	variantKey entity.VariantKey, evt *pb.GameEndedEvent, stores *stores.Stores) (*entity.Stats, error) {
+	return computeGameStats(ctx, history, req, variantKey, evt, stores, nil)
+}
+
+// computeGameStats is ComputeGameStats with the players already loaded, so
+// their profile stats needn't be fetched again. users[i] must be the user for
+// history.Players[i]; if users is nil they are fetched.
+func computeGameStats(ctx context.Context, history *macondopb.GameHistory, req *pb.GameRequest,
+	variantKey entity.VariantKey, evt *pb.GameEndedEvent, stores *stores.Stores,
+	users []*entity.User) (*entity.Stats, error) {
 
 	// stats := entity.InstantiateNewStats(1, 2))
 
@@ -364,15 +373,19 @@ func ComputeGameStats(ctx context.Context, history *macondopb.GameHistory, req *
 		p0NewProfileStats := stats.InstantiateNewStats(p0id, "")
 		p1NewProfileStats := stats.InstantiateNewStats(p1id, "")
 
-		p0ProfileStats, err := statsForUser(ctx, p0id, stores, variantKey)
-		if err != nil {
-			return nil, err
+		if users == nil {
+			u0, err := stores.UserStore.GetByUUID(ctx, p0id)
+			if err != nil {
+				return nil, err
+			}
+			u1, err := stores.UserStore.GetByUUID(ctx, p1id)
+			if err != nil {
+				return nil, err
+			}
+			users = []*entity.User{u0, u1}
 		}
-
-		p1ProfileStats, err := statsForUser(ctx, p1id, stores, variantKey)
-		if err != nil {
-			return nil, err
-		}
+		p0ProfileStats := profileStatsFor(users[0], variantKey)
+		p1ProfileStats := profileStatsFor(users[1], variantKey)
 
 		err = stats.AddStats(p0NewProfileStats, p0ProfileStats)
 		if err != nil {
@@ -534,7 +547,7 @@ func AbortGame(ctx context.Context, stores *stores.Stores,
 	return nil
 }
 
-func gameEndedEvent(ctx context.Context, g *entity.Game, userStore user.Store) *pb.GameEndedEvent {
+func gameEndedEvent(ctx context.Context, g *entity.Game, users []*entity.User, userStore user.Store) *pb.GameEndedEvent {
 	var winner, loser string
 	var tie bool
 	log := zerolog.Ctx(ctx)
@@ -561,7 +574,7 @@ func gameEndedEvent(ctx context.Context, g *entity.Game, userStore user.Store) *
 	var err error
 	var now = time.Now().Unix()
 	if g.GameReq.RatingMode == pb.RatingMode_RATED {
-		ratings, err = Rate(ctx, scores, g, winner, userStore, now)
+		ratings, err = Rate(ctx, scores, g, winner, users, userStore, now)
 		if err != nil {
 			log.Err(err).Str("gid", g.GameID()).Msg("rating-error")
 		}
