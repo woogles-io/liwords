@@ -647,9 +647,8 @@ func HandleEvent(ctx context.Context, stores *stores.Stores, userID string, cge 
 	// Taken before the load, not after: a move is load-modify-save, and if the
 	// position is read outside the lock then two servers can read the same one,
 	// each play onto it, and each save -- the second silently discarding the
-	// first. It also covers correspondence games, which bypass the in-memory
-	// cache and so get a fresh object from every Get, making the game's own
-	// mutex useless for this.
+	// first. Every Get returns a fresh copy, so this lock is also the only
+	// thing keeping two goroutines on the same server apart.
 	gameLock, err := stores.GameStore.LockGame(ctx, cge.GameId)
 	if err != nil {
 		log.Err(err).Str("gid", cge.GameId).Msg("handle-event-lock-failed")
@@ -662,8 +661,6 @@ func HandleEvent(ctx context.Context, stores *stores.Stores, userID string, cge 
 		log.Err(err).Str("gid", cge.GameId).Msg("handle-event-get-game-failed")
 		return nil, err
 	}
-	entGame.Lock()
-	defer entGame.Unlock()
 
 	log := zerolog.Ctx(ctx).With().Str("gameID", entGame.GameID()).Logger()
 	return handleEventAfterLockingGame(log.WithContext(ctx), stores, userID, cge, entGame)
@@ -841,8 +838,6 @@ func TimedOut(ctx context.Context, stores *stores.Stores, timedout string, gameI
 		log.Err(err).Str("gid", gameID).Msg("timed-out-get-game-failed")
 		return err
 	}
-	entGame.Lock()
-	defer entGame.Unlock()
 	if entGame.Game.Playing() == macondopb.PlayState_GAME_OVER {
 		log.Debug().Msg("game not active anymore.")
 		return nil
