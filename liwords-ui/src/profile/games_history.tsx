@@ -11,6 +11,7 @@ import { challengeRuleNamesShort } from "../constants/challenge_rules";
 import { GameEndReason } from "../gen/api/proto/ipc/omgwords_pb";
 import { ChallengeRule } from "../gen/api/proto/vendored/macondo/macondo_pb";
 import { lexiconCodeToProfileRatingName } from "../shared/lexica";
+import { useLocalStorageBool } from "../utils/use_local_storage";
 import { timestampDate } from "@bufbuild/protobuf/wkt";
 
 type Props = {
@@ -27,6 +28,8 @@ type Props = {
   onChangePageNumber: (value: number | string | null) => void;
 };
 
+const ABSOLUTE_TIMES_KEY = "gameHistoryAbsoluteTimes";
+
 export const GamesHistoryCard = React.memo((props: Props) => {
   const {
     userID,
@@ -37,6 +40,14 @@ export const GamesHistoryCard = React.memo((props: Props) => {
   } = props;
 
   const { analyzedGameIds } = props;
+
+  // When a game was played, as "13 days ago" or, after a click on any of
+  // them, as dates (a page of games all "13 days ago" is otherwise hard to
+  // tell apart). Remembered for the next visit, and followed by other open
+  // tabs, like the chat display settings.
+  const [absoluteTimes, setAbsoluteTimes] =
+    useLocalStorageBool(ABSOLUTE_TIMES_KEY);
+  const toggleAbsoluteTimes = () => setAbsoluteTimes(!absoluteTimes);
 
   // The view currently assumes:
   // currentPageSize === desiredPageSize
@@ -116,8 +127,18 @@ export const GamesHistoryCard = React.memo((props: Props) => {
         item.lastUpdate ? timestampDate(item.lastUpdate) : "",
       );
       const when = (
-        <Tooltip title={whenMoment.format("LLL")}>
-          {whenMoment.fromNow()}
+        <Tooltip
+          title={
+            absoluteTimes
+              ? `${whenMoment.fromNow()}; click to show how long ago`
+              : `${whenMoment.format("LLL")}; click to show dates`
+          }
+        >
+          <span className="when-toggle" onClick={toggleAbsoluteTimes}>
+            {absoluteTimes
+              ? whenMoment.format("YYYY-MM-DD HH:mm")
+              : whenMoment.fromNow()}
+          </span>
         </Tooltip>
       );
       let endReason = "";
