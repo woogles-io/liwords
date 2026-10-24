@@ -238,6 +238,12 @@ export const PlayerProfile = React.memo(() => {
     offset: number;
     array: Array<GameInfoResponse>;
   }>({ numGames: gamesPageSize, offset: 0, array: [] });
+  // The newest games, for the "Recent games" cards, whatever page the game
+  // history table is on.
+  const [latestGames, setLatestGames] = useState<{
+    username: string;
+    array: Array<GameInfoResponse>;
+  } | null>(null);
   const [recentAnnotatedGames, setRecentAnnotatedGames] = useState<
     Array<AnnotatedGamesResponse_AnnotatedGame>
   >([]);
@@ -357,12 +363,40 @@ export const PlayerProfile = React.memo(() => {
             offset: queriedOffset,
             array: resp.gameInfo,
           });
+          if (queriedOffset === 0) {
+            setLatestGames({ username, array: resp.gameInfo });
+          }
         }
       } catch (e) {
         flashError(e);
       }
     })();
   }, [username, queriedRecentGamesOffset, gameMetadataClient]);
+
+  // The history table opened on a later page: fetch the newest games for the
+  // cards on their own.
+  const haveLatestGames = latestGames?.username === username;
+  useEffect(() => {
+    if (!username || haveLatestGames || queriedRecentGamesOffset === 0) {
+      return;
+    }
+    let current = true;
+    (async () => {
+      try {
+        const resp = await gameMetadataClient.getRecentGames({
+          username,
+          numGames: gamesPageSize,
+          offset: 0,
+        });
+        if (current) setLatestGames({ username, array: resp.gameInfo });
+      } catch (e) {
+        flashError(e);
+      }
+    })();
+    return () => {
+      current = false;
+    };
+  }, [username, haveLatestGames, queriedRecentGamesOffset, gameMetadataClient]);
 
   useEffect(() => {
     // offset and numGames are int32 in the protobuf.
@@ -565,12 +599,20 @@ export const PlayerProfile = React.memo(() => {
     return ret;
   }, [ratings]);
 
-  const recentGameIds = useMemo(
+  const latestArray = useMemo(
     () =>
-      [...(recentGames?.array ?? []), ...(keysetPage ?? [])]
-        .map((g) => g.gameId)
-        .filter(Boolean) as string[],
-    [recentGames, keysetPage],
+      latestGames && latestGames.username === username ? latestGames.array : [],
+    [latestGames, username],
+  );
+  const recentGameIds = useMemo(
+    () => [
+      ...new Set(
+        [...(recentGames?.array ?? []), ...(keysetPage ?? []), ...latestArray]
+          .map((g) => g.gameId)
+          .filter(Boolean) as string[],
+      ),
+    ],
+    [recentGames, keysetPage, latestArray],
   );
   const { data: analysisStatusData } = useQuery(
     getGamesAnalysisStatus,
@@ -583,11 +625,8 @@ export const PlayerProfile = React.memo(() => {
   );
 
   const gameCards = useMemo(() => {
-    if (!recentGames?.array) {
-      return [];
-    }
-    const ret = recentGames?.array
-      ?.filter(
+    const ret = latestArray
+      .filter(
         (g) => g.players?.length && g.gameEndReason !== GameEndReason.CANCELLED,
       )
       .map((g) => (
@@ -599,7 +638,7 @@ export const PlayerProfile = React.memo(() => {
         />
       ));
     return ret;
-  }, [recentGames, userID, analyzedGameIds]);
+  }, [latestArray, userID, analyzedGameIds]);
 
   const emptyCards = (n: number, f: (n: number) => boolean) => {
     const ret = [];
