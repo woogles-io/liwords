@@ -735,3 +735,50 @@ func TestSeasonOpponentMistakeIndex(t *testing.T) {
 	is.NoErr(err)
 	is.Equal(len(rows), 0)
 }
+
+// TestPlayerSeasonGamesOpponentMistakeIndex covers the per-game opponent
+// mistake index in a player's season games, read from the opponent's slot.
+func TestPlayerSeasonGamesOpponentMistakeIndex(t *testing.T) {
+	is := is.New(t)
+	ctx := context.Background()
+
+	pool, queries := setupTestDB(t)
+	defer pool.Close()
+
+	createTestUsers(t, pool)
+	leagueID, seasonID, divisionID := createMinimalLeague(t, ctx, queries)
+
+	now := time.Now()
+	analyzed := insertLeagueGame(t, ctx, pool, leagueID, seasonID, divisionID, now.Add(-2*time.Hour), 400, 380)
+	unanalyzed := insertLeagueGame(t, ctx, pool, leagueID, seasonID, divisionID, now.Add(-time.Hour), 350, 390)
+	completeAnalysis(t, ctx, queries, analyzed, analysisResult(3.0, 4.0))
+
+	for _, tc := range []struct {
+		userUUID     string
+		own, opposed float64
+	}{
+		{"test-uuid-1", 3.0, 4.0},
+		{"test-uuid-2", 4.0, 3.0},
+	} {
+		rows, err := queries.GetPlayerSeasonGames(ctx, models.GetPlayerSeasonGamesParams{
+			SeasonID: pgtype.UUID{Bytes: seasonID, Valid: true},
+			UserUuid: tc.userUUID,
+		})
+		is.NoErr(err)
+		is.Equal(len(rows), 2)
+		for _, r := range rows {
+			switch r.GameUuid {
+			case analyzed:
+				is.True(r.HasMistakeIndex)
+				is.True(r.HasOpponentMistakeIndex)
+				is.Equal(r.PlayerMistakeIndex, tc.own)
+				is.Equal(r.OpponentMistakeIndex, tc.opposed)
+			case unanalyzed:
+				is.True(!r.HasMistakeIndex)
+				is.True(!r.HasOpponentMistakeIndex)
+			default:
+				t.Fatalf("unexpected game %s", r.GameUuid)
+			}
+		}
+	}
+}

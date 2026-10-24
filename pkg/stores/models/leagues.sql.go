@@ -1354,7 +1354,10 @@ SELECT
     -- has_mistake_index is false when the game has not been analyzed yet, which
     -- lets the caller tell "unanalyzed" apart from a genuine 0 (a perfect game).
     (mi.mistake_index IS NOT NULL)::boolean AS has_mistake_index,
-    COALESCE(mi.mistake_index, 0) AS player_mistake_index
+    COALESCE(mi.mistake_index, 0) AS player_mistake_index,
+    -- The opponent's, from the same kind of lookup by the opponent's slot.
+    (omi.mistake_index IS NOT NULL)::boolean AS has_opponent_mistake_index,
+    COALESCE(omi.mistake_index, 0) AS opponent_mistake_index
 FROM game_players gp_player
 INNER JOIN games g ON gp_player.game_uuid = g.uuid
 INNER JOIN users u_opponent ON gp_player.opponent_id = u_opponent.id
@@ -1369,6 +1372,17 @@ LEFT JOIN LATERAL (
     ORDER BY aj.completed_at DESC
     LIMIT 1
 ) mi ON true
+LEFT JOIN LATERAL (
+    SELECT (CASE gp_player.player_index WHEN 0 THEN aj.player1_mistake_index
+                                        ELSE aj.player0_mistake_index END)::DOUBLE PRECISION AS mistake_index
+    FROM analysis_jobs aj
+    WHERE aj.game_id = gp_player.game_uuid
+      AND aj.status = 'completed'
+      AND CASE gp_player.player_index WHEN 0 THEN aj.player1_mistake_index
+                                      ELSE aj.player0_mistake_index END IS NOT NULL
+    ORDER BY aj.completed_at DESC
+    LIMIT 1
+) omi ON true
 WHERE gp_player.player_id = (SELECT id FROM users WHERE users.uuid = $1)
   AND gp_player.league_season_id = $2
 ORDER BY gp_player.created_at DESC
@@ -1380,18 +1394,20 @@ type GetPlayerSeasonGamesParams struct {
 }
 
 type GetPlayerSeasonGamesRow struct {
-	GameUuid           string
-	CreatedAt          pgtype.Timestamptz
-	UpdatedAt          pgtype.Timestamptz
-	PlayerID           int32
-	PlayerScore        int32
-	OpponentScore      int32
-	Won                pgtype.Bool
-	GameEndReason      int16
-	OpponentUuid       string
-	OpponentUsername   string
-	HasMistakeIndex    bool
-	PlayerMistakeIndex float64
+	GameUuid                string
+	CreatedAt               pgtype.Timestamptz
+	UpdatedAt               pgtype.Timestamptz
+	PlayerID                int32
+	PlayerScore             int32
+	OpponentScore           int32
+	Won                     pgtype.Bool
+	GameEndReason           int16
+	OpponentUuid            string
+	OpponentUsername        string
+	HasMistakeIndex         bool
+	PlayerMistakeIndex      float64
+	HasOpponentMistakeIndex bool
+	OpponentMistakeIndex    float64
 }
 
 // Get finished games for a specific player in a season with scores from game_players table
@@ -1418,6 +1434,8 @@ func (q *Queries) GetPlayerSeasonGames(ctx context.Context, arg GetPlayerSeasonG
 			&i.OpponentUsername,
 			&i.HasMistakeIndex,
 			&i.PlayerMistakeIndex,
+			&i.HasOpponentMistakeIndex,
+			&i.OpponentMistakeIndex,
 		); err != nil {
 			return nil, err
 		}
