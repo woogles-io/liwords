@@ -85,12 +85,6 @@ export const scoreType = (
   return "secondary";
 };
 
-// A game in progress with no score yet shows as a dot, not as 0-0.
-export const notStarted = (g: CrosstableCell): boolean =>
-  (g.result === "turn" || g.result === "waiting") &&
-  g.myScore === 0 &&
-  g.theirScore === 0;
-
 // A letter after the score when a game did not end by being played out, so a
 // win on time while behind on score reads as what it was.
 export const endMark = (reason: GameEndReason): string => {
@@ -140,7 +134,7 @@ const GameScore = (props: { g: CrosstableCell; me: string; them: string }) => {
   const live = g.result === "turn" || g.result === "waiting";
   const title = `${props.me} vs ${props.them}: ${resultLabel(g.result)}${
     !live && how ? ` (${how})` : ""
-  }${notStarted(g) ? "" : `, ${spread >= 0 ? "+" : ""}${spread}`}`;
+  }, ${spread >= 0 ? "+" : ""}${spread}`;
   return (
     <Tooltip title={title}>
       <a
@@ -150,7 +144,7 @@ const GameScore = (props: { g: CrosstableCell; me: string; them: string }) => {
         style={{ whiteSpace: "nowrap" }}
       >
         <Text type={scoreType(g)} italic={live}>
-          {notStarted(g) ? "\u00b7" : `${g.myScore}-${g.theirScore}`}
+          {`${g.myScore}-${g.theirScore}`}
           {live ? "" : endMark(g.endReason)}
           {g.result === "turn" ? "*" : ""}
         </Text>
