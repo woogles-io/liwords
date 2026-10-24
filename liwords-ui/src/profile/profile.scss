@@ -198,10 +198,17 @@
       bottom: -18px;
     }
     .slick-dots {
-      align-items: baseline;
+      align-items: center;
     }
+    // antd sizes a dot's li to its 3px bar and clips to it; these dots are
+    // round and up to 10px, so the li has to hold them. Its animated bar
+    // (li::after) would paint over the active dot, so it goes.
     .slick-dots li {
+      height: 10px;
       width: 12px;
+      &::after {
+        display: none;
+      }
       button {
         width: 8px;
         height: 8px;
