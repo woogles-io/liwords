@@ -165,6 +165,25 @@ const peakSeasonBetter = (a: PeakCandidate, b: PeakCandidate): number => {
   return a.season.seasonNumber - b.season.seasonNumber;
 };
 
+// The seasons in which a player reached their peak finish (same division and
+// shown rank), ascending. An unplaced peak counts once.
+export const peakRepeats = (
+  player: LeagueRosterPlayer,
+  peak: { season: LeagueRosterSeason; displayRank: number },
+  compRankMap: Map<string, number>,
+): number[] =>
+  peak.season.divisionNumber === 0
+    ? [peak.season.seasonNumber]
+    : player.seasons
+        .filter(
+          (s) =>
+            s.divisionNumber === peak.season.divisionNumber &&
+            (compRankMap.get(`${s.seasonNumber}:${player.userId}`) ??
+              s.rank) === peak.displayRank,
+        )
+        .map((s) => s.seasonNumber)
+        .sort((x, y) => x - y);
+
 // Compare two players by their status in a given season.
 // Order: placed (by division ASC, rank ASC) -> registered -> absent.
 const seasonCompare = (
@@ -353,7 +372,14 @@ export const LeagueRoster: React.FC<Props> = ({
   const peakMap = useMemo(() => {
     const map = new Map<
       string,
-      { season: LeagueRosterSeason; displayRank: number; tied: boolean }
+      {
+        season: LeagueRosterSeason;
+        displayRank: number;
+        tied: boolean;
+        // Every season with the same finish (division and rank), ascending:
+        // a three-time champion has three.
+        repeats: number[];
+      }
     >();
     if (!data?.players) return map;
     for (const player of data.players) {
@@ -372,7 +398,12 @@ export const LeagueRoster: React.FC<Props> = ({
           best = cand;
         }
       }
-      if (best) map.set(player.userId, best);
+      if (best) {
+        map.set(player.userId, {
+          ...best,
+          repeats: peakRepeats(player, best, compRankMap),
+        });
+      }
     }
     return map;
   }, [data?.players, compRankMap, compRankInfo.tied]);
@@ -497,6 +528,17 @@ export const LeagueRoster: React.FC<Props> = ({
             <span style={{ fontSize: 11, opacity: 0.65, marginLeft: 2 }}>
               ·S{peak.season.seasonNumber}
             </span>
+            {peak.repeats.length > 1 && (
+              <Tooltip
+                title={`${peak.repeats.length} times: ${peak.repeats
+                  .map((n) => `S${n}`)
+                  .join(", ")}`}
+              >
+                <span style={{ fontSize: 11, marginLeft: 3, cursor: "help" }}>
+                  &times;{peak.repeats.length}
+                </span>
+              </Tooltip>
+            )}
           </span>
         );
       },
@@ -513,6 +555,15 @@ export const LeagueRoster: React.FC<Props> = ({
         }
         if (!pa) return -1;
         if (!pb) return 1;
+        // Same finish: more times reached ranks higher. (peakSeasonBetter
+        // would otherwise prefer the earlier season.)
+        if (
+          pa.season.divisionNumber === pb.season.divisionNumber &&
+          pa.displayRank === pb.displayRank &&
+          pa.repeats.length !== pb.repeats.length
+        ) {
+          return pa.repeats.length - pb.repeats.length;
+        }
         const cmp = peakSeasonBetter(pa, pb);
         if (cmp !== 0) return -cmp;
         // Equal peaks: alphabetical under the default descending sort.
