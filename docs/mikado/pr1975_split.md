@@ -344,8 +344,18 @@ whole wait under one deadline. `TestLockGameGivesUpWaitingForASlot` holds every
 slot and expects `ErrGameLockBusy` within the limit; against the reference's
 `lock.go` it hangs until the test binary times out.
 
+`TestConcurrentMovesFromTwoServers` (new, `pkg/gameplay`) plays the case the
+lock exists for: two store stacks with separate pools and caches, one database,
+both handed the same move for the same correspondence game at the same moment,
+across 20 games at once with production's turn-row and shadow flags on. Each
+move must be accepted exactly once, history and turn rows must agree, and no
+shadow may complain. With the lock made a no-op, both servers play the move;
+the turn rows' primary key (step 4) still rejects the second save, so the game
+stays intact, but the test fails on the duplicate-key error it logs.
+
 Deviation from the reference: `pkg/stores/game/lock.go`,
-`pkg/stores/game/lock_test.go`, and the SQL comment in `db/queries/game_lock.sql`
+`pkg/stores/game/lock_test.go`, `pkg/gameplay/concurrent_moves_test.go`, and
+the SQL comment in `db/queries/game_lock.sql`
 (it described a transaction-scoped lock).
 
 ### Fixes from reviewing xwordgame against macondo (step 2)
@@ -546,6 +556,7 @@ pkg/league/force_finish_games.go
 pkg/league/service.go
 pkg/stores/game/lock.go
 pkg/stores/game/lock_test.go
+pkg/gameplay/concurrent_moves_test.go
 db/queries/game_lock.sql
 pkg/stores/models/game_lock.sql.go
 pkg/mod/automod.go
