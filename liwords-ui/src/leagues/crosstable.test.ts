@@ -2,7 +2,7 @@ import { create } from "@bufbuild/protobuf";
 import { describe, expect, it } from "vitest";
 import { GameEndReason } from "../gen/api/proto/ipc/omgwords_pb";
 import { CrosstableGameSchema } from "../gen/api/proto/league_service/league_service_pb";
-import { buildCrosstable, endMark, scoreType } from "./crosstable";
+import { buildCrosstable, crossClass, endMark, scoreType } from "./crosstable";
 
 const game = (
   o: Partial<Parameters<typeof create<typeof CrosstableGameSchema>>[1]>,
@@ -120,5 +120,21 @@ describe("scoreType", () => {
     expect(
       scoreType({ ...cell, result: "draw", myScore: 400, theirScore: 400 }),
     ).toBe("secondary");
+  });
+});
+
+describe("crossClass", () => {
+  const hover = { row: "a", col: "b" };
+  it("marks the hovered game and its mirror", () => {
+    expect(crossClass("a", "b", hover)).toBe("xt-game");
+    expect(crossClass("b", "a", hover)).toBe("xt-game");
+  });
+  it("shades both players' rows and columns, and nothing else", () => {
+    expect(crossClass("a", "c", hover)).toBe("xt-cross");
+    expect(crossClass("c", "b", hover)).toBe("xt-cross");
+    expect(crossClass("b", "c", hover)).toBe("xt-cross");
+    expect(crossClass("c", "a", hover)).toBe("xt-cross");
+    expect(crossClass("c", "d", hover)).toBe("");
+    expect(crossClass("a", "b", null)).toBe("");
   });
 });

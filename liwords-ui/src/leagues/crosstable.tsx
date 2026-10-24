@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Spin, Table, type TableColumnsType, Tooltip, Typography } from "antd";
 import { useQuery } from "@connectrpc/connect-query";
 import { Division } from "../gen/api/proto/ipc/league_pb";
@@ -153,6 +153,28 @@ const GameScore = (props: { g: CrosstableCell; me: string; them: string }) => {
   );
 };
 
+// The cell under the pointer, by its row and column players.
+export type CrossHover = { row: string; col: string } | null;
+
+// How a grid cell shows the hovered game: its own cell and the mirror cell
+// (the same game from the other player's side) stand out, and the rows and
+// columns of both players are shaded, so the pair is easy to find.
+export const crossClass = (
+  row: string,
+  col: string,
+  hover: CrossHover,
+): string => {
+  if (!hover) return "";
+  if (
+    (row === hover.row && col === hover.col) ||
+    (row === hover.col && col === hover.row)
+  ) {
+    return "xt-game";
+  }
+  const pair = [hover.row, hover.col];
+  return pair.includes(row) || pair.includes(col) ? "xt-cross" : "";
+};
+
 // Every pairing of a division: row player's score first, colored by scoreType;
 // a game in progress is in italics (with * when the row player is on turn); a letter after the score says how a game ended when
 // it was not played out. Always a grid, however wide: a player's games as a
@@ -170,6 +192,7 @@ export const DivisionCrosstable = (props: {
     // a missing endpoint will not appear on a retry; drop the panel at once.
     { retry: false },
   );
+  const [hover, setHover] = useState<CrossHover>(null);
   const { onError } = props;
   useEffect(() => {
     if (error) onError?.();
@@ -193,12 +216,27 @@ export const DivisionCrosstable = (props: {
     return null;
   }
 
+  // A hovered game's two players, picked out in the fixed columns.
+  const playerCell = (row: Row) => ({
+    className:
+      hover && (row.userId === hover.row || row.userId === hover.col)
+        ? "xt-player"
+        : "",
+  });
+
   const fixedColumns: TableColumnsType<Row> = [
-    { title: "#", dataIndex: "rank", key: "rank", fixed: "left" as const },
+    {
+      title: "#",
+      dataIndex: "rank",
+      key: "rank",
+      fixed: "left" as const,
+      onCell: playerCell,
+    },
     {
       title: "Player",
       key: "username",
       fixed: "left" as const,
+      onCell: playerCell,
       render: (_: unknown, row: Row) => (
         <UsernameWithContext
           username={row.username}
@@ -220,6 +258,19 @@ export const DivisionCrosstable = (props: {
       ),
       key: col.userId,
       align: "center" as const,
+      onHeaderCell: () => ({
+        className:
+          hover && (col.userId === hover.row || col.userId === hover.col)
+            ? "xt-player"
+            : "",
+      }),
+      onCell: (row: Row) => ({
+        className: crossClass(row.userId, col.userId, hover),
+        onMouseEnter: () =>
+          row.userId !== col.userId &&
+          setHover({ row: row.userId, col: col.userId }),
+        onMouseLeave: () => setHover(null),
+      }),
       render: (_: unknown, row: Row) => {
         if (row.userId === col.userId) {
           return <Text type="secondary">-</Text>;
