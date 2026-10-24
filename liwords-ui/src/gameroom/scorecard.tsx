@@ -176,9 +176,7 @@ const eventVerb = (e: GameEvent): string => {
     case GameEvent_Type.EXCHANGE:
       return "Exchanged";
     case GameEvent_Type.PHONY_TILES_RETURNED:
-      // played_tiles marks played-through squares with "."; only the
-      // player's own tiles went back to their rack.
-      return `Challenged off, returned ${e.playedTiles.replace(/\./g, "")}`;
+      return "Challenged off";
     case GameEvent_Type.CHALLENGE_BONUS:
       return "Challenged, play stands";
     case GameEvent_Type.CHALLENGE:
@@ -190,7 +188,7 @@ const eventVerb = (e: GameEvent): string => {
 };
 
 // When each event of a turn was made, approximately: the move, then any
-// challenge of it. Local time, with UTC beneath.
+// challenge of it, in local time.
 const TurnTimes = (props: {
   events: Array<GameEvent>;
   times: Array<number | undefined>;
@@ -202,8 +200,11 @@ const TurnTimes = (props: {
       const d = new Date(t);
       return (
         <div key={i}>
-          {eventVerb(e)} &asymp; {d.toLocaleString()}
-          <div>{d.toISOString()}</div>
+          {eventVerb(e)} &asymp;{" "}
+          {d.toLocaleString(undefined, {
+            dateStyle: "medium",
+            timeStyle: "medium",
+          })}
         </div>
       );
     })}
@@ -380,11 +381,8 @@ const ScorecardTurn = (props: turnProps) => {
         <div
           className={`coords-time${props.isCorrespondence ? " correspondence" : ""}`}
         >
-          {memoizedTurn.coords ? (
-            <p className="coord">{memoizedTurn.coords}</p>
-          ) : (
-            <p className="move-type">{memoizedTurn.moveType}</p>
-          )}
+          {/* When the turn was made, on the coordinate rather than the
+              clock, which has its own hover. */}
           <Tooltip
             title={
               props.eventTimes?.some((t) => t !== undefined) ? (
@@ -395,13 +393,18 @@ const ScorecardTurn = (props: turnProps) => {
               ) : null
             }
           >
-            <p className="time-left">
-              {memoizedTurn.timeRemaining}
-              {memoizedTurn.isUsingTimeBank && (
-                <HourglassOutlined className="time-bank-icon" />
-              )}
-            </p>
+            {memoizedTurn.coords ? (
+              <p className="coord">{memoizedTurn.coords}</p>
+            ) : (
+              <p className="move-type">{memoizedTurn.moveType}</p>
+            )}
           </Tooltip>
+          <p className="time-left">
+            {memoizedTurn.timeRemaining}
+            {memoizedTurn.isUsingTimeBank && (
+              <HourglassOutlined className="time-bank-icon" />
+            )}
+          </p>
         </div>
         <div className="play">
           <p
@@ -914,10 +917,15 @@ export const ScoreCard = React.memo((props: Props) => {
             timeBankP0={timeBankState?.p0TimeBank}
             timeBankP1={timeBankState?.p1TimeBank}
             eventIndex={eventIdx}
-            eventTimes={props.eventTimes?.slice(
-              t.firstEvtIdx,
-              t.firstEvtIdx + t.events.length,
-            )}
+            /* only while examining: in play the times are clutter. */
+            eventTimes={
+              props.isExamining
+                ? props.eventTimes?.slice(
+                    t.firstEvtIdx,
+                    t.firstEvtIdx + t.events.length,
+                  )
+                : undefined
+            }
             onSeek={seek ? () => seek(t.firstEvtIdx) : undefined}
             isSelected={
               props.isExamining &&
