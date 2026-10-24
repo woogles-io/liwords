@@ -925,6 +925,11 @@ func (s *DBStore) GetRecentGames(ctx context.Context, username string, numGames 
 		return nil, err
 	}
 
+	return recentGameInfos(games), nil
+}
+
+// recentGameInfos turns rows of the recent-games queries into responses.
+func recentGameInfos(games []models.GetRecentGamesByUserIdRow) *pb.GameInfoResponses {
 	responses := []*pb.GameInfoResponse{}
 	for _, g := range games {
 		// Convert directly from GetRecentGamesRow
@@ -982,7 +987,83 @@ func (s *DBStore) GetRecentGames(ctx context.Context, username string, numGames 
 		responses = append(responses, info)
 	}
 
-	return &pb.GameInfoResponses{GameInfo: responses}, nil
+	return &pb.GameInfoResponses{GameInfo: responses}
+}
+
+// GetRecentGamesPage is GetRecentGames paged by position: each page is a
+// short walk of the (player_id, updated_at) index from its starting point,
+// however far back it is. Games come newest first either way.
+func (s *DBStore) GetRecentGamesPage(ctx context.Context, username string, numGames int, page entity.RecentGamesPage) (*pb.GameInfoResponses, error) {
+	if numGames > MaxRecentGames {
+		return nil, errors.New("too many games")
+	}
+
+	tx, err := s.dbPool.BeginTx(ctx, pgx.TxOptions{AccessMode: pgx.ReadOnly})
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
+
+	qtx := s.queries.WithTx(tx)
+
+	userID, err := qtx.GetUserId(ctx, username)
+	if err != nil {
+		return nil, err
+	}
+
+	// A game's place in the history is its game_players updated_at with its
+	// id as the tiebreak; the client only names the game.
+	place := func(gameID string) (pgtype.Timestamptz, error) {
+		return qtx.GetGamePlayerUpdatedAt(ctx, models.GetGamePlayerUpdatedAtParams{
+			GameUuid: gameID,
+			UserID:   userID,
+		})
+	}
+
+	var rows []models.GetRecentGamesByUserIdRow
+	switch {
+	case page.AfterGameID != "" || !page.After.IsZero():
+		at := pgtype.Timestamptz{Time: page.After, Valid: true}
+		if page.AfterGameID != "" {
+			if at, err = place(page.AfterGameID); err != nil {
+				return nil, err
+			}
+		}
+		newer, err := qtx.GetRecentGamesAfter(ctx, models.GetRecentGamesAfterParams{
+			UserID:    userID,
+			AfterTime: at,
+			AfterUuid: page.AfterGameID,
+			NumGames:  int32(numGames),
+		})
+		if err != nil {
+			return nil, err
+		}
+		for i := len(newer) - 1; i >= 0; i-- {
+			rows = append(rows, models.GetRecentGamesByUserIdRow(newer[i]))
+		}
+	default:
+		at := pgtype.Timestamptz{Time: page.Before, Valid: true}
+		id := ""
+		if page.BeforeGameID != "" {
+			if at, err = place(page.BeforeGameID); err != nil {
+				return nil, err
+			}
+			id = page.BeforeGameID
+		}
+		older, err := qtx.GetRecentGamesBefore(ctx, models.GetRecentGamesBeforeParams{
+			UserID:     userID,
+			BeforeTime: at,
+			BeforeUuid: id,
+			NumGames:   int32(numGames),
+		})
+		if err != nil {
+			return nil, err
+		}
+		for _, r := range older {
+			rows = append(rows, models.GetRecentGamesByUserIdRow(r))
+		}
+	}
+	return recentGameInfos(rows), nil
 }
 
 func (s *DBStore) GetRecentTourneyGames(ctx context.Context, tourneyID string, numGames int, offset int) (*pb.GameInfoResponses, error) {
