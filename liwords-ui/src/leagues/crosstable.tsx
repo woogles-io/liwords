@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Spin, Table, type TableColumnsType, Tooltip, Typography } from "antd";
 import { useQuery } from "@connectrpc/connect-query";
 import { Division } from "../gen/api/proto/ipc/league_pb";
@@ -22,6 +22,10 @@ export type CrosstableCell = {
   // "waiting" (the opponent's) while in progress.
   result: "win" | "loss" | "draw" | "turn" | "waiting";
 };
+
+// A game still in progress.
+export const isLive = (g: CrosstableCell) =>
+  g.result === "turn" || g.result === "waiting";
 
 const cellKey = (rowUserId: string, colUserId: string) =>
   `${rowUserId}|${colUserId}`;
@@ -132,7 +136,7 @@ const GameScore = (props: { g: CrosstableCell; me: string; them: string }) => {
   const { g } = props;
   const spread = g.myScore - g.theirScore;
   const how = endReasonLabel(g.endReason);
-  const live = g.result === "turn" || g.result === "waiting";
+  const live = isLive(g);
   const title = `${props.me} vs ${props.them}: ${resultLabel(g.result)}${
     !live && how ? ` (${how})` : ""
   }, ${spread >= 0 ? "+" : ""}${spread}`;
@@ -176,10 +180,88 @@ export const crossClass = (
   return pair.includes(row) || pair.includes(col) ? "xt-cross" : "";
 };
 
+// A player's official standing: finished games only, as the standings show it.
+type Official = {
+  userId: string;
+  wins: number;
+  losses: number;
+  draws: number;
+  spread: number;
+};
+
+// A player's record, spread and rank if every game in progress ended now at
+// its current score: the leader wins and level scores draw, which is how a
+// season's unfinished games are decided when it closes. Finished games count
+// as the official standings record them (forfeits and time losses included).
+export type IfEndedNow = {
+  wins: number;
+  losses: number;
+  draws: number;
+  spread: number;
+  rank: number;
+  // shares its rank with another player
+  tied: boolean;
+  // no game in progress, so the record and spread are already the official
+  // ones
+  final: boolean;
+};
+
+// Starts from each player's official standing and adds only their games in
+// progress from the cross-table, then ranks the players by points (two for a
+// win, one for a draw) and then spread. Tied players share a rank.
+export const ifEndedNow = (
+  standings: Array<Official>,
+  cells: Map<string, Array<CrosstableCell>>,
+): Map<string, IfEndedNow> => {
+  const userIds = standings.map((s) => s.userId);
+  const totals = standings.map((s) => {
+    const t = {
+      wins: s.wins,
+      losses: s.losses,
+      draws: s.draws,
+      spread: s.spread,
+      final: true,
+    };
+    for (const them of userIds) {
+      for (const g of cells.get(cellKey(s.userId, them)) ?? []) {
+        if (!isLive(g)) continue;
+        t.final = false;
+        const margin = g.myScore - g.theirScore;
+        if (margin > 0) t.wins++;
+        else if (margin < 0) t.losses++;
+        else t.draws++;
+        t.spread += margin;
+      }
+    }
+    return t;
+  });
+  const points = (t: { wins: number; draws: number }) => t.wins * 2 + t.draws;
+  const out = new Map<string, IfEndedNow>();
+  totals.forEach((t, i) => {
+    const above = totals.filter(
+      (o) =>
+        points(o) > points(t) ||
+        (points(o) === points(t) && o.spread > t.spread),
+    ).length;
+    const tied = totals.some(
+      (o) => o !== t && points(o) === points(t) && o.spread === t.spread,
+    );
+    out.set(userIds[i], { ...t, rank: above + 1, tied });
+  });
+  return out;
+};
+
+// The width the cross-table needs before its totals stay in view at the right:
+// the names and the totals take about 320px, which leaves room for two or more
+// games between them. It goes by the table, not the screen, since the page's
+// side panels can leave the table narrow on a wide screen.
+const PIN_TOTALS_WIDTH = 480;
+
 // Every pairing of a division: row player's score first, colored by scoreType;
 // a game in progress is in italics (with * when the row player is on turn); a letter after the score says how a game ended when
 // it was not played out. Always a grid, however wide: a player's games as a
-// list are in the standings' game history.
+// list are in the standings' game history. While any game is in progress, the
+// grid ends with each player's totals if every game ended now (ifEndedNow).
 export const DivisionCrosstable = (props: {
   division: Division;
   onChat?: (uuid: string, username: string) => void;
@@ -196,6 +278,17 @@ export const DivisionCrosstable = (props: {
     { retry: false },
   );
   const [hover, setHover] = useState<CrossHover>(null);
+  // whether the cross-table itself is wide enough to keep the totals in view
+  // at the right while the grid scrolls (PIN_TOTALS_WIDTH).
+  const [wide, setWide] = useState(false);
+  const watchWidth = useCallback((el: HTMLDivElement | null) => {
+    if (!el) return;
+    const ro = new ResizeObserver(([entry]) =>
+      setWide(entry.contentRect.width >= PIN_TOTALS_WIDTH),
+    );
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
   const { onError } = props;
   useEffect(() => {
     if (error) onError?.();
@@ -207,10 +300,11 @@ export const DivisionCrosstable = (props: {
     username: s.username,
     rank: i + 1,
   }));
-  const cells = buildCrosstable(
-    rows.map((r) => r.userId),
-    data?.games ?? [],
-  );
+  const userIds = rows.map((r) => r.userId);
+  const cells = buildCrosstable(userIds, data?.games ?? []);
+  const now = ifEndedNow(props.division.standings, cells);
+  // with nothing in progress the totals would only repeat the standings.
+  const anyLive = [...cells.values()].some((list) => list.some(isLive));
 
   if (isLoading) {
     return <Spin />;
@@ -256,6 +350,69 @@ export const DivisionCrosstable = (props: {
     },
   ];
 
+  // Each player's totals if every game in progress ended now, in italics like
+  // the live scores they count. A player with no game in progress has a final
+  // record and spread, shown upright; their rank stays italic, since the
+  // others' games can still move it.
+  const nowFixed = wide ? ("right" as const) : undefined;
+  const nowColumn = (
+    key: string,
+    title: string,
+    tip: string,
+    show: (n: IfEndedNow) => string,
+    settled: (n: IfEndedNow) => boolean,
+  ) => ({
+    title: (
+      <Tooltip title={tip}>
+        <span style={{ cursor: "help" }}>{title}</span>
+      </Tooltip>
+    ),
+    key,
+    align: "center" as const,
+    fixed: nowFixed,
+    onCell: playerCell,
+    render: (_: unknown, row: Row) => {
+      const n = now.get(row.userId);
+      return n && <Text italic={!settled(n)}>{show(n)}</Text>;
+    },
+  });
+  const nowColumns: TableColumnsType<Row> = anyLive
+    ? [
+        {
+          title: (
+            <Tooltip title="The standings with every game in progress counted as if it ended now at its current score.">
+              <span style={{ cursor: "help" }}>If ended now</span>
+            </Tooltip>
+          ),
+          key: "now",
+          fixed: nowFixed,
+          children: [
+            nowColumn(
+              "nowRecord",
+              "Rec",
+              "Win-Loss-Draw record",
+              (n) => `${n.wins}-${n.losses}${n.draws ? `-${n.draws}` : ""}`,
+              (n) => n.final,
+            ),
+            nowColumn(
+              "nowSpread",
+              "Spr",
+              "Cumulative spread",
+              (n) => (n.spread > 0 ? `+${n.spread}` : `${n.spread}`),
+              (n) => n.final,
+            ),
+            nowColumn(
+              "nowRank",
+              "#",
+              "Rank in division",
+              (n) => `${n.rank}${n.tied ? "=" : ""}`,
+              () => false,
+            ),
+          ],
+        },
+      ]
+    : [];
+
   const columns: TableColumnsType<Row> = [
     ...fixedColumns,
     ...rows.map((col) => ({
@@ -290,16 +447,19 @@ export const DivisionCrosstable = (props: {
         ));
       },
     })),
+    ...nowColumns,
   ];
 
   return (
-    <Table
-      className="division-crosstable"
-      columns={columns}
-      dataSource={rows}
-      pagination={false}
-      size="small"
-      scroll={{ x: "max-content" }}
-    />
+    <div ref={watchWidth}>
+      <Table
+        className="division-crosstable"
+        columns={columns}
+        dataSource={rows}
+        pagination={false}
+        size="small"
+        scroll={{ x: "max-content" }}
+      />
+    </div>
   );
 };

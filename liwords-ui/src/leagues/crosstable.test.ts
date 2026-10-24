@@ -2,7 +2,13 @@ import { create } from "@bufbuild/protobuf";
 import { describe, expect, it } from "vitest";
 import { GameEndReason } from "../gen/api/proto/ipc/omgwords_pb";
 import { CrosstableGameSchema } from "../gen/api/proto/league_service/league_service_pb";
-import { buildCrosstable, crossClass, endMark, scoreType } from "./crosstable";
+import {
+  buildCrosstable,
+  crossClass,
+  endMark,
+  ifEndedNow,
+  scoreType,
+} from "./crosstable";
 
 const game = (
   o: Partial<Parameters<typeof create<typeof CrosstableGameSchema>>[1]>,
@@ -136,5 +142,125 @@ describe("crossClass", () => {
     expect(crossClass("c", "a", hover)).toBe("xt-cross");
     expect(crossClass("c", "d", hover)).toBe("");
     expect(crossClass("a", "b", null)).toBe("");
+  });
+});
+
+describe("ifEndedNow", () => {
+  const live = { gameEndReason: GameEndReason.NONE, winnerIndex: -1 };
+  // an official standing: finished games only
+  const standing = (
+    userId: string,
+    o: Partial<{ wins: number; losses: number; draws: number; spread: number }>,
+  ) => ({ userId, wins: 0, losses: 0, draws: 0, spread: 0, ...o });
+
+  it("adds a live game for its leader, and a level one as a draw", () => {
+    const ids = ["a", "b", "c"];
+    const cells = buildCrosstable(ids, [
+      // finished: a beat b 400-350, as the standings record
+      game({ gameId: "ab" }),
+      // live: c leads a 150-120
+      game({
+        ...live,
+        gameId: "ac",
+        player1UserId: "c",
+        player0Score: 120,
+        player1Score: 150,
+        playerOnTurn: 0,
+      }),
+      // live and not yet started: 0-0
+      game({
+        ...live,
+        gameId: "bc",
+        player0UserId: "b",
+        player1UserId: "c",
+        player0Score: 0,
+        player1Score: 0,
+        playerOnTurn: 0,
+      }),
+    ]);
+    const now = ifEndedNow(
+      [
+        standing("a", { wins: 1, spread: 50 }),
+        standing("b", { losses: 1, spread: -50 }),
+        standing("c", {}),
+      ],
+      cells,
+    );
+    expect(now.get("c")).toEqual({
+      wins: 1,
+      losses: 0,
+      draws: 1,
+      spread: 30,
+      rank: 1,
+      tied: false,
+      final: false,
+    });
+    expect(now.get("a")).toEqual({
+      wins: 1,
+      losses: 1,
+      draws: 0,
+      spread: 20,
+      rank: 2,
+      tied: false,
+      final: false,
+    });
+    expect(now.get("b")).toEqual({
+      wins: 0,
+      losses: 1,
+      draws: 1,
+      spread: -50,
+      rank: 3,
+      tied: false,
+      final: false,
+    });
+  });
+
+  it("takes finished games from the standings only", () => {
+    // b won a forfeit while behind 400-350: the standings have it, so the
+    // cross-table's copy is not counted again. a's +30 win is over a player
+    // the cross-table no longer lists, and still counts.
+    const cells = buildCrosstable(
+      ["a", "b"],
+      [game({ gameEndReason: GameEndReason.FORCE_FORFEIT, winnerIndex: 1 })],
+    );
+    const now = ifEndedNow(
+      [
+        standing("a", { wins: 1, losses: 1, spread: 80 }),
+        standing("b", { wins: 1, spread: -50 }),
+      ],
+      cells,
+    );
+    expect(now.get("a")).toEqual({
+      wins: 1,
+      losses: 1,
+      draws: 0,
+      spread: 80,
+      rank: 1,
+      tied: false,
+      final: true,
+    });
+    expect(now.get("b")).toEqual({
+      wins: 1,
+      losses: 0,
+      draws: 0,
+      spread: -50,
+      rank: 2,
+      tied: false,
+      final: true,
+    });
+  });
+
+  it("lets players level on points and spread share a rank", () => {
+    const ids = ["a", "b", "c"];
+    const cells = buildCrosstable(ids, [
+      game({ ...live, player0Score: 100, player1Score: 100 }),
+    ]);
+    const now = ifEndedNow(
+      ids.map((id) => standing(id, {})),
+      cells,
+    );
+    expect(now.get("a")).toMatchObject({ rank: 1, tied: true, final: false });
+    expect(now.get("b")).toMatchObject({ rank: 1, tied: true, final: false });
+    expect(now.get("c")).toMatchObject({ draws: 0, rank: 3, final: true });
   });
 });

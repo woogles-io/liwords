@@ -5,7 +5,8 @@
 // causing scroll-through artifacts. Override both.
 .league-game-modal,
 .leagues-container {
-  .ant-table-cell-fix-left {
+  .ant-table-cell-fix-left,
+  .ant-table-cell-fix-right {
     &.ant-table-cell-row-hover {
       background: #ffffff !important;
 
