@@ -12,20 +12,12 @@ import (
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
+// Rate rates the game and saves the new ratings. users[i] must be the user
+// for g.History().Players[i]; their in-memory ratings are updated to match.
 func Rate(ctx context.Context, scores map[string]int32, g *entity.Game,
-	winner string, userStore user.Store, now int64) (map[string][2]int32, error) {
+	winner string, users []*entity.User, userStore user.Store, now int64) (map[string][2]int32, error) {
 
-	// Fetch the users from the store.
-	users := []*entity.User{}
-	usernames := []string{}
-	for username := range scores {
-		p, err := userStore.Get(ctx, username)
-		if err != nil {
-			return nil, err
-		}
-		users = append(users, p)
-		usernames = append(usernames, username)
-	}
+	usernames := []string{g.History().Players[0].Nickname, g.History().Players[1].Nickname}
 	ratingKey, err := g.RatingKey()
 	if err != nil {
 		return nil, err
@@ -106,6 +98,12 @@ func Rate(ctx context.Context, scores map[string]int32, g *entity.Game,
 	err = userStore.SetRatings(ctx, users[0].UUID, users[1].UUID, ratingKey, p0SingleRating, p1SingleRating)
 	if err != nil {
 		return nil, err
+	}
+	for i, r := range []*entity.SingleRating{p0SingleRating, p1SingleRating} {
+		if users[i].Profile.Ratings.Data == nil {
+			users[i].Profile.Ratings.Data = map[entity.VariantKey]entity.SingleRating{}
+		}
+		users[i].Profile.Ratings.Data[ratingKey] = *r
 	}
 
 	return map[string][2]int32{
