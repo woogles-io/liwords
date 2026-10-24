@@ -19,7 +19,7 @@ export type BlockerHandle = {
 };
 
 export const TheBlocker = forwardRef((props: BlockerProps, ref) => {
-  const { excludedPlayers, setPendingBlockRefresh } =
+  const { blockedPlayers, setPendingBlockRefresh } =
     useExcludedPlayersStoreContext();
   const { loginState } = useLoginStateStoreContext();
   const { userID } = loginState;
@@ -28,7 +28,9 @@ export const TheBlocker = forwardRef((props: BlockerProps, ref) => {
   let apiFunc: "addBlock" | "removeBlock";
   let blockText: string;
 
-  if (excludedPlayers.has(props.target)) {
+  // Not excludedPlayers: that also has players who blocked us, and we
+  // can't remove their block.
+  if (blockedPlayers.has(props.target)) {
     apiFunc = "removeBlock";
     blockText = props.userName
       ? `Unblock ${props.userName}`

@@ -281,7 +281,12 @@ message GetFollowsResponse { repeated BasicFollowedUser users = 1; }
 message GetBlocksResponse { repeated BasicUser users = 1; }
 // XXX: We should eventually obsolete this and handle blocks purely on
 // the backend but we need to write a lot of hard code for that.
-message GetFullBlocksResponse { repeated string user_ids = 1; }
+message GetFullBlocksResponse {
+  // Players who blocked us and players we've blocked, together.
+  repeated string user_ids = 1;
+  // The subset of user_ids that we blocked; only these can be unblocked.
+  repeated string blocked_user_ids = 2;
+}
 
 // Yeah I know
 service SocializeService {
