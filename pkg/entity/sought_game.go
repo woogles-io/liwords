@@ -15,6 +15,10 @@ import (
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
+// ErrSeekGone is returned when a seek is accepted after it was taken or
+// canceled.
+var ErrSeekGone = errors.New("This game is no longer available.")
+
 type SoughtGameType int
 
 const (
