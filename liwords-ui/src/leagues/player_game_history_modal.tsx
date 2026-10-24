@@ -1,6 +1,5 @@
 import React from "react";
 import {
-  Button,
   Modal,
   Spin,
   Table,
@@ -15,6 +14,7 @@ import { timestampDate, type Timestamp } from "@bufbuild/protobuf/wkt";
 import { GameEndReason } from "../gen/api/proto/ipc/omgwords_pb";
 import { CorrespondenceTurnIndicator } from "../shared/corres_turn_indicator";
 import { UsernameWithContext } from "../shared/usernameWithContext";
+import { trackMenuItem } from "./follow_bar";
 
 const { Text } = Typography;
 
@@ -337,6 +337,11 @@ export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
     sorter: tilesSorter,
   };
 
+  // The Track item of a name's menu (the viewer's own name in the title
+  // included), when the page can track.
+  const trackItems = (id: string) =>
+    onTrack ? [trackMenuItem(() => onTrack(id))] : undefined;
+
   const columns: TableColumnsType<GameRow> = [
     {
       title: "Opponent",
@@ -362,6 +367,7 @@ export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
             handleInfoText={() =>
               onSelectPlayer(record.opponentUserId, record.opponentUsername)
             }
+            extraItems={trackItems(record.opponentUserId)}
           />
         </strong>
       ),
@@ -505,16 +511,10 @@ export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
             userID={userId}
             sendMessage={onChat}
             omitSendMessage={!onChat}
+            extraItems={trackItems(userId)}
           />
           's Season {seasonNumber} Games
           {seasonRange ? ` (${seasonRange})` : null}
-          {onTrack && (
-            <Tooltip title="Step through the seasons this player played">
-              <Button type="link" size="small" onClick={() => onTrack(userId)}>
-                Track
-              </Button>
-            </Tooltip>
-          )}
         </React.Fragment>
       }
       open={visible}

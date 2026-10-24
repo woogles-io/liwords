@@ -11,6 +11,14 @@ type Props = {
   onStop: () => void;
 };
 
+// The menu item, on a league player's name, that tracks them through the
+// seasons they played (the bar above the standings).
+export const trackMenuItem = (onClick: () => void) => ({
+  key: "track",
+  label: "Track across seasons",
+  onClick,
+});
+
 export const seasonLabel = (s: FollowedSeason) =>
   s.divisionNumber > 0
     ? `S${s.seasonNumber} D${s.divisionNumber}`

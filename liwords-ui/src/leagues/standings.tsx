@@ -18,6 +18,7 @@ import {
   PlacementStatus,
 } from "../gen/api/proto/ipc/league_pb";
 import { SeasonRegistrationsResponse } from "../gen/api/proto/league_service/league_service_pb";
+import { trackMenuItem } from "./follow_bar";
 import { PlayerGameHistoryModal } from "./player_game_history_modal";
 import { DisplayUserTitle } from "../shared/display_title";
 import { UsernameWithContext } from "../shared/usernameWithContext";
@@ -462,13 +463,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
                   }
                   extraItems={
                     onFollow
-                      ? [
-                          {
-                            key: "follow",
-                            label: "Track",
-                            onClick: () => onFollow(record.userId),
-                          },
-                        ]
+                      ? [trackMenuItem(() => onFollow(record.userId))]
                       : undefined
                   }
                 />
