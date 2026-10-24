@@ -824,6 +824,7 @@ func (s *DBStore) GetMetadata(ctx context.Context, id string) (*pb.GameInfoRespo
 		TournamentRound:     int32(tRound),
 		TournamentGameIndex: int32(tGameIndex),
 		Type:                gameType,
+		TimeStarted:         g.Timers.TimeStarted,
 	}
 
 	// Populate league fields if present
