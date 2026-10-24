@@ -130,6 +130,9 @@ export const LeaguePage = (props: Props) => {
 
   const [selectedSeasonId, setSelectedSeasonId] = useState<string | null>(null);
   const [selectedDivisionId, setSelectedDivisionId] = useState<string>("");
+  // the crosstable failed to load (e.g. a server without it); stop offering it.
+  const [crosstableFailed, setCrosstableFailed] = useState(false);
+  const onCrosstableError = useCallback(() => setCrosstableFailed(true), []);
   const [showPlayersModal, setShowPlayersModal] = useState<boolean>(false);
   const [showCommitmentModal, setShowCommitmentModal] =
     useState<boolean>(false);
@@ -922,7 +925,11 @@ export const LeaguePage = (props: Props) => {
                     ))}
                   {/* Mounted only when opened, so the games load on demand. */}
                   {standingsData.divisions
-                    .filter((division) => division.uuid === selectedDivisionId)
+                    .filter(
+                      (division) =>
+                        !crosstableFailed &&
+                        division.uuid === selectedDivisionId,
+                    )
                     .map((division) => (
                       <Collapse
                         key={division.uuid}
@@ -935,6 +942,7 @@ export const LeaguePage = (props: Props) => {
                               <DivisionCrosstable
                                 division={division}
                                 onChat={openDirectMessage}
+                                onError={onCrosstableError}
                               />
                             ),
                           },

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Spin, Table, type TableColumnsType, Tooltip, Typography } from "antd";
 import { useQuery } from "@connectrpc/connect-query";
 import { Division } from "../gen/api/proto/ipc/league_pb";
@@ -160,10 +160,17 @@ const GameScore = (props: { g: CrosstableCell; me: string; them: string }) => {
 export const DivisionCrosstable = (props: {
   division: Division;
   onChat?: (uuid: string, username: string) => void;
+  // called when the crosstable cannot be loaded, e.g. from a server that
+  // does not have it yet, so the page can drop it.
+  onError?: () => void;
 }) => {
   const { data, isLoading, error } = useQuery(getDivisionCrosstable, {
     divisionId: props.division.uuid,
   });
+  const { onError } = props;
+  useEffect(() => {
+    if (error) onError?.();
+  }, [error, onError]);
 
   const rows: Array<Row> = props.division.standings.map((s, i) => ({
     key: s.userId,
@@ -180,9 +187,7 @@ export const DivisionCrosstable = (props: {
     return <Spin />;
   }
   if (error) {
-    return (
-      <Text type="danger">Failed to load crosstable: {error.message}</Text>
-    );
+    return null;
   }
 
   const fixedColumns: TableColumnsType<Row> = [
