@@ -636,6 +636,28 @@ WHERE g.league_division_id = $1
   AND gp0.game_end_reason != 5  -- Exclude ABORTED
   AND gp0.game_end_reason != 7; -- Exclude CANCELLED
 
+-- name: GetDivisionCrosstableGames :many
+-- Every game of a division that is in progress or finished (not aborted or
+-- canceled), for the crosstable. Finished games take their scores from
+-- game_players; games in progress carry their history for the running score.
+SELECT
+    g.uuid AS game_uuid,
+    u0.uuid AS player0_uuid,
+    u1.uuid AS player1_uuid,
+    g.game_end_reason,
+    g.winner_idx,
+    g.player_on_turn,
+    COALESCE(gp0.score, 0)::INT AS player0_score,
+    COALESCE(gp1.score, 0)::INT AS player1_score,
+    (CASE WHEN g.game_end_reason = 0 THEN g.history ELSE NULL END)::BYTEA AS history
+FROM games g
+INNER JOIN users u0 ON g.player0_id = u0.id
+INNER JOIN users u1 ON g.player1_id = u1.id
+LEFT JOIN game_players gp0 ON g.uuid = gp0.game_uuid AND gp0.player_index = 0
+LEFT JOIN game_players gp1 ON g.uuid = gp1.game_uuid AND gp1.player_index = 1
+WHERE g.league_division_id = @division_id::uuid
+  AND g.game_end_reason NOT IN (5, 7); -- ABORTED, CANCELLED
+
 -- name: GetGameLeagueInfo :one
 SELECT
     g.league_division_id,
