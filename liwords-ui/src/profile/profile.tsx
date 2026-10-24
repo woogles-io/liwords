@@ -37,6 +37,7 @@ import { BADGE_DESCRIPTIONS } from "../gen/badges";
 import { getGamesAnalysisStatus } from "../gen/api/proto/analysis_service/analysis_service-AnalysisService_connectquery";
 import { Badge } from "./badge";
 import { DisplayUserOrganizations } from "./organizations";
+import { useBriefProfile } from "../utils/brief_profiles";
 const { screenSizeTablet } = variables;
 
 type Rating = {
@@ -223,6 +224,10 @@ export const PlayerProfile = React.memo(() => {
   const [ratings, setRatings] = useState<ProfileRatings | null>(null);
   const [stats, setStats] = useState<ProfileStats | null>(null);
   const [userID, setUserID] = useState("");
+  // The URL's spelling of the name may differ in case from the account's
+  // ("hastybot" for HastyBot); show the account's.
+  const briefProfile = useBriefProfile(userID);
+  const shownUsername = briefProfile?.username || username;
   const [userFetched, setUserFetched] = useState(false);
   const [fullName, setFullName] = useState("");
   // const [avatarUrl, setAvatarUrl] = useState('');
@@ -555,7 +560,7 @@ export const PlayerProfile = React.memo(() => {
                         omitSendMessage
                         fullName={fullName}
                         includeFlag
-                        username={username}
+                        username={shownUsername ?? username}
                         userID={userID}
                         showModTools
                         moderate={moderateUser}
