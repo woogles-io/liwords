@@ -16,12 +16,10 @@ SELECT pg_try_advisory_lock(hashtextextended($1::text, 0))
 
 // Cross-node serialization for a single game.
 //
-// Taken at the start of every write transaction that touches a game, and
-// released automatically on commit or rollback. This is what makes it safe to
-// reconstruct a position from game_turns: without it, AppendTurns commits a
-// terminal event before Set commits game_end_reason, so a concurrent read sees
-// a finished game that still claims to be in progress. That race is why the
-// turns read path was disabled.
+// Taken before a game is loaded for a move and released after it is saved, so
+// that only one server at a time can be playing into a given game. It is the
+// prerequisite for serving positions from game_turns and for running more than
+// one API task.
 //
 // Deliberately not tied to any one table: the lock is on the game id, and it
 // outlives whatever storage happens to hold the game.
@@ -39,9 +37,12 @@ SELECT pg_try_advisory_lock(hashtextextended($1::text, 0))
 // See pkg/stores/game/lock.go, which owns both halves.
 //
 // NOT STANDARD SQL: hashtextextended() maps the game id onto the int8 that
-// advisory locks key on. It is stable across servers and versions, which is
-// what matters here; it is not a security hash and a collision between two game
-// ids would only make them share a lock -- correct, just slower.
+// advisory locks key on. The key only has to agree with itself within one
+// running server, since every caller asks the same database; Postgres does not
+// promise the same value across versions or architectures, and nothing here
+// needs it to, because advisory locks do not survive a restart. It is not a
+// security hash: two game ids that collide would only share a lock -- correct,
+// just slower.
 func (q *Queries) TryLockGameSession(ctx context.Context, gameUuid string) (bool, error) {
 	row := q.db.QueryRow(ctx, tryLockGameSession, gameUuid)
 	var pg_try_advisory_lock bool
