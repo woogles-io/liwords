@@ -18,6 +18,11 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/matryer/is"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 
 	"github.com/woogles-io/liwords/pkg/stores/common"
 )
@@ -278,4 +283,46 @@ func TestLockGameGivesUpWaitingForASlot(t *testing.T) {
 	_, err := store.LockGame(ctx, "slot-overflow")
 	is.True(errors.Is(err, ErrGameLockBusy))
 	is.True(time.Since(start) < GameLockMaxWait+2*time.Second)
+}
+
+// Each lock reports two spans: how long it took to get, and how long it was
+// held, ending at Unlock. A lock that cannot be had reports its wait as an
+// error.
+func TestLockGameReportsWaitAndHeldSpans(t *testing.T) {
+	is := is.New(t)
+	rec := tracetest.NewSpanRecorder()
+	prev := otel.GetTracerProvider()
+	otel.SetTracerProvider(sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(rec)))
+	defer otel.SetTracerProvider(prev)
+
+	store := lockTestStore(t)
+	ctx := context.Background()
+
+	l, err := store.LockGame(ctx, "traced")
+	is.NoErr(err)
+	time.Sleep(50 * time.Millisecond)
+
+	short, cancel := context.WithTimeout(ctx, 100*time.Millisecond)
+	defer cancel()
+	_, err = store.LockGame(short, "traced")
+	is.True(err != nil)
+	l.Unlock(ctx)
+
+	var waits, helds []sdktrace.ReadOnlySpan
+	for _, sp := range rec.Ended() {
+		switch sp.Name() {
+		case "game.lock.wait":
+			waits = append(waits, sp)
+		case "game.lock.held":
+			helds = append(helds, sp)
+		}
+	}
+	is.Equal(len(waits), 2)
+	is.Equal(len(helds), 1) // the second attempt never held it
+
+	is.Equal(waits[0].Status().Code, codes.Unset)
+	is.Equal(waits[1].Status().Code, codes.Error)
+	held := helds[0]
+	is.True(held.EndTime().Sub(held.StartTime()) >= 150*time.Millisecond)
+	is.Equal(held.Attributes()[0], attribute.String("game.id", "traced"))
 }

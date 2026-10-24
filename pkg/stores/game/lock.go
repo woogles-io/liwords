@@ -36,6 +36,10 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/woogles-io/liwords/pkg/stores/models"
 )
@@ -99,6 +103,8 @@ type GameLock struct {
 	slots  chan struct{}
 	gameID string
 	once   sync.Once
+	// held spans from acquiring the lock to releasing it.
+	held trace.Span
 }
 
 // GameID is the game this lock is held for.
@@ -114,8 +120,28 @@ func (l *GameLock) GameID() string { return l.gameID }
 //	}
 //	defer lock.Unlock(ctx)
 func (s *DBStore) LockGame(ctx context.Context, gameID string) (*GameLock, error) {
+	// Two spans: game.lock.wait for getting the lock, and game.lock.held for
+	// holding it, which ends in Unlock. Both are children of the caller's span.
+	tracer := otel.Tracer("game-store")
+	gameAttr := trace.WithAttributes(attribute.String("game.id", gameID))
+	_, wait := tracer.Start(ctx, "game.lock.wait", gameAttr)
+	lock, attempts, err := s.lockGame(ctx, gameID)
+	wait.SetAttributes(attribute.Int("game.lock.attempts", attempts))
+	if err != nil {
+		wait.RecordError(err)
+		wait.SetStatus(codes.Error, err.Error())
+		wait.End()
+		return nil, err
+	}
+	wait.End()
+	_, lock.held = tracer.Start(ctx, "game.lock.held", gameAttr)
+	return lock, nil
+}
+
+func (s *DBStore) lockGame(ctx context.Context, gameID string) (*GameLock, int, error) {
+	attempts := 0
 	if gameID == "" {
-		return nil, fmt.Errorf("game: LockGame needs a game id")
+		return nil, attempts, fmt.Errorf("game: LockGame needs a game id")
 	}
 	deadline := time.Now().Add(GameLockMaxWait)
 	if d, ok := ctx.Deadline(); ok && d.Before(deadline) {
@@ -139,14 +165,14 @@ func (s *DBStore) LockGame(ctx context.Context, gameID string) (*GameLock, error
 	select {
 	case slots <- struct{}{}:
 	case <-waitCtx.Done():
-		return nil, busy(waitCtx.Err())
+		return nil, attempts, busy(waitCtx.Err())
 	}
 	release := func() { <-slots }
 
 	conn, err := s.dbPool.Acquire(waitCtx)
 	if err != nil {
 		release()
-		return nil, busy(err)
+		return nil, attempts, busy(err)
 	}
 	q := models.New(conn)
 
@@ -157,19 +183,20 @@ func (s *DBStore) LockGame(ctx context.Context, gameID string) (*GameLock, error
 	// moving parts than a poll loop, for a lock that is almost never contended.
 	poll := gameLockMinPoll
 	for {
+		attempts++
 		got, err := q.TryLockGameSession(ctx, gameID)
 		if err != nil {
 			conn.Release()
 			release()
-			return nil, err
+			return nil, attempts, err
 		}
 		if got {
-			return &GameLock{conn: conn, slots: slots, gameID: gameID}, nil
+			return &GameLock{conn: conn, slots: slots, gameID: gameID}, attempts, nil
 		}
 		if time.Now().After(deadline) {
 			conn.Release()
 			release()
-			return nil, fmt.Errorf("%w: %s", ErrGameLockBusy, gameID)
+			return nil, attempts, fmt.Errorf("%w: %s", ErrGameLockBusy, gameID)
 		}
 		// Jittered, so that several waiters do not retry in lockstep.
 		jitter := time.Duration(rand.Int64N(int64(poll / 2)))
@@ -177,7 +204,7 @@ func (s *DBStore) LockGame(ctx context.Context, gameID string) (*GameLock, error
 		case <-waitCtx.Done():
 			conn.Release()
 			release()
-			return nil, busy(waitCtx.Err())
+			return nil, attempts, busy(waitCtx.Err())
 		case <-time.After(poll + jitter):
 		}
 		if poll < gameLockMaxPoll {
@@ -202,6 +229,9 @@ func (l *GameLock) Unlock(ctx context.Context) {
 			if l.slots != nil {
 				<-l.slots
 			}
+			if l.held != nil {
+				l.held.End()
+			}
 		}()
 
 		// A caller's context may already be cancelled by the time a deferred
@@ -220,13 +250,21 @@ func (l *GameLock) Unlock(ctx context.Context) {
 			// Destroy the connection rather than return a possibly still-locked
 			// one to the pool, where it would block this game forever.
 			l.conn.Conn().Close(ctx)
-			logUnlockFailure(l.gameID, err)
+			l.unlockFailed(err)
 			return
 		}
 		if !released {
-			logUnlockFailure(l.gameID, errors.New("lock was not held by this connection"))
+			l.unlockFailed(errors.New("lock was not held by this connection"))
 		}
 	})
+}
+
+func (l *GameLock) unlockFailed(err error) {
+	if l.held != nil {
+		l.held.RecordError(err)
+		l.held.SetStatus(codes.Error, err.Error())
+	}
+	logUnlockFailure(l.gameID, err)
 }
 
 // logUnlockFailure records a lock that may still be held. It is rare enough and

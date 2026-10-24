@@ -518,7 +518,9 @@ Per step, from `xwordgame_remaining.md`:
    rows, none ahead.
 5. *Watch* `ErrGameLockBusy` (as `handle-event-lock-failed`,
    `timed-out-lock-failed`, `cant-lock-for-bot-move`, `cant-lock-for-abort`),
-   `game-unlock-failed`, pool saturation, move latency. Season-end
+   `game-unlock-failed`, pool saturation, move latency. In Jaeger,
+   `game.lock.wait` (with `game.lock.attempts`) and `game.lock.held` show how
+   long each lock took to get and how long it was held. Season-end
    force-finish takes the lock per game, but it runs in the
    `liwords-maintenance` task, so it changes only when that task definition
    is pointed at a build with step 5. Update it on a day with no rollover.
