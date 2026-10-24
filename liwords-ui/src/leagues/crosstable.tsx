@@ -164,9 +164,12 @@ export const DivisionCrosstable = (props: {
   // does not have it yet, so the page can drop it.
   onError?: () => void;
 }) => {
-  const { data, isLoading, error } = useQuery(getDivisionCrosstable, {
-    divisionId: props.division.uuid,
-  });
+  const { data, isLoading, error } = useQuery(
+    getDivisionCrosstable,
+    { divisionId: props.division.uuid },
+    // a missing endpoint will not appear on a retry; drop the panel at once.
+    { retry: false },
+  );
   const { onError } = props;
   useEffect(() => {
     if (error) onError?.();
