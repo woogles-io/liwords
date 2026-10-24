@@ -418,6 +418,13 @@
   display: flex;
   justify-content: flex-end;
   padding: 6px;
+  // the page number box, as tall as the Prev/Next buttons beside it.
+  .ant-input-number {
+    height: 36px;
+    .ant-input-number-input {
+      height: 34px;
+    }
+  }
 }
 
 .game-history-jump {
