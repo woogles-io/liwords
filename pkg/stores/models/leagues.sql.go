@@ -400,6 +400,73 @@ func (q *Queries) GetDivision(ctx context.Context, argUuid uuid.UUID) (LeagueDiv
 	return i, err
 }
 
+const getDivisionCrosstableGames = `-- name: GetDivisionCrosstableGames :many
+
+SELECT
+    g.uuid AS game_uuid,
+    u0.uuid AS player0_uuid,
+    u1.uuid AS player1_uuid,
+    g.game_end_reason,
+    g.winner_idx,
+    g.player_on_turn,
+    COALESCE(gp0.score, 0)::INT AS player0_score,
+    COALESCE(gp1.score, 0)::INT AS player1_score,
+    (CASE WHEN g.game_end_reason = 0 THEN g.history ELSE NULL END)::BYTEA AS history
+FROM games g
+INNER JOIN users u0 ON g.player0_id = u0.id
+INNER JOIN users u1 ON g.player1_id = u1.id
+LEFT JOIN game_players gp0 ON g.uuid = gp0.game_uuid AND gp0.player_index = 0
+LEFT JOIN game_players gp1 ON g.uuid = gp1.game_uuid AND gp1.player_index = 1
+WHERE g.league_division_id = $1::uuid
+  AND g.game_end_reason NOT IN (5, 7)
+`
+
+type GetDivisionCrosstableGamesRow struct {
+	GameUuid      pgtype.Text
+	Player0Uuid   string
+	Player1Uuid   string
+	GameEndReason pgtype.Int4
+	WinnerIdx     pgtype.Int4
+	PlayerOnTurn  pgtype.Int4
+	Player0Score  int32
+	Player1Score  int32
+	History       []byte
+}
+
+// Exclude CANCELLED
+// Every game of a division that is in progress or finished (not aborted or
+// canceled), for the cross-table. Finished games take their scores from
+// game_players; games in progress carry their history for the running score.
+func (q *Queries) GetDivisionCrosstableGames(ctx context.Context, divisionID uuid.UUID) ([]GetDivisionCrosstableGamesRow, error) {
+	rows, err := q.db.Query(ctx, getDivisionCrosstableGames, divisionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetDivisionCrosstableGamesRow
+	for rows.Next() {
+		var i GetDivisionCrosstableGamesRow
+		if err := rows.Scan(
+			&i.GameUuid,
+			&i.Player0Uuid,
+			&i.Player1Uuid,
+			&i.GameEndReason,
+			&i.WinnerIdx,
+			&i.PlayerOnTurn,
+			&i.Player0Score,
+			&i.Player1Score,
+			&i.History,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getDivisionGameResults = `-- name: GetDivisionGameResults :many
 
 SELECT
@@ -835,7 +902,7 @@ type GetGameLeagueInfoRow struct {
 	GameEndReason    pgtype.Int2
 }
 
-// Exclude CANCELLED
+// ABORTED, CANCELLED
 func (q *Queries) GetGameLeagueInfo(ctx context.Context, argUuid pgtype.Text) (GetGameLeagueInfoRow, error) {
 	row := q.db.QueryRow(ctx, getGameLeagueInfo, argUuid)
 	var i GetGameLeagueInfoRow
@@ -1090,7 +1157,8 @@ SELECT
     COALESCE(lst.losses, 0) as losses,
     COALESCE(lst.draws, 0) as draws,
     COALESCE(lst.spread, 0) as spread,
-    COALESCE(lst.result, 0) as result
+    COALESCE(lst.result, 0) as result,
+    COALESCE(lst.timeouts, 0) as timeouts
 FROM league_registrations lr
 JOIN users u ON lr.user_id = u.id
 JOIN league_seasons ls ON lr.season_id = ls.uuid
@@ -1110,6 +1178,7 @@ type GetLeagueRosterRow struct {
 	Draws          int32
 	Spread         int32
 	Result         int32
+	Timeouts       int32
 }
 
 // Get all players across all seasons of a league with their division and standings.
@@ -1133,6 +1202,7 @@ func (q *Queries) GetLeagueRoster(ctx context.Context, leagueID uuid.UUID) ([]Ge
 			&i.Draws,
 			&i.Spread,
 			&i.Result,
+			&i.Timeouts,
 		); err != nil {
 			return nil, err
 		}

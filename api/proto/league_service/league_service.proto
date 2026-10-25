@@ -41,6 +41,8 @@ service LeagueService {
       returns (PlayerHistoryResponse);
   rpc GetPlayerSeasonGames(GetPlayerSeasonGamesRequest)
       returns (GetPlayerSeasonGamesResponse);
+  rpc GetDivisionCrosstable(DivisionRequest)
+      returns (DivisionCrosstableResponse);
   rpc InviteUserToLeagues(InviteUserRequest) returns (InviteUserResponse);
   rpc RevokeUserFromLeagues(InviteUserRequest) returns (InviteUserResponse);
 
@@ -125,6 +127,24 @@ message DivisionRequest { string division_id = 1; }
 
 message DivisionStandingsResponse { ipc.Division division = 1; }
 
+// One game of a division, for the cross-table. Scores are final once the game
+// has ended, and the running scores while it is in progress.
+message CrosstableGame {
+  string game_id = 1;
+  string player0_user_id = 2;
+  string player1_user_id = 3;
+  int32 player0_score = 4;
+  int32 player1_score = 5;
+  // NONE while the game is in progress.
+  ipc.GameEndReason game_end_reason = 6;
+  // 0 or 1 for a finished game's winner; -1 for a draw or a game in progress.
+  int32 winner_index = 7;
+  // The player on turn in a game in progress; -1 otherwise.
+  int32 player_on_turn = 8;
+}
+
+message DivisionCrosstableResponse { repeated CrosstableGame games = 1; }
+
 message AllDivisionStandingsResponse { repeated ipc.Division divisions = 1; }
 
 message RegisterRequest {
@@ -195,6 +215,8 @@ message LeagueRosterSeason {
   int32 draws = 6;
   int32 spread = 7;
   ipc.StandingResult result = 8; // Promoted, relegated, stayed, champion
+  // Games lost on time that season; unset from a server that predates it.
+  optional int32 timeouts = 9;
 }
 
 message LeagueStatisticsResponse {
