@@ -52,9 +52,12 @@ export const GameCard = React.memo((props: GameCardProps) => {
           nickname: opponent.nickname,
         }}
       />
-      <Link to={`/profile/${encodeURIComponent(opponent.nickname)}`}>
-        {players[1 - userplace].nickname}
-      </Link>
+      {/* The card cuts a long name; hovering gives it whole. */}
+      <Tooltip title={opponent.nickname}>
+        <Link to={`/profile/${encodeURIComponent(opponent.nickname)}`}>
+          {players[1 - userplace].nickname}
+        </Link>
+      </Tooltip>
     </div>
   );
 
