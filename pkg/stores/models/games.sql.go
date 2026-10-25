@@ -292,6 +292,24 @@ func (q *Queries) GetGameOwner(ctx context.Context, gameUuid string) (GetGameOwn
 	return i, err
 }
 
+const getGamePlayerUpdatedAt = `-- name: GetGamePlayerUpdatedAt :one
+SELECT updated_at FROM game_players
+WHERE game_uuid = $1 AND player_id = $2
+`
+
+type GetGamePlayerUpdatedAtParams struct {
+	GameUuid string
+	UserID   int32
+}
+
+// Where one of the user's games sits in their history, for paging on from it.
+func (q *Queries) GetGamePlayerUpdatedAt(ctx context.Context, arg GetGamePlayerUpdatedAtParams) (pgtype.Timestamptz, error) {
+	row := q.db.QueryRow(ctx, getGamePlayerUpdatedAt, arg.GameUuid, arg.UserID)
+	var updated_at pgtype.Timestamptz
+	err := row.Scan(&updated_at)
+	return updated_at, err
+}
+
 const getGameWithTurns = `-- name: GetGameWithTurns :one
 
 SELECT
@@ -514,6 +532,205 @@ func (q *Queries) GetRecentCorrespondenceGamesByUserId(ctx context.Context, arg 
 	var items []GetRecentCorrespondenceGamesByUserIdRow
 	for rows.Next() {
 		var i GetRecentCorrespondenceGamesByUserIdRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Uuid,
+			&i.Type,
+			&i.Player0ID,
+			&i.Player1ID,
+			&i.Timers,
+			&i.Started,
+			&i.GameEndReason,
+			&i.WinnerIdx,
+			&i.LoserIdx,
+			&i.Quickdata,
+			&i.TournamentData,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.GameRequest,
+			&i.LeagueID,
+			&i.SeasonID,
+			&i.LeagueDivisionID,
+			&i.LeagueSlug,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getRecentGamesAfter = `-- name: GetRecentGamesAfter :many
+WITH recent_game_uuids AS (
+  SELECT gp.game_uuid, gp.updated_at
+  FROM game_players gp
+  WHERE gp.player_id = $1
+    AND gp.game_end_reason NOT IN (0, 5, 7)  -- NONE, ABORTED, CANCELLED
+    AND gp.updated_at >= $2::timestamptz
+    AND (gp.updated_at, gp.game_uuid) > ($2::timestamptz, $3::text)
+  ORDER BY gp.updated_at ASC, gp.game_uuid ASC
+  LIMIT $4::integer
+)
+SELECT g.id, g.uuid, g.type, g.player0_id, g.player1_id,
+       g.timers, g.started, g.game_end_reason, g.winner_idx, g.loser_idx,
+       g.quickdata, g.tournament_data, g.created_at, g.updated_at,
+       g.game_request, g.league_id, g.season_id, g.league_division_id,
+       COALESCE(l.slug, '')::text AS league_slug
+FROM recent_game_uuids rgu
+JOIN games g ON rgu.game_uuid = g.uuid
+LEFT JOIN leagues l ON l.uuid = g.league_id
+ORDER BY rgu.updated_at ASC, rgu.game_uuid ASC
+`
+
+type GetRecentGamesAfterParams struct {
+	UserID    int32
+	AfterTime pgtype.Timestamptz
+	AfterUuid string
+	NumGames  int32
+}
+
+type GetRecentGamesAfterRow struct {
+	ID               int32
+	Uuid             pgtype.Text
+	Type             pgtype.Int4
+	Player0ID        pgtype.Int4
+	Player1ID        pgtype.Int4
+	Timers           entity.Timers
+	Started          pgtype.Bool
+	GameEndReason    pgtype.Int4
+	WinnerIdx        pgtype.Int4
+	LoserIdx         pgtype.Int4
+	Quickdata        entity.Quickdata
+	TournamentData   entity.TournamentData
+	CreatedAt        pgtype.Timestamptz
+	UpdatedAt        pgtype.Timestamptz
+	GameRequest      entity.GameRequest
+	LeagueID         pgtype.UUID
+	SeasonID         pgtype.UUID
+	LeagueDivisionID pgtype.UUID
+	LeagueSlug       string
+}
+
+// The user's games just newer than (@after_time, @after_uuid), oldest first
+// (the caller reverses them).
+func (q *Queries) GetRecentGamesAfter(ctx context.Context, arg GetRecentGamesAfterParams) ([]GetRecentGamesAfterRow, error) {
+	rows, err := q.db.Query(ctx, getRecentGamesAfter,
+		arg.UserID,
+		arg.AfterTime,
+		arg.AfterUuid,
+		arg.NumGames,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetRecentGamesAfterRow
+	for rows.Next() {
+		var i GetRecentGamesAfterRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Uuid,
+			&i.Type,
+			&i.Player0ID,
+			&i.Player1ID,
+			&i.Timers,
+			&i.Started,
+			&i.GameEndReason,
+			&i.WinnerIdx,
+			&i.LoserIdx,
+			&i.Quickdata,
+			&i.TournamentData,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.GameRequest,
+			&i.LeagueID,
+			&i.SeasonID,
+			&i.LeagueDivisionID,
+			&i.LeagueSlug,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getRecentGamesBefore = `-- name: GetRecentGamesBefore :many
+WITH recent_game_uuids AS (
+  SELECT gp.game_uuid, gp.updated_at
+  FROM game_players gp
+  WHERE gp.player_id = $1
+    AND gp.game_end_reason NOT IN (0, 5, 7)  -- NONE, ABORTED, CANCELLED
+    -- the plain bound lets the (player_id, updated_at) index start there;
+    -- the row comparison then breaks ties on the same instant by game id.
+    AND gp.updated_at <= $2::timestamptz
+    AND (gp.updated_at, gp.game_uuid) < ($2::timestamptz, $3::text)
+  ORDER BY gp.updated_at DESC, gp.game_uuid DESC
+  LIMIT $4::integer
+)
+SELECT g.id, g.uuid, g.type, g.player0_id, g.player1_id,
+       g.timers, g.started, g.game_end_reason, g.winner_idx, g.loser_idx,
+       g.quickdata, g.tournament_data, g.created_at, g.updated_at,
+       g.game_request, g.league_id, g.season_id, g.league_division_id,
+       COALESCE(l.slug, '')::text AS league_slug
+FROM recent_game_uuids rgu
+JOIN games g ON rgu.game_uuid = g.uuid
+LEFT JOIN leagues l ON l.uuid = g.league_id
+ORDER BY rgu.updated_at DESC, rgu.game_uuid DESC
+`
+
+type GetRecentGamesBeforeParams struct {
+	UserID     int32
+	BeforeTime pgtype.Timestamptz
+	BeforeUuid string
+	NumGames   int32
+}
+
+type GetRecentGamesBeforeRow struct {
+	ID               int32
+	Uuid             pgtype.Text
+	Type             pgtype.Int4
+	Player0ID        pgtype.Int4
+	Player1ID        pgtype.Int4
+	Timers           entity.Timers
+	Started          pgtype.Bool
+	GameEndReason    pgtype.Int4
+	WinnerIdx        pgtype.Int4
+	LoserIdx         pgtype.Int4
+	Quickdata        entity.Quickdata
+	TournamentData   entity.TournamentData
+	CreatedAt        pgtype.Timestamptz
+	UpdatedAt        pgtype.Timestamptz
+	GameRequest      entity.GameRequest
+	LeagueID         pgtype.UUID
+	SeasonID         pgtype.UUID
+	LeagueDivisionID pgtype.UUID
+	LeagueSlug       string
+}
+
+// The user's games just older than (@before_time, @before_uuid) in
+// (updated_at, game_uuid) order, newest first: a page of the history found
+// by walking the (player_id, updated_at) index from that point, however deep.
+func (q *Queries) GetRecentGamesBefore(ctx context.Context, arg GetRecentGamesBeforeParams) ([]GetRecentGamesBeforeRow, error) {
+	rows, err := q.db.Query(ctx, getRecentGamesBefore,
+		arg.UserID,
+		arg.BeforeTime,
+		arg.BeforeUuid,
+		arg.NumGames,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetRecentGamesBeforeRow
+	for rows.Next() {
+		var i GetRecentGamesBeforeRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Uuid,
