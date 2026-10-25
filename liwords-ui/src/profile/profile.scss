@@ -198,10 +198,17 @@
       bottom: -18px;
     }
     .slick-dots {
-      align-items: baseline;
+      align-items: center;
     }
+    // antd sizes a dot's li to its 3px bar and clips to it; these dots are
+    // round and up to 10px, so the li has to hold them. Its animated bar
+    // (li::after) would paint over the active dot, so it goes.
     .slick-dots li {
+      height: 10px;
       width: 12px;
+      &::after {
+        display: none;
+      }
       button {
         width: 8px;
         height: 8px;
@@ -367,6 +374,10 @@
     .ant-card-body {
       padding: 0;
     }
+    .when-toggle {
+      cursor: pointer;
+      white-space: nowrap;
+    }
   }
   .show-games-toggle {
     margin: 9px;
@@ -412,8 +423,31 @@
 .game-history-controls {
   align-items: center;
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   padding: 6px;
+  row-gap: 6px;
+  // the page number box, as tall as the Prev/Next buttons beside it.
+  .ant-input-number {
+    height: 36px;
+    .ant-input-number-input {
+      height: 34px;
+    }
+  }
+}
+
+// On a narrow screen the date box and Go wrap onto their own line rather
+// than squeezing the date.
+.game-history-jump {
+  align-items: center;
+  display: flex;
+  gap: 4px;
+  margin-left: 12px;
+  // as tall as the Prev/Next buttons beside it, and wide enough for the date.
+  .ant-picker {
+    height: 36px;
+    min-width: 172px;
+  }
 }
 
 .not-found {

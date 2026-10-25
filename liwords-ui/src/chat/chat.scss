@@ -132,6 +132,13 @@ p {
         display: inline;
         color: m($gray-medium);
       }
+      span.recent-arrival {
+        border-radius: 4px;
+        display: inline;
+        padding: 0 2px;
+
+        background: m($primary-light);
+      }
     }
     &.scrolling {
       padding-bottom: 12px;

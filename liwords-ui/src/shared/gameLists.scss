@@ -341,3 +341,9 @@
     color: m($gray-subtle);
   }
 }
+
+// The count on a group of identical seeks. The site sets every tag's text to a
+// fixed dark gray, which a dark theme's plain tag background swallows.
+.game-lists .games .ant-tag.seek-count {
+  color: m($gray-extreme);
+}

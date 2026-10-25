@@ -5,7 +5,7 @@ import { GameMode } from "../gen/api/proto/ipc/omgwords_pb";
 import { MatchUserSchema } from "../gen/api/proto/ipc/omgseeks_pb";
 import { SoughtGame } from "../store/reducers/lobby_reducer";
 import { BotTypesEnum } from "./bots";
-import { findMyRealtimeRequest } from "./realtime_request";
+import { findMyRealtimeRequests } from "./realtime_request";
 import { RealtimeRequestNote } from "./realtime_request_note";
 
 const seek = (over: Partial<SoughtGame>): SoughtGame => ({
@@ -35,7 +35,9 @@ const seek = (over: Partial<SoughtGame>): SoughtGame => ({
   ...over,
 });
 
-describe("findMyRealtimeRequest", () => {
+const ids = (sgs: Array<SoughtGame>) => sgs.map((sg) => sg.seekID);
+
+describe("findMyRealtimeRequests", () => {
   const myCorres = seek({
     seekID: "my-corres",
     seeker: "andy",
@@ -49,15 +51,22 @@ describe("findMyRealtimeRequest", () => {
     seekerID: "andy-id",
   });
 
-  it("finds the user's open real-time seek, not a correspondence one or someone else's", () => {
+  it("finds the user's open real-time seeks, not correspondence ones or someone else's", () => {
+    const myOther = seek({
+      seekID: "my-other",
+      seeker: "andy",
+      seekerID: "andy-id",
+    });
     expect(
-      findMyRealtimeRequest(
-        [myCorres, theirRealtime, myRealtime],
-        [],
-        "andy-id",
-        "andy",
-      )?.seekID,
-    ).toBe("my-realtime");
+      ids(
+        findMyRealtimeRequests(
+          [myCorres, theirRealtime, myRealtime, myOther],
+          [],
+          "andy-id",
+          "andy",
+        ),
+      ),
+    ).toEqual(["my-realtime", "my-other"]);
   });
 
   it("finds a real-time match request the user sent", () => {
@@ -68,27 +77,32 @@ describe("findMyRealtimeRequest", () => {
       receiverIsPermanent: true,
     });
     expect(
-      findMyRealtimeRequest([myCorres], [sent], "andy-id", "andy")?.seekID,
-    ).toBe("my-match");
+      ids(findMyRealtimeRequests([myCorres], [sent], "andy-id", "andy")),
+    ).toEqual(["my-match"]);
   });
 
   it("finds nothing when the user's only seeks are correspondence ones", () => {
     expect(
-      findMyRealtimeRequest([myCorres, theirRealtime], [], "andy-id", "andy"),
-    ).toBeUndefined();
+      findMyRealtimeRequests([myCorres, theirRealtime], [], "andy-id", "andy"),
+    ).toEqual([]);
   });
 
   it("finds nothing without a user, even for a seek without a seeker ID", () => {
     expect(
-      findMyRealtimeRequest([seek({ seekerID: undefined })], [], undefined, ""),
-    ).toBeUndefined();
+      findMyRealtimeRequests(
+        [seek({ seekerID: undefined })],
+        [],
+        undefined,
+        "",
+      ),
+    ).toEqual([]);
   });
 });
 
 describe("RealtimeRequestNote", () => {
   it("names an open seek and shows it on click", () => {
     const onShow = vi.fn();
-    render(<RealtimeRequestNote request={seek({})} onShow={onShow} />);
+    render(<RealtimeRequestNote requests={[seek({})]} onShow={onShow} />);
     expect(
       screen.getByText(/You also have a real-time seek open\./),
     ).toBeInTheDocument();
@@ -98,10 +112,24 @@ describe("RealtimeRequestNote", () => {
 
   it("names a match request", () => {
     render(
-      <RealtimeRequestNote request={seek({ receiverIsPermanent: true })} />,
+      <RealtimeRequestNote requests={[seek({ receiverIsPermanent: true })]} />,
     );
     expect(
       screen.getByText(/You also have a real-time match request open\./),
+    ).toBeInTheDocument();
+  });
+
+  it("counts several", () => {
+    render(
+      <RealtimeRequestNote
+        requests={[seek({ seekID: "a" }), seek({ seekID: "b" })]}
+      />,
+    );
+    expect(
+      screen.getByText(/You also have 2 real-time seeks open\./),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Show them" }),
     ).toBeInTheDocument();
   });
 });

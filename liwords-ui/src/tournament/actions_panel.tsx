@@ -39,7 +39,7 @@ import {
 const PAGE_SIZE = 30;
 
 type Props = {
-  newGame: (seekID: string) => void;
+  newGame: (seekID: string, alternatives?: Array<string>) => void;
   loggedIn: boolean;
   // For logged-in users:
   userID?: string;
