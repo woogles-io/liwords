@@ -171,6 +171,18 @@ Everything here differs from the reference on purpose. Each is its own commit,
 each file is listed in `ledger.sh` (as `DEVIATION` or `DROPPED`), and together
 they explain the whole final diff against the reference.
 
+### Tests that came to master after the reference (step 6)
+
+`pkg/mod/chat_review_db_test.go` arrived on master with #2083, after the
+reference. It used the `makeGame` and `playGame` helpers that the reference
+removes from `automod_test.go`, and it relied on the cache. `playGame` sets
+racks and a fake clock on the caller's `*entity.Game`, and the game started on
+a 1970 clock. Without the cache every move loads a fresh copy on the real
+clock, which sees the game's time long expired and refuses the move ("game is
+not currently active"). Step 6 keeps `makeGame` in `automod_test.go`, now
+starting games on the real clock, and drops `playGame`. The test ends its game
+by resigning and measures the recent-game window from the real end time.
+
 ### Deliberately dropped: automod idempotency (issue #2036)
 
 #1975 carried automod changes that have nothing to do with the game-storage
@@ -600,6 +612,8 @@ pkg/stores/models/game_lock.sql.go
 pkg/mod/automod.go
 pkg/gameplay/automod_gate_test.go
 pkg/entity/game.go
+pkg/mod/automod_test.go
+pkg/mod/chat_review_db_test.go
 pkg/gameplay/game.go
 pkg/gameplay/meta_events.go
 pkg/stores/game/cache.go

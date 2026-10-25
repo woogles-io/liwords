@@ -12,11 +12,13 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/woogles-io/liwords/pkg/config"
 	"github.com/woogles-io/liwords/pkg/entity"
+	"github.com/woogles-io/liwords/pkg/gameplay"
 	pkgmod "github.com/woogles-io/liwords/pkg/mod"
 	"github.com/woogles-io/liwords/pkg/stores"
 	"github.com/woogles-io/liwords/pkg/stores/common"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 	ms "github.com/woogles-io/liwords/rpc/api/proto/mod_service"
+	"google.golang.org/protobuf/proto"
 )
 
 var pkg = "mod_test"
@@ -59,6 +61,46 @@ func (ec *evtConsumer) consumeEventChan(ctx context.Context,
 			return
 		}
 	}
+}
+
+// makeGame starts a game on the real clock. Every move loads the game afresh
+// from the database, so a fake clock set on this copy would not reach them.
+func makeGame(cfg *config.Config, stores *stores.Stores, initialTime int, ratingMode pb.RatingMode) (
+	*entity.Game, context.CancelFunc, chan bool, *evtConsumer) {
+
+	ctx := context.Background()
+	cesar, err := stores.UserStore.Get(ctx, "cesar")
+	if err != nil {
+		panic(err)
+	}
+	jesse, err := stores.UserStore.Get(ctx, "jesse")
+	if err != nil {
+		panic(err)
+	}
+
+	gr := proto.Clone(gameReq).(*pb.GameRequest)
+
+	gr.InitialTimeSeconds = int32(initialTime * 60)
+	gr.RatingMode = ratingMode
+	g, err := gameplay.InstantiateNewGame(ctx, stores.GameStore, cfg, [2]*entity.User{cesar, jesse},
+		gr, nil)
+	if err != nil {
+		panic(err)
+	}
+
+	ch := make(chan *entity.EventWrapper)
+	donechan := make(chan bool)
+	consumer := &evtConsumer{}
+	stores.GameStore.SetGameEventChan(ch)
+
+	cctx, cancel := context.WithCancel(ctx)
+	go consumer.consumeEventChan(cctx, ch, donechan)
+
+	err = gameplay.StartGame(ctx, stores, ch, g)
+	if err != nil {
+		panic(err)
+	}
+	return g, cancel, donechan, consumer
 }
 
 func recreateDB() (*pgxpool.Pool, *stores.Stores, *config.Config) {
