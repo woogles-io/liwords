@@ -435,7 +435,7 @@ type GetDivisionCrosstableGamesRow struct {
 
 // Exclude CANCELLED
 // Every game of a division that is in progress or finished (not aborted or
-// canceled), for the crosstable. Finished games take their scores from
+// canceled), for the cross-table. Finished games take their scores from
 // game_players; games in progress carry their history for the running score.
 func (q *Queries) GetDivisionCrosstableGames(ctx context.Context, divisionID uuid.UUID) ([]GetDivisionCrosstableGamesRow, error) {
 	rows, err := q.db.Query(ctx, getDivisionCrosstableGames, divisionID)
@@ -1157,7 +1157,8 @@ SELECT
     COALESCE(lst.losses, 0) as losses,
     COALESCE(lst.draws, 0) as draws,
     COALESCE(lst.spread, 0) as spread,
-    COALESCE(lst.result, 0) as result
+    COALESCE(lst.result, 0) as result,
+    COALESCE(lst.timeouts, 0) as timeouts
 FROM league_registrations lr
 JOIN users u ON lr.user_id = u.id
 JOIN league_seasons ls ON lr.season_id = ls.uuid
@@ -1177,6 +1178,7 @@ type GetLeagueRosterRow struct {
 	Draws          int32
 	Spread         int32
 	Result         int32
+	Timeouts       int32
 }
 
 // Get all players across all seasons of a league with their division and standings.
@@ -1200,6 +1202,7 @@ func (q *Queries) GetLeagueRoster(ctx context.Context, leagueID uuid.UUID) ([]Ge
 			&i.Draws,
 			&i.Spread,
 			&i.Result,
+			&i.Timeouts,
 		); err != nil {
 			return nil, err
 		}

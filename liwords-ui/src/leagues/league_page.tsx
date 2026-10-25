@@ -32,6 +32,7 @@ import { TopBar } from "../navigation/topbar";
 import { Chat, ChatHandle } from "../chat/chat";
 import {
   getLeague,
+  getLeagueRoster,
   getAllSeasons,
   getAllDivisionStandings,
   getSeasonRegistrations,
@@ -130,7 +131,8 @@ export const LeaguePage = (props: Props) => {
 
   const [selectedSeasonId, setSelectedSeasonId] = useState<string | null>(null);
   const [selectedDivisionId, setSelectedDivisionId] = useState<string>("");
-  // the crosstable failed to load (e.g. a server without it); stop offering it.
+  // the cross-table failed to load (e.g. a server without it); stop
+  // offering it.
   const [crosstableFailed, setCrosstableFailed] = useState(false);
   const onCrosstableError = useCallback(() => setCrosstableFailed(true), []);
   const [showPlayersModal, setShowPlayersModal] = useState<boolean>(false);
@@ -185,6 +187,22 @@ export const LeaguePage = (props: Props) => {
 
   // Data processing - get all seasons and find the active one
   const league = leagueData?.league;
+  // Every player's seasons, so a name in the standings can be tracked. The
+  // roster asks the same, so the two share one fetch.
+  const { data: rosterData } = useQuery(
+    getLeagueRoster,
+    { leagueId: league?.uuid ?? "" },
+    { enabled: !!league },
+  );
+  // Tracks a player through their seasons, from a name's menu anywhere on
+  // the page (standings, cross-table, season games).
+  const trackPlayer = useCallback(
+    (userId: string) => {
+      const player = rosterData?.players.find((p) => p.userId === userId);
+      if (player) setFollowing(followPlayer(player));
+    },
+    [rosterData],
+  );
   const allSeasons = useMemo(() => {
     const seasons = allSeasonsData?.seasons || [];
     // Sort by season number descending (newest first)
@@ -909,6 +927,7 @@ export const LeaguePage = (props: Props) => {
                         seasonStartDate={displayedSeason?.startDate}
                         currentUserId={userID}
                         highlightUserId={following ? following.userId : userID}
+                        onFollow={trackPlayer}
                         onChat={openDirectMessage}
                         promotionFormula={displayedSeason?.promotionFormula}
                         timeBankWarnings={timeBankWarningsMap}
@@ -937,12 +956,13 @@ export const LeaguePage = (props: Props) => {
                         items={[
                           {
                             key: "crosstable",
-                            label: "Crosstable",
+                            label: "Cross-table",
                             children: (
                               <DivisionCrosstable
                                 division={division}
                                 onChat={openDirectMessage}
                                 onError={onCrosstableError}
+                                onTrack={trackPlayer}
                               />
                             ),
                           },
