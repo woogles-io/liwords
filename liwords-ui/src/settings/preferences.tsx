@@ -386,9 +386,9 @@ export const Preferences = React.memo(() => {
                         e.preventDefault();
                         alert(
                           "To enable notifications:\n\n" +
-                            "Chrome/Edge: Click the lock icon in the address bar → Site settings → Notifications → Allow\n\n" +
-                            "Firefox: Click the lock icon → Clear permissions → Refresh page\n\n" +
-                            "Safari: Safari menu → Settings → Websites → Notifications → woogles.io → Allow",
+                            "Chrome/Edge: Click the icon at the left of the address bar > Site settings > Notifications > Allow. (Chrome always blocks them in incognito windows.)\n\n" +
+                            "Firefox: Click the lock icon > Clear permissions > Refresh page\n\n" +
+                            "Safari: Safari menu > Settings > Websites > Notifications > woogles.io > Allow",
                         );
                       }}
                     >
