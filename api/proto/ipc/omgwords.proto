@@ -252,6 +252,12 @@ message GameInfoResponse {
   // time_started is when the game's clocks started, a unix timestamp in
   // milliseconds; 0 if the game has not started.
   int64 time_started = 28;
+  // The names of the league or the tournament the game was played in, and
+  // the tournament's page, for a list to name them. Filled in only by the
+  // recent games (a profile's game history).
+  string league_name     = 29;
+  string tournament_name = 30;
+  string tournament_slug = 31;
 }
 
 message GameInfoResponses { repeated GameInfoResponse game_info = 1; }

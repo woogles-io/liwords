@@ -4,6 +4,7 @@ import { Card, Tag, Tooltip } from "antd";
 import { PlayerAvatar } from "../shared/player_avatar";
 import { Link } from "react-router";
 import { VariantIcon } from "../shared/variant_icons";
+import { GameEvent, hasGameEvent } from "./game_event";
 import { FundOutlined, RobotOutlined } from "@ant-design/icons";
 import { timeToString } from "../store/constants";
 import { GameInfoResponse, RatingMode } from "../gen/api/proto/ipc/omgwords_pb";
@@ -162,6 +163,11 @@ export const GameCard = React.memo((props: GameCardProps) => {
         {lexiconCodeToProfileRatingName(gameRequest?.lexicon ?? "")} -{" "}
         <span className="time-control">{time}</span>
       </div>
+      {hasGameEvent(game) && (
+        <div className="game-event">
+          <GameEvent game={game} />
+        </div>
+      )}
       <p>{endReason}</p>
       {getDetails}
     </Card>

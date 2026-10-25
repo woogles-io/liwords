@@ -15,6 +15,7 @@ import { CheckCircleTwoTone, RobotOutlined } from "@ant-design/icons";
 import { FundOutlined } from "@ant-design/icons";
 import { timeToString } from "../store/constants";
 import { VariantIcon } from "../shared/variant_icons";
+import { GameEvent } from "./game_event";
 import { GameInfoResponse, RatingMode } from "../gen/api/proto/ipc/omgwords_pb";
 import { challengeRuleNamesShort } from "../constants/challenge_rules";
 import { GameEndReason } from "../gen/api/proto/ipc/omgwords_pb";
@@ -211,6 +212,7 @@ export const GamesHistoryCard = React.memo((props: Props) => {
           item.gameRequest?.lexicon ?? "",
         ),
         time,
+        event: <GameEvent game={item} />,
         when,
         hasAnalysis: analyzedGameIds.has(item.gameId ?? ""),
       };
@@ -264,6 +266,12 @@ export const GamesHistoryCard = React.memo((props: Props) => {
       dataIndex: "time",
       key: "time",
       title: "Time Settings",
+    },
+    {
+      className: "event",
+      dataIndex: "event",
+      key: "event",
+      title: "Event",
     },
     {
       title: "Details",
