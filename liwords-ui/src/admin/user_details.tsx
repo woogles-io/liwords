@@ -5,7 +5,7 @@ import {
   searchDisposableEmail,
   searchEmail,
 } from "../gen/api/proto/config_service/config_service-ConfigService_connectquery";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import moment from "moment";
 import { timestampDate } from "@bufbuild/protobuf/wkt";
@@ -213,13 +213,18 @@ export const UserDetails = () => {
     { username: username },
     { enabled: false, retry: false },
   );
-  const lookedUpLinked = useRef(false);
+  // Every mount looks the user up: in development React mounts the page
+  // twice, and the first unmount cancels the first lookup, which then says
+  // nothing.
   useEffect(() => {
-    if (!linkedUsername || lookedUpLinked.current) return;
-    lookedUpLinked.current = true;
+    if (!linkedUsername) return;
+    let mounted = true;
     refetchByUsername({ throwOnError: true }).catch((e) => {
-      message.error({ content: "Error: " + String(e) });
+      if (mounted) message.error({ content: "Error: " + String(e) });
     });
+    return () => {
+      mounted = false;
+    };
   }, [linkedUsername, refetchByUsername]);
   const { data: searchEmailData, refetch: refetchByEmail } = useQuery(
     searchEmail,
