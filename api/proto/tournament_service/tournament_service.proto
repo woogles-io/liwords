@@ -301,6 +301,33 @@ message GetMyTournamentsResponse {
   repeated TournamentMetadata tournaments = 1;
 }
 
+message GetEnteredTournamentsRequest {
+  // username, if set, lists the tournaments and clubs that user entered
+  // instead, for a caller who can see private user data (the admin user
+  // lookup).
+  string username = 1;
+}
+
+// A tournament or club a user entered: played a game in, or is in a
+// division of while it is not finished.
+message EnteredTournament {
+  string id = 1;
+  string name = 2;
+  string slug = 3;
+  TType type = 4;
+  bool irl_mode = 5;
+  // games played in it, 0 if only registered.
+  int32 games = 6;
+  google.protobuf.Timestamp last_played = 7;
+  // registered is whether the user is in one of its divisions now; only
+  // unfinished tournaments are looked at for this.
+  bool registered = 8;
+}
+
+message GetEnteredTournamentsResponse {
+  repeated EnteredTournament tournaments = 1;
+}
+
 message RunCopRequest {
   string id = 1;
   string division = 2;
@@ -405,6 +432,12 @@ service TournamentService {
   // GetMyTournaments returns tournaments where the authenticated user is a director.
   rpc GetMyTournaments(GetMyTournamentsRequest)
       returns (GetMyTournamentsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // GetEnteredTournaments returns the tournaments and clubs a user played in
+  // or is registered in, the last played first.
+  rpc GetEnteredTournaments(GetEnteredTournamentsRequest)
+      returns (GetEnteredTournamentsResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   rpc RunCOP(RunCopRequest) returns (ipc.PairResponse);

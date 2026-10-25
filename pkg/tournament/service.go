@@ -729,7 +729,7 @@ func (ts *TournamentService) GetMyTournaments(ctx context.Context, req *connect.
 	if err != nil {
 		return nil, err
 	}
-	director, err := directorListUser(ctx, ts.userStore, user, req.Msg.Username, func() (bool, error) {
+	director, err := listedUser(ctx, ts.userStore, user, req.Msg.Username, func() (bool, error) {
 		return rbac.HasPermission(ctx, ts.queries, user.ID, rbac.CanSeePrivateUserData)
 	})
 	if err != nil {
@@ -756,10 +756,10 @@ func (ts *TournamentService) GetMyTournaments(ctx context.Context, req *connect.
 	return connect.NewResponse(response), nil
 }
 
-// directorListUser picks whose tournaments to list: the viewer's own when no
+// listedUser picks whose tournaments to list: the viewer's own when no
 // other username is given, else that user's, if the viewer can see private
 // user data.
-func directorListUser(ctx context.Context, us user.Store, viewer *entity.User,
+func listedUser(ctx context.Context, us user.Store, viewer *entity.User,
 	username string, canSeePrivateUserData func() (bool, error)) (*entity.User, error) {
 	if username == "" || strings.EqualFold(username, viewer.Username) {
 		return viewer, nil
@@ -769,7 +769,7 @@ func directorListUser(ctx context.Context, us user.Store, viewer *entity.User,
 		return nil, apiserver.InternalErr(err)
 	}
 	if !allowed {
-		return nil, apiserver.PermissionDenied("you can only list the tournaments you direct")
+		return nil, apiserver.PermissionDenied("you can only list your own tournaments")
 	}
 	target, err := us.Get(ctx, username)
 	if err != nil {
@@ -1252,19 +1252,25 @@ func (ts *TournamentService) GetTournamentMonitoring(ctx context.Context, req *c
 	}), nil
 }
 
-func dbTournamentToTournamentMetadataResponse(ctx context.Context, t *entity.Tournament) (*pb.TournamentMetadata, error) {
-	var tt pb.TType
-	switch t.Type {
+// competitionTType is a tournament's type as the API names it.
+func competitionTType(ct entity.CompetitionType) (pb.TType, error) {
+	switch ct {
 	case entity.TypeStandard:
-		tt = pb.TType_STANDARD
+		return pb.TType_STANDARD, nil
 	case entity.TypeChild:
-		tt = pb.TType_CHILD
+		return pb.TType_CHILD, nil
 	case entity.TypeClub:
-		tt = pb.TType_CLUB
+		return pb.TType_CLUB, nil
 	case entity.TypeLegacy:
-		tt = pb.TType_LEGACY
-	default:
-		return nil, fmt.Errorf("unrecognized tournament type: %v", t.Type)
+		return pb.TType_LEGACY, nil
+	}
+	return pb.TType_STANDARD, fmt.Errorf("unrecognized tournament type: %v", ct)
+}
+
+func dbTournamentToTournamentMetadataResponse(ctx context.Context, t *entity.Tournament) (*pb.TournamentMetadata, error) {
+	tt, err := competitionTType(t.Type)
+	if err != nil {
+		return nil, err
 	}
 
 	var scheduledStartTime *timestamppb.Timestamp

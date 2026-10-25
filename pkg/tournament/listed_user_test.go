@@ -26,7 +26,7 @@ func (s *usersByName) Get(ctx context.Context, username string) (*entity.User, e
 	return nil, errors.New("user not found")
 }
 
-func TestDirectorListUser(t *testing.T) {
+func TestListedUser(t *testing.T) {
 	is := is.New(t)
 	ctx := context.Background()
 	viewer := &entity.User{Username: "Mod", UUID: "mod-uuid"}
@@ -41,25 +41,25 @@ func TestDirectorListUser(t *testing.T) {
 	}
 
 	// The viewer's own tournaments need no permission, by name or without.
-	u, err := directorListUser(ctx, store, viewer, "", permission(false, nil))
+	u, err := listedUser(ctx, store, viewer, "", permission(false, nil))
 	is.NoErr(err)
 	is.Equal(u, viewer)
-	u, err = directorListUser(ctx, store, viewer, "mod", permission(false, nil))
+	u, err = listedUser(ctx, store, viewer, "mod", permission(false, nil))
 	is.NoErr(err)
 	is.Equal(u, viewer)
 	is.Equal(asked, 0)
 
 	// Someone else's only with the permission.
-	u, err = directorListUser(ctx, store, viewer, "cesar", permission(true, nil))
+	u, err = listedUser(ctx, store, viewer, "cesar", permission(true, nil))
 	is.NoErr(err)
 	is.Equal(u, cesar)
 
-	_, err = directorListUser(ctx, store, viewer, "cesar", permission(false, nil))
+	_, err = listedUser(ctx, store, viewer, "cesar", permission(false, nil))
 	is.Equal(connect.CodeOf(err), connect.CodePermissionDenied)
 
-	_, err = directorListUser(ctx, store, viewer, "nobody", permission(true, nil))
+	_, err = listedUser(ctx, store, viewer, "nobody", permission(true, nil))
 	is.Equal(connect.CodeOf(err), connect.CodeInvalidArgument)
 
-	_, err = directorListUser(ctx, store, viewer, "cesar", permission(false, errors.New("db down")))
+	_, err = listedUser(ctx, store, viewer, "cesar", permission(false, errors.New("db down")))
 	is.Equal(connect.CodeOf(err), connect.CodeInternal)
 }
