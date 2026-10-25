@@ -33,3 +33,6 @@ WHERE users.uuid = ANY(@user_uuids::text[])
     AND user_actions.removed_time IS NULL
     AND (user_actions.end_time IS NULL OR user_actions.end_time > NOW())
 ORDER BY users.uuid, user_actions.action_type, user_actions.start_time DESC;
+
+-- name: GetTournamentNameAndSlug :one
+SELECT name, slug FROM tournaments WHERE uuid = @uuid;

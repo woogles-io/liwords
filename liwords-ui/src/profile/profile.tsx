@@ -6,7 +6,7 @@ import React, {
   useState,
 } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router";
-import { Card, Carousel } from "antd";
+import { Card, Carousel, message } from "antd";
 import { TopBar } from "../navigation/topbar";
 import { PettableAvatar, PlayerAvatar } from "../shared/player_avatar";
 import { UsernameWithContext } from "../shared/usernameWithContext";
@@ -33,10 +33,12 @@ import { AnnotatedGamesHistoryCard } from "./annotated_games_history";
 import { UserCollectionsCard } from "./user_collections";
 import variables from "../base.module.scss";
 import { useQuery } from "@connectrpc/connect-query";
+import { timestampDate } from "@bufbuild/protobuf/wkt";
 import { BADGE_DESCRIPTIONS } from "../gen/badges";
 import { getGamesAnalysisStatus } from "../gen/api/proto/analysis_service/analysis_service-AnalysisService_connectquery";
 import { Badge } from "./badge";
 import { DisplayUserOrganizations } from "./organizations";
+import { useBriefProfile } from "../utils/brief_profiles";
 const { screenSizeTablet } = variables;
 
 type Rating = {
@@ -223,6 +225,10 @@ export const PlayerProfile = React.memo(() => {
   const [ratings, setRatings] = useState<ProfileRatings | null>(null);
   const [stats, setStats] = useState<ProfileStats | null>(null);
   const [userID, setUserID] = useState("");
+  // The URL's spelling of the name may differ in case from the account's
+  // ("hastybot" for HastyBot); show the account's.
+  const briefProfile = useBriefProfile(userID);
+  const shownUsername = briefProfile?.username || username;
   const [userFetched, setUserFetched] = useState(false);
   const [fullName, setFullName] = useState("");
   // const [avatarUrl, setAvatarUrl] = useState('');
@@ -237,6 +243,12 @@ export const PlayerProfile = React.memo(() => {
     offset: number;
     array: Array<GameInfoResponse>;
   }>({ numGames: gamesPageSize, offset: 0, array: [] });
+  // The newest games, for the "Recent games" cards, whatever page the game
+  // history table is on.
+  const [latestGames, setLatestGames] = useState<{
+    username: string;
+    array: Array<GameInfoResponse>;
+  } | null>(null);
   const [recentAnnotatedGames, setRecentAnnotatedGames] = useState<
     Array<AnnotatedGamesResponse_AnnotatedGame>
   >([]);
@@ -356,12 +368,40 @@ export const PlayerProfile = React.memo(() => {
             offset: queriedOffset,
             array: resp.gameInfo,
           });
+          if (queriedOffset === 0) {
+            setLatestGames({ username, array: resp.gameInfo });
+          }
         }
       } catch (e) {
         flashError(e);
       }
     })();
   }, [username, queriedRecentGamesOffset, gameMetadataClient]);
+
+  // The history table opened on a later page: fetch the newest games for the
+  // cards on their own.
+  const haveLatestGames = latestGames?.username === username;
+  useEffect(() => {
+    if (!username || haveLatestGames || queriedRecentGamesOffset === 0) {
+      return;
+    }
+    let current = true;
+    (async () => {
+      try {
+        const resp = await gameMetadataClient.getRecentGames({
+          username,
+          numGames: gamesPageSize,
+          offset: 0,
+        });
+        if (current) setLatestGames({ username, array: resp.gameInfo });
+      } catch (e) {
+        flashError(e);
+      }
+    })();
+    return () => {
+      current = false;
+    };
+  }, [username, haveLatestGames, queriedRecentGamesOffset, gameMetadataClient]);
 
   useEffect(() => {
     // offset and numGames are int32 in the protobuf.
@@ -381,6 +421,80 @@ export const PlayerProfile = React.memo(() => {
       };
     }
   }, [recentGamesOffset]);
+
+  // A page found by position instead of offset (after a jump to a date, and
+  // Prev/Next from there): cheap however far back, but its page number is
+  // unknown. Null when the table pages by offset.
+  const [keysetPage, setKeysetPage] = useState<Array<GameInfoResponse> | null>(
+    null,
+  );
+  // The keyset page is the oldest: nothing older to go Next to.
+  const [keysetAtOldest, setKeysetAtOldest] = useState(false);
+  const fetchKeyset = useCallback(
+    async (page: {
+      beforeGameId?: string;
+      before?: bigint;
+      afterGameId?: string;
+      after?: bigint;
+    }): Promise<void> => {
+      if (!username) return;
+      try {
+        const resp = await gameMetadataClient.getRecentGames({
+          username,
+          numGames: gamesPageSize,
+          ...page,
+        });
+        const firstMs = resp.gameInfo[0]?.lastUpdate
+          ? timestampDate(resp.gameInfo[0].lastUpdate).getTime()
+          : undefined;
+        if (
+          page.before &&
+          firstMs !== undefined &&
+          firstMs > Number(page.before) + 60000
+        ) {
+          // A server older than position paging ignores the request and
+          // returns the newest games; say so rather than show them as the
+          // jump. (Prev/Next by position follow only a jump that worked.)
+          message.info("Jumping to a date is not available yet.");
+          return;
+        }
+        if (page.afterGameId && resp.gameInfo.length < gamesPageSize) {
+          // Fewer than a page of newer games: that is the start of the
+          // history, so show the ordinary first page.
+          setKeysetPage(null);
+          setRecentGamesOffset(0);
+          setQueriedRecentGamesOffset(0);
+          return;
+        }
+        if (!resp.gameInfo.length && (page.before || page.beforeGameId)) {
+          // Nothing older: show the oldest page instead (a jump to before
+          // the first game, or Next from a full page that was the last).
+          await fetchOldest();
+          return;
+        }
+        if (!resp.gameInfo.length) {
+          // No games at all: stay where the table is.
+          return;
+        }
+        setKeysetAtOldest(!!page.after);
+        setKeysetPage(resp.gameInfo);
+      } catch (e) {
+        flashError(e);
+      }
+    },
+    // fetchOldest is declared below and only calls back into this.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [username, gameMetadataClient],
+  );
+  // The oldest games, found from the start of time.
+  const fetchOldest = useCallback(
+    () => fetchKeyset({ after: BigInt(1) }),
+    [fetchKeyset],
+  );
+  const handleJumpToTime = useCallback(
+    (ms: number) => fetchKeyset({ before: BigInt(ms) }),
+    [fetchKeyset],
+  );
 
   const fetchPrev = useCallback(() => {
     setRecentGamesOffset((r) => Math.max(r - gamesPageSize, 0));
@@ -404,6 +518,7 @@ export const PlayerProfile = React.memo(() => {
         String(value) === String(Math.floor(Number(value)))
       ) {
         const valueNum = Math.max(1, Math.floor(Number(value)));
+        setKeysetPage(null);
         setRecentGamesOffset((valueNum - 1) * gamesPageSize);
       }
     },
@@ -489,12 +604,20 @@ export const PlayerProfile = React.memo(() => {
     return ret;
   }, [ratings]);
 
-  const recentGameIds = useMemo(
+  const latestArray = useMemo(
     () =>
-      (recentGames?.array ?? [])
-        .map((g) => g.gameId)
-        .filter(Boolean) as string[],
-    [recentGames],
+      latestGames && latestGames.username === username ? latestGames.array : [],
+    [latestGames, username],
+  );
+  const recentGameIds = useMemo(
+    () => [
+      ...new Set(
+        [...(recentGames?.array ?? []), ...(keysetPage ?? []), ...latestArray]
+          .map((g) => g.gameId)
+          .filter(Boolean) as string[],
+      ),
+    ],
+    [recentGames, keysetPage, latestArray],
   );
   const { data: analysisStatusData } = useQuery(
     getGamesAnalysisStatus,
@@ -507,11 +630,8 @@ export const PlayerProfile = React.memo(() => {
   );
 
   const gameCards = useMemo(() => {
-    if (!recentGames?.array) {
-      return [];
-    }
-    const ret = recentGames?.array
-      ?.filter(
+    const ret = latestArray
+      .filter(
         (g) => g.players?.length && g.gameEndReason !== GameEndReason.CANCELLED,
       )
       .map((g) => (
@@ -523,7 +643,7 @@ export const PlayerProfile = React.memo(() => {
         />
       ));
     return ret;
-  }, [recentGames, userID, analyzedGameIds]);
+  }, [latestArray, userID, analyzedGameIds]);
 
   const emptyCards = (n: number, f: (n: number) => boolean) => {
     const ret = [];
@@ -555,7 +675,7 @@ export const PlayerProfile = React.memo(() => {
                         omitSendMessage
                         fullName={fullName}
                         includeFlag
-                        username={username}
+                        username={shownUsername ?? username}
                         userID={userID}
                         showModTools
                         moderate={moderateUser}
@@ -662,21 +782,37 @@ export const PlayerProfile = React.memo(() => {
           </p>
           {username && showGameTable && (
             <GamesHistoryCard
-              games={recentGames.array}
+              games={keysetPage ?? recentGames.array}
               username={username}
               userID={userID}
               analyzedGameIds={analyzedGameIds}
-              fetchPrev={recentGamesOffset > 0 ? fetchPrev : undefined}
-              fetchNext={
-                recentGames.array.length < recentGames.numGames
-                  ? undefined
-                  : fetchNext
+              fetchPrev={
+                keysetPage
+                  ? () => fetchKeyset({ afterGameId: keysetPage[0].gameId })
+                  : recentGamesOffset > 0
+                    ? fetchPrev
+                    : undefined
               }
+              fetchNext={
+                keysetPage
+                  ? keysetPage.length < gamesPageSize || keysetAtOldest
+                    ? undefined
+                    : () =>
+                        fetchKeyset({
+                          beforeGameId:
+                            keysetPage[keysetPage.length - 1].gameId,
+                        })
+                  : recentGames.array.length < recentGames.numGames
+                    ? undefined
+                    : fetchNext
+              }
+              pageNumberUnknown={!!keysetPage}
               currentOffset={recentGames.offset}
               currentPageSize={recentGames.numGames}
               desiredOffset={recentGamesOffset}
               desiredPageSize={gamesPageSize}
               onChangePageNumber={handleChangePageNumber}
+              onJumpToTime={handleJumpToTime}
             />
           )}
 

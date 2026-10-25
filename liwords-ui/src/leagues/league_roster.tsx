@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from "react";
 import { Input, Table, Tag, Tooltip } from "antd";
 import type { SortOrder } from "antd/es/table/interface";
 import {
+  ClockCircleOutlined,
   StarOutlined,
   ArrowUpOutlined,
   ArrowDownOutlined,
@@ -65,13 +66,26 @@ const resultLabel = (result: StandingResult): string | null => {
   }
 };
 
+// Timeouts that season: a red clock, with the count when more than one.
+const TimeoutMark = (props: { count: number }) => (
+  <span className="roster-timeout">
+    <ClockCircleOutlined />
+    {props.count > 1 ? props.count : null}
+  </span>
+);
+
+export const totalTimeouts = (player: LeagueRosterPlayer): number =>
+  player.seasons.reduce((n, s) => n + (s.timeouts ?? 0), 0);
+
 const formatSeason = (
   season: LeagueRosterSeason | undefined,
   compRank?: number,
   hideResult?: boolean,
   h2hTooltip?: string,
+  // The Peak column is about the finish, so it leaves the timeouts out.
+  hideTimeouts?: boolean,
 ) => {
-  if (!season) return <span className="roster-empty">—</span>;
+  if (!season) return <span className="roster-empty">{"\u2014"}</span>;
   if (season.divisionNumber === 0) {
     return <Tag color="lime">Registered</Tag>;
   }
@@ -79,9 +93,13 @@ const formatSeason = (
   const spread = season.spread > 0 ? `+${season.spread}` : `${season.spread}`;
   const displayRank = compRank ?? season.rank;
   const label = hideResult ? null : resultLabel(season.result);
+  const timeouts =
+    (season.timeouts ?? 0) > 0
+      ? ` \u00b7 ${season.timeouts} timeout${season.timeouts === 1 ? "" : "s"}`
+      : "";
   const seasonLine = label
-    ? `${record} (${spread}) · ${label}`
-    : `${record} (${spread})`;
+    ? `${record} (${spread}) \u00b7 ${label}${timeouts}`
+    : `${record} (${spread})${timeouts}`;
   const tooltip = h2hTooltip ? (
     <>
       {seasonLine}
@@ -107,13 +125,16 @@ const formatSeason = (
         </Tag>
         {displayRank > 0 && <span className="roster-rank">#{displayRank}</span>}
         {!hideResult && resultIcon(season.result)}
+        {!hideTimeouts && (season.timeouts ?? 0) > 0 && (
+          <TimeoutMark count={season.timeouts ?? 0} />
+        )}
       </span>
     </Tooltip>
   );
 };
 
 const formatH2H = (record: H2HRecord | undefined) => {
-  if (!record) return <span className="roster-empty">—</span>;
+  if (!record) return <span className="roster-empty">{"\u2014"}</span>;
   const { wins, losses, draws, spread } = record;
   const spreadStr = spread > 0 ? `+${spread}` : `${spread}`;
   const wld = `${wins}-${losses}${draws ? `-${draws}` : ""}`;
@@ -164,6 +185,25 @@ const peakSeasonBetter = (a: PeakCandidate, b: PeakCandidate): number => {
   // Earlier season is the final tiebreak.
   return a.season.seasonNumber - b.season.seasonNumber;
 };
+
+// The seasons in which a player reached their peak finish (same division and
+// shown rank), ascending. An unplaced peak counts once.
+export const peakRepeats = (
+  player: LeagueRosterPlayer,
+  peak: { season: LeagueRosterSeason; displayRank: number },
+  compRankMap: Map<string, number>,
+): number[] =>
+  peak.season.divisionNumber === 0
+    ? [peak.season.seasonNumber]
+    : player.seasons
+        .filter(
+          (s) =>
+            s.divisionNumber === peak.season.divisionNumber &&
+            (compRankMap.get(`${s.seasonNumber}:${player.userId}`) ??
+              s.rank) === peak.displayRank,
+        )
+        .map((s) => s.seasonNumber)
+        .sort((x, y) => x - y);
 
 // Compare two players by their status in a given season.
 // Order: placed (by division ASC, rank ASC) -> registered -> absent.
@@ -353,7 +393,14 @@ export const LeagueRoster: React.FC<Props> = ({
   const peakMap = useMemo(() => {
     const map = new Map<
       string,
-      { season: LeagueRosterSeason; displayRank: number; tied: boolean }
+      {
+        season: LeagueRosterSeason;
+        displayRank: number;
+        tied: boolean;
+        // Every season with the same finish (division and rank), ascending:
+        // a three-time champion has three.
+        repeats: number[];
+      }
     >();
     if (!data?.players) return map;
     for (const player of data.players) {
@@ -372,7 +419,12 @@ export const LeagueRoster: React.FC<Props> = ({
           best = cand;
         }
       }
-      if (best) map.set(player.userId, best);
+      if (best) {
+        map.set(player.userId, {
+          ...best,
+          repeats: peakRepeats(player, best, compRankMap),
+        });
+      }
     }
     return map;
   }, [data?.players, compRankMap, compRankInfo.tied]);
@@ -391,6 +443,9 @@ export const LeagueRoster: React.FC<Props> = ({
     [data?.seasonNumbers],
   );
 
+  const hasTimeouts = (data?.players ?? []).some((p) =>
+    p.seasons.some((s) => s.timeouts !== undefined),
+  );
   const columns = [
     {
       title: "Player",
@@ -477,6 +532,34 @@ export const LeagueRoster: React.FC<Props> = ({
       sortDirections: ["descend", "ascend"] as SortOrder[],
       sortOrder: sortKey === "count" ? sortOrder : undefined,
     },
+    // A server that predates timeouts sends none at all: leave the column out.
+    ...(hasTimeouts
+      ? [
+          {
+            title: <Tooltip title="Timeouts, all seasons">#TO</Tooltip>,
+            key: "timeouts",
+            width: 48,
+            render: (_: unknown, record: LeagueRosterPlayer) => {
+              const total = totalTimeouts(record);
+              if (total === 0) return <span className="roster-empty">-</span>;
+              return (
+                <Tooltip
+                  title={record.seasons
+                    .filter((s) => (s.timeouts ?? 0) > 0)
+                    .map((s) => `S${s.seasonNumber}: ${s.timeouts}`)
+                    .join(", ")}
+                >
+                  <span style={{ cursor: "help" }}>{total}</span>
+                </Tooltip>
+              );
+            },
+            sorter: (a: LeagueRosterPlayer, b: LeagueRosterPlayer) =>
+              totalTimeouts(a) - totalTimeouts(b),
+            sortDirections: ["descend", "ascend"] as SortOrder[],
+            sortOrder: sortKey === "timeouts" ? sortOrder : undefined,
+          },
+        ]
+      : []),
     {
       title: (
         <Tooltip title="Best-ever finish across all seasons (highest division, then best rank; a sole rank beats a tied one)">
@@ -487,16 +570,30 @@ export const LeagueRoster: React.FC<Props> = ({
       width: 130,
       render: (_: unknown, record: LeagueRosterPlayer) => {
         const peak = peakMap.get(record.userId);
-        if (!peak) return <span className="roster-empty">—</span>;
+        if (!peak) return <span className="roster-empty">{"\u2014"}</span>;
         return (
           <span className="roster-peak">
             {formatSeason(
               peak.season,
               compRankMap.get(`${peak.season.seasonNumber}:${record.userId}`),
+              undefined,
+              undefined,
+              true,
             )}
             <span style={{ fontSize: 11, opacity: 0.65, marginLeft: 2 }}>
-              ·S{peak.season.seasonNumber}
+              {"\u00b7"}S{peak.season.seasonNumber}
             </span>
+            {peak.repeats.length > 1 && (
+              <Tooltip
+                title={`${peak.repeats.length} times: ${peak.repeats
+                  .map((n) => `S${n}`)
+                  .join(", ")}`}
+              >
+                <span style={{ fontSize: 11, marginLeft: 3, cursor: "help" }}>
+                  &times;{peak.repeats.length}
+                </span>
+              </Tooltip>
+            )}
           </span>
         );
       },
@@ -513,6 +610,15 @@ export const LeagueRoster: React.FC<Props> = ({
         }
         if (!pa) return -1;
         if (!pb) return 1;
+        // Same finish: more times reached ranks higher. (peakSeasonBetter
+        // would otherwise prefer the earlier season.)
+        if (
+          pa.season.divisionNumber === pb.season.divisionNumber &&
+          pa.displayRank === pb.displayRank &&
+          pa.repeats.length !== pb.repeats.length
+        ) {
+          return pa.repeats.length - pb.repeats.length;
+        }
         const cmp = peakSeasonBetter(pa, pb);
         if (cmp !== 0) return -cmp;
         // Equal peaks: alphabetical under the default descending sort.
@@ -529,7 +635,7 @@ export const LeagueRoster: React.FC<Props> = ({
         const season = record.seasons.find(
           (s: LeagueRosterSeason) => s.seasonNumber === sn,
         );
-        if (!season) return <span className="roster-empty">—</span>;
+        if (!season) return <span className="roster-empty">{"\u2014"}</span>;
         const seasonGames =
           h2hUserId && record.userId !== h2hUserId
             ? h2hSeasonMap.get(`${record.userId}:${sn}`)
@@ -543,7 +649,7 @@ export const LeagueRoster: React.FC<Props> = ({
               visibility: seasonGames ? "visible" : "hidden",
             }}
           >
-            ●
+            {"\u25cf"}
           </span>
         ) : null;
         const gameTooltip = seasonGames

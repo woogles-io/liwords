@@ -41,6 +41,10 @@ export type SoughtGame = {
   ratingKey: string;
   requireEstablishedRating: boolean;
   onlyFollowedPlayers: boolean;
+  // Set from a seek request; used to tell identical seeks apart.
+  timeBankMinutes?: number;
+  boardLayout?: string;
+  letterDistribution?: string;
 };
 
 type playerMeta = {
@@ -128,6 +132,9 @@ export const SeekRequestToSoughtGame = (
     gameMode: gameReq.gameMode ?? 0,
     requireEstablishedRating: req.requireEstablishedRating,
     onlyFollowedPlayers: req.onlyFollowedPlayers,
+    timeBankMinutes: gameReq.timeBankMinutes,
+    boardLayout: gameReq.rules?.boardLayoutName ?? "",
+    letterDistribution: gameReq.rules?.letterDistributionName ?? "",
     // this is inconsequential as bot match requests are never shown
     // to the user. change if this becomes the case some day.
     botType: 0,

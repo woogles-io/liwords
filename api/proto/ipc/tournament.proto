@@ -20,6 +20,9 @@ message TournamentGameEndedEvent {
     string username = 1;
     int32 score = 2;
     TournamentGameResult result = 3;
+    // Set in RecentGames responses only. Censored players get the censored
+    // username here too.
+    string user_id = 4;
   }
 
   string game_id = 1;

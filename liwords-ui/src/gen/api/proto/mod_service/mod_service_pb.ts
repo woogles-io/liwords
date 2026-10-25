@@ -4,6 +4,8 @@
 
 import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
+import type { ChatMessagesSchema } from "../ipc/chat_pb";
+import { file_proto_ipc_chat } from "../ipc/chat_pb";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import { file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
 import type { Message } from "@bufbuild/protobuf";
@@ -12,7 +14,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file proto/mod_service/mod_service.proto.
  */
 export const file_proto_mod_service_mod_service: GenFile = /*@__PURE__*/
-  fileDesc("CiNwcm90by9tb2Rfc2VydmljZS9tb2Rfc2VydmljZS5wcm90bxILbW9kX3NlcnZpY2UijAMKCU1vZEFjdGlvbhIPCgd1c2VyX2lkGAEgASgJEigKBHR5cGUYAiABKA4yGi5tb2Rfc2VydmljZS5Nb2RBY3Rpb25UeXBlEhAKCGR1cmF0aW9uGAMgASgFEi4KCnN0YXJ0X3RpbWUYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEiwKCGVuZF90aW1lGAUgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIwCgxyZW1vdmVkX3RpbWUYBiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEg8KB2NoYW5uZWwYByABKAkSEgoKbWVzc2FnZV9pZBgIIAEoCRIXCg9hcHBsaWVyX3VzZXJfaWQYCSABKAkSFwoPcmVtb3Zlcl91c2VyX2lkGAogASgJEhEKCWNoYXRfdGV4dBgLIAEoCRIMCgRub3RlGAwgASgJEioKCmVtYWlsX3R5cGUYDSABKA4yFi5tb2Rfc2VydmljZS5FbWFpbFR5cGUikQEKDU1vZEFjdGlvbnNNYXASOAoHYWN0aW9ucxgBIAMoCzInLm1vZF9zZXJ2aWNlLk1vZEFjdGlvbnNNYXAuQWN0aW9uc0VudHJ5GkYKDEFjdGlvbnNFbnRyeRILCgNrZXkYASABKAkSJQoFdmFsdWUYAiABKAsyFi5tb2Rfc2VydmljZS5Nb2RBY3Rpb246AjgBIjkKDk1vZEFjdGlvbnNMaXN0EicKB2FjdGlvbnMYASADKAsyFi5tb2Rfc2VydmljZS5Nb2RBY3Rpb24iJAoRR2V0QWN0aW9uc1JlcXVlc3QSDwoHdXNlcl9pZBgBIAEoCSITChFNb2RBY3Rpb25SZXNwb25zZSJ5Cg1Ob3RvcmlvdXNHYW1lEgoKAmlkGAEgASgJEiwKBHR5cGUYAiABKA4yHi5tb2Rfc2VydmljZS5Ob3RvcmlvdXNHYW1lVHlwZRIuCgpjcmVhdGVkX2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCIoChVSZXNldE5vdG9yaWV0eVJlcXVlc3QSDwoHdXNlcl9pZBgBIAEoCSIYChZSZXNldE5vdG9yaWV0eVJlc3BvbnNlIiwKGUdldE5vdG9yaWV0eVJlcG9ydFJlcXVlc3QSDwoHdXNlcl9pZBgBIAEoCSJLCg9Ob3RvcmlldHlSZXBvcnQSDQoFc2NvcmUYASABKAUSKQoFZ2FtZXMYAiADKAsyGi5tb2Rfc2VydmljZS5Ob3RvcmlvdXNHYW1lKsABCg1Nb2RBY3Rpb25UeXBlEggKBE1VVEUQABITCg9TVVNQRU5EX0FDQ09VTlQQARIXChNTVVNQRU5EX1JBVEVEX0dBTUVTEAISEQoNU1VTUEVORF9HQU1FUxADEhEKDVJFU0VUX1JBVElOR1MQBBIPCgtSRVNFVF9TVEFUUxAFEhsKF1JFU0VUX1NUQVRTX0FORF9SQVRJTkdTEAYSDwoLUkVNT1ZFX0NIQVQQBxISCg5ERUxFVEVfQUNDT1VOVBAIKjQKCUVtYWlsVHlwZRILCgdERUZBVUxUEAASDAoIQ0hFQVRJTkcQARIMCghERUxFVElPThACKnUKEU5vdG9yaW91c0dhbWVUeXBlEggKBEdPT0QQABILCgdOT19QTEFZEAESCwoHU0lUVElORxACEgsKB1NBTkRCQUcQAxIYChROT19QTEFZX0RFTklFRF9OVURHRRAEEhUKEUVYQ0VTU0lWRV9QSE9OSUVTEAUy+QMKCk1vZFNlcnZpY2USSwoMQXBwbHlBY3Rpb25zEhsubW9kX3NlcnZpY2UuTW9kQWN0aW9uc0xpc3QaHi5tb2Rfc2VydmljZS5Nb2RBY3Rpb25SZXNwb25zZRJMCg1SZW1vdmVBY3Rpb25zEhsubW9kX3NlcnZpY2UuTW9kQWN0aW9uc0xpc3QaHi5tb2Rfc2VydmljZS5Nb2RBY3Rpb25SZXNwb25zZRJICgpHZXRBY3Rpb25zEh4ubW9kX3NlcnZpY2UuR2V0QWN0aW9uc1JlcXVlc3QaGi5tb2Rfc2VydmljZS5Nb2RBY3Rpb25zTWFwEk8KEEdldEFjdGlvbkhpc3RvcnkSHi5tb2Rfc2VydmljZS5HZXRBY3Rpb25zUmVxdWVzdBobLm1vZF9zZXJ2aWNlLk1vZEFjdGlvbnNMaXN0EloKEkdldE5vdG9yaWV0eVJlcG9ydBImLm1vZF9zZXJ2aWNlLkdldE5vdG9yaWV0eVJlcG9ydFJlcXVlc3QaHC5tb2Rfc2VydmljZS5Ob3RvcmlldHlSZXBvcnQSWQoOUmVzZXROb3RvcmlldHkSIi5tb2Rfc2VydmljZS5SZXNldE5vdG9yaWV0eVJlcXVlc3QaIy5tb2Rfc2VydmljZS5SZXNldE5vdG9yaWV0eVJlc3BvbnNlQqMBCg9jb20ubW9kX3NlcnZpY2VCD01vZFNlcnZpY2VQcm90b1ABWjdnaXRodWIuY29tL3dvb2dsZXMtaW8vbGl3b3Jkcy9ycGMvYXBpL3Byb3RvL21vZF9zZXJ2aWNlogIDTVhYqgIKTW9kU2VydmljZcoCCk1vZFNlcnZpY2XiAhZNb2RTZXJ2aWNlXEdQQk1ldGFkYXRh6gIKTW9kU2VydmljZWIGcHJvdG8z", [file_google_protobuf_timestamp]);
+  fileDesc("CiNwcm90by9tb2Rfc2VydmljZS9tb2Rfc2VydmljZS5wcm90bxILbW9kX3NlcnZpY2UijAMKCU1vZEFjdGlvbhIPCgd1c2VyX2lkGAEgASgJEigKBHR5cGUYAiABKA4yGi5tb2Rfc2VydmljZS5Nb2RBY3Rpb25UeXBlEhAKCGR1cmF0aW9uGAMgASgFEi4KCnN0YXJ0X3RpbWUYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEiwKCGVuZF90aW1lGAUgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIwCgxyZW1vdmVkX3RpbWUYBiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEg8KB2NoYW5uZWwYByABKAkSEgoKbWVzc2FnZV9pZBgIIAEoCRIXCg9hcHBsaWVyX3VzZXJfaWQYCSABKAkSFwoPcmVtb3Zlcl91c2VyX2lkGAogASgJEhEKCWNoYXRfdGV4dBgLIAEoCRIMCgRub3RlGAwgASgJEioKCmVtYWlsX3R5cGUYDSABKA4yFi5tb2Rfc2VydmljZS5FbWFpbFR5cGUikQEKDU1vZEFjdGlvbnNNYXASOAoHYWN0aW9ucxgBIAMoCzInLm1vZF9zZXJ2aWNlLk1vZEFjdGlvbnNNYXAuQWN0aW9uc0VudHJ5GkYKDEFjdGlvbnNFbnRyeRILCgNrZXkYASABKAkSJQoFdmFsdWUYAiABKAsyFi5tb2Rfc2VydmljZS5Nb2RBY3Rpb246AjgBIjkKDk1vZEFjdGlvbnNMaXN0EicKB2FjdGlvbnMYASADKAsyFi5tb2Rfc2VydmljZS5Nb2RBY3Rpb24iJAoRR2V0QWN0aW9uc1JlcXVlc3QSDwoHdXNlcl9pZBgBIAEoCSITChFNb2RBY3Rpb25SZXNwb25zZSJ5Cg1Ob3RvcmlvdXNHYW1lEgoKAmlkGAEgASgJEiwKBHR5cGUYAiABKA4yHi5tb2Rfc2VydmljZS5Ob3RvcmlvdXNHYW1lVHlwZRIuCgpjcmVhdGVkX2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCIoChVSZXNldE5vdG9yaWV0eVJlcXVlc3QSDwoHdXNlcl9pZBgBIAEoCSIYChZSZXNldE5vdG9yaWV0eVJlc3BvbnNlIiwKGUdldE5vdG9yaWV0eVJlcG9ydFJlcXVlc3QSDwoHdXNlcl9pZBgBIAEoCSJLCg9Ob3RvcmlldHlSZXBvcnQSDQoFc2NvcmUYASABKAUSKQoFZ2FtZXMYAiADKAsyGi5tb2Rfc2VydmljZS5Ob3RvcmlvdXNHYW1lImUKF0xpc3RDaGF0Q2hhbm5lbHNSZXF1ZXN0EhYKDmNoYW5uZWxfcHJlZml4GAEgASgJEhAKCHVzZXJuYW1lGAIgASgJEg4KBmN1cnNvchgDIAEoCRIQCghjaGFubmVscxgEIAMoCSJDCg9DaGF0U2VuZGVyQ291bnQSDwoHdXNlcl9pZBgBIAEoCRIQCgh1c2VybmFtZRgCIAEoCRINCgVjb3VudBgDIAEoBSKSAQoSQ2hhdENoYW5uZWxDb250ZXh0Eg0KBWxhYmVsGAEgASgJEgwKBGxpbmsYAiABKAkSLQoHcGFydGllcxgDIAMoCzIcLm1vZF9zZXJ2aWNlLkNoYXRTZW5kZXJDb3VudBIXCg9nYW1lX2NyZWF0ZWRfYXQYBCABKAMSFwoPZ2FtZV91cGRhdGVkX2F0GAUgASgDIoACChJDaGF0Q2hhbm5lbFN1bW1hcnkSDwoHY2hhbm5lbBgBIAEoCRIVCg1tZXNzYWdlX2NvdW50GAIgASgFEhcKD2ZpcnN0X3RpbWVzdGFtcBgDIAEoAxIWCg5sYXN0X3RpbWVzdGFtcBgEIAEoAxItCgdzZW5kZXJzGAUgAygLMhwubW9kX3NlcnZpY2UuQ2hhdFNlbmRlckNvdW50EhMKC3VzZXJfcGxheWVkGAYgASgIEjAKB2NvbnRleHQYByABKAsyHy5tb2Rfc2VydmljZS5DaGF0Q2hhbm5lbENvbnRleHQSGwoTdXNlcl9sYXN0X3RpbWVzdGFtcBgIIAEoAyJiChhMaXN0Q2hhdENoYW5uZWxzUmVzcG9uc2USMQoIY2hhbm5lbHMYASADKAsyHy5tb2Rfc2VydmljZS5DaGF0Q2hhbm5lbFN1bW1hcnkSEwoLbmV4dF9jdXJzb3IYAiABKAkiKQoWR2V0Q2hhbm5lbENoYXRzUmVxdWVzdBIPCgdjaGFubmVsGAEgASgJKsABCg1Nb2RBY3Rpb25UeXBlEggKBE1VVEUQABITCg9TVVNQRU5EX0FDQ09VTlQQARIXChNTVVNQRU5EX1JBVEVEX0dBTUVTEAISEQoNU1VTUEVORF9HQU1FUxADEhEKDVJFU0VUX1JBVElOR1MQBBIPCgtSRVNFVF9TVEFUUxAFEhsKF1JFU0VUX1NUQVRTX0FORF9SQVRJTkdTEAYSDwoLUkVNT1ZFX0NIQVQQBxISCg5ERUxFVEVfQUNDT1VOVBAIKjQKCUVtYWlsVHlwZRILCgdERUZBVUxUEAASDAoIQ0hFQVRJTkcQARIMCghERUxFVElPThACKnUKEU5vdG9yaW91c0dhbWVUeXBlEggKBEdPT0QQABILCgdOT19QTEFZEAESCwoHU0lUVElORxACEgsKB1NBTkRCQUcQAxIYChROT19QTEFZX0RFTklFRF9OVURHRRAEEhUKEUVYQ0VTU0lWRV9QSE9OSUVTEAUypQUKCk1vZFNlcnZpY2USSwoMQXBwbHlBY3Rpb25zEhsubW9kX3NlcnZpY2UuTW9kQWN0aW9uc0xpc3QaHi5tb2Rfc2VydmljZS5Nb2RBY3Rpb25SZXNwb25zZRJMCg1SZW1vdmVBY3Rpb25zEhsubW9kX3NlcnZpY2UuTW9kQWN0aW9uc0xpc3QaHi5tb2Rfc2VydmljZS5Nb2RBY3Rpb25SZXNwb25zZRJICgpHZXRBY3Rpb25zEh4ubW9kX3NlcnZpY2UuR2V0QWN0aW9uc1JlcXVlc3QaGi5tb2Rfc2VydmljZS5Nb2RBY3Rpb25zTWFwEk8KEEdldEFjdGlvbkhpc3RvcnkSHi5tb2Rfc2VydmljZS5HZXRBY3Rpb25zUmVxdWVzdBobLm1vZF9zZXJ2aWNlLk1vZEFjdGlvbnNMaXN0EloKEkdldE5vdG9yaWV0eVJlcG9ydBImLm1vZF9zZXJ2aWNlLkdldE5vdG9yaWV0eVJlcG9ydFJlcXVlc3QaHC5tb2Rfc2VydmljZS5Ob3RvcmlldHlSZXBvcnQSWQoOUmVzZXROb3RvcmlldHkSIi5tb2Rfc2VydmljZS5SZXNldE5vdG9yaWV0eVJlcXVlc3QaIy5tb2Rfc2VydmljZS5SZXNldE5vdG9yaWV0eVJlc3BvbnNlEl8KEExpc3RDaGF0Q2hhbm5lbHMSJC5tb2Rfc2VydmljZS5MaXN0Q2hhdENoYW5uZWxzUmVxdWVzdBolLm1vZF9zZXJ2aWNlLkxpc3RDaGF0Q2hhbm5lbHNSZXNwb25zZRJJCg9HZXRDaGFubmVsQ2hhdHMSIy5tb2Rfc2VydmljZS5HZXRDaGFubmVsQ2hhdHNSZXF1ZXN0GhEuaXBjLkNoYXRNZXNzYWdlc0KjAQoPY29tLm1vZF9zZXJ2aWNlQg9Nb2RTZXJ2aWNlUHJvdG9QAVo3Z2l0aHViLmNvbS93b29nbGVzLWlvL2xpd29yZHMvcnBjL2FwaS9wcm90by9tb2Rfc2VydmljZaICA01YWKoCCk1vZFNlcnZpY2XKAgpNb2RTZXJ2aWNl4gIWTW9kU2VydmljZVxHUEJNZXRhZGF0YeoCCk1vZFNlcnZpY2ViBnByb3RvMw", [file_proto_ipc_chat, file_google_protobuf_timestamp]);
 
 /**
  * @generated from message mod_service.ModAction
@@ -254,6 +256,225 @@ export const NotorietyReportSchema: GenMessage<NotorietyReport> = /*@__PURE__*/
   messageDesc(file_proto_mod_service_mod_service, 9);
 
 /**
+ * @generated from message mod_service.ListChatChannelsRequest
+ */
+export type ListChatChannelsRequest = Message<"mod_service.ListChatChannelsRequest"> & {
+  /**
+   * channel_prefix narrows the scan, e.g. "chat.game.", "chat.gametv.",
+   * "chat.pm.", "chat.tournament.", "chat.league.". Empty means all.
+   *
+   * @generated from field: string channel_prefix = 1;
+   */
+  channelPrefix: string;
+
+  /**
+   * username, if set, keeps only channels this user chatted in (or, for
+   * private chats, is a party to), and adds the chat of every game this user
+   * played that may still be in Redis, even where they wrote nothing.
+   *
+   * @generated from field: string username = 2;
+   */
+  username: string;
+
+  /**
+   * cursor is the Redis SCAN cursor; empty or "0" starts a new scan.
+   *
+   * @generated from field: string cursor = 3;
+   */
+  cursor: string;
+
+  /**
+   * channels, if set, summarizes exactly these channels instead of scanning.
+   *
+   * @generated from field: repeated string channels = 4;
+   */
+  channels: string[];
+};
+
+/**
+ * Describes the message mod_service.ListChatChannelsRequest.
+ * Use `create(ListChatChannelsRequestSchema)` to create a new message.
+ */
+export const ListChatChannelsRequestSchema: GenMessage<ListChatChannelsRequest> = /*@__PURE__*/
+  messageDesc(file_proto_mod_service_mod_service, 10);
+
+/**
+ * @generated from message mod_service.ChatSenderCount
+ */
+export type ChatSenderCount = Message<"mod_service.ChatSenderCount"> & {
+  /**
+   * @generated from field: string user_id = 1;
+   */
+  userId: string;
+
+  /**
+   * @generated from field: string username = 2;
+   */
+  username: string;
+
+  /**
+   * @generated from field: int32 count = 3;
+   */
+  count: number;
+};
+
+/**
+ * Describes the message mod_service.ChatSenderCount.
+ * Use `create(ChatSenderCountSchema)` to create a new message.
+ */
+export const ChatSenderCountSchema: GenMessage<ChatSenderCount> = /*@__PURE__*/
+  messageDesc(file_proto_mod_service_mod_service, 11);
+
+/**
+ * What a channel is about, decoded from its name.
+ *
+ * @generated from message mod_service.ChatChannelContext
+ */
+export type ChatChannelContext = Message<"mod_service.ChatChannelContext"> & {
+  /**
+   * e.g. "alice vs bob", "League: Smoke League", "Club: Philly Mondays".
+   *
+   * @generated from field: string label = 1;
+   */
+  label: string;
+
+  /**
+   * The site path it belongs to, e.g. /game/<id>, /leagues/<slug>, /club/<x>.
+   *
+   * @generated from field: string link = 2;
+   */
+  link: string;
+
+  /**
+   * The people it is between: a private chat's two users, a game's players.
+   *
+   * @generated from field: repeated mod_service.ChatSenderCount parties = 3;
+   */
+  parties: ChatSenderCount[];
+
+  /**
+   * For game channels, in milliseconds: when the game was created and when it
+   * was last updated (for a finished game, about when it ended).
+   *
+   * @generated from field: int64 game_created_at = 4;
+   */
+  gameCreatedAt: bigint;
+
+  /**
+   * @generated from field: int64 game_updated_at = 5;
+   */
+  gameUpdatedAt: bigint;
+};
+
+/**
+ * Describes the message mod_service.ChatChannelContext.
+ * Use `create(ChatChannelContextSchema)` to create a new message.
+ */
+export const ChatChannelContextSchema: GenMessage<ChatChannelContext> = /*@__PURE__*/
+  messageDesc(file_proto_mod_service_mod_service, 12);
+
+/**
+ * @generated from message mod_service.ChatChannelSummary
+ */
+export type ChatChannelSummary = Message<"mod_service.ChatChannelSummary"> & {
+  /**
+   * @generated from field: string channel = 1;
+   */
+  channel: string;
+
+  /**
+   * @generated from field: int32 message_count = 2;
+   */
+  messageCount: number;
+
+  /**
+   * in milliseconds, like ChatMessage.timestamp.
+   *
+   * @generated from field: int64 first_timestamp = 3;
+   */
+  firstTimestamp: bigint;
+
+  /**
+   * @generated from field: int64 last_timestamp = 4;
+   */
+  lastTimestamp: bigint;
+
+  /**
+   * @generated from field: repeated mod_service.ChatSenderCount senders = 5;
+   */
+  senders: ChatSenderCount[];
+
+  /**
+   * user_played is set when the channel belongs to a game the requested user
+   * played, whether or not they wrote in it.
+   *
+   * @generated from field: bool user_played = 6;
+   */
+  userPlayed: boolean;
+
+  /**
+   * @generated from field: mod_service.ChatChannelContext context = 7;
+   */
+  context?: ChatChannelContext | undefined;
+
+  /**
+   * user_last_timestamp is when the requested user last wrote here (0 if
+   * never), so channels can be ordered by the user's own last word.
+   *
+   * @generated from field: int64 user_last_timestamp = 8;
+   */
+  userLastTimestamp: bigint;
+};
+
+/**
+ * Describes the message mod_service.ChatChannelSummary.
+ * Use `create(ChatChannelSummarySchema)` to create a new message.
+ */
+export const ChatChannelSummarySchema: GenMessage<ChatChannelSummary> = /*@__PURE__*/
+  messageDesc(file_proto_mod_service_mod_service, 13);
+
+/**
+ * @generated from message mod_service.ListChatChannelsResponse
+ */
+export type ListChatChannelsResponse = Message<"mod_service.ListChatChannelsResponse"> & {
+  /**
+   * @generated from field: repeated mod_service.ChatChannelSummary channels = 1;
+   */
+  channels: ChatChannelSummary[];
+
+  /**
+   * next_cursor is "0" when the scan is complete.
+   *
+   * @generated from field: string next_cursor = 2;
+   */
+  nextCursor: string;
+};
+
+/**
+ * Describes the message mod_service.ListChatChannelsResponse.
+ * Use `create(ListChatChannelsResponseSchema)` to create a new message.
+ */
+export const ListChatChannelsResponseSchema: GenMessage<ListChatChannelsResponse> = /*@__PURE__*/
+  messageDesc(file_proto_mod_service_mod_service, 14);
+
+/**
+ * @generated from message mod_service.GetChannelChatsRequest
+ */
+export type GetChannelChatsRequest = Message<"mod_service.GetChannelChatsRequest"> & {
+  /**
+   * @generated from field: string channel = 1;
+   */
+  channel: string;
+};
+
+/**
+ * Describes the message mod_service.GetChannelChatsRequest.
+ * Use `create(GetChannelChatsRequestSchema)` to create a new message.
+ */
+export const GetChannelChatsRequestSchema: GenMessage<GetChannelChatsRequest> = /*@__PURE__*/
+  messageDesc(file_proto_mod_service_mod_service, 15);
+
+/**
  * @generated from enum mod_service.ModActionType
  */
 export enum ModActionType {
@@ -427,6 +648,22 @@ export const ModService: GenService<{
     methodKind: "unary";
     input: typeof ResetNotorietyRequestSchema;
     output: typeof ResetNotorietyResponseSchema;
+  },
+  /**
+   * @generated from rpc mod_service.ModService.ListChatChannels
+   */
+  listChatChannels: {
+    methodKind: "unary";
+    input: typeof ListChatChannelsRequestSchema;
+    output: typeof ListChatChannelsResponseSchema;
+  },
+  /**
+   * @generated from rpc mod_service.ModService.GetChannelChats
+   */
+  getChannelChats: {
+    methodKind: "unary";
+    input: typeof GetChannelChatsRequestSchema;
+    output: typeof ChatMessagesSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_proto_mod_service_mod_service, 0);

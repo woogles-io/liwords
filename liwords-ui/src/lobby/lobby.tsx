@@ -63,8 +63,8 @@ export const Lobby = (props: Props) => {
   }, [loggedIn]);
 
   const handleNewGame = useCallback(
-    (seekID: string) => {
-      sendAccept(seekID, sendSocketMsg);
+    (seekID: string, alternatives?: Array<string>) => {
+      sendAccept(seekID, sendSocketMsg, alternatives);
     },
     [sendSocketMsg],
   );

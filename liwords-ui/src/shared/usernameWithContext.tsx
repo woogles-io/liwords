@@ -41,6 +41,8 @@ type UsernameWithContextProps = {
   omitBadges?: boolean;
   infoText?: string;
   handleInfoText?: () => void;
+  // More page-specific entries, listed after infoText's.
+  extraItems?: Array<{ key: string; label: string; onClick: () => void }>;
 };
 
 export const UsernameWithContext = (props: UsernameWithContextProps) => {
@@ -118,6 +120,12 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
     userMenuOptions.push({
       key: `info-${props.userID}`,
       label: props.infoText,
+    });
+  }
+  for (const item of props.extraItems ?? []) {
+    userMenuOptions.push({
+      key: `extra-${item.key}-${props.userID}`,
+      label: item.label,
     });
   }
   if (isPettable) {
@@ -231,6 +239,22 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
       ),
     });
   }
+  // The user's chats in the admin chat review, for mods.
+  if (props.username && hasPermission(permissions, Perm.CanModerateUsers)) {
+    userMenuOptions.push({
+      key: `chatreview-${props.userID}`,
+      label: (
+        <Link
+          to={`/admin?tab=chat-review&username=${encodeURIComponent(
+            props.username,
+          )}`}
+          target="_blank"
+        >
+          Chat review
+        </Link>
+      ),
+    });
+  }
   const { modal } = App.useApp();
   // const userMenu = <ul>{userMenuOptions}</ul>;
   return (
@@ -270,6 +294,10 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
             case `info-${props.userID}`:
               props.handleInfoText?.();
               break;
+            default:
+              props.extraItems
+                ?.find((item) => key === `extra-${item.key}-${props.userID}`)
+                ?.onClick();
           }
         },
       }}

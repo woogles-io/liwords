@@ -1,7 +1,16 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link } from "react-router";
 import moment from "moment";
-import { Button, Card, InputNumber, Table, Tag, Tooltip } from "antd";
+import {
+  Button,
+  Card,
+  DatePicker,
+  InputNumber,
+  Table,
+  Tag,
+  Tooltip,
+} from "antd";
+import type { Dayjs } from "dayjs";
 import { CheckCircleTwoTone, RobotOutlined } from "@ant-design/icons";
 import { FundOutlined } from "@ant-design/icons";
 import { timeToString } from "../store/constants";
@@ -11,6 +20,8 @@ import { challengeRuleNamesShort } from "../constants/challenge_rules";
 import { GameEndReason } from "../gen/api/proto/ipc/omgwords_pb";
 import { ChallengeRule } from "../gen/api/proto/vendored/macondo/macondo_pb";
 import { lexiconCodeToProfileRatingName } from "../shared/lexica";
+import { useLocalStorageBool } from "../utils/use_local_storage";
+import { ABSOLUTE_TIMES_KEY } from "./history_prefs";
 import { timestampDate } from "@bufbuild/protobuf/wkt";
 
 type Props = {
@@ -25,6 +36,11 @@ type Props = {
   desiredOffset: number;
   desiredPageSize: number;
   onChangePageNumber: (value: number | string | null) => void;
+  // The page was found by position (a jump to a time), so its number is not
+  // known.
+  pageNumberUnknown?: boolean;
+  // Opens the page with the last game played before a time (unix ms).
+  onJumpToTime?: (ms: number) => void;
 };
 
 export const GamesHistoryCard = React.memo((props: Props) => {
@@ -37,6 +53,16 @@ export const GamesHistoryCard = React.memo((props: Props) => {
   } = props;
 
   const { analyzedGameIds } = props;
+
+  // When a game was played, as "13 days ago" or, after a click on any of
+  // them, as dates (a page of games all "13 days ago" is otherwise hard to
+  // tell apart). Remembered for the next visit, and followed by other open
+  // tabs, like the chat display settings.
+  const [absoluteTimes, setAbsoluteTimes] =
+    useLocalStorageBool(ABSOLUTE_TIMES_KEY);
+  const toggleAbsoluteTimes = () => setAbsoluteTimes(!absoluteTimes);
+  // The time to jump to (local time).
+  const [jumpTo, setJumpTo] = useState<Dayjs | null>(null);
 
   // The view currently assumes:
   // currentPageSize === desiredPageSize
@@ -116,8 +142,18 @@ export const GamesHistoryCard = React.memo((props: Props) => {
         item.lastUpdate ? timestampDate(item.lastUpdate) : "",
       );
       const when = (
-        <Tooltip title={whenMoment.format("LLL")}>
-          {whenMoment.fromNow()}
+        <Tooltip
+          title={
+            absoluteTimes
+              ? `${whenMoment.fromNow()}; click to show how long ago`
+              : `${whenMoment.format("LLL")}; click to show dates`
+          }
+        >
+          <span className="when-toggle" onClick={toggleAbsoluteTimes}>
+            {absoluteTimes
+              ? whenMoment.format("YYYY-MM-DD HH:mm")
+              : whenMoment.fromNow()}
+          </span>
         </Tooltip>
       );
       let endReason = "";
@@ -267,7 +303,7 @@ export const GamesHistoryCard = React.memo((props: Props) => {
         <InputNumber
           inputMode="numeric"
           min={1}
-          value={desiredPageNumber}
+          value={props.pageNumberUnknown ? null : desiredPageNumber}
           onChange={props.onChangePageNumber}
         />
         <Button disabled={!props.fetchPrev} onClick={props.fetchPrev}>
@@ -276,6 +312,23 @@ export const GamesHistoryCard = React.memo((props: Props) => {
         <Button disabled={!props.fetchNext} onClick={props.fetchNext}>
           Next
         </Button>
+        {props.onJumpToTime && (
+          <span className="game-history-jump">
+            <DatePicker
+              showTime={{ format: "HH:mm" }}
+              format="YYYY-MM-DD HH:mm"
+              placeholder="Games before..."
+              value={jumpTo}
+              onChange={setJumpTo}
+            />
+            <Button
+              disabled={!jumpTo}
+              onClick={() => jumpTo && props.onJumpToTime?.(jumpTo.valueOf())}
+            >
+              Go
+            </Button>
+          </span>
+        )}
       </div>
     </Card>
   );

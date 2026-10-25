@@ -2256,10 +2256,13 @@ func (x *MonitoringStreamStatusUpdate) GetMonitoringData() *MonitoringData {
 }
 
 type TournamentGameEndedEvent_Player struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Username      string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
-	Score         int32                  `protobuf:"varint,2,opt,name=score,proto3" json:"score,omitempty"`
-	Result        TournamentGameResult   `protobuf:"varint,3,opt,name=result,proto3,enum=ipc.TournamentGameResult" json:"result,omitempty"`
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Username string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
+	Score    int32                  `protobuf:"varint,2,opt,name=score,proto3" json:"score,omitempty"`
+	Result   TournamentGameResult   `protobuf:"varint,3,opt,name=result,proto3,enum=ipc.TournamentGameResult" json:"result,omitempty"`
+	// Set in RecentGames responses only. Censored players get the censored
+	// username here too.
+	UserId        string `protobuf:"bytes,4,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2315,11 +2318,18 @@ func (x *TournamentGameEndedEvent_Player) GetResult() TournamentGameResult {
 	return TournamentGameResult_NO_RESULT
 }
 
+func (x *TournamentGameEndedEvent_Player) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
 var File_proto_ipc_tournament_proto protoreflect.FileDescriptor
 
 const file_proto_ipc_tournament_proto_rawDesc = "" +
 	"\n" +
-	"\x1aproto/ipc/tournament.proto\x12\x03ipc\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x18proto/ipc/omgwords.proto\"\xfa\x02\n" +
+	"\x1aproto/ipc/tournament.proto\x12\x03ipc\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x18proto/ipc/omgwords.proto\"\x94\x03\n" +
 	"\x18TournamentGameEndedEvent\x12\x17\n" +
 	"\agame_id\x18\x01 \x01(\tR\x06gameId\x12>\n" +
 	"\aplayers\x18\x02 \x03(\v2$.ipc.TournamentGameEndedEvent.PlayerR\aplayers\x121\n" +
@@ -2329,11 +2339,12 @@ const file_proto_ipc_tournament_proto_rawDesc = "" +
 	"\x05round\x18\x05 \x01(\x05R\x05round\x12\x1a\n" +
 	"\bdivision\x18\x06 \x01(\tR\bdivision\x12\x1d\n" +
 	"\n" +
-	"game_index\x18\a \x01(\x05R\tgameIndex\x1am\n" +
+	"game_index\x18\a \x01(\x05R\tgameIndex\x1a\x86\x01\n" +
 	"\x06Player\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\x12\x14\n" +
 	"\x05score\x18\x02 \x01(\x05R\x05score\x121\n" +
-	"\x06result\x18\x03 \x01(\x0e2\x19.ipc.TournamentGameResultR\x06result\"\xc6\x01\n" +
+	"\x06result\x18\x03 \x01(\x0e2\x19.ipc.TournamentGameResultR\x06result\x12\x17\n" +
+	"\auser_id\x18\x04 \x01(\tR\x06userId\"\xc6\x01\n" +
 	"\x16TournamentRoundStarted\x12#\n" +
 	"\rtournament_id\x18\x01 \x01(\tR\ftournamentId\x12\x1a\n" +
 	"\bdivision\x18\x02 \x01(\tR\bdivision\x12\x14\n" +

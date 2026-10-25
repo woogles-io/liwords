@@ -47,7 +47,9 @@ type backingStore interface {
 	Get(ctx context.Context, id string) (*entity.Game, error)
 	GetMetadata(ctx context.Context, id string) (*pb.GameInfoResponse, error)
 	GetRematchStreak(ctx context.Context, originalRequestId string) (*gs.StreakInfoResponse, error)
+	GetLatestRematchGame(ctx context.Context, originalRequestId string) (string, error)
 	GetRecentGames(ctx context.Context, username string, numGames int, offset int) (*pb.GameInfoResponses, error)
+	GetRecentGamesPage(ctx context.Context, username string, numGames int, page entity.RecentGamesPage) (*pb.GameInfoResponses, error)
 	GetRecentTourneyGames(ctx context.Context, tourneyID string, numGames int, offset int) (*pb.GameInfoResponses, error)
 	GetRecentCorrespondenceGames(ctx context.Context, username string, numGames int) (*pb.GameInfoResponses, error)
 	Set(context.Context, *entity.Game) error
@@ -225,8 +227,16 @@ func (c *Cache) GetRematchStreak(ctx context.Context, originalRequestId string) 
 	return c.backing.GetRematchStreak(ctx, originalRequestId)
 }
 
+func (c *Cache) GetLatestRematchGame(ctx context.Context, originalRequestId string) (string, error) {
+	return c.backing.GetLatestRematchGame(ctx, originalRequestId)
+}
+
 func (c *Cache) GetRecentGames(ctx context.Context, username string, numGames int, offset int) (*pb.GameInfoResponses, error) {
 	return c.backing.GetRecentGames(ctx, username, numGames, offset)
+}
+
+func (c *Cache) GetRecentGamesPage(ctx context.Context, username string, numGames int, page entity.RecentGamesPage) (*pb.GameInfoResponses, error) {
+	return c.backing.GetRecentGamesPage(ctx, username, numGames, page)
 }
 
 func (c *Cache) GetRecentTourneyGames(ctx context.Context, tourneyID string, numGames int, offset int) (*pb.GameInfoResponses, error) {
