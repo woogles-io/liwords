@@ -240,6 +240,8 @@ const Tile = React.memo((props: TileProps) => {
     }
   }, [canDrop, drop]);
 
+  // A tentative tile keeps its own look in bicolor mode too, as the second
+  // color would make player 1's tiles being placed look already played.
   const computedClassName = `tile${
     isDragging ? " dragging" : ""
   }${canDrag ? " droppable" : ""}${props.selected ? " selected" : ""}${
@@ -247,7 +249,9 @@ const Tile = React.memo((props: TileProps) => {
   }${props.lastPlayed ? " last-played" : ""}${
     isDesignatedBlankMachineLetter(props.letter) ? " blank" : ""
   }${props.playerOfTile ? " tile-p1" : " tile-p0"}${
-    (bicolorMode ? props.playerOfTile : props.lastPlayed) ? " second-color" : ""
+    (bicolorMode ? props.playerOfTile && !props.tentative : props.lastPlayed)
+      ? " second-color"
+      : ""
   }`;
   let ret = (
     <div ref={tileRef}>
