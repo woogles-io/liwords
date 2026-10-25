@@ -251,6 +251,25 @@ export const ifEndedNow = (
   return out;
 };
 
+// How many games in progress each player is on turn in: who the division is
+// waiting on.
+export const onTurnCounts = (
+  userIds: Array<string>,
+  cells: Map<string, Array<CrosstableCell>>,
+): Map<string, number> => {
+  const out = new Map<string, number>();
+  for (const me of userIds) {
+    let n = 0;
+    for (const them of userIds) {
+      for (const g of cells.get(cellKey(me, them)) ?? []) {
+        if (g.result === "turn") n++;
+      }
+    }
+    out.set(me, n);
+  }
+  return out;
+};
+
 // The width the cross-table needs before its totals stay in view at the right:
 // the names and the totals take about 320px, which leaves room for two or more
 // games between them. It goes by the table, not the screen, since the page's
@@ -260,8 +279,9 @@ const PIN_TOTALS_WIDTH = 480;
 // Every pairing of a division: row player's score first, colored by scoreType;
 // a game in progress is in italics (with * when the row player is on turn); a letter after the score says how a game ended when
 // it was not played out. Always a grid, however wide: a player's games as a
-// list are in the standings' game history. While any game is in progress, the
-// grid ends with each player's totals if every game ended now (ifEndedNow).
+// list are in the standings' game history. While any game is in progress, each
+// name is followed by how many games wait on that player (onTurnCounts), and
+// the grid ends with each player's totals if every game ended now (ifEndedNow).
 export const DivisionCrosstable = (props: {
   division: Division;
   onChat?: (uuid: string, username: string) => void;
@@ -303,6 +323,7 @@ export const DivisionCrosstable = (props: {
   const userIds = rows.map((r) => r.userId);
   const cells = buildCrosstable(userIds, data?.games ?? []);
   const now = ifEndedNow(props.division.standings, cells);
+  const onTurn = onTurnCounts(userIds, cells);
   // with nothing in progress the totals would only repeat the standings.
   const anyLive = [...cells.values()].some((list) => list.some(isLive));
 
@@ -349,6 +370,25 @@ export const DivisionCrosstable = (props: {
       ),
     },
   ];
+
+  // How many games wait on each player, beside their name: blank for none,
+  // and kept in view with the names while the grid fits (as the totals are).
+  const onTurnColumns: TableColumnsType<Row> = anyLive
+    ? [
+        {
+          title: (
+            <Tooltip title="Games in progress where it is this player's turn.">
+              <span style={{ cursor: "help" }}>On turn</span>
+            </Tooltip>
+          ),
+          key: "onTurn",
+          align: "center" as const,
+          fixed: wide ? ("left" as const) : undefined,
+          onCell: playerCell,
+          render: (_: unknown, row: Row) => onTurn.get(row.userId) || null,
+        },
+      ]
+    : [];
 
   // Each player's totals if every game in progress ended now, in italics like
   // the live scores they count. A player with no game in progress has a final
@@ -415,6 +455,7 @@ export const DivisionCrosstable = (props: {
 
   const columns: TableColumnsType<Row> = [
     ...fixedColumns,
+    ...onTurnColumns,
     ...rows.map((col) => ({
       title: (
         <Tooltip title={col.username}>
