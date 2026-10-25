@@ -233,6 +233,8 @@ func createAnnotatedGameDoc(
 		Rules: &ipc.GameRules{
 			BoardLayoutName:        boardLayoutName,
 			LetterDistributionName: letterDistributionName,
+			// kept so the game's listing can say which variant it is
+			VariantName: string(variant),
 		},
 		InitialTimeSeconds: 0,
 		IncrementSeconds:   0,
@@ -459,6 +461,7 @@ func (gs *OMGWordsService) GetGamesForEditor(ctx context.Context, req *connect.R
 				PlayersInfo: bg.Players,
 				Lexicon:     bg.Lexicon,
 				CreatedAt:   timestamppb.New(bg.Created),
+				Variant:     bg.Variant,
 			}
 		}),
 	}), nil
@@ -486,6 +489,7 @@ func (gs *OMGWordsService) GetRecentAnnotatedGames(ctx context.Context, req *con
 				Lexicon:         bg.Lexicon,
 				CreatedAt:       timestamppb.New(bg.Created),
 				CreatorUsername: bg.CreatorUsername,
+				Variant:         bg.Variant,
 			}
 		}),
 	}), nil

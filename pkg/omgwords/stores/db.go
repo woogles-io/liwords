@@ -27,7 +27,24 @@ type AnnotatedGame struct {
 	Finished        bool
 	Players         []*ipc.PlayerInfo
 	Lexicon         string
+	Variant         string
 	Created         time.Time
+}
+
+// annotatedGameVariant is the variant a game request stores. Annotated games
+// made before the variant was stored have none: those on the 21x21 board are
+// ZOMGWords, the rest classic.
+func annotatedGameVariant(req *ipc.GameRequest) string {
+	if req == nil || req.Rules == nil {
+		return "classic"
+	}
+	if req.Rules.VariantName != "" {
+		return req.Rules.VariantName
+	}
+	if req.Rules.BoardLayoutName == "SuperCrosswordGame" {
+		return "classic_super"
+	}
+	return "classic"
 }
 
 func NewDBStore(p *pgxpool.Pool) (*DBStore, error) {
@@ -263,6 +280,7 @@ func (s *DBStore) GamesForEditor(ctx context.Context, editorID string, unfinishe
 			Finished:        !unfinished,
 			Players:         quickdata.PlayerInfo,
 			Lexicon:         lexicon,
+			Variant:         annotatedGameVariant(gameRequest.GameRequest),
 			Created:         created,
 		})
 	}
