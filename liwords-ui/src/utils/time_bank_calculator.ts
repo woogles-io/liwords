@@ -1,8 +1,11 @@
-import { GameEvent } from "../gen/api/proto/vendored/macondo/macondo_pb";
+import {
+  GameEvent,
+  GameEvent_Type,
+} from "../gen/api/proto/vendored/macondo/macondo_pb";
 
 export type TimeBankState = {
-  p0Time: number;
-  p1Time: number;
+  p0Time?: number;
+  p1Time?: number;
   p0TimeBank?: number;
   p1TimeBank?: number;
   p0UsingTimeBank?: boolean;
@@ -28,26 +31,47 @@ export function calculateHistoricalTimeBanks(
 
   let p0TimeBank = initialTimeBankP0;
   let p1TimeBank = initialTimeBankP1;
-  let p0Time = 0; // Track last known time for each player
-  let p1Time = 0;
+  // Last known time for each player; undefined until their clock shows up,
+  // so a player who has not moved yet is not "using" their bank.
+  let p0Time: number | undefined;
+  let p1Time: number | undefined;
 
   for (let i = 0; i < events.length; i++) {
     const evt = events[i];
-    const playerIndex = evt.playerIndex;
     const millisRemaining = evt.millisRemaining;
+    let owner = evt.playerIndex;
+    // Whether the event ends its owner's turn, which is when the server
+    // takes an overrun out of the bank.
+    let endsTurn = true;
+    switch (evt.type) {
+      case GameEvent_Type.CHALLENGE_BONUS:
+      case GameEvent_Type.PHONY_TILES_RETURNED:
+        // These name the challenged player but carry the challenger's
+        // clock, and the challenger's turn goes on.
+        owner = 1 - evt.playerIndex;
+        endsTurn = false;
+        break;
+      case GameEvent_Type.CHALLENGE:
+        endsTurn = false;
+        break;
+      case GameEvent_Type.END_RACK_PTS:
+      case GameEvent_Type.END_RACK_PENALTY:
+        // No clock of their own.
+        owner = -1;
+        break;
+    }
 
-    // Update the time for the player who just moved
-    if (playerIndex === 0) {
+    if (owner === 0) {
       p0Time = millisRemaining;
-    } else {
+    } else if (owner === 1) {
       p1Time = millisRemaining;
     }
 
-    // If time went negative, it means the player used their time bank
-    if (millisRemaining < 0) {
+    // An overrun is taken out of the bank once, when the turn ends.
+    if (endsTurn && owner >= 0 && millisRemaining < 0) {
       const deficit = Math.abs(millisRemaining);
 
-      if (playerIndex === 0) {
+      if (owner === 0) {
         p0TimeBank = Math.max(0, p0TimeBank - deficit);
       } else {
         p1TimeBank = Math.max(0, p1TimeBank - deficit);
@@ -55,8 +79,10 @@ export function calculateHistoricalTimeBanks(
     }
 
     // Determine if using time bank (negative time and still have bank remaining)
-    const p0UsingTimeBank = p0Time <= 0 && p0TimeBank > 0;
-    const p1UsingTimeBank = p1Time <= 0 && p1TimeBank > 0;
+    const p0UsingTimeBank =
+      p0Time !== undefined && p0Time <= 0 && p0TimeBank > 0;
+    const p1UsingTimeBank =
+      p1Time !== undefined && p1Time <= 0 && p1TimeBank > 0;
 
     history.set(i, {
       p0Time,

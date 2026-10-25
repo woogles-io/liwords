@@ -544,12 +544,14 @@ export const ScoreCard = React.memo((props: Props) => {
     if (!props.timeBankP0 && !props.timeBankP1) {
       return null;
     }
+    // From every event, not just those up to the examined turn: the
+    // scorecard shows them all.
     return calculateHistoricalTimeBanks(
-      props.events,
+      props.allEvents ?? props.events,
       props.timeBankP0 || 0,
       props.timeBankP1 || 0,
     );
-  }, [props.events, props.timeBankP0, props.timeBankP1]);
+  }, [props.allEvents, props.events, props.timeBankP0, props.timeBankP1]);
 
   // Scroll to bottom when turns change (after DOM updates)
   useEffect(() => {
