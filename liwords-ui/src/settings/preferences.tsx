@@ -406,6 +406,30 @@ export const Preferences = React.memo(() => {
               <div>
                 Get a notification when it's your turn (works when tab is
                 unfocused)
+                {permissionState === "denied" && (
+                  <div style={{ marginTop: 8, fontSize: 12, color: "#ff4d4f" }}>
+                    Permission blocked.{" "}
+                    <a
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        alert(
+                          "To enable notifications:\n\n" +
+                            "Chrome/Edge: Click the lock icon in the address bar → Site settings → Notifications → Allow\n\n" +
+                            "Firefox: Click the lock icon → Clear permissions → Refresh page\n\n" +
+                            "Safari: Safari menu → Settings → Websites → Notifications → woogles.io → Allow",
+                        );
+                      }}
+                    >
+                      How to enable in browser settings
+                    </a>
+                  </div>
+                )}
+                {permissionState === "unsupported" && (
+                  <div style={{ marginTop: 8, fontSize: 12, color: "#8c8c8c" }}>
+                    Your browser doesn't support notifications
+                  </div>
+                )}
               </div>
               <Switch
                 checked={turnNotifications}
@@ -416,30 +440,6 @@ export const Preferences = React.memo(() => {
                 }
                 className="notification-toggle"
               />
-              {permissionState === "denied" && (
-                <div style={{ marginTop: 8, fontSize: 12, color: "#ff4d4f" }}>
-                  Permission blocked.{" "}
-                  <a
-                    href="#"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      alert(
-                        "To enable notifications:\n\n" +
-                          "Chrome/Edge: Click the lock icon in the address bar → Site settings → Notifications → Allow\n\n" +
-                          "Firefox: Click the lock icon → Clear permissions → Refresh page\n\n" +
-                          "Safari: Safari menu → Settings → Websites → Notifications → woogles.io → Allow",
-                      );
-                    }}
-                  >
-                    How to enable in browser settings
-                  </a>
-                </div>
-              )}
-              {permissionState === "unsupported" && (
-                <div style={{ marginTop: 8, fontSize: 12, color: "#8c8c8c" }}>
-                  Your browser doesn't support notifications
-                </div>
-              )}
             </div>
           </div>
           <div className="toggle-section">
