@@ -374,10 +374,12 @@
     .ant-card-body {
       padding: 0;
     }
-    .when-toggle {
-      cursor: pointer;
-      white-space: nowrap;
-    }
+  }
+  // A time a click turns into a date and back, in any of the profile's lists
+  // and on its recent game cards.
+  .when-toggle {
+    cursor: pointer;
+    white-space: nowrap;
   }
   .show-games-toggle {
     margin: 9px;

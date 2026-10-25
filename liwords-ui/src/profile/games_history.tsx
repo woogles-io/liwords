@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { Link } from "react-router";
-import moment from "moment";
 import {
   Button,
   Card,
@@ -20,8 +19,7 @@ import { challengeRuleNamesShort } from "../constants/challenge_rules";
 import { GameEndReason } from "../gen/api/proto/ipc/omgwords_pb";
 import { ChallengeRule } from "../gen/api/proto/vendored/macondo/macondo_pb";
 import { lexiconCodeToProfileRatingName } from "../shared/lexica";
-import { useLocalStorageBool } from "../utils/use_local_storage";
-import { ABSOLUTE_TIMES_KEY } from "./history_prefs";
+import { ProfileTime } from "./profile_time";
 import { timestampDate } from "@bufbuild/protobuf/wkt";
 
 type Props = {
@@ -54,13 +52,6 @@ export const GamesHistoryCard = React.memo((props: Props) => {
 
   const { analyzedGameIds } = props;
 
-  // When a game was played, as "13 days ago" or, after a click on any of
-  // them, as dates (a page of games all "13 days ago" is otherwise hard to
-  // tell apart). Remembered for the next visit, and followed by other open
-  // tabs, like the chat display settings.
-  const [absoluteTimes, setAbsoluteTimes] =
-    useLocalStorageBool(ABSOLUTE_TIMES_KEY);
-  const toggleAbsoluteTimes = () => setAbsoluteTimes(!absoluteTimes);
   // The time to jump to (local time).
   const [jumpTo, setJumpTo] = useState<Dayjs | null>(null);
 
@@ -138,23 +129,10 @@ export const GamesHistoryCard = React.memo((props: Props) => {
       if (item.players[userplace].first) {
         turnOrder = <CheckCircleTwoTone twoToneColor="#52c41a" />;
       }
-      const whenMoment = moment(
-        item.lastUpdate ? timestampDate(item.lastUpdate) : "",
-      );
       const when = (
-        <Tooltip
-          title={
-            absoluteTimes
-              ? `${whenMoment.fromNow()}; click to show how long ago`
-              : `${whenMoment.format("LLL")}; click to show dates`
-          }
-        >
-          <span className="when-toggle" onClick={toggleAbsoluteTimes}>
-            {absoluteTimes
-              ? whenMoment.format("YYYY-MM-DD HH:mm")
-              : whenMoment.fromNow()}
-          </span>
-        </Tooltip>
+        <ProfileTime
+          at={item.lastUpdate ? timestampDate(item.lastUpdate) : undefined}
+        />
       );
       let endReason = "";
       switch (item.gameEndReason) {
