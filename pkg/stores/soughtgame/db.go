@@ -134,39 +134,15 @@ func (s *DBStore) ExpireOld(ctx context.Context) error {
 	return nil
 }
 
-// DeleteForUser deletes the game by seeker ID.
-// Correspondence seeks are not deleted when user leaves - they persist for the receiver to accept later.
-func (s *DBStore) DeleteForUser(ctx context.Context, userID string) (*entity.SoughtGame, error) {
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+// DeleteForUser deletes the user's real-time seeks and match requests, and
+// returns them. Correspondence seeks are not deleted when user leaves - they
+// persist for the receiver to accept later.
+func (s *DBStore) DeleteForUser(ctx context.Context, userID string) ([]*entity.SoughtGame, error) {
+	rows, err := s.queries.DeleteRealtimeSoughtGamesBySeekerID(ctx, pgtype.Text{String: userID, Valid: true})
 	if err != nil {
 		return nil, err
 	}
-	defer tx.Rollback(ctx)
-
-	qtx := s.queries.WithTx(tx)
-	// Don't delete correspondence seeks when seeker leaves - they should persist.
-	// A user may hold correspondence seeks alongside their one real-time seek,
-	// so only the real-time seek is read and deleted.
-	data, err := qtx.GetRealtimeSoughtGameBySeekerID(ctx, pgtype.Text{String: userID, Valid: true})
-	if err != nil {
-		if err == pgx.ErrNoRows {
-			return nil, nil
-		}
-		return nil, err
-	}
-	sg, err := soughtGameFromBytes(data)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := qtx.DeleteRealtimeSoughtGamesBySeekerID(ctx, pgtype.Text{String: userID, Valid: true}); err != nil {
-		return nil, err
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return nil, err
-	}
-	return sg, nil
+	return soughtGamesFromRows(rows)
 }
 
 // UpdateForReceiver updates the receiver's status when the receiver leaves
@@ -213,39 +189,77 @@ func (s *DBStore) UpdateForReceiver(ctx context.Context, receiverID string) (*en
 	return sg, nil
 }
 
-// DeleteForSeekerConnID deletes the game by connection ID.
-// Correspondence seeks are not deleted when seeker disconnects - they persist for the receiver to accept later.
-func (s *DBStore) DeleteForSeekerConnID(ctx context.Context, connID string) (*entity.SoughtGame, error) {
+// DeleteForSeekerConnID deletes the real-time seeks and match requests made
+// from a connection, and returns them. Correspondence seeks are not deleted
+// when seeker disconnects - they persist for the receiver to accept later.
+func (s *DBStore) DeleteForSeekerConnID(ctx context.Context, connID string) ([]*entity.SoughtGame, error) {
+	rows, err := s.queries.DeleteRealtimeSoughtGamesBySeekerConnID(ctx, pgtype.Text{String: connID, Valid: true})
+	if err != nil {
+		return nil, err
+	}
+	return soughtGamesFromRows(rows)
+}
+
+func soughtGamesFromRows(rows [][]byte) ([]*entity.SoughtGame, error) {
+	sgs := make([]*entity.SoughtGame, 0, len(rows))
+	for _, data := range rows {
+		sg, err := soughtGameFromBytes(data)
+		if err != nil {
+			return nil, err
+		}
+		sgs = append(sgs, sg)
+	}
+	return sgs, nil
+}
+
+// Claim takes the seek with this ID for a game that is about to start, so
+// that it can be accepted once only. For a real-time seek or match request it
+// also takes the seeker's other real-time ones, since they are now playing;
+// those come back as others. Claims on one seeker's seeks are serialized, so
+// of two accepts of their seeks at the same moment, the second finds the seek
+// gone and gets ErrSeekGone.
+func (s *DBStore) Claim(ctx context.Context, id string) (claimed *entity.SoughtGame, others []*entity.SoughtGame, err error) {
+	uuid := pgtype.Text{String: id, Valid: true}
+	seeker, err := s.queries.GetSoughtGameSeekerByUUID(ctx, uuid)
+	if err == pgx.ErrNoRows {
+		return nil, nil, entity.ErrSeekGone
+	} else if err != nil {
+		return nil, nil, err
+	}
+
 	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	defer tx.Rollback(ctx)
-
 	qtx := s.queries.WithTx(tx)
-	// Don't delete correspondence seeks when seeker disconnects - they should persist.
-	// The same connection may hold correspondence seeks alongside the one
-	// real-time seek, so only the real-time seek is read and deleted.
-	data, err := qtx.GetRealtimeSoughtGameBySeekerConnID(ctx, pgtype.Text{String: connID, Valid: true})
+
+	if err := qtx.LockSoughtGameSeeker(ctx, seeker.String); err != nil {
+		return nil, nil, err
+	}
+	row, err := qtx.ClaimSoughtGameByUUID(ctx, uuid)
+	if err == pgx.ErrNoRows {
+		return nil, nil, entity.ErrSeekGone
+	} else if err != nil {
+		return nil, nil, err
+	}
+	claimed, err = soughtGameFromBytes(row.Request)
 	if err != nil {
-		if err == pgx.ErrNoRows {
-			return nil, nil
+		return nil, nil, err
+	}
+	if !row.GameMode.Valid || pb.GameMode(row.GameMode.Int32) == pb.GameMode_REAL_TIME {
+		rows, err := qtx.DeleteRealtimeSoughtGamesBySeekerID(ctx, seeker)
+		if err != nil {
+			return nil, nil, err
 		}
-		return nil, err
+		if others, err = soughtGamesFromRows(rows); err != nil {
+			return nil, nil, err
+		}
 	}
-	sg, err := soughtGameFromBytes(data)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := qtx.DeleteRealtimeSoughtGamesBySeekerConnID(ctx, pgtype.Text{String: connID, Valid: true}); err != nil {
-		return nil, err
-	}
-
 	if err := tx.Commit(ctx); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return sg, nil
+	return claimed, others, nil
 }
 
 func (s *DBStore) UpdateForReceiverConnID(ctx context.Context, connID string) (*entity.SoughtGame, error) {
@@ -348,20 +362,10 @@ func (s *DBStore) ExistsForUser(ctx context.Context, userID string) (bool, error
 }
 
 // CanCreateSeek returns true if the user can create a new seek/match request.
-// A user may hold one real-time seek or match request at a time, alongside
-// any number of correspondence seeks and match requests.
-// Returns (canCreate, conflictType, error) where conflictType indicates what kind of conflict exists.
+// Any number of each may be open: the first real-time one accepted takes the
+// rest down (see Claim). Returns (canCreate, conflictType, error) where
+// conflictType indicates what kind of conflict exists.
 func (s *DBStore) CanCreateSeek(ctx context.Context, userID string, gameMode pb.GameMode, receiverID string) (bool, string, error) {
-	if gameMode == pb.GameMode_CORRESPONDENCE {
-		return true, "", nil
-	}
-	count, err := s.queries.CountRealtimeSeeksForUser(ctx, pgtype.Text{String: userID, Valid: true})
-	if err != nil {
-		return false, "", err
-	}
-	if count > 0 {
-		return false, "has_realtime_seek", nil
-	}
 	return true, "", nil
 }
 

@@ -31,12 +31,12 @@ type Props = {
   correspondenceSeeks: SoughtGame[];
   username?: string;
   userID?: string;
-  newGame: (seekID: string) => void;
+  newGame: (seekID: string, alternatives?: Array<string>) => void;
   declineGame?: (seekID: string) => void;
   ratings?: { [key: string]: ProfileUpdate_Rating };
   // The user's open real-time seek or match request, which this tab does not
   // list, and how to get to the tab that does.
-  myRealtimeRequest?: SoughtGame;
+  myRealtimeRequests?: Array<SoughtGame>;
   showRealtimeRequest?: () => void;
 };
 
@@ -551,9 +551,9 @@ export const CorrespondenceGames = (props: Props) => {
 
   return (
     <>
-      {props.myRealtimeRequest && (
+      {!!props.myRealtimeRequests?.length && (
         <RealtimeRequestNote
-          request={props.myRealtimeRequest}
+          requests={props.myRealtimeRequests}
           onShow={props.showRealtimeRequest}
         />
       )}

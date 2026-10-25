@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/rs/zerolog/log"
@@ -77,7 +78,21 @@ func (gs *GameService) GetRematchStreak(ctx context.Context, req *connect.Reques
 // offset by offset.
 func (gs *GameService) GetRecentGames(ctx context.Context, req *connect.Request[pb.RecentGamesRequest],
 ) (*connect.Response[ipc.GameInfoResponses], error) {
-	resp, err := gs.gameStore.GetRecentGames(ctx, req.Msg.Username, int(req.Msg.NumGames), int(req.Msg.Offset))
+	var resp *ipc.GameInfoResponses
+	var err error
+	if req.Msg.BeforeGameId != "" || req.Msg.Before != 0 || req.Msg.AfterGameId != "" || req.Msg.After != 0 {
+		page := entity.RecentGamesPage{
+			BeforeGameID: req.Msg.BeforeGameId,
+			Before:       time.UnixMilli(req.Msg.Before),
+			AfterGameID:  req.Msg.AfterGameId,
+		}
+		if req.Msg.After != 0 {
+			page.After = time.UnixMilli(req.Msg.After)
+		}
+		resp, err = gs.gameStore.GetRecentGamesPage(ctx, req.Msg.Username, int(req.Msg.NumGames), page)
+	} else {
+		resp, err = gs.gameStore.GetRecentGames(ctx, req.Msg.Username, int(req.Msg.NumGames), int(req.Msg.Offset))
+	}
 	if err != nil {
 		return nil, apiserver.InvalidArg(err.Error())
 	}

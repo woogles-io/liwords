@@ -693,3 +693,144 @@ func TestPerfectGameReadsBackAsAnalyzed(t *testing.T) {
 // This integration is tested manually and in production. A full automated integration
 // test would require setting up: UserStore, GameStore (cache), game entities, and the
 // complete game-ending flow, which is beyond the scope of these focused queue tests.
+
+// TestSeasonOpponentMistakeIndex covers the per-player sum of the opponents'
+// mistake indexes, over the same games the player's own average counts.
+func TestSeasonOpponentMistakeIndex(t *testing.T) {
+	is := is.New(t)
+	ctx := context.Background()
+
+	pool, queries := setupTestDB(t)
+	defer pool.Close()
+
+	createTestUsers(t, pool)
+	leagueID, seasonID, divisionID := createMinimalLeague(t, ctx, queries)
+
+	now := time.Now()
+	gameA := insertLeagueGame(t, ctx, pool, leagueID, seasonID, divisionID, now.Add(-3*time.Hour), 400, 380)
+	gameB := insertLeagueGame(t, ctx, pool, leagueID, seasonID, divisionID, now.Add(-2*time.Hour), 450, 300)
+	// Never analyzed: must not count.
+	insertLeagueGame(t, ctx, pool, leagueID, seasonID, divisionID, now.Add(-time.Hour), 350, 390)
+
+	completeAnalysis(t, ctx, queries, gameA, analysisResult(3.0, 4.0))
+	completeAnalysis(t, ctx, queries, gameB, analysisResult(1.5, 2.5))
+	// A newer job for the same game replaces the older one.
+	completeAnalysis(t, ctx, queries, gameB, analysisResult(2.0, 2.0))
+
+	rows, err := queries.GetSeasonOpponentMistakeIndex(ctx, seasonID)
+	is.NoErr(err)
+	got := map[int32]models.GetSeasonOpponentMistakeIndexRow{}
+	for _, r := range rows {
+		got[r.UserID] = r
+	}
+	is.Equal(len(got), 2)
+	// Player 1's opponent scored 4.0 and 2.0; player 2's opponent 3.0 and 2.0.
+	is.Equal(got[1].N, int32(2))
+	is.Equal(got[1].Total, 6.0)
+	is.Equal(got[2].N, int32(2))
+	is.Equal(got[2].Total, 5.0)
+
+	// Another season's games stay out.
+	rows, err = queries.GetSeasonOpponentMistakeIndex(ctx, uuid.New())
+	is.NoErr(err)
+	is.Equal(len(rows), 0)
+}
+
+// TestPlayerSeasonGamesOpponentMistakeIndex covers the per-game opponent
+// mistake index in a player's season games, read from the opponent's slot.
+func TestPlayerSeasonGamesOpponentMistakeIndex(t *testing.T) {
+	is := is.New(t)
+	ctx := context.Background()
+
+	pool, queries := setupTestDB(t)
+	defer pool.Close()
+
+	createTestUsers(t, pool)
+	leagueID, seasonID, divisionID := createMinimalLeague(t, ctx, queries)
+
+	now := time.Now()
+	analyzed := insertLeagueGame(t, ctx, pool, leagueID, seasonID, divisionID, now.Add(-2*time.Hour), 400, 380)
+	unanalyzed := insertLeagueGame(t, ctx, pool, leagueID, seasonID, divisionID, now.Add(-time.Hour), 350, 390)
+	completeAnalysis(t, ctx, queries, analyzed, analysisResult(3.0, 4.0))
+
+	for _, tc := range []struct {
+		userUUID     string
+		own, opposed float64
+	}{
+		{"test-uuid-1", 3.0, 4.0},
+		{"test-uuid-2", 4.0, 3.0},
+	} {
+		rows, err := queries.GetPlayerSeasonGames(ctx, models.GetPlayerSeasonGamesParams{
+			SeasonID: pgtype.UUID{Bytes: seasonID, Valid: true},
+			UserUuid: tc.userUUID,
+		})
+		is.NoErr(err)
+		is.Equal(len(rows), 2)
+		for _, r := range rows {
+			switch r.GameUuid {
+			case analyzed:
+				is.True(r.HasMistakeIndex)
+				is.True(r.HasOpponentMistakeIndex)
+				is.Equal(r.PlayerMistakeIndex, tc.own)
+				is.Equal(r.OpponentMistakeIndex, tc.opposed)
+			case unanalyzed:
+				is.True(!r.HasMistakeIndex)
+				is.True(!r.HasOpponentMistakeIndex)
+			default:
+				t.Fatalf("unexpected game %s", r.GameUuid)
+			}
+		}
+	}
+}
+
+// TestDivisionCrosstableGames covers the cross-table's game list: finished
+// games with game_players scores, games in progress with their history, and
+// aborted or canceled games left out.
+func TestDivisionCrosstableGames(t *testing.T) {
+	is := is.New(t)
+	ctx := context.Background()
+
+	pool, queries := setupTestDB(t)
+	defer pool.Close()
+
+	createTestUsers(t, pool)
+	leagueID, seasonID, divisionID := createMinimalLeague(t, ctx, queries)
+
+	now := time.Now()
+	finished := insertLeagueGame(t, ctx, pool, leagueID, seasonID, divisionID, now.Add(-2*time.Hour), 400, 380)
+	_, err := pool.Exec(ctx, `UPDATE games SET winner_idx = 0 WHERE uuid = $1`, finished)
+	is.NoErr(err)
+	live := insertLeagueGame(t, ctx, pool, leagueID, seasonID, divisionID, now.Add(-time.Hour), 0, 0)
+	_, err = pool.Exec(ctx, `UPDATE games SET game_end_reason = 0, player_on_turn = 1, history = '\x0102' WHERE uuid = $1`, live)
+	is.NoErr(err)
+	for _, reason := range []ipc.GameEndReason{ipc.GameEndReason_ABORTED, ipc.GameEndReason_CANCELLED} {
+		gone := insertLeagueGame(t, ctx, pool, leagueID, seasonID, divisionID, now, 0, 0)
+		_, err = pool.Exec(ctx, `UPDATE games SET game_end_reason = $2 WHERE uuid = $1`, gone, int(reason))
+		is.NoErr(err)
+	}
+
+	rows, err := queries.GetDivisionCrosstableGames(ctx, divisionID)
+	is.NoErr(err)
+	is.Equal(len(rows), 2)
+	for _, r := range rows {
+		is.Equal(r.Player0Uuid, "test-uuid-1")
+		is.Equal(r.Player1Uuid, "test-uuid-2")
+		switch r.GameUuid.String {
+		case finished:
+			is.Equal(r.Player0Score, int32(400))
+			is.Equal(r.Player1Score, int32(380))
+			is.Equal(r.WinnerIdx.Int32, int32(0))
+			is.Equal(len(r.History), 0) // not read for finished games
+		case live:
+			is.Equal(r.GameEndReason.Int32, int32(0))
+			is.Equal(r.PlayerOnTurn.Int32, int32(1))
+			is.Equal(r.History, []byte{1, 2})
+		default:
+			t.Fatalf("unexpected game %s", r.GameUuid.String)
+		}
+	}
+
+	rows, err = queries.GetDivisionCrosstableGames(ctx, uuid.New())
+	is.NoErr(err)
+	is.Equal(len(rows), 0)
+}

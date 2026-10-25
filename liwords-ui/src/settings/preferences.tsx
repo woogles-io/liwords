@@ -9,6 +9,7 @@ import {
   CHAT_FONT_SCALE_KEY,
   CHAT_FONT_SCALE_OPTIONS,
 } from "../chat/chat_prefs";
+import { ABSOLUTE_TIMES_KEY } from "../profile/history_prefs";
 import {
   preferredSortOrder,
   setPreferredSortOrder,
@@ -194,6 +195,8 @@ export const Preferences = React.memo(() => {
   );
   const [alwaysShowChatTimestamps, setAlwaysShowChatTimestamps] =
     useLocalStorageBool(CHAT_ALWAYS_TIMESTAMPS_KEY);
+  const [gameHistoryDates, setGameHistoryDates] =
+    useLocalStorageBool(ABSOLUTE_TIMES_KEY);
 
   const initialPuzzleLexicon =
     localStorage?.getItem("puzzleLexicon") || undefined;
@@ -548,6 +551,22 @@ export const Preferences = React.memo(() => {
                 checked={alwaysShowChatTimestamps}
                 onChange={setAlwaysShowChatTimestamps}
                 className="chat-timestamps-toggle"
+              />
+            </div>
+          </div>
+        </div>
+        <div className="chat-toggle-fill">
+          <div className="toggle-section">
+            <div className="title">Dates in game history</div>
+            <div>
+              <div>
+                Show when profile games were played as dates instead of &quot;13
+                days ago&quot;
+              </div>
+              <Switch
+                checked={gameHistoryDates}
+                onChange={setGameHistoryDates}
+                className="game-history-dates-toggle"
               />
             </div>
           </div>

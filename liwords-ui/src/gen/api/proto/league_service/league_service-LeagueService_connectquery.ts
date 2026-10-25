@@ -113,6 +113,11 @@ export const getPlayerLeagueHistory = LeagueService.method.getPlayerLeagueHistor
 export const getPlayerSeasonGames = LeagueService.method.getPlayerSeasonGames;
 
 /**
+ * @generated from rpc league_service.LeagueService.GetDivisionCrosstable
+ */
+export const getDivisionCrosstable = LeagueService.method.getDivisionCrosstable;
+
+/**
  * @generated from rpc league_service.LeagueService.InviteUserToLeagues
  */
 export const inviteUserToLeagues = LeagueService.method.inviteUserToLeagues;

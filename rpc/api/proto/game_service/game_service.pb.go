@@ -385,10 +385,19 @@ func (x *GameDocumentResponse) GetDocument() *ipc.GameDocument {
 }
 
 type RecentGamesRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Username      string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
-	NumGames      int32                  `protobuf:"varint,2,opt,name=num_games,json=numGames,proto3" json:"num_games,omitempty"`
-	Offset        int32                  `protobuf:"varint,3,opt,name=offset,proto3" json:"offset,omitempty"`
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Username string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
+	NumGames int32                  `protobuf:"varint,2,opt,name=num_games,json=numGames,proto3" json:"num_games,omitempty"`
+	Offset   int32                  `protobuf:"varint,3,opt,name=offset,proto3" json:"offset,omitempty"`
+	// Paging by position instead of offset, cheap however deep (offset is
+	// ignored when one is set): the games just older than before_game_id, or
+	// just older than the time before (unix ms) for a jump to a date, or just
+	// newer than after_game_id, or than the time after (unix ms; 1 gives the
+	// oldest games). Games come newest first either way.
+	BeforeGameId  string `protobuf:"bytes,4,opt,name=before_game_id,json=beforeGameId,proto3" json:"before_game_id,omitempty"`
+	Before        int64  `protobuf:"varint,5,opt,name=before,proto3" json:"before,omitempty"`
+	AfterGameId   string `protobuf:"bytes,6,opt,name=after_game_id,json=afterGameId,proto3" json:"after_game_id,omitempty"`
+	After         int64  `protobuf:"varint,7,opt,name=after,proto3" json:"after,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -440,6 +449,34 @@ func (x *RecentGamesRequest) GetNumGames() int32 {
 func (x *RecentGamesRequest) GetOffset() int32 {
 	if x != nil {
 		return x.Offset
+	}
+	return 0
+}
+
+func (x *RecentGamesRequest) GetBeforeGameId() string {
+	if x != nil {
+		return x.BeforeGameId
+	}
+	return ""
+}
+
+func (x *RecentGamesRequest) GetBefore() int64 {
+	if x != nil {
+		return x.Before
+	}
+	return 0
+}
+
+func (x *RecentGamesRequest) GetAfterGameId() string {
+	if x != nil {
+		return x.AfterGameId
+	}
+	return ""
+}
+
+func (x *RecentGamesRequest) GetAfter() int64 {
+	if x != nil {
+		return x.After
 	}
 	return 0
 }
@@ -873,11 +910,15 @@ const file_proto_game_service_game_service_proto_rawDesc = "" +
 	"\x13GameHistoryResponse\x12.\n" +
 	"\ahistory\x18\x01 \x01(\v2\x14.macondo.GameHistoryR\ahistory\"E\n" +
 	"\x14GameDocumentResponse\x12-\n" +
-	"\bdocument\x18\x01 \x01(\v2\x11.ipc.GameDocumentR\bdocument\"e\n" +
+	"\bdocument\x18\x01 \x01(\v2\x11.ipc.GameDocumentR\bdocument\"\xdd\x01\n" +
 	"\x12RecentGamesRequest\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\x12\x1b\n" +
 	"\tnum_games\x18\x02 \x01(\x05R\bnumGames\x12\x16\n" +
-	"\x06offset\x18\x03 \x01(\x05R\x06offset\"\xad\x02\n" +
+	"\x06offset\x18\x03 \x01(\x05R\x06offset\x12$\n" +
+	"\x0ebefore_game_id\x18\x04 \x01(\tR\fbeforeGameId\x12\x16\n" +
+	"\x06before\x18\x05 \x01(\x03R\x06before\x12\"\n" +
+	"\rafter_game_id\x18\x06 \x01(\tR\vafterGameId\x12\x14\n" +
+	"\x05after\x18\a \x01(\x03R\x05after\"\xad\x02\n" +
 	"\x12StreakInfoResponse\x12G\n" +
 	"\x06streak\x18\x01 \x03(\v2/.game_service.StreakInfoResponse.SingleGameInfoR\x06streak\x12M\n" +
 	"\vplayersInfo\x18\x03 \x03(\v2+.game_service.StreakInfoResponse.PlayerInfoR\vplayersInfo\x1aA\n" +

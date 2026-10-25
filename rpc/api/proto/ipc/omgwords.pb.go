@@ -1420,7 +1420,10 @@ type GameInfoResponse struct {
 	// Populated for active correspondence/league games so clients can compute the
 	// real time until expiry (per-turn allowance + bank), not just the per-turn
 	// proxy. Empty for games without a time bank or for finished games.
-	TimeBank      []int64 `protobuf:"varint,27,rep,packed,name=time_bank,json=timeBank,proto3" json:"time_bank,omitempty"`
+	TimeBank []int64 `protobuf:"varint,27,rep,packed,name=time_bank,json=timeBank,proto3" json:"time_bank,omitempty"`
+	// time_started is when the game's clocks started, a unix timestamp in
+	// milliseconds; 0 if the game has not started.
+	TimeStarted   int64 `protobuf:"varint,28,opt,name=time_started,json=timeStarted,proto3" json:"time_started,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1579,6 +1582,13 @@ func (x *GameInfoResponse) GetTimeBank() []int64 {
 		return x.TimeBank
 	}
 	return nil
+}
+
+func (x *GameInfoResponse) GetTimeStarted() int64 {
+	if x != nil {
+		return x.TimeStarted
+	}
+	return 0
 }
 
 type GameInfoResponses struct {
@@ -3399,7 +3409,7 @@ const file_proto_ipc_omgwords_proto_rawDesc = "" +
 	"\x06rating\x18\x05 \x01(\tR\x06rating\x12\x14\n" +
 	"\x05title\x18\x06 \x01(\tR\x05title\x12\x15\n" +
 	"\x06is_bot\x18\b \x01(\bR\x05isBot\x12\x18\n" +
-	"\x05first\x18\t \x01(\bB\x02\x18\x01R\x05first\"\x8c\x06\n" +
+	"\x05first\x18\t \x01(\bB\x02\x18\x01R\x05first\"\xaf\x06\n" +
 	"\x10GameInfoResponse\x12)\n" +
 	"\aplayers\x18\x01 \x03(\v2\x0f.ipc.PlayerInfoR\aplayers\x12*\n" +
 	"\x11time_control_name\x18\x04 \x01(\tR\x0ftimeControlName\x12#\n" +
@@ -3421,7 +3431,8 @@ const file_proto_ipc_omgwords_proto_rawDesc = "" +
 	"\tleague_id\x18\x19 \x01(\tR\bleagueId\x12\x1f\n" +
 	"\vleague_slug\x18\x1a \x01(\tR\n" +
 	"leagueSlug\x12\x1b\n" +
-	"\ttime_bank\x18\x1b \x03(\x03R\btimeBankB\x11\n" +
+	"\ttime_bank\x18\x1b \x03(\x03R\btimeBank\x12!\n" +
+	"\ftime_started\x18\x1c \x01(\x03R\vtimeStartedB\x11\n" +
 	"\x0f_player_on_turn\"G\n" +
 	"\x11GameInfoResponses\x122\n" +
 	"\tgame_info\x18\x01 \x03(\v2\x15.ipc.GameInfoResponseR\bgameInfo\"\xcd\x01\n" +
