@@ -25,6 +25,25 @@ type LeagueCorrespondenceGamesProps = {
   leagueSlug: string;
   // The season underway, whose games just ended are listed too.
   seasonId?: string;
+  // The season that closed last. Closing decides its unfinished games all at
+  // once, just before the next season starts, so those results are listed
+  // too while they are recent, apart and under the season's name.
+  closedSeason?: { uuid: string; seasonNumber: number };
+};
+
+// A row's name keeps to the room the score leaves it, and shortens with an
+// ellipsis rather than pushing the score out of view; hovering the name gives
+// it whole, with the record (nameTitle).
+const nameStyle: React.CSSProperties = {
+  minWidth: 0,
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+};
+const scoreStyle: React.CSSProperties = {
+  flexShrink: 0,
+  fontWeight: 500,
+  fontSize: "13px",
+  whiteSpace: "nowrap",
 };
 
 // How long a finished game stays under "Just ended".
@@ -66,11 +85,15 @@ const endedAgo = (ms: number): string => {
   return `${Math.floor(mins / 60)}h ago`;
 };
 
-const formatH2HCompact = (record: H2HRecord | undefined) => {
-  if (!record) return null;
+// "3-1 (+120)", "2-2-1 (-5)".
+const h2hCompactText = (record: H2HRecord): string => {
   const { wins, losses, draws, spread } = record;
   const spreadStr = spread > 0 ? `+${spread}` : `${spread}`;
-  const wld = `${wins}-${losses}${draws ? `-${draws}` : ""}`;
+  return `${wins}-${losses}${draws ? `-${draws}` : ""} (${spreadStr})`;
+};
+
+const formatH2HCompact = (record: H2HRecord | undefined) => {
+  if (!record) return null;
   return (
     <span
       style={{
@@ -78,10 +101,14 @@ const formatH2HCompact = (record: H2HRecord | undefined) => {
         opacity: 0.7,
       }}
     >
-      {wld} ({spreadStr})
+      {h2hCompactText(record)}
     </span>
   );
 };
+
+// A row's name and record whole, for hovering a name the ellipsis cut.
+const nameTitle = (name: string, record: H2HRecord | undefined): string =>
+  record ? `vs ${name} ${h2hCompactText(record)}` : `vs ${name}`;
 
 // The lifetime record against an opponent, after their name, with the
 // record in words on hover.
@@ -99,7 +126,7 @@ const h2hBadge = (record: H2HRecord | undefined) =>
 
 export const LeagueCorrespondenceGames: React.FC<
   LeagueCorrespondenceGamesProps
-> = ({ leagueSlug, seasonId }) => {
+> = ({ leagueSlug, seasonId, closedSeason }) => {
   const navigate = useNavigate();
   const {
     loginState: { userID },
@@ -127,6 +154,16 @@ export const LeagueCorrespondenceGames: React.FC<
   const justEnded = useMemo(
     () => justEndedGames(seasonGamesData?.games ?? [], Date.now()),
     [seasonGamesData?.games],
+  );
+  // And in the season that closed last, for its results decided at closing.
+  const { data: closedGamesData } = useQuery(
+    getPlayerSeasonGames,
+    { userId: userID || "", seasonId: closedSeason?.uuid || "" },
+    { enabled: !!userID && !!closedSeason },
+  );
+  const justClosed = useMemo(
+    () => justEndedGames(closedGamesData?.games ?? [], Date.now()),
+    [closedGamesData?.games],
   );
 
   // Build a map of opponent UUID -> H2HRecord
@@ -198,72 +235,88 @@ export const LeagueCorrespondenceGames: React.FC<
     }
   };
 
-  const justEndedList = justEnded.length > 0 && (
-    <>
-      <div className="league-just-ended-title">Just ended</div>
-      {justEnded.map((g) => (
-        <div
-          key={g.gameId}
-          className="league-game-item compact"
-          onClick={(event) => handleGameClick(g.gameId, event)}
-          onAuxClick={(event) => {
-            if (event.button === 1) {
-              // middle-click
-              window.open(`/game/${encodeURIComponent(g.gameId)}`);
-            }
-          }}
-          style={{ cursor: "pointer" }}
-        >
-          <div className="game-info-compact">
-            <div
-              className="opponent-name-compact"
+  const endedRows = (games: Array<PlayerSeasonGame>) =>
+    games.map((g) => (
+      <div
+        key={g.gameId}
+        className="league-game-item compact"
+        onClick={(event) => handleGameClick(g.gameId, event)}
+        onAuxClick={(event) => {
+          if (event.button === 1) {
+            // middle-click
+            window.open(`/game/${encodeURIComponent(g.gameId)}`);
+          }
+        }}
+        style={{ cursor: "pointer" }}
+      >
+        <div className="game-info-compact">
+          <div
+            className="opponent-name-compact"
+            style={{
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: "8px",
+            }}
+          >
+            <span style={nameStyle}>
+              <Tooltip
+                title={nameTitle(
+                  g.opponentUsername,
+                  h2hMap.get(g.opponentUserId),
+                )}
+              >
+                <span>vs {g.opponentUsername}</span>
+              </Tooltip>
+              {h2hBadge(h2hMap.get(g.opponentUserId))}
+            </span>
+            <span style={scoreStyle}>
+              {scorePair(g.playerScore, g.opponentScore)}
+            </span>
+          </div>
+          <div className="turn-indicator-compact">
+            {/* the size and weight of the line, as "Their turn" has */}
+            <Text
+              type={
+                g.result === "win"
+                  ? "success"
+                  : g.result === "loss"
+                    ? "danger"
+                    : "secondary"
+              }
               style={{
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                gap: "8px",
+                fontSize: "inherit",
+                fontWeight: "inherit",
+                lineHeight: "inherit",
               }}
             >
-              <span>
-                vs {g.opponentUsername}
-                {h2hBadge(h2hMap.get(g.opponentUserId))}
-              </span>
-              <span
-                style={{
-                  fontWeight: 500,
-                  fontSize: "13px",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {scorePair(g.playerScore, g.opponentScore)}
-              </span>
-            </div>
-            <div className="turn-indicator-compact">
-              {/* the size and weight of the line, as "Their turn" has */}
-              <Text
-                type={
-                  g.result === "win"
-                    ? "success"
-                    : g.result === "loss"
-                      ? "danger"
-                      : "secondary"
-                }
-                style={{
-                  fontSize: "inherit",
-                  fontWeight: "inherit",
-                  lineHeight: "inherit",
-                }}
-              >
-                {resultText(g)}
-              </Text>{" "}
-              {endedAgo(timestampDate(g.gameDate!).getTime())}
-            </div>
+              {resultText(g)}
+            </Text>{" "}
+            {endedAgo(timestampDate(g.gameDate!).getTime())}
           </div>
         </div>
-      ))}
+      </div>
+    ));
+
+  const justEndedList = (justEnded.length > 0 || justClosed.length > 0) && (
+    <>
+      {justEnded.length > 0 && (
+        <>
+          <div className="league-just-ended-title">Just ended</div>
+          {endedRows(justEnded)}
+        </>
+      )}
+      {closedSeason && justClosed.length > 0 && (
+        <>
+          <div className="league-just-ended-title">
+            Season {closedSeason.seasonNumber}, just closed
+          </div>
+          {endedRows(justClosed)}
+        </>
+      )}
     </>
   );
 
@@ -342,18 +395,14 @@ export const LeagueCorrespondenceGames: React.FC<
                     gap: "8px",
                   }}
                 >
-                  <span>
-                    vs {opponentName}
+                  <span style={nameStyle}>
+                    <Tooltip title={nameTitle(opponentName, h2hRecord)}>
+                      <span>vs {opponentName}</span>
+                    </Tooltip>
                     {h2hBadge(h2hRecord)}
                   </span>
                   {hasScores && (
-                    <span
-                      style={{
-                        fontWeight: 500,
-                        fontSize: "13px",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
+                    <span style={scoreStyle}>
                       <Tooltip
                         placement="left"
                         title={`${spread >= 0 ? "+" : ""}${spread}`}

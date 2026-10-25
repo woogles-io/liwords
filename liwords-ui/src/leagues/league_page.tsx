@@ -216,6 +216,13 @@ export const LeaguePage = (props: Props) => {
     return allSeasons.find((s) => s.status === 1) || null;
   }, [allSeasons]);
 
+  // The season that closed last (status = COMPLETED = 2; allSeasons is newest
+  // first), whose results decided at closing My League Games still lists.
+  const lastClosedSeason = useMemo(() => {
+    const s = allSeasons.find((season) => season.status === 2);
+    return s ? { uuid: s.uuid, seasonNumber: s.seasonNumber } : undefined;
+  }, [allSeasons]);
+
   // Determine which season to display standings for
   const displaySeasonId = useMemo(() => {
     if (selectedSeasonId) return selectedSeasonId;
@@ -1020,6 +1027,7 @@ export const LeaguePage = (props: Props) => {
                 <LeagueCorrespondenceGames
                   leagueSlug={slug}
                   seasonId={currentSeason?.uuid}
+                  closedSeason={lastClosedSeason}
                 />
               </div>
             )}
