@@ -391,8 +391,22 @@ it("works out a live game's tile progress", () => {
     opponentTilesPlayed: 33,
     tilesUnplayed: 37,
   });
-  // 63 of 100 on the board, 37 left.
-  expect(tileProgress(live)).toEqual({ onBoard: 63, total: 100, left: 37 });
+  // 63 of 100 on the board; 37 unplayed, 23 of them in the bag.
+  expect(tileProgress(live)).toEqual({
+    onBoard: 63,
+    total: 100,
+    unplayed: 37,
+    inBag: 23,
+  });
+  // Bag empty: the 12 unplayed are all on the racks.
+  expect(
+    tileProgress({
+      ...live,
+      playerTilesPlayed: 45,
+      opponentTilesPlayed: 43,
+      tilesUnplayed: 12,
+    }),
+  ).toEqual({ onBoard: 88, total: 100, unplayed: 12, inBag: 0 });
   expect(tileProgress({ ...live, result: "win" })).toBeNull();
   expect(tileProgress(mkRow({ result: "turn" }))).toBeNull();
   expect(
@@ -430,6 +444,15 @@ it("shows the opponent's mistakes and a live game's tiles", () => {
       opponentTilesPlayed: 33,
       tilesUnplayed: 37,
     }),
+    mkGame({
+      gameId: "c",
+      result: "in_progress",
+      lastUpdate: timestampFromDate(new Date(Date.now() - 1000)),
+      incrementSecs: 259200,
+      playerTilesPlayed: 45,
+      opponentTilesPlayed: 43,
+      tilesUnplayed: 12,
+    }),
   ]);
   const headers = screen
     .getAllByRole("columnheader")
@@ -438,7 +461,9 @@ it("shows the opponent's mistakes and a live game's tiles", () => {
   expect(headers.some((h) => h.includes("Tiles"))).toBe(true);
   const text = screen.getByRole("table").textContent ?? "";
   expect(text).toContain("1.3"); // 1.25 to one place
-  expect(text).toContain("37 left");
+  expect(text).toContain("23 in bag");
+  expect(text).toContain("12 on racks");
+  expect(text).not.toContain("left");
 });
 
 it("hides the Tiles column when no live game has tile counts", () => {
