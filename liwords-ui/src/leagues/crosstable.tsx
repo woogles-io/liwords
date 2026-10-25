@@ -206,6 +206,11 @@ export type IfEndedNow = {
   final: boolean;
 };
 
+// Whether anyone's record if every game ended now has a draw. The record's
+// hover names draws only then, as the standings' does.
+export const anyDraws = (now: Map<string, IfEndedNow>) =>
+  [...now.values()].some((n) => n.draws > 0);
+
 // Starts from each player's official standing and adds only their games in
 // progress from the cross-table, then ranks the players by points (two for a
 // win, one for a draw) and then spread. Tied players share a rank.
@@ -390,7 +395,7 @@ export const DivisionCrosstable = (props: {
             nowColumn(
               "nowRecord",
               "Rec",
-              "Win-Loss-Draw record",
+              anyDraws(now) ? "Win-Loss-Draw record" : "Win-Loss record",
               (n) => `${n.wins}-${n.losses}${n.draws ? `-${n.draws}` : ""}`,
               (n) => n.final,
             ),
