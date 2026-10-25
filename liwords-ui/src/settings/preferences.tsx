@@ -224,35 +224,9 @@ export const Preferences = React.memo(() => {
     setPuzzleLexicon(lexicon);
   }, []);
 
-  // Auto-request permission on mount if not already decided
-  React.useEffect(() => {
-    const currentPermission = getNotificationPermissionState();
-
-    // If permission is default (not yet decided), auto-request
-    if (currentPermission === "default") {
-      requestNotificationPermission().then((granted) => {
-        if (granted) {
-          setTurnNotificationPreference(true);
-          setTurnNotifications(true);
-          setPermissionState("granted");
-        } else {
-          setPermissionState("denied");
-        }
-      });
-    } else if (currentPermission === "granted") {
-      // Check if user previously denied but then re-enabled in browser settings
-      // If so, and we don't have the preference set, auto-enable
-      const currentPref = getTurnNotificationPreference();
-      if (!currentPref) {
-        // Permission is granted but preference is off - could be newly granted
-        // Don't auto-enable in this case, let user control it
-      }
-      setPermissionState("granted");
-    } else {
-      setPermissionState(currentPermission);
-    }
-  }, []);
-
+  // Permission is asked for only when the switch is turned on: browsers expect
+  // a click behind the prompt (Firefox refuses one without), and a prompt on
+  // opening the page was easy to miss or dismiss.
   const handleTurnNotificationsChange = useCallback(
     async (checked: boolean) => {
       if (checked) {
@@ -269,15 +243,12 @@ export const Preferences = React.memo(() => {
         if (currentPermission === "default") {
           // Request permission first
           const granted = await requestNotificationPermission();
-          if (granted) {
-            setTurnNotificationPreference(true);
-            setTurnNotifications(true);
-            setPermissionState("granted");
-          } else {
-            setTurnNotificationPreference(false);
-            setTurnNotifications(false);
-            setPermissionState("denied");
-          }
+          setTurnNotificationPreference(granted);
+          setTurnNotifications(granted);
+          // Whatever the browser now says: a dismissed prompt leaves it
+          // undecided, so the switch can be tried again rather than show as
+          // blocked.
+          setPermissionState(getNotificationPermissionState());
         } else if (currentPermission === "granted") {
           // Permission already granted, just update preference
           setTurnNotificationPreference(true);
