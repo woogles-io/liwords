@@ -1,4 +1,4 @@
-import { Popconfirm, Table, Tooltip } from "antd";
+import { Popconfirm, Table, Tag, Tooltip } from "antd";
 import {
   FilterValue,
   SorterResult,
@@ -28,6 +28,7 @@ import { ProfileUpdate_Rating } from "../gen/api/proto/ipc/users_pb";
 import { useLobbyStoreContext } from "../store/store";
 import { ActionType } from "../actions/actions";
 import { DisplayUserBadges } from "../profile/badge";
+import { collapseIdenticalSeeks, identicalSeekIDs } from "./seek_collapse";
 import { SeekConfirmModal } from "./seek_confirm_modal";
 import { normalizeVariant, VariantSectionHeader } from "./variant_utils";
 
@@ -88,7 +89,8 @@ export const PlayerDisplay = (props: PlayerProps) => {
 type Props = {
   isMatch?: boolean;
   isClubMatch?: boolean;
-  newGame: (seekID: string) => void;
+  // alternatives: seeks identical to seekID, tried if it is already gone.
+  newGame: (seekID: string, alternatives?: Array<string>) => void;
   declineGame?: (seekID: string) => void;
   userID?: string;
   username?: string;
@@ -198,6 +200,7 @@ export const SoughtGames = (props: Props) => {
     outgoing: boolean;
     seekID: string;
     soughtGame: SoughtGame; // Keep reference to full object
+    count: number; // identical seeks shown as this one row
   };
 
   // Group games by variant
@@ -216,107 +219,116 @@ export const SoughtGames = (props: Props) => {
   };
 
   const formatGameData = (games: SoughtGame[]): SoughtGameTableData[] => {
-    const gameData: SoughtGameTableData[] = games
-      .filter((sg: SoughtGame) => {
-        if (sg.seeker === props.username || sg.receiverIsPermanent) {
-          // If we are the seeker, or if it's a match request, always show it.
-          return true;
-        }
+    const shown = games.filter((sg: SoughtGame) => {
+      if (sg.seeker === props.username || sg.receiverIsPermanent) {
+        // If we are the seeker, or if it's a match request, always show it.
+        return true;
+      }
 
-        // Check rating range
-        if (!props.ratings || !matchesRatingFormula(sg, props.ratings)) {
+      // Check rating range
+      if (!props.ratings || !matchesRatingFormula(sg, props.ratings)) {
+        return false;
+      }
+
+      // Check established rating requirement
+      if (sg.requireEstablishedRating && props.ratings) {
+        if (!hasEstablishedRating(props.ratings, sg.ratingKey)) {
           return false;
         }
+      }
 
-        // Check established rating requirement
-        if (sg.requireEstablishedRating && props.ratings) {
-          if (!hasEstablishedRating(props.ratings, sg.ratingKey)) {
-            return false;
-          }
-        }
-
-        return true;
-      })
-      .map((sg: SoughtGame): SoughtGameTableData => {
-        const outgoing = sg.seeker === props.username;
-        const getDetails = () => {
-          return (
-            <>
-              <VariantIcon vcode={sg.variant} />{" "}
-              {challengeFormat(sg.challengeRule)}
-              {sg.rated ? (
-                <Tooltip title="Rated">
-                  <FundOutlined />
-                </Tooltip>
-              ) : null}
-              {!sg.receiverIsPermanent && sg.onlyFollowedPlayers ? (
-                <Tooltip
-                  title={
-                    outgoing
-                      ? "Only visible to players you follow"
-                      : "Only shown to followed players"
-                  }
-                >
-                  <TeamOutlined />
-                </Tooltip>
-              ) : null}
-            </>
-          );
-        };
-        return {
-          seeker: outgoing ? (
-            <Popconfirm
-              title="Do you want to cancel this game?"
-              onConfirm={() => {
-                props.newGame(sg.seekID);
-                setCancelVisibleSeekID(null);
-              }}
-              okText="Yes"
-              cancelText="No"
-              onCancel={() => {
-                setCancelVisibleSeekID(null);
-              }}
-              onOpenChange={(visible) => {
-                setCancelVisibleSeekID(visible ? sg.seekID : null);
-              }}
-              open={cancelVisibleSeekID === sg.seekID}
-            >
-              <div>
-                <ExportOutlined />
-                {` ${sg.receiver?.displayName || "Seeking..."}`}
-              </div>
-            </Popconfirm>
-          ) : (
+      return true;
+    });
+    const gameData: SoughtGameTableData[] = collapseIdenticalSeeks(
+      shown,
+      props.username,
+    ).map(({ sg, count }): SoughtGameTableData => {
+      const outgoing = sg.seeker === props.username;
+      const getDetails = () => {
+        return (
+          <>
+            <VariantIcon vcode={sg.variant} />{" "}
+            {challengeFormat(sg.challengeRule)}
+            {sg.rated ? (
+              <Tooltip title="Rated">
+                <FundOutlined />
+              </Tooltip>
+            ) : null}
+            {!sg.receiverIsPermanent && sg.onlyFollowedPlayers ? (
+              <Tooltip
+                title={
+                  outgoing
+                    ? "Only visible to players you follow"
+                    : "Only shown to followed players"
+                }
+              >
+                <TeamOutlined />
+              </Tooltip>
+            ) : null}
+          </>
+        );
+      };
+      return {
+        seeker: outgoing ? (
+          <Popconfirm
+            title="Do you want to cancel this game?"
+            onConfirm={() => {
+              props.newGame(sg.seekID);
+              setCancelVisibleSeekID(null);
+            }}
+            okText="Yes"
+            cancelText="No"
+            onCancel={() => {
+              setCancelVisibleSeekID(null);
+            }}
+            onOpenChange={(visible) => {
+              setCancelVisibleSeekID(visible ? sg.seekID : null);
+            }}
+            open={cancelVisibleSeekID === sg.seekID}
+          >
             <div>
-              {sg.receiverIsPermanent && (
-                <span style={{ fontWeight: 500, marginRight: 4 }}>
-                  Match request from{" "}
-                </span>
-              )}
-              <PlayerDisplay userID={sg.seekerID} username={sg.seeker} />
+              <ExportOutlined />
+              {` ${sg.receiver?.displayName || "Seeking..."}`}
             </div>
-          ),
-          rating: outgoing ? "" : sg.userRating,
-          ratingBadge: outgoing ? null : <RatingBadge rating={sg.userRating} />,
-          lexicon: <MatchLexiconDisplay lexiconCode={sg.lexicon} />,
-          time: timeFormat(
-            sg.initialTimeSecs,
-            sg.incrementSecs,
-            sg.maxOvertimeMinutes,
-            sg.gameMode,
-          ),
-          totalTime: calculateTotalTime(
-            sg.initialTimeSecs,
-            sg.incrementSecs,
-            sg.maxOvertimeMinutes,
-          ),
-          details: getDetails(),
-          outgoing,
-          seekID: sg.seekID,
-          lexiconCode: sg.lexicon,
-          soughtGame: sg,
-        };
-      });
+          </Popconfirm>
+        ) : (
+          <div>
+            {sg.receiverIsPermanent && (
+              <span style={{ fontWeight: 500, marginRight: 4 }}>
+                Match request from{" "}
+              </span>
+            )}
+            <PlayerDisplay userID={sg.seekerID} username={sg.seeker} />
+            {count > 1 && (
+              // A count, not "xN": "x1"/"x2" already name challenge rules.
+              <Tooltip title="Identical seeks; accepting takes one of them">
+                <Tag className="seek-count">{count} seeks</Tag>
+              </Tooltip>
+            )}
+          </div>
+        ),
+        rating: outgoing ? "" : sg.userRating,
+        ratingBadge: outgoing ? null : <RatingBadge rating={sg.userRating} />,
+        lexicon: <MatchLexiconDisplay lexiconCode={sg.lexicon} />,
+        time: timeFormat(
+          sg.initialTimeSecs,
+          sg.incrementSecs,
+          sg.maxOvertimeMinutes,
+          sg.gameMode,
+        ),
+        totalTime: calculateTotalTime(
+          sg.initialTimeSecs,
+          sg.incrementSecs,
+          sg.maxOvertimeMinutes,
+        ),
+        details: getDetails(),
+        outgoing,
+        seekID: sg.seekID,
+        lexiconCode: sg.lexicon,
+        soughtGame: sg,
+        count,
+      };
+    });
     return gameData;
   };
 
@@ -507,7 +519,10 @@ export const SoughtGames = (props: Props) => {
         seek={selectedSeek}
         onAccept={() => {
           if (selectedSeek) {
-            props.newGame(selectedSeek.seekID);
+            props.newGame(
+              selectedSeek.seekID,
+              identicalSeekIDs(selectedSeek, props.requests),
+            );
           }
           setConfirmModalVisible(false);
           setSelectedSeek(null);

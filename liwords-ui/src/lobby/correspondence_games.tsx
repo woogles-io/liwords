@@ -31,7 +31,7 @@ type Props = {
   correspondenceSeeks: SoughtGame[];
   username?: string;
   userID?: string;
-  newGame: (seekID: string) => void;
+  newGame: (seekID: string, alternatives?: Array<string>) => void;
   declineGame?: (seekID: string) => void;
   ratings?: { [key: string]: ProfileUpdate_Rating };
   // The user's open real-time seek or match request, which this tab does not
