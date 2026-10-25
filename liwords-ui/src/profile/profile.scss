@@ -202,10 +202,14 @@
     }
     // antd sizes a dot's li to its 3px bar and clips to it; these dots are
     // round and up to 10px, so the li has to hold them. Its animated bar
-    // (li::after) would paint over the active dot, so it goes.
+    // (li::after) would paint over the active dot, so it goes. A dot smaller
+    // than its li is centered in it, so all the dots share one middle.
     .slick-dots li {
       height: 10px;
       width: 12px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
       &::after {
         display: none;
       }
