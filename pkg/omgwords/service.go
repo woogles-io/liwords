@@ -135,6 +135,9 @@ func (gs *OMGWordsService) createGDoc(ctx context.Context, u *entity.User, req *
 	if req.Lexicon == "" {
 		return nil, apiserver.InvalidArg("lexicon is empty")
 	}
+	if err := setAnnotatedGameBoard(req.Lexicon, req.Rules); err != nil {
+		return nil, err
+	}
 	unfinished, err := gs.metadataStore.OutstandingGames(ctx, u.UUID)
 	if err != nil {
 		return nil, err
@@ -810,6 +813,13 @@ func (gs *OMGWordsService) ImportGCG(ctx context.Context, req *connect.Request[p
 	}
 	u, err := apiserver.AuthUser(ctx, gs.userStore)
 	if err != nil {
+		return nil, err
+	}
+	if req.Msg.Rules == nil {
+		return nil, apiserver.InvalidArg("no rules")
+	}
+	// The board and tiles parse the file too, so they are set first.
+	if err := setAnnotatedGameBoard(req.Msg.Lexicon, req.Msg.Rules); err != nil {
 		return nil, err
 	}
 
