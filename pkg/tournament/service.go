@@ -25,13 +25,13 @@ import (
 	"github.com/woogles-io/liwords/pkg/auth/rbac"
 	"github.com/woogles-io/liwords/pkg/config"
 	"github.com/woogles-io/liwords/pkg/entity"
-	"github.com/woogles-io/liwords/pkg/mod"
 	"github.com/woogles-io/liwords/pkg/notify"
 	"github.com/woogles-io/liwords/pkg/stores/models"
 	"github.com/woogles-io/liwords/pkg/user"
 	"github.com/woogles-io/liwords/pkg/utilities"
 
 	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
+	ms "github.com/woogles-io/liwords/rpc/api/proto/mod_service"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/tournament_service"
 )
 
@@ -816,37 +816,50 @@ func authenticateDirector(ctx context.Context, ts *TournamentService, id string,
 }
 
 func censorRecentGamesResponse(ctx context.Context, us user.Store, rgr *pb.RecentGamesResponse) error {
-	knownUsers := make(map[string]bool)
+	uuids := []string{}
+	seen := map[string]bool{}
+	for _, game := range rgr.Games {
+		for _, p := range game.Players {
+			if p.UserId == "" {
+				// Games without a stored user ID; look it up by username.
+				u, err := us.Get(ctx, p.Username)
+				if err != nil {
+					return err
+				}
+				p.UserId = u.UUID
+			}
+			if !seen[p.UserId] {
+				seen[p.UserId] = true
+				uuids = append(uuids, p.UserId)
+			}
+		}
+	}
+	userActions, err := us.GetActionsBatch(ctx, uuids)
+	if err != nil {
+		return err
+	}
+	// Same rule as mod.IsCensorable: only permanent suspensions are censored.
+	censorable := func(uuid string) bool {
+		a, ok := userActions[uuid][ms.ModActionType_SUSPEND_ACCOUNT.String()]
+		return ok && a.EndTime == nil
+	}
+	censor := func(p *ipc.TournamentGameEndedEvent_Player, name string) {
+		p.Username = name
+		p.UserId = name
+	}
 
 	for _, game := range rgr.Games {
-		playerOneUserEntity, err := us.Get(ctx, game.Players[0].Username)
-		if err != nil {
-			return err
+		playerOneCensored := censorable(game.Players[0].UserId)
+		playerTwoCensored := censorable(game.Players[1].UserId)
+		if playerOneCensored {
+			censor(game.Players[0], utilities.CensoredUsername)
 		}
-		playerTwoUserEntity, err := us.Get(ctx, game.Players[1].Username)
-		if err != nil {
-			return err
-		}
-		playerOne := playerOneUserEntity.UUID
-		playerTwo := playerTwoUserEntity.UUID
-
-		_, known := knownUsers[playerOne]
-		if !known {
-			knownUsers[playerOne] = mod.IsCensorable(ctx, us, playerOne)
-		}
-		if knownUsers[playerOne] {
-			game.Players[0].Username = utilities.CensoredUsername
-		}
-
-		_, known = knownUsers[playerTwo]
-		if !known {
-			knownUsers[playerTwo] = mod.IsCensorable(ctx, us, playerTwo)
-		}
-		if knownUsers[playerTwo] {
-			game.Players[1].Username = utilities.CensoredUsername
-			if knownUsers[playerOne] {
-				game.Players[1].Username = utilities.AnotherCensoredUsername
+		if playerTwoCensored {
+			name := utilities.CensoredUsername
+			if playerOneCensored {
+				name = utilities.AnotherCensoredUsername
 			}
+			censor(game.Players[1], name)
 		}
 	}
 	return nil
