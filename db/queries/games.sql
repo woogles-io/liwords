@@ -120,6 +120,60 @@ JOIN games g ON rgu.game_uuid = g.uuid
 LEFT JOIN leagues l ON l.uuid = g.league_id
 ORDER BY rgu.updated_at DESC;
 
+-- name: GetGamePlayerUpdatedAt :one
+-- Where one of the user's games sits in their history, for paging on from it.
+SELECT updated_at FROM game_players
+WHERE game_uuid = @game_uuid AND player_id = @user_id;
+
+-- name: GetRecentGamesBefore :many
+-- The user's games just older than (@before_time, @before_uuid) in
+-- (updated_at, game_uuid) order, newest first: a page of the history found
+-- by walking the (player_id, updated_at) index from that point, however deep.
+WITH recent_game_uuids AS (
+  SELECT gp.game_uuid, gp.updated_at
+  FROM game_players gp
+  WHERE gp.player_id = @user_id
+    AND gp.game_end_reason NOT IN (0, 5, 7)  -- NONE, ABORTED, CANCELLED
+    -- the plain bound lets the (player_id, updated_at) index start there;
+    -- the row comparison then breaks ties on the same instant by game id.
+    AND gp.updated_at <= @before_time::timestamptz
+    AND (gp.updated_at, gp.game_uuid) < (@before_time::timestamptz, @before_uuid::text)
+  ORDER BY gp.updated_at DESC, gp.game_uuid DESC
+  LIMIT @num_games::integer
+)
+SELECT g.id, g.uuid, g.type, g.player0_id, g.player1_id,
+       g.timers, g.started, g.game_end_reason, g.winner_idx, g.loser_idx,
+       g.quickdata, g.tournament_data, g.created_at, g.updated_at,
+       g.game_request, g.league_id, g.season_id, g.league_division_id,
+       COALESCE(l.slug, '')::text AS league_slug
+FROM recent_game_uuids rgu
+JOIN games g ON rgu.game_uuid = g.uuid
+LEFT JOIN leagues l ON l.uuid = g.league_id
+ORDER BY rgu.updated_at DESC, rgu.game_uuid DESC;
+
+-- name: GetRecentGamesAfter :many
+-- The user's games just newer than (@after_time, @after_uuid), oldest first
+-- (the caller reverses them).
+WITH recent_game_uuids AS (
+  SELECT gp.game_uuid, gp.updated_at
+  FROM game_players gp
+  WHERE gp.player_id = @user_id
+    AND gp.game_end_reason NOT IN (0, 5, 7)  -- NONE, ABORTED, CANCELLED
+    AND gp.updated_at >= @after_time::timestamptz
+    AND (gp.updated_at, gp.game_uuid) > (@after_time::timestamptz, @after_uuid::text)
+  ORDER BY gp.updated_at ASC, gp.game_uuid ASC
+  LIMIT @num_games::integer
+)
+SELECT g.id, g.uuid, g.type, g.player0_id, g.player1_id,
+       g.timers, g.started, g.game_end_reason, g.winner_idx, g.loser_idx,
+       g.quickdata, g.tournament_data, g.created_at, g.updated_at,
+       g.game_request, g.league_id, g.season_id, g.league_division_id,
+       COALESCE(l.slug, '')::text AS league_slug
+FROM recent_game_uuids rgu
+JOIN games g ON rgu.game_uuid = g.uuid
+LEFT JOIN leagues l ON l.uuid = g.league_id
+ORDER BY rgu.updated_at ASC, rgu.game_uuid ASC;
+
 -- name: GetRecentCorrespondenceGamesByUserId :many
 WITH recent_game_uuids AS (
   SELECT gp.game_uuid, gp.updated_at

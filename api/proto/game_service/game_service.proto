@@ -19,6 +19,15 @@ message RecentGamesRequest {
   string username = 1;
   int32 num_games = 2;
   int32 offset = 3;
+  // Paging by position instead of offset, cheap however deep (offset is
+  // ignored when one is set): the games just older than before_game_id, or
+  // just older than the time before (unix ms) for a jump to a date, or just
+  // newer than after_game_id, or than the time after (unix ms; 1 gives the
+  // oldest games). Games come newest first either way.
+  string before_game_id = 4;
+  int64 before = 5;
+  string after_game_id = 6;
+  int64 after = 7;
 }
 
 message StreakInfoResponse {
