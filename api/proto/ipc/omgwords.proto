@@ -249,6 +249,9 @@ message GameInfoResponse {
   // real time until expiry (per-turn allowance + bank), not just the per-turn
   // proxy. Empty for games without a time bank or for finished games.
   repeated int64 time_bank = 27;
+  // time_started is when the game's clocks started, a unix timestamp in
+  // milliseconds; 0 if the game has not started.
+  int64 time_started = 28;
 }
 
 message GameInfoResponses { repeated GameInfoResponse game_info = 1; }
