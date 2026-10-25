@@ -1,16 +1,68 @@
 import React, { useMemo } from "react";
-import { Card, Empty, Tooltip } from "antd";
+import { Card, Empty, Tooltip, Typography } from "antd";
 import { useNavigate } from "react-router";
+import { timestampDate } from "@bufbuild/protobuf/wkt";
 import { useQuery } from "@connectrpc/connect-query";
 import { CorrespondenceTurnIndicator } from "../shared/corres_turn_indicator";
 import { useLobbyStoreContext } from "../store/store";
 import { useLoginStateStoreContext } from "../store/store";
 import { onTurnCountdowns } from "../utils/time_bank_calculator";
-import { getPlayerLeagueH2H } from "../gen/api/proto/league_service/league_service-LeagueService_connectquery";
-import { H2HRecord } from "../gen/api/proto/league_service/league_service_pb";
+import { GameEndReason } from "../gen/api/proto/ipc/omgwords_pb";
+import {
+  getPlayerLeagueH2H,
+  getPlayerSeasonGames,
+} from "../gen/api/proto/league_service/league_service-LeagueService_connectquery";
+import {
+  H2HRecord,
+  PlayerSeasonGame,
+} from "../gen/api/proto/league_service/league_service_pb";
+import { endReasonLabel } from "./player_game_history_modal";
+
+const { Text } = Typography;
 
 type LeagueCorrespondenceGamesProps = {
   leagueSlug: string;
+  // The season underway, whose games just ended are listed too.
+  seasonId?: string;
+};
+
+// How long a finished game stays under "Just ended".
+const JUST_ENDED_MS = 24 * 60 * 60 * 1000;
+
+// The season's games that ended in the last day, newest first: a result can
+// land while the player is away (a timeout, an opponent playing out).
+export const justEndedGames = (
+  games: Array<PlayerSeasonGame>,
+  nowMs: number,
+): Array<PlayerSeasonGame> =>
+  games
+    .filter(
+      (g) =>
+        (g.result === "win" || g.result === "loss" || g.result === "draw") &&
+        g.gameDate !== undefined &&
+        nowMs - timestampDate(g.gameDate).getTime() <= JUST_ENDED_MS,
+    )
+    .sort(
+      (a, b) =>
+        timestampDate(b.gameDate!).getTime() -
+        timestampDate(a.gameDate!).getTime(),
+    );
+
+// "Won", "Lost (time)", "Drew": a game not played out says how it ended.
+const resultText = (g: PlayerSeasonGame): string => {
+  const verb =
+    g.result === "win" ? "Won" : g.result === "loss" ? "Lost" : "Drew";
+  return g.gameEndReason === GameEndReason.STANDARD
+    ? verb
+    : `${verb} (${endReasonLabel(g.gameEndReason)})`;
+};
+
+// "just now", "25m ago", "3h ago".
+const endedAgo = (ms: number): string => {
+  const mins = Math.floor((Date.now() - ms) / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  return `${Math.floor(mins / 60)}h ago`;
 };
 
 const formatH2HCompact = (record: H2HRecord | undefined) => {
@@ -30,9 +82,23 @@ const formatH2HCompact = (record: H2HRecord | undefined) => {
   );
 };
 
+// The lifetime record against an opponent, after their name, with the
+// record in words on hover.
+const h2hBadge = (record: H2HRecord | undefined) =>
+  record && (
+    <>
+      {" "}
+      <Tooltip
+        title={`Lifetime league record: ${record.wins}W-${record.losses}L${record.draws ? `-${record.draws}D` : ""} ${record.spread > 0 ? "+" : ""}${record.spread}`}
+      >
+        {formatH2HCompact(record)}
+      </Tooltip>
+    </>
+  );
+
 export const LeagueCorrespondenceGames: React.FC<
   LeagueCorrespondenceGamesProps
-> = ({ leagueSlug }) => {
+> = ({ leagueSlug, seasonId }) => {
   const navigate = useNavigate();
   const {
     loginState: { userID },
@@ -49,6 +115,17 @@ export const LeagueCorrespondenceGames: React.FC<
       leagueId: leagueSlug,
     },
     { enabled: !!userID },
+  );
+
+  // The viewer's games this season, for those that just ended.
+  const { data: seasonGamesData } = useQuery(
+    getPlayerSeasonGames,
+    { userId: userID || "", seasonId: seasonId || "" },
+    { enabled: !!userID && !!seasonId },
+  );
+  const justEnded = useMemo(
+    () => justEndedGames(seasonGamesData?.games ?? [], Date.now()),
+    [seasonGamesData?.games],
   );
 
   // Build a map of opponent UUID -> H2HRecord
@@ -120,13 +197,86 @@ export const LeagueCorrespondenceGames: React.FC<
     }
   };
 
+  const justEndedList = justEnded.length > 0 && (
+    <>
+      <div className="league-just-ended-title">Just ended</div>
+      {justEnded.map((g) => (
+        <div
+          key={g.gameId}
+          className="league-game-item compact"
+          onClick={(event) => handleGameClick(g.gameId, event)}
+          onAuxClick={(event) => {
+            if (event.button === 1) {
+              // middle-click
+              window.open(`/game/${encodeURIComponent(g.gameId)}`);
+            }
+          }}
+          style={{ cursor: "pointer" }}
+        >
+          <div className="game-info-compact">
+            <div
+              className="opponent-name-compact"
+              style={{
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: "8px",
+              }}
+            >
+              <span>
+                vs {g.opponentUsername}
+                {h2hBadge(h2hMap.get(g.opponentUserId))}
+              </span>
+              <span
+                style={{
+                  fontWeight: 500,
+                  fontSize: "13px",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {g.playerScore}-{g.opponentScore}
+              </span>
+            </div>
+            <div className="turn-indicator-compact">
+              {/* the size and weight of the line, as "Their turn" has */}
+              <Text
+                type={
+                  g.result === "win"
+                    ? "success"
+                    : g.result === "loss"
+                      ? "danger"
+                      : "secondary"
+                }
+                style={{
+                  fontSize: "inherit",
+                  fontWeight: "inherit",
+                  lineHeight: "inherit",
+                }}
+              >
+                {resultText(g)}
+              </Text>{" "}
+              {endedAgo(timestampDate(g.gameDate!).getTime())}
+            </div>
+          </div>
+        </div>
+      ))}
+    </>
+  );
+
   if (leagueGames.length === 0) {
     return (
       <Card title="My League Games">
-        <Empty
-          description="No active league games"
-          image={Empty.PRESENTED_IMAGE_SIMPLE}
-        />
+        {justEndedList ? (
+          <div className="league-games-list">{justEndedList}</div>
+        ) : (
+          <Empty
+            description="No active league games"
+            image={Empty.PRESENTED_IMAGE_SIMPLE}
+          />
+        )}
       </Card>
     );
   }
@@ -193,16 +343,7 @@ export const LeagueCorrespondenceGames: React.FC<
                 >
                   <span>
                     vs {opponentName}
-                    {h2hRecord && (
-                      <>
-                        {" "}
-                        <Tooltip
-                          title={`Lifetime league record: ${h2hRecord.wins}W-${h2hRecord.losses}L${h2hRecord.draws ? `-${h2hRecord.draws}D` : ""} ${h2hRecord.spread > 0 ? "+" : ""}${h2hRecord.spread}`}
-                        >
-                          {formatH2HCompact(h2hRecord)}
-                        </Tooltip>
-                      </>
-                    )}
+                    {h2hBadge(h2hRecord)}
                   </span>
                   {hasScores && (
                     <span
@@ -239,6 +380,7 @@ export const LeagueCorrespondenceGames: React.FC<
             </div>
           );
         })}
+        {justEndedList}
       </div>
     </Card>
   );

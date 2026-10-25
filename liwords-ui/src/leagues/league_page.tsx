@@ -1017,7 +1017,10 @@ export const LeaguePage = (props: Props) => {
             {/* League Games */}
             {loggedIn && slug && (
               <div style={{ marginBottom: 16 }}>
-                <LeagueCorrespondenceGames leagueSlug={slug} />
+                <LeagueCorrespondenceGames
+                  leagueSlug={slug}
+                  seasonId={currentSeason?.uuid}
+                />
               </div>
             )}
 
