@@ -816,35 +816,36 @@ func authenticateDirector(ctx context.Context, ts *TournamentService, id string,
 }
 
 func censorRecentGamesResponse(ctx context.Context, us user.Store, rgr *pb.RecentGamesResponse) error {
+	// Keyed by username: players show up in many games, and each lookup
+	// loads the full user and profile.
 	knownUsers := make(map[string]bool)
+	censorable := func(username string) (bool, error) {
+		if c, known := knownUsers[username]; known {
+			return c, nil
+		}
+		u, err := us.Get(ctx, username)
+		if err != nil {
+			return false, err
+		}
+		knownUsers[username] = mod.IsCensorable(ctx, us, u.UUID)
+		return knownUsers[username], nil
+	}
 
 	for _, game := range rgr.Games {
-		playerOneUserEntity, err := us.Get(ctx, game.Players[0].Username)
+		playerOneCensored, err := censorable(game.Players[0].Username)
 		if err != nil {
 			return err
 		}
-		playerTwoUserEntity, err := us.Get(ctx, game.Players[1].Username)
+		playerTwoCensored, err := censorable(game.Players[1].Username)
 		if err != nil {
 			return err
 		}
-		playerOne := playerOneUserEntity.UUID
-		playerTwo := playerTwoUserEntity.UUID
-
-		_, known := knownUsers[playerOne]
-		if !known {
-			knownUsers[playerOne] = mod.IsCensorable(ctx, us, playerOne)
-		}
-		if knownUsers[playerOne] {
+		if playerOneCensored {
 			game.Players[0].Username = utilities.CensoredUsername
 		}
-
-		_, known = knownUsers[playerTwo]
-		if !known {
-			knownUsers[playerTwo] = mod.IsCensorable(ctx, us, playerTwo)
-		}
-		if knownUsers[playerTwo] {
+		if playerTwoCensored {
 			game.Players[1].Username = utilities.CensoredUsername
-			if knownUsers[playerOne] {
+			if playerOneCensored {
 				game.Players[1].Username = utilities.AnotherCensoredUsername
 			}
 		}
