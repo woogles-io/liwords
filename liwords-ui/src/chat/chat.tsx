@@ -19,7 +19,7 @@ import {
   usePresenceStoreContext,
 } from "../store/store";
 import "./chat.scss";
-import { Presences } from "./presences";
+import { Presences, useFirstSeen } from "./presences";
 import { ChatChannels, listsChannel } from "./chat_channels";
 import {
   ChatEntityObj,
@@ -200,6 +200,7 @@ export const Chat = React.memo((props: Props) => {
     !props.suppressDefault ? defaultChannel : undefined,
   );
   const presenceCount = presences.filter((p) => p.channel === channel).length;
+  const firstSeen = useFirstSeen(presences, channel ?? "");
   const [, setRefreshCurMsg] = useState(0);
   const channelType = useMemo(() => {
     return channel?.split(".")[1] || "";
@@ -1076,6 +1077,7 @@ export const Chat = React.memo((props: Props) => {
                       <p className="presence">
                         <Presences
                           players={presences}
+                          firstSeen={firstSeen}
                           channel={channel}
                           sendMessage={sendNewMessage}
                           playerInfoMap={props.playerInfoMap}
