@@ -1,6 +1,7 @@
 package entity
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -30,4 +31,14 @@ func (w *WooglesError) Error() string {
 		fmt.Fprintf(&errb, "%s%s", WooglesErrorDelimiter, d)
 	}
 	return errb.String()
+}
+
+// IsSeekGone reports whether err says the seek being accepted is no longer
+// there: canceled, or taken by someone else.
+func IsSeekGone(err error) bool {
+	if errors.Is(err, ErrSeekGone) {
+		return true
+	}
+	var we *WooglesError
+	return errors.As(err, &we) && we.code == ipc.WooglesError_GAME_NO_LONGER_AVAILABLE
 }

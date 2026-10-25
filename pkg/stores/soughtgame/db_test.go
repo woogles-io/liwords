@@ -2,7 +2,9 @@ package soughtgame
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -129,7 +131,8 @@ func TestSoughtGame(t *testing.T) {
 
 	sgGottenDifferentSeekerConnId, err := store.DeleteForSeekerConnID(ctx, differentSeekerConnId)
 	is.NoErr(err)
-	is.Equal(sgDifferentSeekerConnId.SeekRequest.GameRequest.RequestId, sgGottenDifferentSeekerConnId.SeekRequest.GameRequest.RequestId)
+	is.Equal(len(sgGottenDifferentSeekerConnId), 1)
+	is.Equal(sgDifferentSeekerConnId.SeekRequest.GameRequest.RequestId, sgGottenDifferentSeekerConnId[0].SeekRequest.GameRequest.RequestId)
 
 	differentSeekerId := "other_seeker_id"
 	sgDifferentSeekerId := newSoughtGame()
@@ -139,7 +142,8 @@ func TestSoughtGame(t *testing.T) {
 
 	sgDeleted, err := store.DeleteForUser(ctx, differentSeekerId)
 	is.NoErr(err)
-	is.Equal(sgDifferentSeekerId.SeekRequest.GameRequest.RequestId, sgDeleted.SeekRequest.GameRequest.RequestId)
+	is.Equal(len(sgDeleted), 1)
+	is.Equal(sgDifferentSeekerId.SeekRequest.GameRequest.RequestId, sgDeleted[0].SeekRequest.GameRequest.RequestId)
 
 	listedSoughtGames, err = store.ListOpenSeeks(ctx, common.DefaultSeekRequest.ReceivingUser.UserId, "")
 	is.NoErr(err)
@@ -174,17 +178,20 @@ func TestNonexistingSoughtGames(t *testing.T) {
 
 	nonexistentValue := "nonexistent value"
 
-	sg, err := store.DeleteForUser(ctx, nonexistentValue)
+	deleted, err := store.DeleteForUser(ctx, nonexistentValue)
+	is.NoErr(err)
+	is.Equal(len(deleted), 0)
+
+	sg, err := store.UpdateForReceiver(ctx, nonexistentValue)
 	is.NoErr(err)
 	is.Equal(sg, nil)
 
-	sg, err = store.UpdateForReceiver(ctx, nonexistentValue)
+	deleted, err = store.DeleteForSeekerConnID(ctx, nonexistentValue)
 	is.NoErr(err)
-	is.Equal(sg, nil)
+	is.Equal(len(deleted), 0)
 
-	sg, err = store.DeleteForSeekerConnID(ctx, nonexistentValue)
-	is.NoErr(err)
-	is.Equal(sg, nil)
+	_, _, err = store.Claim(ctx, nonexistentValue)
+	is.True(errors.Is(err, entity.ErrSeekGone))
 
 	sg, err = store.UpdateForReceiverConnID(ctx, nonexistentValue)
 	is.NoErr(err)
@@ -219,30 +226,16 @@ func TestSoughtGameNullValues(t *testing.T) {
 	store.Disconnect()
 }
 
-// One real-time seek or match request at a time, alongside any number of
-// correspondence ones; leaving cancels only the real-time one (#1792).
-func TestOneRealtimeSeekAlongsideCorrespondence(t *testing.T) {
+// Any number of real-time seeks and match requests, alongside any number of
+// correspondence ones; leaving cancels only the real-time ones (#1792).
+func TestRealtimeSeeksAlongsideCorrespondence(t *testing.T) {
 	_, store := recreateDB()
 	is := is.New(t)
 	ctx := context.Background()
 	seeker := common.DefaultSeekRequest.User.UserId
 	conn := common.DefaultSeekRequest.SeekerConnectionId
 
-	// newSeek stores a seek from the default seeker and returns its id; an
-	// empty receiver makes it an open seek.
-	newSeek := func(mode pb.GameMode, receiver string) string {
-		sg := newSoughtGame()
-		sg.SeekRequest.GameRequest.GameMode = mode
-		if receiver == "" {
-			sg.SeekRequest.ReceivingUser = nil
-		} else {
-			sg.SeekRequest.ReceivingUser.UserId = receiver
-		}
-		is.NoErr(store.New(ctx, sg))
-		id, err := sg.ID()
-		is.NoErr(err)
-		return id
-	}
+	newSeek := seekMaker(t, store)
 	canCreate := func(mode pb.GameMode, receiver string) bool {
 		ok, _, err := store.CanCreateSeek(ctx, seeker, mode, receiver)
 		is.NoErr(err)
@@ -255,36 +248,135 @@ func TestOneRealtimeSeekAlongsideCorrespondence(t *testing.T) {
 
 	corresOpen := newSeek(pb.GameMode_CORRESPONDENCE, "")
 	corresMatch := newSeek(pb.GameMode_CORRESPONDENCE, "someone")
-	is.True(canCreate(pb.GameMode_REAL_TIME, ""))
-	is.True(canCreate(pb.GameMode_CORRESPONDENCE, ""))
-
 	live := newSeek(pb.GameMode_REAL_TIME, "")
-	is.True(!canCreate(pb.GameMode_REAL_TIME, ""))
-	is.True(!canCreate(pb.GameMode_REAL_TIME, "someone"))
-	is.True(canCreate(pb.GameMode_CORRESPONDENCE, "other"))
+	is.True(canCreate(pb.GameMode_REAL_TIME, ""))
+	is.True(canCreate(pb.GameMode_REAL_TIME, "someone"))
+	liveMatch := newSeek(pb.GameMode_REAL_TIME, "someone")
 
-	// Leaving, or accepting a live game, cancels only the live seek.
+	// Leaving cancels all the live ones.
 	deleted, err := store.DeleteForUser(ctx, seeker)
 	is.NoErr(err)
-	id, err := deleted.ID()
-	is.NoErr(err)
-	is.Equal(id, live)
-	is.True(!exists(live))
+	is.Equal(ids(t, deleted), map[string]bool{live: true, liveMatch: true})
 	is.True(exists(corresOpen))
 	is.True(exists(corresMatch))
 
-	// So does closing the tab the seeks came from.
-	live = newSeek(pb.GameMode_REAL_TIME, "someone")
+	// So does closing the tab they came from.
+	live = newSeek(pb.GameMode_REAL_TIME, "")
+	liveMatch = newSeek(pb.GameMode_REAL_TIME, "someone")
 	deleted, err = store.DeleteForSeekerConnID(ctx, conn)
 	is.NoErr(err)
-	id, err = deleted.ID()
-	is.NoErr(err)
-	is.Equal(id, live)
-	is.True(!exists(live))
+	is.Equal(ids(t, deleted), map[string]bool{live: true, liveMatch: true})
 	is.True(exists(corresOpen))
 	is.True(exists(corresMatch))
 
 	store.Disconnect()
+}
+
+// Accepting a live seek takes the seeker's other live ones with it; a seek
+// can be claimed once only.
+func TestClaim(t *testing.T) {
+	_, store := recreateDB()
+	is := is.New(t)
+	ctx := context.Background()
+	newSeek := seekMaker(t, store)
+
+	corres := newSeek(pb.GameMode_CORRESPONDENCE, "")
+	live5 := newSeek(pb.GameMode_REAL_TIME, "")
+	live20 := newSeek(pb.GameMode_REAL_TIME, "")
+	liveMatch := newSeek(pb.GameMode_REAL_TIME, "someone")
+
+	claimed, others, err := store.Claim(ctx, live5)
+	is.NoErr(err)
+	id, err := claimed.ID()
+	is.NoErr(err)
+	is.Equal(id, live5)
+	is.Equal(ids(t, others), map[string]bool{live20: true, liveMatch: true})
+
+	_, _, err = store.Claim(ctx, live20)
+	is.True(errors.Is(err, entity.ErrSeekGone))
+	_, _, err = store.Claim(ctx, live5)
+	is.True(errors.Is(err, entity.ErrSeekGone))
+
+	// A correspondence seek goes alone.
+	live := newSeek(pb.GameMode_REAL_TIME, "")
+	_, others, err = store.Claim(ctx, corres)
+	is.NoErr(err)
+	is.Equal(len(others), 0)
+	_, err = store.Get(ctx, live)
+	is.NoErr(err)
+
+	store.Disconnect()
+}
+
+// Two live seeks of one seeker accepted at the same moment: one game only.
+func TestClaimRace(t *testing.T) {
+	_, store := recreateDB()
+	is := is.New(t)
+	ctx := context.Background()
+	newSeek := seekMaker(t, store)
+
+	for round := 0; round < 20; round++ {
+		a := newSeek(pb.GameMode_REAL_TIME, "")
+		b := newSeek(pb.GameMode_REAL_TIME, "")
+		errs := make(chan error, 2)
+		var wg sync.WaitGroup
+		for _, id := range []string{a, b} {
+			wg.Add(1)
+			go func(id string) {
+				defer wg.Done()
+				_, _, err := store.Claim(ctx, id)
+				errs <- err
+			}(id)
+		}
+		wg.Wait()
+		close(errs)
+		won, gone := 0, 0
+		for err := range errs {
+			switch {
+			case err == nil:
+				won++
+			case errors.Is(err, entity.ErrSeekGone):
+				gone++
+			default:
+				t.Fatalf("round %d: %v", round, err)
+			}
+		}
+		is.Equal(won, 1)
+		is.Equal(gone, 1)
+	}
+
+	store.Disconnect()
+}
+
+// seekMaker returns a function that stores a seek from the default seeker
+// and returns its id; an empty receiver makes it an open seek.
+func seekMaker(t *testing.T, store *DBStore) func(pb.GameMode, string) string {
+	is := is.New(t)
+	return func(mode pb.GameMode, receiver string) string {
+		sg := newSoughtGame()
+		sg.SeekRequest.GameRequest.GameMode = mode
+		if receiver == "" {
+			sg.SeekRequest.ReceivingUser = nil
+		} else {
+			sg.SeekRequest.ReceivingUser.UserId = receiver
+		}
+		is.NoErr(store.New(context.Background(), sg))
+		id, err := sg.ID()
+		is.NoErr(err)
+		return id
+	}
+}
+
+func ids(t *testing.T, sgs []*entity.SoughtGame) map[string]bool {
+	m := map[string]bool{}
+	for _, sg := range sgs {
+		id, err := sg.ID()
+		if err != nil {
+			t.Fatal(err)
+		}
+		m[id] = true
+	}
+	return m
 }
 
 func newSoughtGame() *entity.SoughtGame {
