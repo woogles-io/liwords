@@ -155,3 +155,19 @@ func (q *Queries) GetNotoriousGames(ctx context.Context, arg GetNotoriousGamesPa
 	}
 	return items, nil
 }
+
+const getTournamentNameAndSlug = `-- name: GetTournamentNameAndSlug :one
+SELECT name, slug FROM tournaments WHERE uuid = $1
+`
+
+type GetTournamentNameAndSlugRow struct {
+	Name pgtype.Text
+	Slug pgtype.Text
+}
+
+func (q *Queries) GetTournamentNameAndSlug(ctx context.Context, uuid pgtype.Text) (GetTournamentNameAndSlugRow, error) {
+	row := q.db.QueryRow(ctx, getTournamentNameAndSlug, uuid)
+	var i GetTournamentNameAndSlugRow
+	err := row.Scan(&i.Name, &i.Slug)
+	return i, err
+}

@@ -33,3 +33,13 @@ export const getNotorietyReport = ModService.method.getNotorietyReport;
  * @generated from rpc mod_service.ModService.ResetNotoriety
  */
 export const resetNotoriety = ModService.method.resetNotoriety;
+
+/**
+ * @generated from rpc mod_service.ModService.ListChatChannels
+ */
+export const listChatChannels = ModService.method.listChatChannels;
+
+/**
+ * @generated from rpc mod_service.ModService.GetChannelChats
+ */
+export const getChannelChats = ModService.method.getChannelChats;

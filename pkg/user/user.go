@@ -113,6 +113,7 @@ type ChatStore interface {
 
 	GetChat(ctx context.Context, channel string, msgID string) (*pb.ChatMessage, error)
 	DeleteChat(ctx context.Context, channel string, msgID string) error
+	ScanChannels(ctx context.Context, cursor, prefix string, count int) ([]string, string, error)
 	SetEventChan(chan *entity.EventWrapper)
 	EventChan() chan *entity.EventWrapper
 }
