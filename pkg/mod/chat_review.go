@@ -2,12 +2,14 @@ package mod
 
 import (
 	"context"
+	"errors"
 	"sort"
 	"strings"
 	"time"
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/woogles-io/liwords/pkg/apiserver"
@@ -50,7 +52,13 @@ const (
 	// ended games are read this many at a time, up to the cap.
 	chatReviewGamePage      = 100
 	chatReviewMaxEndedGames = 2000
+	// a search by name lists at most this many tournaments, and as many
+	// leagues.
+	chatFindMaxMatches = 20
 )
+
+// likeEscaper keeps a typed % or _ from acting as a LIKE wildcard.
+var likeEscaper = strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
 
 // summarizeChannel counts a channel's messages per sender. ok is false when
 // username is set and the channel neither holds a message from that user nor
@@ -159,6 +167,153 @@ func (ms *ModService) channelContext(ctx context.Context, channel string) *pb.Ch
 	return c
 }
 
+// leagueChannel is a league's chat channel: its id without the dashes.
+func leagueChannel(id string) string {
+	return "chat.league." + strings.ReplaceAll(id, "-", "")
+}
+
+// pagePath is the path of a page's address, given with or without its scheme
+// and host, and without a query or a trailing slash: "woogles.io/club/x/"
+// gives "/club/x". Anything else comes back as it is.
+func pagePath(s string) string {
+	if i := strings.Index(s, "://"); i >= 0 {
+		s = s[i+len("://"):]
+	}
+	if i := strings.Index(s, "/"); i > 0 && strings.Contains(s[:i], ".") {
+		s = s[i:]
+	}
+	if i := strings.IndexAny(s, "?#"); i >= 0 {
+		s = s[:i]
+	}
+	if len(s) > 1 {
+		s = strings.TrimRight(s, "/")
+	}
+	return s
+}
+
+// findChannels turns what a mod typed into the channels it names: a channel
+// name as it is; else first the exact matches, a game, tournament, club or
+// league by its id or by its page's address or path, and then always the
+// tournaments, clubs and leagues whose name or slug contains it, newest
+// first.
+func (ms *ModService) findChannels(ctx context.Context, find string) ([]string, error) {
+	find = strings.TrimSpace(find)
+	if find == "" {
+		return nil, nil
+	}
+	if strings.HasPrefix(find, "chat.") {
+		return []string{find}, nil
+	}
+	var channels []string
+	seen := map[string]bool{}
+	add := func(chs ...string) {
+		for _, ch := range chs {
+			if !seen[ch] {
+				seen[ch] = true
+				channels = append(channels, ch)
+			}
+		}
+	}
+	// A lookup that finds nothing is no error.
+	missed := func(err error) bool { return errors.Is(err, pgx.ErrNoRows) }
+	game := func(id string) error {
+		_, err := ms.queries.GetGameMetadata(ctx, pgtype.Text{String: id, Valid: true})
+		if err == nil {
+			add("chat.game."+id, "chat.gametv."+id)
+		} else if !missed(err) {
+			return err
+		}
+		return nil
+	}
+	tournamentBySlug := func(slug string) error {
+		id, err := ms.queries.GetTournamentUUIDBySlug(ctx, slug)
+		if err == nil {
+			add("chat.tournament." + id.String)
+		} else if !missed(err) {
+			return err
+		}
+		return nil
+	}
+	leagueBySlug := func(slug string) error {
+		lg, err := ms.queries.GetLeagueBySlug(ctx, slug)
+		if err == nil {
+			add(leagueChannel(lg.Uuid.String()))
+		} else if !missed(err) {
+			return err
+		}
+		return nil
+	}
+
+	// The exact matches come first: an address's page, or what has the text
+	// as its id or as the last part of its address.
+	path := pagePath(find)
+	switch {
+	case strings.HasPrefix(path, "/game/"):
+		if err := game(strings.TrimPrefix(path, "/game/")); err != nil {
+			return nil, err
+		}
+	case strings.HasPrefix(path, "/tournament/") || strings.HasPrefix(path, "/club/"):
+		if err := tournamentBySlug(path); err != nil {
+			return nil, err
+		}
+	case strings.HasPrefix(path, "/leagues/"):
+		if err := leagueBySlug(strings.TrimPrefix(path, "/leagues/")); err != nil {
+			return nil, err
+		}
+	default:
+		if err := game(find); err != nil {
+			return nil, err
+		}
+		if _, err := ms.queries.GetTournamentNameAndSlug(ctx, pgtype.Text{String: find, Valid: true}); err == nil {
+			add("chat.tournament." + find)
+		} else if !missed(err) {
+			return nil, err
+		}
+		if id, err := uuid.Parse(find); err == nil {
+			if _, err := ms.queries.GetLeagueByUUID(ctx, id); err == nil {
+				add(leagueChannel(id.String()))
+			} else if !missed(err) {
+				return nil, err
+			}
+		}
+		if !strings.Contains(find, "/") {
+			for _, slug := range []string{"/tournament/" + find, "/club/" + find} {
+				if err := tournamentBySlug(slug); err != nil {
+					return nil, err
+				}
+			}
+			if err := leagueBySlug(find); err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	// Then, never instead, whatever has the text (an address, its path) in
+	// its name or slug.
+	pattern := "%" + likeEscaper.Replace(path) + "%"
+	tids, err := ms.queries.SearchTournamentsByNameOrSlug(ctx, models.SearchTournamentsByNameOrSlugParams{
+		Pattern: pattern,
+		Lim:     chatFindMaxMatches,
+	})
+	if err != nil {
+		return nil, err
+	}
+	for _, id := range tids {
+		add("chat.tournament." + id.String)
+	}
+	lids, err := ms.queries.SearchLeaguesByNameOrSlug(ctx, models.SearchLeaguesByNameOrSlugParams{
+		Pattern: pattern,
+		Lim:     chatFindMaxMatches,
+	})
+	if err != nil {
+		return nil, err
+	}
+	for _, id := range lids {
+		add(leagueChannel(id))
+	}
+	return channels, nil
+}
+
 func (ms *ModService) ListChatChannels(ctx context.Context, req *connect.Request[pb.ListChatChannelsRequest],
 ) (*connect.Response[pb.ListChatChannelsResponse], error) {
 	_, err := authenticateMod(ctx, ms, nil)
@@ -173,10 +328,22 @@ func (ms *ModService) ListChatChannels(ctx context.Context, req *connect.Request
 	uid := ""
 	resp := &pb.ListChatChannelsResponse{}
 
-	// Named channels (a game id or channel looked up directly): summarize
-	// just those, listing them even when they hold no chat.
-	if len(req.Msg.Channels) > 0 {
-		for _, ch := range req.Msg.Channels {
+	// Named channels (a game id or channel looked up directly, or what a
+	// find names): summarize just those, listing them even when they hold
+	// no chat.
+	channels := req.Msg.Channels
+	if req.Msg.Find != "" {
+		channels, err = ms.findChannels(ctx, req.Msg.Find)
+		if err != nil {
+			return nil, err
+		}
+		if len(channels) == 0 {
+			resp.NextCursor = "0"
+			return connect.NewResponse(resp), nil
+		}
+	}
+	if len(channels) > 0 {
+		for _, ch := range channels {
 			if !strings.HasPrefix(ch, "chat.") {
 				return nil, apiserver.InvalidArg("channel must start with chat.")
 			}

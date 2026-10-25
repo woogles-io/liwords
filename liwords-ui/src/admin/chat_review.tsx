@@ -139,6 +139,15 @@ export const sortGroups = (
       ),
   );
 
+// The table's rows: a lookup's keep the server's order, what matched exactly
+// first and name matches after; a search's go newest first.
+export const tableGroups = (
+  rows: Array<ChatChannelSummary>,
+  lookedUp: boolean,
+  byUser: boolean,
+): Array<ReviewRow> =>
+  lookedUp ? groupRows(rows) : sortGroups(groupRows(rows), byUser);
+
 const partKind = (s: ChatChannelSummary): string =>
   s.channel.startsWith("chat.gametv.") ? "viewers" : "players";
 
@@ -335,6 +344,8 @@ export const ChatReview = () => {
   // dropped instead of mixed in.
   const runRef = useRef(0);
   const [lookup, setLookup] = useState("");
+  // what the rows were looked up by, if they were.
+  const [lookedUp, setLookedUp] = useState("");
 
   // Redis is searched a batch of keys per request; keep asking until it has
   // all been searched or Stop is pressed, pausing between batches so a long
@@ -345,6 +356,7 @@ export const ChatReview = () => {
     setSearching(true);
     setComplete(false);
     setSearchedUser(forUser.trim());
+    setLookedUp("");
     setRows([]);
     let cursor = "";
     try {
@@ -378,21 +390,20 @@ export const ChatReview = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [linkedUsername]);
 
+  // The server works out what was typed: a channel, an id or a page's
+  // address, or words of a name.
   const showLookup = async () => {
-    const id = lookup.trim();
-    if (!id) {
+    const find = lookup.trim();
+    if (!find) {
       return;
     }
-    // A full channel name, or a game id: show both of that game's channels.
-    const channels = id.startsWith("chat.")
-      ? [id]
-      : [`chat.game.${id}`, `chat.gametv.${id}`];
     const run = ++runRef.current;
     setSearching(false);
     try {
-      const resp = await modClient.listChatChannels({ channels });
+      const resp = await modClient.listChatChannels({ find });
       if (run !== runRef.current) return;
       setSearchedUser("");
+      setLookedUp(find);
       setRows(resp.channels);
       setComplete(true);
     } catch (e) {
@@ -400,8 +411,8 @@ export const ChatReview = () => {
     }
   };
 
-  const sorted = sortRows(rows, !!searchedUser);
-  const grouped = sortGroups(groupRows(rows), !!searchedUser);
+  const sorted = lookedUp ? rows : sortRows(rows, !!searchedUser);
+  const grouped = tableGroups(rows, !!lookedUp, !!searchedUser);
 
   return (
     <div className="chat-review">
@@ -440,24 +451,33 @@ export const ChatReview = () => {
           private chats, by when they last wrote there.
         </Typography.Text>
       </p>
-      <h4>Or show one game</h4>
-      <Space wrap style={{ marginBottom: 12 }}>
+      <h4>Or find a game, tournament, club or league</h4>
+      <Space wrap style={{ marginBottom: 4 }}>
         <Input
-          placeholder="Game id, or a chat... channel name"
+          placeholder="Its id, page address or name, or a chat. channel"
           value={lookup}
           onChange={(e) => setLookup(e.target.value)}
           onPressEnter={showLookup}
-          style={{ width: 300 }}
+          style={{ width: 360 }}
         />
         <Button onClick={showLookup}>Show</Button>
       </Space>
+      <p>
+        <Typography.Text type="secondary">
+          First what has it as its id or address, or the end of its address;
+          then every tournament, club and league whose name or address has it,
+          newest first (up to 20 of each). Each is listed even with no chat yet.
+        </Typography.Text>
+      </p>
       <Space wrap style={{ marginBottom: 8 }}>
         <span>
           {searching
             ? `Searching... ${rows.length} channels found so far`
-            : `${rows.length} channel${rows.length === 1 ? "" : "s"}${
-                rows.length > 0 && !complete ? " (search stopped early)" : ""
-              }`}
+            : lookedUp && rows.length === 0
+              ? `Nothing found for "${lookedUp}"`
+              : `${rows.length} channel${rows.length === 1 ? "" : "s"}${
+                  rows.length > 0 && !complete ? " (search stopped early)" : ""
+                }`}
         </span>
         <Button
           disabled={rows.length === 0}
