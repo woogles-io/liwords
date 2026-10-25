@@ -25,13 +25,13 @@ import (
 	"github.com/woogles-io/liwords/pkg/auth/rbac"
 	"github.com/woogles-io/liwords/pkg/config"
 	"github.com/woogles-io/liwords/pkg/entity"
-	"github.com/woogles-io/liwords/pkg/mod"
 	"github.com/woogles-io/liwords/pkg/notify"
 	"github.com/woogles-io/liwords/pkg/stores/models"
 	"github.com/woogles-io/liwords/pkg/user"
 	"github.com/woogles-io/liwords/pkg/utilities"
 
 	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
+	ms "github.com/woogles-io/liwords/rpc/api/proto/mod_service"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/tournament_service"
 )
 
@@ -816,38 +816,50 @@ func authenticateDirector(ctx context.Context, ts *TournamentService, id string,
 }
 
 func censorRecentGamesResponse(ctx context.Context, us user.Store, rgr *pb.RecentGamesResponse) error {
-	// Keyed by username: players show up in many games, and each lookup
-	// loads the full user and profile.
-	knownUsers := make(map[string]bool)
-	censorable := func(username string) (bool, error) {
-		if c, known := knownUsers[username]; known {
-			return c, nil
+	uuids := []string{}
+	seen := map[string]bool{}
+	for _, game := range rgr.Games {
+		for _, p := range game.Players {
+			if p.UserId == "" {
+				// Games without a stored user ID; look it up by username.
+				u, err := us.Get(ctx, p.Username)
+				if err != nil {
+					return err
+				}
+				p.UserId = u.UUID
+			}
+			if !seen[p.UserId] {
+				seen[p.UserId] = true
+				uuids = append(uuids, p.UserId)
+			}
 		}
-		u, err := us.Get(ctx, username)
-		if err != nil {
-			return false, err
-		}
-		knownUsers[username] = mod.IsCensorable(ctx, us, u.UUID)
-		return knownUsers[username], nil
+	}
+	userActions, err := us.GetActionsBatch(ctx, uuids)
+	if err != nil {
+		return err
+	}
+	// Same rule as mod.IsCensorable: only permanent suspensions are censored.
+	censorable := func(uuid string) bool {
+		a, ok := userActions[uuid][ms.ModActionType_SUSPEND_ACCOUNT.String()]
+		return ok && a.EndTime == nil
+	}
+	censor := func(p *ipc.TournamentGameEndedEvent_Player, name string) {
+		p.Username = name
+		p.UserId = name
 	}
 
 	for _, game := range rgr.Games {
-		playerOneCensored, err := censorable(game.Players[0].Username)
-		if err != nil {
-			return err
-		}
-		playerTwoCensored, err := censorable(game.Players[1].Username)
-		if err != nil {
-			return err
-		}
+		playerOneCensored := censorable(game.Players[0].UserId)
+		playerTwoCensored := censorable(game.Players[1].UserId)
 		if playerOneCensored {
-			game.Players[0].Username = utilities.CensoredUsername
+			censor(game.Players[0], utilities.CensoredUsername)
 		}
 		if playerTwoCensored {
-			game.Players[1].Username = utilities.CensoredUsername
+			name := utilities.CensoredUsername
 			if playerOneCensored {
-				game.Players[1].Username = utilities.AnotherCensoredUsername
+				name = utilities.AnotherCensoredUsername
 			}
+			censor(game.Players[1], name)
 		}
 	}
 	return nil
