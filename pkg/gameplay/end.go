@@ -303,6 +303,9 @@ func performEndgameDuties(ctx context.Context, g *entity.Game,
 			log.Err(err).Str("gid", g.GameID()).Msg("failed-to-update-league-standings")
 		}
 	}
+	// Now that the standings have the result, tell the league's page, however
+	// the game ended (played out, time, resignation, forfeit, adjudication).
+	sendLeagueGameUpdated(g, true)
 
 	// Enqueue league games for analysis
 	if g.LeagueDivisionID != nil {
