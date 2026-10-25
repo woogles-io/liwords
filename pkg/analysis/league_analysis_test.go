@@ -783,7 +783,7 @@ func TestPlayerSeasonGamesOpponentMistakeIndex(t *testing.T) {
 	}
 }
 
-// TestDivisionCrosstableGames covers the crosstable's game list: finished
+// TestDivisionCrosstableGames covers the cross-table's game list: finished
 // games with game_players scores, games in progress with their history, and
 // aborted or canceled games left out.
 func TestDivisionCrosstableGames(t *testing.T) {

@@ -5,7 +5,8 @@
 // causing scroll-through artifacts. Override both.
 .league-game-modal,
 .leagues-container {
-  .ant-table-cell-fix-left {
+  .ant-table-cell-fix-left,
+  .ant-table-cell-fix-right {
     &.ant-table-cell-row-hover {
       background: #ffffff !important;
 
@@ -22,7 +23,7 @@
   margin: 24px 48px;
   padding: 0;
 
-  // Crosstable hover: the game's cell and its mirror, both players' rows and
+  // Cross-table hover: the game's cell and its mirror, both players' rows and
   // columns, and their names. A tint drawn as an inset shadow keeps each
   // cell's own background, so the fixed name columns stay opaque over the
   // scrolled scores; nothing changes weight, so nothing shifts.
@@ -39,6 +40,13 @@
     .ant-table-tbody > tr > td.xt-game {
       box-shadow: inset 0 0 0 999px rgba(128, 128, 128, 0.25);
     }
+  }
+
+  // The roster's timeouts mark: a clock in the theme's out-of-time red.
+  .roster-timeout {
+    color: m($timer-out-dark);
+    font-size: 11px;
+    margin-left: 3px;
   }
 
   h1 {
