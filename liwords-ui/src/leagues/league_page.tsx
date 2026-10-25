@@ -131,7 +131,8 @@ export const LeaguePage = (props: Props) => {
 
   const [selectedSeasonId, setSelectedSeasonId] = useState<string | null>(null);
   const [selectedDivisionId, setSelectedDivisionId] = useState<string>("");
-  // the crosstable failed to load (e.g. a server without it); stop offering it.
+  // the cross-table failed to load (e.g. a server without it); stop
+  // offering it.
   const [crosstableFailed, setCrosstableFailed] = useState(false);
   const onCrosstableError = useCallback(() => setCrosstableFailed(true), []);
   const [showPlayersModal, setShowPlayersModal] = useState<boolean>(false);
@@ -194,7 +195,7 @@ export const LeaguePage = (props: Props) => {
     { enabled: !!league },
   );
   // Tracks a player through their seasons, from a name's menu anywhere on
-  // the page (standings, crosstable, season games).
+  // the page (standings, cross-table, season games).
   const trackPlayer = useCallback(
     (userId: string) => {
       const player = rosterData?.players.find((p) => p.userId === userId);
@@ -955,7 +956,7 @@ export const LeaguePage = (props: Props) => {
                         items={[
                           {
                             key: "crosstable",
-                            label: "Crosstable",
+                            label: "Cross-table",
                             children: (
                               <DivisionCrosstable
                                 division={division}

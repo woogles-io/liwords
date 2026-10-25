@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from "react";
 import { Input, Table, Tag, Tooltip } from "antd";
 import type { SortOrder } from "antd/es/table/interface";
 import {
+  ClockCircleOutlined,
   StarOutlined,
   ArrowUpOutlined,
   ArrowDownOutlined,
@@ -65,13 +66,26 @@ const resultLabel = (result: StandingResult): string | null => {
   }
 };
 
+// Timeouts that season: a red clock, with the count when more than one.
+const TimeoutMark = (props: { count: number }) => (
+  <span className="roster-timeout">
+    <ClockCircleOutlined />
+    {props.count > 1 ? props.count : null}
+  </span>
+);
+
+export const totalTimeouts = (player: LeagueRosterPlayer): number =>
+  player.seasons.reduce((n, s) => n + (s.timeouts ?? 0), 0);
+
 const formatSeason = (
   season: LeagueRosterSeason | undefined,
   compRank?: number,
   hideResult?: boolean,
   h2hTooltip?: string,
+  // The Peak column is about the finish, so it leaves the timeouts out.
+  hideTimeouts?: boolean,
 ) => {
-  if (!season) return <span className="roster-empty">—</span>;
+  if (!season) return <span className="roster-empty">{"\u2014"}</span>;
   if (season.divisionNumber === 0) {
     return <Tag color="lime">Registered</Tag>;
   }
@@ -79,9 +93,13 @@ const formatSeason = (
   const spread = season.spread > 0 ? `+${season.spread}` : `${season.spread}`;
   const displayRank = compRank ?? season.rank;
   const label = hideResult ? null : resultLabel(season.result);
+  const timeouts =
+    (season.timeouts ?? 0) > 0
+      ? ` \u00b7 ${season.timeouts} timeout${season.timeouts === 1 ? "" : "s"}`
+      : "";
   const seasonLine = label
-    ? `${record} (${spread}) · ${label}`
-    : `${record} (${spread})`;
+    ? `${record} (${spread}) \u00b7 ${label}${timeouts}`
+    : `${record} (${spread})${timeouts}`;
   const tooltip = h2hTooltip ? (
     <>
       {seasonLine}
@@ -107,13 +125,16 @@ const formatSeason = (
         </Tag>
         {displayRank > 0 && <span className="roster-rank">#{displayRank}</span>}
         {!hideResult && resultIcon(season.result)}
+        {!hideTimeouts && (season.timeouts ?? 0) > 0 && (
+          <TimeoutMark count={season.timeouts ?? 0} />
+        )}
       </span>
     </Tooltip>
   );
 };
 
 const formatH2H = (record: H2HRecord | undefined) => {
-  if (!record) return <span className="roster-empty">—</span>;
+  if (!record) return <span className="roster-empty">{"\u2014"}</span>;
   const { wins, losses, draws, spread } = record;
   const spreadStr = spread > 0 ? `+${spread}` : `${spread}`;
   const wld = `${wins}-${losses}${draws ? `-${draws}` : ""}`;
@@ -422,6 +443,9 @@ export const LeagueRoster: React.FC<Props> = ({
     [data?.seasonNumbers],
   );
 
+  const hasTimeouts = (data?.players ?? []).some((p) =>
+    p.seasons.some((s) => s.timeouts !== undefined),
+  );
   const columns = [
     {
       title: "Player",
@@ -508,6 +532,34 @@ export const LeagueRoster: React.FC<Props> = ({
       sortDirections: ["descend", "ascend"] as SortOrder[],
       sortOrder: sortKey === "count" ? sortOrder : undefined,
     },
+    // A server that predates timeouts sends none at all: leave the column out.
+    ...(hasTimeouts
+      ? [
+          {
+            title: <Tooltip title="Timeouts, all seasons">#TO</Tooltip>,
+            key: "timeouts",
+            width: 48,
+            render: (_: unknown, record: LeagueRosterPlayer) => {
+              const total = totalTimeouts(record);
+              if (total === 0) return <span className="roster-empty">-</span>;
+              return (
+                <Tooltip
+                  title={record.seasons
+                    .filter((s) => (s.timeouts ?? 0) > 0)
+                    .map((s) => `S${s.seasonNumber}: ${s.timeouts}`)
+                    .join(", ")}
+                >
+                  <span style={{ cursor: "help" }}>{total}</span>
+                </Tooltip>
+              );
+            },
+            sorter: (a: LeagueRosterPlayer, b: LeagueRosterPlayer) =>
+              totalTimeouts(a) - totalTimeouts(b),
+            sortDirections: ["descend", "ascend"] as SortOrder[],
+            sortOrder: sortKey === "timeouts" ? sortOrder : undefined,
+          },
+        ]
+      : []),
     {
       title: (
         <Tooltip title="Best-ever finish across all seasons (highest division, then best rank; a sole rank beats a tied one)">
@@ -518,15 +570,18 @@ export const LeagueRoster: React.FC<Props> = ({
       width: 130,
       render: (_: unknown, record: LeagueRosterPlayer) => {
         const peak = peakMap.get(record.userId);
-        if (!peak) return <span className="roster-empty">—</span>;
+        if (!peak) return <span className="roster-empty">{"\u2014"}</span>;
         return (
           <span className="roster-peak">
             {formatSeason(
               peak.season,
               compRankMap.get(`${peak.season.seasonNumber}:${record.userId}`),
+              undefined,
+              undefined,
+              true,
             )}
             <span style={{ fontSize: 11, opacity: 0.65, marginLeft: 2 }}>
-              ·S{peak.season.seasonNumber}
+              {"\u00b7"}S{peak.season.seasonNumber}
             </span>
             {peak.repeats.length > 1 && (
               <Tooltip
@@ -580,7 +635,7 @@ export const LeagueRoster: React.FC<Props> = ({
         const season = record.seasons.find(
           (s: LeagueRosterSeason) => s.seasonNumber === sn,
         );
-        if (!season) return <span className="roster-empty">—</span>;
+        if (!season) return <span className="roster-empty">{"\u2014"}</span>;
         const seasonGames =
           h2hUserId && record.userId !== h2hUserId
             ? h2hSeasonMap.get(`${record.userId}:${sn}`)
@@ -594,7 +649,7 @@ export const LeagueRoster: React.FC<Props> = ({
               visibility: seasonGames ? "visible" : "hidden",
             }}
           >
-            ●
+            {"\u25cf"}
           </span>
         ) : null;
         const gameTooltip = seasonGames
