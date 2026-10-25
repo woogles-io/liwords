@@ -92,6 +92,9 @@ const (
 	// LeagueServiceGetPlayerSeasonGamesProcedure is the fully-qualified name of the LeagueService's
 	// GetPlayerSeasonGames RPC.
 	LeagueServiceGetPlayerSeasonGamesProcedure = "/league_service.LeagueService/GetPlayerSeasonGames"
+	// LeagueServiceGetDivisionCrosstableProcedure is the fully-qualified name of the LeagueService's
+	// GetDivisionCrosstable RPC.
+	LeagueServiceGetDivisionCrosstableProcedure = "/league_service.LeagueService/GetDivisionCrosstable"
 	// LeagueServiceInviteUserToLeaguesProcedure is the fully-qualified name of the LeagueService's
 	// InviteUserToLeagues RPC.
 	LeagueServiceInviteUserToLeaguesProcedure = "/league_service.LeagueService/InviteUserToLeagues"
@@ -165,6 +168,7 @@ type LeagueServiceClient interface {
 	GetSeasonRegistrations(context.Context, *connect.Request[league_service.SeasonRequest]) (*connect.Response[league_service.SeasonRegistrationsResponse], error)
 	GetPlayerLeagueHistory(context.Context, *connect.Request[league_service.PlayerHistoryRequest]) (*connect.Response[league_service.PlayerHistoryResponse], error)
 	GetPlayerSeasonGames(context.Context, *connect.Request[league_service.GetPlayerSeasonGamesRequest]) (*connect.Response[league_service.GetPlayerSeasonGamesResponse], error)
+	GetDivisionCrosstable(context.Context, *connect.Request[league_service.DivisionRequest]) (*connect.Response[league_service.DivisionCrosstableResponse], error)
 	InviteUserToLeagues(context.Context, *connect.Request[league_service.InviteUserRequest]) (*connect.Response[league_service.InviteUserResponse], error)
 	RevokeUserFromLeagues(context.Context, *connect.Request[league_service.InviteUserRequest]) (*connect.Response[league_service.InviteUserResponse], error)
 	// Roster: all players across all seasons, with division and standings
@@ -317,6 +321,12 @@ func NewLeagueServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(leagueServiceMethods.ByName("GetPlayerSeasonGames")),
 			connect.WithClientOptions(opts...),
 		),
+		getDivisionCrosstable: connect.NewClient[league_service.DivisionRequest, league_service.DivisionCrosstableResponse](
+			httpClient,
+			baseURL+LeagueServiceGetDivisionCrosstableProcedure,
+			connect.WithSchema(leagueServiceMethods.ByName("GetDivisionCrosstable")),
+			connect.WithClientOptions(opts...),
+		),
 		inviteUserToLeagues: connect.NewClient[league_service.InviteUserRequest, league_service.InviteUserResponse](
 			httpClient,
 			baseURL+LeagueServiceInviteUserToLeaguesProcedure,
@@ -432,6 +442,7 @@ type leagueServiceClient struct {
 	getSeasonRegistrations             *connect.Client[league_service.SeasonRequest, league_service.SeasonRegistrationsResponse]
 	getPlayerLeagueHistory             *connect.Client[league_service.PlayerHistoryRequest, league_service.PlayerHistoryResponse]
 	getPlayerSeasonGames               *connect.Client[league_service.GetPlayerSeasonGamesRequest, league_service.GetPlayerSeasonGamesResponse]
+	getDivisionCrosstable              *connect.Client[league_service.DivisionRequest, league_service.DivisionCrosstableResponse]
 	inviteUserToLeagues                *connect.Client[league_service.InviteUserRequest, league_service.InviteUserResponse]
 	revokeUserFromLeagues              *connect.Client[league_service.InviteUserRequest, league_service.InviteUserResponse]
 	getLeagueRoster                    *connect.Client[league_service.LeagueRequest, league_service.LeagueRosterResponse]
@@ -549,6 +560,11 @@ func (c *leagueServiceClient) GetPlayerSeasonGames(ctx context.Context, req *con
 	return c.getPlayerSeasonGames.CallUnary(ctx, req)
 }
 
+// GetDivisionCrosstable calls league_service.LeagueService.GetDivisionCrosstable.
+func (c *leagueServiceClient) GetDivisionCrosstable(ctx context.Context, req *connect.Request[league_service.DivisionRequest]) (*connect.Response[league_service.DivisionCrosstableResponse], error) {
+	return c.getDivisionCrosstable.CallUnary(ctx, req)
+}
+
 // InviteUserToLeagues calls league_service.LeagueService.InviteUserToLeagues.
 func (c *leagueServiceClient) InviteUserToLeagues(ctx context.Context, req *connect.Request[league_service.InviteUserRequest]) (*connect.Response[league_service.InviteUserResponse], error) {
 	return c.inviteUserToLeagues.CallUnary(ctx, req)
@@ -651,6 +667,7 @@ type LeagueServiceHandler interface {
 	GetSeasonRegistrations(context.Context, *connect.Request[league_service.SeasonRequest]) (*connect.Response[league_service.SeasonRegistrationsResponse], error)
 	GetPlayerLeagueHistory(context.Context, *connect.Request[league_service.PlayerHistoryRequest]) (*connect.Response[league_service.PlayerHistoryResponse], error)
 	GetPlayerSeasonGames(context.Context, *connect.Request[league_service.GetPlayerSeasonGamesRequest]) (*connect.Response[league_service.GetPlayerSeasonGamesResponse], error)
+	GetDivisionCrosstable(context.Context, *connect.Request[league_service.DivisionRequest]) (*connect.Response[league_service.DivisionCrosstableResponse], error)
 	InviteUserToLeagues(context.Context, *connect.Request[league_service.InviteUserRequest]) (*connect.Response[league_service.InviteUserResponse], error)
 	RevokeUserFromLeagues(context.Context, *connect.Request[league_service.InviteUserRequest]) (*connect.Response[league_service.InviteUserResponse], error)
 	// Roster: all players across all seasons, with division and standings
@@ -799,6 +816,12 @@ func NewLeagueServiceHandler(svc LeagueServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(leagueServiceMethods.ByName("GetPlayerSeasonGames")),
 		connect.WithHandlerOptions(opts...),
 	)
+	leagueServiceGetDivisionCrosstableHandler := connect.NewUnaryHandler(
+		LeagueServiceGetDivisionCrosstableProcedure,
+		svc.GetDivisionCrosstable,
+		connect.WithSchema(leagueServiceMethods.ByName("GetDivisionCrosstable")),
+		connect.WithHandlerOptions(opts...),
+	)
 	leagueServiceInviteUserToLeaguesHandler := connect.NewUnaryHandler(
 		LeagueServiceInviteUserToLeaguesProcedure,
 		svc.InviteUserToLeagues,
@@ -931,6 +954,8 @@ func NewLeagueServiceHandler(svc LeagueServiceHandler, opts ...connect.HandlerOp
 			leagueServiceGetPlayerLeagueHistoryHandler.ServeHTTP(w, r)
 		case LeagueServiceGetPlayerSeasonGamesProcedure:
 			leagueServiceGetPlayerSeasonGamesHandler.ServeHTTP(w, r)
+		case LeagueServiceGetDivisionCrosstableProcedure:
+			leagueServiceGetDivisionCrosstableHandler.ServeHTTP(w, r)
 		case LeagueServiceInviteUserToLeaguesProcedure:
 			leagueServiceInviteUserToLeaguesHandler.ServeHTTP(w, r)
 		case LeagueServiceRevokeUserFromLeaguesProcedure:
@@ -1048,6 +1073,10 @@ func (UnimplementedLeagueServiceHandler) GetPlayerLeagueHistory(context.Context,
 
 func (UnimplementedLeagueServiceHandler) GetPlayerSeasonGames(context.Context, *connect.Request[league_service.GetPlayerSeasonGamesRequest]) (*connect.Response[league_service.GetPlayerSeasonGamesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("league_service.LeagueService.GetPlayerSeasonGames is not implemented"))
+}
+
+func (UnimplementedLeagueServiceHandler) GetDivisionCrosstable(context.Context, *connect.Request[league_service.DivisionRequest]) (*connect.Response[league_service.DivisionCrosstableResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("league_service.LeagueService.GetDivisionCrosstable is not implemented"))
 }
 
 func (UnimplementedLeagueServiceHandler) InviteUserToLeagues(context.Context, *connect.Request[league_service.InviteUserRequest]) (*connect.Response[league_service.InviteUserResponse], error) {
