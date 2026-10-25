@@ -261,7 +261,8 @@ SELECT
     COALESCE(lst.losses, 0) as losses,
     COALESCE(lst.draws, 0) as draws,
     COALESCE(lst.spread, 0) as spread,
-    COALESCE(lst.result, 0) as result
+    COALESCE(lst.result, 0) as result,
+    COALESCE(lst.timeouts, 0) as timeouts
 FROM league_registrations lr
 JOIN users u ON lr.user_id = u.id
 JOIN league_seasons ls ON lr.season_id = ls.uuid
@@ -636,6 +637,28 @@ WHERE g.league_division_id = $1
   AND gp0.game_end_reason != 5  -- Exclude ABORTED
   AND gp0.game_end_reason != 7; -- Exclude CANCELLED
 
+-- name: GetDivisionCrosstableGames :many
+-- Every game of a division that is in progress or finished (not aborted or
+-- canceled), for the cross-table. Finished games take their scores from
+-- game_players; games in progress carry their history for the running score.
+SELECT
+    g.uuid AS game_uuid,
+    u0.uuid AS player0_uuid,
+    u1.uuid AS player1_uuid,
+    g.game_end_reason,
+    g.winner_idx,
+    g.player_on_turn,
+    COALESCE(gp0.score, 0)::INT AS player0_score,
+    COALESCE(gp1.score, 0)::INT AS player1_score,
+    (CASE WHEN g.game_end_reason = 0 THEN g.history ELSE NULL END)::BYTEA AS history
+FROM games g
+INNER JOIN users u0 ON g.player0_id = u0.id
+INNER JOIN users u1 ON g.player1_id = u1.id
+LEFT JOIN game_players gp0 ON g.uuid = gp0.game_uuid AND gp0.player_index = 0
+LEFT JOIN game_players gp1 ON g.uuid = gp1.game_uuid AND gp1.player_index = 1
+WHERE g.league_division_id = @division_id::uuid
+  AND g.game_end_reason NOT IN (5, 7); -- ABORTED, CANCELLED
+
 -- name: GetGameLeagueInfo :one
 SELECT
     g.league_division_id,
@@ -672,7 +695,10 @@ SELECT
     -- has_mistake_index is false when the game has not been analyzed yet, which
     -- lets the caller tell "unanalyzed" apart from a genuine 0 (a perfect game).
     (mi.mistake_index IS NOT NULL)::boolean AS has_mistake_index,
-    COALESCE(mi.mistake_index, 0) AS player_mistake_index
+    COALESCE(mi.mistake_index, 0) AS player_mistake_index,
+    -- The opponent's, from the same kind of lookup by the opponent's slot.
+    (omi.mistake_index IS NOT NULL)::boolean AS has_opponent_mistake_index,
+    COALESCE(omi.mistake_index, 0) AS opponent_mistake_index
 FROM game_players gp_player
 INNER JOIN games g ON gp_player.game_uuid = g.uuid
 INNER JOIN users u_opponent ON gp_player.opponent_id = u_opponent.id
@@ -687,6 +713,17 @@ LEFT JOIN LATERAL (
     ORDER BY aj.completed_at DESC
     LIMIT 1
 ) mi ON true
+LEFT JOIN LATERAL (
+    SELECT (CASE gp_player.player_index WHEN 0 THEN aj.player1_mistake_index
+                                        ELSE aj.player0_mistake_index END)::DOUBLE PRECISION AS mistake_index
+    FROM analysis_jobs aj
+    WHERE aj.game_id = gp_player.game_uuid
+      AND aj.status = 'completed'
+      AND CASE gp_player.player_index WHEN 0 THEN aj.player1_mistake_index
+                                      ELSE aj.player0_mistake_index END IS NOT NULL
+    ORDER BY aj.completed_at DESC
+    LIMIT 1
+) omi ON true
 WHERE gp_player.player_id = (SELECT id FROM users WHERE users.uuid = @user_uuid)
   AND gp_player.league_season_id = @season_id
 ORDER BY gp_player.created_at DESC;

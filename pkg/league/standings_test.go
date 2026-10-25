@@ -60,6 +60,10 @@ func (m *mockLeagueStore) GetSeasonOpponentMistakeIndex(ctx context.Context, sea
 	return nil, nil
 }
 
+func (m *mockLeagueStore) GetDivisionCrosstableGames(ctx context.Context, divisionID uuid.UUID) ([]models.GetDivisionCrosstableGamesRow, error) {
+	return nil, nil
+}
+
 func (m *mockLeagueStore) RefreshDivisionMistakeIndex(ctx context.Context, divisionID uuid.UUID) error {
 	m.refreshedMI = append(m.refreshedMI, divisionID)
 	return nil

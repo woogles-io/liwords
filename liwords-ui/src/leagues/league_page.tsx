@@ -7,6 +7,7 @@ import React, {
 } from "react";
 import {
   Col,
+  Collapse,
   Row,
   Card,
   Spin,
@@ -31,6 +32,7 @@ import { TopBar } from "../navigation/topbar";
 import { Chat, ChatHandle } from "../chat/chat";
 import {
   getLeague,
+  getLeagueRoster,
   getAllSeasons,
   getAllDivisionStandings,
   getSeasonRegistrations,
@@ -40,6 +42,7 @@ import {
 } from "../gen/api/proto/league_service/league_service-LeagueService_connectquery";
 import { hasPermission, Perm } from "../mod/perms";
 import { DivisionStandings } from "./standings";
+import { DivisionCrosstable } from "./crosstable";
 import { LeagueRoster } from "./league_roster";
 import { LeagueCorrespondenceGames } from "./league_correspondence_games";
 import { FollowBar } from "./follow_bar";
@@ -128,6 +131,10 @@ export const LeaguePage = (props: Props) => {
 
   const [selectedSeasonId, setSelectedSeasonId] = useState<string | null>(null);
   const [selectedDivisionId, setSelectedDivisionId] = useState<string>("");
+  // the cross-table failed to load (e.g. a server without it); stop
+  // offering it.
+  const [crosstableFailed, setCrosstableFailed] = useState(false);
+  const onCrosstableError = useCallback(() => setCrosstableFailed(true), []);
   const [showPlayersModal, setShowPlayersModal] = useState<boolean>(false);
   const [showCommitmentModal, setShowCommitmentModal] =
     useState<boolean>(false);
@@ -180,6 +187,22 @@ export const LeaguePage = (props: Props) => {
 
   // Data processing - get all seasons and find the active one
   const league = leagueData?.league;
+  // Every player's seasons, so a name in the standings can be tracked. The
+  // roster asks the same, so the two share one fetch.
+  const { data: rosterData } = useQuery(
+    getLeagueRoster,
+    { leagueId: league?.uuid ?? "" },
+    { enabled: !!league },
+  );
+  // Tracks a player through their seasons, from a name's menu anywhere on
+  // the page (standings, cross-table, season games).
+  const trackPlayer = useCallback(
+    (userId: string) => {
+      const player = rosterData?.players.find((p) => p.userId === userId);
+      if (player) setFollowing(followPlayer(player));
+    },
+    [rosterData],
+  );
   const allSeasons = useMemo(() => {
     const seasons = allSeasonsData?.seasons || [];
     // Sort by season number descending (newest first)
@@ -904,6 +927,7 @@ export const LeaguePage = (props: Props) => {
                         seasonStartDate={displayedSeason?.startDate}
                         currentUserId={userID}
                         highlightUserId={following ? following.userId : userID}
+                        onFollow={trackPlayer}
                         onChat={openDirectMessage}
                         promotionFormula={displayedSeason?.promotionFormula}
                         timeBankWarnings={timeBankWarningsMap}
@@ -916,6 +940,33 @@ export const LeaguePage = (props: Props) => {
                                 setSelectedSeasonId(registrationOpenSeason.uuid)
                             : undefined
                         }
+                      />
+                    ))}
+                  {/* Mounted only when opened, so the games load on demand. */}
+                  {standingsData.divisions
+                    .filter(
+                      (division) =>
+                        !crosstableFailed &&
+                        division.uuid === selectedDivisionId,
+                    )
+                    .map((division) => (
+                      <Collapse
+                        key={division.uuid}
+                        style={{ marginBottom: 24 }}
+                        items={[
+                          {
+                            key: "crosstable",
+                            label: "Cross-table",
+                            children: (
+                              <DivisionCrosstable
+                                division={division}
+                                onChat={openDirectMessage}
+                                onError={onCrosstableError}
+                                onTrack={trackPlayer}
+                              />
+                            ),
+                          },
+                        ]}
                       />
                     ))}
                   <div className="standings-legend">
