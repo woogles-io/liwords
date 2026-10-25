@@ -6,6 +6,7 @@ import { useQuery } from "@connectrpc/connect-query";
 import { CorrespondenceTurnIndicator } from "../shared/corres_turn_indicator";
 import { useLobbyStoreContext } from "../store/store";
 import { useLoginStateStoreContext } from "../store/store";
+import { scorePair } from "../utils/score_pair";
 import { onTurnCountdowns } from "../utils/time_bank_calculator";
 import { GameEndReason } from "../gen/api/proto/ipc/omgwords_pb";
 import {
@@ -237,7 +238,7 @@ export const LeagueCorrespondenceGames: React.FC<
                   whiteSpace: "nowrap",
                 }}
               >
-                {g.playerScore}-{g.opponentScore}
+                {scorePair(g.playerScore, g.opponentScore)}
               </span>
             </div>
             <div className="turn-indicator-compact">
@@ -357,7 +358,7 @@ export const LeagueCorrespondenceGames: React.FC<
                         placement="left"
                         title={`${spread >= 0 ? "+" : ""}${spread}`}
                       >
-                        {userScore}-{opponentScore}
+                        {scorePair(userScore, opponentScore)}
                       </Tooltip>
                     </span>
                   )}

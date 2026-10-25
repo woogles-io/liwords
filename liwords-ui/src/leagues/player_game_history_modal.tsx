@@ -14,6 +14,7 @@ import { timestampDate, type Timestamp } from "@bufbuild/protobuf/wkt";
 import { GameEndReason } from "../gen/api/proto/ipc/omgwords_pb";
 import { CorrespondenceTurnIndicator } from "../shared/corres_turn_indicator";
 import { UsernameWithContext } from "../shared/usernameWithContext";
+import { scorePair } from "../utils/score_pair";
 import { trackMenuItem } from "./follow_bar";
 
 const { Text } = Typography;
@@ -414,7 +415,7 @@ export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
         // it has finished.
         return (
           <span style={{ whiteSpace: "nowrap" }}>
-            {record.playerScore}-{record.opponentScore}{" "}
+            {scorePair(record.playerScore, record.opponentScore)}{" "}
             <Text
               type={
                 spread > 0 ? "success" : spread < 0 ? "danger" : "secondary"
