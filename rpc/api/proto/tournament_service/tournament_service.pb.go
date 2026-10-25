@@ -2578,7 +2578,11 @@ func (x *GetPastTournamentsResponse) GetTournaments() []*TournamentMetadata {
 }
 
 type GetMyTournamentsRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// username, if set, lists the tournaments and clubs that user directs
+	// instead, for a caller who can see private user data (the admin user
+	// lookup).
+	Username      string `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2611,6 +2615,13 @@ func (x *GetMyTournamentsRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use GetMyTournamentsRequest.ProtoReflect.Descriptor instead.
 func (*GetMyTournamentsRequest) Descriptor() ([]byte, []int) {
 	return file_proto_tournament_service_tournament_service_proto_rawDescGZIP(), []int{41}
+}
+
+func (x *GetMyTournamentsRequest) GetUsername() string {
+	if x != nil {
+		return x.Username
+	}
+	return ""
 }
 
 type GetMyTournamentsResponse struct {
@@ -3538,8 +3549,9 @@ const file_proto_tournament_service_tournament_service_proto_rawDesc = "" +
 	"\x19GetPastTournamentsRequest\x12\x14\n" +
 	"\x05limit\x18\x01 \x01(\x05R\x05limit\"f\n" +
 	"\x1aGetPastTournamentsResponse\x12H\n" +
-	"\vtournaments\x18\x01 \x03(\v2&.tournament_service.TournamentMetadataR\vtournaments\"\x19\n" +
-	"\x17GetMyTournamentsRequest\"d\n" +
+	"\vtournaments\x18\x01 \x03(\v2&.tournament_service.TournamentMetadataR\vtournaments\"5\n" +
+	"\x17GetMyTournamentsRequest\x12\x1a\n" +
+	"\busername\x18\x01 \x01(\tR\busername\"d\n" +
 	"\x18GetMyTournamentsResponse\x12H\n" +
 	"\vtournaments\x18\x01 \x03(\v2&.tournament_service.TournamentMetadataR\vtournaments\"\x8e\x04\n" +
 	"\rRunCopRequest\x12\x0e\n" +

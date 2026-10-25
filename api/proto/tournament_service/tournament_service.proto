@@ -290,7 +290,12 @@ message GetPastTournamentsResponse {
   repeated TournamentMetadata tournaments = 1;
 }
 
-message GetMyTournamentsRequest {}
+message GetMyTournamentsRequest {
+  // username, if set, lists the tournaments and clubs that user directs
+  // instead, for a caller who can see private user data (the admin user
+  // lookup).
+  string username = 1;
+}
 
 message GetMyTournamentsResponse {
   repeated TournamentMetadata tournaments = 1;
