@@ -840,6 +840,16 @@ func (gs *OMGWordsService) ImportGCG(ctx context.Context, req *connect.Request[p
 	if err != nil {
 		return nil, apiserver.InvalidArg(err.Error())
 	}
+	// A GCG that names its game type ("#game-type", as Woogles writes one)
+	// is that type, whichever was picked; the pick is for those that do not.
+	// The board and tiles follow it. The tiles' alphabet is the same either
+	// way, so the file needs no parsing again.
+	if gh.Variant != "" && gh.Variant != req.Msg.Rules.VariantName {
+		req.Msg.Rules.VariantName = gh.Variant
+		if err := setAnnotatedGameBoard(req.Msg.Lexicon, req.Msg.Rules); err != nil {
+			return nil, err
+		}
+	}
 
 	letterdist, err := tilemapping.GetDistribution(gs.cfg.WGLConfig(), req.Msg.Rules.LetterDistributionName)
 	if err != nil {
