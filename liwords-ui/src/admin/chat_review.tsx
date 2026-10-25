@@ -159,6 +159,24 @@ const PerPart = (props: {
   </React.Fragment>
 );
 
+// A chat's first and last times, a line each as the game's times are, after
+// the chat's name when a game has both.
+const PartTimes = (props: { r: ReviewRow }) => (
+  <React.Fragment>
+    {props.r.parts.map((s) => (
+      <div key={s.channel} className="chat-review-times">
+        {props.r.parts.length > 1 && (
+          <Typography.Text type="secondary">{partKind(s)}:</Typography.Text>
+        )}
+        <div>
+          <div>{formatTime(s.firstTimestamp)}</div>
+          <div>{formatTime(s.lastTimestamp)}</div>
+        </div>
+      </div>
+    ))}
+  </React.Fragment>
+);
+
 const download = (filename: string, body: string, type: string) => {
   const url = window.URL.createObjectURL(new Blob([body], { type }));
   const a = document.createElement("a");
@@ -478,6 +496,7 @@ export const ChatReview = () => {
                 {
                   title: `${searchedUser} last wrote (UTC)`,
                   key: "userLast",
+                  className: "chat-review-nowrap",
                   render: (_: unknown, r: ReviewRow) =>
                     formatTime(latest(r, (s) => s.userLastTimestamp)),
                 },
@@ -486,6 +505,7 @@ export const ChatReview = () => {
           {
             title: "Msgs",
             key: "messageCount",
+            className: "chat-review-nowrap",
             render: (_, r) => (
               <PerPart r={r} render={(s) => String(s.messageCount)} />
             ),
@@ -524,18 +544,13 @@ export const ChatReview = () => {
           {
             title: "First / last (UTC)",
             key: "times",
-            render: (_, r) => (
-              <PerPart
-                r={r}
-                render={(s) =>
-                  `${formatTime(s.firstTimestamp)} / ${formatTime(s.lastTimestamp)}`
-                }
-              />
-            ),
+            className: "chat-review-nowrap",
+            render: (_, r) => <PartTimes r={r} />,
           },
           {
             title: "Game created / last updated (UTC)",
             key: "game",
+            className: "chat-review-nowrap",
             render: (_, r) =>
               r.parts[0].context?.gameCreatedAt ? (
                 <React.Fragment>
