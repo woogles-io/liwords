@@ -457,6 +457,28 @@ func (q *Queries) GetLatestAnnotatedGameForUsername(ctx context.Context, usernam
 	return i, err
 }
 
+const getLatestRematchGame = `-- name: GetLatestRematchGame :one
+WITH streak AS MATERIALIZED (
+  SELECT gp.game_uuid, gp.created_at
+  FROM game_players gp
+  WHERE gp.original_request_id = $1::text
+    AND gp.game_end_reason NOT IN (0, 5, 7) -- NONE, ABORTED, CANCELLED
+)
+SELECT game_uuid FROM streak
+ORDER BY created_at DESC
+LIMIT 1
+`
+
+// The most recent finished game in a rematch streak. MATERIALIZED keeps the
+// planner on the original_request_id index; otherwise it may walk the whole
+// created_at index backwards looking for the streak's newest game.
+func (q *Queries) GetLatestRematchGame(ctx context.Context, originalRequestID string) (string, error) {
+	row := q.db.QueryRow(ctx, getLatestRematchGame, originalRequestID)
+	var game_uuid string
+	err := row.Scan(&game_uuid)
+	return game_uuid, err
+}
+
 const getRecentCorrespondenceGamesByUserId = `-- name: GetRecentCorrespondenceGamesByUserId :many
 WITH recent_game_uuids AS (
   SELECT gp.game_uuid, gp.updated_at

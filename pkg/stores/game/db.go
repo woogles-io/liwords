@@ -843,6 +843,18 @@ func (s *DBStore) GetMetadata(ctx context.Context, id string) (*pb.GameInfoRespo
 	return info, nil
 }
 
+// GetLatestRematchGame returns the id of the most recent finished game in a
+// rematch streak, or "" if there is none. Unlike GetRematchStreak it reads one
+// row, which matters for long streaks: StartGame calls it with the game lock
+// held.
+func (s *DBStore) GetLatestRematchGame(ctx context.Context, originalRequestId string) (string, error) {
+	id, err := s.queries.GetLatestRematchGame(ctx, originalRequestId)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", nil
+	}
+	return id, err
+}
+
 func (s *DBStore) GetRematchStreak(ctx context.Context, originalRequestId string) (*gs.StreakInfoResponse, error) {
 	games, err := s.queries.GetRematchStreak(ctx, originalRequestId)
 	if err != nil {

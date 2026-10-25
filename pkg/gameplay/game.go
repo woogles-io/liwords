@@ -53,6 +53,7 @@ type GameStore interface {
 	Get(ctx context.Context, id string) (*entity.Game, error)
 	GetMetadata(ctx context.Context, id string) (*pb.GameInfoResponse, error)
 	GetRematchStreak(ctx context.Context, originalRequestId string) (*gs.StreakInfoResponse, error)
+	GetLatestRematchGame(ctx context.Context, originalRequestId string) (string, error)
 	GetRecentGames(ctx context.Context, username string, numGames int, offset int) (*pb.GameInfoResponses, error)
 	GetRecentTourneyGames(ctx context.Context, tourneyID string, numGames int, offset int) (*pb.GameInfoResponses, error)
 	GetRecentCorrespondenceGames(ctx context.Context, username string, numGames int) (*pb.GameInfoResponses, error)
@@ -282,12 +283,11 @@ func StartGame(ctx context.Context, stores *stores.Stores, eventChan chan<- *ent
 	// If the previous game was a rematch, notify
 	// the viewers that this game has started.
 	if entGame.Quickdata.OriginalRequestId != "" {
-		rematchStreak, err := stores.GameStore.GetRematchStreak(ctx, entGame.Quickdata.OriginalRequestId)
+		previousGameID, err := stores.GameStore.GetLatestRematchGame(ctx, entGame.Quickdata.OriginalRequestId)
 		if err != nil {
 			return err
 		}
-		if len(rematchStreak.Streak) > 0 {
-			previousGameID := rematchStreak.Streak[0].GameId
+		if previousGameID != "" {
 			evt := &pb.RematchStartedEvent{RematchGameId: entGame.GameID()}
 			wrappedRematch := entity.WrapEvent(evt, pb.MessageType_REMATCH_STARTED)
 			wrappedRematch.AddAudience(entity.AudGameTV, previousGameID)
