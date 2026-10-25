@@ -85,6 +85,10 @@ const endedAgo = (ms: number): string => {
   return `${Math.floor(mins / 60)}h ago`;
 };
 
+// A score's spread, shown on hovering it: "+12", "-3", "+0".
+const spreadText = (spread: number): string =>
+  `${spread >= 0 ? "+" : ""}${spread}`;
+
 // "3-1 (+120)", "2-2-1 (-5)".
 const h2hCompactText = (record: H2HRecord): string => {
   const { wins, losses, draws, spread } = record;
@@ -274,7 +278,12 @@ export const LeagueCorrespondenceGames: React.FC<
               {h2hBadge(h2hMap.get(g.opponentUserId))}
             </span>
             <span style={scoreStyle}>
-              {scorePair(g.playerScore, g.opponentScore)}
+              <Tooltip
+                placement="left"
+                title={spreadText(g.playerScore - g.opponentScore)}
+              >
+                {scorePair(g.playerScore, g.opponentScore)}
+              </Tooltip>
             </span>
           </div>
           <div className="turn-indicator-compact">
@@ -403,10 +412,7 @@ export const LeagueCorrespondenceGames: React.FC<
                   </span>
                   {hasScores && (
                     <span style={scoreStyle}>
-                      <Tooltip
-                        placement="left"
-                        title={`${spread >= 0 ? "+" : ""}${spread}`}
-                      >
+                      <Tooltip placement="left" title={spreadText(spread)}>
                         {scorePair(userScore, opponentScore)}
                       </Tooltip>
                     </span>
