@@ -7,7 +7,7 @@ import { UsernameWithContext } from "../shared/usernameWithContext";
 import { CompetitorStatus } from "./competitor_status";
 import { readyForTournamentGame } from "../tournament/ready";
 import { isClubType } from "../store/constants";
-import { GlobalOutlined, CameraOutlined } from "@ant-design/icons";
+import { EnvironmentOutlined, CameraOutlined } from "@ant-design/icons";
 import { useTournamentCompetitorState } from "../hooks/use_tournament_competitor_state";
 import { useSearchParams } from "react-router";
 
@@ -92,7 +92,7 @@ export const TournamentInfo = (props: TournamentInfoProps) => {
         extra={
           tournamentContext.metadata.irlMode ? (
             <Tooltip title="In Real Life Mode">
-              <GlobalOutlined style={{ color: "#955f9a" }} />
+              <EnvironmentOutlined style={{ color: "#955f9a" }} />
             </Tooltip>
           ) : null
         }
