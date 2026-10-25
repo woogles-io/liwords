@@ -909,7 +909,7 @@ func (x *DivisionStandingsResponse) GetDivision() *ipc.Division {
 	return nil
 }
 
-// One game of a division, for the crosstable. Scores are final once the game
+// One game of a division, for the cross-table. Scores are final once the game
 // has ended, and the running scores while it is in progress.
 type CrosstableGame struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`

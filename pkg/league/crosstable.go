@@ -14,7 +14,7 @@ import (
 	pb "github.com/woogles-io/liwords/rpc/api/proto/league_service"
 )
 
-// crosstableGame converts one division game row for the crosstable: final
+// crosstableGame converts one division game row for the cross-table: final
 // scores for a finished game, running scores (from its history) for one in
 // progress.
 func crosstableGame(row models.GetDivisionCrosstableGamesRow) *pb.CrosstableGame {
