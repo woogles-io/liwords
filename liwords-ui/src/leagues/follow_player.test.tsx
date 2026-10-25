@@ -68,7 +68,7 @@ describe("FollowBar", () => {
         onStop={onStop}
       />,
     );
-    expect(screen.getByText("Following andy")).toBeInTheDocument();
+    expect(screen.getByText("Tracking andy")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /S3 D10/ }));
     expect(onGo).toHaveBeenCalledWith({ seasonNumber: 3, divisionNumber: 10 });
     fireEvent.click(screen.getByRole("button", { name: /S6/ }));
@@ -80,7 +80,7 @@ describe("FollowBar", () => {
     expect(onStop).toHaveBeenCalledTimes(1);
   });
 
-  it("disables the side with nowhere to go", () => {
+  it("leaves out the side with nowhere to go", () => {
     render(
       <FollowBar
         username="andy"
@@ -89,7 +89,9 @@ describe("FollowBar", () => {
         onStop={() => {}}
       />,
     );
-    const [prev] = screen.getAllByRole("button");
-    expect(prev).toBeDisabled();
+    expect(screen.getAllByRole("button").map((b) => b.textContent)).toEqual([
+      "S5 D9",
+      "Stop",
+    ]);
   });
 });

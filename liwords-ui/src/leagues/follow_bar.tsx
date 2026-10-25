@@ -11,36 +11,48 @@ type Props = {
   onStop: () => void;
 };
 
+// The menu item, on a league player's name, that tracks them through the
+// seasons they played (the bar above the standings).
+export const trackMenuItem = (onClick: () => void) => ({
+  key: "track",
+  label: "Track across seasons",
+  onClick,
+});
+
 export const seasonLabel = (s: FollowedSeason) =>
   s.divisionNumber > 0
     ? `S${s.seasonNumber} D${s.divisionNumber}`
     : `S${s.seasonNumber}`;
 
-// Previous / next season of the player being followed, skipping seasons they
-// were not in.
+// Previous / next season of the player being tracked, skipping seasons they
+// were not in. One quiet line of links; a side with nowhere to go is left out.
 export const FollowBar = (props: Props) => {
   const { prev, next } = props;
   return (
     <div className="league-follow-bar">
-      <Button
-        size="small"
-        icon={<LeftOutlined />}
-        disabled={!prev}
-        onClick={() => prev && props.onGo(prev)}
-      >
-        {prev ? seasonLabel(prev) : null}
-      </Button>
-      <span className="league-follow-name">Following {props.username}</span>
-      <Button
-        size="small"
-        icon={<RightOutlined />}
-        iconPosition="end"
-        disabled={!next}
-        onClick={() => next && props.onGo(next)}
-      >
-        {next ? seasonLabel(next) : null}
-      </Button>
-      <Button size="small" type="link" onClick={props.onStop}>
+      {prev && (
+        <Button
+          type="link"
+          size="small"
+          icon={<LeftOutlined />}
+          onClick={() => props.onGo(prev)}
+        >
+          {seasonLabel(prev)}
+        </Button>
+      )}
+      <span className="league-follow-name">Tracking {props.username}</span>
+      {next && (
+        <Button
+          type="link"
+          size="small"
+          icon={<RightOutlined />}
+          iconPosition="end"
+          onClick={() => props.onGo(next)}
+        >
+          {seasonLabel(next)}
+        </Button>
+      )}
+      <Button type="link" size="small" onClick={props.onStop}>
         Stop
       </Button>
     </div>

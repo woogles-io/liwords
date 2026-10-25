@@ -18,6 +18,7 @@ import {
   PlacementStatus,
 } from "../gen/api/proto/ipc/league_pb";
 import { SeasonRegistrationsResponse } from "../gen/api/proto/league_service/league_service_pb";
+import { trackMenuItem } from "./follow_bar";
 import { PlayerGameHistoryModal } from "./player_game_history_modal";
 import { DisplayUserTitle } from "../shared/display_title";
 import { UsernameWithContext } from "../shared/usernameWithContext";
@@ -110,6 +111,8 @@ type DivisionStandingsProps = {
   seasonActive?: boolean;
   onRegister?: () => void; // Callback to navigate to registration
   onChat?: (uuid: string, username: string) => void; // Open a direct message
+  // Follow a player through their seasons (the bar above the standings).
+  onFollow?: (userId: string) => void;
 };
 
 export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
@@ -126,6 +129,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
   seasonActive,
   onRegister,
   onChat,
+  onFollow,
 }) => {
   const [selectedPlayer, setSelectedPlayer] = useState<{
     userId: string;
@@ -456,6 +460,11 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
                   infoText="View game history"
                   handleInfoText={() =>
                     handlePlayerClick(record.userId, username)
+                  }
+                  extraItems={
+                    onFollow
+                      ? [trackMenuItem(() => onFollow(record.userId))]
+                      : undefined
                   }
                 />
               )}
@@ -940,6 +949,14 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
           seasonStartDate={seasonStartDate}
           onChat={onChat}
           onSelectPlayer={handlePlayerClick}
+          onTrack={
+            onFollow
+              ? (id) => {
+                  onFollow(id);
+                  handleModalClose();
+                }
+              : undefined
+          }
         />
       )}
     </div>

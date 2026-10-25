@@ -261,7 +261,8 @@ SELECT
     COALESCE(lst.losses, 0) as losses,
     COALESCE(lst.draws, 0) as draws,
     COALESCE(lst.spread, 0) as spread,
-    COALESCE(lst.result, 0) as result
+    COALESCE(lst.result, 0) as result,
+    COALESCE(lst.timeouts, 0) as timeouts
 FROM league_registrations lr
 JOIN users u ON lr.user_id = u.id
 JOIN league_seasons ls ON lr.season_id = ls.uuid
@@ -638,7 +639,7 @@ WHERE g.league_division_id = $1
 
 -- name: GetDivisionCrosstableGames :many
 -- Every game of a division that is in progress or finished (not aborted or
--- canceled), for the crosstable. Finished games take their scores from
+-- canceled), for the cross-table. Finished games take their scores from
 -- game_players; games in progress carry their history for the running score.
 SELECT
     g.uuid AS game_uuid,
