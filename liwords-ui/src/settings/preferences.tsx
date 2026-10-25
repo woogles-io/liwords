@@ -386,7 +386,7 @@ export const Preferences = React.memo(() => {
       <h3>Preferences</h3>
       <div className="section-header">Display</div>
       <div className="toggles-section">
-        <div>
+        <div className="toggle-fill">
           <div className="toggle-section">
             <div className="title">Dark mode</div>
             <div>
@@ -440,6 +440,20 @@ export const Preferences = React.memo(() => {
                   Your browser doesn't support notifications
                 </div>
               )}
+            </div>
+          </div>
+          <div className="toggle-section">
+            <div className="title">Dates in game history</div>
+            <div>
+              <div>
+                Show when profile games were played as dates instead of &quot;13
+                days ago&quot;
+              </div>
+              <Switch
+                checked={gameHistoryDates}
+                onChange={setGameHistoryDates}
+                className="game-history-dates-toggle"
+              />
             </div>
           </div>
         </div>
@@ -542,7 +556,7 @@ export const Preferences = React.memo(() => {
         </Col>
       </Row>
       <div className="toggles-section">
-        <div className="chat-toggle-fill">
+        <div className="toggle-fill">
           <div className="toggle-section">
             <div className="title">Always show chat timestamps</div>
             <div>
@@ -551,22 +565,6 @@ export const Preferences = React.memo(() => {
                 checked={alwaysShowChatTimestamps}
                 onChange={setAlwaysShowChatTimestamps}
                 className="chat-timestamps-toggle"
-              />
-            </div>
-          </div>
-        </div>
-        <div className="chat-toggle-fill">
-          <div className="toggle-section">
-            <div className="title">Dates in game history</div>
-            <div>
-              <div>
-                Show when profile games were played as dates instead of &quot;13
-                days ago&quot;
-              </div>
-              <Switch
-                checked={gameHistoryDates}
-                onChange={setGameHistoryDates}
-                className="game-history-dates-toggle"
               />
             </div>
           </div>
