@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Spin, Table, type TableColumnsType, Tooltip, Typography } from "antd";
+import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import { useQuery } from "@connectrpc/connect-query";
 import { Division } from "../gen/api/proto/ipc/league_pb";
 import { GameEndReason } from "../gen/api/proto/ipc/omgwords_pb";
@@ -7,7 +8,10 @@ import { getDivisionCrosstable } from "../gen/api/proto/league_service/league_se
 import { CrosstableGame } from "../gen/api/proto/league_service/league_service_pb";
 import { UsernameWithContext } from "../shared/usernameWithContext";
 import { trackMenuItem } from "./follow_bar";
-import { endReasonLabel } from "./player_game_history_modal";
+import {
+  PlayerGameHistoryModal,
+  endReasonLabel,
+} from "./player_game_history_modal";
 
 const { Text } = Typography;
 
@@ -275,6 +279,11 @@ export const DivisionCrosstable = (props: {
   onError?: () => void;
   // tracks a player through their seasons, from their name's menu.
   onTrack?: (userId: string) => void;
+  // the season shown, for a name's "View game history" (left out without a
+  // season id).
+  seasonId?: string;
+  seasonNumber?: number;
+  seasonStartDate?: Timestamp;
 }) => {
   const { data, isLoading, error } = useQuery(
     getDivisionCrosstable,
@@ -283,6 +292,11 @@ export const DivisionCrosstable = (props: {
     { retry: false },
   );
   const [hover, setHover] = useState<CrossHover>(null);
+  // whose season games are open, from a name's "View game history".
+  const [historyPlayer, setHistoryPlayer] = useState<{
+    userId: string;
+    username: string;
+  } | null>(null);
   // whether the cross-table itself is wide enough to keep the totals in view
   // at the right while the grid scrolls (PIN_TOTALS_WIDTH).
   const [wide, setWide] = useState(false);
@@ -345,6 +359,10 @@ export const DivisionCrosstable = (props: {
           userID={row.userId}
           sendMessage={props.onChat}
           omitSendMessage={!props.onChat}
+          infoText={props.seasonId ? "View game history" : undefined}
+          handleInfoText={() =>
+            setHistoryPlayer({ userId: row.userId, username: row.username })
+          }
           extraItems={
             props.onTrack
               ? [trackMenuItem(() => props.onTrack?.(row.userId))]
@@ -465,6 +483,29 @@ export const DivisionCrosstable = (props: {
         size="small"
         scroll={{ x: "max-content" }}
       />
+      {historyPlayer && props.seasonId && (
+        <PlayerGameHistoryModal
+          visible={true}
+          onClose={() => setHistoryPlayer(null)}
+          userId={historyPlayer.userId}
+          username={historyPlayer.username}
+          seasonId={props.seasonId}
+          seasonNumber={props.seasonNumber ?? 0}
+          seasonStartDate={props.seasonStartDate}
+          onChat={props.onChat}
+          onSelectPlayer={(userId, username) =>
+            setHistoryPlayer({ userId, username })
+          }
+          onTrack={
+            props.onTrack
+              ? (id) => {
+                  props.onTrack?.(id);
+                  setHistoryPlayer(null);
+                }
+              : undefined
+          }
+        />
+      )}
     </div>
   );
 };

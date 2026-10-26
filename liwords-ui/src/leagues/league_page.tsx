@@ -963,6 +963,9 @@ export const LeaguePage = (props: Props) => {
                                 onChat={openDirectMessage}
                                 onError={onCrosstableError}
                                 onTrack={trackPlayer}
+                                seasonId={displaySeasonId || ""}
+                                seasonNumber={displayedSeason?.seasonNumber}
+                                seasonStartDate={displayedSeason?.startDate}
                               />
                             ),
                           },
