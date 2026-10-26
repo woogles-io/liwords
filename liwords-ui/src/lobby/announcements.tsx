@@ -4,7 +4,7 @@ import ReactMarkdown from "react-markdown";
 import { Link } from "react-router";
 import {
   BookOutlined,
-  GlobalOutlined,
+  EnvironmentOutlined,
   DesktopOutlined,
   TeamOutlined,
   TrophyOutlined,
@@ -152,7 +152,7 @@ export const TournamentCard = ({
           {tournament.name}
           {tournament.irlMode && (
             <Tooltip title="In Real Life Tournament">
-              <GlobalOutlined className="tournament-icon" />
+              <EnvironmentOutlined className="tournament-icon" />
             </Tooltip>
           )}
           {tournament.monitored && (
