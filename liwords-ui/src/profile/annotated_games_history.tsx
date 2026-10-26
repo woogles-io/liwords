@@ -1,7 +1,7 @@
-import { Button, Card, Table, Tooltip } from "antd";
-import moment from "moment";
+import { Button, Card, Table } from "antd";
 import React from "react";
 import { Link } from "react-router";
+import { ProfileTime } from "./profile_time";
 import { PlayerInfo } from "../gen/api/proto/ipc/omgwords_pb";
 import { AnnotatedGamesResponse_AnnotatedGame } from "../gen/api/proto/omgwords_service/omgwords_pb";
 import { timestampDate } from "@bufbuild/protobuf/wkt";
@@ -22,11 +22,10 @@ export const AnnotatedGamesHistoryCard = React.memo((props: Props) => {
       })
       .join(" vs ");
     const url = `/anno/${encodeURIComponent(item.gameId)}?turn=1`;
-    const whenMoment = moment(
-      item.createdAt ? timestampDate(item.createdAt) : "",
-    );
     const when = (
-      <Tooltip title={whenMoment.format("LLL")}>{whenMoment.fromNow()}</Tooltip>
+      <ProfileTime
+        at={item.createdAt ? timestampDate(item.createdAt) : undefined}
+      />
     );
     const edit =
       props.loggedInUserID === item.creatorId ? (

@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { Button, Card, List, Typography, Space, Tooltip } from "antd";
+import { Button, Card, List, Typography, Space } from "antd";
 import { FolderOutlined, BookOutlined } from "@ant-design/icons";
-import moment from "moment";
 import { Link } from "react-router";
 import { useClient } from "../utils/hooks/connect";
 import { timestampDate } from "@bufbuild/protobuf/wkt";
@@ -9,6 +8,7 @@ import {
   CollectionsService,
   Collection,
 } from "../gen/api/proto/collections_service/collections_service_pb";
+import { ProfileTime } from "./profile_time";
 
 const { Text } = Typography;
 
@@ -105,24 +105,14 @@ export const UserCollectionsCard: React.FC<UserCollectionsCardProps> = ({
                       {collection.gameCount || 0} game(s)
                     </Text>
                     <Text type="secondary">•</Text>
-                    <Tooltip
-                      title={
-                        collection.updatedAt
-                          ? moment(timestampDate(collection.updatedAt)).format(
-                              "LLL",
-                            )
-                          : ""
-                      }
-                    >
-                      <Text type="secondary">
-                        Updated{" "}
-                        {collection.updatedAt
-                          ? moment(
-                              timestampDate(collection.updatedAt),
-                            ).fromNow()
-                          : "never"}
-                      </Text>
-                    </Tooltip>
+                    <Text type="secondary">
+                      Updated{" "}
+                      {collection.updatedAt ? (
+                        <ProfileTime at={timestampDate(collection.updatedAt)} />
+                      ) : (
+                        "never"
+                      )}
+                    </Text>
                   </Space>
                 </Space>
               }
