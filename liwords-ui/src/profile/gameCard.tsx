@@ -1,9 +1,9 @@
 import React from "react";
-import moment from "moment";
 import { Card, Tag, Tooltip } from "antd";
 import { PlayerAvatar } from "../shared/player_avatar";
 import { Link } from "react-router";
 import { VariantIcon } from "../shared/variant_icons";
+import { GameEvent, hasGameEvent } from "./game_event";
 import { FundOutlined, RobotOutlined } from "@ant-design/icons";
 import { timeToString } from "../store/constants";
 import { GameInfoResponse, RatingMode } from "../gen/api/proto/ipc/omgwords_pb";
@@ -12,6 +12,7 @@ import { GameEndReason } from "../gen/api/proto/ipc/omgwords_pb";
 import { ChallengeRule } from "../gen/api/proto/vendored/macondo/macondo_pb";
 import { lexiconCodeToProfileRatingName } from "../shared/lexica";
 import { timestampDate } from "@bufbuild/protobuf/wkt";
+import { ProfileTime } from "./profile_time";
 
 type GameCardProps = {
   game: GameInfoResponse;
@@ -31,9 +32,8 @@ export const GameCard = React.memo((props: GameCardProps) => {
     gameEndReason,
     timeControlName,
   } = game;
-  const whenMoment = moment(lastUpdate ? timestampDate(lastUpdate) : "");
   const when = (
-    <Tooltip title={whenMoment.format("LLL")}>{whenMoment.fromNow()}</Tooltip>
+    <ProfileTime at={lastUpdate ? timestampDate(lastUpdate) : undefined} />
   );
   if (!(players?.length > 1)) {
     return null;
@@ -51,9 +51,12 @@ export const GameCard = React.memo((props: GameCardProps) => {
           nickname: opponent.nickname,
         }}
       />
-      <Link to={`/profile/${encodeURIComponent(opponent.nickname)}`}>
-        {players[1 - userplace].nickname}
-      </Link>
+      {/* The card cuts a long name; hovering gives it whole. */}
+      <Tooltip title={opponent.nickname}>
+        <Link to={`/profile/${encodeURIComponent(opponent.nickname)}`}>
+          {players[1 - userplace].nickname}
+        </Link>
+      </Tooltip>
     </div>
   );
 
@@ -162,6 +165,11 @@ export const GameCard = React.memo((props: GameCardProps) => {
         {lexiconCodeToProfileRatingName(gameRequest?.lexicon ?? "")} -{" "}
         <span className="time-control">{time}</span>
       </div>
+      {hasGameEvent(game) && (
+        <div className="game-event">
+          <GameEvent game={game} />
+        </div>
+      )}
       <p>{endReason}</p>
       {getDetails}
     </Card>

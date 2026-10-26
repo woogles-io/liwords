@@ -218,6 +218,14 @@ export const getPastTournaments = TournamentService.method.getPastTournaments;
 export const getMyTournaments = TournamentService.method.getMyTournaments;
 
 /**
+ * GetEnteredTournaments returns the tournaments and clubs a user played in
+ * or is registered in, the last played first.
+ *
+ * @generated from rpc tournament_service.TournamentService.GetEnteredTournaments
+ */
+export const getEnteredTournaments = TournamentService.method.getEnteredTournaments;
+
+/**
  * @generated from rpc tournament_service.TournamentService.RunCOP
  */
 export const runCOP = TournamentService.method.runCOP;

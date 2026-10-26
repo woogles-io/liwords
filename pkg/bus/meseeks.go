@@ -774,34 +774,6 @@ func (b *Bus) broadcastSeekDeletion(sg *entity.SoughtGame) error {
 
 }
 
-func (b *Bus) sendReceiverAbsent(ctx context.Context, req *entity.SoughtGame) error {
-	isMatch, err := req.ReceiverIsPermanent()
-	if err != nil {
-		return err
-	}
-
-	if isMatch {
-		seekerConnID, err := req.SeekerConnID()
-		if err != nil {
-			return err
-		}
-
-		seekerID, err := req.SeekerUserID()
-		if err != nil {
-			return err
-		}
-		evt := entity.WrapEvent(req.SeekRequest, pb.MessageType_SEEK_REQUEST)
-		return b.pubToConnectionID(seekerConnID, seekerID, evt)
-	} else {
-		evt := entity.WrapEvent(req.SeekRequest, pb.MessageType_SEEK_REQUEST)
-		outdata, err := evt.Serialize()
-		if err != nil {
-			return err
-		}
-		return b.natsconn.Publish("lobby.soughtGameProcess", outdata)
-	}
-}
-
 func (b *Bus) broadcastGameCreation(g *entity.Game, acceptor, requester *entity.User) error {
 	timefmt, variant, err := entity.VariantFromGameReq(g.GameReq.GameRequest)
 	if err != nil {
@@ -855,25 +827,13 @@ func (b *Bus) deleteSoughtForUser(ctx context.Context, userID string) error {
 	if err != nil {
 		return err
 	}
-	if len(reqs) == 0 {
-		return nil
-	}
 	for _, req := range reqs {
 		log.Debug().Interface("req", req).Str("userID", userID).Msg("deleting-sought")
 		if err := b.sendSoughtGameDeletion(ctx, req); err != nil {
 			return err
 		}
 	}
-
-	req, err := b.stores.SoughtGameStore.UpdateForReceiver(ctx, userID)
-	if err != nil {
-		return err
-	}
-	if req == nil {
-		return nil
-	}
-	log.Debug().Interface("req", req).Str("userID", userID).Msg("deleting-sought")
-	return b.sendReceiverAbsent(ctx, req)
+	return nil
 }
 
 func (b *Bus) deleteSoughtForConnID(ctx context.Context, connID string) error {
@@ -881,25 +841,13 @@ func (b *Bus) deleteSoughtForConnID(ctx context.Context, connID string) error {
 	if err != nil {
 		return err
 	}
-	if len(reqs) == 0 {
-		return nil
-	}
 	for _, req := range reqs {
 		log.Debug().Interface("req", req).Str("connID", connID).Msg("deleting-sought-for-connid")
 		if err := b.sendSoughtGameDeletion(ctx, req); err != nil {
 			return err
 		}
 	}
-
-	req, err := b.stores.SoughtGameStore.UpdateForReceiverConnID(ctx, connID)
-	if err != nil {
-		return err
-	}
-	if req == nil {
-		return nil
-	}
-	log.Debug().Interface("req", req).Str("connID", connID).Msg("updating-receiver-for-connid")
-	return b.sendReceiverAbsent(ctx, req)
+	return nil
 }
 
 // cancelRealtimeSeeksOfConns cancels the real-time seeks made from each of

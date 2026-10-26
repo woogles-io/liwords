@@ -202,10 +202,14 @@
     }
     // antd sizes a dot's li to its 3px bar and clips to it; these dots are
     // round and up to 10px, so the li has to hold them. Its animated bar
-    // (li::after) would paint over the active dot, so it goes.
+    // (li::after) would paint over the active dot, so it goes. A dot smaller
+    // than its li is centered in it, so all the dots share one middle.
     .slick-dots li {
       height: 10px;
       width: 12px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
       &::after {
         display: none;
       }
@@ -263,6 +267,7 @@
       }
     }
     .detail-icons {
+      margin-top: auto;
       text-align: right;
       font-size: 16px;
       font-weight: 800;
@@ -299,9 +304,17 @@
         line-height: 1.5em;
       }
     }
+    // One line more than the card's details need, for a game's league or
+    // tournament; the icons keep to the bottom either way.
     .ant-card-body {
-      display: block;
-      height: 140px;
+      display: flex;
+      flex-direction: column;
+      height: 162px;
+    }
+    .game-event {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
     .time-control {
       text-transform: capitalize;
@@ -374,10 +387,12 @@
     .ant-card-body {
       padding: 0;
     }
-    .when-toggle {
-      cursor: pointer;
-      white-space: nowrap;
-    }
+  }
+  // A time a click turns into a date and back, in any of the profile's lists
+  // and on its recent game cards.
+  .when-toggle {
+    cursor: pointer;
+    white-space: nowrap;
   }
   .show-games-toggle {
     margin: 9px;

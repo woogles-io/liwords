@@ -91,6 +91,11 @@ message ListChatChannelsRequest {
   string cursor = 3;
   // channels, if set, summarizes exactly these channels instead of scanning.
   repeated string channels = 4;
+  // find, if set, names what to summarize the channels of, as channels does:
+  // a "chat." channel; or first a game, tournament, club or league by its id
+  // or its page's address or path, then always the tournaments, clubs and
+  // leagues whose name or slug contains it.
+  string find = 5;
 }
 
 message ChatSenderCount {

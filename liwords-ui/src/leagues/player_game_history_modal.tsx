@@ -14,6 +14,7 @@ import { timestampDate, type Timestamp } from "@bufbuild/protobuf/wkt";
 import { GameEndReason } from "../gen/api/proto/ipc/omgwords_pb";
 import { CorrespondenceTurnIndicator } from "../shared/corres_turn_indicator";
 import { UsernameWithContext } from "../shared/usernameWithContext";
+import { scorePair } from "../utils/score_pair";
 import { trackMenuItem } from "./follow_bar";
 
 const { Text } = Typography;
@@ -95,15 +96,26 @@ const isLive = (record: { result: string }): boolean =>
   record.result === "turn" || record.result === "in_progress";
 
 // A live game's progress: the tiles on the board out of the game's total,
-// and the tiles left (bag and both racks). Null when no tile counts came
-// back.
+// the tiles not yet played (bag and both racks), and those in the bag. Both
+// racks hold 7 while the bag has tiles, as the game page's pool counts it.
+// Null when no tile counts came back.
 export const tileProgress = (
   record: GameRow,
-): { onBoard: number; total: number; left: number } | null => {
+): {
+  onBoard: number;
+  total: number;
+  unplayed: number;
+  inBag: number;
+} | null => {
   const onBoard = record.playerTilesPlayed + record.opponentTilesPlayed;
   const total = onBoard + record.tilesUnplayed;
   if (!isLive(record) || total === 0) return null;
-  return { onBoard, total, left: record.tilesUnplayed };
+  return {
+    onBoard,
+    total,
+    unplayed: record.tilesUnplayed,
+    inBag: Math.max(record.tilesUnplayed - 14, 0),
+  };
 };
 
 // Sort rank for the Result column: live games first (they are the actionable
@@ -315,7 +327,7 @@ export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
   };
   const tilesColumn: TableColumnsType<GameRow>[number] = {
     title: (
-      <Tooltip title="Tiles left in a live game: in the bag and on both racks.">
+      <Tooltip title="A live game's tiles in the bag, or on both racks once the bag is empty.">
         <span style={{ cursor: "help" }}>Tiles</span>
       </Tooltip>
     ),
@@ -330,7 +342,11 @@ export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
         <Tooltip
           title={`${progress.onBoard}/${progress.total} on the board: ${username} ${record.playerTilesPlayed}, ${record.opponentUsername} ${record.opponentTilesPlayed}`}
         >
-          <span style={{ whiteSpace: "nowrap" }}>{progress.left} left</span>
+          <span style={{ whiteSpace: "nowrap" }}>
+            {progress.inBag > 0
+              ? `${progress.inBag} in bag`
+              : `${progress.unplayed} on racks`}
+          </span>
         </Tooltip>
       );
     },
@@ -414,7 +430,7 @@ export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
         // it has finished.
         return (
           <span style={{ whiteSpace: "nowrap" }}>
-            {record.playerScore}-{record.opponentScore}{" "}
+            {scorePair(record.playerScore, record.opponentScore)}{" "}
             <Text
               type={
                 spread > 0 ? "success" : spread < 0 ? "danger" : "secondary"

@@ -495,7 +495,9 @@ func (b *Bus) handleNatsRequest(ctx context.Context, topic string,
 			}
 			currentLeagueID := strings.ReplaceAll(league.Uuid.String(), "-", "")
 			leagueRealm := "league-" + currentLeagueID
-			resp.Realms = append(resp.Realms, leagueRealm, "chat-"+leagueRealm)
+			resp.Realms = append(resp.Realms, leagueRealm, "chat-"+leagueRealm,
+				// news of the league's games, to keep the page current
+				"channel-"+gameplay.LeagueChannel(league.Uuid))
 		} else if strings.HasPrefix(path, "/puzzle/") {
 			// We are appending a chat realm for two reasons:
 			// 1. In the future we could probably have a puzzle lobby chat

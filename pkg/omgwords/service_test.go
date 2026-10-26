@@ -383,6 +383,58 @@ func TestImportGCG(t *testing.T) {
 	is.Equal(len(gdoc.Msg.Racks[1]), 0)
 }
 
+// A GCG that names its game type is imported as that type, whatever the
+// request picked: here a ZOMGWords game, sent as classic.
+func TestImportGCGTakesItsGameType(t *testing.T) {
+	is := is.New(t)
+	svc := newService()
+	defer func() { cleanupConns(svc) }()
+	c := make(chan *entity.EventWrapper)
+	svc.SetEventChannel(c)
+	apikey, err := svc.userStore.GetAPIKey(context.Background(), "someuser")
+	is.NoErr(err)
+
+	ctx := ctxForTests()
+	ctx = apiserver.StoreAPIKeyInContext(ctx, apikey)
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for range c {
+		}
+	}()
+
+	gcg := `#character-encoding UTF-8
+#lexicon CSW21
+#game-type classic_super
+#board-layout SuperCrosswordGame
+#tile-distribution english_super
+#player1 alpha Alpha
+#player2 beta Beta
+>alpha: ZOMG 11K ZOMG +32 32
+`
+	r, err := svc.ImportGCG(ctx, connect.NewRequest(&omgwords_service.ImportGCGRequest{
+		Gcg:           gcg,
+		Lexicon:       "CSW21",
+		Rules:         &ipc.GameRules{BoardLayoutName: "CrosswordGame", LetterDistributionName: "english", VariantName: "classic"},
+		ChallengeRule: ipc.ChallengeRule_ChallengeRule_FIVE_POINT,
+	}))
+	is.NoErr(err)
+
+	gdoc, err := svc.GetGameDocument(ctx, connect.NewRequest(&omgwords_service.GetGameDocumentRequest{
+		GameId: r.Msg.GameId,
+	}))
+	is.NoErr(err)
+	is.Equal(gdoc.Msg.BoardLayout, "SuperCrosswordGame")
+	is.Equal(gdoc.Msg.LetterDistribution, "english_super")
+	is.Equal(gdoc.Msg.Variant, "classic_super")
+	is.Equal(len(gdoc.Msg.Events), 1)
+	is.Equal(gdoc.Msg.Events[0].Score, int32(32))
+
+	close(c)
+	wg.Wait()
+}
+
 func TestImportAnotherGCG(t *testing.T) {
 	is := is.New(t)
 	svc := newService()

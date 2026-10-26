@@ -135,6 +135,9 @@ func (gs *OMGWordsService) createGDoc(ctx context.Context, u *entity.User, req *
 	if req.Lexicon == "" {
 		return nil, apiserver.InvalidArg("lexicon is empty")
 	}
+	if err := setAnnotatedGameBoard(req.Lexicon, req.Rules); err != nil {
+		return nil, err
+	}
 	unfinished, err := gs.metadataStore.OutstandingGames(ctx, u.UUID)
 	if err != nil {
 		return nil, err
@@ -230,6 +233,8 @@ func createAnnotatedGameDoc(
 		Rules: &ipc.GameRules{
 			BoardLayoutName:        boardLayoutName,
 			LetterDistributionName: letterDistributionName,
+			// kept so the game's listing can say which variant it is
+			VariantName: string(variant),
 		},
 		InitialTimeSeconds: 0,
 		IncrementSeconds:   0,
@@ -456,6 +461,7 @@ func (gs *OMGWordsService) GetGamesForEditor(ctx context.Context, req *connect.R
 				PlayersInfo: bg.Players,
 				Lexicon:     bg.Lexicon,
 				CreatedAt:   timestamppb.New(bg.Created),
+				Variant:     bg.Variant,
 			}
 		}),
 	}), nil
@@ -483,6 +489,7 @@ func (gs *OMGWordsService) GetRecentAnnotatedGames(ctx context.Context, req *con
 				Lexicon:         bg.Lexicon,
 				CreatedAt:       timestamppb.New(bg.Created),
 				CreatorUsername: bg.CreatorUsername,
+				Variant:         bg.Variant,
 			}
 		}),
 	}), nil
@@ -812,6 +819,13 @@ func (gs *OMGWordsService) ImportGCG(ctx context.Context, req *connect.Request[p
 	if err != nil {
 		return nil, err
 	}
+	if req.Msg.Rules == nil {
+		return nil, apiserver.InvalidArg("no rules")
+	}
+	// The board and tiles parse the file too, so they are set first.
+	if err := setAnnotatedGameBoard(req.Msg.Lexicon, req.Msg.Rules); err != nil {
+		return nil, err
+	}
 
 	// XXX: eventually we need our own GCG parsing library here (in liwords) that
 	// just deals with GameDocuments or whatever their successor might be, to
@@ -825,6 +839,16 @@ func (gs *OMGWordsService) ImportGCG(ctx context.Context, req *connect.Request[p
 	gh, err := gcgio.ParseGCGFromReader(cfgCopy, r)
 	if err != nil {
 		return nil, apiserver.InvalidArg(err.Error())
+	}
+	// A GCG that names its game type ("#game-type", as Woogles writes one)
+	// is that type, whichever was picked; the pick is for those that do not.
+	// The board and tiles follow it. The tiles' alphabet is the same either
+	// way, so the file needs no parsing again.
+	if gh.Variant != "" && gh.Variant != req.Msg.Rules.VariantName {
+		req.Msg.Rules.VariantName = gh.Variant
+		if err := setAnnotatedGameBoard(req.Msg.Lexicon, req.Msg.Rules); err != nil {
+			return nil, err
+		}
 	}
 
 	letterdist, err := tilemapping.GetDistribution(gs.cfg.WGLConfig(), req.Msg.Rules.LetterDistributionName)
