@@ -172,6 +172,7 @@ export const BoardPanel = React.memo((props: Props) => {
     setDisplayedRack,
     placedTiles,
     setPlacedTiles,
+    placedTilesBoard,
     placedTilesTempScore,
     setPlacedTilesTempScore,
     blindfoldCommand,
@@ -1330,6 +1331,12 @@ export const BoardPanel = React.memo((props: Props) => {
   const tileColorId =
     (props.gameDone ? null : myId) ?? examinableGameContext.onturn;
 
+  // The board the placed tiles go on, if not the game's own.
+  const shownBoard =
+    placedTilesBoard?.placedTiles === placedTiles
+      ? placedTilesBoard
+      : undefined;
+
   // Challenge is only valid when it's my turn AND the last event was a tile placement by the opponent.
   const lastEvent =
     examinableGameContext.turns[examinableGameContext.turns.length - 1];
@@ -1422,9 +1429,13 @@ export const BoardPanel = React.memo((props: Props) => {
         gridLayout={props.board.gridLayout}
         handleBoardTileClick={handleBoardTileClick}
         handleTileDrop={handleTileDrop}
-        tilesLayout={props.board.letters}
-        lastPlayedTiles={examinableGameContext.lastPlayedTiles}
-        playerOfTileAt={examinableGameContext.playerOfTileAt}
+        tilesLayout={shownBoard?.letters ?? props.board.letters}
+        lastPlayedTiles={
+          shownBoard?.lastPlayedTiles ?? examinableGameContext.lastPlayedTiles
+        }
+        playerOfTileAt={
+          shownBoard?.playerOfTileAt ?? examinableGameContext.playerOfTileAt
+        }
         tentativeTiles={placedTiles}
         tentativeTileScore={placedTilesTempScore}
         squareClicked={squareClicked}
