@@ -355,6 +355,48 @@ const LeagueStatusCard = ({ leagueData }: { leagueData: LeagueWithSeason }) => {
 // all" toggle instead of letting it push everything else down.
 const LIVE_TOURNAMENTS_CAP = 5;
 
+// A section's tournaments, the online ones under "Online" above the in-person
+// ones under "In person": only the online ones can be joined from here. A kind
+// keeps its header even when the list has no other kind. cap caps each kind on
+// its own, so many online ones cannot push the few in-person ones out of view.
+const TournamentList = (props: {
+  tournaments: Array<TournamentMetadata>;
+  cap?: number;
+}) => {
+  const capped = (ts: Array<TournamentMetadata>) =>
+    props.cap === undefined ? ts : ts.slice(0, props.cap);
+  const online = capped(props.tournaments.filter((t) => !t.irlMode));
+  const inPerson = capped(props.tournaments.filter((t) => t.irlMode));
+  const cards = (ts: Array<TournamentMetadata>) => (
+    <div className="tournaments-list">
+      {ts.map((t) => (
+        <TournamentCard key={t.id} tournament={t} />
+      ))}
+    </div>
+  );
+  return (
+    <>
+      {online.length > 0 && (
+        <>
+          <div className="tournaments-sublabel">Online</div>
+          {cards(online)}
+        </>
+      )}
+      {inPerson.length > 0 && (
+        <>
+          <div className="tournaments-sublabel">In person</div>
+          {cards(inPerson)}
+        </>
+      )}
+    </>
+  );
+};
+
+// Whether a capped list hides any of its tournaments.
+const overCap = (tournaments: Array<TournamentMetadata>, cap: number) =>
+  tournaments.filter((t) => !t.irlMode).length > cap ||
+  tournaments.filter((t) => t.irlMode).length > cap;
+
 export const TournamentsAndLeaguesContent = ({
   showBroadcasts = true,
 }: {
@@ -443,10 +485,6 @@ export const TournamentsAndLeaguesContent = ({
     upcomingTournaments.length === 0 &&
     pastTournaments.length === 0;
 
-  const shownLiveTournaments = showAllLive
-    ? liveTournaments
-    : liveTournaments.slice(0, LIVE_TOURNAMENTS_CAP);
-
   return (
     <div className="tournaments-leagues-content">
       {showBroadcasts && liveBroadcasts.length > 0 && (
@@ -463,12 +501,11 @@ export const TournamentsAndLeaguesContent = ({
       {liveTournaments.length > 0 && (
         <>
           <h4>Live Tournaments</h4>
-          <div className="tournaments-list">
-            {shownLiveTournaments.map((t) => (
-              <TournamentCard key={t.id} tournament={t} />
-            ))}
-          </div>
-          {!showAllLive && liveTournaments.length > LIVE_TOURNAMENTS_CAP && (
+          <TournamentList
+            tournaments={liveTournaments}
+            cap={showAllLive ? undefined : LIVE_TOURNAMENTS_CAP}
+          />
+          {!showAllLive && overCap(liveTournaments, LIVE_TOURNAMENTS_CAP) && (
             <Button
               type="link"
               className="show-more-live"
@@ -494,11 +531,7 @@ export const TournamentsAndLeaguesContent = ({
       {notStartedTournaments.length > 0 && (
         <>
           <h4>Upcoming Tournaments</h4>
-          <div className="tournaments-list">
-            {notStartedTournaments.map((t) => (
-              <TournamentCard key={t.id} tournament={t} />
-            ))}
-          </div>
+          <TournamentList tournaments={notStartedTournaments} />
         </>
       )}
 
@@ -507,11 +540,7 @@ export const TournamentsAndLeaguesContent = ({
       {pastTournaments.length > 0 && (
         <>
           <h4>Past Tournaments</h4>
-          <div className="tournaments-list">
-            {pastTournaments.map((t) => (
-              <TournamentCard key={t.id} tournament={t} />
-            ))}
-          </div>
+          <TournamentList tournaments={pastTournaments} />
         </>
       )}
 
