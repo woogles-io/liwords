@@ -36,3 +36,21 @@ ORDER BY users.uuid, user_actions.action_type, user_actions.start_time DESC;
 
 -- name: GetTournamentNameAndSlug :one
 SELECT name, slug FROM tournaments WHERE uuid = @uuid;
+
+-- name: GetTournamentUUIDBySlug :one
+SELECT uuid FROM tournaments WHERE LOWER(slug) = LOWER(@slug);
+
+-- name: SearchTournamentsByNameOrSlug :many
+-- Tournaments and clubs whose name or slug matches a LIKE pattern, newest
+-- first.
+SELECT uuid FROM tournaments
+WHERE name ILIKE @pattern::text OR slug ILIKE @pattern::text
+ORDER BY created_at DESC
+LIMIT @lim;
+
+-- name: SearchLeaguesByNameOrSlug :many
+-- Leagues whose name or slug matches a LIKE pattern, newest first.
+SELECT uuid::text FROM leagues
+WHERE name ILIKE @pattern::text OR slug ILIKE @pattern::text
+ORDER BY created_at DESC
+LIMIT @lim;

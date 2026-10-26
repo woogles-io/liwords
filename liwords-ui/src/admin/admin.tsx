@@ -44,6 +44,7 @@ const Sider = (props: SiderProps) => {
         { key: "announcement-editor", label: "Edit Announcements" },
         { key: "puzzle-generator", label: "Puzzle Generator" },
         { key: "user-details", label: "See User Details" },
+        { key: "chat-review", label: "Chat Review" },
         { key: "perms-and-roles", label: "User Permissions and Roles" },
         { key: "badges", label: "Assign User Badges" },
         { key: "verification-queue", label: "Identity Verification Queue" },
@@ -52,7 +53,6 @@ const Sider = (props: SiderProps) => {
           label: "Manual Organization Assignment",
         },
         { key: "analysis-stats", label: "Analysis Dashboard" },
-        { key: "chat-review", label: "Chat Review" },
         //    { key: 'manage-tournament', label: 'Tournament Manager' },
         //    { key: 'user-editor', label: 'User Editor' },
         //  ],
@@ -109,12 +109,12 @@ export const Admin = () => {
             {visibleTab === "announcement-editor" && <AnnouncementEditor />}
             {visibleTab === "puzzle-generator" && <PuzzleGenerator />}
             {visibleTab === "user-details" && <UserDetails />}
+            {visibleTab === "chat-review" && <ChatReview />}
             {visibleTab === "perms-and-roles" && <PermsAndRoles />}
             {visibleTab === "badges" && <UserBadges />}
             {visibleTab === "verification-queue" && <VerificationQueue />}
             {visibleTab === "manual-org-assignment" && <ManualOrgAssignment />}
             {visibleTab === "analysis-stats" && <AnalysisStats />}
-            {visibleTab === "chat-review" && <ChatReview />}
             {/* {visibleTab === 'user-editor' && <UserEditor />} */}
             {/* {visibleTab === 'manage-tournament' && <TourneyManager />} */}
           </Layout.Content>
