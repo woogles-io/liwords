@@ -7,6 +7,7 @@ import { GameEndReason } from "../gen/api/proto/ipc/omgwords_pb";
 import { getDivisionCrosstable } from "../gen/api/proto/league_service/league_service-LeagueService_connectquery";
 import { CrosstableGame } from "../gen/api/proto/league_service/league_service_pb";
 import { UsernameWithContext } from "../shared/usernameWithContext";
+import { scorePair } from "../utils/score_pair";
 import { trackMenuItem } from "./follow_bar";
 import {
   PlayerGameHistoryModal,
@@ -153,7 +154,7 @@ const GameScore = (props: { g: CrosstableCell; me: string; them: string }) => {
         style={{ whiteSpace: "nowrap" }}
       >
         <Text type={scoreType(g)} italic={live}>
-          {`${g.myScore}-${g.theirScore}`}
+          {scorePair(g.myScore, g.theirScore)}
           {live ? "" : endMark(g.endReason)}
           {g.result === "turn" ? "*" : ""}
         </Text>

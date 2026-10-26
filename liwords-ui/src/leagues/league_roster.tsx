@@ -21,6 +21,7 @@ import {
 import { StandingResult } from "../gen/api/proto/ipc/league_pb";
 import { GameEndReason } from "../gen/api/proto/ipc/omgwords_pb";
 import { UsernameWithContext } from "../shared/usernameWithContext";
+import { scorePair } from "../utils/score_pair";
 import { endReasonLabel } from "./player_game_history_modal";
 
 type Props = {
@@ -659,7 +660,7 @@ export const LeagueRoster: React.FC<Props> = ({
                 const result = g.draw ? "D" : g.won ? "W" : "L";
                 const reason = endReasonLabel(g.gameEndReason as GameEndReason);
                 const suffix = reason ? ` (${reason})` : "";
-                return `${result} ${g.playerScore}-${g.opponentScore}${suffix}`;
+                return `${result} ${scorePair(g.playerScore, g.opponentScore)}${suffix}`;
               })
               .join(", ")
           : undefined;
