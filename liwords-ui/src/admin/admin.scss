@@ -18,3 +18,14 @@
   color: m($gray-extreme);
   margin-left: 8px;
 }
+
+// A chat's first and last times, after its name when a game has two chats.
+.chat-review .chat-review-times {
+  display: flex;
+  gap: 4px;
+}
+
+// Counts and times keep to their lines; the table widens for them instead.
+.chat-review td.chat-review-nowrap {
+  white-space: nowrap;
+}

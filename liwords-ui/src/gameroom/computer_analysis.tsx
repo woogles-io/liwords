@@ -788,10 +788,12 @@ const ESTIMATED_PLAYOUT_TOOLTIP =
   "position out greedily. These moves — and the resulting spread — are a " +
   "plausible continuation, not a proven line.";
 
+// A move in a line is placed after the moves before it in the line, which the
+// board shows as played.
 const EndgameVariationMoves: React.FC<{
   moves: EndgameMove[];
   boardCtx: BoardContext;
-  onClickPlay: (move: AnalyzerMove) => void;
+  onClickPlay: (move: AnalyzerMove, earlierMoves: AnalyzerMove[]) => void;
 }> = ({ moves, boardCtx, onClickPlay }) => {
   const parsedMoves = useMemo(
     () => parseEndgameVariation(moves, boardCtx),
@@ -821,7 +823,7 @@ const EndgameVariationMoves: React.FC<{
             )}
             <li
               className="ca-endgame-move-clickable"
-              onClick={() => onClickPlay(parsed)}
+              onClick={() => onClickPlay(parsed, parsedMoves.slice(0, i))}
             >
               <span className="ca-endgame-num">{m.moveNumber})</span>{" "}
               <Text code>
@@ -844,7 +846,7 @@ const EndgameSequence: React.FC<{
   principalVariation?: EndgameVariation;
   otherVariations: EndgameVariation[];
   boardCtx: BoardContext;
-  onClickPlay: (move: AnalyzerMove) => void;
+  onClickPlay: (move: AnalyzerMove, earlierMoves: AnalyzerMove[]) => void;
 }> = ({ principalVariation, otherVariations, boardCtx, onClickPlay }) => {
   const [showOthers, setShowOthers] = useState(false);
   if (!principalVariation) return null;

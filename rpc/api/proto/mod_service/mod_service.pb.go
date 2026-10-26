@@ -754,7 +754,12 @@ type ListChatChannelsRequest struct {
 	// cursor is the Redis SCAN cursor; empty or "0" starts a new scan.
 	Cursor string `protobuf:"bytes,3,opt,name=cursor,proto3" json:"cursor,omitempty"`
 	// channels, if set, summarizes exactly these channels instead of scanning.
-	Channels      []string `protobuf:"bytes,4,rep,name=channels,proto3" json:"channels,omitempty"`
+	Channels []string `protobuf:"bytes,4,rep,name=channels,proto3" json:"channels,omitempty"`
+	// find, if set, names what to summarize the channels of, as channels does:
+	// a "chat." channel; or first a game, tournament, club or league by its id
+	// or its page's address or path, then always the tournaments, clubs and
+	// leagues whose name or slug contains it.
+	Find          string `protobuf:"bytes,5,opt,name=find,proto3" json:"find,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -815,6 +820,13 @@ func (x *ListChatChannelsRequest) GetChannels() []string {
 		return x.Channels
 	}
 	return nil
+}
+
+func (x *ListChatChannelsRequest) GetFind() string {
+	if x != nil {
+		return x.Find
+	}
+	return ""
 }
 
 type ChatSenderCount struct {
@@ -1206,12 +1218,13 @@ const file_proto_mod_service_mod_service_proto_rawDesc = "" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\"Y\n" +
 	"\x0fNotorietyReport\x12\x14\n" +
 	"\x05score\x18\x01 \x01(\x05R\x05score\x120\n" +
-	"\x05games\x18\x02 \x03(\v2\x1a.mod_service.NotoriousGameR\x05games\"\x90\x01\n" +
+	"\x05games\x18\x02 \x03(\v2\x1a.mod_service.NotoriousGameR\x05games\"\xa4\x01\n" +
 	"\x17ListChatChannelsRequest\x12%\n" +
 	"\x0echannel_prefix\x18\x01 \x01(\tR\rchannelPrefix\x12\x1a\n" +
 	"\busername\x18\x02 \x01(\tR\busername\x12\x16\n" +
 	"\x06cursor\x18\x03 \x01(\tR\x06cursor\x12\x1a\n" +
-	"\bchannels\x18\x04 \x03(\tR\bchannels\"\\\n" +
+	"\bchannels\x18\x04 \x03(\tR\bchannels\x12\x12\n" +
+	"\x04find\x18\x05 \x01(\tR\x04find\"\\\n" +
 	"\x0fChatSenderCount\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x1a\n" +
 	"\busername\x18\x02 \x01(\tR\busername\x12\x14\n" +

@@ -5,11 +5,13 @@ import React, {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { useNavigate } from "react-router";
 import { RatingBadge } from "./rating_badge";
 import { RealtimeRequestNote } from "./realtime_request_note";
+import { useRefetchOnGameEnd } from "./refetch_on_game_end";
 import { challengeFormat, PlayerDisplay, SoughtGames } from "./sought_games";
 import { ActiveGame, SoughtGame } from "../store/reducers/lobby_reducer";
 import { CorrespondenceTurnIndicator } from "../shared/corres_turn_indicator";
@@ -47,25 +49,38 @@ export const CorrespondenceGames = (props: Props) => {
   } = useLoginStateStoreContext();
   const gameMetadataClient = useClient(GameMetadataService);
   const [recentGames, setRecentGames] = useState<GameInfoResponse[]>([]);
+  const recentFetches = useRef(0);
 
-  // Fetch recent correspondence games
-  useEffect(() => {
-    if (!props.username) return;
-
-    const fetchRecentGames = async () => {
-      try {
-        const resp = await gameMetadataClient.getRecentCorrespondenceGames({
-          username: props.username,
-          numGames: 20,
-        });
+  // Fetch recent correspondence games, resolving to their ids. Only the
+  // newest fetch sets the list, so a slower, older answer cannot replace it.
+  const fetchRecentGames = useCallback(async (): Promise<Array<string>> => {
+    if (!props.username) return [];
+    const fetchNumber = ++recentFetches.current;
+    try {
+      const resp = await gameMetadataClient.getRecentCorrespondenceGames({
+        username: props.username,
+        numGames: 20,
+      });
+      if (fetchNumber === recentFetches.current) {
         setRecentGames(resp.gameInfo);
-      } catch (e) {
-        console.error("Failed to fetch recent correspondence games:", e);
       }
-    };
-
-    fetchRecentGames();
+      return resp.gameInfo.map((g) => g.gameId);
+    } catch (e) {
+      console.error("Failed to fetch recent correspondence games:", e);
+      return [];
+    }
   }, [props.username, gameMetadataClient]);
+
+  useEffect(() => {
+    fetchRecentGames();
+  }, [fetchRecentGames]);
+
+  // And again when one of the games above ends.
+  const ongoingIds = useMemo(
+    () => props.correspondenceGames.map((g) => g.gameID),
+    [props.correspondenceGames],
+  );
+  useRefetchOnGameEnd(ongoingIds, fetchRecentGames);
 
   type CorrespondenceGameTableData = {
     gameID: string;

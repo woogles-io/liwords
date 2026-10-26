@@ -40,6 +40,14 @@
     .ant-table-tbody > tr > td.xt-game {
       box-shadow: inset 0 0 0 999px rgba(128, 128, 128, 0.25);
     }
+
+    // A game in progress (its score in italics, inside the game's link) is
+    // fainter than a finished one, whose colors are the same, so the two
+    // tell apart at a glance in either theme. The totals' italics are not
+    // links and stay as they are.
+    a i {
+      opacity: 0.6;
+    }
   }
 
   // The roster's timeouts mark: a clock in the theme's out-of-time red.
@@ -928,6 +936,17 @@
         }
       }
     }
+  }
+
+  // Over the games that ended in the last day.
+  .league-just-ended-title {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    margin-top: 4px;
+    text-transform: uppercase;
+
+    color: m($gray-medium);
   }
 
   // Registration modal styles

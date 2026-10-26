@@ -59,10 +59,6 @@ func TestSoughtGame(t *testing.T) {
 	err = store.New(ctx, sgPresentReceiver)
 	is.NoErr(err)
 
-	sgUpdateForReceiver, err := store.UpdateForReceiver(ctx, newReceiverId)
-	is.NoErr(err)
-	is.Equal(sgUpdateForReceiver.SeekRequest.ReceiverState, pb.SeekState_ABSENT)
-
 	newReceiverConnId := "new_receiver_conn_id"
 	sgPresentReceiverConnId := newSoughtGame()
 	sgPresentReceiverConnId.SeekRequest.ReceiverState = pb.SeekState_PRESENT
@@ -70,10 +66,6 @@ func TestSoughtGame(t *testing.T) {
 
 	err = store.New(ctx, sgPresentReceiverConnId)
 	is.NoErr(err)
-
-	sgUpdateForReceiverConnId, err := store.UpdateForReceiverConnID(ctx, sgPresentReceiverConnId.SeekRequest.ReceiverConnectionId)
-	is.NoErr(err)
-	is.Equal(sgUpdateForReceiverConnId.SeekRequest.ReceiverState, pb.SeekState_ABSENT)
 
 	// list open
 	listedSoughtGames, err := store.ListOpenSeeks(ctx, common.DefaultSeekRequest.ReceivingUser.UserId, "")
@@ -182,20 +174,12 @@ func TestNonexistingSoughtGames(t *testing.T) {
 	is.NoErr(err)
 	is.Equal(len(deleted), 0)
 
-	sg, err := store.UpdateForReceiver(ctx, nonexistentValue)
-	is.NoErr(err)
-	is.Equal(sg, nil)
-
 	deleted, err = store.DeleteForSeekerConnID(ctx, nonexistentValue)
 	is.NoErr(err)
 	is.Equal(len(deleted), 0)
 
 	_, _, err = store.Claim(ctx, nonexistentValue)
 	is.True(errors.Is(err, entity.ErrSeekGone))
-
-	sg, err = store.UpdateForReceiverConnID(ctx, nonexistentValue)
-	is.NoErr(err)
-	is.Equal(sg, nil)
 
 	store.Disconnect()
 }

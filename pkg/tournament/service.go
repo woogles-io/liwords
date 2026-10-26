@@ -11,10 +11,10 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/aws/aws-sdk-go-v2/service/lambda"
 	"github.com/aws/aws-sdk-go-v2/service/lambda/types"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/lithammer/shortuuid/v4"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -721,13 +721,22 @@ func (ts *TournamentService) GetPastTournaments(ctx context.Context, req *connec
 	return connect.NewResponse(response), nil
 }
 
+// GetMyTournaments lists the tournaments and clubs the caller directs or, for
+// a caller who can see private user data (the admin user lookup), those that
+// the user named in the request directs.
 func (ts *TournamentService) GetMyTournaments(ctx context.Context, req *connect.Request[pb.GetMyTournamentsRequest]) (*connect.Response[pb.GetMyTournamentsResponse], error) {
 	user, err := apiserver.AuthUser(ctx, ts.userStore)
 	if err != nil {
 		return nil, err
 	}
+	director, err := listedUser(ctx, ts.userStore, user, req.Msg.Username, func() (bool, error) {
+		return rbac.HasPermission(ctx, ts.queries, user.ID, rbac.CanSeePrivateUserData)
+	})
+	if err != nil {
+		return nil, err
+	}
 
-	tournaments, err := ts.tournamentStore.GetTournamentsByDirector(ctx, user.ID)
+	tournaments, err := ts.tournamentStore.GetTournamentsByDirector(ctx, director.ID)
 	if err != nil {
 		return nil, apiserver.InternalErr(err)
 	}
@@ -745,6 +754,28 @@ func (ts *TournamentService) GetMyTournaments(ctx context.Context, req *connect.
 		response.Tournaments[i] = tMeta
 	}
 	return connect.NewResponse(response), nil
+}
+
+// listedUser picks whose tournaments to list: the viewer's own when no
+// other username is given, else that user's, if the viewer can see private
+// user data.
+func listedUser(ctx context.Context, us user.Store, viewer *entity.User,
+	username string, canSeePrivateUserData func() (bool, error)) (*entity.User, error) {
+	if username == "" || strings.EqualFold(username, viewer.Username) {
+		return viewer, nil
+	}
+	allowed, err := canSeePrivateUserData()
+	if err != nil {
+		return nil, apiserver.InternalErr(err)
+	}
+	if !allowed {
+		return nil, apiserver.PermissionDenied("you can only list your own tournaments")
+	}
+	target, err := us.Get(ctx, username)
+	if err != nil {
+		return nil, apiserver.InvalidArg(err.Error())
+	}
+	return target, nil
 }
 
 func authenticateDirector(ctx context.Context, ts *TournamentService, id string, req proto.Message, requireFullDirector bool) error {
@@ -1221,19 +1252,25 @@ func (ts *TournamentService) GetTournamentMonitoring(ctx context.Context, req *c
 	}), nil
 }
 
-func dbTournamentToTournamentMetadataResponse(ctx context.Context, t *entity.Tournament) (*pb.TournamentMetadata, error) {
-	var tt pb.TType
-	switch t.Type {
+// competitionTType is a tournament's type as the API names it.
+func competitionTType(ct entity.CompetitionType) (pb.TType, error) {
+	switch ct {
 	case entity.TypeStandard:
-		tt = pb.TType_STANDARD
+		return pb.TType_STANDARD, nil
 	case entity.TypeChild:
-		tt = pb.TType_CHILD
+		return pb.TType_CHILD, nil
 	case entity.TypeClub:
-		tt = pb.TType_CLUB
+		return pb.TType_CLUB, nil
 	case entity.TypeLegacy:
-		tt = pb.TType_LEGACY
-	default:
-		return nil, fmt.Errorf("unrecognized tournament type: %v", t.Type)
+		return pb.TType_LEGACY, nil
+	}
+	return pb.TType_STANDARD, fmt.Errorf("unrecognized tournament type: %v", ct)
+}
+
+func dbTournamentToTournamentMetadataResponse(ctx context.Context, t *entity.Tournament) (*pb.TournamentMetadata, error) {
+	tt, err := competitionTType(t.Type)
+	if err != nil {
+		return nil, err
 	}
 
 	var scheduledStartTime *timestamppb.Timestamp
