@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { GameEndReason } from "../gen/api/proto/ipc/omgwords_pb";
 import { CrosstableGameSchema } from "../gen/api/proto/league_service/league_service_pb";
 import {
+  anyDraws,
   buildCrosstable,
   crossClass,
   endMark,
@@ -262,5 +263,34 @@ describe("ifEndedNow", () => {
     expect(now.get("a")).toMatchObject({ rank: 1, tied: true, final: false });
     expect(now.get("b")).toMatchObject({ rank: 1, tied: true, final: false });
     expect(now.get("c")).toMatchObject({ draws: 0, rank: 3, final: true });
+  });
+});
+
+describe("anyDraws", () => {
+  const live = { gameEndReason: GameEndReason.NONE, winnerIndex: -1 };
+  const standings = (draws: number) =>
+    ["a", "b"].map((userId) => ({
+      userId,
+      wins: 0,
+      losses: 0,
+      draws,
+      spread: 0,
+    }));
+
+  it("is false while every game has a leader", () => {
+    const cells = buildCrosstable(
+      ["a", "b"],
+      [game({ ...live, playerOnTurn: 0 })],
+    );
+    expect(anyDraws(ifEndedNow(standings(0), cells))).toBe(false);
+  });
+
+  it("counts a level game in progress, and a finished draw", () => {
+    const level = buildCrosstable(
+      ["a", "b"],
+      [game({ ...live, player1Score: 400, playerOnTurn: 0 })],
+    );
+    expect(anyDraws(ifEndedNow(standings(0), level))).toBe(true);
+    expect(anyDraws(ifEndedNow(standings(1), new Map()))).toBe(true);
   });
 });
