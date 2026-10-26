@@ -23,12 +23,15 @@ import { GameEndReason } from "../gen/api/proto/ipc/omgwords_pb";
 import { UsernameWithContext } from "../shared/usernameWithContext";
 import { scorePair } from "../utils/score_pair";
 import { endReasonLabel } from "./player_game_history_modal";
+import { setRosterOnScreen } from "./live_updates";
 
 type Props = {
   leagueId: string;
   currentUserId?: string;
   activeSeasonNumber?: number;
   defaultSortSeason?: number;
+  // Whether the roster is on screen: only then does a game's end reload it.
+  shown?: boolean;
   // With the player whose season was picked, so the page can follow them.
   onJumpToSeason: (
     seasonNumber: number,
@@ -234,8 +237,17 @@ export const LeagueRoster: React.FC<Props> = ({
   currentUserId,
   activeSeasonNumber,
   defaultSortSeason,
+  shown,
   onJumpToSeason,
 }) => {
+  // A game's end reloads the roster only while it is on screen; leaving the
+  // page takes it off.
+  useEffect(() => {
+    setRosterOnScreen(!!shown);
+    return () => {
+      setRosterOnScreen(false);
+    };
+  }, [shown]);
   const [search, setSearch] = useState("");
   const [h2hUserId, setH2hUserId] = useState("");
   const [h2hUsername, setH2hUsername] = useState("");

@@ -865,6 +865,7 @@ export const LeaguePage = (props: Props) => {
               <div style={{ display: showRoster ? undefined : "none" }}>
                 <LeagueRoster
                   leagueId={league.uuid}
+                  shown={showRoster}
                   currentUserId={userID}
                   activeSeasonNumber={currentSeason?.seasonNumber}
                   defaultSortSeason={displayedSeason?.seasonNumber}

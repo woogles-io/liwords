@@ -257,9 +257,14 @@ func performEndgameDuties(ctx context.Context, g *entity.Game,
 
 	// Send a notification to the lobby that this
 	// game ended. This will remove it from the list of live games.
+	// The players get it wherever they are, too: their own lists of
+	// correspondence games are on pages outside the lobby, such as a league's.
 	wrapped = entity.WrapEvent(&pb.GameDeletion{Id: g.GameID()},
 		pb.MessageType_GAME_DELETION)
 	wrapped.AddAudience(entity.AudLobby, "gameEnded")
+	for _, p := range players(g) {
+		wrapped.AddAudience(entity.AudUser, p)
+	}
 	g.SendChange(wrapped)
 
 	if g.TournamentData != nil && g.TournamentData.Id != "" {
@@ -303,6 +308,9 @@ func performEndgameDuties(ctx context.Context, g *entity.Game,
 			log.Err(err).Str("gid", g.GameID()).Msg("failed-to-update-league-standings")
 		}
 	}
+	// Now that the standings have the result, tell the league's page, however
+	// the game ended (played out, time, resignation, forfeit, adjudication).
+	sendLeagueGameUpdated(g, true)
 
 	// Enqueue league games for analysis
 	if g.LeagueDivisionID != nil {
