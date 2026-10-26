@@ -1219,8 +1219,10 @@ type AnnotatedGamesResponse_AnnotatedGame struct {
 	Lexicon         string                 `protobuf:"bytes,6,opt,name=lexicon,proto3" json:"lexicon,omitempty"`
 	CreatedAt       *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	CreatorUsername string                 `protobuf:"bytes,8,opt,name=creator_username,json=creatorUsername,proto3" json:"creator_username,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// classic, wordsmog, classic_super (ZOMGWords) or wordsmog_super.
+	Variant       string `protobuf:"bytes,9,opt,name=variant,proto3" json:"variant,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AnnotatedGamesResponse_AnnotatedGame) Reset() {
@@ -1309,6 +1311,13 @@ func (x *AnnotatedGamesResponse_AnnotatedGame) GetCreatorUsername() string {
 	return ""
 }
 
+func (x *AnnotatedGamesResponse_AnnotatedGame) GetVariant() string {
+	if x != nil {
+		return x.Variant
+	}
+	return ""
+}
+
 var File_proto_omgwords_service_omgwords_proto protoreflect.FileDescriptor
 
 const file_proto_omgwords_service_omgwords_proto_rawDesc = "" +
@@ -1350,9 +1359,9 @@ const file_proto_omgwords_service_omgwords_proto_rawDesc = "" +
 	"\n" +
 	"unfinished\x18\x03 \x01(\bR\n" +
 	"unfinished\"\x1d\n" +
-	"\x1bGetMyUnfinishedGamesRequest\"\x9a\x03\n" +
+	"\x1bGetMyUnfinishedGamesRequest\"\xb4\x03\n" +
 	"\x16AnnotatedGamesResponse\x12L\n" +
-	"\x05games\x18\x01 \x03(\v26.omgwords_service.AnnotatedGamesResponse.AnnotatedGameR\x05games\x1a\xb1\x02\n" +
+	"\x05games\x18\x01 \x03(\v26.omgwords_service.AnnotatedGamesResponse.AnnotatedGameR\x05games\x1a\xcb\x02\n" +
 	"\rAnnotatedGame\x12\x17\n" +
 	"\agame_id\x18\x01 \x01(\tR\x06gameId\x12\x1d\n" +
 	"\n" +
@@ -1363,7 +1372,8 @@ const file_proto_omgwords_service_omgwords_proto_rawDesc = "" +
 	"\alexicon\x18\x06 \x01(\tR\alexicon\x129\n" +
 	"\n" +
 	"created_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x12)\n" +
-	"\x10creator_username\x18\b \x01(\tR\x0fcreatorUsername\"\x9e\x01\n" +
+	"\x10creator_username\x18\b \x01(\tR\x0fcreatorUsername\x12\x18\n" +
+	"\avariant\x18\t \x01(\tR\avariant\"\x9e\x01\n" +
 	"\x12AnnotatedGameEvent\x12.\n" +
 	"\x05event\x18\x01 \x01(\v2\x18.ipc.ClientGameplayEventR\x05event\x12\x17\n" +
 	"\auser_id\x18\x02 \x01(\tR\x06userId\x12!\n" +

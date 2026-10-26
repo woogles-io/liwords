@@ -3,7 +3,6 @@ package soughtgame
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -145,50 +144,6 @@ func (s *DBStore) DeleteForUser(ctx context.Context, userID string) ([]*entity.S
 	return soughtGamesFromRows(rows)
 }
 
-// UpdateForReceiver updates the receiver's status when the receiver leaves
-func (s *DBStore) UpdateForReceiver(ctx context.Context, receiverID string) (*entity.SoughtGame, error) {
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Rollback(ctx)
-
-	qtx := s.queries.WithTx(tx)
-	data, err := qtx.GetSoughtGameByReceiverID(ctx, pgtype.Text{String: receiverID, Valid: true})
-	if err != nil {
-		if err == pgx.ErrNoRows {
-			return nil, nil
-		}
-		return nil, err
-	}
-	sg, err := soughtGameFromBytes(data)
-	if err != nil {
-		return nil, err
-	}
-
-	sg.SeekRequest.ReceiverState = pb.SeekState_ABSENT
-	receiverState, err := json.Marshal(int32(pb.SeekState_ABSENT))
-	if err != nil {
-		return nil, err
-	}
-	rowsAffected, err := qtx.UpdateSoughtGameReceiverAbsentByReceiverID(ctx, models.UpdateSoughtGameReceiverAbsentByReceiverIDParams{
-		ReceiverState: receiverState,
-		ReceiverID:    pgtype.Text{String: receiverID, Valid: true},
-	})
-	if err != nil {
-		return nil, err
-	}
-	if rowsAffected != 1 {
-		return nil, fmt.Errorf("failed to update receiver status: %s (%d rows affected)", receiverID, rowsAffected)
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return nil, err
-	}
-
-	return sg, nil
-}
-
 // DeleteForSeekerConnID deletes the real-time seeks and match requests made
 // from a connection, and returns them. Correspondence seeks are not deleted
 // when seeker disconnects - they persist for the receiver to accept later.
@@ -260,49 +215,6 @@ func (s *DBStore) Claim(ctx context.Context, id string) (claimed *entity.SoughtG
 		return nil, nil, err
 	}
 	return claimed, others, nil
-}
-
-func (s *DBStore) UpdateForReceiverConnID(ctx context.Context, connID string) (*entity.SoughtGame, error) {
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Rollback(ctx)
-
-	qtx := s.queries.WithTx(tx)
-	data, err := qtx.GetSoughtGameByReceiverConnID(ctx, pgtype.Text{String: connID, Valid: true})
-	if err != nil {
-		if err == pgx.ErrNoRows {
-			return nil, nil
-		}
-		return nil, err
-	}
-	sg, err := soughtGameFromBytes(data)
-	if err != nil {
-		return nil, err
-	}
-
-	sg.SeekRequest.ReceiverState = pb.SeekState_ABSENT
-	receiverState, err := json.Marshal(int32(pb.SeekState_ABSENT))
-	if err != nil {
-		return nil, err
-	}
-	rowsAffected, err := qtx.UpdateSoughtGameReceiverAbsentByReceiverConnID(ctx, models.UpdateSoughtGameReceiverAbsentByReceiverConnIDParams{
-		ReceiverState:  receiverState,
-		ReceiverConnID: pgtype.Text{String: connID, Valid: true},
-	})
-	if err != nil {
-		return nil, err
-	}
-	if rowsAffected != 1 {
-		return nil, fmt.Errorf("failed to update receiver status: %s (%d rows affected)", connID, rowsAffected)
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return nil, err
-	}
-
-	return sg, nil
 }
 
 // ListOpenSeeks lists all open seek requests for receiverID, in tourneyID (optional)

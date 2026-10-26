@@ -803,6 +803,8 @@ func handleEventAfterLockingGame(ctx context.Context, stores *stores.Stores, use
 				}
 				entGame.SendChange(wrapped)
 			}
+			// A league game's page shows its live score and whose turn it is.
+			sendLeagueGameUpdated(entGame, false)
 		}
 
 	}

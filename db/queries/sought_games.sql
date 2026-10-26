@@ -7,9 +7,6 @@ SELECT request FROM soughtgames WHERE seeker_conn_id = @seeker_conn_id;
 -- name: GetSoughtGameByReceiverConnID :one
 SELECT request FROM soughtgames WHERE receiver_conn_id = @receiver_conn_id;
 
--- name: GetSoughtGameByReceiverID :one
-SELECT request FROM soughtgames WHERE receiver = @receiver_id;
-
 -- name: DeleteSoughtGameByUUID :exec
 DELETE FROM soughtgames WHERE uuid = @uuid;
 
@@ -41,12 +38,6 @@ DELETE FROM soughtgames WHERE (game_mode IS NULL OR game_mode = 0) AND created_a
 
 -- name: ExpireOldCorrespondenceSeeks :execrows
 DELETE FROM soughtgames WHERE game_mode = 1 AND created_at < NOW() - INTERVAL '60 hours';
-
--- name: UpdateSoughtGameReceiverAbsentByReceiverID :execrows
-UPDATE soughtgames SET request = jsonb_set(request, array['receiver_state'], @receiver_state) WHERE receiver = @receiver_id;
-
--- name: UpdateSoughtGameReceiverAbsentByReceiverConnID :execrows
-UPDATE soughtgames SET request = jsonb_set(request, array['receiver_state'], @receiver_state) WHERE receiver_conn_id = @receiver_conn_id;
 
 -- name: ListOpenSeeksByTourney :many
 SELECT request FROM soughtgames WHERE receiver = @receiver_id AND request->>'tournament_id' = @tournament_id::text;

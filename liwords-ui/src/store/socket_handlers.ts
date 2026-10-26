@@ -38,6 +38,8 @@ import {
   BroadcastGamesUpdatedEventSchema,
   LagMeasurement,
   LagMeasurementSchema,
+  LeagueGameUpdatedEvent,
+  LeagueGameUpdatedEventSchema,
   MessageType,
   ServerMessage,
   ServerMessageSchema,
@@ -140,6 +142,10 @@ import { App } from "antd";
 import { fromBinary } from "@bufbuild/protobuf";
 import { useTournamentCompetitorState } from "../hooks/use_tournament_competitor_state";
 import { isCalledToRound } from "./selectors/round_selectors";
+import {
+  leagueGameQueryFilters,
+  scheduleLeagueRefresh,
+} from "../leagues/live_updates";
 // Feature flag.
 export const enableShowSocket =
   localStorage?.getItem("enableShowSocket") === "true";
@@ -206,6 +212,7 @@ const MsgTypesMap = {
   [MessageType.ANALYSIS_COMPLETE]: AnalysisCompleteEventSchema,
   [MessageType.BROADCAST_UPDATED]: BroadcastUpdatedEventSchema,
   [MessageType.BROADCAST_GAMES_UPDATED]: BroadcastGamesUpdatedEventSchema,
+  [MessageType.LEAGUE_GAME_UPDATED]: LeagueGameUpdatedEventSchema,
 };
 
 export const parseMsgs = (
@@ -1154,6 +1161,12 @@ export const useOnSocketMsg = () => {
               ],
             });
             console.log(`broadcast-games-updated slug=${ev.slug}`);
+            break;
+          }
+          case MessageType.LEAGUE_GAME_UPDATED: {
+            // A league page's game moved on or ended: reload what it changes.
+            const ev = parsedMsg as LeagueGameUpdatedEvent;
+            scheduleLeagueRefresh(queryClient, leagueGameQueryFilters(ev));
             break;
           }
         }

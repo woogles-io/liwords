@@ -24,10 +24,8 @@ type SoughtGameStore interface {
 	ExistsForUser(ctx context.Context, userID string) (bool, error)
 	CanCreateSeek(ctx context.Context, userID string, gameMode pb.GameMode, receiverID string) (bool, string, error)
 	DeleteForUser(ctx context.Context, userID string) ([]*entity.SoughtGame, error)
-	UpdateForReceiver(ctx context.Context, userID string) (*entity.SoughtGame, error)
 	DeleteForSeekerConnID(ctx context.Context, connID string) ([]*entity.SoughtGame, error)
 	Claim(ctx context.Context, id string) (claimed *entity.SoughtGame, others []*entity.SoughtGame, err error)
-	UpdateForReceiverConnID(ctx context.Context, connID string) (*entity.SoughtGame, error)
 	UserMatchedBy(ctx context.Context, userID, matcher string) (bool, error)
 	ExpireOld(ctx context.Context) error
 }

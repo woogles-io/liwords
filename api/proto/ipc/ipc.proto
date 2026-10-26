@@ -70,10 +70,25 @@ enum MessageType {
   ANALYSIS_COMPLETE = 51;
   BROADCAST_UPDATED = 52;
   BROADCAST_GAMES_UPDATED = 53;
+  LEAGUE_GAME_UPDATED = 54;
 }
 
 message AnalysisCompleteEvent {
   string game_id = 1;
+}
+
+// Sent to a league's page (channel-league-{league id without dashes}) when
+// one of its games has a new move or has ended, for whatever reason, so the
+// page can reload what that game changes: its season's standings, its
+// division's cross-table and time banks, and its players' season games.
+message LeagueGameUpdatedEvent {
+  string league_id = 1;
+  string season_id = 2;
+  string division_id = 3;
+  string game_id = 4;
+  // The two players' user ids.
+  repeated string player_ids = 5;
+  bool ended = 6;
 }
 
 // Sent when a live broadcast's feed data has been updated (scores, new round, etc.)

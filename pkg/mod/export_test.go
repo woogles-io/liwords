@@ -15,3 +15,6 @@ func SetChatReviewNow(now func() time.Time) func() {
 
 // ChannelContext exposes channelContext to the mod_test package.
 var ChannelContext = (*ModService).channelContext
+
+// FindChannels exposes findChannels to the mod_test package.
+var FindChannels = (*ModService).findChannels

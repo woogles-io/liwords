@@ -27,7 +27,12 @@ import {
 } from "./constants";
 import { PoolFormatType } from "../constants/pool_formats";
 import { LoginState, LoginStateReducer } from "./login_state";
-import { EphemeralTile, MachineLetter } from "../utils/cwgame/common";
+import {
+  EphemeralTile,
+  MachineLetter,
+  PlayedTiles,
+  PlayerOfTiles,
+} from "../utils/cwgame/common";
 import { ActiveChatChannels } from "../gen/api/proto/user_service/user_service_pb";
 import {
   defaultTournamentState,
@@ -179,15 +184,28 @@ type TimerStoreData = {
   setPTimedOut: (p: PlayerOrder | undefined) => void;
 };
 
+// PlacedTilesBoard is the board placedTiles goes on when that is not the
+// game's own: the game's, with the moves that come before the placed move in
+// an analysis line played on it, shown the way the game shows a played move.
+// It holds only while placedTiles is still the set it was made with.
+export type PlacedTilesBoard = {
+  placedTiles: Set<EphemeralTile>;
+  letters: Array<MachineLetter>;
+  lastPlayedTiles: PlayedTiles;
+  playerOfTileAt: PlayerOfTiles;
+};
+
 type TentativePlayData = {
   placedTilesTempScore: number | undefined;
   placedTiles: Set<EphemeralTile>;
+  placedTilesBoard: PlacedTilesBoard | undefined;
   displayedRack: Array<MachineLetter>;
   blindfoldCommand: string;
   blindfoldUseNPA: boolean;
   pendingExchangeTiles: Array<MachineLetter> | null;
   setPlacedTilesTempScore: (s: number | undefined) => void;
   setPlacedTiles: (t: Set<EphemeralTile>) => void;
+  setPlacedTilesBoard: (b: PlacedTilesBoard | undefined) => void;
   setDisplayedRack: (l: Array<MachineLetter>) => void;
   setBlindfoldCommand: (l: string) => void;
   setBlindfoldUseNPA: (l: boolean) => void;
@@ -262,12 +280,14 @@ const LagContext = createContext<LagStoreData>({
 const TentativePlayContext = createContext<TentativePlayData>({
   placedTilesTempScore: undefined,
   placedTiles: new Set<EphemeralTile>(),
+  placedTilesBoard: undefined,
   displayedRack: new Array<MachineLetter>(),
   blindfoldCommand: "",
   blindfoldUseNPA: false,
   pendingExchangeTiles: null,
   setPlacedTilesTempScore: defaultFunction,
   setPlacedTiles: defaultFunction,
+  setPlacedTilesBoard: defaultFunction,
   setDisplayedRack: defaultFunction,
   setBlindfoldCommand: defaultFunction,
   setBlindfoldUseNPA: defaultFunction,
@@ -919,6 +939,9 @@ const RealStore = ({ children, ...props }: Props) => {
     number | undefined
   >(undefined);
   const [placedTiles, setPlacedTiles] = useState(new Set<EphemeralTile>());
+  const [placedTilesBoard, setPlacedTilesBoard] = useState<
+    PlacedTilesBoard | undefined
+  >(undefined);
   const [displayedRack, setDisplayedRack] = useState(
     new Array<MachineLetter>(),
   );
@@ -1139,12 +1162,14 @@ const RealStore = ({ children, ...props }: Props) => {
     () => ({
       placedTilesTempScore,
       placedTiles,
+      placedTilesBoard,
       displayedRack,
       blindfoldCommand,
       blindfoldUseNPA,
       pendingExchangeTiles,
       setPlacedTilesTempScore,
       setPlacedTiles,
+      setPlacedTilesBoard,
       setDisplayedRack,
       setBlindfoldCommand,
       setBlindfoldUseNPA,
@@ -1153,12 +1178,14 @@ const RealStore = ({ children, ...props }: Props) => {
     [
       placedTilesTempScore,
       placedTiles,
+      placedTilesBoard,
       displayedRack,
       blindfoldCommand,
       blindfoldUseNPA,
       pendingExchangeTiles,
       setPlacedTilesTempScore,
       setPlacedTiles,
+      setPlacedTilesBoard,
       setDisplayedRack,
       setBlindfoldCommand,
       setBlindfoldUseNPA,

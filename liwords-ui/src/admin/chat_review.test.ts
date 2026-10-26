@@ -10,6 +10,7 @@ import {
   sortGroups,
   sortRows,
   summariesToCSV,
+  tableGroups,
 } from "./chat_review";
 
 describe("chat review", () => {
@@ -91,6 +92,24 @@ describe("chat review", () => {
       "game:g1",
       "chat.pm.a_b",
       "game:g2",
+    ]);
+  });
+
+  it("keeps a lookup's order, exact matches first, and sorts a search's", () => {
+    const row = (channel: string, last: number) =>
+      create(ChatChannelSummarySchema, {
+        channel,
+        lastTimestamp: BigInt(last),
+      });
+    // the league matched exactly; the club, with newer chat, by its name.
+    const rows = [row("chat.league.l1", 100), row("chat.tournament.c1", 900)];
+    expect(tableGroups(rows, true, false).map((g) => g.key)).toEqual([
+      "chat.league.l1",
+      "chat.tournament.c1",
+    ]);
+    expect(tableGroups(rows, false, false).map((g) => g.key)).toEqual([
+      "chat.tournament.c1",
+      "chat.league.l1",
     ]);
   });
 

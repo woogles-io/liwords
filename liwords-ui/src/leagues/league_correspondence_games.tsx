@@ -1,23 +1,103 @@
 import React, { useMemo } from "react";
-import { Card, Empty, Tooltip } from "antd";
+import { Card, Empty, Tooltip, Typography } from "antd";
 import { useNavigate } from "react-router";
+import { timestampDate } from "@bufbuild/protobuf/wkt";
 import { useQuery } from "@connectrpc/connect-query";
 import { CorrespondenceTurnIndicator } from "../shared/corres_turn_indicator";
 import { useLobbyStoreContext } from "../store/store";
 import { useLoginStateStoreContext } from "../store/store";
+import { scorePair } from "../utils/score_pair";
 import { onTurnCountdowns } from "../utils/time_bank_calculator";
-import { getPlayerLeagueH2H } from "../gen/api/proto/league_service/league_service-LeagueService_connectquery";
-import { H2HRecord } from "../gen/api/proto/league_service/league_service_pb";
+import { GameEndReason } from "../gen/api/proto/ipc/omgwords_pb";
+import {
+  getPlayerLeagueH2H,
+  getPlayerSeasonGames,
+} from "../gen/api/proto/league_service/league_service-LeagueService_connectquery";
+import {
+  H2HRecord,
+  PlayerSeasonGame,
+} from "../gen/api/proto/league_service/league_service_pb";
+import { endReasonLabel } from "./player_game_history_modal";
+
+const { Text } = Typography;
 
 type LeagueCorrespondenceGamesProps = {
   leagueSlug: string;
+  // The season underway, whose games just ended are listed too.
+  seasonId?: string;
+  // The season that closed last. Closing decides its unfinished games all at
+  // once, just before the next season starts, so those results are listed
+  // too while they are recent, apart and under the season's name.
+  closedSeason?: { uuid: string; seasonNumber: number };
+};
+
+// A row's name keeps to the room the score leaves it, and shortens with an
+// ellipsis rather than pushing the score out of view; hovering the name gives
+// it whole, with the record (nameTitle).
+const nameStyle: React.CSSProperties = {
+  minWidth: 0,
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+};
+const scoreStyle: React.CSSProperties = {
+  flexShrink: 0,
+  fontWeight: 500,
+  fontSize: "13px",
+  whiteSpace: "nowrap",
+};
+
+// How long a finished game stays under "Just ended".
+const JUST_ENDED_MS = 24 * 60 * 60 * 1000;
+
+// The season's games that ended in the last day, newest first: a result can
+// land while the player is away (a timeout, an opponent playing out).
+export const justEndedGames = (
+  games: Array<PlayerSeasonGame>,
+  nowMs: number,
+): Array<PlayerSeasonGame> =>
+  games
+    .filter(
+      (g) =>
+        (g.result === "win" || g.result === "loss" || g.result === "draw") &&
+        g.gameDate !== undefined &&
+        nowMs - timestampDate(g.gameDate).getTime() <= JUST_ENDED_MS,
+    )
+    .sort(
+      (a, b) =>
+        timestampDate(b.gameDate!).getTime() -
+        timestampDate(a.gameDate!).getTime(),
+    );
+
+// "Won", "Lost (time)", "Drew": a game not played out says how it ended.
+const resultText = (g: PlayerSeasonGame): string => {
+  const verb =
+    g.result === "win" ? "Won" : g.result === "loss" ? "Lost" : "Drew";
+  return g.gameEndReason === GameEndReason.STANDARD
+    ? verb
+    : `${verb} (${endReasonLabel(g.gameEndReason)})`;
+};
+
+// "just now", "25m ago", "3h ago".
+const endedAgo = (ms: number): string => {
+  const mins = Math.floor((Date.now() - ms) / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  return `${Math.floor(mins / 60)}h ago`;
+};
+
+// A score's spread, shown on hovering it: "+12", "-3", "+0".
+const spreadText = (spread: number): string =>
+  `${spread >= 0 ? "+" : ""}${spread}`;
+
+// "3-1 (+120)", "2-2-1 (-5)".
+const h2hCompactText = (record: H2HRecord): string => {
+  const { wins, losses, draws, spread } = record;
+  const spreadStr = spread > 0 ? `+${spread}` : `${spread}`;
+  return `${wins}-${losses}${draws ? `-${draws}` : ""} (${spreadStr})`;
 };
 
 const formatH2HCompact = (record: H2HRecord | undefined) => {
   if (!record) return null;
-  const { wins, losses, draws, spread } = record;
-  const spreadStr = spread > 0 ? `+${spread}` : `${spread}`;
-  const wld = `${wins}-${losses}${draws ? `-${draws}` : ""}`;
   return (
     <span
       style={{
@@ -25,14 +105,32 @@ const formatH2HCompact = (record: H2HRecord | undefined) => {
         opacity: 0.7,
       }}
     >
-      {wld} ({spreadStr})
+      {h2hCompactText(record)}
     </span>
   );
 };
 
+// A row's name and record whole, for hovering a name the ellipsis cut.
+const nameTitle = (name: string, record: H2HRecord | undefined): string =>
+  record ? `vs ${name} ${h2hCompactText(record)}` : `vs ${name}`;
+
+// The lifetime record against an opponent, after their name, with the
+// record in words on hover.
+const h2hBadge = (record: H2HRecord | undefined) =>
+  record && (
+    <>
+      {" "}
+      <Tooltip
+        title={`Lifetime league record: ${record.wins}W-${record.losses}L${record.draws ? `-${record.draws}D` : ""} ${record.spread > 0 ? "+" : ""}${record.spread}`}
+      >
+        {formatH2HCompact(record)}
+      </Tooltip>
+    </>
+  );
+
 export const LeagueCorrespondenceGames: React.FC<
   LeagueCorrespondenceGamesProps
-> = ({ leagueSlug }) => {
+> = ({ leagueSlug, seasonId, closedSeason }) => {
   const navigate = useNavigate();
   const {
     loginState: { userID },
@@ -49,6 +147,27 @@ export const LeagueCorrespondenceGames: React.FC<
       leagueId: leagueSlug,
     },
     { enabled: !!userID },
+  );
+
+  // The viewer's games this season, for those that just ended.
+  const { data: seasonGamesData } = useQuery(
+    getPlayerSeasonGames,
+    { userId: userID || "", seasonId: seasonId || "" },
+    { enabled: !!userID && !!seasonId },
+  );
+  const justEnded = useMemo(
+    () => justEndedGames(seasonGamesData?.games ?? [], Date.now()),
+    [seasonGamesData?.games],
+  );
+  // And in the season that closed last, for its results decided at closing.
+  const { data: closedGamesData } = useQuery(
+    getPlayerSeasonGames,
+    { userId: userID || "", seasonId: closedSeason?.uuid || "" },
+    { enabled: !!userID && !!closedSeason },
+  );
+  const justClosed = useMemo(
+    () => justEndedGames(closedGamesData?.games ?? [], Date.now()),
+    [closedGamesData?.games],
   );
 
   // Build a map of opponent UUID -> H2HRecord
@@ -120,13 +239,107 @@ export const LeagueCorrespondenceGames: React.FC<
     }
   };
 
+  const endedRows = (games: Array<PlayerSeasonGame>) =>
+    games.map((g) => (
+      <div
+        key={g.gameId}
+        className="league-game-item compact"
+        onClick={(event) => handleGameClick(g.gameId, event)}
+        onAuxClick={(event) => {
+          if (event.button === 1) {
+            // middle-click
+            window.open(`/game/${encodeURIComponent(g.gameId)}`);
+          }
+        }}
+        style={{ cursor: "pointer" }}
+      >
+        <div className="game-info-compact">
+          <div
+            className="opponent-name-compact"
+            style={{
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: "8px",
+            }}
+          >
+            <span style={nameStyle}>
+              <Tooltip
+                title={nameTitle(
+                  g.opponentUsername,
+                  h2hMap.get(g.opponentUserId),
+                )}
+              >
+                <span>vs {g.opponentUsername}</span>
+              </Tooltip>
+              {h2hBadge(h2hMap.get(g.opponentUserId))}
+            </span>
+            <span style={scoreStyle}>
+              <Tooltip
+                placement="left"
+                title={spreadText(g.playerScore - g.opponentScore)}
+              >
+                {scorePair(g.playerScore, g.opponentScore)}
+              </Tooltip>
+            </span>
+          </div>
+          <div className="turn-indicator-compact">
+            {/* the size and weight of the line, as "Their turn" has */}
+            <Text
+              type={
+                g.result === "win"
+                  ? "success"
+                  : g.result === "loss"
+                    ? "danger"
+                    : "secondary"
+              }
+              style={{
+                fontSize: "inherit",
+                fontWeight: "inherit",
+                lineHeight: "inherit",
+              }}
+            >
+              {resultText(g)}
+            </Text>{" "}
+            {endedAgo(timestampDate(g.gameDate!).getTime())}
+          </div>
+        </div>
+      </div>
+    ));
+
+  const justEndedList = (justEnded.length > 0 || justClosed.length > 0) && (
+    <>
+      {justEnded.length > 0 && (
+        <>
+          <div className="league-just-ended-title">Just ended</div>
+          {endedRows(justEnded)}
+        </>
+      )}
+      {closedSeason && justClosed.length > 0 && (
+        <>
+          <div className="league-just-ended-title">
+            Season {closedSeason.seasonNumber}, just closed
+          </div>
+          {endedRows(justClosed)}
+        </>
+      )}
+    </>
+  );
+
   if (leagueGames.length === 0) {
     return (
       <Card title="My League Games">
-        <Empty
-          description="No active league games"
-          image={Empty.PRESENTED_IMAGE_SIMPLE}
-        />
+        {justEndedList ? (
+          <div className="league-games-list">{justEndedList}</div>
+        ) : (
+          <Empty
+            description="No active league games"
+            image={Empty.PRESENTED_IMAGE_SIMPLE}
+          />
+        )}
       </Card>
     );
   }
@@ -191,32 +404,16 @@ export const LeagueCorrespondenceGames: React.FC<
                     gap: "8px",
                   }}
                 >
-                  <span>
-                    vs {opponentName}
-                    {h2hRecord && (
-                      <>
-                        {" "}
-                        <Tooltip
-                          title={`Lifetime league record: ${h2hRecord.wins}W-${h2hRecord.losses}L${h2hRecord.draws ? `-${h2hRecord.draws}D` : ""} ${h2hRecord.spread > 0 ? "+" : ""}${h2hRecord.spread}`}
-                        >
-                          {formatH2HCompact(h2hRecord)}
-                        </Tooltip>
-                      </>
-                    )}
+                  <span style={nameStyle}>
+                    <Tooltip title={nameTitle(opponentName, h2hRecord)}>
+                      <span>vs {opponentName}</span>
+                    </Tooltip>
+                    {h2hBadge(h2hRecord)}
                   </span>
                   {hasScores && (
-                    <span
-                      style={{
-                        fontWeight: 500,
-                        fontSize: "13px",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      <Tooltip
-                        placement="left"
-                        title={`${spread >= 0 ? "+" : ""}${spread}`}
-                      >
-                        {userScore}-{opponentScore}
+                    <span style={scoreStyle}>
+                      <Tooltip placement="left" title={spreadText(spread)}>
+                        {scorePair(userScore, opponentScore)}
                       </Tooltip>
                     </span>
                   )}
@@ -239,6 +436,7 @@ export const LeagueCorrespondenceGames: React.FC<
             </div>
           );
         })}
+        {justEndedList}
       </div>
     </Card>
   );

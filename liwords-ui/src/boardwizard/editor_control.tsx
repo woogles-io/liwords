@@ -36,6 +36,7 @@ import {
 } from "../gen/api/proto/broadcast_service/broadcast_service-BroadcastService_connectquery";
 import { OBSPanel } from "../broadcasts/OBSPanel";
 import { StreamSlotsPanel } from "../broadcasts/StreamSlotsPanel";
+import { VariantFormItem } from "./variants";
 
 type Props = {
   gameID?: string;
@@ -44,6 +45,7 @@ type Props = {
     p2name: string,
     lex: string,
     chrule: ChallengeRule,
+    variant: string,
   ) => void;
   deleteGame: (gid: string) => void;
   editGame: (p1name: string, p2name: string, description: string) => void;
@@ -321,6 +323,7 @@ type CreationFormProps = {
     p2name: string,
     lex: string,
     chrule: ChallengeRule,
+    variant: string,
   ) => void;
 };
 const CreationForm = (props: CreationFormProps) => {
@@ -333,6 +336,7 @@ const CreationForm = (props: CreationFormProps) => {
           vals.p2name,
           vals.lexicon,
           vals.challengerule,
+          vals.variant,
         )
       }
     >
@@ -365,6 +369,7 @@ const CreationForm = (props: CreationFormProps) => {
         excludedLexica={new Set(["ECWL"])}
         additionalLexica={historicalLexica}
       />
+      <VariantFormItem />
       <Form.Item
         label="Challenge rule"
         name="challengerule"

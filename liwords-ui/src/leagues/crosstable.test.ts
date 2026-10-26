@@ -3,10 +3,12 @@ import { describe, expect, it } from "vitest";
 import { GameEndReason } from "../gen/api/proto/ipc/omgwords_pb";
 import { CrosstableGameSchema } from "../gen/api/proto/league_service/league_service_pb";
 import {
+  anyDraws,
   buildCrosstable,
   crossClass,
   endMark,
   ifEndedNow,
+  onTurnCounts,
   scoreType,
 } from "./crosstable";
 
@@ -82,6 +84,40 @@ describe("buildCrosstable", () => {
     expect(cells.get("a|b")?.map((c) => c.gameId)).toEqual(["1", "2"]);
     expect(cells.get("a|stranger")).toBeUndefined();
     expect(cells.size).toBe(2);
+  });
+});
+
+describe("onTurnCounts", () => {
+  it("counts the games in progress each player is on turn in", () => {
+    const live = { gameEndReason: GameEndReason.NONE, winnerIndex: -1 };
+    const cells = buildCrosstable(
+      ["a", "b", "c"],
+      [
+        // finished: on nobody
+        game({ gameId: "ab" }),
+        // live, a to move, twice over
+        game({ ...live, gameId: "ac", player1UserId: "c", playerOnTurn: 0 }),
+        game({
+          ...live,
+          gameId: "ca",
+          player0UserId: "c",
+          player1UserId: "a",
+          playerOnTurn: 1,
+        }),
+        // live, b to move
+        game({
+          ...live,
+          gameId: "bc",
+          player0UserId: "b",
+          player1UserId: "c",
+          playerOnTurn: 0,
+        }),
+      ],
+    );
+    const n = onTurnCounts(["a", "b", "c"], cells);
+    expect(n.get("a")).toBe(2);
+    expect(n.get("b")).toBe(1);
+    expect(n.get("c")).toBe(0);
   });
 });
 
@@ -262,5 +298,34 @@ describe("ifEndedNow", () => {
     expect(now.get("a")).toMatchObject({ rank: 1, tied: true, final: false });
     expect(now.get("b")).toMatchObject({ rank: 1, tied: true, final: false });
     expect(now.get("c")).toMatchObject({ draws: 0, rank: 3, final: true });
+  });
+});
+
+describe("anyDraws", () => {
+  const live = { gameEndReason: GameEndReason.NONE, winnerIndex: -1 };
+  const standings = (draws: number) =>
+    ["a", "b"].map((userId) => ({
+      userId,
+      wins: 0,
+      losses: 0,
+      draws,
+      spread: 0,
+    }));
+
+  it("is false while every game has a leader", () => {
+    const cells = buildCrosstable(
+      ["a", "b"],
+      [game({ ...live, playerOnTurn: 0 })],
+    );
+    expect(anyDraws(ifEndedNow(standings(0), cells))).toBe(false);
+  });
+
+  it("counts a level game in progress, and a finished draw", () => {
+    const level = buildCrosstable(
+      ["a", "b"],
+      [game({ ...live, player1Score: 400, playerOnTurn: 0 })],
+    );
+    expect(anyDraws(ifEndedNow(standings(0), level))).toBe(true);
+    expect(anyDraws(ifEndedNow(standings(1), new Map()))).toBe(true);
   });
 });

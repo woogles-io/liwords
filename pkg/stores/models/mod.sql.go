@@ -171,3 +171,81 @@ func (q *Queries) GetTournamentNameAndSlug(ctx context.Context, uuid pgtype.Text
 	err := row.Scan(&i.Name, &i.Slug)
 	return i, err
 }
+
+const getTournamentUUIDBySlug = `-- name: GetTournamentUUIDBySlug :one
+SELECT uuid FROM tournaments WHERE LOWER(slug) = LOWER($1)
+`
+
+func (q *Queries) GetTournamentUUIDBySlug(ctx context.Context, slug string) (pgtype.Text, error) {
+	row := q.db.QueryRow(ctx, getTournamentUUIDBySlug, slug)
+	var uuid pgtype.Text
+	err := row.Scan(&uuid)
+	return uuid, err
+}
+
+const searchLeaguesByNameOrSlug = `-- name: SearchLeaguesByNameOrSlug :many
+SELECT uuid::text FROM leagues
+WHERE name ILIKE $1::text OR slug ILIKE $1::text
+ORDER BY created_at DESC
+LIMIT $2
+`
+
+type SearchLeaguesByNameOrSlugParams struct {
+	Pattern string
+	Lim     int32
+}
+
+// Leagues whose name or slug matches a LIKE pattern, newest first.
+func (q *Queries) SearchLeaguesByNameOrSlug(ctx context.Context, arg SearchLeaguesByNameOrSlugParams) ([]string, error) {
+	rows, err := q.db.Query(ctx, searchLeaguesByNameOrSlug, arg.Pattern, arg.Lim)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var uuid string
+		if err := rows.Scan(&uuid); err != nil {
+			return nil, err
+		}
+		items = append(items, uuid)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const searchTournamentsByNameOrSlug = `-- name: SearchTournamentsByNameOrSlug :many
+SELECT uuid FROM tournaments
+WHERE name ILIKE $1::text OR slug ILIKE $1::text
+ORDER BY created_at DESC
+LIMIT $2
+`
+
+type SearchTournamentsByNameOrSlugParams struct {
+	Pattern string
+	Lim     int32
+}
+
+// Tournaments and clubs whose name or slug matches a LIKE pattern, newest
+// first.
+func (q *Queries) SearchTournamentsByNameOrSlug(ctx context.Context, arg SearchTournamentsByNameOrSlugParams) ([]pgtype.Text, error) {
+	rows, err := q.db.Query(ctx, searchTournamentsByNameOrSlug, arg.Pattern, arg.Lim)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []pgtype.Text
+	for rows.Next() {
+		var uuid pgtype.Text
+		if err := rows.Scan(&uuid); err != nil {
+			return nil, err
+		}
+		items = append(items, uuid)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
