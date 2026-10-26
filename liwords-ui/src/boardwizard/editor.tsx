@@ -24,10 +24,8 @@ import {
   ChallengeRule as OMGChallengeRule,
   GameDocumentSchema,
   GameDocument_MinimalPlayerInfoSchema,
-  GameRulesSchema,
 } from "../gen/api/proto/ipc/omgwords_pb";
 import { GameEventService } from "../gen/api/proto/omgwords_service/omgwords_pb";
-import { defaultLetterDistribution } from "../lobby/sought_game_interactions";
 import { TopBar } from "../navigation/topbar";
 import { sortTiles } from "../store/constants";
 import {
@@ -43,6 +41,7 @@ import { EndOfGameModal } from "./time_penalty";
 import { PlayState } from "../gen/api/proto/ipc/omgwords_pb";
 import { syntheticGameInfo } from "./synthetic_game_info";
 import { EditorLandingPage } from "./new_game";
+import { annotatedGameRules } from "./variants";
 import { MachineLetter, MachineWord } from "../utils/cwgame/common";
 import { create } from "@bufbuild/protobuf";
 import { useComments } from "../utils/hooks/comments";
@@ -433,18 +432,14 @@ export const BoardEditor = () => {
     p2name: string,
     lex: string,
     chrule: OMGChallengeRule,
+    variant: string,
   ) => {
-    // the lexicon and letter distribution are tied together.
-    const ld = defaultLetterDistribution(lex);
     try {
       const resp = await eventClient.createAnnotatedGame({
         playersInfo: [p1name, p2name].map(omgPlayerInfo),
         lexicon: lex,
-        rules: create(GameRulesSchema, {
-          boardLayoutName: "CrosswordGame", // for now
-          letterDistributionName: ld,
-          variantName: "classic", // for now
-        }),
+        // the variant picks the board, and the lexicon the tiles.
+        rules: annotatedGameRules(lex, variant),
         challengeRule: chrule,
         public: false,
       });

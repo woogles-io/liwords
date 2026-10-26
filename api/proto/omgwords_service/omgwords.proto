@@ -67,6 +67,8 @@ message AnnotatedGamesResponse {
     string lexicon = 6;
     google.protobuf.Timestamp created_at = 7;
     string creator_username = 8;
+    // classic, wordsmog, classic_super (ZOMGWords) or wordsmog_super.
+    string variant = 9;
   }
   repeated AnnotatedGame games = 1;
 }

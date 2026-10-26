@@ -34,6 +34,7 @@ type Props = {
     p2name: string,
     lex: string,
     chrule: ChallengeRule,
+    variant: string,
   ) => void;
 };
 
