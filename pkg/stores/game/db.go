@@ -988,6 +988,9 @@ func recentGameInfos(games []models.GetRecentGamesByUserIdRow) *pb.GameInfoRespo
 			TournamentRound:     int32(tRound),
 			TournamentGameIndex: int32(tGameIndex),
 			Type:                gType,
+			// Empty unless the game's tournament still exists.
+			TournamentName: g.TournamentName,
+			TournamentSlug: g.TournamentSlug,
 		}
 
 		// Populate league fields if present
@@ -995,6 +998,7 @@ func recentGameInfos(games []models.GetRecentGamesByUserIdRow) *pb.GameInfoRespo
 			leagueUUID := uuid.UUID(g.LeagueID.Bytes)
 			info.LeagueId = leagueUUID.String()
 			info.LeagueSlug = g.LeagueSlug
+			info.LeagueName = g.LeagueName
 		}
 
 		responses = append(responses, info)

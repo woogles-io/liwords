@@ -600,10 +600,14 @@ SELECT g.id, g.uuid, g.type, g.player0_id, g.player1_id,
        g.timers, g.started, g.game_end_reason, g.winner_idx, g.loser_idx,
        g.quickdata, g.tournament_data, g.created_at, g.updated_at,
        g.game_request, g.league_id, g.season_id, g.league_division_id,
-       COALESCE(l.slug, '')::text AS league_slug
+       COALESCE(l.slug, '')::text AS league_slug,
+       COALESCE(l.name, '')::text AS league_name,
+       COALESCE(t.name, '')::text AS tournament_name,
+       COALESCE(t.slug, '')::text AS tournament_slug
 FROM recent_game_uuids rgu
 JOIN games g ON rgu.game_uuid = g.uuid
 LEFT JOIN leagues l ON l.uuid = g.league_id
+LEFT JOIN tournaments t ON t.uuid = g.tournament_id
 ORDER BY rgu.updated_at ASC, rgu.game_uuid ASC
 `
 
@@ -634,6 +638,9 @@ type GetRecentGamesAfterRow struct {
 	SeasonID         pgtype.UUID
 	LeagueDivisionID pgtype.UUID
 	LeagueSlug       string
+	LeagueName       string
+	TournamentName   string
+	TournamentSlug   string
 }
 
 // The user's games just newer than (@after_time, @after_uuid), oldest first
@@ -672,6 +679,9 @@ func (q *Queries) GetRecentGamesAfter(ctx context.Context, arg GetRecentGamesAft
 			&i.SeasonID,
 			&i.LeagueDivisionID,
 			&i.LeagueSlug,
+			&i.LeagueName,
+			&i.TournamentName,
+			&i.TournamentSlug,
 		); err != nil {
 			return nil, err
 		}
@@ -700,10 +710,14 @@ SELECT g.id, g.uuid, g.type, g.player0_id, g.player1_id,
        g.timers, g.started, g.game_end_reason, g.winner_idx, g.loser_idx,
        g.quickdata, g.tournament_data, g.created_at, g.updated_at,
        g.game_request, g.league_id, g.season_id, g.league_division_id,
-       COALESCE(l.slug, '')::text AS league_slug
+       COALESCE(l.slug, '')::text AS league_slug,
+       COALESCE(l.name, '')::text AS league_name,
+       COALESCE(t.name, '')::text AS tournament_name,
+       COALESCE(t.slug, '')::text AS tournament_slug
 FROM recent_game_uuids rgu
 JOIN games g ON rgu.game_uuid = g.uuid
 LEFT JOIN leagues l ON l.uuid = g.league_id
+LEFT JOIN tournaments t ON t.uuid = g.tournament_id
 ORDER BY rgu.updated_at DESC, rgu.game_uuid DESC
 `
 
@@ -734,6 +748,9 @@ type GetRecentGamesBeforeRow struct {
 	SeasonID         pgtype.UUID
 	LeagueDivisionID pgtype.UUID
 	LeagueSlug       string
+	LeagueName       string
+	TournamentName   string
+	TournamentSlug   string
 }
 
 // The user's games just older than (@before_time, @before_uuid) in
@@ -773,6 +790,9 @@ func (q *Queries) GetRecentGamesBefore(ctx context.Context, arg GetRecentGamesBe
 			&i.SeasonID,
 			&i.LeagueDivisionID,
 			&i.LeagueSlug,
+			&i.LeagueName,
+			&i.TournamentName,
+			&i.TournamentSlug,
 		); err != nil {
 			return nil, err
 		}
@@ -798,10 +818,14 @@ SELECT g.id, g.uuid, g.type, g.player0_id, g.player1_id,
        g.timers, g.started, g.game_end_reason, g.winner_idx, g.loser_idx,
        g.quickdata, g.tournament_data, g.created_at, g.updated_at,
        g.game_request, g.league_id, g.season_id, g.league_division_id,
-       COALESCE(l.slug, '')::text AS league_slug
+       COALESCE(l.slug, '')::text AS league_slug,
+       COALESCE(l.name, '')::text AS league_name,
+       COALESCE(t.name, '')::text AS tournament_name,
+       COALESCE(t.slug, '')::text AS tournament_slug
 FROM recent_game_uuids rgu
 JOIN games g ON rgu.game_uuid = g.uuid
 LEFT JOIN leagues l ON l.uuid = g.league_id
+LEFT JOIN tournaments t ON t.uuid = g.tournament_id
 ORDER BY rgu.updated_at DESC
 `
 
@@ -831,6 +855,9 @@ type GetRecentGamesByUserIdRow struct {
 	SeasonID         pgtype.UUID
 	LeagueDivisionID pgtype.UUID
 	LeagueSlug       string
+	LeagueName       string
+	TournamentName   string
+	TournamentSlug   string
 }
 
 func (q *Queries) GetRecentGamesByUserId(ctx context.Context, arg GetRecentGamesByUserIdParams) ([]GetRecentGamesByUserIdRow, error) {
@@ -862,6 +889,9 @@ func (q *Queries) GetRecentGamesByUserId(ctx context.Context, arg GetRecentGames
 			&i.SeasonID,
 			&i.LeagueDivisionID,
 			&i.LeagueSlug,
+			&i.LeagueName,
+			&i.TournamentName,
+			&i.TournamentSlug,
 		); err != nil {
 			return nil, err
 		}

@@ -267,6 +267,7 @@
       }
     }
     .detail-icons {
+      margin-top: auto;
       text-align: right;
       font-size: 16px;
       font-weight: 800;
@@ -303,9 +304,17 @@
         line-height: 1.5em;
       }
     }
+    // One line more than the card's details need, for a game's league or
+    // tournament; the icons keep to the bottom either way.
     .ant-card-body {
-      display: block;
-      height: 140px;
+      display: flex;
+      flex-direction: column;
+      height: 162px;
+    }
+    .game-event {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
     .time-control {
       text-transform: capitalize;
