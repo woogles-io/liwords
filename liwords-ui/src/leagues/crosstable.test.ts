@@ -8,6 +8,7 @@ import {
   crossClass,
   endMark,
   ifEndedNow,
+  onTurnCounts,
   scoreType,
 } from "./crosstable";
 
@@ -83,6 +84,40 @@ describe("buildCrosstable", () => {
     expect(cells.get("a|b")?.map((c) => c.gameId)).toEqual(["1", "2"]);
     expect(cells.get("a|stranger")).toBeUndefined();
     expect(cells.size).toBe(2);
+  });
+});
+
+describe("onTurnCounts", () => {
+  it("counts the games in progress each player is on turn in", () => {
+    const live = { gameEndReason: GameEndReason.NONE, winnerIndex: -1 };
+    const cells = buildCrosstable(
+      ["a", "b", "c"],
+      [
+        // finished: on nobody
+        game({ gameId: "ab" }),
+        // live, a to move, twice over
+        game({ ...live, gameId: "ac", player1UserId: "c", playerOnTurn: 0 }),
+        game({
+          ...live,
+          gameId: "ca",
+          player0UserId: "c",
+          player1UserId: "a",
+          playerOnTurn: 1,
+        }),
+        // live, b to move
+        game({
+          ...live,
+          gameId: "bc",
+          player0UserId: "b",
+          player1UserId: "c",
+          playerOnTurn: 0,
+        }),
+      ],
+    );
+    const n = onTurnCounts(["a", "b", "c"], cells);
+    expect(n.get("a")).toBe(2);
+    expect(n.get("b")).toBe(1);
+    expect(n.get("c")).toBe(0);
   });
 });
 
