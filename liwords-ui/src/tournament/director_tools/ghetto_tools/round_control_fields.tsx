@@ -462,8 +462,10 @@ export const rdCtrlFromSetting = (
       // The Reset Round field is 1-based (a round number; the default is 1 =
       // avoid all repeats), but the proto/engine store reset_round 0-based like
       // every other round. Convert on the way in: input N -> N-1. Default input
-      // 1 -> 0, which is also the proto3 zero-default ("avoid all").
-      rdCtrl.resetRound = (rdSetting.resetRound ?? 1) - 1;
+      // 1 -> 0, which is also the proto3 zero-default ("avoid all"). A new
+      // round's setting holds the proto3 default of 0 rather than undefined,
+      // while the field shows 1, so 0 is read as 1 too.
+      rdCtrl.resetRound = (rdSetting.resetRound || 1) - 1;
       break;
 
     case PairingMethod.PAIRING_METHOD_COP:
