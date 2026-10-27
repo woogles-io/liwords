@@ -281,6 +281,22 @@ func (q *Queries) LockSoughtGameSeeker(ctx context.Context, seekerID string) err
 	return err
 }
 
+const realtimeMatchRequestExists = `-- name: RealtimeMatchRequestExists :one
+SELECT EXISTS(SELECT 1 FROM soughtgames WHERE seeker = $1 AND receiver = $2 AND (game_mode IS NULL OR game_mode = 0))
+`
+
+type RealtimeMatchRequestExistsParams struct {
+	SeekerID   pgtype.Text
+	ReceiverID pgtype.Text
+}
+
+func (q *Queries) RealtimeMatchRequestExists(ctx context.Context, arg RealtimeMatchRequestExistsParams) (bool, error) {
+	row := q.db.QueryRow(ctx, realtimeMatchRequestExists, arg.SeekerID, arg.ReceiverID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const seekExistsFromMatcher = `-- name: SeekExistsFromMatcher :one
 SELECT EXISTS(SELECT 1 FROM soughtgames WHERE receiver = $1 AND seeker = $2)
 `
@@ -295,4 +311,17 @@ func (q *Queries) SeekExistsFromMatcher(ctx context.Context, arg SeekExistsFromM
 	var exists bool
 	err := row.Scan(&exists)
 	return exists, err
+}
+
+const tryLockSoughtGameSeeker = `-- name: TryLockSoughtGameSeeker :one
+SELECT pg_try_advisory_xact_lock(hashtext('soughtgame-seeker:' || $1::text))
+`
+
+// Takes the same lock as LockSoughtGameSeeker if it is free, and returns
+// whether it did, without waiting.
+func (q *Queries) TryLockSoughtGameSeeker(ctx context.Context, seekerID string) (bool, error) {
+	row := q.db.QueryRow(ctx, tryLockSoughtGameSeeker, seekerID)
+	var pg_try_advisory_xact_lock bool
+	err := row.Scan(&pg_try_advisory_xact_lock)
+	return pg_try_advisory_xact_lock, err
 }
