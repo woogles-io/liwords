@@ -52,12 +52,12 @@ type australianStanding struct {
 //  1. wins, counted as 2*wins + draws (a win outranks a draw, matching the
 //     win metric used everywhere else in this package and in getRecords),
 //  2. spread, descending,
-//  3. player id, ascending (a deterministic final tiebreaker).
+//  3. the order the members arrived in, which the stable sort keeps.
 //
-// "Total points since round 1" is part of the canonical standings order
-// the caller already applied, but it is not carried on PoolMember, so it
-// cannot participate in this local re-sort; id keeps the order total and
-// deterministic in its absence.
+// The caller hands the members over in the division standings order, whose
+// final tiebreak is seed, so members tied on wins and spread stay in seed
+// order. In round 1 every record is 0-0 with 0 spread, so this is what makes
+// the casement split the field by seed rather than by player id.
 func sortAustralianStandings(members []*entity.PoolMember) []australianStanding {
 	standings := make([]australianStanding, len(members))
 	for i, m := range members {
@@ -75,10 +75,7 @@ func sortAustralianStandings(members []*entity.PoolMember) []australianStanding 
 		if wi != wj {
 			return wi > wj
 		}
-		if standings[i].spread != standings[j].spread {
-			return standings[i].spread > standings[j].spread
-		}
-		return standings[i].id < standings[j].id
+		return standings[i].spread > standings[j].spread
 	})
 	return standings
 }
