@@ -25,6 +25,12 @@ export const seekKey = (sg: SoughtGame): string =>
 
 export type SeekGroup = { sg: SoughtGame; count: number };
 
+// The most alternatives an accept carries: the server tries no more
+// (maxSeekAlternatives in pkg/bus/meseeks.go), and a much longer list would
+// take the message past the socket server's size limit (maxMessageSize in
+// services/socketsrv/pkg/hub/client.go), which closes the connection.
+export const MAX_SEEK_ALTERNATIVES = 50;
+
 // The other open seeks identical to this one, sent along with an accept: if
 // the seek is gone by the time the server reads it (someone else took it,
 // or it was canceled), the server takes the first of these still there.
@@ -35,6 +41,7 @@ export const identicalSeekIDs = (
   const key = seekKey(sg);
   return seeks
     .filter((o) => o.seekID !== sg.seekID && seekKey(o) === key)
+    .slice(0, MAX_SEEK_ALTERNATIVES)
     .map((o) => o.seekID);
 };
 
