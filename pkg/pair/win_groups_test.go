@@ -188,11 +188,11 @@ func withoutPair(r []int, a, b int) []int {
 	return out
 }
 
-// casementEach calls done with every pairing of the even group of n positions
-// that australianCasementBlocked's search visits, in the same order: first
+// halvesEach calls done with every pairing of the even group of n positions
+// that pairHalves's search visits, in the same order: first
 // every pairing with no two top-half players together (its first pass), then
 // every pairing at all (its second). It returns true as soon as done does.
-func casementEach(n int, blocked [][]bool, done func([]int) bool) bool {
+func halvesEach(n int, blocked [][]bool, done func([]int) bool) bool {
 	pairings := make([]int, n)
 	for i := range pairings {
 		pairings[i] = -1
@@ -266,7 +266,7 @@ func winGroupsAsWritten(n int, score []int, blocked [][]bool) ([]int, bool) {
 			for a := range sub {
 				sub[a] = blocked[i+a][i:j]
 			}
-			if casementEach(g, sub, func(gp []int) bool {
+			if halvesEach(g, sub, func(gp []int) bool {
 				for a, b := range gp {
 					pairings[i+a] = i + b
 				}
@@ -316,25 +316,25 @@ func randomField(rng *rand.Rand) (int, []int, [][]bool) {
 	return n, score, blocked
 }
 
-func TestCasementEachStartsWhereTheCasementSearchStops(t *testing.T) {
+func TestHalvesEachStartsWhereTheHalvesSearchStops(t *testing.T) {
 	is := is.New(t)
 
-	// casementEach's first pairing must be australianCasementBlocked's answer,
+	// halvesEach's first pairing must be pairHalves's answer,
 	// or winGroupsAsWritten below would not be the same rule.
 	rng := rand.New(rand.NewPCG(7, 13))
 	for trial := 0; trial < 3000; trial++ {
 		n, _, blocked := randomField(rng)
 		var first []int
-		casementEach(n, blocked, func(p []int) bool {
+		halvesEach(n, blocked, func(p []int) bool {
 			first = p
 			return true
 		})
-		got, err := australianCasementBlocked(n, blocked)
+		got, ok := pairHalves(n, blocked)
 		if first == nil {
-			is.True(err != nil)
+			is.True(!ok)
 			continue
 		}
-		is.NoErr(err)
+		is.True(ok)
 		is.Equal(got, first)
 	}
 }

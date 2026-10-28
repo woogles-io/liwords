@@ -14,7 +14,8 @@ import (
 // leaves the rest of the field pairable, backtracking when a choice paints
 // the draw into a corner.
 //
-// Round 1 uses a casement draw (top half vs bottom half). Every later round
+// Round 1 pairs the top half against the bottom half (pairHalves, which Win
+// Groups uses for each of its groups). Every later round
 // pairs the top remaining player with the highest-standing opponent they are
 // allowed to face, recursing on the rest and backtracking if no completion
 // exists. A rematch is avoided only when the two players met in a round at or
@@ -57,7 +58,7 @@ type australianStanding struct {
 // The caller hands the members over in the division standings order, whose
 // final tiebreak is seed, so members tied on wins and spread stay in seed
 // order. In round 1 every record is 0-0 with 0 spread, so this is what makes
-// the casement split the field by seed rather than by player id.
+// round 1 split the field into halves by seed rather than by player id.
 func sortAustralianStandings(members []*entity.PoolMember) []australianStanding {
 	standings := make([]australianStanding, len(members))
 	for i, m := range members {
@@ -78,182 +79,6 @@ func sortAustralianStandings(members []*entity.PoolMember) []australianStanding 
 		return standings[i].spread > standings[j].spread
 	})
 	return standings
-}
-
-// australianCasement returns the round-1 casement pairings for n players in
-// standings order. Pairings are expressed in standings positions: position
-// p is paired against the value at index p. The top half plays the bottom
-// half (0 vs n/2, 1 vs n/2+1, ...). With an odd count the lone middle
-// player (position n/2) gets a bye, represented by -1.
-func australianCasement(n int) []int {
-	pairings := make([]int, n)
-	for i := range pairings {
-		pairings[i] = -1
-	}
-	half := n / 2
-	for i := 0; i < half; i++ {
-		top := i
-		bottom := i + half + (n % 2)
-		pairings[top] = bottom
-		pairings[bottom] = top
-	}
-	// When n is odd the middle player (position half) keeps its -1 bye.
-	return pairings
-}
-
-// australianCasementBlocked returns the round-1 casement pairings for an even
-// field of n positions while honoring director blocks, guaranteeing zero
-// top-vs-top pairings whenever a draw with none exists. The caller pads an odd
-// field with a phantom bye before calling, so n is always even here.
-// blocked[a][b] is true when positions a and b may not be paired (a director
-// block, or, for the phantom column, a position barred from the bye). When no
-// casement pair is blocked it reproduces the plain casement byte for byte (top
-// half vs bottom half), so the common round-1 draw is unchanged. When a
-// casement pair is blocked it repairs the draw by sliding the affected
-// positions to the nearest legal partner within the casement structure,
-// keeping every other position on its casement opponent. If no complete legal
-// pairing exists it returns a clear error.
-//
-// "Top-vs-top" is defined by the top half: positions [0, n/2) are the top
-// players, and a pair is top-vs-top iff both endpoints lie there. On a padded
-// odd field the phantom bye is the last (lowest) position, so it is always a
-// bottom player -- pairing a top player with it (the real bye) is never
-// top-vs-top.
-//
-// The repair is a two-phase backtracker over the remaining positions in
-// standings order (see casement below). It is dispatched in two passes:
-//
-//  1. casement(all, false) -- flips (top-vs-top pairings) disallowed. The only
-//     pairings tried join two players that are not both top-half, so a complete
-//     draw it finds has no top-vs-top pair. p (the top of the remaining set)
-//     may pair any non-top-vs-top partner; backtracking explores every such
-//     choice. This pass therefore succeeds iff a draw with zero top-vs-top
-//     exists, and when it does the result is guaranteed to have none.
-//  2. casement(all, true) -- flips permitted, tried only when pass 1 fails (no
-//     zero-top-vs-top draw exists). It admits the forced top-vs-top pairings,
-//     nearest first, so the draw is perturbed as little as the casement
-//     structure allows while never wrongly rejecting a legal draw.
-//
-// An unobstructed field is resolved entirely by pass 1 and reproduces
-// australianCasement (with any phantom bye landing on the lone middle): the
-// proper casement opponent is always nearest-first and unblocked, so the
-// boundary fallback is never taken until forced.
-func australianCasementBlocked(n int, blocked [][]bool) ([]int, error) {
-	pairings := make([]int, n)
-
-	// topCount is the size of the top half. A pair (a, b) is top-vs-top (a
-	// "flip") iff both endpoints are top players.
-	topCount := n / 2
-	topVsTop := func(a, b int) bool { return a < topCount && b < topCount }
-
-	// casement attempts to pair the remaining positions r (a subset of [0, n)
-	// in ascending standings order) into pairings, recursing on the rest. When
-	// allowFlip is false only non-top-vs-top pairings are tried, so a complete
-	// draw it finds has no top-vs-top pair; when true it also tries the forced
-	// top-vs-top pairings as a fallback. It mutates pairings in place and undoes
-	// its writes on a failed branch, so on return false pairings is unchanged.
-	// The field is even and each step removes a pair, so every recursive r is
-	// even too.
-	// Per-depth scratch buffers for the remaining-positions list, so the
-	// backtracking allocates nothing per node. Each level removes a pair, so
-	// the recursion depth is bounded by n/2.
-	scratch := make([][]int, n/2+1)
-	for i := range scratch {
-		scratch[i] = make([]int, n)
-	}
-
-	var casement func(r []int, allowFlip bool, depth int) bool
-	casement = func(r []int, allowFlip bool, depth int) bool {
-		if len(r) == 0 {
-			return true
-		}
-
-		// p is the top remaining position; half = len(r)/2 marks p's ideal
-		// casement opponent r[half] (the top of the bottom half). r[half:] are
-		// the proper casement bottoms; r[1:half] are the nearer positions.
-		p := r[0]
-		half := len(r) / 2
-
-		// Phase 1a: proper casement bottoms r[half:], nearest to p's ideal
-		// opponent first (r is ascending, so ascending over r[half:] is
-		// nearest-first). None of these are top-vs-top.
-		for _, b := range r[half:] {
-			if blocked[p][b] {
-				continue
-			}
-			pairings[p] = b
-			pairings[b] = p
-			if casement(withoutInto(scratch[depth], r, p, b), allowFlip, depth+1) {
-				return true
-			}
-			pairings[p] = -1
-			pairings[b] = -1
-		}
-
-		// Phase 1b: the non-top-vs-top positions among r[1:half] -- bottoms that
-		// fell into the near half after earlier removals. A fallback after the
-		// proper bottoms, but still part of the no-flip pass because pairing them
-		// is not top-vs-top.
-		for _, b := range r[1:half] {
-			if topVsTop(p, b) || blocked[p][b] {
-				continue
-			}
-			pairings[p] = b
-			pairings[b] = p
-			if casement(withoutInto(scratch[depth], r, p, b), allowFlip, depth+1) {
-				return true
-			}
-			pairings[p] = -1
-			pairings[b] = -1
-		}
-
-		// Phase 2: the top-vs-top positions among r[1:half], nearest to p first
-		// -- a forced flip. Reached only when flips are permitted, i.e. only
-		// after the no-flip pass has shown no zero-top-vs-top draw exists.
-		if allowFlip {
-			for _, b := range r[1:half] {
-				if !topVsTop(p, b) || blocked[p][b] {
-					continue
-				}
-				pairings[p] = b
-				pairings[b] = p
-				if casement(withoutInto(scratch[depth], r, p, b), allowFlip, depth+1) {
-					return true
-				}
-				pairings[p] = -1
-				pairings[b] = -1
-			}
-		}
-
-		return false
-	}
-
-	all := make([]int, n)
-	for i := range all {
-		all[i] = i
-	}
-
-	// Pass 1 first: a complete draw with flips disallowed is guaranteed to have
-	// zero top-vs-top, and it exists whenever any zero-top-vs-top draw does.
-	for i := range pairings {
-		pairings[i] = -1
-	}
-	if casement(all, false, 0) {
-		return pairings, nil
-	}
-
-	// Pass 2: no zero-top-vs-top draw exists, so permit the forced top-vs-top
-	// pairings.
-	for i := range pairings {
-		pairings[i] = -1
-	}
-	if casement(all, true, 0) {
-		return pairings, nil
-	}
-
-	return nil, fmt.Errorf(
-		"australian draw could not pair %d players in the first round under the"+
-			" configured blocks", n)
 }
 
 // withoutInto writes the positions in r (ascending) with a and b removed into
@@ -281,7 +106,7 @@ func withoutInto(dst, r []int, a, b int) []int {
 // symmetric matrix of disallowed pairings (a director block, or a repeat at the
 // active reset round; the phantom bye column is all-false). It returns the
 // pairing array (in standings positions) and whether a complete draw exists.
-// Unlike the round-1 casement it has no top-vs-top concept -- later rounds avoid
+// Unlike round 1's halves it has no top-vs-top concept -- later rounds avoid
 // only repeats, not strong-vs-strong pairings. The caller pads an odd field with
 // a phantom bye, so n is even and each step removes a pair, keeping every
 // recursive r even too.
@@ -543,8 +368,8 @@ func (f *standingsField) result(positionPairings []int) []int {
 // pairAustralianDraw is the dispatcher entry point. It mirrors the other
 // pairing-method functions: members arrive in standings order and the
 // result is an index-into-PoolMembers array (opponent index per player, -1
-// for a bye). An odd field is padded with a phantom bye so the casement and
-// later-round matchers only ever see an even field.
+// for a bye). An odd field is padded with a phantom bye so the first round's
+// halves and the later-round matcher only ever see an even field.
 func pairAustralianDraw(members *entity.UnpairedPoolMembers) ([]int, error) {
 	if members.RoundControls == nil {
 		return nil, errors.New("australian draw requires round controls")
@@ -560,15 +385,18 @@ func pairAustralianDraw(members *entity.UnpairedPoolMembers) ([]int, error) {
 
 	var positionPairings []int
 	if currentRound == 0 {
-		// The first round uses the casement draw (top half vs bottom half) on
-		// the padded even field, but it must still honor director blocks: a
-		// casement pair where one player blocks the other is repaired to the
+		// The first round pairs the padded even field top half against bottom
+		// half, the way Win Groups pairs a group (in a real first round the
+		// whole field is on the same wins), but it must still honor director
+		// blocks: a pair where one player blocks the other is repaired to the
 		// nearest legal partners. Repeats never apply in round 1, so the blocked
 		// matrix carries director blocks alone.
-		var err error
-		positionPairings, err = australianCasementBlocked(f.m, f.blockMatrix())
-		if err != nil {
-			return nil, err
+		var ok bool
+		positionPairings, ok = pairHalves(f.m, f.blockMatrix())
+		if !ok {
+			return nil, fmt.Errorf(
+				"australian draw could not pair %d players in the first round under the"+
+					" configured blocks", f.m)
 		}
 	} else {
 		var err error

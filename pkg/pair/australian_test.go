@@ -1,6 +1,7 @@
 package pair
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 
@@ -94,9 +95,11 @@ func assertSymmetric(is *is.I, pairings []int) {
 	}
 }
 
-func TestAustralianCasement(t *testing.T) {
+func TestAustralianRoundOneHalves(t *testing.T) {
 	is := is.New(t)
 
+	// With no blocks the first round pairs the top half against the bottom
+	// half, and an odd field's phantom bye lands on the lone middle.
 	tests := []struct {
 		name string
 		n    int
@@ -113,7 +116,12 @@ func TestAustralianCasement(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got := australianCasement(tc.n)
+			blocked := make([][]bool, tc.n)
+			for i := range blocked {
+				blocked[i] = make([]bool, tc.n)
+			}
+			got, err := halvesBlockedField(tc.n, blocked, canByeAll)
+			is.NoErr(err)
 			is.NoErr(equalPairings(tc.want, got))
 			assertSymmetric(is, got)
 		})
@@ -123,9 +131,9 @@ func TestAustralianCasement(t *testing.T) {
 func TestAustralianRoundOneDispatch(t *testing.T) {
 	is := is.New(t)
 
-	// Round 0 (the first round) must use the casement draw regardless of
+	// Round 0 (the first round) must pair top half against bottom half regardless of
 	// any repeat data.
-	t.Run("even casement", func(t *testing.T) {
+	t.Run("even halves", func(t *testing.T) {
 		m := auMembers(0, 0, nil, "a", "b", "c", "d")
 		pairings, err := pairAustralianDraw(m)
 		is.NoErr(err)
@@ -134,7 +142,7 @@ func TestAustralianRoundOneDispatch(t *testing.T) {
 		is.Equal(got, map[string]string{"a": "c", "b": "d", "c": "a", "d": "b"})
 	})
 
-	t.Run("odd casement gives middle the bye", func(t *testing.T) {
+	t.Run("odd halves give the middle the bye", func(t *testing.T) {
 		m := auMembers(0, 0, nil, "a", "b", "c", "d", "e")
 		pairings, err := pairAustralianDraw(m)
 		is.NoErr(err)
@@ -197,12 +205,12 @@ func auMembersBlocking(blocking map[string][]string, ids ...string) *entity.Unpa
 	}
 }
 
-func TestAustralianCasementAvoidsBlockedPair(t *testing.T) {
+func TestAustralianRoundOneAvoidsBlockedPair(t *testing.T) {
 	is := is.New(t)
 
-	// Round 0, standings a,b,c,d. The plain casement pairs a-c and b-d (top half
-	// 0,1 vs bottom half 2,3), but a blocks c. The recursive repair re-casements
-	// the unpaired players rather than drifting to a neighbor: a takes the next
+	// Round 0, standings a,b,c,d. The plain halves pair a-c and b-d (top half
+	// 0,1 vs bottom half 2,3), but a blocks c. The recursive repair pairs the
+	// unpaired players by halves again rather than drifting to a neighbor: a takes the next
 	// bottom-half player d, and b takes the freed bottom-half player c, so the
 	// draw stays top-vs-bottom (a-d, b-c) with no needless top-vs-top pair.
 	m := auMembersBlocking(map[string][]string{"a": {"c"}}, "a", "b", "c", "d")
@@ -217,7 +225,7 @@ func TestAustralianCasementAvoidsBlockedPair(t *testing.T) {
 	is.True(got["c"] != "a")
 }
 
-func TestAustralianCasementWithPrepair(t *testing.T) {
+func TestAustralianRoundOneWithPrepair(t *testing.T) {
 	is := is.New(t)
 
 	// Director prepairs the top two players (a-b) in round 0. The remaining
@@ -225,7 +233,8 @@ func TestAustralianCasementWithPrepair(t *testing.T) {
 	// caller does for byes and gibsonized players, then recombined. This
 	// confirms the prepair remove/recombine path applies in round 1, not just
 	// rounds 2+. The remaining pool also carries a block (c refuses e, its
-	// natural casement partner) so the round-1 draw must honor prepair removal
+	// natural partner across the halves) so the round-1 draw must honor prepair
+	// removal
 	// and blocking together.
 	full := auMembersBlocking(map[string][]string{"c": {"e"}},
 		"a", "b", "c", "d", "e", "f")
@@ -249,9 +258,9 @@ func TestAustralianCasementWithPrepair(t *testing.T) {
 	is.NoErr(err)
 	assertSymmetric(is, subPairings)
 
-	// Casement on c,d,e,f would pair c-e and d-f (top half c,d vs bottom half
-	// e,f), but c blocks e. The recursive repair re-casements rather than
-	// drifting: c takes the next bottom-half player f and d takes the freed
+	// Halves on c,d,e,f would pair c-e and d-f (top half c,d vs bottom half
+	// e,f), but c blocks e. The recursive repair pairs by halves again rather
+	// than drifting: c takes the next bottom-half player f and d takes the freed
 	// bottom-half player e, keeping the draw top-vs-bottom (c-f, d-e) with no
 	// needless top-vs-top pair. The prepaired a-b are untouched (not in the
 	// pool).
@@ -291,7 +300,7 @@ func TestAustralianCasementWithPrepair(t *testing.T) {
 	})
 }
 
-func TestAustralianCasementImpossibleUnderBlockingErrors(t *testing.T) {
+func TestAustralianRoundOneImpossibleUnderBlockingErrors(t *testing.T) {
 	is := is.New(t)
 
 	// Round 0 with four players where a refuses every possible opponent. No
@@ -323,12 +332,12 @@ func countTopVsTop(pairings []int) int {
 // canByeAll permits every position to take the bye, the dispatcher's default.
 func canByeAll(pos int) bool { return true }
 
-// casementBlockedField runs the round-1 casement on a field of n real positions
+// halvesBlockedField runs the round-1 halves on a field of n real positions
 // under blocked, padding an odd field with a phantom bye exactly as the
 // dispatcher does and mapping the phantom's partner back to a -1 bye. canBye
 // reports whether a real position may take the bye (the phantom is blocked
 // against positions that may not); pass canByeAll for the dispatcher's default.
-func casementBlockedField(n int, blocked [][]bool, canBye func(pos int) bool) ([]int, error) {
+func halvesBlockedField(n int, blocked [][]bool, canBye func(pos int) bool) ([]int, error) {
 	m := n
 	bye := -1
 	if n%2 == 1 {
@@ -353,9 +362,9 @@ func casementBlockedField(n int, blocked [][]bool, canBye func(pos int) bool) ([
 			}
 		}
 	}
-	got, err := australianCasementBlocked(m, bl)
-	if err != nil {
-		return nil, err
+	got, ok := pairHalves(m, bl)
+	if !ok {
+		return nil, errors.New("no complete legal pairing")
 	}
 	out := make([]int, n)
 	for p := 0; p < n; p++ {
@@ -368,12 +377,32 @@ func casementBlockedField(n int, blocked [][]bool, canBye func(pos int) bool) ([
 	return out, nil
 }
 
-func TestAustralianBlockedMatchesPlainCasement(t *testing.T) {
+// plainHalves is the unblocked round-1 layout for n players in standings
+// order: the top half plays the bottom half (0 vs n/2, 1 vs n/2+1, ...), and
+// with an odd count the lone middle player (position n/2) gets the bye, -1.
+func plainHalves(n int) []int {
+	pairings := make([]int, n)
+	for i := range pairings {
+		pairings[i] = -1
+	}
+	half := n / 2
+	for i := 0; i < half; i++ {
+		top := i
+		bottom := i + half + (n % 2)
+		pairings[top] = bottom
+		pairings[bottom] = top
+	}
+	// When n is odd the middle player (position half) keeps its -1 bye.
+	return pairings
+}
+
+func TestAustralianBlockedMatchesPlainHalves(t *testing.T) {
 	is := is.New(t)
 
-	// With no blocks the backtracking repair must reproduce australianCasement
+	// With no blocks the backtracking repair must reproduce plainHalves
 	// byte for byte, including the odd middle bye, so the common round-1 draw
-	// is unchanged. Trying the exact casement opponent first guarantees this;
+	// is unchanged. Trying the exact opponent across the halves first
+	// guarantees this;
 	// the lone middle of an odd field is reached only once every other position
 	// is paired (the phantom bye lands on it), so it takes the bye.
 	for _, n := range []int{2, 3, 4, 5, 6, 7, 8, 9} {
@@ -381,9 +410,9 @@ func TestAustralianBlockedMatchesPlainCasement(t *testing.T) {
 		for i := range blocked {
 			blocked[i] = make([]bool, n)
 		}
-		got, err := casementBlockedField(n, blocked, canByeAll)
+		got, err := halvesBlockedField(n, blocked, canByeAll)
 		is.NoErr(err) // an unblocked field is always pairable
-		is.NoErr(equalPairings(australianCasement(n), got))
+		is.NoErr(equalPairings(plainHalves(n), got))
 		assertSymmetric(is, got)
 	}
 }
@@ -391,7 +420,7 @@ func TestAustralianBlockedMatchesPlainCasement(t *testing.T) {
 func TestAustralianBlockedAvoidsTopVsTopWhenAlternativeExists(t *testing.T) {
 	is := is.New(t)
 
-	// Round 0, standings a..f. Plain casement pairs the top half a,b,c against
+	// Round 0, standings a..f. Plain halves pair the top half a,b,c against
 	// the bottom half d,e,f (a-d, b-e, c-f). a blocks its ideal partner d. The
 	// backtracking repair must keep the draw top-vs-bottom: a slides to the next
 	// bottom-half player e, and the freed bottom-half player d is taken by the
@@ -415,8 +444,9 @@ func TestAustralianBlockedForcesMinimalTopVsTop(t *testing.T) {
 	// (d,e,f), so neither top can pair a bottom and no zero-top-vs-top draw
 	// exists. Phase 1 (flips disallowed) therefore fails, and phase 2 admits the
 	// single unavoidable top-vs-top: a pairs its nearest top b. The remaining
-	// field is then re-casemented over the players still unpaired -- c,d,e,f --
-	// whose casement is c-e (the top of that set's bottom half) and d-f. The one
+	// field is then paired by halves again over the players still unpaired --
+	// c,d,e,f -- whose halves give c-e (the top of that set's bottom half) and
+	// d-f. The one
 	// top-vs-top is forced; everything else stays top-vs-bottom.
 	m := auMembersBlocking(map[string][]string{
 		"a": {"d", "e", "f"},
@@ -432,7 +462,7 @@ func TestAustralianBlockedForcesMinimalTopVsTop(t *testing.T) {
 	is.Equal(countTopVsTop(pairings), 1) // exactly one, and only because forced
 }
 
-func TestAustralianBlockedResolvesCorneredCaseCasementFaithfully(t *testing.T) {
+func TestAustralianBlockedResolvesCorneredCaseFaithfully(t *testing.T) {
 	is := is.New(t)
 
 	// Round 0, standings a..f. a alone blocks every bottom-half player (d,e,f),
@@ -440,8 +470,8 @@ func TestAustralianBlockedResolvesCorneredCaseCasementFaithfully(t *testing.T) {
 	// first-fit repair could paint into a corner here -- pairing b and c off against
 	// bottoms first strands a among the bottoms it blocks. The two-phase repair
 	// resolves it cleanly: phase 1 (flips disallowed) fails, phase 2 admits the
-	// single unavoidable top-vs-top, a with its nearest top b, then re-casements
-	// the players still unpaired -- c,d,e,f -- as c-e and d-f. Exactly one
+	// single unavoidable top-vs-top, a with its nearest top b, then pairs the
+	// players still unpaired -- c,d,e,f -- by halves as c-e and d-f. Exactly one
 	// top-vs-top, and only because a forced it.
 	m := auMembersBlocking(map[string][]string{"a": {"d", "e", "f"}},
 		"a", "b", "c", "d", "e", "f")
@@ -496,8 +526,8 @@ func TestAustralianBlockedGuaranteesZeroTopVsTopWhenAchievable(t *testing.T) {
 func TestAustralianBlockedByesATopPlayerToAvoidTopVsTop(t *testing.T) {
 	is := is.New(t)
 
-	// Odd field of five, standings a..e. Padded with a phantom bye, the casement
-	// splits top half a,b,c vs bottom half d,e,BYE. The top player a blocks both
+	// Odd field of five, standings a..e. Padded with a phantom bye, the halves
+	// are top half a,b,c vs bottom half d,e,BYE. The top player a blocks both
 	// real bottoms d and e, so its only flip-free option is the phantom bye --
 	// pairing fellow top b or c would be top-vs-top. The single zero-top-vs-top
 	// draw therefore byes a -- a TOP player -- and pairs the rest top-vs-bottom
@@ -525,10 +555,10 @@ func TestAustralianBlockedShiftsByeOffTheMiddle(t *testing.T) {
 
 	// Odd field of five positions 0..4. Unblocked, the lone middle (position 2)
 	// byes. Here the middle is barred from the bye (canBye(2) == false), so the
-	// phantom bye must land on a different position. The casement pairs the
+	// phantom bye must land on a different position. The halves pair the
 	// middle off (0-3, 2-4) and the bye shifts to position 1, leaving a
 	// flip-free draw. The bye is just the phantom's partner, so it lands wherever
-	// the even casement leaves a legal draw -- here on position 1, not the barred
+	// the even halves leave a legal draw -- here on position 1, not the barred
 	// middle.
 	canBye := func(pos int) bool { return pos != 2 }
 	n := 5
@@ -536,7 +566,7 @@ func TestAustralianBlockedShiftsByeOffTheMiddle(t *testing.T) {
 	for i := range blocked {
 		blocked[i] = make([]bool, n)
 	}
-	got, err := casementBlockedField(n, blocked, canBye)
+	got, err := halvesBlockedField(n, blocked, canBye)
 	is.NoErr(err)
 	assertSymmetric(is, got)
 	is.NoErr(equalPairings([]int{3, -1, 4, 0, 2}, got))
@@ -546,16 +576,16 @@ func TestAustralianBlockedShiftsByeOffTheMiddle(t *testing.T) {
 	is.Equal(got[1], -1)  // the bye shifted off the middle, onto position 1
 
 	// Contrast: with every position bye-eligible the bye stays on the middle,
-	// reproducing the plain casement.
-	plain, err := casementBlockedField(n, blocked, canByeAll)
+	// reproducing the plain halves.
+	plain, err := halvesBlockedField(n, blocked, canByeAll)
 	is.NoErr(err)
-	is.NoErr(equalPairings(australianCasement(n), plain)) // middle (2) byes
+	is.NoErr(equalPairings(plainHalves(n), plain)) // middle (2) byes
 }
 
 // existsMatching brute-forces whether the even field of n positions has a
 // complete legal pairing (no bye). When zeroTopVsTopOnly is set it forbids any
 // pair of top-half positions, so it reports whether a zero-top-vs-top draw
-// exists. It is an independent oracle for australianCasementBlocked's two-phase
+// exists. It is an independent oracle for pairHalves's two-phase
 // guarantee, sharing none of its candidate-ordering logic.
 func existsMatching(n int, blocked [][]bool, zeroTopVsTopOnly bool) bool {
 	half := n / 2
@@ -590,14 +620,14 @@ func existsMatching(n int, blocked [][]bool, zeroTopVsTopOnly bool) bool {
 	return rec()
 }
 
-// checkBlockedAgainstOracle runs australianCasementBlocked on an even field
+// checkBlockedAgainstOracle runs pairHalves on an even field
 // under the given blocks and asserts the two-phase contract against the brute
 // oracle: it succeeds exactly when a legal draw exists, never emits a blocked
 // pair, and emits zero top-vs-top exactly when a zero-top-vs-top draw exists.
 func checkBlockedAgainstOracle(is *is.I, n int, blocked [][]bool) {
-	got, err := australianCasementBlocked(n, blocked)
-	is.Equal(err == nil, existsMatching(n, blocked, false)) // succeeds iff legal draw exists
-	if err != nil {
+	got, ok := pairHalves(n, blocked)
+	is.Equal(ok, existsMatching(n, blocked, false)) // succeeds iff legal draw exists
+	if !ok {
 		return
 	}
 	assertSymmetric(is, got)
@@ -797,7 +827,7 @@ func TestAustralianRepeatAvoidance(t *testing.T) {
 	is := is.New(t)
 
 	// Round 1 (second round). Standings order a,b,c,d. In round 0 the
-	// casement would have paired a-c and b-d, so those are the repeats to
+	// halves would have paired a-c and b-d, so those are the repeats to
 	// avoid. With repeats forbidden, a should take the next-best legal
 	// opponent (b), leaving c-d.
 	repeats := map[string]int{
@@ -1035,7 +1065,7 @@ func TestAustralianPrepairRemoveAndRecombine(t *testing.T) {
 	is.NoErr(err)
 	assertSymmetric(is, subPairings)
 
-	// Casement on c,d,e,f => c-e, d-f.
+	// Halves on c,d,e,f => c-e, d-f.
 	subGot := idPairings(sub, subPairings)
 	is.Equal(subGot, map[string]string{"c": "e", "d": "f", "e": "c", "f": "d"})
 
@@ -1101,7 +1131,7 @@ func TestAustralianStandingsResort(t *testing.T) {
 
 	// Members handed in out of standings order must be re-sorted before
 	// pairing. Here the input order is reversed relative to wins, so the
-	// casement must operate on the corrected order.
+	// halves must split the corrected order.
 	poolMembers := []*entity.PoolMember{
 		{Id: "low", Wins: 0},
 		{Id: "mid", Wins: 1},
@@ -1120,7 +1150,7 @@ func TestAustralianStandingsResort(t *testing.T) {
 	is.NoErr(err)
 	assertSymmetric(is, pairings)
 	got := idPairings(m, pairings)
-	// Standings order: top, high, mid, low => casement top-mid, high-low.
+	// Standings order: top, high, mid, low => halves top-mid, high-low.
 	is.Equal(got, map[string]string{
 		"top": "mid", "mid": "top", "high": "low", "low": "high",
 	})
@@ -1180,13 +1210,13 @@ func TestAustralianRoundTwoPlusBacktracksToMatch(t *testing.T) {
 	is.Equal(got, map[string]string{"a": "d", "b": "c", "c": "b", "d": "a"})
 }
 
-func TestAustralianCasementOddByesBlockedTopNotFlip(t *testing.T) {
+func TestAustralianRoundOneOddByesBlockedTopNotFlip(t *testing.T) {
 	is := is.New(t)
 
-	// Round 0, seven players a..g. The casement adds a phantom bye and splits
+	// Round 0, seven players a..g. Round 1 adds a phantom bye and splits
 	// the field into top half a,b,c,d and bottom half e,f,g,BYE. a blocks every
 	// real bottom (e,f,g), so a's only flip-free option is the phantom bye; a
-	// takes it and the rest casement cleanly: b-e, c-f, d-g. a must NOT be
+	// takes it and the rest pair by halves cleanly: b-e, c-f, d-g. a must NOT be
 	// paired with the fourth seed d -- that is a top-vs-top flip and belongs to
 	// the fallback pass, which is never reached because byeing a is flip-free.
 	m := auMembersBlocking(map[string][]string{"a": {"e", "f", "g"}},
@@ -1247,7 +1277,7 @@ func TestAustralianMatchMatchesOracle(t *testing.T) {
 	}
 
 	// n=8 has too many block configurations to enumerate, so sample a fixed
-	// pseudo-random spread, like the casement oracle's n=8.
+	// pseudo-random spread, like the halves oracle's n=8.
 	const n = 8
 	state := uint64(0x9e3779b97f4a7c15) // fixed seed: deterministic test
 	next := func() uint64 {

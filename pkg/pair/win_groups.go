@@ -95,8 +95,8 @@ func winGroupPair(i, j int, blocked [][]bool, pairings []int) bool {
 	for a := range sub {
 		sub[a] = blocked[i+a][i : i+g]
 	}
-	groupPairings, err := australianCasementBlocked(g, sub)
-	if err != nil {
+	groupPairings, ok := pairHalves(g, sub)
+	if !ok {
 		return false
 	}
 	for a, b := range groupPairings {
@@ -143,4 +143,156 @@ func pairWinGroups(members *entity.UnpairedPoolMembers) ([]int, error) {
 		return nil, err
 	}
 	return f.result(positionPairings), nil
+}
+
+// pairHalves pairs an even group of n positions, in standings order, top half
+// against bottom half while honoring blocked pairs, and guarantees no two
+// top-half players meet whenever a pairing without that exists. The caller
+// pads an odd field with a phantom bye before calling, so n is always even
+// here. blocked[a][b] is true when positions a and b may not be paired (a
+// director block, a repeat, or, for the phantom column, a position barred
+// from the bye). When nothing is blocked it pairs 0 vs n/2, 1 vs n/2+1, and so
+// on. When a pair is blocked it repairs the pairing by sliding the affected
+// positions to the nearest legal partner across the halves, keeping every
+// other position on its usual opponent. It reports false when no complete
+// legal pairing exists.
+//
+// "Top-vs-top" is defined by the top half: positions [0, n/2) are the top
+// players, and a pair is top-vs-top iff both endpoints lie there. On a padded
+// odd field the phantom bye is the last (lowest) position, so it is always a
+// bottom player -- pairing a top player with it (the real bye) is never
+// top-vs-top.
+//
+// The repair is a two-phase backtracker over the remaining positions in
+// standings order (see halves below). It is dispatched in two passes:
+//
+//  1. halves(all, false) -- flips (top-vs-top pairings) disallowed. The only
+//     pairings tried join two players that are not both top-half, so a complete
+//     draw it finds has no top-vs-top pair. p (the top of the remaining set)
+//     may pair any non-top-vs-top partner; backtracking explores every such
+//     choice. This pass therefore succeeds iff a draw with zero top-vs-top
+//     exists, and when it does the result is guaranteed to have none.
+//  2. halves(all, true) -- flips permitted, tried only when pass 1 fails (no
+//     zero-top-vs-top draw exists). It admits the forced top-vs-top pairings,
+//     nearest first, so the draw is perturbed as little as the halves allow
+//     while never wrongly rejecting a legal draw.
+//
+// An unobstructed field is resolved entirely by pass 1 and pairs 0 vs n/2,
+// 1 vs n/2+1, and so on (with any phantom bye landing on the lone middle): the
+// proper opponent across the halves is always nearest-first and unblocked, so
+// the boundary fallback is never taken until forced.
+func pairHalves(n int, blocked [][]bool) ([]int, bool) {
+	pairings := make([]int, n)
+
+	// topCount is the size of the top half. A pair (a, b) is top-vs-top (a
+	// "flip") iff both endpoints are top players.
+	topCount := n / 2
+	topVsTop := func(a, b int) bool { return a < topCount && b < topCount }
+
+	// halves attempts to pair the remaining positions r (a subset of [0, n)
+	// in ascending standings order) into pairings, recursing on the rest. When
+	// allowFlip is false only non-top-vs-top pairings are tried, so a complete
+	// draw it finds has no top-vs-top pair; when true it also tries the forced
+	// top-vs-top pairings as a fallback. It mutates pairings in place and undoes
+	// its writes on a failed branch, so on return false pairings is unchanged.
+	// The field is even and each step removes a pair, so every recursive r is
+	// even too.
+	// Per-depth scratch buffers for the remaining-positions list, so the
+	// backtracking allocates nothing per node. Each level removes a pair, so
+	// the recursion depth is bounded by n/2.
+	scratch := make([][]int, n/2+1)
+	for i := range scratch {
+		scratch[i] = make([]int, n)
+	}
+
+	var halves func(r []int, allowFlip bool, depth int) bool
+	halves = func(r []int, allowFlip bool, depth int) bool {
+		if len(r) == 0 {
+			return true
+		}
+
+		// p is the top remaining position; half = len(r)/2 marks p's ideal
+		// opponent r[half] (the top of the bottom half). r[half:] are the
+		// proper bottoms; r[1:half] are the nearer positions.
+		p := r[0]
+		half := len(r) / 2
+
+		// Phase 1a: proper bottoms r[half:], nearest to p's ideal
+		// opponent first (r is ascending, so ascending over r[half:] is
+		// nearest-first). None of these are top-vs-top.
+		for _, b := range r[half:] {
+			if blocked[p][b] {
+				continue
+			}
+			pairings[p] = b
+			pairings[b] = p
+			if halves(withoutInto(scratch[depth], r, p, b), allowFlip, depth+1) {
+				return true
+			}
+			pairings[p] = -1
+			pairings[b] = -1
+		}
+
+		// Phase 1b: the non-top-vs-top positions among r[1:half] -- bottoms that
+		// fell into the near half after earlier removals. A fallback after the
+		// proper bottoms, but still part of the no-flip pass because pairing them
+		// is not top-vs-top.
+		for _, b := range r[1:half] {
+			if topVsTop(p, b) || blocked[p][b] {
+				continue
+			}
+			pairings[p] = b
+			pairings[b] = p
+			if halves(withoutInto(scratch[depth], r, p, b), allowFlip, depth+1) {
+				return true
+			}
+			pairings[p] = -1
+			pairings[b] = -1
+		}
+
+		// Phase 2: the top-vs-top positions among r[1:half], nearest to p first
+		// -- a forced flip. Reached only when flips are permitted, i.e. only
+		// after the no-flip pass has shown no zero-top-vs-top draw exists.
+		if allowFlip {
+			for _, b := range r[1:half] {
+				if !topVsTop(p, b) || blocked[p][b] {
+					continue
+				}
+				pairings[p] = b
+				pairings[b] = p
+				if halves(withoutInto(scratch[depth], r, p, b), allowFlip, depth+1) {
+					return true
+				}
+				pairings[p] = -1
+				pairings[b] = -1
+			}
+		}
+
+		return false
+	}
+
+	all := make([]int, n)
+	for i := range all {
+		all[i] = i
+	}
+
+	// Pass 1 first: a complete draw with flips disallowed is guaranteed to have
+	// zero top-vs-top, and it exists whenever any zero-top-vs-top draw does.
+	for i := range pairings {
+		pairings[i] = -1
+	}
+	if halves(all, false, 0) {
+		return pairings, true
+	}
+
+	// Pass 2: no zero-top-vs-top draw exists, so permit the forced top-vs-top
+	// pairings.
+	for i := range pairings {
+		pairings[i] = -1
+	}
+	if halves(all, true, 0) {
+		return pairings, true
+	}
+
+	return nil, false
 }
