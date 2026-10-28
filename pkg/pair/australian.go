@@ -348,12 +348,30 @@ func australianMatchWithReset(
 	hasPlayedSince func(a, b, reset int) bool,
 	blockedPair func(a, b int) bool,
 ) ([]int, error) {
+	return matchWithReset("australian draw", n, earliestReset, currentRound,
+		hasPlayedSince, blockedPair, australianMatch)
+}
+
+// matchWithReset is the reset-relaxation retry loop behind
+// australianMatchWithReset, with the matcher passed in so another method can
+// run its own matcher under the same repeat rule. match pairs the even field
+// of n positions given the blocked matrix and reports whether it could; name
+// opens the error message.
+func matchWithReset(
+	name string,
+	n int,
+	earliestReset int,
+	currentRound int,
+	hasPlayedSince func(a, b, reset int) bool,
+	blockedPair func(a, b int) bool,
+	match func(n int, blocked [][]bool) ([]int, bool),
+) ([]int, error) {
 	// The director-block half of the block matrix is constant across reset
 	// passes (blockedPair does not depend on reset), so compute it once. Only
 	// the repeat half (hasPlayedSince) changes as the reset relaxes, so each
 	// pass overwrites the reused blocked matrix in place rather than allocating
-	// a fresh one. australianMatch reads blocked without mutating it, so reuse
-	// is safe.
+	// a fresh one. The matcher reads blocked without mutating it, so reuse is
+	// safe.
 	dirBlocked := make([][]bool, n)
 	blocked := make([][]bool, n)
 	for i := range blocked {
@@ -377,7 +395,7 @@ func australianMatchWithReset(
 			}
 		}
 
-		pairings, ok := australianMatch(n, blocked)
+		pairings, ok := match(n, blocked)
 		if ok {
 			return pairings, nil
 		}
@@ -390,10 +408,136 @@ func australianMatchWithReset(
 		// rebuild an identical block matrix and fail identically.)
 		if reset >= currentRound {
 			return nil, fmt.Errorf(
-				"australian draw could not pair %d players even after relaxing"+
-					" the repeat rule to round %d", n, currentRound)
+				"%s could not pair %d players even after relaxing"+
+					" the repeat rule to round %d", name, n, currentRound)
 		}
 	}
+}
+
+// standingsField holds what pairing down the standings needs: the pool in
+// standings order, padded to an even field, and the rules that say which
+// positions may meet.
+type standingsField struct {
+	members   *entity.UnpairedPoolMembers
+	standings []australianStanding
+	// n is the number of real players and m the padded, even field size. bye
+	// is the phantom position, or -1 when the field is already even.
+	n, m, bye int
+}
+
+func newStandingsField(members *entity.UnpairedPoolMembers) *standingsField {
+	f := &standingsField{
+		members:   members,
+		standings: sortAustralianStandings(members.PoolMembers),
+		n:         len(members.PoolMembers),
+		bye:       -1,
+	}
+	// Pad an odd field with a phantom bye at the bottom of the standings. m is
+	// the padded, even field size; bye is the phantom position (-1 when the
+	// field is already even). The phantom is pairable with every real player and
+	// has no meeting history, so whoever it is paired with simply takes the bye.
+	f.m = f.n
+	if f.n%2 == 1 {
+		f.m = f.n + 1
+		f.bye = f.n
+	}
+	return f
+}
+
+// isReal reports whether a padded position is a real player (not the phantom
+// bye). The phantom never blocks and never counts as a repeat.
+func (f *standingsField) isReal(pos int) bool { return pos != f.bye }
+
+// blockedPair reports whether a director block keeps two padded positions
+// apart.
+func (f *standingsField) blockedPair(a, b int) bool {
+	if !f.isReal(a) || !f.isReal(b) {
+		// The phantom bye is pairable with every real player (any player may
+		// take the bye).
+		return false
+	}
+	return !pairable(f.members, f.standings[a].index, f.standings[b].index)
+}
+
+// blockMatrix returns the symmetric matrix of director blocks over the padded
+// field.
+func (f *standingsField) blockMatrix() [][]bool {
+	blocked := make([][]bool, f.m)
+	for i := range blocked {
+		blocked[i] = make([]bool, f.m)
+	}
+	for a := 0; a < f.m; a++ {
+		for b := a + 1; b < f.m; b++ {
+			block := f.blockedPair(a, b)
+			blocked[a][b] = block
+			blocked[b][a] = block
+		}
+	}
+	return blocked
+}
+
+// earliestReset returns the reset round the strictest pass starts from.
+//
+// reset_round is the 0-indexed round threshold the repeat rule uses
+// (members.RoundControls.Round and the RepeatRounds history are also
+// 0-indexed). A meeting in round r is avoided iff r >= reset_round, so
+// reset_round == 0 avoids every prior round (the default) and a large
+// reset_round forgives them all (King-of-the-Hill). The proto3 zero-
+// default (0) is therefore the correct default and needs no clamping.
+// The retry loop relaxes this threshold upward one round at a time when
+// a strict pairing is impossible.
+func (f *standingsField) earliestReset(currentRound int) int {
+	earliestReset := int(f.members.RoundControls.ResetRound)
+	if earliestReset > currentRound {
+		// A reset point past the current round would forgive everything;
+		// clamp the threshold so the strictest pass still avoids the most
+		// recent rounds.
+		earliestReset = currentRound
+	}
+	return earliestReset
+}
+
+// hasPlayedSince consults the per-round history: a pair is blocked
+// when the number of rounds >= reset in which they met exceeds
+// MaxRepeats. Meetings in rounds before reset are forgiven, so as the
+// retry loop raises reset the rule relaxes one round at a time. The
+// final relaxed pass (reset == currentRound) counts no prior round, so
+// the field can always be paired when no hard block stands in the way.
+// RepeatRounds may be nil (e.g. the dispatcher path on a pre-round-1
+// sub-pool); a nil map yields no meetings and thus no repeat blocks,
+// which is the correct "no history" behavior.
+func (f *standingsField) hasPlayedSince(a, b, reset int) bool {
+	if !f.isReal(a) || !f.isReal(b) {
+		// The phantom bye has no meeting history.
+		return false
+	}
+	rounds := f.members.RepeatRounds[GetRepeatKey(f.standings[a].id, f.standings[b].id)]
+	met := 0
+	for _, r := range rounds {
+		if r >= reset {
+			met++
+		}
+	}
+	allowed := int(f.members.RoundControls.MaxRepeats)
+	return met >= allowed+1
+}
+
+// result maps padded-position pairings back to PoolMembers indices
+// (opponent index per player, -1 for a bye).
+func (f *standingsField) result(positionPairings []int) []int {
+	result := make([]int, f.n)
+	// Map padded-position pairings back to PoolMembers indices. The phantom
+	// bye's own slot is dropped; its real partner takes the bye.
+	for pos := 0; pos < f.n; pos++ {
+		idx := f.standings[pos].index
+		opp := positionPairings[pos]
+		if opp < 0 || opp == f.bye {
+			result[idx] = -1
+		} else {
+			result[idx] = f.standings[opp].index
+		}
+	}
+	return result
 }
 
 // pairAustralianDraw is the dispatcher entry point. It mirrors the other
@@ -406,43 +550,13 @@ func pairAustralianDraw(members *entity.UnpairedPoolMembers) ([]int, error) {
 		return nil, errors.New("australian draw requires round controls")
 	}
 
-	n := len(members.PoolMembers)
-	result := make([]int, n)
-	for i := range result {
-		result[i] = -1
+	f := newStandingsField(members)
+	if f.n == 0 {
+		return []int{}, nil
 	}
-	if n == 0 {
-		return result, nil
-	}
-
-	standings := sortAustralianStandings(members.PoolMembers)
 
 	// round is 0-indexed in the round controls; the first round is round 0.
 	currentRound := int(members.RoundControls.Round)
-
-	// Pad an odd field with a phantom bye at the bottom of the standings. m is
-	// the padded, even field size; bye is the phantom position (-1 when the
-	// field is already even). The phantom is pairable with every real player and
-	// has no meeting history, so whoever it is paired with simply takes the bye.
-	m := n
-	bye := -1
-	if n%2 == 1 {
-		m = n + 1
-		bye = n
-	}
-
-	// isReal reports whether a padded position is a real player (not the phantom
-	// bye). The phantom never blocks and never counts as a repeat.
-	isReal := func(pos int) bool { return pos != bye }
-
-	blockedPair := func(a, b int) bool {
-		if !isReal(a) || !isReal(b) {
-			// The phantom bye is pairable with every real player (any player may
-			// take the bye).
-			return false
-		}
-		return !pairable(members, standings[a].index, standings[b].index)
-	}
 
 	var positionPairings []int
 	if currentRound == 0 {
@@ -451,83 +565,19 @@ func pairAustralianDraw(members *entity.UnpairedPoolMembers) ([]int, error) {
 		// casement pair where one player blocks the other is repaired to the
 		// nearest legal partners. Repeats never apply in round 1, so the blocked
 		// matrix carries director blocks alone.
-		blocked := make([][]bool, m)
-		for i := range blocked {
-			blocked[i] = make([]bool, m)
-		}
-		for a := 0; a < m; a++ {
-			for b := a + 1; b < m; b++ {
-				block := blockedPair(a, b)
-				blocked[a][b] = block
-				blocked[b][a] = block
-			}
-		}
-
 		var err error
-		positionPairings, err = australianCasementBlocked(m, blocked)
+		positionPairings, err = australianCasementBlocked(f.m, f.blockMatrix())
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		// reset_round is the 0-indexed round threshold the repeat rule uses
-		// (members.RoundControls.Round and the RepeatRounds history are also
-		// 0-indexed). A meeting in round r is avoided iff r >= reset_round, so
-		// reset_round == 0 avoids every prior round (the default) and a large
-		// reset_round forgives them all (King-of-the-Hill). The proto3 zero-
-		// default (0) is therefore the correct default and needs no clamping.
-		// The retry loop relaxes this threshold upward one round at a time when
-		// a strict pairing is impossible.
-		earliestReset := int(members.RoundControls.ResetRound)
-		if earliestReset > currentRound {
-			// A reset point past the current round would forgive everything;
-			// clamp the threshold so the strictest pass still avoids the most
-			// recent rounds.
-			earliestReset = currentRound
-		}
-
-		// hasPlayedSince consults the per-round history: a pair is blocked
-		// when the number of rounds >= reset in which they met exceeds
-		// MaxRepeats. Meetings in rounds before reset are forgiven, so as the
-		// retry loop raises reset the rule relaxes one round at a time. The
-		// final relaxed pass (reset == currentRound) counts no prior round, so
-		// the field can always be paired when no hard block stands in the way.
-		// RepeatRounds may be nil (e.g. the dispatcher path on a pre-round-1
-		// sub-pool); a nil map yields no meetings and thus no repeat blocks,
-		// which is the correct "no history" behavior.
-		hasPlayedSince := func(a, b, reset int) bool {
-			if !isReal(a) || !isReal(b) {
-				// The phantom bye has no meeting history.
-				return false
-			}
-			rounds := members.RepeatRounds[GetRepeatKey(standings[a].id, standings[b].id)]
-			met := 0
-			for _, r := range rounds {
-				if r >= reset {
-					met++
-				}
-			}
-			allowed := int(members.RoundControls.MaxRepeats)
-			return met >= allowed+1
-		}
-
 		var err error
 		positionPairings, err = australianMatchWithReset(
-			m, earliestReset, currentRound, hasPlayedSince, blockedPair)
+			f.m, f.earliestReset(currentRound), currentRound, f.hasPlayedSince,
+			f.blockedPair)
 		if err != nil {
 			return nil, err
 		}
 	}
-
-	// Map padded-position pairings back to PoolMembers indices. The phantom
-	// bye's own slot is dropped; its real partner takes the bye.
-	for pos := 0; pos < n; pos++ {
-		idx := standings[pos].index
-		opp := positionPairings[pos]
-		if opp < 0 || opp == bye {
-			result[idx] = -1
-		} else {
-			result[idx] = standings[opp].index
-		}
-	}
-	return result, nil
+	return f.result(positionPairings), nil
 }
