@@ -101,6 +101,12 @@ export const SingleRoundControlFields = (
           players who are performing similarly.
         </li>
         <li>
+          - <strong>Win Groups:</strong> Players on the same number of wins form
+          a group, and each group&apos;s top half plays its bottom half (1v5,
+          2v6, and so on) while avoiding earlier repeat meetings. Every pairing
+          can be checked by hand.
+        </li>
+        <li>
           - <strong>Round Robin:</strong> These pairings match everyone in the
           division against each other. If there are fewer rounds than players,
           it will do a partial round robin.
@@ -135,10 +141,11 @@ export const SingleRoundControlFields = (
           tournament.
         </li>
         <li>
-          - <strong>Australian Draw:</strong> These pairings pair adjacent
-          players by standing (1v2, 3v4, and so on) while avoiding earlier
-          repeat meetings. Use the Reset Round field to choose from which round
-          repeats start being avoided.
+          - <strong>Australian Draw:</strong> The first round pairs the top half
+          against the bottom half by seed; later rounds pair adjacent players by
+          standing (1v2, 3v4, and so on) while avoiding earlier repeat meetings.
+          Use the Reset Round field to choose from which round repeats start
+          being avoided.
         </li>
         <li>
           - <strong>Factor:</strong> Factor 1 pairs 1 vs 2 and the rest Swiss.
@@ -197,6 +204,9 @@ export const SingleRoundControlFields = (
         >
           <Select.Option value={PairingMethod.RANDOM}>Random</Select.Option>
           <Select.Option value={PairingMethod.SWISS}>Swiss</Select.Option>
+          <Select.Option value={PairingMethod.WIN_GROUPS}>
+            Win Groups
+          </Select.Option>
           <Select.Option value={PairingMethod.PAIRING_METHOD_COP}>
             COP (Castellano O'Connor Pairings)
           </Select.Option>
@@ -462,6 +472,7 @@ export const rdCtrlFromSetting = (
       rdCtrl.gamesPerRound = rdSetting.gamesPerRound || 1;
       break;
 
+    case PairingMethod.WIN_GROUPS:
     case PairingMethod.AUSTRALIAN_DRAW:
       // The Reset Round field is 1-based (a round number; the default is 1 =
       // avoid all repeats), but the proto/engine store reset_round 0-based like
