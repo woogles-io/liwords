@@ -558,8 +558,12 @@ export const SeekForm = (props: Props) => {
       ratingKey: "",
 
       lexicon: val.lexicon as string,
+      // ECWL and a bot that only plays Void hide the challenge rule, so the
+      // form holds no value for it; they play Void.
       challengeRule:
-        (val.lexicon as string) === "ECWL"
+        (val.lexicon as string) === "ECWL" ||
+        (props.vsBot &&
+          BotTypesEnumProperties[val.botType as BotTypesEnum].voidonly)
           ? ChallengeRule.VOID
           : (val.challengerule as number),
       initialTimeSecs: isCorrespondence

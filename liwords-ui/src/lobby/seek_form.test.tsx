@@ -1,6 +1,13 @@
 import { create } from "@bufbuild/protobuf";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, cleanup, render, screen } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { App } from "antd";
 import React, { useEffect, useState } from "react";
 import { MemoryRouter } from "react-router";
@@ -13,8 +20,11 @@ import {
 } from "../gen/api/proto/ipc/omgwords_pb";
 import { TournamentMetadataSchema } from "../gen/api/proto/tournament_service/tournament_service_pb";
 import { ChallengeRule } from "../gen/api/proto/vendored/macondo/macondo_pb";
+import { SoughtGame } from "../store/reducers/lobby_reducer";
 import { Store, useTournamentStoreContext } from "../store/store";
+import { BotTypesEnum } from "./bots";
 import { SeekForm } from "./seek_form";
+import { sendSeek } from "./sought_game_interactions";
 
 // What the seek form starts with: unrated games, unless the player picked
 // rated before and the form saved that. In a club room whose director lets
@@ -133,4 +143,28 @@ it("keeps saved unrated, shortest time and no overtime in a club", () => {
   expect(shownRatingType()).toBe("Unrated");
   expect(screen.getByLabelText("Overtime")).toHaveValue("0");
   expect(screen.getByRole("slider")).toHaveAttribute("aria-valuenow", "0");
+});
+
+it("sends Void for a bot that only plays Void", async () => {
+  let sent: SoughtGame | undefined;
+  formProps = {
+    id: "bot-seek",
+    loggedIn: true,
+    onFormSubmit: (g) => {
+      sent = g;
+    },
+    showFriendInput: false,
+    vsBot: true,
+  };
+  renderStore();
+  openForm();
+  await act(async () => {
+    fireEvent.submit(document.getElementById("bot-seek")!);
+  });
+  await waitFor(() => expect(sent).toBeDefined());
+  // BeginnerBot, the default bot, plays Void only, so the form hides the
+  // challenge rule; the seek must still carry one to be encoded.
+  expect(sent!.botType).toBe(BotTypesEnum.BEGINNER);
+  expect(sent!.challengeRule).toBe(ChallengeRule.VOID);
+  expect(() => sendSeek(sent!, () => {})).not.toThrow();
 });
