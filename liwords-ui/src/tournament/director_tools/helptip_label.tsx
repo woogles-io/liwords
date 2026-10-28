@@ -10,7 +10,11 @@ type Props = {
 export const HelptipLabel = (props: Props) => (
   <>
     {props.labelText}
-    <Tooltip title={props.help} color="black" /* otherwise it's not opaque */>
+    <Tooltip
+      title={props.help}
+      color="black" /* otherwise it's not opaque */
+      classNames={{ body: "helptip-body" }}
+    >
       <QuestionCircleOutlined
         className="readable-text-color"
         style={{ marginLeft: 5, color: "cyan" }}
