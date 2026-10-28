@@ -86,6 +86,7 @@ enum PairingMethod {
   INTERLEAVED_ROUND_ROBIN = 10;
   PAIRING_METHOD_COP = 11;
   AUSTRALIAN_DRAW = 12;
+  WIN_GROUPS = 13;
 }
 
 enum FirstMethod {

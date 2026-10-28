@@ -109,6 +109,7 @@ const (
 	PairingMethod_INTERLEAVED_ROUND_ROBIN PairingMethod = 10
 	PairingMethod_PAIRING_METHOD_COP      PairingMethod = 11
 	PairingMethod_AUSTRALIAN_DRAW         PairingMethod = 12
+	PairingMethod_WIN_GROUPS              PairingMethod = 13
 )
 
 // Enum value maps for PairingMethod.
@@ -127,6 +128,7 @@ var (
 		10: "INTERLEAVED_ROUND_ROBIN",
 		11: "PAIRING_METHOD_COP",
 		12: "AUSTRALIAN_DRAW",
+		13: "WIN_GROUPS",
 	}
 	PairingMethod_value = map[string]int32{
 		"RANDOM":                  0,
@@ -142,6 +144,7 @@ var (
 		"INTERLEAVED_ROUND_ROBIN": 10,
 		"PAIRING_METHOD_COP":      11,
 		"AUSTRALIAN_DRAW":         12,
+		"WIN_GROUPS":              13,
 	}
 )
 
@@ -2541,7 +2544,7 @@ const file_proto_ipc_tournament_proto_rawDesc = "" +
 	"\fFORFEIT_LOSS\x10\x06\x12\x0e\n" +
 	"\n" +
 	"ELIMINATED\x10\a\x12\b\n" +
-	"\x04VOID\x10\b*\xf9\x01\n" +
+	"\x04VOID\x10\b*\x89\x02\n" +
 	"\rPairingMethod\x12\n" +
 	"\n" +
 	"\x06RANDOM\x10\x00\x12\x0f\n" +
@@ -2559,7 +2562,9 @@ const file_proto_ipc_tournament_proto_rawDesc = "" +
 	"\x17INTERLEAVED_ROUND_ROBIN\x10\n" +
 	"\x12\x16\n" +
 	"\x12PAIRING_METHOD_COP\x10\v\x12\x13\n" +
-	"\x0fAUSTRALIAN_DRAW\x10\f*F\n" +
+	"\x0fAUSTRALIAN_DRAW\x10\f\x12\x0e\n" +
+	"\n" +
+	"WIN_GROUPS\x10\r*F\n" +
 	"\vFirstMethod\x12\x10\n" +
 	"\fMANUAL_FIRST\x10\x00\x12\x10\n" +
 	"\fRANDOM_FIRST\x10\x01\x12\x13\n" +
