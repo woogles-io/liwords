@@ -14,9 +14,9 @@ import (
 // variant rather than taking the client's, as a seek's are set
 // (entity/sought_game.go): a super variant plays on the 21x21 board with its
 // lexicon's 200-tile set, any other on the standard board with its lexicon's
-// own tiles. No variant means classic. Only the English and Catalan tiles
-// have a 200-tile set, so a super variant takes only a lexicon that uses
-// one of those.
+// own tiles. No variant means classic. Only the English, Catalan, and German
+// tiles have a 200-tile set, so a super variant takes only a lexicon that
+// uses one of those.
 func setAnnotatedGameBoard(lexicon string, rules *ipc.GameRules) error {
 	ld, err := entity.LetterDistributionForLexicon(lexicon)
 	if err != nil {
@@ -26,7 +26,7 @@ func setAnnotatedGameBoard(lexicon string, rules *ipc.GameRules) error {
 	case cwgame.VarClassicSuper, cwgame.VarWordSmogSuper:
 		super, ok := entity.SuperLetterDistribution(ld)
 		if !ok {
-			return apiserver.InvalidArg("ZOMGWords plays with English and Catalan lexica only")
+			return apiserver.InvalidArg("ZOMGWords plays with English, Catalan, and German lexica only")
 		}
 		rules.BoardLayoutName = board.SuperCrosswordGameLayout
 		rules.LetterDistributionName = super

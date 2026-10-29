@@ -12,6 +12,9 @@ describe("annotatedGameRules", () => {
     expect(
       annotatedGameRules("DISC2", "classic_super").letterDistributionName,
     ).toBe("catalan_super");
+    expect(
+      annotatedGameRules("RD29", "classic_super").letterDistributionName,
+    ).toBe("german_super");
   });
   it("keeps the standard board and the lexicon's tiles otherwise", () => {
     const smog = annotatedGameRules("CSW24", "wordsmog");
