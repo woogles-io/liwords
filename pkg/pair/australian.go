@@ -14,7 +14,8 @@ import (
 // leaves the rest of the field pairable, backtracking when a choice paints
 // the draw into a corner.
 //
-// Round 1 uses a casement draw (top half vs bottom half). Every later round
+// Round 1 pairs the top half against the bottom half (pairHalves, which Win
+// Groups uses for each of its groups). Every later round
 // pairs the top remaining player with the highest-standing opponent they are
 // allowed to face, recursing on the rest and backtracking if no completion
 // exists. A rematch is avoided only when the two players met in a round at or
@@ -57,7 +58,7 @@ type australianStanding struct {
 // The caller hands the members over in the division standings order, whose
 // final tiebreak is seed, so members tied on wins and spread stay in seed
 // order. In round 1 every record is 0-0 with 0 spread, so this is what makes
-// the casement split the field by seed rather than by player id.
+// round 1 split the field into halves by seed rather than by player id.
 func sortAustralianStandings(members []*entity.PoolMember) []australianStanding {
 	standings := make([]australianStanding, len(members))
 	for i, m := range members {
@@ -78,182 +79,6 @@ func sortAustralianStandings(members []*entity.PoolMember) []australianStanding 
 		return standings[i].spread > standings[j].spread
 	})
 	return standings
-}
-
-// australianCasement returns the round-1 casement pairings for n players in
-// standings order. Pairings are expressed in standings positions: position
-// p is paired against the value at index p. The top half plays the bottom
-// half (0 vs n/2, 1 vs n/2+1, ...). With an odd count the lone middle
-// player (position n/2) gets a bye, represented by -1.
-func australianCasement(n int) []int {
-	pairings := make([]int, n)
-	for i := range pairings {
-		pairings[i] = -1
-	}
-	half := n / 2
-	for i := 0; i < half; i++ {
-		top := i
-		bottom := i + half + (n % 2)
-		pairings[top] = bottom
-		pairings[bottom] = top
-	}
-	// When n is odd the middle player (position half) keeps its -1 bye.
-	return pairings
-}
-
-// australianCasementBlocked returns the round-1 casement pairings for an even
-// field of n positions while honoring director blocks, guaranteeing zero
-// top-vs-top pairings whenever a draw with none exists. The caller pads an odd
-// field with a phantom bye before calling, so n is always even here.
-// blocked[a][b] is true when positions a and b may not be paired (a director
-// block, or, for the phantom column, a position barred from the bye). When no
-// casement pair is blocked it reproduces the plain casement byte for byte (top
-// half vs bottom half), so the common round-1 draw is unchanged. When a
-// casement pair is blocked it repairs the draw by sliding the affected
-// positions to the nearest legal partner within the casement structure,
-// keeping every other position on its casement opponent. If no complete legal
-// pairing exists it returns a clear error.
-//
-// "Top-vs-top" is defined by the top half: positions [0, n/2) are the top
-// players, and a pair is top-vs-top iff both endpoints lie there. On a padded
-// odd field the phantom bye is the last (lowest) position, so it is always a
-// bottom player -- pairing a top player with it (the real bye) is never
-// top-vs-top.
-//
-// The repair is a two-phase backtracker over the remaining positions in
-// standings order (see casement below). It is dispatched in two passes:
-//
-//  1. casement(all, false) -- flips (top-vs-top pairings) disallowed. The only
-//     pairings tried join two players that are not both top-half, so a complete
-//     draw it finds has no top-vs-top pair. p (the top of the remaining set)
-//     may pair any non-top-vs-top partner; backtracking explores every such
-//     choice. This pass therefore succeeds iff a draw with zero top-vs-top
-//     exists, and when it does the result is guaranteed to have none.
-//  2. casement(all, true) -- flips permitted, tried only when pass 1 fails (no
-//     zero-top-vs-top draw exists). It admits the forced top-vs-top pairings,
-//     nearest first, so the draw is perturbed as little as the casement
-//     structure allows while never wrongly rejecting a legal draw.
-//
-// An unobstructed field is resolved entirely by pass 1 and reproduces
-// australianCasement (with any phantom bye landing on the lone middle): the
-// proper casement opponent is always nearest-first and unblocked, so the
-// boundary fallback is never taken until forced.
-func australianCasementBlocked(n int, blocked [][]bool) ([]int, error) {
-	pairings := make([]int, n)
-
-	// topCount is the size of the top half. A pair (a, b) is top-vs-top (a
-	// "flip") iff both endpoints are top players.
-	topCount := n / 2
-	topVsTop := func(a, b int) bool { return a < topCount && b < topCount }
-
-	// casement attempts to pair the remaining positions r (a subset of [0, n)
-	// in ascending standings order) into pairings, recursing on the rest. When
-	// allowFlip is false only non-top-vs-top pairings are tried, so a complete
-	// draw it finds has no top-vs-top pair; when true it also tries the forced
-	// top-vs-top pairings as a fallback. It mutates pairings in place and undoes
-	// its writes on a failed branch, so on return false pairings is unchanged.
-	// The field is even and each step removes a pair, so every recursive r is
-	// even too.
-	// Per-depth scratch buffers for the remaining-positions list, so the
-	// backtracking allocates nothing per node. Each level removes a pair, so
-	// the recursion depth is bounded by n/2.
-	scratch := make([][]int, n/2+1)
-	for i := range scratch {
-		scratch[i] = make([]int, n)
-	}
-
-	var casement func(r []int, allowFlip bool, depth int) bool
-	casement = func(r []int, allowFlip bool, depth int) bool {
-		if len(r) == 0 {
-			return true
-		}
-
-		// p is the top remaining position; half = len(r)/2 marks p's ideal
-		// casement opponent r[half] (the top of the bottom half). r[half:] are
-		// the proper casement bottoms; r[1:half] are the nearer positions.
-		p := r[0]
-		half := len(r) / 2
-
-		// Phase 1a: proper casement bottoms r[half:], nearest to p's ideal
-		// opponent first (r is ascending, so ascending over r[half:] is
-		// nearest-first). None of these are top-vs-top.
-		for _, b := range r[half:] {
-			if blocked[p][b] {
-				continue
-			}
-			pairings[p] = b
-			pairings[b] = p
-			if casement(withoutInto(scratch[depth], r, p, b), allowFlip, depth+1) {
-				return true
-			}
-			pairings[p] = -1
-			pairings[b] = -1
-		}
-
-		// Phase 1b: the non-top-vs-top positions among r[1:half] -- bottoms that
-		// fell into the near half after earlier removals. A fallback after the
-		// proper bottoms, but still part of the no-flip pass because pairing them
-		// is not top-vs-top.
-		for _, b := range r[1:half] {
-			if topVsTop(p, b) || blocked[p][b] {
-				continue
-			}
-			pairings[p] = b
-			pairings[b] = p
-			if casement(withoutInto(scratch[depth], r, p, b), allowFlip, depth+1) {
-				return true
-			}
-			pairings[p] = -1
-			pairings[b] = -1
-		}
-
-		// Phase 2: the top-vs-top positions among r[1:half], nearest to p first
-		// -- a forced flip. Reached only when flips are permitted, i.e. only
-		// after the no-flip pass has shown no zero-top-vs-top draw exists.
-		if allowFlip {
-			for _, b := range r[1:half] {
-				if !topVsTop(p, b) || blocked[p][b] {
-					continue
-				}
-				pairings[p] = b
-				pairings[b] = p
-				if casement(withoutInto(scratch[depth], r, p, b), allowFlip, depth+1) {
-					return true
-				}
-				pairings[p] = -1
-				pairings[b] = -1
-			}
-		}
-
-		return false
-	}
-
-	all := make([]int, n)
-	for i := range all {
-		all[i] = i
-	}
-
-	// Pass 1 first: a complete draw with flips disallowed is guaranteed to have
-	// zero top-vs-top, and it exists whenever any zero-top-vs-top draw does.
-	for i := range pairings {
-		pairings[i] = -1
-	}
-	if casement(all, false, 0) {
-		return pairings, nil
-	}
-
-	// Pass 2: no zero-top-vs-top draw exists, so permit the forced top-vs-top
-	// pairings.
-	for i := range pairings {
-		pairings[i] = -1
-	}
-	if casement(all, true, 0) {
-		return pairings, nil
-	}
-
-	return nil, fmt.Errorf(
-		"australian draw could not pair %d players in the first round under the"+
-			" configured blocks", n)
 }
 
 // withoutInto writes the positions in r (ascending) with a and b removed into
@@ -281,7 +106,7 @@ func withoutInto(dst, r []int, a, b int) []int {
 // symmetric matrix of disallowed pairings (a director block, or a repeat at the
 // active reset round; the phantom bye column is all-false). It returns the
 // pairing array (in standings positions) and whether a complete draw exists.
-// Unlike the round-1 casement it has no top-vs-top concept -- later rounds avoid
+// Unlike round 1's halves it has no top-vs-top concept -- later rounds avoid
 // only repeats, not strong-vs-strong pairings. The caller pads an odd field with
 // a phantom bye, so n is even and each step removes a pair, keeping every
 // recursive r even too.
@@ -348,12 +173,30 @@ func australianMatchWithReset(
 	hasPlayedSince func(a, b, reset int) bool,
 	blockedPair func(a, b int) bool,
 ) ([]int, error) {
+	return matchWithReset("australian draw", n, earliestReset, currentRound,
+		hasPlayedSince, blockedPair, australianMatch)
+}
+
+// matchWithReset is the reset-relaxation retry loop behind
+// australianMatchWithReset, with the matcher passed in so another method can
+// run its own matcher under the same repeat rule. match pairs the even field
+// of n positions given the blocked matrix and reports whether it could; name
+// opens the error message.
+func matchWithReset(
+	name string,
+	n int,
+	earliestReset int,
+	currentRound int,
+	hasPlayedSince func(a, b, reset int) bool,
+	blockedPair func(a, b int) bool,
+	match func(n int, blocked [][]bool) ([]int, bool),
+) ([]int, error) {
 	// The director-block half of the block matrix is constant across reset
 	// passes (blockedPair does not depend on reset), so compute it once. Only
 	// the repeat half (hasPlayedSince) changes as the reset relaxes, so each
 	// pass overwrites the reused blocked matrix in place rather than allocating
-	// a fresh one. australianMatch reads blocked without mutating it, so reuse
-	// is safe.
+	// a fresh one. The matcher reads blocked without mutating it, so reuse is
+	// safe.
 	dirBlocked := make([][]bool, n)
 	blocked := make([][]bool, n)
 	for i := range blocked {
@@ -377,7 +220,7 @@ func australianMatchWithReset(
 			}
 		}
 
-		pairings, ok := australianMatch(n, blocked)
+		pairings, ok := match(n, blocked)
 		if ok {
 			return pairings, nil
 		}
@@ -390,144 +233,179 @@ func australianMatchWithReset(
 		// rebuild an identical block matrix and fail identically.)
 		if reset >= currentRound {
 			return nil, fmt.Errorf(
-				"australian draw could not pair %d players even after relaxing"+
-					" the repeat rule to round %d", n, currentRound)
+				"%s could not pair %d players even after relaxing"+
+					" the repeat rule to round %d", name, n, currentRound)
 		}
 	}
+}
+
+// standingsField holds what pairing down the standings needs: the pool in
+// standings order, padded to an even field, and the rules that say which
+// positions may meet.
+type standingsField struct {
+	members   *entity.UnpairedPoolMembers
+	standings []australianStanding
+	// n is the number of real players and m the padded, even field size. bye
+	// is the phantom position, or -1 when the field is already even.
+	n, m, bye int
+}
+
+func newStandingsField(members *entity.UnpairedPoolMembers) *standingsField {
+	f := &standingsField{
+		members:   members,
+		standings: sortAustralianStandings(members.PoolMembers),
+		n:         len(members.PoolMembers),
+		bye:       -1,
+	}
+	// Pad an odd field with a phantom bye at the bottom of the standings. m is
+	// the padded, even field size; bye is the phantom position (-1 when the
+	// field is already even). The phantom is pairable with every real player and
+	// has no meeting history, so whoever it is paired with simply takes the bye.
+	f.m = f.n
+	if f.n%2 == 1 {
+		f.m = f.n + 1
+		f.bye = f.n
+	}
+	return f
+}
+
+// isReal reports whether a padded position is a real player (not the phantom
+// bye). The phantom never blocks and never counts as a repeat.
+func (f *standingsField) isReal(pos int) bool { return pos != f.bye }
+
+// blockedPair reports whether a director block keeps two padded positions
+// apart.
+func (f *standingsField) blockedPair(a, b int) bool {
+	if !f.isReal(a) || !f.isReal(b) {
+		// The phantom bye is pairable with every real player (any player may
+		// take the bye).
+		return false
+	}
+	return !pairable(f.members, f.standings[a].index, f.standings[b].index)
+}
+
+// blockMatrix returns the symmetric matrix of director blocks over the padded
+// field.
+func (f *standingsField) blockMatrix() [][]bool {
+	blocked := make([][]bool, f.m)
+	for i := range blocked {
+		blocked[i] = make([]bool, f.m)
+	}
+	for a := 0; a < f.m; a++ {
+		for b := a + 1; b < f.m; b++ {
+			block := f.blockedPair(a, b)
+			blocked[a][b] = block
+			blocked[b][a] = block
+		}
+	}
+	return blocked
+}
+
+// earliestReset returns the reset round the strictest pass starts from.
+//
+// reset_round is the 0-indexed round threshold the repeat rule uses
+// (members.RoundControls.Round and the RepeatRounds history are also
+// 0-indexed). A meeting in round r is avoided iff r >= reset_round, so
+// reset_round == 0 avoids every prior round (the default) and a large
+// reset_round forgives them all (King-of-the-Hill). The proto3 zero-
+// default (0) is therefore the correct default and needs no clamping.
+// The retry loop relaxes this threshold upward one round at a time when
+// a strict pairing is impossible.
+func (f *standingsField) earliestReset(currentRound int) int {
+	earliestReset := int(f.members.RoundControls.ResetRound)
+	if earliestReset > currentRound {
+		// A reset point past the current round would forgive everything;
+		// clamp the threshold so the strictest pass still avoids the most
+		// recent rounds.
+		earliestReset = currentRound
+	}
+	return earliestReset
+}
+
+// hasPlayedSince consults the per-round history: a pair is blocked
+// when the number of rounds >= reset in which they met exceeds
+// MaxRepeats. Meetings in rounds before reset are forgiven, so as the
+// retry loop raises reset the rule relaxes one round at a time. The
+// final relaxed pass (reset == currentRound) counts no prior round, so
+// the field can always be paired when no hard block stands in the way.
+// RepeatRounds may be nil (e.g. the dispatcher path on a pre-round-1
+// sub-pool); a nil map yields no meetings and thus no repeat blocks,
+// which is the correct "no history" behavior.
+func (f *standingsField) hasPlayedSince(a, b, reset int) bool {
+	if !f.isReal(a) || !f.isReal(b) {
+		// The phantom bye has no meeting history.
+		return false
+	}
+	rounds := f.members.RepeatRounds[GetRepeatKey(f.standings[a].id, f.standings[b].id)]
+	met := 0
+	for _, r := range rounds {
+		if r >= reset {
+			met++
+		}
+	}
+	allowed := int(f.members.RoundControls.MaxRepeats)
+	return met >= allowed+1
+}
+
+// result maps padded-position pairings back to PoolMembers indices
+// (opponent index per player, -1 for a bye).
+func (f *standingsField) result(positionPairings []int) []int {
+	result := make([]int, f.n)
+	// Map padded-position pairings back to PoolMembers indices. The phantom
+	// bye's own slot is dropped; its real partner takes the bye.
+	for pos := 0; pos < f.n; pos++ {
+		idx := f.standings[pos].index
+		opp := positionPairings[pos]
+		if opp < 0 || opp == f.bye {
+			result[idx] = -1
+		} else {
+			result[idx] = f.standings[opp].index
+		}
+	}
+	return result
 }
 
 // pairAustralianDraw is the dispatcher entry point. It mirrors the other
 // pairing-method functions: members arrive in standings order and the
 // result is an index-into-PoolMembers array (opponent index per player, -1
-// for a bye). An odd field is padded with a phantom bye so the casement and
-// later-round matchers only ever see an even field.
+// for a bye). An odd field is padded with a phantom bye so the first round's
+// halves and the later-round matcher only ever see an even field.
 func pairAustralianDraw(members *entity.UnpairedPoolMembers) ([]int, error) {
 	if members.RoundControls == nil {
 		return nil, errors.New("australian draw requires round controls")
 	}
 
-	n := len(members.PoolMembers)
-	result := make([]int, n)
-	for i := range result {
-		result[i] = -1
+	f := newStandingsField(members)
+	if f.n == 0 {
+		return []int{}, nil
 	}
-	if n == 0 {
-		return result, nil
-	}
-
-	standings := sortAustralianStandings(members.PoolMembers)
 
 	// round is 0-indexed in the round controls; the first round is round 0.
 	currentRound := int(members.RoundControls.Round)
 
-	// Pad an odd field with a phantom bye at the bottom of the standings. m is
-	// the padded, even field size; bye is the phantom position (-1 when the
-	// field is already even). The phantom is pairable with every real player and
-	// has no meeting history, so whoever it is paired with simply takes the bye.
-	m := n
-	bye := -1
-	if n%2 == 1 {
-		m = n + 1
-		bye = n
-	}
-
-	// isReal reports whether a padded position is a real player (not the phantom
-	// bye). The phantom never blocks and never counts as a repeat.
-	isReal := func(pos int) bool { return pos != bye }
-
-	blockedPair := func(a, b int) bool {
-		if !isReal(a) || !isReal(b) {
-			// The phantom bye is pairable with every real player (any player may
-			// take the bye).
-			return false
-		}
-		return !pairable(members, standings[a].index, standings[b].index)
-	}
-
 	var positionPairings []int
 	if currentRound == 0 {
-		// The first round uses the casement draw (top half vs bottom half) on
-		// the padded even field, but it must still honor director blocks: a
-		// casement pair where one player blocks the other is repaired to the
+		// The first round pairs the padded even field top half against bottom
+		// half, the way Win Groups pairs a group (in a real first round the
+		// whole field is on the same wins), but it must still honor director
+		// blocks: a pair where one player blocks the other is repaired to the
 		// nearest legal partners. Repeats never apply in round 1, so the blocked
 		// matrix carries director blocks alone.
-		blocked := make([][]bool, m)
-		for i := range blocked {
-			blocked[i] = make([]bool, m)
-		}
-		for a := 0; a < m; a++ {
-			for b := a + 1; b < m; b++ {
-				block := blockedPair(a, b)
-				blocked[a][b] = block
-				blocked[b][a] = block
-			}
-		}
-
-		var err error
-		positionPairings, err = australianCasementBlocked(m, blocked)
-		if err != nil {
-			return nil, err
+		var ok bool
+		positionPairings, ok = pairHalves(f.m, f.blockMatrix())
+		if !ok {
+			return nil, fmt.Errorf(
+				"australian draw could not pair %d players in the first round under the"+
+					" configured blocks", f.m)
 		}
 	} else {
-		// reset_round is the 0-indexed round threshold the repeat rule uses
-		// (members.RoundControls.Round and the RepeatRounds history are also
-		// 0-indexed). A meeting in round r is avoided iff r >= reset_round, so
-		// reset_round == 0 avoids every prior round (the default) and a large
-		// reset_round forgives them all (King-of-the-Hill). The proto3 zero-
-		// default (0) is therefore the correct default and needs no clamping.
-		// The retry loop relaxes this threshold upward one round at a time when
-		// a strict pairing is impossible.
-		earliestReset := int(members.RoundControls.ResetRound)
-		if earliestReset > currentRound {
-			// A reset point past the current round would forgive everything;
-			// clamp the threshold so the strictest pass still avoids the most
-			// recent rounds.
-			earliestReset = currentRound
-		}
-
-		// hasPlayedSince consults the per-round history: a pair is blocked
-		// when the number of rounds >= reset in which they met exceeds
-		// MaxRepeats. Meetings in rounds before reset are forgiven, so as the
-		// retry loop raises reset the rule relaxes one round at a time. The
-		// final relaxed pass (reset == currentRound) counts no prior round, so
-		// the field can always be paired when no hard block stands in the way.
-		// RepeatRounds may be nil (e.g. the dispatcher path on a pre-round-1
-		// sub-pool); a nil map yields no meetings and thus no repeat blocks,
-		// which is the correct "no history" behavior.
-		hasPlayedSince := func(a, b, reset int) bool {
-			if !isReal(a) || !isReal(b) {
-				// The phantom bye has no meeting history.
-				return false
-			}
-			rounds := members.RepeatRounds[GetRepeatKey(standings[a].id, standings[b].id)]
-			met := 0
-			for _, r := range rounds {
-				if r >= reset {
-					met++
-				}
-			}
-			allowed := int(members.RoundControls.MaxRepeats)
-			return met >= allowed+1
-		}
-
 		var err error
 		positionPairings, err = australianMatchWithReset(
-			m, earliestReset, currentRound, hasPlayedSince, blockedPair)
+			f.m, f.earliestReset(currentRound), currentRound, f.hasPlayedSince,
+			f.blockedPair)
 		if err != nil {
 			return nil, err
 		}
 	}
-
-	// Map padded-position pairings back to PoolMembers indices. The phantom
-	// bye's own slot is dropped; its real partner takes the bye.
-	for pos := 0; pos < n; pos++ {
-		idx := standings[pos].index
-		opp := positionPairings[pos]
-		if opp < 0 || opp == bye {
-			result[idx] = -1
-		} else {
-			result[idx] = standings[opp].index
-		}
-	}
-	return result, nil
+	return f.result(positionPairings), nil
 }

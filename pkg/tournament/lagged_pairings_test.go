@@ -166,6 +166,60 @@ func TestLaggedAustralianDraw(t *testing.T) {
 	is.True(finished)
 }
 
+func TestLaggedWinGroups(t *testing.T) {
+	is := is.New(t)
+
+	// TestLaggedAustralianDraw with Win Groups after the first round. Win
+	// Groups needs the same round-by-round history, and in this field its own
+	// rule comes to the same pairings.
+	roundControls := laggedRoundControls([]pb.PairingMethod{
+		pb.PairingMethod_KING_OF_THE_HILL,
+		pb.PairingMethod_WIN_GROUPS,
+		pb.PairingMethod_WIN_GROUPS,
+		pb.PairingMethod_WIN_GROUPS,
+	}, 2, 3)
+	// The director form leaves MaxRepeats at 0 for Win Groups, which avoids
+	// every repeat. This helper's default is Swiss's 1.
+	for _, rc := range roundControls[1:] {
+		rc.MaxRepeats = 0
+	}
+	tc, err := compactNewClassicDivision(defaultPlayers, roundControls, false)
+	is.NoErr(err)
+	is.NoErr(tc.StartRound(true))
+
+	is.NoErr(submitScore(tc, 0, will, josh, 450, 400))
+	is.NoErr(submitScore(tc, 0, conrad, jesse, 500, 300))
+	// Round 2: the winners conrad and will form one group, the losers jesse
+	// and josh the other.
+	is.NoErr(equalPairingStrings([][]string{{conrad, will}, {jesse, josh}}, tc.getPlayerPairings(1)))
+	// Round 3 is paired from the same standings while round 2 is still being
+	// played. conrad and will have just been paired, so the next two players
+	// join their group, whose top half then plays its bottom half.
+	is.NoErr(equalPairingStrings([][]string{{conrad, josh}, {jesse, will}}, tc.getPlayerPairings(2)))
+	is.True(!tc.IsRoundPaired(3))
+
+	is.NoErr(tc.StartRound(true))
+	is.NoErr(tc.StartRound(true))
+	is.Equal(tc.GetCurrentRound(), 2)
+
+	is.NoErr(submitScore(tc, 1, will, conrad, 500, 400))
+	is.NoErr(submitScore(tc, 2, will, jesse, 400, 900))
+	is.NoErr(submitScore(tc, 2, conrad, josh, 300, 600))
+	is.True(!tc.IsRoundPaired(3))
+
+	is.NoErr(submitScore(tc, 1, josh, jesse, 410, 400))
+	// Everyone has now met everyone, so round 4 forgives the oldest round
+	// first and repeats the round 1 matchups.
+	is.NoErr(equalPairingStrings([][]string{{conrad, jesse}, {josh, will}}, tc.getPlayerPairings(3)))
+
+	is.NoErr(tc.StartRound(true))
+	is.NoErr(submitScore(tc, 3, will, josh, 400, 300))
+	is.NoErr(submitScore(tc, 3, conrad, jesse, 400, 300))
+	finished, err := tc.IsFinished()
+	is.NoErr(err)
+	is.True(finished)
+}
+
 func TestLaggedPairingsFinishRequiresEveryRound(t *testing.T) {
 	is := is.New(t)
 

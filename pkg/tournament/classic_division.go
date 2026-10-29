@@ -1004,12 +1004,13 @@ func (t *ClassicDivision) pairRound(round int, preserveByes bool) (*pb.DivisionP
 		Repeats:     repeats,
 		Seed:        t.Seed}
 
-	// The Australian Draw needs to know which round each prior meeting
-	// occurred in (to honor reset_round and to relax the repeat rule one
-	// round at a time), which the totals-only Repeats map cannot express.
-	// Build the round-resolved history only for that method; round 0 has no
+	// The Australian Draw and Win Groups need to know which round each prior
+	// meeting occurred in (to honor reset_round and to relax the repeat rule
+	// one round at a time), which the totals-only Repeats map cannot express.
+	// Build the round-resolved history only for those methods; round 0 has no
 	// prior rounds, so it is skipped there.
-	if pairingMethod == pb.PairingMethod_AUSTRALIAN_DRAW && round > 0 {
+	if (pairingMethod == pb.PairingMethod_AUSTRALIAN_DRAW ||
+		pairingMethod == pb.PairingMethod_WIN_GROUPS) && round > 0 {
 		repeatRounds, err := getRepeatRounds(t, round-1)
 		if err != nil {
 			return nil, err
