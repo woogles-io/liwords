@@ -124,6 +124,19 @@ export const SingleRoundControlFields = (
           round robin against every player in the other half.
         </li>
         <li>
+          - <strong>Snaked:</strong> These pairings split the division into two
+          halves the way a snake draft picks teams (seeds 1, 4, 5, 8, 9, ...
+          against 2, 3, 6, 7, 10, ...), so the halves are evenly matched. Each
+          player in one half plays a round robin against every player in the
+          other half.
+        </li>
+        <li>
+          - <strong>Team (Top vs Bottom):</strong> These pairings split the
+          division into its top and bottom halves by seed, and each player in
+          one half plays a round robin against every player in the other half.
+          The division needs an even number of players.
+        </li>
+        <li>
           - <strong>King of the hill:</strong> These pairings pair 1v2, 3v4,
           5v6, and so forth. It is a good format for the very last round of a
           tournament.

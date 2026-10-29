@@ -103,7 +103,9 @@ export const fieldsForMethod = (
         "Play Within Team",
         "This pairing system divides players into two 'teams'. If this option is selected, " +
           "players will play a round robin within their own team. If false, players will play " +
-          "against players from the other team.",
+          "against players from the other team. When both teams have an odd number of players, " +
+          "the two players who would otherwise sit out a round play each other instead, so each " +
+          "player plays one game per round robin against the other team.",
       ]);
       break;
 
