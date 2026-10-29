@@ -18,164 +18,139 @@ import { isClubType } from "../store/constants";
 import { flashError, useClient } from "../utils/hooks/connect";
 import { AuthenticationService } from "../gen/api/proto/user_service/user_service_pb";
 
-const TopMenu = React.memo((props: Props) => {
-  const playMenuItems = [
+const ext = (href: string, text: string) => (
+  <a href={href} target="_blank" rel="noopener noreferrer">
+    {text}
+  </a>
+);
+
+const TopMenu = React.memo((props: { username: string; loggedIn: boolean }) => {
+  const playWatchMenuItems = [
+    { key: "omgwords", label: <Link to="/">OMGWords</Link> },
+    { key: "leagues", label: <Link to="/leagues">Leagues</Link> },
+    { key: "tournaments", label: <Link to="/tournaments">Tournaments</Link> },
+    { key: "puzzles", label: <Link to="/puzzle">Puzzles</Link> },
+    { key: "broadcasts", label: <Link to="/broadcasts">Broadcasts</Link> },
+    { key: "clubs", label: <Link to="/clubs">Clubs</Link> },
+  ];
+
+  const learnMenuItems = [
+    { key: "analyze", label: <Link to="/editor">Analyze a game</Link> },
+    ...(props.loggedIn
+      ? [
+          {
+            key: "collections",
+            label: (
+              <Link to={`/profile/${encodeURIComponent(props.username)}`}>
+                My collections
+              </Link>
+            ),
+          },
+        ]
+      : []),
     {
-      key: "omgwords",
-      label: <Link to="/">OMGWords</Link>,
-    },
-    {
-      key: "tournaments",
-      label: <Link to="/tournaments">Tournaments</Link>,
-    },
-    {
-      key: "leagues",
-      label: <Link to="/leagues">Leagues</Link>,
-    },
-    {
-      key: "puzzles",
-      label: <Link to="/puzzle">Puzzles</Link>,
-    },
-    {
-      key: "editor",
-      label: <Link to="/editor">Board editor</Link>,
-    },
-    {
-      key: "anagrams",
-      label: (
-        <a
-          href="//anagrams.mynetgear.com/"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Anagrams
-        </a>
-      ),
-    },
-    {
-      key: "licensetospell",
-      label: (
-        <a
-          href="https://seattlephysicstutor.com/plates.html"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          License to Spell
-        </a>
-      ),
+      key: "library",
+      label: "Library",
+      children: [
+        {
+          key: "articles",
+          label: ext("https://blog.woogles.io/articles", "Articles"),
+        },
+        {
+          key: "guides",
+          label: ext("https://blog.woogles.io/guides", "Guides"),
+        },
+        { key: "manuals", label: <Link to="/docs">Feature manuals</Link> },
+        {
+          key: "archives",
+          label: ext("https://blog.woogles.io/posts", "Archives"),
+        },
+      ],
     },
   ];
 
-  const studyMenuItems = [
+  const communityMenuItems = [
+    { key: "blog", label: ext("https://blog.woogles.io", "Blog") },
+    { key: "clubs", label: <Link to="/clubs">Clubs</Link> },
     {
-      label: (
-        <a
-          href="https://aerolith.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Aerolith
-        </a>
-      ),
-      key: "aerolith",
-    },
-    {
-      label: (
-        <a
-          href="http://randomracer.com/"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Random Racer
-        </a>
-      ),
-      key: "randomracer",
-    },
-    {
-      key: "wordtree",
-      label: (
-        <a
-          href="https://seattlephysicstutor.com/tree.html"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Word Tree
-        </a>
-      ),
+      key: "discord",
+      label: ext("https://discord.gg/GqkUqA7ENm", "Discord / feedback"),
     },
   ];
 
   const moreMenuItems = [
     {
-      key: "broadcasts",
-      label: <Link to="/broadcasts">Broadcasts</Link>,
+      key: "friends",
+      type: "group" as const,
+      label: "Friends of Woogles",
+      children: [
+        { key: "aerolith", label: ext("https://aerolith.org", "Aerolith") },
+        { key: "wordvault", label: ext("https://wordvault.io", "WordVault") },
+        {
+          key: "randomracer",
+          label: ext("http://randomracer.com/", "Random Racer"),
+        },
+        {
+          key: "wordtree",
+          label: ext("https://seattlephysicstutor.com/tree.html", "Word Tree"),
+        },
+        {
+          key: "anagrams",
+          label: ext("//anagrams.mynetgear.com/", "Anagrams"),
+        },
+        {
+          key: "licensetospell",
+          label: ext(
+            "https://seattlephysicstutor.com/plates.html",
+            "License to Spell",
+          ),
+        },
+        {
+          key: "leaves",
+          label: ext(
+            "https://www.cross-tables.com/leaves.php",
+            "Static Leave Evaluator",
+          ),
+        },
+        {
+          key: "breakingthegame",
+          label: ext("http://breakingthegame.net", "Breaking the Game"),
+        },
+        {
+          key: "quackle",
+          label: ext("http://people.csail.mit.edu/jasonkb/quackle/", "Quackle"),
+        },
+      ],
     },
-    {
-      key: "blog",
-      label: (
-        <a
-          href="https://blog.woogles.io"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Blog
-        </a>
-      ),
-    },
-    {
-      key: "team",
-      label: <Link to="/team">Meet the Woogles team</Link>,
-    },
-    {
-      key: "tos",
-      label: <Link to="/terms">Terms of Service</Link>,
-    },
+    { type: "divider" as const },
+    { key: "donate", label: <a href="/donate">Donate</a> },
+    { key: "team", label: <Link to="/team">Meet the Woogles team</Link> },
+  ];
+
+  const menus = [
+    { title: "Play / Watch", items: playWatchMenuItems },
+    { title: "Learn", items: learnMenuItems },
+    { title: "Community", items: communityMenuItems },
+    { title: "More", items: moreMenuItems },
   ];
 
   return (
     <div className="top-header-menu">
-      <div>
-        <Dropdown
-          overlayClassName="user-menu"
-          menu={{ items: playMenuItems }}
-          placement="bottom"
-          trigger={["click"]}
-          getPopupContainer={() =>
-            document.getElementById("root") as HTMLElement
-          }
-        >
-          <p>Play</p>
-        </Dropdown>
-      </div>
-      <div>
-        <Dropdown
-          overlayClassName="user-menu"
-          menu={{ items: studyMenuItems }}
-          placement="bottom"
-          trigger={["click"]}
-          getPopupContainer={() =>
-            document.getElementById("root") as HTMLElement
-          }
-        >
-          <p>Study</p>
-        </Dropdown>
-      </div>
-      <div>
-        <a href="/donate">Donate</a>
-      </div>
-      <div className="top-header-left-frame-special-land">
-        <Dropdown
-          overlayClassName="user-menu"
-          menu={{ items: moreMenuItems }}
-          placement="bottom"
-          trigger={["click"]}
-          getPopupContainer={() =>
-            document.getElementById("root") as HTMLElement
-          }
-        >
-          <p>More</p>
-        </Dropdown>
-      </div>
+      {menus.map((m) => (
+        <div key={m.title}>
+          <Dropdown
+            overlayClassName="user-menu"
+            menu={{ items: m.items }}
+            placement="bottom"
+            trigger={["click"]}
+            getPopupContainer={() =>
+              document.getElementById("root") as HTMLElement
+            }
+          >
+            <p>{m.title}</p>
+          </Dropdown>
+        </div>
+      ))}
     </div>
   );
 });
@@ -219,16 +194,46 @@ export const TopBar = React.memo((props: Props) => {
       key: "profile",
     },
     {
-      label: <Link to={`/settings`}>Settings</Link>,
+      label: "Settings",
       key: "settings",
+      children: [
+        {
+          key: "settings-personal",
+          label: <Link to="/settings/personal">Personal info</Link>,
+        },
+        {
+          key: "settings-preferences",
+          label: <Link to="/settings/preferences">Preferences</Link>,
+        },
+        {
+          key: "settings-password",
+          label: <Link to="/settings/password">Change password</Link>,
+        },
+        {
+          key: "settings-integrations",
+          label: <Link to="/settings/integrations">Integrations</Link>,
+        },
+        {
+          key: "settings-blocked",
+          label: <Link to="/settings/blocked">Blocked players</Link>,
+        },
+        {
+          key: "settings-secret",
+          label: <Link to="/settings/secret">Secret features</Link>,
+        },
+        {
+          key: "settings-api",
+          label: <Link to="/settings/api">API</Link>,
+        },
+        {
+          key: "settings-roles",
+          label: <Link to="/settings/roles">Roles &amp; permissions</Link>,
+        },
+      ],
     },
     {
-      label: <a href="/clubs">Clubs</a>,
-      key: "clubs",
-    },
-    {
-      label: <a href="/donate">Donate</a>,
-      key: "donate",
+      label: <Link to="/terms">Terms of Service</Link>,
+      key: "tos",
     },
     {
       label: <a>Log out</a>,
@@ -308,7 +313,7 @@ export const TopBar = React.memo((props: Props) => {
             )}
           </div>
         )}
-        <TopMenu />
+        <TopMenu username={username} loggedIn={loggedIn} />
         {loggedIn ? (
           <div className="user-info">
             <Dropdown
