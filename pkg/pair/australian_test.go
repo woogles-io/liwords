@@ -143,6 +143,35 @@ func TestAustralianRoundOneDispatch(t *testing.T) {
 		// a..e in standings order; n/2 = 2 => "c" byes; a-d, b-e.
 		is.Equal(got, map[string]string{"a": "d", "b": "e", "c": "", "d": "a", "e": "b"})
 	})
+
+	t.Run("all-zero records keep the seed order", func(t *testing.T) {
+		// A real first round: every record is 0-0 with 0 spread, and the
+		// members arrive in seed order (the division's standings order).
+		// These ids sort differently from the seeds, as real ids do, so a
+		// tiebreak on id would split the field by id instead of by seed.
+		seeds := []string{"zed", "amy", "kim", "bob", "lee", "cat", "dan", "eve"}
+		poolMembers := make([]*entity.PoolMember, len(seeds))
+		for i, id := range seeds {
+			poolMembers[i] = &entity.PoolMember{Id: id}
+		}
+		m := &entity.UnpairedPoolMembers{
+			PoolMembers: poolMembers,
+			RoundControls: &pb.RoundControl{
+				PairingMethod: pb.PairingMethod_AUSTRALIAN_DRAW,
+				Round:         0,
+			},
+			Repeats: map[string]int{},
+		}
+		pairings, err := pairAustralianDraw(m)
+		is.NoErr(err)
+		assertSymmetric(is, pairings)
+		got := idPairings(m, pairings)
+		// Seeds 1-5, 2-6, 3-7, 4-8.
+		is.Equal(got, map[string]string{
+			"zed": "lee", "amy": "cat", "kim": "dan", "bob": "eve",
+			"lee": "zed", "cat": "amy", "dan": "kim", "eve": "bob",
+		})
+	})
 }
 
 // auMembersBlocking builds a round-0 even pool in standings order (strictly
@@ -1100,11 +1129,13 @@ func TestAustralianStandingsResort(t *testing.T) {
 func TestAustralianSpreadTiebreak(t *testing.T) {
 	is := is.New(t)
 
-	// Equal wins: spread (desc) then id (asc) decide standings order.
+	// Equal wins: spread (desc) decides standings order, and a full tie
+	// keeps the order the members arrived in (the caller's standings order,
+	// which breaks ties by seed), not the order of their ids.
 	poolMembers := []*entity.PoolMember{
 		{Id: "zed", Wins: 1, Spread: 10},
-		{Id: "ann", Wins: 1, Spread: 50},
 		{Id: "bob", Wins: 1, Spread: 50},
+		{Id: "ann", Wins: 1, Spread: 50},
 		{Id: "cat", Wins: 1, Spread: -5},
 	}
 	standings := sortAustralianStandings(poolMembers)
@@ -1112,9 +1143,9 @@ func TestAustralianSpreadTiebreak(t *testing.T) {
 	for i, s := range standings {
 		order[i] = s.id
 	}
-	// ann & bob lead on spread 50 (ann before bob by id), then zed (10),
-	// then cat (-5).
-	is.Equal(order, []string{"ann", "bob", "zed", "cat"})
+	// bob & ann lead on spread 50 (bob before ann, as they arrived), then
+	// zed (10), then cat (-5).
+	is.Equal(order, []string{"bob", "ann", "zed", "cat"})
 	is.Equal(fmt.Sprintf("%d", standings[0].wins*2+standings[0].draws), "2")
 }
 
