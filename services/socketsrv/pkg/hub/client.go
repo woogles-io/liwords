@@ -112,7 +112,10 @@ func (c *Client) sendError(err error) {
 		log.Err(err).Msg("error serializing error, lol")
 		return
 	}
-	c.send <- bts
+	// Through the hub, the only goroutine that may touch c.send: it closes
+	// the channel when it drops this client, which the read pump (our
+	// caller) may outlive, and a send on a closed channel panics.
+	c.hub.sendToConnID(c.connID, bts)
 }
 
 func (c *Client) sendLatency() {
@@ -125,7 +128,8 @@ func (c *Client) sendLatency() {
 		log.Err(err).Msg("error serializing lag...")
 		return
 	}
-	c.send <- bts
+	// Through the hub; see sendError.
+	c.hub.sendToConnID(c.connID, bts)
 }
 
 // readPump pumps messages from the websocket connection to the hub.
