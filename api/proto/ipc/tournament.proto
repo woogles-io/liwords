@@ -87,6 +87,7 @@ enum PairingMethod {
   PAIRING_METHOD_COP = 11;
   AUSTRALIAN_DRAW = 12;
   WIN_GROUPS = 13;
+  SNAKED_ROUND_ROBIN = 14;
 }
 
 enum FirstMethod {
@@ -157,6 +158,12 @@ message RoundControl {
   // paired and opened while round R-1 is still being played. Only 0 and 1 are
   // valid.
   uint32 pairing_lag = 21;
+
+  // play_within_team is for the interleaved and snaked round robins, which
+  // split the division into two teams: when set, each team plays a round
+  // robin among itself instead of against the other team. (Not 11: that was
+  // interleave_team_round_robin, and old saved controls may still set it.)
+  bool play_within_team = 22;
 }
 
 message DivisionControls {

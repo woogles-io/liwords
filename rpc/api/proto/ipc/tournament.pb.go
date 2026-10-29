@@ -110,6 +110,7 @@ const (
 	PairingMethod_PAIRING_METHOD_COP      PairingMethod = 11
 	PairingMethod_AUSTRALIAN_DRAW         PairingMethod = 12
 	PairingMethod_WIN_GROUPS              PairingMethod = 13
+	PairingMethod_SNAKED_ROUND_ROBIN      PairingMethod = 14
 )
 
 // Enum value maps for PairingMethod.
@@ -129,6 +130,7 @@ var (
 		11: "PAIRING_METHOD_COP",
 		12: "AUSTRALIAN_DRAW",
 		13: "WIN_GROUPS",
+		14: "SNAKED_ROUND_ROBIN",
 	}
 	PairingMethod_value = map[string]int32{
 		"RANDOM":                  0,
@@ -145,6 +147,7 @@ var (
 		"PAIRING_METHOD_COP":      11,
 		"AUSTRALIAN_DRAW":         12,
 		"WIN_GROUPS":              13,
+		"SNAKED_ROUND_ROBIN":      14,
 	}
 )
 
@@ -712,9 +715,14 @@ type RoundControl struct {
 	// and 1 pairs it from results through round R-2, so that round R can be
 	// paired and opened while round R-1 is still being played. Only 0 and 1 are
 	// valid.
-	PairingLag    uint32 `protobuf:"varint,21,opt,name=pairing_lag,json=pairingLag,proto3" json:"pairing_lag,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	PairingLag uint32 `protobuf:"varint,21,opt,name=pairing_lag,json=pairingLag,proto3" json:"pairing_lag,omitempty"`
+	// play_within_team is for the interleaved and snaked round robins, which
+	// split the division into two teams: when set, each team plays a round
+	// robin among itself instead of against the other team. (Not 11: that was
+	// interleave_team_round_robin, and old saved controls may still set it.)
+	PlayWithinTeam bool `protobuf:"varint,22,opt,name=play_within_team,json=playWithinTeam,proto3" json:"play_within_team,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *RoundControl) Reset() {
@@ -885,6 +893,13 @@ func (x *RoundControl) GetPairingLag() uint32 {
 		return x.PairingLag
 	}
 	return 0
+}
+
+func (x *RoundControl) GetPlayWithinTeam() bool {
+	if x != nil {
+		return x.PlayWithinTeam
+	}
+	return false
 }
 
 type DivisionControls struct {
@@ -2372,7 +2387,7 @@ const file_proto_ipc_tournament_proto_rawDesc = "" +
 	"\x11TournamentPersons\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1a\n" +
 	"\bdivision\x18\x02 \x01(\tR\bdivision\x12/\n" +
-	"\apersons\x18\x03 \x03(\v2\x15.ipc.TournamentPersonR\apersons\"\xac\a\n" +
+	"\apersons\x18\x03 \x03(\v2\x15.ipc.TournamentPersonR\apersons\"\xd6\a\n" +
 	"\fRoundControl\x129\n" +
 	"\x0epairing_method\x18\x01 \x01(\x0e2\x12.ipc.PairingMethodR\rpairingMethod\x123\n" +
 	"\ffirst_method\x18\x02 \x01(\x0e2\x10.ipc.FirstMethodR\vfirstMethod\x12&\n" +
@@ -2397,7 +2412,8 @@ const file_proto_ipc_tournament_proto_rawDesc = "" +
 	"\vreset_round\x18\x14 \x01(\rR\n" +
 	"resetRound\x12\x1f\n" +
 	"\vpairing_lag\x18\x15 \x01(\rR\n" +
-	"pairingLagB\x16\n" +
+	"pairingLag\x12(\n" +
+	"\x10play_within_team\x18\x16 \x01(\bR\x0eplayWithinTeamB\x16\n" +
 	"\x14_spread_cap_overrideJ\x04\b\v\x10\f\"\xc6\x03\n" +
 	"\x10DivisionControls\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1a\n" +
@@ -2544,7 +2560,7 @@ const file_proto_ipc_tournament_proto_rawDesc = "" +
 	"\fFORFEIT_LOSS\x10\x06\x12\x0e\n" +
 	"\n" +
 	"ELIMINATED\x10\a\x12\b\n" +
-	"\x04VOID\x10\b*\x89\x02\n" +
+	"\x04VOID\x10\b*\xa1\x02\n" +
 	"\rPairingMethod\x12\n" +
 	"\n" +
 	"\x06RANDOM\x10\x00\x12\x0f\n" +
@@ -2564,7 +2580,8 @@ const file_proto_ipc_tournament_proto_rawDesc = "" +
 	"\x12PAIRING_METHOD_COP\x10\v\x12\x13\n" +
 	"\x0fAUSTRALIAN_DRAW\x10\f\x12\x0e\n" +
 	"\n" +
-	"WIN_GROUPS\x10\r*F\n" +
+	"WIN_GROUPS\x10\r\x12\x16\n" +
+	"\x12SNAKED_ROUND_ROBIN\x10\x0e*F\n" +
 	"\vFirstMethod\x12\x10\n" +
 	"\fMANUAL_FIRST\x10\x00\x12\x10\n" +
 	"\fRANDOM_FIRST\x10\x01\x12\x13\n" +
