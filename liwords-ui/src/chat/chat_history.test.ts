@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ChatEntityObj, ChatEntityType } from "../store/constants";
-import { mergeChatHistory } from "./chat_history";
+import { FETCHED_CHATS, mergeChatHistory } from "./chat_history";
 
 const here = "chat.league.x";
 
@@ -71,6 +71,56 @@ describe("mergeChatHistory", () => {
     const chat = [said(1), notice("valid"), said(2)];
     expect(mergeChatHistory(chat, [said(1), said(2)], here, 150)).toBe(chat);
     expect(mergeChatHistory(chat, [], here, 150)).toBe(chat);
+  });
+
+  // The newest FETCHED_CHATS messages, said at from, from + 1, ...
+  const fullHistory = (from: number) =>
+    Array.from({ length: FETCHED_CHATS }, (_, i) => said(from + i));
+
+  it("marks the hole when more was said while away than comes back", () => {
+    const chat = [said(1), said(2), notice("valid")];
+    const merged = mergeChatHistory(chat, fullHistory(10), here, 150);
+    expect(ids(merged).slice(0, 5)).toEqual([
+      "1-0",
+      "2-0",
+      "valid",
+      "catch-up-gap-10-0",
+      "10-0",
+    ]);
+    expect(merged).toHaveLength(3 + 1 + FETCHED_CHATS);
+    const gap = merged[3];
+    expect(gap.entityType).toBe(ChatEntityType.ServerMsg);
+    expect(gap.channel).toBe("server");
+    expect(gap.message).toBe(
+      "Some messages sent while you were away may be missing here.",
+    );
+    // the next catch-up meets messages the chat has: no second notice
+    const again = mergeChatHistory(merged, fullHistory(12), here, 150);
+    expect(ids(again).filter((id) => id?.startsWith("catch-up-gap"))).toEqual([
+      "catch-up-gap-10-0",
+    ]);
+  });
+
+  it("marks no hole when the fetched messages reach what the chat had", () => {
+    // the oldest fetched one is already shown
+    const merged = mergeChatHistory([said(10)], fullHistory(10), here, 150);
+    expect(ids(merged)).not.toContain("catch-up-gap-10-0");
+    // fewer than the server sends at most: that is all there is
+    const short = mergeChatHistory(
+      [said(1)],
+      fullHistory(10).slice(1),
+      here,
+      150,
+    );
+    expect(ids(short).some((id) => id?.startsWith("catch-up-gap"))).toBe(false);
+    // nothing of the channel to go after, only another channel and notices
+    const fresh = mergeChatHistory(
+      [said(1, "chat.pm.a_b"), notice("valid")],
+      fullHistory(10),
+      here,
+      150,
+    );
+    expect(ids(fresh).some((id) => id?.startsWith("catch-up-gap"))).toBe(false);
   });
 
   it("keeps the newest entries when there are too many", () => {
