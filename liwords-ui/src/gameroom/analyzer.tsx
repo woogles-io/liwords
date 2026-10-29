@@ -349,12 +349,15 @@ const parseExaminableGameContext = (
 type CachedAnalyzerMoves = {
   jsonKey: string;
   analyzerMoves: Array<AnalyzerMove> | null;
+  // why the wasm could not analyze the position, if it could not
+  error?: string;
 };
 
 const AnalyzerContext = React.createContext<{
   autoMode: boolean;
   setAutoMode: React.Dispatch<React.SetStateAction<boolean>>;
   cachedMoves: Array<AnalyzerMove> | null | undefined;
+  analyzerError: string | undefined;
   examinerLoading: boolean;
   requestAnalysis: () => void;
   showMovesForTurn: number;
@@ -366,6 +369,7 @@ const AnalyzerContext = React.createContext<{
 }>({
   autoMode: false,
   cachedMoves: null,
+  analyzerError: undefined,
   examinerLoading: false,
   requestAnalysis: () => {},
   showMovesForTurn: -1,
@@ -494,14 +498,18 @@ export const AnalyzerContextProvider = (
         };
         rerenderMoves();
       } catch (e) {
+        // The wasm turns down a position it cannot analyze, such as one in a
+        // variant it does not have, with an error. Show that, rather than an
+        // empty list and a rejection nothing catches.
+        console.error("analysis failed", e);
         if (examinerIdAtStart === examinerId.current) {
           movesCache[turn] = {
             jsonKey: boardJsonKey,
             analyzerMoves: [],
+            error: e instanceof Error ? e.message : String(e),
           };
           rerenderMoves();
         }
-        throw e;
       }
     });
   }, [examinableGameContext, rerenderMoves, unrace, boardJsonKey, parsedEgc]);
@@ -513,12 +521,17 @@ export const AnalyzerContextProvider = (
     (cachedMovesThisTurn.jsonKey === boardJsonKey
       ? cachedMovesThisTurn.analyzerMoves
       : undefined);
+  const analyzerError =
+    cachedMovesThisTurn && cachedMovesThisTurn.jsonKey === boardJsonKey
+      ? cachedMovesThisTurn.error
+      : undefined;
   const examinerLoading = cachedMoves === null;
   const contextValue = useMemo(
     () => ({
       autoMode,
       setAutoMode,
       cachedMoves,
+      analyzerError,
       examinerLoading,
       requestAnalysis,
       showMovesForTurn,
@@ -532,6 +545,7 @@ export const AnalyzerContextProvider = (
       autoMode,
       setAutoMode,
       cachedMoves,
+      analyzerError,
       examinerLoading,
       requestAnalysis,
       showMovesForTurn,
@@ -682,6 +696,7 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
     autoMode,
     setAutoMode,
     cachedMoves,
+    analyzerError,
     examinerLoading,
     requestAnalysis,
     showMovesForTurn,
@@ -963,7 +978,11 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
             analyzerMove: null,
           });
         }
-      })();
+      })().catch((e) => {
+        // As with the analysis, the wasm can turn the play down with an
+        // error; the play then goes unscored.
+        console.error("scoring failed", e);
+      });
     }
   }, [actualMove, examinableGameContext, lexicon, variant]);
   const currentEvaluatedMove =
@@ -1147,6 +1166,11 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
       {!examinerLoading ? (
         <div className="suggestions" style={props.style}>
           {note && <p className="rack-note">{note}</p>}
+          {analyzerError && (
+            <p className="analyzer-error">
+              Could not analyze this position: {analyzerError}
+            </p>
+          )}
           {rackLength > 0 || !note ? (
             <table>
               <tbody>{renderAnalyzerMoves}</tbody>
