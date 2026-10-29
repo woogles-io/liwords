@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"os"
 	"testing"
+	"time"
 
+	"github.com/gomodule/redigo/redis"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog/log"
@@ -48,6 +50,17 @@ var gameEndedEventObj = &pb.GameEndedEvent{
 	Tie:       false,
 }
 
+// testRedisPool dials REDIS_URL, which CI sets. A challenge posts its result
+// to the game's chats there. With no REDIS_URL every dial fails, and so does
+// the post, which the game then does without.
+func testRedisPool() *redis.Pool {
+	return &redis.Pool{
+		MaxIdle:     3,
+		IdleTimeout: 240 * time.Second,
+		Dial:        func() (redis.Conn, error) { return redis.DialURL(os.Getenv("REDIS_URL")) },
+	}
+}
+
 func recreateDB() (*pgxpool.Pool, *stores.Stores, *config.Config) {
 	// Create a database.
 	err := common.RecreateTestDB(pkg)
@@ -61,7 +74,7 @@ func recreateDB() (*pgxpool.Pool, *stores.Stores, *config.Config) {
 
 	cfg := DefaultConfig
 	cfg.DBConnDSN = common.TestingPostgresConnDSN(pkg) // for gorm stores
-	stores, err := stores.NewInitializedStores(pool, nil, cfg)
+	stores, err := stores.NewInitializedStores(pool, testRedisPool(), cfg)
 	if err != nil {
 		panic(err)
 	}

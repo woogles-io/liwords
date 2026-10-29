@@ -95,7 +95,7 @@ func contestedMoves(t *testing.T, servers int, mode pb.GameMode) {
 	if servers == 2 {
 		poolB, err := common.OpenTestingDB(pkg)
 		is.NoErr(err)
-		storesB, err = stores.NewInitializedStores(poolB, nil, cfg)
+		storesB, err = stores.NewInitializedStores(poolB, testRedisPool(), cfg)
 		is.NoErr(err)
 		defer storesB.Disconnect()
 	}
