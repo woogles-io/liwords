@@ -65,6 +65,17 @@ describe("the pairing lag of a round control", () => {
     ).toBeUndefined();
   });
 
+  it("is allowed and kept on an Australian Draw round", () => {
+    expect(
+      pairingLagDisabledReason(PairingMethod.AUSTRALIAN_DRAW, 2, 7, 7),
+    ).toBeUndefined();
+    const audraw = setting({
+      pairingMethod: PairingMethod.AUSTRALIAN_DRAW,
+      pairingLag: 1,
+    });
+    expect(rdCtrlFromSetting(audraw, 7, 5).pairingLag).toBe(1);
+  });
+
   it("explains a range that starts with the first round", () => {
     expect(pairingLagDisabledReason(PairingMethod.SWISS, 1, 3, 7)).toMatch(
       /first round/,
