@@ -11,6 +11,7 @@ import React, {
 import { LeftOutlined, RightOutlined } from "@ant-design/icons";
 import { ActiveGames } from "../lobby/active_games";
 import { SeekForm } from "../lobby/seek_form";
+import { submitSeekFromForm } from "../lobby/sought_game_interactions";
 import { SoughtGames } from "../lobby/sought_games";
 import { SoughtGame } from "../store/reducers/lobby_reducer";
 import {
@@ -160,10 +161,7 @@ export const ActionsPanel = React.memo((props: Props) => {
     setMatchModalVisible(false);
     setFormDisabled(true);
     if (!formDisabled) {
-      onSeekSubmit(sg);
-      setTimeout(() => {
-        setFormDisabled(false);
-      }, 500);
+      submitSeekFromForm(sg, onSeekSubmit, setFormDisabled);
     }
   };
 
