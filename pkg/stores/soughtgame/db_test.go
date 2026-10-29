@@ -14,6 +14,7 @@ import (
 	"github.com/woogles-io/liwords/pkg/common"
 	"github.com/woogles-io/liwords/pkg/entity"
 	commondb "github.com/woogles-io/liwords/pkg/stores/common"
+	"github.com/woogles-io/liwords/pkg/stores/models"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 	"google.golang.org/protobuf/proto"
 )
@@ -59,8 +60,12 @@ func TestSoughtGame(t *testing.T) {
 	err = store.New(ctx, sgPresentReceiver)
 	is.NoErr(err)
 
+	// Another seeker, since sg is already the default seeker's real-time
+	// match request to the default receiver (one per pair); likewise
+	// sgTourney below.
 	newReceiverConnId := "new_receiver_conn_id"
 	sgPresentReceiverConnId := newSoughtGame()
+	sgPresentReceiverConnId.SeekRequest.User.UserId = "second_seeker_id"
 	sgPresentReceiverConnId.SeekRequest.ReceiverState = pb.SeekState_PRESENT
 	sgPresentReceiverConnId.SeekRequest.ReceiverConnectionId = newReceiverConnId
 
@@ -79,6 +84,7 @@ func TestSoughtGame(t *testing.T) {
 	is.Equal(len(listedSoughtGames), 0)
 
 	sgTourney := newSoughtGame()
+	sgTourney.SeekRequest.User.UserId = "third_seeker_id"
 	sgTourney.SeekRequest.TournamentId = tourneyId
 
 	err = store.New(ctx, sgTourney)
@@ -210,8 +216,8 @@ func TestSoughtGameNullValues(t *testing.T) {
 	store.Disconnect()
 }
 
-// Any number of real-time seeks and match requests, alongside any number of
-// correspondence ones; leaving cancels only the real-time ones (#1792).
+// Real-time seeks and match requests, alongside any number of correspondence
+// ones; leaving cancels only the real-time ones (#1792).
 func TestRealtimeSeeksAlongsideCorrespondence(t *testing.T) {
 	_, store := recreateDB()
 	is := is.New(t)
@@ -220,11 +226,6 @@ func TestRealtimeSeeksAlongsideCorrespondence(t *testing.T) {
 	conn := common.DefaultSeekRequest.SeekerConnectionId
 
 	newSeek := seekMaker(t, store)
-	canCreate := func(mode pb.GameMode, receiver string) bool {
-		ok, _, err := store.CanCreateSeek(ctx, seeker, mode, receiver)
-		is.NoErr(err)
-		return ok
-	}
 	exists := func(id string) bool {
 		_, err := store.Get(ctx, id)
 		return err == nil
@@ -233,8 +234,6 @@ func TestRealtimeSeeksAlongsideCorrespondence(t *testing.T) {
 	corresOpen := newSeek(pb.GameMode_CORRESPONDENCE, "")
 	corresMatch := newSeek(pb.GameMode_CORRESPONDENCE, "someone")
 	live := newSeek(pb.GameMode_REAL_TIME, "")
-	is.True(canCreate(pb.GameMode_REAL_TIME, ""))
-	is.True(canCreate(pb.GameMode_REAL_TIME, "someone"))
 	liveMatch := newSeek(pb.GameMode_REAL_TIME, "someone")
 
 	// Leaving cancels all the live ones.
@@ -252,6 +251,91 @@ func TestRealtimeSeeksAlongsideCorrespondence(t *testing.T) {
 	is.Equal(ids(t, deleted), map[string]bool{live: true, liveMatch: true})
 	is.True(exists(corresOpen))
 	is.True(exists(corresMatch))
+
+	store.Disconnect()
+}
+
+// One open real-time match request per seeker and receiver. Open seeks,
+// correspondence ones, and other pairs are not limited.
+func TestOneMatchRequestPerPair(t *testing.T) {
+	_, store := recreateDB()
+	is := is.New(t)
+	ctx := context.Background()
+	newSeek := seekMaker(t, store)
+	matchTo := func(receiver string) *entity.SoughtGame {
+		sg := newSoughtGame()
+		sg.SeekRequest.ReceivingUser.UserId = receiver
+		return sg
+	}
+
+	first := newSeek(pb.GameMode_REAL_TIME, "someone")
+	is.True(errors.Is(store.New(ctx, matchTo("someone")), entity.ErrMatchRequestOpen))
+
+	newSeek(pb.GameMode_REAL_TIME, "someone_else")
+	newSeek(pb.GameMode_CORRESPONDENCE, "someone")
+	for i := 0; i < 5; i++ {
+		newSeek(pb.GameMode_REAL_TIME, "")
+	}
+	other := matchTo("someone")
+	other.SeekRequest.User.UserId = "other_seeker_id"
+	is.NoErr(store.New(ctx, other))
+
+	// Once the first is gone, another may go out.
+	is.NoErr(store.Delete(ctx, first))
+	newSeek(pb.GameMode_REAL_TIME, "someone")
+
+	store.Disconnect()
+}
+
+// Many match requests to one player at the same moment (the bus hands each
+// socket message to its own goroutine): one is stored, the rest refused.
+func TestOneMatchRequestPerPairRace(t *testing.T) {
+	_, store := recreateDB()
+	is := is.New(t)
+	ctx := context.Background()
+
+	const n = 20
+	errs := make(chan error, n)
+	var wg sync.WaitGroup
+	for i := 0; i < n; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			errs <- store.New(ctx, newSoughtGame())
+		}()
+	}
+	wg.Wait()
+	close(errs)
+	stored := 0
+	for err := range errs {
+		switch {
+		case err == nil:
+			stored++
+		case errors.Is(err, entity.ErrMatchRequestOpen):
+		default:
+			t.Fatal(err)
+		}
+	}
+	is.Equal(stored, 1)
+
+	store.Disconnect()
+}
+
+// While another transaction holds the seeker's lock (as accepting one of
+// their seeks does), a match request of theirs is refused, not waited for.
+func TestMatchRequestRefusedWhileSeekerLocked(t *testing.T) {
+	pool, store := recreateDB()
+	is := is.New(t)
+	ctx := context.Background()
+
+	tx, err := pool.Begin(ctx)
+	is.NoErr(err)
+	defer tx.Rollback(ctx)
+	is.NoErr(models.New(tx).LockSoughtGameSeeker(ctx, common.DefaultSeekRequest.User.UserId))
+	is.True(errors.Is(store.New(ctx, newSoughtGame()), entity.ErrMatchRequestOpen))
+
+	is.NoErr(tx.Rollback(ctx))
+	is.NoErr(store.New(ctx, newSoughtGame()))
 
 	store.Disconnect()
 }
