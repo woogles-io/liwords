@@ -2254,26 +2254,18 @@ func newClassicPairing(t *ClassicDivision,
 		// game in the second phase.
 		sum := round/(numPlayers+(numPlayers%2)-1) + playerIndexSum
 		switchFirst = (sum % 2) == 1
-	} else if t.RoundControls[round].PairingMethod == pb.PairingMethod_TEAM_ROUND_ROBIN {
-		sum := round/((numPlayers+1)/2) + playerIndexSum
-		switchFirst = (sum % 2) == 1
-	} else if t.RoundControls[round].PairingMethod == pb.PairingMethod_INTERLEAVED_ROUND_ROBIN ||
-		t.RoundControls[round].PairingMethod == pb.PairingMethod_SNAKED_ROUND_ROBIN {
-		if t.RoundControls[round].PlayWithinTeam {
-			sum := round / ((numPlayers+1)/2 - 1)
-			sum += (playerIndexSum % 4) / 2
-			if playerOne%2 == 0 {
-				sum += int(playerOne%4) / 2
-			} else {
-				sum += int(playerOne % 2)
-			}
-			switchFirst = (sum % 2) == 1
-		} else {
-			sum := round / ((numPlayers + 1) / 2)
-			sum += (playerIndexSum % 4) % 3
-			sum += int(playerOne % 2)
-			switchFirst = (sum % 2) == 1
+	} else if pm := t.RoundControls[round].PairingMethod; pm == pb.PairingMethod_TEAM_ROUND_ROBIN ||
+		pm == pb.PairingMethod_INTERLEAVED_ROUND_ROBIN ||
+		pm == pb.PairingMethod_SNAKED_ROUND_ROBIN {
+		// The schedule that paired the round also says who goes first.
+		// Players are paired in player order for these methods, so player
+		// indexes are the schedule's indexes.
+		goesFirst, err := pair.TeamRoundRobinGoesFirst(t.RoundControls[round], numPlayers, round,
+			int(playerOne), t.Seed)
+		if err != nil {
+			log.Err(err).Str("division", t.DivisionName).Int("round", round).Msg("team-round-robin-firsts")
 		}
+		switchFirst = !goesFirst
 	} else if firstMethod != pb.FirstMethod_MANUAL_FIRST {
 		playerOneFS := getPlayerFirstsAndSeconds(t, playerGoingFirst, round-1)
 		playerTwoFS := getPlayerFirstsAndSeconds(t, playerGoingSecond, round-1)

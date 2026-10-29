@@ -1776,6 +1776,69 @@ func TestClassicDivisionRoundRobin(t *testing.T) {
 
 }
 
+func TestClassicDivisionSnakedRoundRobin(t *testing.T) {
+	is := is.New(t)
+	for _, playWithinTeam := range []bool{false, true} {
+		for numPlayers := 2; numPlayers <= 20; numPlayers++ {
+			playerNames := make(map[string]int32)
+			for k := range numPlayers {
+				playerNames[fmt.Sprintf("Player %d", k)] = int32(k)
+			}
+			players := makeTournamentPersons(playerNames)
+
+			// Two whole round robins: one is half the field (with a bye seat)
+			// across teams; within teams, it is enough rounds for both teams'
+			// round robins to come round together.
+			cycle := (numPlayers + 1) / 2
+			if playWithinTeam {
+				cycle = 1
+				for _, size := range []int{(numPlayers + 1) / 2, numPlayers / 2} {
+					rounds := max(size-1+size%2, 1)
+					lcm := cycle
+					for lcm%rounds != 0 {
+						lcm += cycle
+					}
+					cycle = lcm
+				}
+			}
+			roundControls := []*pb.RoundControl{}
+			for round := range 2 * cycle {
+				roundControls = append(roundControls, &pb.RoundControl{FirstMethod: pb.FirstMethod_MANUAL_FIRST,
+					PairingMethod:               pb.PairingMethod_SNAKED_ROUND_ROBIN,
+					PlayWithinTeam:              playWithinTeam,
+					GamesPerRound:               1,
+					Round:                       int32(round),
+					Factor:                      1,
+					MaxRepeats:                  1,
+					AllowOverMaxRepeats:         true,
+					RepeatRelativeWeight:        1,
+					WinDifferenceRelativeWeight: 1})
+			}
+			tc, err := compactNewClassicDivision(players, roundControls, true)
+			is.NoErr(err)
+
+			for round := range 2 * cycle {
+				for playerIndex := range numPlayers {
+					pairing := tc.PairingMap[tc.Matrix[round][playerIndex]]
+					is.True(pairing != nil)
+					if pairing.Players[0] == pairing.Players[1] {
+						continue // a bye
+					}
+					// The division recorded the firsts the schedule decided.
+					goesFirst, err := pair.TeamRoundRobinGoesFirst(roundControls[round], numPlayers, round,
+						playerIndex, tc.Seed)
+					is.NoErr(err)
+					is.Equal(goesFirst, pairing.Players[0] == int32(playerIndex))
+				}
+			}
+			for playerIndex := range numPlayers {
+				fs := getPlayerFirstsAndSeconds(tc, int32(playerIndex), 2*cycle-1)
+				is.Equal(fs[0], fs[1])
+			}
+		}
+	}
+}
+
 func TestClassicDivisionInterleavedRoundRobin(t *testing.T) {
 	is := is.New(t)
 	totalPlayers := 20

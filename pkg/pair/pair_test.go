@@ -1,7 +1,9 @@
 package pair
 
 import (
+	"errors"
 	"fmt"
+	"math/rand/v2"
 	"testing"
 
 	"github.com/matryer/is"
@@ -335,4 +337,325 @@ func equalPairings(s1 []int, s2 []int) error {
 		}
 	}
 	return nil
+}
+
+// previousTeamRoundRobinPairings is getTeamRoundRobinPairings as it was before
+// the snaked round robin, kept to check that the team and interleaved round
+// robins still pair exactly as they did for tournaments already under way.
+func previousTeamRoundRobinPairings(numberOfPlayers, round, gamesPerMatchup int, interleave bool, seed uint64) ([]int, error) {
+	// A team round robin contains two teams: A and B
+	// Everyone in A plays everyone in B gamesPerMatchup times (in a row for speed).
+	if numberOfPlayers%2 == 1 && !interleave {
+		return nil, errors.New("cannot have an odd number of players without interleaving team round robin pairings")
+	}
+
+	players := []int{}
+	if !interleave {
+		for i := 0; i < numberOfPlayers; i++ {
+			players = append(players, i)
+		}
+	} else {
+		for i := 0; i < numberOfPlayers; i += 2 {
+			players = append(players, i)
+		}
+		for i := 1; i < numberOfPlayers; i += 2 {
+			players = append(players, i)
+		}
+	}
+
+	bye := numberOfPlayers%2 == 1
+	// If there are an odd number of players add a bye
+	if bye {
+		players = append(players, numberOfPlayers)
+	}
+
+	l := len(players)
+
+	lbh := l / 2
+	rotatedBottomPlayers := players[lbh:l]
+
+	source := rand.NewPCG(seed, 0)
+	rng := rand.New(source)
+	rng.Shuffle(len(rotatedBottomPlayers),
+		func(i, j int) {
+			rotatedBottomPlayers[i], rotatedBottomPlayers[j] = rotatedBottomPlayers[j], rotatedBottomPlayers[i]
+		})
+
+	rotationIndex := (round / gamesPerMatchup) % lbh
+	rotatedBottomPlayers = append(rotatedBottomPlayers[rotationIndex:lbh], rotatedBottomPlayers[0:rotationIndex]...)
+
+	firstSeg := rotatedBottomPlayers[0 : lbh/2]
+	secondSeg := rotatedBottomPlayers[lbh/2 : lbh]
+
+	topHalf := players[0:lbh]
+	bottomHalf := append(firstSeg, secondSeg...)
+	utilities.Reverse(bottomHalf)
+
+	pairings := []int{}
+
+	// Assign -2 as default so if it doesn't
+	// get overwritten we know something is wrong
+	for i := 0; i < len(players); i++ {
+		pairings = append(pairings, -2)
+	}
+
+	// 	Interface("players", players).Int("numPlayers", numberOfPlayers).Int("round", round).
+	// 	Interface("topHalf", topHalf).Interface("bottomHalf", bottomHalf).Msg("debug-pairings")
+
+	for i := 0; i < len(players)/2; i++ {
+		pairings[topHalf[i]] = bottomHalf[i]
+		pairings[bottomHalf[i]] = topHalf[i]
+	}
+
+	// Convert the bye from l to -1 because it's easier
+	// on the Round Robin pairing algorithm
+	if bye {
+		for i := 0; i < len(pairings); i++ {
+			if pairings[i] == numberOfPlayers {
+				pairings[i] = -1
+			}
+		}
+		pairings = pairings[0 : len(pairings)-1]
+	}
+
+	return pairings, nil
+}
+
+func TestTeamRoundRobinPairsAsBefore(t *testing.T) {
+	is := is.New(t)
+	for _, interleave := range []bool{false, true} {
+		method := pb.PairingMethod_TEAM_ROUND_ROBIN
+		if interleave {
+			method = pb.PairingMethod_INTERLEAVED_ROUND_ROBIN
+		}
+		for seed := uint64(10); seed < 14; seed++ {
+			for numberOfPlayers := 2; numberOfPlayers <= 25; numberOfPlayers++ {
+				if numberOfPlayers%2 == 1 && !interleave {
+					continue
+				}
+				for gamesPerMatchup := 1; gamesPerMatchup <= 3; gamesPerMatchup++ {
+					for round := 0; round < 3*numberOfPlayers*gamesPerMatchup; round++ {
+						want, err := previousTeamRoundRobinPairings(numberOfPlayers, round, gamesPerMatchup, interleave, seed)
+						is.NoErr(err)
+						got, err := getTeamRoundRobinPairings(numberOfPlayers, round, gamesPerMatchup, method, false, seed)
+						is.NoErr(err)
+						is.Equal(got, want)
+					}
+				}
+			}
+		}
+	}
+}
+
+func TestSnakedTeams(t *testing.T) {
+	is := is.New(t)
+	teamA, teamB, err := getTeams(10, pb.PairingMethod_SNAKED_ROUND_ROBIN)
+	is.NoErr(err)
+	is.Equal(teamA, []int{0, 3, 4, 7, 8})
+	is.Equal(teamB, []int{1, 2, 5, 6, 9})
+
+	// With seven players, team A is the short one, so it gets the bye seat:
+	// seeds 1, 4 and 5 never meet each other, and each sits out once.
+	byes := map[int]int{}
+	for round := 0; round < 4; round++ {
+		pairings, err := getTeamRoundRobinPairings(7, round, 1, pb.PairingMethod_SNAKED_ROUND_ROBIN, false, 3)
+		is.NoErr(err)
+		for player, opponent := range pairings {
+			if opponent == -1 {
+				byes[player]++
+			} else {
+				is.True((player%4 == 0 || player%4 == 3) != (opponent%4 == 0 || opponent%4 == 3))
+			}
+		}
+	}
+	is.Equal(byes, map[int]int{1: 1, 2: 1, 5: 1, 6: 1})
+}
+
+// teamRoundRobinCycle is how many rounds it takes for every team in a
+// team-style round robin to finish a whole number of cycles.
+func teamRoundRobinCycle(numberOfPlayers, gamesPerMatchup int, method pb.PairingMethod, playWithinTeam bool) int {
+	if !playWithinTeam {
+		return (numberOfPlayers + 1) / 2 * gamesPerMatchup
+	}
+	teamA, teamB, _ := getTeams(numberOfPlayers, method)
+	cycle := 1
+	for _, team := range [][]int{teamA, teamB} {
+		// A team plays its round robin in an odd number of rounds: one per
+		// opponent, plus a bye round if it has an odd number of players.
+		rounds := max(len(team)-1+len(team)%2, 1)
+		lcm := cycle
+		for lcm%rounds != 0 {
+			lcm += cycle
+		}
+		cycle = lcm
+	}
+	return cycle * gamesPerMatchup
+}
+
+func TestTeamRoundRobinFirsts(t *testing.T) {
+	type mode struct {
+		method         pb.PairingMethod
+		playWithinTeam bool
+		// The most firsts or seconds in a row anyone may get.
+		maxStreak int
+	}
+	modes := []mode{
+		{pb.PairingMethod_TEAM_ROUND_ROBIN, false, 2},
+		// Its pairings are kept as they were, which costs an occasional third
+		// first or second in a row in odd fields over more than one cycle.
+		{pb.PairingMethod_INTERLEAVED_ROUND_ROBIN, false, 3},
+		{pb.PairingMethod_INTERLEAVED_ROUND_ROBIN, true, 2},
+		{pb.PairingMethod_SNAKED_ROUND_ROBIN, false, 2},
+		{pb.PairingMethod_SNAKED_ROUND_ROBIN, true, 2},
+	}
+	for _, md := range modes {
+		for gamesPerMatchup := 1; gamesPerMatchup <= 3; gamesPerMatchup++ {
+			if gamesPerMatchup > 1 && md.method != pb.PairingMethod_TEAM_ROUND_ROBIN {
+				continue
+			}
+			for numberOfPlayers := 2; numberOfPlayers <= 30; numberOfPlayers++ {
+				if numberOfPlayers%2 == 1 && md.method == pb.PairingMethod_TEAM_ROUND_ROBIN {
+					continue
+				}
+				for seed := uint64(1); seed < 6; seed++ {
+					name := fmt.Sprintf("%s within=%v games=%d players=%d seed=%d",
+						md.method, md.playWithinTeam, gamesPerMatchup, numberOfPlayers, seed)
+					checkTeamRoundRobinFirsts(t, name, numberOfPlayers, gamesPerMatchup, md.method,
+						md.playWithinTeam, md.maxStreak, seed)
+				}
+			}
+		}
+	}
+}
+
+func checkTeamRoundRobinFirsts(t *testing.T, name string, numberOfPlayers, gamesPerMatchup int,
+	method pb.PairingMethod, playWithinTeam bool, maxStreak int, seed uint64) {
+
+	teamA, _, err := getTeams(numberOfPlayers, method)
+	if err != nil {
+		t.Fatal(name, err)
+	}
+	onTeamA := map[int]bool{}
+	for _, p := range teamA {
+		onTeamA[p] = true
+	}
+	cycle := teamRoundRobinCycle(numberOfPlayers, gamesPerMatchup, method, playWithinTeam)
+
+	firsts := make([]int, numberOfPlayers)
+	games := make([]int, numberOfPlayers)
+	streaks := make([]int, numberOfPlayers)
+	lastFirst := make([]bool, numberOfPlayers)
+	// Firsts minus seconds between each two players.
+	pairFirsts := map[[2]int]int{}
+	meetings := map[[2]int]int{}
+
+	for round := 0; round < 4*cycle; round++ {
+		pairings, goesFirst, err := getTeamRoundRobinSchedule(numberOfPlayers, round, gamesPerMatchup,
+			method, playWithinTeam, seed)
+		if err != nil {
+			t.Fatal(name, err)
+		}
+		byes := 0
+		for player, opponent := range pairings {
+			if opponent == -1 {
+				byes++
+				continue
+			}
+			if pairings[opponent] != player {
+				t.Fatalf("%s round %d: %d plays %d, who plays %d", name, round, player, opponent, pairings[opponent])
+			}
+			if goesFirst[player] == goesFirst[opponent] {
+				t.Fatalf("%s round %d: %d and %d both go first or both second", name, round, player, opponent)
+			}
+			sameTeam := onTeamA[player] == onTeamA[opponent]
+			if playWithinTeam != sameTeam {
+				// Within teams of odd size, the two bye receivers play across.
+				if !playWithinTeam || len(teamA)%2 == 0 || (numberOfPlayers-len(teamA))%2 == 0 {
+					t.Fatalf("%s round %d: %d plays %d across the wrong teams", name, round, player, opponent)
+				}
+			}
+			key := [2]int{min(player, opponent), max(player, opponent)}
+			if player < opponent {
+				meetings[key]++
+			}
+			if goesFirst[player] {
+				firsts[player]++
+				if player == key[0] {
+					pairFirsts[key]++
+				} else {
+					pairFirsts[key]--
+				}
+			}
+			if games[player] > 0 && goesFirst[player] == lastFirst[player] {
+				streaks[player]++
+			} else {
+				streaks[player] = 1
+			}
+			if streaks[player] > maxStreak {
+				t.Fatalf("%s round %d: player %d has %d firsts or seconds in a row", name, round, player, streaks[player])
+			}
+			lastFirst[player] = goesFirst[player]
+			games[player]++
+			// A bye can leave a player two firsts or seconds up for a while.
+			if diff := 2*firsts[player] - games[player]; diff > 2 || diff < -2 {
+				t.Fatalf("%s round %d: player %d has %d firsts in %d games", name, round, player, firsts[player], games[player])
+			}
+		}
+		if byes > numberOfPlayers%2 {
+			t.Fatalf("%s round %d: %d byes", name, round, byes)
+		}
+
+		if (round+1)%cycle == 0 && !playWithinTeam {
+			// After each round robin, everyone is within one of even.
+			for player := range firsts {
+				if diff := 2*firsts[player] - games[player]; diff > 1 || diff < -1 {
+					t.Fatalf("%s round %d: player %d has %d firsts in %d games", name, round, player, firsts[player], games[player])
+				}
+			}
+		}
+		if (round+1)%(2*cycle) == 0 {
+			// After a whole number of double round robins, everyone has gone
+			// first exactly as often as second, and so has every pair.
+			for player := range firsts {
+				if 2*firsts[player] != games[player] {
+					t.Fatalf("%s round %d: player %d has %d firsts in %d games", name, round, player, firsts[player], games[player])
+				}
+			}
+			for key, diff := range pairFirsts {
+				if diff != 0 {
+					t.Fatalf("%s round %d: %d went first %d more times than %d", name, round, key[0], diff, key[1])
+				}
+			}
+		}
+	}
+	// Everyone met every opponent they should, equally often: within teams,
+	// a smaller team gets round more often, so only pairs from the same team
+	// (or both across) need meet as often as each other.
+	want := map[int]int{}
+	for key, n := range meetings {
+		group := 2
+		if onTeamA[key[0]] == onTeamA[key[1]] && onTeamA[key[0]] {
+			group = 0
+		} else if onTeamA[key[0]] == onTeamA[key[1]] {
+			group = 1
+		}
+		if _, ok := want[group]; !ok {
+			want[group] = n
+		}
+		if n != want[group] {
+			t.Fatalf("%s: uneven meetings %v", name, meetings)
+		}
+	}
+	pairs := 0
+	for range meetings {
+		pairs++
+	}
+	teamB := numberOfPlayers - len(teamA)
+	wantPairs := len(teamA) * teamB
+	if playWithinTeam {
+		wantPairs = len(teamA)*(len(teamA)-1)/2 + teamB*(teamB-1)/2
+	}
+	if pairs < wantPairs {
+		t.Fatalf("%s: only %d of %d pairs met", name, pairs, wantPairs)
+	}
 }
