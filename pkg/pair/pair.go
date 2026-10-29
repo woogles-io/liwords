@@ -586,23 +586,8 @@ func GetRoundRobinPairings(numberOfPlayers int, round int, seed uint64) ([]int, 
 
 	*/
 
-	players := []int{}
-	for i := 0; i < numberOfPlayers; i++ {
-		players = append(players, i)
-	}
-
+	players := roundRobinSeats(numberOfPlayers, seed)
 	bye := numberOfPlayers%2 == 1
-	// If there are an odd number of players add a bye
-	if bye {
-		players = append(players, numberOfPlayers)
-	}
-
-	source := rand.NewPCG(seed, 0)
-	rng := rand.New(source)
-	rng.Shuffle(len(players),
-		func(i, j int) {
-			players[i], players[j] = players[j], players[i]
-		})
 
 	rotatedPlayers := players[1:]
 
@@ -648,6 +633,84 @@ func GetRoundRobinPairings(numberOfPlayers int, round int, seed uint64) ([]int, 
 		}
 	}
 	return pairings, nil
+}
+
+// roundRobinSeats shuffles the players, and the bye (numberOfPlayers) if
+// there are an odd number of them, into GetRoundRobinPairings' seats: the
+// first seat is fixed and the rest rotate past it.
+func roundRobinSeats(numberOfPlayers int, seed uint64) []int {
+	players := []int{}
+	for i := 0; i < numberOfPlayers; i++ {
+		players = append(players, i)
+	}
+
+	// If there are an odd number of players add a bye
+	if numberOfPlayers%2 == 1 {
+		players = append(players, numberOfPlayers)
+	}
+
+	source := rand.NewPCG(seed, 0)
+	rng := rand.New(source)
+	rng.Shuffle(len(players),
+		func(i, j int) {
+			players[i], players[j] = players[j], players[i]
+		})
+	return players
+}
+
+// RoundRobinGoesFirst says whether player goes first in round of the round
+// robin GetRoundRobinPairings pairs with the same seed.
+//
+// In each round the fixed seat plays the rotating seat at the center of the
+// circle, and the seats k ahead of and behind the center play each other.
+// The player ahead goes first when k is odd, so as the circle turns each
+// player on it alternates, apart from around their game against the fixed
+// seat; that game is free to go either way, and is used as follows.
+//
+// With an even number of players, the fixed seat alternates, starting
+// second, except that its last two rounds are swapped. That puts every
+// player's one double (which every round robin must give all but two
+// players) away from the ends of the cycle.
+//
+// With an odd number of players and the bye on the circle, each player
+// sitting out skips a first or a second, and the game against the fixed
+// seat makes it up, so that everyone has as many firsts as seconds.
+//
+// The pairings repeat in the same order every cycle, so every other cycle is
+// flipped: each pair splits their games.
+func RoundRobinGoesFirst(numberOfPlayers, round, player int, seed uint64) (bool, error) {
+	if player < 0 || player >= numberOfPlayers {
+		return false, fmt.Errorf("player %d out of range for %d players", player, numberOfPlayers)
+	}
+	players := roundRobinSeats(numberOfPlayers, seed)
+	circle := players[1:]
+	l := len(circle) // always odd
+	rotation := round % l
+	center := (rotation + l - 1) % l
+	flip := (round / l) % 2
+	var fixedFirst bool
+	if byeSeat := slices.Index(circle, numberOfPlayers); byeSeat >= 0 {
+		// The player at seat x sits out the round the bye is (x-b)/2 seats
+		// behind them, where b is the bye's seat, and so misses a first if
+		// that's odd. The center player goes first against the fixed seat
+		// exactly then.
+		missed := (center - byeSeat + l) % l * ((l + 1) / 2) % l
+		fixedFirst = missed%2 == 0
+	} else {
+		fixedFirst = rotation%2 == 1
+		if rotation >= l-2 {
+			fixedFirst = !fixedFirst
+		}
+	}
+	fixedFirst = fixedFirst != (flip == 1)
+	if player == players[0] {
+		return fixedFirst, nil
+	}
+	d := (slices.Index(circle, player) - center + l) % l
+	if d == 0 {
+		return !fixedFirst, nil
+	}
+	return (d+flip)%2 == 1, nil
 }
 
 func getTeamRoundRobinPairings(numberOfPlayers, round, gamesPerMatchup int, method pb.PairingMethod, playWithinTeam bool,
@@ -802,6 +865,9 @@ func getTeamRoundRobinSchedule(numberOfPlayers, round, gamesPerMatchup int, meth
 			shuffledB[i], shuffledB[j] = shuffledB[j], shuffledB[i]
 		})
 		byeSeat := slices.Index(shuffledB, bye)
+		// The seed picks which team starts, so that the top seed doesn't
+		// always go first in the first round.
+		bStarts := rng.IntN(2) == 1
 		cycle := matchupRound / m
 		rotation := matchupRound % m
 		if method == pb.PairingMethod_SNAKED_ROUND_ROBIN && cycle%2 == 1 {
@@ -842,7 +908,7 @@ func getTeamRoundRobinSchedule(numberOfPlayers, round, gamesPerMatchup int, meth
 					aFirst = !aFirst
 				}
 			}
-			if aFirst {
+			if aFirst != bStarts {
 				play(teamA[i], shuffledB[s])
 			} else {
 				play(shuffledB[s], teamA[i])

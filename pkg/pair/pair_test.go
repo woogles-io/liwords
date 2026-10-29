@@ -659,3 +659,103 @@ func checkTeamRoundRobinFirsts(t *testing.T, name string, numberOfPlayers, games
 		t.Fatalf("%s: only %d of %d pairs met", name, pairs, wantPairs)
 	}
 }
+
+func TestRoundRobinFirsts(t *testing.T) {
+	for numberOfPlayers := 2; numberOfPlayers <= 30; numberOfPlayers++ {
+		cycleLength := numberOfPlayers + numberOfPlayers%2 - 1
+		for seed := uint64(1); seed < 20; seed++ {
+			name := fmt.Sprintf("players=%d seed=%d", numberOfPlayers, seed)
+			// Each player's firsts and seconds, byes skipped.
+			games := make([][]bool, numberOfPlayers)
+			firsts := map[[2]int]int{}
+			for round := 0; round < 3*cycleLength; round++ {
+				pairings, err := GetRoundRobinPairings(numberOfPlayers, round, seed)
+				if err != nil {
+					t.Fatalf("%s: %v", name, err)
+				}
+				for player, opponent := range pairings {
+					if opponent < 0 {
+						continue
+					}
+					first, err := RoundRobinGoesFirst(numberOfPlayers, round, player, seed)
+					if err != nil {
+						t.Fatalf("%s: %v", name, err)
+					}
+					opponentFirst, err := RoundRobinGoesFirst(numberOfPlayers, round, opponent, seed)
+					if err != nil {
+						t.Fatalf("%s: %v", name, err)
+					}
+					if first == opponentFirst {
+						t.Fatalf("%s round %d: %d and %d both go first or both second", name, round, player, opponent)
+					}
+					games[player] = append(games[player], first)
+					if player < opponent && round < 2*cycleLength {
+						// Stored even when zero, so pairs who never go first
+						// are caught.
+						n := firsts[[2]int{player, opponent}]
+						if first {
+							n++
+						}
+						firsts[[2]int{player, opponent}] = n
+					}
+				}
+				if (round+1)%cycleLength == 0 {
+					// Everyone is even at the end of every cycle, or one off
+					// when they've played an odd number of games.
+					for player := range games {
+						if diff := firstsMinusSeconds(games[player]); diff < -1 || diff > 1 {
+							t.Fatalf("%s: player %d is %d firsts up after round %d", name, player, diff, round)
+						}
+					}
+				}
+			}
+			for pair, n := range firsts {
+				if n != 1 {
+					t.Fatalf("%s: %d went first against %d in %d of their two games", name, pair[0], pair[1], n)
+				}
+			}
+			// Even fields never get three in a row, and odd ones only where
+			// cycles meet, as the second cycle is the first one flipped and
+			// they play an even number of games a cycle.
+			maxStreak := 2
+			if numberOfPlayers == 4 {
+				maxStreak = 3
+			} else if numberOfPlayers%2 == 1 {
+				maxStreak = 4
+			}
+			for player, g := range games {
+				run := 0
+				for i := range g {
+					if i > 0 && g[i] == g[i-1] {
+						run++
+					} else {
+						run = 1
+					}
+					limit := maxStreak
+					if numberOfPlayers%2 == 1 && i < cycleLength-1 {
+						limit = 2
+					}
+					if run > limit {
+						t.Fatalf("%s: player %d has %d firsts or seconds in a row by game %d", name, player, run, i+1)
+					}
+					// Partway through, nobody is ever more than two off.
+					if diff := firstsMinusSeconds(g[:i+1]); diff < -2 || diff > 2 {
+						t.Fatalf("%s: player %d is %d firsts up after game %d", name, player, diff, i+1)
+					}
+				}
+			}
+		}
+	}
+}
+
+func firstsMinusSeconds(games []bool) int {
+	diff := 0
+	for _, first := range games {
+		if first {
+			diff++
+		} else {
+			diff--
+		}
+	}
+	return diff
+}
