@@ -184,23 +184,26 @@ func ValidateGameRequest(ctx context.Context, req *pb.GameRequest) error {
 		return fmt.Errorf("%s is not a supported lexicon", req.Lexicon)
 	}
 
-	// Modify the game request if the variant calls for it. english_super is
-	// the only super distribution that exists, hence the english-only check.
+	// Always derive this from the lexicon; whatever the client sent is
+	// irrelevant at best, and at worst it's a distribution whose alphabet
+	// doesn't match the lexicon, which panics the bot's move generator.
+	ld, err := LetterDistributionForLexicon(req.Lexicon)
+	if err != nil {
+		return err
+	}
+	// Modify the game request if the variant calls for it. A super variant
+	// plays its lexicon's 200-tile set on the 21x21 board; the sets that
+	// exist are the English one, for the lexica isEnglish names, and the
+	// Catalan one.
 	if req.Rules.VariantName == string(game.VarClassicSuper) ||
 		req.Rules.VariantName == string(game.VarWordSmogSuper) {
-		if !isEnglish(req.Lexicon) {
-			return errors.New("non-english lexica not supported for this variant")
+		super, ok := SuperLetterDistribution(ld)
+		if !ok || (ld == "english" && !isEnglish(req.Lexicon)) {
+			return errors.New("that lexicon is not supported for this variant")
 		}
 		req.Rules.BoardLayoutName = board.SuperCrosswordGameLayout
-		req.Rules.LetterDistributionName = "english_super"
+		req.Rules.LetterDistributionName = super
 	} else {
-		// Always derive this from the lexicon; whatever the client sent is
-		// irrelevant at best, and at worst it's a distribution whose alphabet
-		// doesn't match the lexicon, which panics the bot's move generator.
-		ld, err := LetterDistributionForLexicon(req.Lexicon)
-		if err != nil {
-			return err
-		}
 		req.Rules.LetterDistributionName = ld
 	}
 

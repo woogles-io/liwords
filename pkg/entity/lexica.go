@@ -58,9 +58,23 @@ func ValidateLetterDistribution(lexicon, letterDistribution string) error {
 		return nil
 	}
 	// The super variant uses a bigger bag, but the same alphabet.
-	if expected == "english" && letterDistribution == "english_super" {
+	if super, ok := SuperLetterDistribution(expected); ok && letterDistribution == super {
 		return nil
 	}
 	return fmt.Errorf("letter distribution %s cannot be used with lexicon %s; expected %s",
 		letterDistribution, lexicon, expected)
+}
+
+// superLetterDistributions are the 200-tile sets the super variants play on
+// the 21x21 board, keyed by the set a lexicon plays otherwise.
+var superLetterDistributions = map[string]string{
+	"english": "english_super",
+	"catalan": "catalan_super",
+}
+
+// SuperLetterDistribution returns the set the super variants play with in
+// place of letterDistribution, and false if there is none.
+func SuperLetterDistribution(letterDistribution string) (string, bool) {
+	super, ok := superLetterDistributions[letterDistribution]
+	return super, ok
 }

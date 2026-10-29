@@ -408,6 +408,20 @@ func validateCommonWordLexicon(lexicon string, botType macondopb.BotRequest_BotC
 	return nil
 }
 
+// botsDeclineSuperSet refuses a bot game in a super variant unless its
+// lexicon plays the English tiles: whether the bots can play another super
+// set has not been checked.
+func botsDeclineSuperSet(rules *pb.GameRules, lexicon string) error {
+	if rules.VariantName != string(game.VarClassicSuper) &&
+		rules.VariantName != string(game.VarWordSmogSuper) {
+		return nil
+	}
+	if ld, _ := entity.LetterDistributionForLexicon(lexicon); ld != "english" {
+		return errors.New("bots play this variant with English lexica only")
+	}
+	return nil
+}
+
 func (b *Bus) newBotGame(ctx context.Context, req *pb.SeekRequest, botUserID string) error {
 	// NewBotGame creates and starts a new game against a bot!
 	var err error
@@ -420,6 +434,10 @@ func (b *Bus) newBotGame(ctx context.Context, req *pb.SeekRequest, botUserID str
 	if req.GameRequest.Rules.VariantName == string(game.VarWordSmog) &&
 		req.GameRequest.BotType != macondopb.BotRequest_HASTY_BOT {
 		return errors.New("only HastyBot can play WordSmog at this time")
+	}
+
+	if err := botsDeclineSuperSet(req.GameRequest.Rules, req.GameRequest.Lexicon); err != nil {
+		return err
 	}
 
 	if botUserID == "" {
