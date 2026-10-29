@@ -9,6 +9,9 @@ describe("annotatedGameRules", () => {
       r.letterDistributionName,
       r.variantName,
     ]).toEqual(["SuperCrosswordGame", "english_super", "classic_super"]);
+    expect(
+      annotatedGameRules("DISC2", "classic_super").letterDistributionName,
+    ).toBe("catalan_super");
   });
   it("keeps the standard board and the lexicon's tiles otherwise", () => {
     const smog = annotatedGameRules("CSW24", "wordsmog");

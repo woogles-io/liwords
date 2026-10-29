@@ -523,6 +523,120 @@ export const StandardCatalanAlphabet: Alphabet = {
   name: "catalan",
 };
 
+export const SuperCatalanAlphabet: Alphabet = {
+  letters: [
+    { rune: Blank, score: 0, count: 5, vowel: false, category: 3 },
+    { rune: "A", score: 1, count: 25, vowel: true, category: 0 },
+    { rune: "B", score: 3, count: 3, vowel: false, category: 2 },
+    { rune: "C", score: 2, count: 5, vowel: false, category: 2 },
+    {
+      rune: "Ç",
+      score: 12,
+      count: 2,
+      vowel: false,
+      category: 3,
+      shortcut: "K",
+    },
+    { rune: "D", score: 2, count: 5, vowel: false, category: 1 },
+    { rune: "E", score: 1, count: 27, vowel: true, category: 0 },
+    { rune: "F", score: 4, count: 2, vowel: false, category: 2 },
+    { rune: "G", score: 3, count: 3, vowel: false, category: 1 },
+    {
+      rune: "H",
+      score: 8,
+      count: 2,
+      vowel: false,
+      category: 2,
+      bnjyable: true,
+    },
+    {
+      rune: "I",
+      score: 1,
+      count: 17,
+      vowel: true,
+      category: 0,
+      bnjyable: true,
+    },
+    { rune: "J", score: 8, count: 2, vowel: false, category: 3 },
+    { rune: "L", score: 1, count: 8, vowel: false, category: 1 },
+    {
+      rune: "L·L",
+      score: 15,
+      count: 1,
+      vowel: false,
+      category: 3,
+      shortcut: "W",
+    },
+    { rune: "M", score: 2, count: 7, vowel: false, category: 2 },
+    {
+      rune: "N",
+      score: 1,
+      count: 12,
+      vowel: false,
+      category: 1,
+      bnjyable: true,
+    },
+    {
+      rune: "NY",
+      score: 10,
+      count: 2,
+      vowel: false,
+      category: 3,
+      shortcut: "Y",
+    },
+    {
+      rune: "O",
+      score: 1,
+      count: 10,
+      vowel: true,
+      category: 0,
+      bnjyable: true,
+    },
+    { rune: "P", score: 3, count: 3, vowel: false, category: 2 },
+    {
+      rune: "QU",
+      score: 8,
+      count: 2,
+      vowel: false,
+      category: 3,
+      shortcut: "Q",
+    },
+    { rune: "R", score: 1, count: 16, vowel: false, category: 1 },
+    {
+      rune: "S",
+      score: 1,
+      count: 19,
+      vowel: false,
+      category: 3,
+      bnjyable: true,
+    },
+    { rune: "T", score: 1, count: 10, vowel: false, category: 1 },
+    { rune: "U", score: 1, count: 6, vowel: true, category: 0 },
+    { rune: "V", score: 4, count: 2, vowel: false, category: 2 },
+    {
+      rune: "X",
+      score: 10,
+      count: 2,
+      vowel: false,
+      category: 3,
+      bnjyable: true,
+    },
+    {
+      rune: "Z",
+      score: 8,
+      count: 2,
+      vowel: false,
+      category: 3,
+      bnjyable: true,
+    },
+  ],
+  letterMap: {},
+  machineLetterMap: {},
+  shortcutMap: {},
+  longestPossibleTileRune: 3,
+  name: "catalan_super",
+};
+
 export const StandardSpanishAlphabet: Alphabet = {
   letters: [
     { rune: Blank, score: 0, count: 2, vowel: false, category: 3 },
@@ -795,6 +909,7 @@ export const StandardSloveneAlphabet: Alphabet = {
   StandardFrenchAlphabet,
   SuperEnglishAlphabet,
   StandardCatalanAlphabet,
+  SuperCatalanAlphabet,
   StandardSpanishAlphabet,
   StandardPolishAlphabet,
   StandardSloveneAlphabet,
@@ -824,6 +939,8 @@ export const alphabetFromName = (
       return SuperEnglishAlphabet;
     case "catalan":
       return StandardCatalanAlphabet;
+    case "catalan_super":
+      return SuperCatalanAlphabet;
     case "spanish":
       return StandardSpanishAlphabet;
     case "polish":
