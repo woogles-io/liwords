@@ -137,6 +137,14 @@ export const SingleRoundControlFields = (
           The division needs an even number of players.
         </li>
         <li>
+          - <strong>Team (Assigned Teams):</strong> Each player on one team
+          plays a round robin against every player on the other team, using the
+          teams you give players (for example, Portland vs Seattle). Teammates
+          never play each other. If one team is bigger, its players sit out the
+          difference in byes. Once players have teams, every round must use this
+          or Manual pairings.
+        </li>
+        <li>
           - <strong>King of the hill:</strong> These pairings pair 1v2, 3v4,
           5v6, and so forth. It is a good format for the very last round of a
           tournament.
@@ -233,6 +241,9 @@ export const SingleRoundControlFields = (
           <Select.Option value={PairingMethod.MANUAL}>Manual</Select.Option>
           <Select.Option value={PairingMethod.TEAM_ROUND_ROBIN}>
             Team (Top vs Bottom) Round Robin
+          </Select.Option>
+          <Select.Option value={PairingMethod.ASSIGNED_TEAM_ROUND_ROBIN}>
+            Team (Assigned Teams) Round Robin
           </Select.Option>
         </Select>
       </Form.Item>
@@ -471,6 +482,7 @@ export const rdCtrlFromSetting = (
       break;
 
     case PairingMethod.TEAM_ROUND_ROBIN:
+    case PairingMethod.ASSIGNED_TEAM_ROUND_ROBIN:
       rdCtrl.gamesPerRound = rdSetting.gamesPerRound || 1;
       break;
 
