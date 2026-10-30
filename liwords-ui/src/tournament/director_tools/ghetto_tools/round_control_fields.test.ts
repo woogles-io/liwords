@@ -4,7 +4,7 @@ import {
   PairingMethod,
   RoundControlSchema,
 } from "../../../gen/api/proto/ipc/tournament_pb";
-import { settingsEqual } from "../pairing_methods";
+import { fieldsForMethod, settingsEqual } from "../pairing_methods";
 import {
   pairingLagDisabledReason,
   rdCtrlFromSetting,
@@ -114,5 +114,37 @@ describe("the reset round of an Australian Draw round", () => {
       resetRound: 9,
     });
     expect(rdCtrlFromSetting(audraw, 16, 12).resetRound).toBe(8);
+  });
+});
+
+describe("a Win Groups round", () => {
+  it("offers the Reset Round field", () => {
+    expect(fieldsForMethod(PairingMethod.WIN_GROUPS).map((f) => f[1])).toEqual([
+      "resetRound",
+    ]);
+  });
+
+  it("has reset round 1 when the director leaves the field alone", () => {
+    const wg = setting({ pairingMethod: PairingMethod.WIN_GROUPS });
+    expect(rdCtrlFromSetting(wg, 7, 3).resetRound).toBe(0);
+  });
+
+  it("stores the reset round 0-based", () => {
+    const wg = setting({
+      pairingMethod: PairingMethod.WIN_GROUPS,
+      resetRound: 9,
+    });
+    expect(rdCtrlFromSetting(wg, 16, 12).resetRound).toBe(8);
+  });
+
+  it("can be lagged", () => {
+    expect(
+      pairingLagDisabledReason(PairingMethod.WIN_GROUPS, 2, 7, 7),
+    ).toBeUndefined();
+    const wg = setting({
+      pairingMethod: PairingMethod.WIN_GROUPS,
+      pairingLag: 1,
+    });
+    expect(rdCtrlFromSetting(wg, 7, 5).pairingLag).toBe(1);
   });
 });
