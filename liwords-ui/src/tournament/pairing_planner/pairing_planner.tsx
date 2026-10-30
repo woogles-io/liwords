@@ -33,10 +33,11 @@ import { PairingMethod } from "../../gen/api/proto/ipc/tournament_pb";
 import { useTournamentStoreContext } from "../../store/store";
 import { useClient } from "../../utils/hooks/connect";
 import classes from "./pairing_planner.module.css";
+import { ApplyModal } from "./apply_modal";
 
 // The pairing planner previews how each pre-paired scheme would pair the
 // first rounds of a division, and suggests one for what the director wants.
-// It doesn't change the division.
+// Nothing changes until the director uses a scheme and confirms.
 
 type Props = {
   tournamentID: string;
@@ -102,6 +103,10 @@ export const PairingPlanner = (props: Props) => {
   const anyTeams = players.some((p) => p.team);
 
   const numRounds = tournamentContext.divisions[division]?.numRounds ?? 0;
+  const started =
+    (tournamentContext.divisions[division]?.currentRound ?? -1) >= 0;
+  const [applying, setApplying] = useState<SchemePreview>();
+  const [applied, setApplied] = useState("");
 
   const [intent, setIntent] = useState(PlannerIntent.PLANNER_FAIR_START);
   const [rounds, setRounds] = useState(3);
@@ -177,7 +182,8 @@ export const PairingPlanner = (props: Props) => {
           </Title>
           <Text c="dimmed" size="sm">
             See how each pre-paired scheme would pair the first rounds of a
-            division, before you set it. Nothing here changes the division.
+            division, then use the one you want. Nothing changes until you
+            confirm.
           </Text>
         </div>
 
@@ -282,6 +288,25 @@ export const PairingPlanner = (props: Props) => {
           </Stack>
         </Card>
 
+        {started && (
+          <Alert color="gray">
+            {division} has started, so its round controls can't change. You can
+            still preview schemes here.
+          </Alert>
+        )}
+        {applied && (
+          <Alert
+            color="green"
+            title="Round controls set"
+            withCloseButton
+            onClose={() => setApplied("")}
+          >
+            {applied}{" "}
+            <Anchor component={Link} to={props.tournamentPath} inherit>
+              Back to the tournament
+            </Anchor>
+          </Alert>
+        )}
         {error && (
           <Alert color="red" title="Couldn't preview this division">
             {error}
@@ -302,6 +327,7 @@ export const PairingPlanner = (props: Props) => {
                   response={response}
                   suggested
                   defaultOpen
+                  onUse={started ? undefined : setApplying}
                 />
               ) : (
                 <Alert color="yellow">
@@ -324,7 +350,7 @@ export const PairingPlanner = (props: Props) => {
                           variant="default"
                           onClick={() => setRounds(a.rounds)}
                         >
-                          {a.rounds} rounds
+                          {a.rounds} {a.rounds === 1 ? "round" : "rounds"}
                         </Button>
                         <Text size="sm">{a.reason}</Text>
                       </Group>
@@ -340,7 +366,12 @@ export const PairingPlanner = (props: Props) => {
                   </Title>
                   <Stack gap="sm">
                     {others.map((s) => (
-                      <SchemeCard key={s.name} scheme={s} response={response} />
+                      <SchemeCard
+                        key={s.name}
+                        scheme={s}
+                        response={response}
+                        onUse={started ? undefined : setApplying}
+                      />
                     ))}
                   </Stack>
                 </div>
@@ -364,6 +395,21 @@ export const PairingPlanner = (props: Props) => {
           </Box>
         )}
       </Stack>
+      {applying && (
+        <ApplyModal
+          tournamentID={props.tournamentID}
+          division={division}
+          scheme={applying}
+          rounds={request.rounds}
+          numRounds={numRounds}
+          hasTeams={anyTeams}
+          onClose={() => setApplying(undefined)}
+          onDone={(summary) => {
+            setApplying(undefined);
+            setApplied(summary);
+          }}
+        />
+      )}
     </Container>
   );
 };
@@ -373,6 +419,9 @@ const SchemeCard = (props: {
   response: PreviewPairingsResponse;
   suggested?: boolean;
   defaultOpen?: boolean;
+  // Set the division's round controls from this scheme; absent once the
+  // division has started.
+  onUse?: (s: SchemePreview) => void;
 }) => {
   const { scheme: s, response } = props;
   const stats = s.playerStats;
@@ -421,7 +470,8 @@ const SchemeCard = (props: {
         {props.suggested && <Badge>Suggested</Badge>}
         {s.cycleLength > 0 && (
           <Badge variant="light" color="gray">
-            Full cycle: {s.cycleLength} rounds
+            Full cycle: {s.cycleLength}{" "}
+            {s.cycleLength === 1 ? "round" : "rounds"}
           </Badge>
         )}
       </Group>
@@ -446,6 +496,16 @@ const SchemeCard = (props: {
           </Accordion.Panel>
         </Accordion.Item>
       </Accordion>
+      {props.onUse && (
+        <Group justify="flex-end" mt="sm">
+          <Button
+            variant={props.suggested ? "filled" : "default"}
+            onClick={() => props.onUse?.(s)}
+          >
+            Use this scheme…
+          </Button>
+        </Group>
+      )}
     </Card>
   );
 };
