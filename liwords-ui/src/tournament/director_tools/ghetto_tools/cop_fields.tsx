@@ -15,7 +15,7 @@ export type SingleRdCtrlFieldsProps = {
     fieldName: keyof RoundControl,
     value: string | number | boolean | PairingMethod | number[] | string[],
   ) => void;
-  // Optional props for COP validation (second half only)
+  // The round range being edited, when editing a range of rounds.
   beginRound?: number;
   endRound?: number;
   totalRounds?: number;
@@ -95,8 +95,8 @@ export const COPRoundControlFields = (props: SingleRdCtrlFieldsProps) => {
     >
       <h4>COP Configuration</h4>
       <p style={{ fontSize: "12px", marginBottom: "16px" }}>
-        COP (Castellano O'Connor Pairings) is an advanced pairing algorithm
-        designed for the second half of tournaments.
+        COP (Castellano O'Connor Pairings) is an advanced pairing algorithm that
+        can pair any round of a tournament.
         <a
           href="#"
           onClick={(e) => {

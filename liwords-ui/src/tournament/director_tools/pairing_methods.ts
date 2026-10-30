@@ -124,6 +124,18 @@ export const fieldsForMethod = (
       ]);
       break;
 
+    case PairingMethod.WIN_GROUPS:
+      fields.push([
+        "number",
+        "resetRound",
+        "Reset Round",
+        "Reset round N: opponents from rounds before N may be re-paired; round N " +
+          "onward avoids repeats. N=1 avoids all repeats. " +
+          "Example: N=9 for rounds 9-16 lets round 1-8 opponents recur.",
+        1,
+      ]);
+      break;
+
     case PairingMethod.PAIRING_METHOD_COP:
       // COP fields are handled by a custom component, not this field system
       return [];

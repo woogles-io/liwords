@@ -401,18 +401,6 @@ const SetSingleRoundControls = (props: { tournamentID: string }) => {
     }
 
     const totalRounds = tournamentContext.divisions[division]?.numRounds;
-    const halfwayPoint = Math.ceil(totalRounds / 2);
-
-    // Validate COP can only be used in second half
-    if (roundSetting.pairingMethod === PairingMethod.PAIRING_METHOD_COP) {
-      if (userVisibleRound <= halfwayPoint) {
-        showError(
-          `COP can only be used for the second half of the tournament (round ${halfwayPoint + 1} and later). ` +
-            `You are trying to set it for round ${userVisibleRound}.`,
-        );
-        return;
-      }
-    }
 
     const ctrls = create(SingleRoundControlsRequestSchema, {
       id: props.tournamentID,
@@ -634,8 +622,6 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
     // validate round array
     let lastRd = 0;
     const totalRounds = roundArray[roundArray.length - 1].endRound;
-    const halfwayPoint = Math.ceil(totalRounds / 2);
-
     for (let i = 0; i < roundArray.length; i++) {
       const rdCtrl = roundArray[i];
       if (rdCtrl.beginRound <= lastRd) {
@@ -649,16 +635,6 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
       if (rdCtrl.beginRound > lastRd + 1) {
         showError("Round numbers must be consecutive; you cannot skip rounds");
         return;
-      }
-      // Validate COP can only be used in second half
-      if (rdCtrl.setting.pairingMethod === PairingMethod.PAIRING_METHOD_COP) {
-        if (rdCtrl.beginRound <= halfwayPoint) {
-          showError(
-            `COP can only be used for the second half of the tournament (round ${halfwayPoint + 1} and later). ` +
-              `This round range starts at round ${rdCtrl.beginRound}.`,
-          );
-          return;
-        }
       }
       lastRd = rdCtrl.endRound;
     }

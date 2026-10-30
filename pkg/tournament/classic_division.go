@@ -2881,18 +2881,6 @@ func validateRoundControl(t *ClassicDivision, rc *pb.RoundControl, totalRounds i
 
 	// COP-specific validations
 	if rc.PairingMethod == pb.PairingMethod_PAIRING_METHOD_COP {
-		// COP can only be used in the second half of the tournament
-		halfwayPoint := (totalRounds + 1) / 2 // Rounds are 0-indexed, so round N is the (N+1)th round
-		if int(rc.Round) < halfwayPoint {
-			return entity.NewWooglesError(
-				pb.WooglesError_TOURNAMENT_COP_IN_FIRST_HALF,
-				t.TournamentName,
-				t.DivisionName,
-				strconv.Itoa(int(rc.Round+1)),
-				strconv.Itoa(halfwayPoint+1),
-			)
-		}
-
 		// Validate simulations >= 1000
 		if rc.DivisionSims < 1000 {
 			return entity.NewWooglesError(
