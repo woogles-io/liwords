@@ -1,12 +1,23 @@
 // Player management forms
 
 import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
-import { Button, Form, Input, InputNumber, message, Space, Switch } from "antd";
+import {
+  AutoComplete,
+  Button,
+  Form,
+  Input,
+  InputNumber,
+  message,
+  Space,
+  Switch,
+} from "antd";
 import { Store } from "rc-field-form/lib/interface";
 import React, { useState } from "react";
 import { TournamentService } from "../../../gen/api/proto/tournament_service/tournament_service_pb";
 import { useTournamentStoreContext } from "../../../store/store";
 import { flashError, useClient } from "../../../utils/hooks/connect";
+import { HelptipLabel } from "../helptip_label";
+import { teamNames } from "../pairing_methods";
 import {
   DivisionFormItem,
   fullPlayerID,
@@ -22,6 +33,20 @@ export const AddPlayers = (props: { tournamentID: string }) => {
     tournamentContext.metadata.irlMode,
   );
   const [showTeam, setShowTeam] = useState(false);
+  const [form] = Form.useForm();
+  const division = Form.useWatch("division", form);
+  const rows: Array<{ team?: string }> | undefined = Form.useWatch(
+    "players",
+    form,
+  );
+  // Suggest the division's teams and the ones typed so far, so a misspelled
+  // team is less likely.
+  const teamOptions = [
+    ...new Set([
+      ...teamNames(tournamentContext.divisions[division]?.players ?? []),
+      ...(rows ?? []).map((r) => r?.team?.trim()).filter((t) => !!t),
+    ]),
+  ].map((t) => ({ value: t as string }));
   const onFinish = async (vals: Store) => {
     const players = [];
     // const playerMap: { [username: string]: number } = {};
@@ -68,14 +93,18 @@ export const AddPlayers = (props: { tournamentID: string }) => {
   };
 
   return (
-    <Form onFinish={onFinish}>
+    <Form form={form} onFinish={onFinish}>
       <DivisionFormItem />
       <Form.Item label="Enter ratings">
         <Switch checked={showRating} onChange={(c) => setShowRating(c)} />
       </Form.Item>
       <Form.Item
-        label="Enter teams"
-        extra="Only for a team round robin between teams you choose, such as Portland vs Seattle."
+        label={
+          <HelptipLabel
+            labelText="Enter teams"
+            help="Only for a team round robin between teams you choose, such as Portland vs Seattle."
+          />
+        }
       >
         <Switch checked={showTeam} onChange={(c) => setShowTeam(c)} />
       </Form.Item>
@@ -107,7 +136,16 @@ export const AddPlayers = (props: { tournamentID: string }) => {
                 )}
                 {showTeam && (
                   <Form.Item {...field} name={[field.name, "team"]}>
-                    <Input placeholder="Team" />
+                    <AutoComplete
+                      placeholder="Team"
+                      options={teamOptions}
+                      filterOption={(input, option) =>
+                        !!option?.value
+                          .toLowerCase()
+                          .startsWith(input.toLowerCase())
+                      }
+                      style={{ width: 140 }}
+                    />
                   </Form.Item>
                 )}
                 <MinusCircleOutlined onClick={() => remove(field.name)} />
@@ -237,8 +275,12 @@ export const EditPlayer = (props: { tournamentID: string }) => {
 
       <Form.Item
         name="rating"
-        label="Rating"
-        extra="Changing a rating re-seeds the division if the tournament hasn't started yet."
+        label={
+          <HelptipLabel
+            labelText="Rating"
+            help="Changing a rating re-seeds the division if the tournament hasn't started yet."
+          />
+        }
         rules={[{ required: true, message: "Missing rating" }]}
       >
         <InputNumber min={0} />
@@ -246,17 +288,33 @@ export const EditPlayer = (props: { tournamentID: string }) => {
 
       <Form.Item
         name="team"
-        label="Team"
-        extra="Only for a team round robin between teams you choose. Leave blank for no team. Teams can't change once the division starts."
+        label={
+          <HelptipLabel
+            labelText="Team"
+            help="Only for a team round robin between teams you choose. Leave blank for no team. Teams can't change once the division starts."
+          />
+        }
       >
-        <Input />
+        <AutoComplete
+          options={teamNames(
+            tournamentContext.divisions[division]?.players ?? [],
+          ).map((t) => ({ value: t }))}
+          filterOption={(input, option) =>
+            !!option?.value.toLowerCase().startsWith(input.toLowerCase())
+          }
+          allowClear
+        />
       </Form.Item>
 
       {irlMode && (
         <Form.Item
           name="newName"
-          label="New name"
-          extra="Leave blank to keep the current name. Use this if someone takes over a player's spot."
+          label={
+            <HelptipLabel
+              labelText="New name"
+              help="Leave blank to keep the current name. Use this if someone takes over a player's spot."
+            />
+          }
         >
           <Input />
         </Form.Item>
