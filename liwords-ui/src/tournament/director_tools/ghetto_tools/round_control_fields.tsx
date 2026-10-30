@@ -481,6 +481,11 @@ export const rdCtrlFromSetting = (
       rdCtrl.gamesPerRound = rdSetting.gamesPerRound || 1;
       break;
 
+    case PairingMethod.INTERLEAVED_ROUND_ROBIN:
+    case PairingMethod.SNAKED_ROUND_ROBIN:
+      rdCtrl.playWithinTeam = rdSetting.playWithinTeam;
+      break;
+
     case PairingMethod.WIN_GROUPS:
     case PairingMethod.AUSTRALIAN_DRAW:
       // The Reset Round field is 1-based (a round number; the default is 1 =
