@@ -1839,6 +1839,55 @@ func TestClassicDivisionSnakedRoundRobin(t *testing.T) {
 	}
 }
 
+func TestClassicDivisionInitialFontesFirsts(t *testing.T) {
+	is := is.New(t)
+	divisions := 0
+	for _, numRounds := range []int{3, 5} {
+		for numPlayers := 2 * (numRounds + 1); numPlayers <= 24; numPlayers++ {
+			playerNames := make(map[string]int32)
+			for k := range numPlayers {
+				playerNames[fmt.Sprintf("Player %d", k)] = int32(k)
+			}
+			players := makeTournamentPersons(playerNames)
+
+			roundControls := []*pb.RoundControl{}
+			for round := range numRounds {
+				roundControls = append(roundControls, &pb.RoundControl{FirstMethod: pb.FirstMethod_AUTOMATIC_FIRST,
+					PairingMethod:               pb.PairingMethod_INITIAL_FONTES,
+					GamesPerRound:               1,
+					Round:                       int32(round),
+					Factor:                      1,
+					MaxRepeats:                  1,
+					AllowOverMaxRepeats:         true,
+					RepeatRelativeWeight:        1,
+					WinDifferenceRelativeWeight: 1})
+			}
+			tc, err := compactNewClassicDivision(players, roundControls, true)
+			if err != nil {
+				// Not every field size splits into even groups.
+				continue
+			}
+			divisions++
+
+			for round := range numRounds {
+				for playerIndex := range numPlayers {
+					pairing := tc.PairingMap[tc.Matrix[round][playerIndex]]
+					is.True(pairing != nil)
+					if pairing.Players[0] == pairing.Players[1] {
+						continue // a bye
+					}
+					// The division recorded the firsts the schedule decided.
+					goesFirst, err := pair.InitialFontesGoesFirst(numPlayers, numRounds+1, round, playerIndex, tc.Seed)
+					is.NoErr(err)
+					is.Equal(goesFirst, pairing.Players[0] == int32(playerIndex))
+				}
+			}
+		}
+	}
+	t.Logf("checked %d divisions", divisions)
+	is.True(divisions > 20)
+}
+
 func TestClassicDivisionInterleavedRoundRobin(t *testing.T) {
 	is := is.New(t)
 	totalPlayers := 20

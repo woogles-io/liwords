@@ -2253,6 +2253,16 @@ func newClassicPairing(t *ClassicDivision,
 			log.Err(err).Str("division", t.DivisionName).Int("round", round).Msg("round-robin-firsts")
 		}
 		switchFirst = !goesFirst
+	} else if t.RoundControls[round].PairingMethod == pb.PairingMethod_INITIAL_FONTES {
+		// The schedule that paired the round also says who goes first.
+		// Players are paired in player order, so player indexes are the
+		// schedule's indexes.
+		goesFirst, err := pair.InitialFontesGoesFirst(numPlayers, int(t.RoundControls[round].InitialFontes)+1,
+			round, int(playerOne), t.Seed)
+		if err != nil {
+			log.Err(err).Str("division", t.DivisionName).Int("round", round).Msg("initial-fontes-firsts")
+		}
+		switchFirst = !goesFirst
 	} else if pm := t.RoundControls[round].PairingMethod; pm == pb.PairingMethod_TEAM_ROUND_ROBIN ||
 		pm == pb.PairingMethod_INTERLEAVED_ROUND_ROBIN ||
 		pm == pb.PairingMethod_SNAKED_ROUND_ROBIN {
