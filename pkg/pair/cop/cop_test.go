@@ -12,6 +12,7 @@ import (
 	"github.com/woogles-io/liwords/pkg/pair/verifyreq"
 
 	copdatapkg "github.com/woogles-io/liwords/pkg/pair/copdata"
+	pkgstnd "github.com/woogles-io/liwords/pkg/pair/standings"
 	pairtestutils "github.com/woogles-io/liwords/pkg/pair/testutils"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
@@ -917,7 +918,10 @@ func TestTopDownByeTakesPrecedenceOverGibsonBye(t *testing.T) {
 	// 3 players. P0 gets a big enough lead (and a prior bye in round 1) to
 	// clinch 1st with 1 round left. P2 gets byes in rounds 2 and 3 (allowed
 	// to repeat since these are historical, already-played rounds), so P1 is
-	// the only player with zero prior byes going into the final round.
+	// the only player with zero prior byes going into the final round. P0
+	// beats P1 narrowly enough that P1 (3rd) can still catch P2 (2nd), so
+	// 1st and 2nd aren't forced to play each other (FS) - see
+	// TestForcedFirstVsSecondTakesPrecedenceOverGibsonBye for that case.
 	buildReq := func() *pb.PairRequest {
 		req := &pb.PairRequest{
 			PairMethod:                 pb.PairMethod_COP,
@@ -939,13 +943,14 @@ func TestTopDownByeTakesPrecedenceOverGibsonBye(t *testing.T) {
 		// Round 1: P0 bye. P1 beats P2 by 100.
 		pairtestutils.AddRoundPairingsStr(req, "0 2 1")
 		pairtestutils.AddRoundResultsStr(req, "50 300 200")
-		// Round 2: P2 bye. P0 crushes P1.
+		// Round 2: P2 bye. P0 beats P1 by 100.
 		pairtestutils.AddRoundPairingsStr(req, "1 0 2")
-		pairtestutils.AddRoundResultsStr(req, "800 100 50")
-		// Round 3: P2 bye again. P0 crushes P1 again. Going into round 4, P0
-		// has 1 prior bye, P1 has 0, and P0 is clinched for 1st.
+		pairtestutils.AddRoundResultsStr(req, "400 300 50")
+		// Round 3: P2 bye again. P0 beats P1 by 100 again. Going into round
+		// 4, P0 (3-0, +250) has 1 prior bye, P1 (1-2, -100) has 0, P2 (2-1,
+		// 0) has 2, and P0 is clinched for 1st.
 		pairtestutils.AddRoundPairingsStr(req, "1 0 2")
-		pairtestutils.AddRoundResultsStr(req, "800 100 50")
+		pairtestutils.AddRoundResultsStr(req, "400 300 50")
 		return req
 	}
 
@@ -1375,6 +1380,86 @@ func TestForcedContenderBye(t *testing.T) {
 	is.Equal(resp.Pairings[0], int32(0))
 }
 
+// TestControlLossExcludesForcedContenderByeRecipient is a regression test for
+// https://github.com/woogles-io/liwords/issues/1993: the forced contender bye
+// (CB) and control loss (CL) picked the same player, so CB forced them onto
+// BYE while CL barred the leader from playing anyone else, leaving the
+// leader with no legal opponent (OVERCONSTRAINED). Every player without a
+// prior bye is a hopeful contender after round 1, so CB forces the bye onto
+// the lowest-ranked one, P5, who must therefore be excluded from the
+// destiny-child search.
+func TestControlLossExcludesForcedContenderByeRecipient(t *testing.T) {
+	is := is.New(t)
+
+	req := &pb.PairRequest{
+		PairMethod:                 pb.PairMethod_COP,
+		PlayerNames:                []string{"P0", "P1", "P2", "P3", "P4", "P5", "P6"},
+		PlayerClasses:              make([]int32, 7),
+		GibsonSpread:               250,
+		ControlLossThreshold:       0.3,
+		HopefulnessThreshold:       0.02,
+		AllPlayers:                 7,
+		ValidPlayers:               7,
+		Rounds:                     5,
+		PlacePrizes:                2,
+		DivisionSims:               1000,
+		ControlLossSims:            1000,
+		ControlLossActivationRound: 0,
+		AllowRepeatByes:            false,
+		Seed:                       1,
+	}
+	// R1: P6 byes; P0 beats P1, P2 beats P3, P4 beats P5.
+	pairtestutils.AddRoundResultsAndPairingsStr(req, "1 450 0 400 3 420 2 380 5 500 4 300 6 50")
+
+	resp := COPPair(req)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	checkSymmetric(t, resp.Pairings)
+	is.True(strings.Contains(resp.Log, "Control loss: excluding rank 7 (P5)"))
+	is.True(strings.Contains(resp.Log, "Destinys Child: (none)"))
+	// P5 still takes the forced contender bye.
+	is.Equal(resp.Pairings[5], int32(5))
+}
+
+// TestControlLossSkippedWhenLeaderGetsForcedContenderBye is the forced
+// contender bye counterpart of the leader-is-the-top-down-bye-recipient
+// case: same setup as TestForcedContenderBye (P0 is the sole contender and
+// the only bye-repeat-free player, so CB forces the bye onto P0), but with
+// control loss active. Since the leader isn't playing anyone this round,
+// control loss must be skipped outright rather than barring every pairing
+// for the leader.
+func TestControlLossSkippedWhenLeaderGetsForcedContenderBye(t *testing.T) {
+	is := is.New(t)
+
+	req := &pb.PairRequest{
+		PairMethod:                 pb.PairMethod_COP,
+		PlayerNames:                []string{"P0", "P1", "P2", "P3", "P4"},
+		PlayerClasses:              make([]int32, 5),
+		GibsonSpread:               5000,
+		ControlLossThreshold:       0.25,
+		HopefulnessThreshold:       0.02,
+		AllPlayers:                 5,
+		ValidPlayers:               5,
+		Rounds:                     8,
+		PlacePrizes:                1,
+		DivisionSims:               5000,
+		ControlLossSims:            1000,
+		ControlLossActivationRound: 0,
+		AllowRepeatByes:            false,
+		Seed:                       1,
+	}
+	pairtestutils.AddRoundResultsAndPairingsStr(req, "2 500 1 50 0 300 4 420 3 380")
+	pairtestutils.AddRoundResultsAndPairingsStr(req, "3 500 4 380 2 50 0 300 1 420")
+	pairtestutils.AddRoundResultsAndPairingsStr(req, "4 500 2 420 1 380 3 50 0 300")
+	pairtestutils.AddRoundResultsAndPairingsStr(req, "1 500 0 300 3 420 2 380 4 50")
+
+	resp := COPPair(req)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	checkSymmetric(t, resp.Pairings)
+	is.True(strings.Contains(resp.Log, "Control loss skipped: rank 1 (P0)"))
+	is.True(strings.Contains(resp.Log, "Destinys Child: (none)"))
+	is.Equal(resp.Pairings[0], int32(0))
+}
+
 func TestCOPWeights(t *testing.T) {
 	is := is.New(t)
 
@@ -1423,13 +1508,14 @@ func TestCOPWeights(t *testing.T) {
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
 	is.Equal(resp.Pairings[0], int32(9))
 
-	// In the fourth quarter (roundsRemaining*4 <= Rounds), cashers use PC weight only
+	// In the fourth quarter (round X of N with X/N > 3/4), cashers use PC weight only
 	// and non-cashers use RD weight only. Outside the fourth quarter, RD applies to all.
 	//
-	// AlmostGibsonized: lowestPossibleHopeCasher = rank 7. Rounds=10 is Q4 (2*4=8 <= 10).
-	// Outside Q4 (Rounds=12, 4*4=16 > 12): RD-only for all players.
+	// AlmostGibsonized (8 rounds complete, so round 9 is being paired):
+	// lowestPossibleHopeCasher = rank 7. Rounds=10 is Q4 (9/10 > 3/4).
+	// Outside Q4 (Rounds=13, 9/13 <= 3/4): RD-only for all players.
 	req = pairtestutils.CreateAlmostGibsonizedPairRequest()
-	req.Rounds = 12
+	req.Rounds = 13
 	req.Seed = 1
 	resp = COPPair(req)
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
@@ -2574,4 +2660,532 @@ func TestCCWeightExemptsForcedLeaderVsThird(t *testing.T) {
 		forcedLeaderVsThird:      playerNodes[2],
 	}
 	is.Equal(ccPolicy.handler(pargs, 0, 2), int64(0))
+}
+
+// q4TierTestArgs builds a fourth-quarter (round 10 of 12, 3 rounds
+// remaining) policyArgs for numPlayers players whose group hopeful for 1st
+// ends at winnersBoundary and whose hopeful-to-cash group ends at
+// cashBoundary. numPlayers must be under 12 so hopeToCashBoundary's bottom-6
+// clamp doesn't apply.
+func q4TierTestArgs(numPlayers, winnersBoundary, cashBoundary int) *policyArgs {
+	playerNodes := make([]int, numPlayers)
+	lowestPossibleHopeNth := make([]int, numPlayers)
+	for i := range playerNodes {
+		playerNodes[i] = i
+		lowestPossibleHopeNth[i] = numPlayers - 1
+	}
+	lowestPossibleHopeNth[0] = winnersBoundary
+	return &policyArgs{
+		req: &pb.PairRequest{Rounds: 12},
+		copdata: &copdatapkg.PrecompData{
+			LowestPossibleHopeNth: lowestPossibleHopeNth,
+			GibsonizedPlayers:     make([]bool, numPlayers),
+		},
+		playerNodes:              playerNodes,
+		lowestPossibleHopeCasher: cashBoundary,
+		roundsRemaining:          3,
+		roundPairingsRemaining:   3,
+		topDownByePlayer:         -1,
+		forcedContenderByePlayer: -1,
+		disallowedLeaderOpponent: -1,
+		forcedLeaderVsThird:      -1,
+	}
+}
+
+// TestComputeQ4WinnersTop checks where the hopeful winners tier of the CC
+// weight policy's fourth-quarter grouping ends, including how it's adjusted
+// so its players can pair among themselves.
+func TestComputeQ4WinnersTop(t *testing.T) {
+	is := is.New(t)
+
+	check := func(pargs *policyArgs, wantTop int, wantNote string) {
+		t.Helper()
+		top, note := computeQ4WinnersTop(pargs)
+		is.Equal(top, wantTop)
+		if wantNote == "" {
+			is.Equal(note, "")
+		} else {
+			is.True(strings.Contains(note, wantNote))
+		}
+	}
+
+	// Ranks 0-3 hopeful for 1st, ranks 4-5 the other hopeful cashers.
+	check(q4TierTestArgs(10, 3, 5), 3, "")
+
+	// Winners and cashers are the same group (e.g. one cash prize): there
+	// are no other hopeful cashers.
+	check(q4TierTestArgs(10, 3, 3), 3, "")
+
+	// An odd group hopeful for 1st (ranks 0-2) pulls rank 3 in to even it
+	// out (computeDisallowedLeaderOpponent); rank 3 joins the winners tier.
+	pargs := q4TierTestArgs(10, 2, 5)
+	pargs.disallowedLeaderOpponent = 3
+	check(pargs, 3, "")
+
+	// Without that promotion, the 3 hopeful winners pull in rank 3 anyway.
+	check(q4TierTestArgs(10, 2, 5), 3, "3 hopeful winner(s) need an opponent, so the winners tier extends to rank 4")
+
+	// A bye recipient inside the winners tier doesn't need an opponent.
+	pargs = q4TierTestArgs(10, 3, 5)
+	pargs.topDownByePlayer = 2
+	check(pargs, 4, "extends to rank 5")
+	pargs = q4TierTestArgs(10, 4, 5)
+	pargs.forcedContenderByePlayer = 2
+	check(pargs, 4, "")
+
+	// A bye recipient among the other hopeful cashers doesn't affect the
+	// winners tier.
+	pargs = q4TierTestArgs(10, 3, 6)
+	pargs.topDownByePlayer = 5
+	check(pargs, 3, "")
+
+	// A Gibsonized leader doesn't need a hopeful-winner opponent.
+	pargs = q4TierTestArgs(10, 2, 5)
+	pargs.copdata.GibsonizedPlayers[0] = true
+	check(pargs, 2, "")
+	// A Gibsonized lone leader with rank 1 pulled in pulls in rank 2 too, so
+	// rank 1 has an opponent.
+	pargs = q4TierTestArgs(10, 0, 5)
+	pargs.copdata.GibsonizedPlayers[0] = true
+	pargs.disallowedLeaderOpponent = 1
+	check(pargs, 2, "1 hopeful winner(s) need an opponent, so the winners tier extends to rank 3")
+
+	// Evening out the tier skips players below it who don't need an opponent.
+	pargs = q4TierTestArgs(10, 2, 5)
+	pargs.copdata.GibsonizedPlayers[3] = true
+	check(pargs, 4, "extends to rank 5")
+
+	// With no hopeful casher left to pull in, the tier stays odd.
+	check(q4TierTestArgs(10, 2, 2), 2, "no hopeful casher below is free to even them out")
+
+	// The winners tier stops at the hopeful-to-cash boundary.
+	check(q4TierTestArgs(10, 4, 3), 3, "the winners tier stops at rank 4")
+
+	// Factor 3's forced players already have their opponents. With the
+	// expansion, that's all of ranks 0-5, so a winners tier of ranks 0-6
+	// pulls in rank 7 for rank 6.
+	pargs = q4TierTestArgs(10, 3, 5)
+	pargs.factor3ForcedPairings = [][2]int{{0, 3}, {1, 4}, {2, 5}}
+	check(pargs, 3, "")
+	pargs = q4TierTestArgs(10, 6, 9)
+	pargs.factor3ForcedPairings = [][2]int{{0, 3}, {1, 4}, {2, 5}}
+	check(pargs, 7, "1 hopeful winner(s) need an opponent, so the winners tier extends to rank 8")
+	// A single control-loss pairing leaves the rest of the tier even.
+	pargs = q4TierTestArgs(10, 3, 5)
+	pargs.factor3ForcedPairings = [][2]int{{0, 2}}
+	check(pargs, 3, "")
+
+	// So do 1st vs 2nd under FS, and prepaired players.
+	pargs = q4TierTestArgs(10, 1, 5)
+	pargs.forcedFirstVsSecond = true
+	check(pargs, 1, "")
+	pargs = q4TierTestArgs(10, 3, 5)
+	pargs.prepairedPlayerIndexes = map[int]int{1: 6, 6: 1}
+	check(pargs, 4, "extends to rank 5")
+
+	// Outside the fourth quarter, and in the final round, CC doesn't group
+	// players at all.
+	for _, roundsRemaining := range []int{6, 1} {
+		pargs = q4TierTestArgs(10, 3, 5)
+		pargs.roundsRemaining, pargs.roundPairingsRemaining = roundsRemaining, roundsRemaining
+		check(pargs, -1, "")
+	}
+}
+
+// TestCCWeightQ4Tiers checks the CC weight for each kind of edge between the
+// three fourth-quarter tiers: hopeful winners (ranks 0-3), the other hopeful
+// cashers (ranks 4-5), and everyone else (ranks 6-9).
+func TestCCWeightQ4Tiers(t *testing.T) {
+	is := is.New(t)
+
+	var ccPolicy weightPolicy
+	for _, wp := range weightPolicies {
+		if wp.name == "CC" {
+			ccPolicy = wp
+		}
+	}
+	is.True(ccPolicy.handler != nil)
+
+	pargs := q4TierTestArgs(10, 3, 5)
+	pargs.q4WinnersTop, _ = computeQ4WinnersTop(pargs)
+	is.Equal(pargs.q4WinnersTop, 3)
+
+	// Within a tier: no penalty.
+	is.Equal(ccPolicy.handler(pargs, 0, 3), int64(0))
+	is.Equal(ccPolicy.handler(pargs, 4, 5), int64(0))
+	is.Equal(ccPolicy.handler(pargs, 6, 9), int64(0))
+	// Across tiers: a major penalty, halved for the first rank of the lower tier.
+	is.Equal(ccPolicy.handler(pargs, 1, 5), int64(majorPenalty))
+	is.Equal(ccPolicy.handler(pargs, 1, 4), int64(majorPenalty/2))
+	is.Equal(ccPolicy.handler(pargs, 1, 7), int64(majorPenalty))
+	is.Equal(ccPolicy.handler(pargs, 1, 6), int64(majorPenalty/2))
+	is.Equal(ccPolicy.handler(pargs, 5, 7), int64(majorPenalty))
+	is.Equal(ccPolicy.handler(pargs, 5, 6), int64(majorPenalty/2))
+
+	// A Gibsonized player is in the last tier wherever they rank.
+	pargs.copdata.GibsonizedPlayers[2] = true
+	is.Equal(ccPolicy.handler(pargs, 2, 7), int64(0))
+	is.Equal(ccPolicy.handler(pargs, 0, 2), int64(majorPenalty))
+	pargs.copdata.GibsonizedPlayers[2] = false
+
+	// The barred leader opponent stays barred even inside the winners tier.
+	pargs.disallowedLeaderOpponent = 3
+	is.Equal(ccPolicy.handler(pargs, 0, 3), int64(majorPenalty))
+	pargs.disallowedLeaderOpponent = -1
+
+	// Factor 3's forced pairings are exempt from the tier penalties, but other
+	// pairings across the same boundaries aren't.
+	pargs.factor3ForcedPairings = [][2]int{{0, 3}, {1, 4}, {2, 5}}
+	is.Equal(ccPolicy.handler(pargs, 1, 4), int64(0))
+	is.Equal(ccPolicy.handler(pargs, 2, 5), int64(0))
+	is.Equal(ccPolicy.handler(pargs, 1, 5), int64(majorPenalty))
+	is.Equal(ccPolicy.handler(pargs, 2, 4), int64(majorPenalty/2))
+}
+
+// TestQ4TiersKeepHopefulWinnersTogether checks that in the fourth quarter,
+// hopeful winners play each other, the other hopeful cashers play each
+// other, and everyone else plays each other. Round 10 of 12: P0, P2, P4 and
+// P6 are 8-1 (hopeful to win), P8 and P10 are 6-3 (hopeful to cash but not
+// to win), and the rest are 3-6 or worse. Before the three-tier split, CC
+// grouped all hopeful cashers together, and P2 and P4 played P8 and P10.
+func TestQ4TiersKeepHopefulWinnersTogether(t *testing.T) {
+	is := is.New(t)
+
+	req := &pb.PairRequest{
+		PairMethod:                 pb.PairMethod_COP,
+		PlayerNames:                []string{"P0", "P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8", "P9", "P10", "P11"},
+		PlayerClasses:              make([]int32, 12),
+		GibsonSpread:               200,
+		ControlLossThreshold:       0.25,
+		HopefulnessThreshold:       0.02,
+		AllPlayers:                 12,
+		ValidPlayers:               12,
+		Rounds:                     12,
+		PlacePrizes:                4,
+		DivisionSims:               5000,
+		ControlLossSims:            1000,
+		ControlLossActivationRound: 12,
+		Seed:                       1,
+	}
+	// AddNDummyRounds pairs P0vP1, P2vP3, ..., P10vP11 every round.
+	pairtestutils.AddNDummyRounds(req, 9)
+	for range 6 {
+		pairtestutils.AddRoundResultsStr(req, "450 400 445 400 440 400 435 400 430 400 425 400")
+	}
+	for range 2 {
+		pairtestutils.AddRoundResultsStr(req, "450 400 445 400 440 400 435 400 400 430 400 425")
+	}
+	pairtestutils.AddRoundResultsStr(req, "400 450 400 445 400 440 400 435 400 430 400 425")
+
+	resp := COPPair(req)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	checkSymmetric(t, resp.Pairings)
+	is.True(strings.Contains(resp.Log, "Q4 Tiers: hopeful winners ranks 1-4, other hopeful cashers ranks 5-6"))
+
+	tier := map[int32]int{0: 0, 2: 0, 4: 0, 6: 0, 8: 1, 10: 1, 1: 2, 3: 2, 5: 2, 7: 2, 9: 2, 11: 2}
+	for pi, opp := range resp.Pairings {
+		is.Equal(tier[int32(pi)], tier[opp])
+	}
+}
+
+// TestFactor3YieldsToForcedContenderBye checks that Factor 3 backs down
+// when it forces a player that the forced contender bye (CB) puts on the bye.
+// Here Factor 3 forces Ellie Parker vs Buffy Hogan with 2 rounds remaining,
+// while CB forces Buffy Hogan onto the bye, which would leave the round
+// OVERCONSTRAINED.
+func TestFactor3YieldsToForcedContenderBye(t *testing.T) {
+	is := is.New(t)
+
+	req := &pb.PairRequest{
+		PairMethod:                 pb.PairMethod_COP,
+		PlayerNames:                []string{"Sally Reeser", "Shubha Kamath", "Buffy Hogan", "Ellie Parker", "Cynthia Scotti", "Ida Ann Shapiro", "Monica Little"},
+		PlayerClasses:              make([]int32, 7),
+		GibsonSpread:               250,
+		ControlLossThreshold:       0.3,
+		HopefulnessThreshold:       0.02,
+		AllPlayers:                 7,
+		ValidPlayers:               7,
+		Rounds:                     6,
+		PlacePrizes:                2,
+		DivisionSims:               100000,
+		ControlLossSims:            25000,
+		ControlLossActivationRound: 3,
+		Seed:                       -1535541601166689806,
+	}
+	pairtestutils.AddRoundPairings(req, []int32{6, 1, 4, 5, 2, 3, 0})
+	pairtestutils.AddRoundPairings(req, []int32{2, 3, 0, 1, 6, 5, 4})
+	pairtestutils.AddRoundPairings(req, []int32{4, 5, 6, 3, 0, 1, 2})
+	pairtestutils.AddRoundPairings(req, []int32{1, 0, 3, 2, 5, 4, 6})
+	pairtestutils.AddRoundResultsStr(req, "338 50 332 348 445 419 253")
+	pairtestutils.AddRoundResultsStr(req, "362 319 280 364 417 50 282")
+	pairtestutils.AddRoundResultsStr(req, "444 356 383 50 360 349 314")
+	pairtestutils.AddRoundResultsStr(req, "428 374 311 345 337 406 50")
+
+	resp := COPPair(req)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	checkSymmetric(t, resp.Pairings)
+	is.True(strings.Contains(resp.Log, "Factor 3 expansion: forcing Sally Reeser vs Cynthia Scotti, Ida Ann Shapiro vs Shubha Kamath, Ellie Parker vs Buffy Hogan"))
+	is.True(strings.Contains(resp.Log, "Factor 3 canceled: Factor 3 forces Buffy Hogan vs Ellie Parker, but CB forces Buffy Hogan vs BYE"))
+	// Buffy Hogan still takes the forced contender bye.
+	is.Equal(resp.Pairings[2], int32(2))
+}
+
+// TestKOTHYieldsToForcedContenderBye reproduces a real round (Lake George
+// 2026 WOW, division E, round 5 of 5 paired while round 4 is still being
+// played) where the forced contender bye (CB) forces Buffy Hogan (rank 6)
+// onto the bye. Final-round KOTH must skip Buffy Hogan, as it does the
+// top-down bye recipient, rather than force Shubha Kamath (rank 5) vs Buffy
+// Hogan, which would leave the round OVERCONSTRAINED.
+func TestKOTHYieldsToForcedContenderBye(t *testing.T) {
+	is := is.New(t)
+
+	req := &pb.PairRequest{
+		PairMethod:                 pb.PairMethod_COP,
+		PlayerNames:                []string{"Sally Reeser", "Shubha Kamath", "Buffy Hogan", "Ellie Parker", "Cynthia Scotti", "Ida Ann Shapiro", "Monica Little"},
+		PlayerClasses:              make([]int32, 7),
+		GibsonSpread:               250,
+		ControlLossThreshold:       0.3,
+		HopefulnessThreshold:       0.02,
+		AllPlayers:                 7,
+		ValidPlayers:               7,
+		Rounds:                     5,
+		PlacePrizes:                2,
+		DivisionSims:               100000,
+		ControlLossSims:            25000,
+		ControlLossActivationRound: 3,
+		Seed:                       -1535541601166689806,
+	}
+	pairtestutils.AddRoundPairings(req, []int32{6, 1, 4, 5, 2, 3, 0})
+	pairtestutils.AddRoundPairings(req, []int32{2, 3, 0, 1, 6, 5, 4})
+	pairtestutils.AddRoundPairings(req, []int32{4, 5, 6, 3, 0, 1, 2})
+	pairtestutils.AddRoundPairings(req, []int32{1, 0, 3, 2, 5, 4, 6})
+	pairtestutils.AddRoundResultsStr(req, "338 50 332 348 445 419 253")
+	pairtestutils.AddRoundResultsStr(req, "362 319 280 364 417 50 282")
+	pairtestutils.AddRoundResultsStr(req, "444 356 383 50 360 349 314")
+
+	resp := COPPair(req)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	checkSymmetric(t, resp.Pairings)
+	is.True(strings.Contains(resp.Log, "Rounds Remaining: 1"))
+	is.True(strings.Contains(resp.Log, "Forced Contender Bye: Buffy Hogan"))
+	// Buffy Hogan takes the forced contender bye, and KOTH pairs the rest of
+	// the cash contenders around her: Sally Reeser vs Cynthia Scotti, Ida Ann
+	// Shapiro vs Ellie Parker and Shubha Kamath vs Monica Little.
+	is.Equal(resp.Pairings, []int32{4, 6, 2, 5, 0, 3, 1})
+}
+
+// TestFactor3Conflict checks that factor3Conflict detects another constraint
+// policy forcing a Factor 3 player into a different pairing, or disallowing
+// a Factor 3 pairing.
+func TestFactor3Conflict(t *testing.T) {
+	is := is.New(t)
+
+	newPargs := func() *policyArgs {
+		playerNodes := []int{0, 1, 2, 3, 4, 5, 6, pkgstnd.ByePlayerIndex}
+		return &policyArgs{
+			req:                      &pb.PairRequest{PlayerNames: []string{"P0", "P1", "P2", "P3", "P4", "P5", "P6"}},
+			copdata:                  &copdatapkg.PrecompData{GibsonGroups: make([]int, 8), GibsonizedPlayers: make([]bool, 8), DestinysChild: -1},
+			playerNodes:              playerNodes,
+			roundsRemaining:          2,
+			prepairedRoundIdx:        -1,
+			topDownByePlayer:         -1,
+			forcedContenderByePlayer: -1,
+			forcedLeaderVsThird:      -1,
+			disallowedLeaderOpponent: -1,
+			factor3ForcedPairings:    [][2]int{{0, 3}, {1, 4}, {2, 5}},
+		}
+	}
+
+	is.Equal(factor3Conflict(newPargs()), "")
+
+	pargs := newPargs()
+	pargs.forcedContenderByePlayer = 5
+	is.Equal(factor3Conflict(pargs), "Factor 3 forces P5 vs P2, but CB forces P5 vs BYE")
+
+	pargs = newPargs()
+	pargs.prepairedRoundIdx = 4
+	pargs.prepairedPlayerIndexes = map[int]int{3: 6, 6: 3}
+	is.True(strings.Contains(factor3Conflict(pargs), "but PP disallows that pairing"))
+
+	// No Factor 3 pairings, nothing to conflict with.
+	pargs = newPargs()
+	pargs.factor3ForcedPairings = nil
+	pargs.forcedContenderByePlayer = 5
+	is.Equal(factor3Conflict(pargs), "")
+}
+
+// TestForcedFirstVsSecondWhenBothGibsonized checks that when only 1st and
+// 2nd can finish 1st or 2nd, they play each other even when both are
+// Gibsonized by spread, since 2nd is still no more games behind 1st than
+// there are rounds left. Final round of 7: P0 is 6-0 (+900) and P2 is 5-1
+// (+200), one game behind but too far back on spread to catch P0; everyone
+// else is 3-3 or worse, two games behind P2. Before FS, the Gibsonized
+// leader P0 was barred from P2 and played P7 instead.
+func TestForcedFirstVsSecondWhenBothGibsonized(t *testing.T) {
+	is := is.New(t)
+
+	req := &pb.PairRequest{
+		PairMethod:                 pb.PairMethod_COP,
+		PlayerNames:                []string{"P0", "P1", "P2", "P3", "P4", "P5", "P6", "P7"},
+		PlayerClasses:              make([]int32, 8),
+		GibsonSpread:               200,
+		ControlLossThreshold:       0.25,
+		HopefulnessThreshold:       0.02,
+		AllPlayers:                 8,
+		ValidPlayers:               8,
+		Rounds:                     7,
+		PlacePrizes:                2,
+		DivisionSims:               5000,
+		ControlLossSims:            1000,
+		ControlLossActivationRound: 7,
+		Seed:                       1,
+	}
+	// AddNDummyRounds pairs P0vP1, P2vP3, P4vP5, P6vP7 every round.
+	pairtestutils.AddNDummyRounds(req, 6)
+	for range 3 {
+		pairtestutils.AddRoundResultsStr(req, "550 400 450 400 450 400 450 400")
+	}
+	for range 2 {
+		pairtestutils.AddRoundResultsStr(req, "550 400 450 400 400 450 400 450")
+	}
+	pairtestutils.AddRoundResultsStr(req, "550 400 400 450 400 450 400 450")
+
+	resp := COPPair(req)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	checkSymmetric(t, resp.Pairings)
+	is.True(strings.Contains(resp.Log, "Forced 1st vs 2nd: only P0 and P2 can finish 1st or 2nd"))
+	is.Equal(resp.Pairings[0], int32(2))
+}
+
+// TestForcedFirstVsSecondTakesPrecedenceOverGibsonBye checks that when 1st
+// and 2nd are forced to play each other, the Gibson bye doesn't go to
+// either of them. Final round of 4 with 3 players: P0 3-0 is clinched for
+// 1st, P2 2-1 is one game behind, and P1 1-2 is too far back on spread to
+// catch P2. Without FS, GB would give the Gibsonized leader P0 the bye (see
+// TestTopDownByeTakesPrecedenceOverGibsonBye); instead P0 plays P2 and P1
+// takes the bye.
+func TestForcedFirstVsSecondTakesPrecedenceOverGibsonBye(t *testing.T) {
+	is := is.New(t)
+
+	req := &pb.PairRequest{
+		PairMethod:                 pb.PairMethod_COP,
+		PlayerNames:                []string{"P0", "P1", "P2"},
+		PlayerClasses:              []int32{0, 0, 0},
+		GibsonSpread:               50,
+		ControlLossThreshold:       0.25,
+		HopefulnessThreshold:       0.02,
+		AllPlayers:                 3,
+		ValidPlayers:               3,
+		Rounds:                     4,
+		PlacePrizes:                1,
+		DivisionSims:               10000,
+		ControlLossSims:            2000,
+		ControlLossActivationRound: 10,
+		AllowRepeatByes:            false,
+		Seed:                       1,
+	}
+	// Round 1: P0 bye. P1 beats P2 by 100.
+	pairtestutils.AddRoundPairingsStr(req, "0 2 1")
+	pairtestutils.AddRoundResultsStr(req, "50 300 200")
+	// Rounds 2 and 3: P2 byes, and P0 crushes P1.
+	for range 2 {
+		pairtestutils.AddRoundPairingsStr(req, "1 0 2")
+		pairtestutils.AddRoundResultsStr(req, "800 100 50")
+	}
+
+	resp := COPPair(req)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	checkSymmetric(t, resp.Pairings)
+	is.True(strings.Contains(resp.Log, "Forced 1st vs 2nd: only P0 and P2 can finish 1st or 2nd"))
+	is.Equal(resp.Pairings[0], int32(2))
+	is.Equal(resp.Pairings[1], int32(1))
+}
+
+// TestPCWeightMiddleQ4TierFavorsClosePlayers checks that in the fourth
+// quarter, hopeful cashers who can't win (ranks 4-7 here, below the hopeful
+// winners in ranks 0-3) are pulled toward the players closest to them,
+// while hopeful winners are still pulled toward the lowest contender for
+// their place.
+func TestPCWeightMiddleQ4TierFavorsClosePlayers(t *testing.T) {
+	is := is.New(t)
+
+	var pcPolicy weightPolicy
+	for _, wp := range weightPolicies {
+		if wp.name == "PC" {
+			pcPolicy = wp
+		}
+	}
+	is.True(pcPolicy.handler != nil)
+
+	pargs := q4TierTestArgs(10, 3, 7)
+	pargs.q4WinnersTop, _ = computeQ4WinnersTop(pargs)
+	is.Equal(pargs.q4WinnersTop, 3)
+
+	// Middle tier: the closer the opponent, the lower the weight.
+	is.Equal(pcPolicy.handler(pargs, 4, 5), int64(2))
+	is.Equal(pcPolicy.handler(pargs, 4, 6), int64(16))
+	is.Equal(pcPolicy.handler(pargs, 4, 7), int64(54))
+	// Hopeful winners: still the inverse distance to the lowest contender for
+	// their place (rank 9, since q4TierTestArgs keeps every window wide).
+	is.Equal(pcPolicy.handler(pargs, 1, 2), int64(686))
+	is.Equal(pcPolicy.handler(pargs, 1, 3), int64(432))
+
+	// The middle tier still favors close players when Factor 3 forces some
+	// of this round's pairings, whether its 1v4/2v5/3v6 expansion or a single
+	// control-loss pairing.
+	for _, f3 := range [][][2]int{{{0, 3}, {1, 4}, {2, 5}}, {{0, 1}}} {
+		pargs.factor3ForcedPairings = f3
+		pargs.q4WinnersTop, _ = computeQ4WinnersTop(pargs)
+		is.Equal(pargs.q4WinnersTop, 3)
+		is.Equal(pcPolicy.handler(pargs, 6, 7), int64(2))
+		is.Equal(pcPolicy.handler(pargs, 4, 7), int64(54))
+	}
+}
+
+// TestQ4MiddleTierPlaysClosePlayers checks that hopeful cashers who can't
+// win play the players next to them in their tier. Round 10 of 12 with 16
+// players: P0, P2, P4 and P6 are 8-1 (hopeful winners) and P8, P10, P12 and
+// P14 are 6-3, in that order (hopeful to cash but not to win). Before the
+// middle tier favored close players, P8 played P12 and P10 played P14.
+func TestQ4MiddleTierPlaysClosePlayers(t *testing.T) {
+	is := is.New(t)
+
+	names := make([]string, 16)
+	for i := range names {
+		names[i] = fmt.Sprintf("P%d", i)
+	}
+	req := &pb.PairRequest{
+		PairMethod:                 pb.PairMethod_COP,
+		PlayerNames:                names,
+		PlayerClasses:              make([]int32, 16),
+		GibsonSpread:               200,
+		ControlLossThreshold:       0.25,
+		HopefulnessThreshold:       0.02,
+		AllPlayers:                 16,
+		ValidPlayers:               16,
+		Rounds:                     12,
+		PlacePrizes:                4,
+		DivisionSims:               5000,
+		ControlLossSims:            1000,
+		ControlLossActivationRound: 12,
+		Seed:                       1,
+	}
+	// AddNDummyRounds pairs P0vP1, P2vP3, ..., P14vP15 every round. The even
+	// player of each pair wins rounds 1-8 (P0-P6) or rounds 1-6 (P8-P14),
+	// by a margin that shrinks down the standings.
+	pairtestutils.AddNDummyRounds(req, 9)
+	for range 6 {
+		pairtestutils.AddRoundResultsStr(req, "460 400 455 400 450 400 445 400 440 400 435 400 430 400 425 400")
+	}
+	for range 2 {
+		pairtestutils.AddRoundResultsStr(req, "460 400 455 400 450 400 445 400 400 440 400 435 400 430 400 425")
+	}
+	pairtestutils.AddRoundResultsStr(req, "400 460 400 455 400 450 400 445 400 440 400 435 400 430 400 425")
+
+	resp := COPPair(req)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	checkSymmetric(t, resp.Pairings)
+	is.True(strings.Contains(resp.Log, "Q4 Tiers: hopeful winners ranks 1-4, other hopeful cashers ranks 5-8"))
+	is.Equal(resp.Pairings[8], int32(10))
+	is.Equal(resp.Pairings[12], int32(14))
 }
