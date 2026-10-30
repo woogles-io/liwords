@@ -185,9 +185,13 @@ func (b *Bus) goHandleBotMove(ctx context.Context, resp *macondo.BotResponse,
 			}
 		}()
 
-		// Lock at the cache level first for correspondence game safety
-		b.stores.GameStore.LockGame(gid)
-		defer b.stores.GameStore.UnlockGame(gid)
+		// Before the load: a bot move is a read-modify-write like any other.
+		gameLock, err := b.stores.GameStore.LockGame(ctx, gid)
+		if err != nil {
+			log.Err(err).Str("gid", gid).Msg("cant-lock-for-bot-move")
+			return
+		}
+		defer gameLock.Unlock(ctx)
 
 		g, err := b.stores.GameStore.Get(ctx, gid)
 		if err != nil {
@@ -227,9 +231,11 @@ func (b *Bus) goHandleBotMove(ctx context.Context, resp *macondo.BotResponse,
 }
 
 func (b *Bus) readyForGame(ctx context.Context, evt *pb.ReadyForGame, userID string) error {
-	// Lock at the cache level first for correspondence game safety
-	b.stores.GameStore.LockGame(evt.GameId)
-	defer b.stores.GameStore.UnlockGame(evt.GameId)
+	gameLock, err := b.stores.GameStore.LockGame(ctx, evt.GameId)
+	if err != nil {
+		return err
+	}
+	defer gameLock.Unlock(ctx)
 
 	g, err := b.stores.GameStore.Get(ctx, evt.GameId)
 	if err != nil {
@@ -242,6 +248,15 @@ func (b *Bus) readyForGame(ctx context.Context, evt *pb.ReadyForGame, userID str
 	log.Debug().Str("userID", userID).Interface("playing", g.Playing()).Msg("ready-for-game")
 	if g.Playing() == macondopb.PlayState_GAME_OVER {
 		return errors.New("game is over")
+	}
+	// The client sends this every time a player opens the game room, not only
+	// before the start. Once the game has started there is nothing to do, and
+	// going on would try to start it again: a bot game on every page load, and
+	// a correspondence game (started without the ready step) the first time
+	// both players have opened it.
+	if g.Started {
+		log.Debug().Str("gameID", evt.GameId).Msg("ready-for-started-game")
+		return nil
 	}
 
 	var readyID int
@@ -269,7 +284,6 @@ func (b *Bus) readyForGame(ctx context.Context, evt *pb.ReadyForGame, userID str
 		if err != nil {
 			log.Err(err).Msg("starting-game")
 		} else {
-			// Note: for PlayerVsBot, readyForGame is called twice when player is ready and every time player refreshes, why? :-(
 			g.SendChange(g.NewActiveGameEntry(true))
 		}
 
@@ -571,16 +585,32 @@ func (b *Bus) adjudicateGames(ctx context.Context, correspondenceOnly bool) erro
 					Interface("created", entGame.CreatedAt).
 					Msg("canceling-never-started")
 
-					// need to lock game to abort? maybe lock inside AbortGame?
 				log.Debug().Str("gid", g.GameId).Msg("locking")
-				// Lock at the cache level first for correspondence game safety
-				b.stores.GameStore.LockGame(g.GameId)
-				entGame.Lock()
-				err = gameplay.AbortGame(ctx, b.stores, entGame, pb.GameEndReason_CANCELLED)
-				log.Err(err).Str("gid", g.GameId).Msg("adjudicating-after-abort-game")
-				entGame.Unlock()
-				b.stores.GameStore.UnlockGame(g.GameId)
+				gameLock, lerr := b.stores.GameStore.LockGame(ctx, g.GameId)
+				if lerr != nil {
+					log.Err(lerr).Str("gid", g.GameId).Msg("cant-lock-for-abort")
+					continue
+				}
+				// Load again inside the lock. entGame was read without it, and
+				// the game may have started or ended since.
+				lockedGame, gerr := b.stores.GameStore.Get(ctx, g.GameId)
+				if gerr != nil {
+					log.Err(gerr).Str("gid", g.GameId).Msg("cant-reload-for-abort")
+					gameLock.Unlock(ctx)
+					continue
+				}
+				lockedGame.Lock()
+				stillUnstarted := !lockedGame.Started && lockedGame.GameEndReason == pb.GameEndReason_NONE
+				if stillUnstarted {
+					err = gameplay.AbortGame(ctx, b.stores, lockedGame, pb.GameEndReason_CANCELLED)
+					log.Err(err).Str("gid", g.GameId).Msg("adjudicating-after-abort-game")
+				}
+				lockedGame.Unlock()
+				gameLock.Unlock(ctx)
 				log.Debug().Str("gid", g.GameId).Msg("unlocking")
+				if !stillUnstarted {
+					continue
+				}
 
 				// Delete the game from the lobby. We do this here instead
 				// of inside the gameplay package because the game event channel

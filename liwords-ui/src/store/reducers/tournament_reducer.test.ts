@@ -2,6 +2,7 @@ import { ActionType } from "../../actions/actions";
 import {
   defaultTournamentState,
   TournamentReducer,
+  TournamentState,
 } from "./tournament_reducer";
 import { ftData } from "./testdata/tourney_1_divisions";
 import { ChallengeRule } from "../../gen/api/proto/vendored/macondo/macondo_pb";
@@ -24,6 +25,7 @@ import {
   RoundControlSchema,
   TournamentGameSchema,
   PairingSchema,
+  ReadyForTournamentGameSchema,
 } from "../../gen/api/proto/ipc/tournament_pb";
 import { create, fromBinary } from "@bufbuild/protobuf";
 import {
@@ -133,6 +135,7 @@ it("tests initial fulldivisions message", () => {
     isRegistered: true,
     isCheckedIn: false,
     currentRound: -1,
+    activeRound: -1,
     division: "CSW",
     status: "PRETOURNEY",
   });
@@ -285,6 +288,78 @@ it("adds new divisions and pairings", () => {
   expect(
     finalState.divisions["NWL B"].pairings[0].roundPairings[0].players[1].id,
   ).toBe("ViSLeuyqNcSA3GcHJP5rA5:nigel");
+});
+
+// The NWL division of the fixture, with round 2 open and lagged by the given
+// amount. No game in the fixture has a result, so round 1 is unfinished.
+const nwlRound2State = (lag: number): TournamentState => {
+  const state = fullDivisionsState();
+  const nwl = state.divisions["NWL"];
+  const roundControls = nwl.roundControls.map((rc, idx) =>
+    idx === 1 ? { ...rc, pairingLag: lag } : rc,
+  );
+  return {
+    ...state,
+    started: true,
+    divisions: {
+      ...state.divisions,
+      NWL: { ...nwl, currentRound: 1, roundControls },
+    },
+  };
+};
+
+const lolaID = "wqKcBR24feBCH55LaMTPmH:lola";
+const joshID = "dcHy8DxjX3dmsCAaEMR5AH:josh";
+
+// Round 1 pairs lola with thedirector, and round 2 pairs josh with
+// thedirector.
+const readyForRound = (fullID: string, round: number) => {
+  const [userID, username] = fullID.split(":");
+  return {
+    actionType: ActionType.SetReadyForGame,
+    payload: {
+      ready: create(ReadyForTournamentGameSchema, {
+        division: "NWL",
+        round,
+        playerId: fullID,
+      }),
+      loginState: {
+        username,
+        userID,
+        loggedIn: true,
+        connId: "conn-123",
+        connectedToSocket: true,
+      },
+    },
+  };
+};
+
+const readyStateOf = (
+  state: TournamentState,
+  fullID: string,
+  round: number,
+) => {
+  const nwl = state.divisions["NWL"];
+  const pairing = nwl.pairings[round].roundPairings[nwl.playerIndexMap[fullID]];
+  return pairing.readyStates[pairing.players[0].id === fullID ? 0 : 1];
+};
+
+it("accepts a ready for the previous round while a lagged round is open", () => {
+  const state = nwlRound2State(1);
+  const newState = TournamentReducer(state, readyForRound(lolaID, 0));
+  expect(readyStateOf(newState, lolaID, 0)).toBe("ready");
+});
+
+it("ignores a ready for the previous round when the current round is not lagged", () => {
+  const state = nwlRound2State(0);
+  const newState = TournamentReducer(state, readyForRound(lolaID, 0));
+  expect(newState).toBe(state);
+});
+
+it("accepts a ready for the current round", () => {
+  const state = nwlRound2State(0);
+  const newState = TournamentReducer(state, readyForRound(joshID, 1));
+  expect(readyStateOf(newState, joshID, 1)).toBe("ready");
 });
 
 // it('tests my pairings', () => {

@@ -198,10 +198,21 @@
       bottom: -18px;
     }
     .slick-dots {
-      align-items: baseline;
+      align-items: center;
     }
+    // antd sizes a dot's li to its 3px bar and clips to it; these dots are
+    // round and up to 10px, so the li has to hold them. Its animated bar
+    // (li::after) would paint over the active dot, so it goes. A dot smaller
+    // than its li is centered in it, so all the dots share one middle.
     .slick-dots li {
+      height: 10px;
       width: 12px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      &::after {
+        display: none;
+      }
       button {
         width: 8px;
         height: 8px;
@@ -256,6 +267,7 @@
       }
     }
     .detail-icons {
+      margin-top: auto;
       text-align: right;
       font-size: 16px;
       font-weight: 800;
@@ -292,9 +304,17 @@
         line-height: 1.5em;
       }
     }
+    // One line more than the card's details need, for a game's league or
+    // tournament; the icons keep to the bottom either way.
     .ant-card-body {
-      display: block;
-      height: 140px;
+      display: flex;
+      flex-direction: column;
+      height: 162px;
+    }
+    .game-event {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
     .time-control {
       text-transform: capitalize;
@@ -368,6 +388,12 @@
       padding: 0;
     }
   }
+  // A time a click turns into a date and back, in any of the profile's lists
+  // and on its recent game cards.
+  .when-toggle {
+    cursor: pointer;
+    white-space: nowrap;
+  }
   .show-games-toggle {
     margin: 9px;
     cursor: pointer;
@@ -412,8 +438,31 @@
 .game-history-controls {
   align-items: center;
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   padding: 6px;
+  row-gap: 6px;
+  // the page number box, as tall as the Prev/Next buttons beside it.
+  .ant-input-number {
+    height: 36px;
+    .ant-input-number-input {
+      height: 34px;
+    }
+  }
+}
+
+// On a narrow screen the date box and Go wrap onto their own line rather
+// than squeezing the date.
+.game-history-jump {
+  align-items: center;
+  display: flex;
+  gap: 4px;
+  margin-left: 12px;
+  // as tall as the Prev/Next buttons beside it, and wide enough for the date.
+  .ant-picker {
+    height: 36px;
+    min-width: 172px;
+  }
 }
 
 .not-found {

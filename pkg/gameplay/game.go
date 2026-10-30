@@ -53,7 +53,9 @@ type GameStore interface {
 	Get(ctx context.Context, id string) (*entity.Game, error)
 	GetMetadata(ctx context.Context, id string) (*pb.GameInfoResponse, error)
 	GetRematchStreak(ctx context.Context, originalRequestId string) (*gs.StreakInfoResponse, error)
+	GetLatestRematchGame(ctx context.Context, originalRequestId string) (string, error)
 	GetRecentGames(ctx context.Context, username string, numGames int, offset int) (*pb.GameInfoResponses, error)
+	GetRecentGamesPage(ctx context.Context, username string, numGames int, page entity.RecentGamesPage) (*pb.GameInfoResponses, error)
 	GetRecentTourneyGames(ctx context.Context, tourneyID string, numGames int, offset int) (*pb.GameInfoResponses, error)
 	GetRecentCorrespondenceGames(ctx context.Context, username string, numGames int) (*pb.GameInfoResponses, error)
 	ListActiveCorrespondenceForUser(ctx context.Context, userID string) (*pb.GameInfoResponses, error)
@@ -282,12 +284,11 @@ func StartGame(ctx context.Context, stores *stores.Stores, eventChan chan<- *ent
 	// If the previous game was a rematch, notify
 	// the viewers that this game has started.
 	if entGame.Quickdata.OriginalRequestId != "" {
-		rematchStreak, err := stores.GameStore.GetRematchStreak(ctx, entGame.Quickdata.OriginalRequestId)
+		previousGameID, err := stores.GameStore.GetLatestRematchGame(ctx, entGame.Quickdata.OriginalRequestId)
 		if err != nil {
 			return err
 		}
-		if len(rematchStreak.Streak) > 0 {
-			previousGameID := rematchStreak.Streak[0].GameId
+		if previousGameID != "" {
 			evt := &pb.RematchStartedEvent{RematchGameId: entGame.GameID()}
 			wrappedRematch := entity.WrapEvent(evt, pb.MessageType_REMATCH_STARTED)
 			wrappedRematch.AddAudience(entity.AudGameTV, previousGameID)
@@ -460,7 +461,7 @@ func handleChallenge(ctx context.Context, entGame *entity.Game, stores *stores.S
 		entGame.SendChange(evt)
 	}
 	if cfg, cfgErr := config.Ctx(ctx); cfgErr == nil && cfg.DualWriteTurns {
-		if dwtErr := stores.GameStore.AppendTurns(ctx, entGame.GameID(), numEvts, newEvts[numEvts:]); dwtErr != nil {
+		if dwtErr := stores.GameStore.StageTurns(entGame, numEvts, newEvts[numEvts:]); dwtErr != nil {
 			log.Err(dwtErr).Str("gameID", entGame.GameID()).Msg("dual-write-turns-error-challenge")
 		}
 	}
@@ -556,13 +557,8 @@ func PlayMove(ctx context.Context,
 		log.Debug().Msg("more than one turn appended")
 	}
 	if cfg, cfgErr := config.Ctx(ctx); cfgErr == nil && cfg.DualWriteTurns {
-		if dwtErr := stores.GameStore.AppendTurns(ctx, entGame.GameID(), oldTurnLength, turns); dwtErr != nil {
+		if dwtErr := stores.GameStore.StageTurns(entGame, oldTurnLength, turns); dwtErr != nil {
 			log.Err(dwtErr).Str("gameID", entGame.GameID()).Msg("dual-write-turns-error")
-		} else if entGame.Game.Playing() != macondopb.PlayState_GAME_OVER {
-			// Skip shadow compare on game-over: END_RACK_POINTS events are written
-			// to game_turns by performEndgameDuties below, so game_turns is
-			// incomplete here. ArchiveAndCleanup does a full proto.Equal check instead.
-			stores.GameStore.SpawnShadowCompare(ctx, entGame)
 		}
 	}
 	// Create a set of ServerGameplayEvents to send back.
@@ -649,12 +645,18 @@ func HandleEvent(ctx context.Context, stores *stores.Stores, userID string, cge 
 	)
 	defer span.End()
 
-	// Lock at the cache level first. This is especially important for correspondence
-	// games which bypass the in-memory cache - each Get() returns a new object, so
-	// the game's internal Lock() would lock different mutexes. The cache-level lock
-	// ensures only one goroutine processes a given game ID at a time.
-	stores.GameStore.LockGame(cge.GameId)
-	defer stores.GameStore.UnlockGame(cge.GameId)
+	// Taken before the load, not after: a move is load-modify-save, and if the
+	// position is read outside the lock then two servers can read the same one,
+	// each play onto it, and each save -- the second silently discarding the
+	// first. It also covers correspondence games, which bypass the in-memory
+	// cache and so get a fresh object from every Get, making the game's own
+	// mutex useless for this.
+	gameLock, err := stores.GameStore.LockGame(ctx, cge.GameId)
+	if err != nil {
+		log.Err(err).Str("gid", cge.GameId).Msg("handle-event-lock-failed")
+		return nil, err
+	}
+	defer gameLock.Unlock(ctx)
 
 	entGame, err := stores.GameStore.Get(ctx, cge.GameId)
 	if err != nil {
@@ -804,6 +806,8 @@ func handleEventAfterLockingGame(ctx context.Context, stores *stores.Stores, use
 				}
 				entGame.SendChange(wrapped)
 			}
+			// A league game's page shows its live score and whose turn it is.
+			sendLeagueGameUpdated(entGame, false)
 		}
 
 	}
@@ -827,9 +831,13 @@ func TimedOut(ctx context.Context, stores *stores.Stores, timedout string, gameI
 
 	log.Debug().Str("timedout", timedout).Msg("got-timed-out")
 
-	// Lock at the cache level first for correspondence game safety
-	stores.GameStore.LockGame(gameID)
-	defer stores.GameStore.UnlockGame(gameID)
+	// Serialize against any concurrent move on this game, on any app server.
+	gameLock, err := stores.GameStore.LockGame(ctx, gameID)
+	if err != nil {
+		log.Err(err).Str("gid", gameID).Msg("timed-out-lock-failed")
+		return err
+	}
+	defer gameLock.Unlock(ctx)
 
 	entGame, err := stores.GameStore.Get(ctx, gameID)
 	if err != nil {
@@ -869,21 +877,14 @@ func TimedOut(ctx context.Context, stores *stores.Stores, timedout string, gameI
 	return setTimedOut(ctx, entGame, onTurn, stores)
 }
 
-func statsForUser(ctx context.Context, id string, stores *stores.Stores,
-	variantKey entity.VariantKey) (*entity.Stats, error) {
-
-	u, err := stores.UserStore.GetByUUID(ctx, id)
-	if err != nil {
-		return nil, err
-	}
+func profileStatsFor(u *entity.User, variantKey entity.VariantKey) *entity.Stats {
 	userStats, ok := u.Profile.Stats.Data[variantKey]
 	if !ok {
-		log.Debug().Str("variantKey", string(variantKey)).Str("pid", id).Msg("instantiating new; no data for variant")
+		log.Debug().Str("variantKey", string(variantKey)).Str("pid", u.UUID).Msg("instantiating new; no data for variant")
 		// The second user ID does not matter; this is the per user stat.
-		userStats = stats.InstantiateNewStats(id, "")
+		userStats = stats.InstantiateNewStats(u.UUID, "")
 	}
-
-	return userStats, nil
+	return userStats
 }
 
 // PotentiallySendBotMoveRequest sends a request to the internal Macondo bot to move if user on turn is a bot.

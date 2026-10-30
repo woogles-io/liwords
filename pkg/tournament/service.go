@@ -11,10 +11,10 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/aws/aws-sdk-go-v2/service/lambda"
 	"github.com/aws/aws-sdk-go-v2/service/lambda/types"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/lithammer/shortuuid/v4"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -25,13 +25,13 @@ import (
 	"github.com/woogles-io/liwords/pkg/auth/rbac"
 	"github.com/woogles-io/liwords/pkg/config"
 	"github.com/woogles-io/liwords/pkg/entity"
-	"github.com/woogles-io/liwords/pkg/mod"
 	"github.com/woogles-io/liwords/pkg/notify"
 	"github.com/woogles-io/liwords/pkg/stores/models"
 	"github.com/woogles-io/liwords/pkg/user"
 	"github.com/woogles-io/liwords/pkg/utilities"
 
 	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
+	ms "github.com/woogles-io/liwords/rpc/api/proto/mod_service"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/tournament_service"
 )
 
@@ -110,16 +110,16 @@ func (ts *TournamentService) SetTournamentMetadata(ctx context.Context, req *con
 	return connect.NewResponse(&pb.TournamentResponse{}), nil
 }
 
-func (ts *TournamentService) SetSingleRoundControls(ctx context.Context, req *connect.Request[pb.SingleRoundControlsRequest]) (*connect.Response[pb.TournamentResponse], error) {
+func (ts *TournamentService) SetSingleRoundControls(ctx context.Context, req *connect.Request[pb.SingleRoundControlsRequest]) (*connect.Response[pb.SingleRoundControlsResponse], error) {
 	err := authenticateDirector(ctx, ts, req.Msg.Id, req.Msg, true)
 	if err != nil {
 		return nil, err
 	}
-	err = SetSingleRoundControls(ctx, ts.tournamentStore, req.Msg.Id, req.Msg.Division, int(req.Msg.RoundControls.Round), req.Msg.RoundControls)
+	paired, warnings, err := SetSingleRoundControls(ctx, ts.tournamentStore, req.Msg.Id, req.Msg.Division, int(req.Msg.RoundControls.Round), req.Msg.RoundControls)
 	if err != nil {
 		return nil, apiserver.InvalidArg(err.Error())
 	}
-	return connect.NewResponse(&pb.TournamentResponse{}), nil
+	return connect.NewResponse(&pb.SingleRoundControlsResponse{Paired: paired, Warnings: warnings}), nil
 }
 
 func (ts *TournamentService) SetRoundControls(ctx context.Context, req *connect.Request[ipc.DivisionRoundControls]) (*connect.Response[pb.TournamentResponse], error) {
@@ -494,12 +494,12 @@ func (ts *TournamentService) SetPairing(ctx context.Context, req *connect.Reques
 		return nil, err
 	}
 
-	err = SetPairings(ctx, ts.tournamentStore, req.Msg.Id, req.Msg.Division, req.Msg.Pairings)
+	warnings, err := SetPairings(ctx, ts.tournamentStore, req.Msg.Id, req.Msg.Division, req.Msg.Pairings)
 	if err != nil {
 		return nil, apiserver.InvalidArg(err.Error())
 	}
 
-	return connect.NewResponse(&pb.TournamentResponse{}), nil
+	return connect.NewResponse(&pb.TournamentResponse{Warnings: warnings}), nil
 }
 
 func (ts *TournamentService) SetResult(ctx context.Context, req *connect.Request[pb.TournamentResultOverrideRequest],
@@ -551,15 +551,16 @@ func (ts *TournamentService) PairRound(ctx context.Context, req *connect.Request
 	if err != nil {
 		return nil, err
 	}
+	var warnings []string
 	if req.Msg.DeletePairings {
 		err = DeletePairings(ctx, ts.tournamentStore, req.Msg.Id, req.Msg.Division, int(req.Msg.Round))
 	} else {
-		err = PairRound(ctx, ts.tournamentStore, req.Msg.Id, req.Msg.Division, int(req.Msg.Round), req.Msg.PreserveByes)
+		warnings, err = PairRound(ctx, ts.tournamentStore, req.Msg.Id, req.Msg.Division, int(req.Msg.Round), req.Msg.PreserveByes)
 	}
 	if err != nil {
 		return nil, apiserver.InvalidArg(err.Error())
 	}
-	return connect.NewResponse(&pb.TournamentResponse{}), nil
+	return connect.NewResponse(&pb.TournamentResponse{Warnings: warnings}), nil
 }
 
 func (ts *TournamentService) RecentGames(ctx context.Context, req *connect.Request[pb.RecentGamesRequest]) (*connect.Response[pb.RecentGamesResponse], error) {
@@ -720,13 +721,22 @@ func (ts *TournamentService) GetPastTournaments(ctx context.Context, req *connec
 	return connect.NewResponse(response), nil
 }
 
+// GetMyTournaments lists the tournaments and clubs the caller directs or, for
+// a caller who can see private user data (the admin user lookup), those that
+// the user named in the request directs.
 func (ts *TournamentService) GetMyTournaments(ctx context.Context, req *connect.Request[pb.GetMyTournamentsRequest]) (*connect.Response[pb.GetMyTournamentsResponse], error) {
 	user, err := apiserver.AuthUser(ctx, ts.userStore)
 	if err != nil {
 		return nil, err
 	}
+	director, err := listedUser(ctx, ts.userStore, user, req.Msg.Username, func() (bool, error) {
+		return rbac.HasPermission(ctx, ts.queries, user.ID, rbac.CanSeePrivateUserData)
+	})
+	if err != nil {
+		return nil, err
+	}
 
-	tournaments, err := ts.tournamentStore.GetTournamentsByDirector(ctx, user.ID)
+	tournaments, err := ts.tournamentStore.GetTournamentsByDirector(ctx, director.ID)
 	if err != nil {
 		return nil, apiserver.InternalErr(err)
 	}
@@ -744,6 +754,28 @@ func (ts *TournamentService) GetMyTournaments(ctx context.Context, req *connect.
 		response.Tournaments[i] = tMeta
 	}
 	return connect.NewResponse(response), nil
+}
+
+// listedUser picks whose tournaments to list: the viewer's own when no
+// other username is given, else that user's, if the viewer can see private
+// user data.
+func listedUser(ctx context.Context, us user.Store, viewer *entity.User,
+	username string, canSeePrivateUserData func() (bool, error)) (*entity.User, error) {
+	if username == "" || strings.EqualFold(username, viewer.Username) {
+		return viewer, nil
+	}
+	allowed, err := canSeePrivateUserData()
+	if err != nil {
+		return nil, apiserver.InternalErr(err)
+	}
+	if !allowed {
+		return nil, apiserver.PermissionDenied("you can only list your own tournaments")
+	}
+	target, err := us.Get(ctx, username)
+	if err != nil {
+		return nil, apiserver.InvalidArg(err.Error())
+	}
+	return target, nil
 }
 
 func authenticateDirector(ctx context.Context, ts *TournamentService, id string, req proto.Message, requireFullDirector bool) error {
@@ -815,37 +847,50 @@ func authenticateDirector(ctx context.Context, ts *TournamentService, id string,
 }
 
 func censorRecentGamesResponse(ctx context.Context, us user.Store, rgr *pb.RecentGamesResponse) error {
-	knownUsers := make(map[string]bool)
+	uuids := []string{}
+	seen := map[string]bool{}
+	for _, game := range rgr.Games {
+		for _, p := range game.Players {
+			if p.UserId == "" {
+				// Games without a stored user ID; look it up by username.
+				u, err := us.Get(ctx, p.Username)
+				if err != nil {
+					return err
+				}
+				p.UserId = u.UUID
+			}
+			if !seen[p.UserId] {
+				seen[p.UserId] = true
+				uuids = append(uuids, p.UserId)
+			}
+		}
+	}
+	userActions, err := us.GetActionsBatch(ctx, uuids)
+	if err != nil {
+		return err
+	}
+	// Same rule as mod.IsCensorable: only permanent suspensions are censored.
+	censorable := func(uuid string) bool {
+		a, ok := userActions[uuid][ms.ModActionType_SUSPEND_ACCOUNT.String()]
+		return ok && a.EndTime == nil
+	}
+	censor := func(p *ipc.TournamentGameEndedEvent_Player, name string) {
+		p.Username = name
+		p.UserId = name
+	}
 
 	for _, game := range rgr.Games {
-		playerOneUserEntity, err := us.Get(ctx, game.Players[0].Username)
-		if err != nil {
-			return err
+		playerOneCensored := censorable(game.Players[0].UserId)
+		playerTwoCensored := censorable(game.Players[1].UserId)
+		if playerOneCensored {
+			censor(game.Players[0], utilities.CensoredUsername)
 		}
-		playerTwoUserEntity, err := us.Get(ctx, game.Players[1].Username)
-		if err != nil {
-			return err
-		}
-		playerOne := playerOneUserEntity.UUID
-		playerTwo := playerTwoUserEntity.UUID
-
-		_, known := knownUsers[playerOne]
-		if !known {
-			knownUsers[playerOne] = mod.IsCensorable(ctx, us, playerOne)
-		}
-		if knownUsers[playerOne] {
-			game.Players[0].Username = utilities.CensoredUsername
-		}
-
-		_, known = knownUsers[playerTwo]
-		if !known {
-			knownUsers[playerTwo] = mod.IsCensorable(ctx, us, playerTwo)
-		}
-		if knownUsers[playerTwo] {
-			game.Players[1].Username = utilities.CensoredUsername
-			if knownUsers[playerOne] {
-				game.Players[1].Username = utilities.AnotherCensoredUsername
+		if playerTwoCensored {
+			name := utilities.CensoredUsername
+			if playerOneCensored {
+				name = utilities.AnotherCensoredUsername
 			}
+			censor(game.Players[1], name)
 		}
 	}
 	return nil
@@ -1207,19 +1252,25 @@ func (ts *TournamentService) GetTournamentMonitoring(ctx context.Context, req *c
 	}), nil
 }
 
-func dbTournamentToTournamentMetadataResponse(ctx context.Context, t *entity.Tournament) (*pb.TournamentMetadata, error) {
-	var tt pb.TType
-	switch t.Type {
+// competitionTType is a tournament's type as the API names it.
+func competitionTType(ct entity.CompetitionType) (pb.TType, error) {
+	switch ct {
 	case entity.TypeStandard:
-		tt = pb.TType_STANDARD
+		return pb.TType_STANDARD, nil
 	case entity.TypeChild:
-		tt = pb.TType_CHILD
+		return pb.TType_CHILD, nil
 	case entity.TypeClub:
-		tt = pb.TType_CLUB
+		return pb.TType_CLUB, nil
 	case entity.TypeLegacy:
-		tt = pb.TType_LEGACY
-	default:
-		return nil, fmt.Errorf("unrecognized tournament type: %v", t.Type)
+		return pb.TType_LEGACY, nil
+	}
+	return pb.TType_STANDARD, fmt.Errorf("unrecognized tournament type: %v", ct)
+}
+
+func dbTournamentToTournamentMetadataResponse(ctx context.Context, t *entity.Tournament) (*pb.TournamentMetadata, error) {
+	tt, err := competitionTType(t.Type)
+	if err != nil {
+		return nil, err
 	}
 
 	var scheduledStartTime *timestamppb.Timestamp

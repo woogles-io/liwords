@@ -8,7 +8,13 @@ import { Modal } from "../../../utils/focus_modal";
 import { lowerAndJoin } from "./shared";
 import { AddDivision, RemoveDivision, RenameDivision } from "./divisions";
 import { AddPlayers, EditPlayer, RemovePlayer, MovePlayer } from "./players";
-import { PairRound, SetPairing, SetResult, UnpairRound } from "./pairings";
+import {
+  CountFirsts,
+  PairRound,
+  SetPairing,
+  SetResult,
+  UnpairRound,
+} from "./pairings";
 import {
   SetDivisionRoundControls,
   SetSingleRoundControls,
@@ -71,6 +77,7 @@ const FormModal = (props: ModalProps) => {
     "manage-check-ins-and-registrations": (
       <ManageCheckIns tournamentID={props.tournamentID} />
     ),
+    "count-firsts": <CountFirsts />,
   };
 
   type FormKeys = keyof typeof forms;
@@ -194,7 +201,9 @@ export const GhettoTools = (props: Props) => {
           <div style={{ marginTop: 8 }}>
             {makeButtonGroup(["Pair entire round", "Unpair entire round"])}
           </div>
-          <div style={{ marginTop: 8 }}>{makeButton("Set game result")}</div>
+          <div style={{ marginTop: 8 }}>
+            {makeButtonGroup(["Set game result", "Count firsts"])}
+          </div>
 
           <Divider />
           <h4>Post-Tournament Utilities</h4>

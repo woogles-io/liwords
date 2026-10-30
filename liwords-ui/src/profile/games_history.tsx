@@ -1,16 +1,26 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link } from "react-router";
-import moment from "moment";
-import { Button, Card, InputNumber, Table, Tag, Tooltip } from "antd";
+import {
+  Button,
+  Card,
+  DatePicker,
+  InputNumber,
+  Table,
+  Tag,
+  Tooltip,
+} from "antd";
+import type { Dayjs } from "dayjs";
 import { CheckCircleTwoTone, RobotOutlined } from "@ant-design/icons";
 import { FundOutlined } from "@ant-design/icons";
 import { timeToString } from "../store/constants";
 import { VariantIcon } from "../shared/variant_icons";
+import { GameEvent } from "./game_event";
 import { GameInfoResponse, RatingMode } from "../gen/api/proto/ipc/omgwords_pb";
 import { challengeRuleNamesShort } from "../constants/challenge_rules";
 import { GameEndReason } from "../gen/api/proto/ipc/omgwords_pb";
 import { ChallengeRule } from "../gen/api/proto/vendored/macondo/macondo_pb";
 import { lexiconCodeToProfileRatingName } from "../shared/lexica";
+import { ProfileTime } from "./profile_time";
 import { timestampDate } from "@bufbuild/protobuf/wkt";
 
 type Props = {
@@ -25,6 +35,11 @@ type Props = {
   desiredOffset: number;
   desiredPageSize: number;
   onChangePageNumber: (value: number | string | null) => void;
+  // The page was found by position (a jump to a time), so its number is not
+  // known.
+  pageNumberUnknown?: boolean;
+  // Opens the page with the last game played before a time (unix ms).
+  onJumpToTime?: (ms: number) => void;
 };
 
 export const GamesHistoryCard = React.memo((props: Props) => {
@@ -37,6 +52,9 @@ export const GamesHistoryCard = React.memo((props: Props) => {
   } = props;
 
   const { analyzedGameIds } = props;
+
+  // The time to jump to (local time).
+  const [jumpTo, setJumpTo] = useState<Dayjs | null>(null);
 
   // The view currently assumes:
   // currentPageSize === desiredPageSize
@@ -112,13 +130,10 @@ export const GamesHistoryCard = React.memo((props: Props) => {
       if (item.players[userplace].first) {
         turnOrder = <CheckCircleTwoTone twoToneColor="#52c41a" />;
       }
-      const whenMoment = moment(
-        item.lastUpdate ? timestampDate(item.lastUpdate) : "",
-      );
       const when = (
-        <Tooltip title={whenMoment.format("LLL")}>
-          {whenMoment.fromNow()}
-        </Tooltip>
+        <ProfileTime
+          at={item.lastUpdate ? timestampDate(item.lastUpdate) : undefined}
+        />
       );
       let endReason = "";
       switch (item.gameEndReason) {
@@ -175,6 +190,7 @@ export const GamesHistoryCard = React.memo((props: Props) => {
           item.gameRequest?.lexicon ?? "",
         ),
         time,
+        event: <GameEvent game={item} />,
         when,
         hasAnalysis: analyzedGameIds.has(item.gameId ?? ""),
       };
@@ -230,6 +246,12 @@ export const GamesHistoryCard = React.memo((props: Props) => {
       title: "Time Settings",
     },
     {
+      className: "event",
+      dataIndex: "event",
+      key: "event",
+      title: "Event",
+    },
+    {
       title: "Details",
       className: "details",
       dataIndex: "details",
@@ -267,7 +289,7 @@ export const GamesHistoryCard = React.memo((props: Props) => {
         <InputNumber
           inputMode="numeric"
           min={1}
-          value={desiredPageNumber}
+          value={props.pageNumberUnknown ? null : desiredPageNumber}
           onChange={props.onChangePageNumber}
         />
         <Button disabled={!props.fetchPrev} onClick={props.fetchPrev}>
@@ -276,6 +298,23 @@ export const GamesHistoryCard = React.memo((props: Props) => {
         <Button disabled={!props.fetchNext} onClick={props.fetchNext}>
           Next
         </Button>
+        {props.onJumpToTime && (
+          <span className="game-history-jump">
+            <DatePicker
+              showTime={{ format: "HH:mm" }}
+              format="YYYY-MM-DD HH:mm"
+              placeholder="Games before..."
+              value={jumpTo}
+              onChange={setJumpTo}
+            />
+            <Button
+              disabled={!jumpTo}
+              onClick={() => jumpTo && props.onJumpToTime?.(jumpTo.valueOf())}
+            >
+              Go
+            </Button>
+          </span>
+        )}
       </div>
     </Card>
   );

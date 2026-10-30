@@ -1,0 +1,249 @@
+{
+  "tournamentName": "testTournament",
+  "divisionName": "testDivision",
+  "matrix": [
+    [
+      "0",
+      "0",
+      "1",
+      "1"
+    ],
+    [
+      "2",
+      "3",
+      "2",
+      "3"
+    ],
+    [
+      "",
+      "",
+      "",
+      ""
+    ]
+  ],
+  "pairingMap": {
+    "0": {
+      "players": [
+        0,
+        1
+      ],
+      "games": [
+        {
+          "scores": [
+            450,
+            400
+          ],
+          "results": [
+            1,
+            2
+          ],
+          "game_end_reason": 2
+        }
+      ],
+      "outcomes": [
+        1,
+        2
+      ],
+      "ready_states": [
+        "",
+        ""
+      ]
+    },
+    "1": {
+      "players": [
+        2,
+        3
+      ],
+      "games": [
+        {
+          "scores": [
+            500,
+            300
+          ],
+          "results": [
+            1,
+            2
+          ],
+          "game_end_reason": 2
+        }
+      ],
+      "outcomes": [
+        1,
+        2
+      ],
+      "ready_states": [
+        "",
+        ""
+      ]
+    },
+    "2": {
+      "players": [
+        2,
+        0
+      ],
+      "round": 1,
+      "games": [
+        {
+          "scores": [
+            0,
+            0
+          ],
+          "results": [
+            0,
+            0
+          ]
+        }
+      ],
+      "outcomes": [
+        0,
+        0
+      ],
+      "ready_states": [
+        "",
+        ""
+      ]
+    },
+    "3": {
+      "players": [
+        1,
+        3
+      ],
+      "round": 1,
+      "games": [
+        {
+          "scores": [
+            0,
+            0
+          ],
+          "results": [
+            0,
+            0
+          ]
+        }
+      ],
+      "outcomes": [
+        0,
+        0
+      ],
+      "ready_states": [
+        "",
+        ""
+      ]
+    }
+  },
+  "players": {
+    "persons": [
+      {
+        "id": "Will",
+        "rating": 10000
+      },
+      {
+        "id": "Josh",
+        "rating": 3000
+      },
+      {
+        "id": "Conrad",
+        "rating": 2200
+      },
+      {
+        "id": "Jesse",
+        "rating": 2100
+      }
+    ]
+  },
+  "pidxMap": {
+    "Conrad": 2,
+    "Jesse": 3,
+    "Josh": 1,
+    "Will": 0
+  },
+  "standings": {
+    "0": {
+      "standings": [
+        {
+          "player_id": "Conrad",
+          "wins": 1,
+          "spread": 200
+        },
+        {
+          "player_id": "Will",
+          "wins": 1,
+          "spread": 50
+        },
+        {
+          "player_id": "Josh",
+          "losses": 1,
+          "spread": -50
+        },
+        {
+          "player_id": "Jesse",
+          "losses": 1,
+          "spread": -200
+        }
+      ]
+    },
+    "1": {
+      "standings": [
+        {
+          "player_id": "Conrad",
+          "wins": 1,
+          "spread": 200
+        },
+        {
+          "player_id": "Will",
+          "wins": 1,
+          "spread": 50
+        },
+        {
+          "player_id": "Josh",
+          "losses": 1,
+          "spread": -50
+        },
+        {
+          "player_id": "Jesse",
+          "losses": 1,
+          "spread": -200
+        }
+      ]
+    }
+  },
+  "roundControls": [
+    {
+      "pairing_method": 2,
+      "games_per_round": 1,
+      "factor": 1,
+      "max_repeats": 1,
+      "allow_over_max_repeats": true,
+      "repeat_relative_weight": 1,
+      "win_difference_relative_weight": 1
+    },
+    {
+      "pairing_method": 2,
+      "games_per_round": 1,
+      "round": 1,
+      "factor": 1,
+      "max_repeats": 1,
+      "allow_over_max_repeats": true,
+      "repeat_relative_weight": 1,
+      "win_difference_relative_weight": 1
+    },
+    {
+      "pairing_method": 2,
+      "games_per_round": 1,
+      "round": 2,
+      "factor": 1,
+      "max_repeats": 1,
+      "allow_over_max_repeats": true,
+      "repeat_relative_weight": 1,
+      "win_difference_relative_weight": 1
+    }
+  ],
+  "divisionControls": {
+    "suspended_result": 6,
+    "suspended_spread": -50
+  },
+  "currentRound": 0,
+  "pairingKeyInt": 4,
+  "seed": 1,
+  "copGibsonization": {}
+}

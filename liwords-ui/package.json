@@ -6,9 +6,9 @@
   "dependencies": {
     "@ant-design/icons": "^6.2.5",
     "@ant-design/v5-patch-for-react-19": "^1.0.3",
-    "@bufbuild/protobuf": "^2.12.0",
+    "@bufbuild/protobuf": "^2.16.0",
     "@connectrpc/connect": "^2.1.2",
-    "@connectrpc/connect-query": "^2.2.0",
+    "@connectrpc/connect-query": "^2.3.1",
     "@connectrpc/connect-web": "^2.1.2",
     "@connectrpc/protoc-gen-connect-query": "^2.2.0",
     "@mantine/core": "^9.5.2",

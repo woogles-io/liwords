@@ -7,7 +7,12 @@ import { GameEndReason } from "../../../gen/api/proto/ipc/omgwords_pb";
 import { TournamentGameResult } from "../../../gen/api/proto/ipc/tournament_pb";
 import { TournamentService } from "../../../gen/api/proto/tournament_service/tournament_service_pb";
 import { useTournamentStoreContext } from "../../../store/store";
-import { flashError, useClient } from "../../../utils/hooks/connect";
+import { SinglePairing } from "../../../store/reducers/tournament_reducer";
+import {
+  flashError,
+  flashWarnings,
+  useClient,
+} from "../../../utils/hooks/connect";
 import { getEnumValue } from "../../../utils/protobuf";
 import {
   DivisionFormItem,
@@ -61,11 +66,12 @@ export const SetPairing = (props: { tournamentID: string }) => {
       ],
     };
     try {
-      await tClient.setPairing(obj);
+      const resp = await tClient.setPairing(obj);
       message.info({
         content: "Pairing set",
         duration: 3,
       });
+      flashWarnings(resp.warnings);
     } catch (e) {
       flashError(e);
     }
@@ -307,11 +313,12 @@ export const PairRound = (props: { tournamentID: string }) => {
       preserveByes: vals.preserveByes,
     };
     try {
-      await tClient.pairRound(obj);
+      const resp = await tClient.pairRound(obj);
       message.info({
         content: "Pair round completed",
         duration: 3,
       });
+      flashWarnings(resp.warnings);
     } catch (e) {
       flashError(e);
     }
@@ -369,5 +376,69 @@ export const UnpairRound = (props: { tournamentID: string }) => {
         </Button>
       </Form.Item>
     </Form>
+  );
+};
+
+// Counts each player's firsts and seconds in a division from the pairings
+// already loaded on the page, so a director can check that they are even.
+export const CountFirsts = () => {
+  const { tournamentContext } = useTournamentStoreContext();
+  const [division, setDivision] = useState("");
+  const [counts, setCounts] = useState<Array<[string, number, number]>>([]);
+  const countFirsts = () => {
+    if (!division) {
+      message.error("Please select a division first.");
+      return;
+    }
+    const div = tournamentContext.divisions[division];
+    const firsts: Record<string, number> = {};
+    const seconds: Record<string, number> = {};
+    for (const round of div.pairings) {
+      // A pairing is listed once for each of its two players.
+      const seen = new Set<SinglePairing>();
+      for (const rp of round.roundPairings) {
+        if (!rp?.players || seen.has(rp)) continue;
+        seen.add(rp);
+        const [first, second] = rp.players;
+        // A bye or forfeit pairs a player with themselves.
+        if (first.id === second.id) continue;
+        const firstName = first.id.split(":")[1];
+        const secondName = second.id.split(":")[1];
+        firsts[firstName] = (firsts[firstName] || 0) + 1;
+        seconds[secondName] = (seconds[secondName] || 0) + 1;
+      }
+    }
+    const names = new Set([...Object.keys(firsts), ...Object.keys(seconds)]);
+    setCounts(
+      [...names]
+        .map((name): [string, number, number] => [
+          name,
+          firsts[name] || 0,
+          seconds[name] || 0,
+        ])
+        .sort(
+          (a, b) => b[1] - b[2] - (a[1] - a[2]) || a[0].localeCompare(b[0]),
+        ),
+    );
+  };
+  return (
+    <>
+      <DivisionFormItem onChange={(div: string) => setDivision(div)} />
+      <Button onClick={countFirsts}>Count firsts</Button>
+      <div className="readable-text-color" style={{ marginTop: 10 }}>
+        {counts.length > 0 ? (
+          <ul>
+            {counts.map(([name, f, s]) => (
+              <li key={name}>
+                {name}: {f} first{f === 1 ? "" : "s"}, {s} second
+                {s === 1 ? "" : "s"}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          "No firsts counted yet."
+        )}
+      </div>
+    </>
   );
 };

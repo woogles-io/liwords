@@ -9,6 +9,7 @@ import {
   CHAT_FONT_SCALE_KEY,
   CHAT_FONT_SCALE_OPTIONS,
 } from "../chat/chat_prefs";
+import { ABSOLUTE_TIMES_KEY } from "../profile/history_prefs";
 import {
   preferredSortOrder,
   setPreferredSortOrder,
@@ -194,6 +195,8 @@ export const Preferences = React.memo(() => {
   );
   const [alwaysShowChatTimestamps, setAlwaysShowChatTimestamps] =
     useLocalStorageBool(CHAT_ALWAYS_TIMESTAMPS_KEY);
+  const [gameHistoryDates, setGameHistoryDates] =
+    useLocalStorageBool(ABSOLUTE_TIMES_KEY);
 
   const initialPuzzleLexicon =
     localStorage?.getItem("puzzleLexicon") || undefined;
@@ -221,35 +224,9 @@ export const Preferences = React.memo(() => {
     setPuzzleLexicon(lexicon);
   }, []);
 
-  // Auto-request permission on mount if not already decided
-  React.useEffect(() => {
-    const currentPermission = getNotificationPermissionState();
-
-    // If permission is default (not yet decided), auto-request
-    if (currentPermission === "default") {
-      requestNotificationPermission().then((granted) => {
-        if (granted) {
-          setTurnNotificationPreference(true);
-          setTurnNotifications(true);
-          setPermissionState("granted");
-        } else {
-          setPermissionState("denied");
-        }
-      });
-    } else if (currentPermission === "granted") {
-      // Check if user previously denied but then re-enabled in browser settings
-      // If so, and we don't have the preference set, auto-enable
-      const currentPref = getTurnNotificationPreference();
-      if (!currentPref) {
-        // Permission is granted but preference is off - could be newly granted
-        // Don't auto-enable in this case, let user control it
-      }
-      setPermissionState("granted");
-    } else {
-      setPermissionState(currentPermission);
-    }
-  }, []);
-
+  // Permission is asked for only when the switch is turned on: browsers expect
+  // a click behind the prompt (Firefox refuses one without), and a prompt on
+  // opening the page was easy to miss or dismiss.
   const handleTurnNotificationsChange = useCallback(
     async (checked: boolean) => {
       if (checked) {
@@ -266,15 +243,12 @@ export const Preferences = React.memo(() => {
         if (currentPermission === "default") {
           // Request permission first
           const granted = await requestNotificationPermission();
-          if (granted) {
-            setTurnNotificationPreference(true);
-            setTurnNotifications(true);
-            setPermissionState("granted");
-          } else {
-            setTurnNotificationPreference(false);
-            setTurnNotifications(false);
-            setPermissionState("denied");
-          }
+          setTurnNotificationPreference(granted);
+          setTurnNotifications(granted);
+          // Whatever the browser now says: a dismissed prompt leaves it
+          // undecided, so the switch can be tried again rather than show as
+          // blocked.
+          setPermissionState(getNotificationPermissionState());
         } else if (currentPermission === "granted") {
           // Permission already granted, just update preference
           setTurnNotificationPreference(true);
@@ -383,7 +357,7 @@ export const Preferences = React.memo(() => {
       <h3>Preferences</h3>
       <div className="section-header">Display</div>
       <div className="toggles-section">
-        <div>
+        <div className="toggle-fill">
           <div className="toggle-section">
             <div className="title">Dark mode</div>
             <div>
@@ -403,6 +377,30 @@ export const Preferences = React.memo(() => {
               <div>
                 Get a notification when it's your turn (works when tab is
                 unfocused)
+                {permissionState === "denied" && (
+                  <div style={{ marginTop: 8, fontSize: 12, color: "#ff4d4f" }}>
+                    Permission blocked.{" "}
+                    <a
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        alert(
+                          "To enable notifications:\n\n" +
+                            "Chrome/Edge: Click the icon at the left of the address bar > Site settings > Notifications > Allow. (Chrome always blocks them in incognito windows.)\n\n" +
+                            "Firefox: Click the lock icon > Clear permissions > Refresh page\n\n" +
+                            "Safari: Safari menu > Settings > Websites > Notifications > woogles.io > Allow",
+                        );
+                      }}
+                    >
+                      How to enable in browser settings
+                    </a>
+                  </div>
+                )}
+                {permissionState === "unsupported" && (
+                  <div style={{ marginTop: 8, fontSize: 12, color: "#8c8c8c" }}>
+                    Your browser doesn't support notifications
+                  </div>
+                )}
               </div>
               <Switch
                 checked={turnNotifications}
@@ -413,30 +411,20 @@ export const Preferences = React.memo(() => {
                 }
                 className="notification-toggle"
               />
-              {permissionState === "denied" && (
-                <div style={{ marginTop: 8, fontSize: 12, color: "#ff4d4f" }}>
-                  Permission blocked.{" "}
-                  <a
-                    href="#"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      alert(
-                        "To enable notifications:\n\n" +
-                          "Chrome/Edge: Click the lock icon in the address bar → Site settings → Notifications → Allow\n\n" +
-                          "Firefox: Click the lock icon → Clear permissions → Refresh page\n\n" +
-                          "Safari: Safari menu → Settings → Websites → Notifications → woogles.io → Allow",
-                      );
-                    }}
-                  >
-                    How to enable in browser settings
-                  </a>
-                </div>
-              )}
-              {permissionState === "unsupported" && (
-                <div style={{ marginTop: 8, fontSize: 12, color: "#8c8c8c" }}>
-                  Your browser doesn't support notifications
-                </div>
-              )}
+            </div>
+          </div>
+          <div className="toggle-section">
+            <div className="title">Dates in game history</div>
+            <div>
+              <div>
+                Show when profile games were played as dates instead of &quot;13
+                days ago&quot;
+              </div>
+              <Switch
+                checked={gameHistoryDates}
+                onChange={setGameHistoryDates}
+                className="game-history-dates-toggle"
+              />
             </div>
           </div>
         </div>
@@ -539,7 +527,7 @@ export const Preferences = React.memo(() => {
         </Col>
       </Row>
       <div className="toggles-section">
-        <div className="chat-toggle-fill">
+        <div className="toggle-fill">
           <div className="toggle-section">
             <div className="title">Always show chat timestamps</div>
             <div>

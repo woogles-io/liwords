@@ -6,12 +6,10 @@ import { useGameContextStoreContext } from "../store/store";
 import { useNavigate } from "react-router";
 import React, { useCallback, useState } from "react";
 import { ActionType } from "../actions/actions";
-import { GameRulesSchema } from "../gen/api/proto/ipc/omgwords_pb";
-import { defaultLetterDistribution } from "../lobby/sought_game_interactions";
 import { LexiconFormItem, historicalLexica } from "../shared/lexicon_display";
 import { ChallengeRule } from "../gen/api/proto/ipc/omgwords_pb";
 import { UploadOutlined } from "@ant-design/icons";
-import { create } from "@bufbuild/protobuf";
+import { VariantFormItem, annotatedGameRules } from "./variants";
 
 type Props = {
   gcg: string;
@@ -68,11 +66,7 @@ export const GCGProcessForm = (props: Props) => {
           const resp = await eventClient.importGCG({
             gcg: gcg,
             lexicon,
-            rules: create(GameRulesSchema, {
-              boardLayoutName: "CrosswordGame",
-              letterDistributionName: defaultLetterDistribution(lexicon),
-              variantName: "classic",
-            }),
+            rules: annotatedGameRules(lexicon, vals.variant),
             challengeRule: vals.challengerule,
           });
           fetchAndDispatchDocument(resp.gameId, true);
@@ -121,6 +115,8 @@ export const GCGProcessForm = (props: Props) => {
         excludedLexica={new Set(["ECWL"])}
         additionalLexica={historicalLexica}
       />
+
+      <VariantFormItem />
 
       <Form.Item
         label="Challenge rule"

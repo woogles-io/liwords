@@ -15,7 +15,7 @@ import {
   TournamentPerson,
 } from "../gen/api/proto/ipc/tournament_pb";
 import { GameEndReason } from "../gen/api/proto/ipc/omgwords_pb";
-import { useClient, flashError } from "../utils/hooks/connect";
+import { useClient, flashError, flashWarnings } from "../utils/hooks/connect";
 import { getEnumValue } from "../utils/protobuf";
 
 type Props = {
@@ -145,7 +145,7 @@ export const ScoreEditPopover: React.FC<Props> = (props) => {
       }
 
       try {
-        await tClient.setPairing({
+        const resp = await tClient.setPairing({
           id: props.tournamentID,
           division: props.division,
           pairings: [
@@ -158,6 +158,7 @@ export const ScoreEditPopover: React.FC<Props> = (props) => {
           ],
         });
         message.success("Pairing set successfully");
+        flashWarnings(resp.warnings);
         setOpen(false);
         setShowAdvanced(false);
         if (props.onSuccess) {

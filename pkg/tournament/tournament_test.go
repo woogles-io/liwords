@@ -378,7 +378,7 @@ func TestTournamentSingleDivision(t *testing.T) {
 	is.NoErr(err)
 	// Set pairing should work before the tournament starts
 	pairings := []*pb.TournamentPairingRequest{{PlayerOneId: "Will:Will", PlayerTwoId: "Jesse:Jesse", Round: 0}}
-	err = tournament.SetPairings(ctx, tstore, ty.UUID, divOneName, pairings)
+	_, err = tournament.SetPairings(ctx, tstore, ty.UUID, divOneName, pairings)
 	is.NoErr(err)
 
 	// Remove players and attempt to set pairings
@@ -388,7 +388,7 @@ func TestTournamentSingleDivision(t *testing.T) {
 	is.NoErr(err)
 	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{}), XHRResponse.Players))
 
-	err = tournament.SetPairings(ctx, tstore, ty.UUID, divOneName, pairings)
+	_, err = tournament.SetPairings(ctx, tstore, ty.UUID, divOneName, pairings)
 	is.True(err.Error() == entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NONEXISTENT_PLAYER, tournamentName, divOneName, "1", "Will:Will", "playerOne").Error())
 
 	err = tournament.SetResult(ctx,
@@ -436,11 +436,11 @@ func TestTournamentSingleDivision(t *testing.T) {
 	// entity package
 	pairings = []*pb.TournamentPairingRequest{{PlayerOneId: "Will:Will", PlayerTwoId: "Jesse:Jesse", Round: 0},
 		{PlayerOneId: "Josh:Josh", PlayerTwoId: "Conrad:Conrad", Round: 0}}
-	err = tournament.SetPairings(ctx, tstore, ty.UUID, divOneName, pairings)
+	_, err = tournament.SetPairings(ctx, tstore, ty.UUID, divOneName, pairings)
 	is.NoErr(err)
 
 	// Set pairings for division that does not exist
-	err = tournament.SetPairings(ctx, tstore, ty.UUID, divOneName+"yeet", pairings)
+	_, err = tournament.SetPairings(ctx, tstore, ty.UUID, divOneName+"yeet", pairings)
 	is.True(err.Error() == entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, tournamentName, divOneName+"yeet").Error())
 
 	err = tournament.SetResult(ctx,
@@ -511,7 +511,7 @@ func TestTournamentSingleDivision(t *testing.T) {
 	is.NoErr(err)
 	is.True(isRoundComplete)
 
-	err = tournament.SetPairings(ctx, tstore, ty.UUID, divOneName, []*pb.TournamentPairingRequest{
+	_, err = tournament.SetPairings(ctx, tstore, ty.UUID, divOneName, []*pb.TournamentPairingRequest{
 		{
 			PlayerOneId: "Josh:Josh",
 			PlayerTwoId: "Jesse:Jesse",
@@ -573,22 +573,22 @@ func TestTournamentSingleDivision(t *testing.T) {
 	err = tournament.StartRoundCountdown(ctx, tstore, ty.UUID, divOneName, 2)
 	is.NoErr(err)
 
-	err = tournament.PairRound(ctx, tstore, ty.UUID, divOneName, -1, true)
+	_, err = tournament.PairRound(ctx, tstore, ty.UUID, divOneName, -1, true)
 	is.True(err.Error() == entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_PAIR_NON_FUTURE_ROUND, tournamentName, divOneName, "0", "3").Error())
 
-	err = tournament.PairRound(ctx, tstore, ty.UUID, divOneName, 5, true)
+	_, err = tournament.PairRound(ctx, tstore, ty.UUID, divOneName, 5, true)
 	is.True(err.Error() == entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_ROUND_NUMBER_OUT_OF_RANGE, tournamentName, divOneName, "6", "PairRound").Error())
 
-	err = tournament.PairRound(ctx, tstore, ty.UUID, divOneName, 0, true)
+	_, err = tournament.PairRound(ctx, tstore, ty.UUID, divOneName, 0, true)
 	is.True(err.Error() == entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_PAIR_NON_FUTURE_ROUND, tournamentName, divOneName, "1", "3").Error())
 
-	err = tournament.PairRound(ctx, tstore, ty.UUID, divOneName, 1, true)
+	_, err = tournament.PairRound(ctx, tstore, ty.UUID, divOneName, 1, true)
 	is.True(err.Error() == entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_PAIR_NON_FUTURE_ROUND, tournamentName, divOneName, "2", "3").Error())
 
-	err = tournament.PairRound(ctx, tstore, ty.UUID, divOneName, 2, true)
+	_, err = tournament.PairRound(ctx, tstore, ty.UUID, divOneName, 2, true)
 	is.True(err.Error() == entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_PAIR_NON_FUTURE_ROUND, tournamentName, divOneName, "3", "3").Error())
 
-	err = tournament.PairRound(ctx, tstore, ty.UUID, divOneName, 3, true)
+	_, err = tournament.PairRound(ctx, tstore, ty.UUID, divOneName, 3, true)
 	is.NoErr(err)
 
 	// See if round is complete for division that does not exist
@@ -662,19 +662,19 @@ func TestTournamentMultipleDivisions(t *testing.T) {
 	is.NoErr(equalTournamentPersons(divTwoPlayersCompare, XHRResponse.Players))
 
 	pairings := []*pb.TournamentPairingRequest{{PlayerOneId: "Will:Will", PlayerTwoId: "Jesse:Jesse", Round: 0}}
-	err = tournament.SetPairings(ctx, tstore, ty.UUID, divOneName, pairings)
+	_, err = tournament.SetPairings(ctx, tstore, ty.UUID, divOneName, pairings)
 	is.NoErr(err)
 
 	pairings = []*pb.TournamentPairingRequest{{PlayerOneId: "Guy:Guy", PlayerTwoId: "Comrade:Comrade", Round: 0}}
-	err = tournament.SetPairings(ctx, tstore, ty.UUID, divTwoName, pairings)
+	_, err = tournament.SetPairings(ctx, tstore, ty.UUID, divTwoName, pairings)
 	is.NoErr(err)
 
 	pairings = []*pb.TournamentPairingRequest{{PlayerOneId: "Conrad:Conrad", PlayerTwoId: "Josh:Josh", Round: 0}}
-	err = tournament.SetPairings(ctx, tstore, ty.UUID, divOneName, pairings)
+	_, err = tournament.SetPairings(ctx, tstore, ty.UUID, divOneName, pairings)
 	is.NoErr(err)
 
 	pairings = []*pb.TournamentPairingRequest{{PlayerOneId: "Dude:Dude", PlayerTwoId: "ValuedCustomer:ValuedCustomer", Round: 0}}
-	err = tournament.SetPairings(ctx, tstore, ty.UUID, divTwoName, pairings)
+	_, err = tournament.SetPairings(ctx, tstore, ty.UUID, divTwoName, pairings)
 	is.NoErr(err)
 
 	// Start the tournament

@@ -4,6 +4,7 @@ import { UsernameWithContext } from "../shared/usernameWithContext";
 import { Division, SinglePairing } from "../store/reducers/tournament_reducer";
 import { TournamentGameResult } from "../gen/api/proto/ipc/tournament_pb";
 import { GameEndReason } from "../gen/api/proto/ipc/omgwords_pb";
+import { scorePair } from "../utils/score_pair";
 import { signed } from "./format";
 import { competitionRanks, rankLabel } from "./ranks";
 
@@ -282,7 +283,7 @@ export const PlayerScorecardModal = (props: Props) => {
         const spread = row.playerScore - row.opponentScore;
         return (
           <span style={{ whiteSpace: "nowrap" }}>
-            {row.playerScore}-{row.opponentScore}{" "}
+            {scorePair(row.playerScore, row.opponentScore)}{" "}
             <Text
               type={
                 spread > 0 ? "success" : spread < 0 ? "danger" : "secondary"

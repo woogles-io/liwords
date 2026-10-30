@@ -52,14 +52,8 @@ func (ffm *ForceFinishManager) ForceFinishUnfinishedGames(
 
 	// Adjudicate each game using the gameplay package
 	for _, gameRow := range unfinishedGames {
-		// Load the game entity
-		gameEntity, err := ffm.stores.GameStore.Get(ctx, gameRow.GameID.String)
-		if err != nil {
-			result.Errors = append(result.Errors, fmt.Sprintf("failed to load game %s: %v", gameRow.GameID.String, err))
-			continue
-		}
-
 		// Adjudicate the game - gameplay.AdjudicateGame handles most of the work:
+		// - Locks and loads the game, and skips it if it has already ended
 		// - Sets game end reason to ADJUDICATED
 		// - Determines winner/loser based on current score
 		// - Adds final scores to history
@@ -70,7 +64,7 @@ func (ffm *ForceFinishManager) ForceFinishUnfinishedGames(
 		// - Updates league standings (via injected LeagueStandingsUpdater)
 		// - Sends events to clients
 		// - Archives game history to S3 (synchronously via performEndgameDuties)
-		err = gameplay.AdjudicateGame(ctx, gameEntity, ffm.stores)
+		err := gameplay.AdjudicateGame(ctx, gameRow.GameID.String, ffm.stores)
 		if err != nil {
 			result.Errors = append(result.Errors, fmt.Sprintf("failed to adjudicate game %s: %v", gameRow.GameID.String, err))
 			continue

@@ -15,6 +15,14 @@ import (
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
+// ErrSeekGone is returned when a seek is accepted after it was taken or
+// canceled.
+var ErrSeekGone = errors.New("This game is no longer available.")
+
+// ErrMatchRequestOpen is returned for a real-time match request to a player
+// who already has one open from the same seeker.
+var ErrMatchRequestOpen = errors.New("You already have a match request open to that player.")
+
 type SoughtGameType int
 
 const (

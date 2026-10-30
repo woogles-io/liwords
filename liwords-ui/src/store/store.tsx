@@ -27,7 +27,12 @@ import {
 } from "./constants";
 import { PoolFormatType } from "../constants/pool_formats";
 import { LoginState, LoginStateReducer } from "./login_state";
-import { EphemeralTile, MachineLetter } from "../utils/cwgame/common";
+import {
+  EphemeralTile,
+  MachineLetter,
+  PlayedTiles,
+  PlayerOfTiles,
+} from "../utils/cwgame/common";
 import { ActiveChatChannels } from "../gen/api/proto/user_service/user_service_pb";
 import {
   defaultTournamentState,
@@ -72,7 +77,16 @@ type ContextMatchStoreData = {
 type LobbyStoreData = {
   lobbyContext: LobbyState;
   dispatchLobbyContext: (action: Action) => void;
+  // For socket messages: applied with the others queued within
+  // LOBBY_QUEUE_MS, in order.
+  queueLobbyAction: (action: Action) => void;
 };
+
+// Each lobby update redraws the lobby's game lists, so a burst of socket
+// messages (many seeks arriving at once) redrew them once per message and
+// kept the page busy for as long as the burst, with a new game's redirect
+// waiting behind it. Queued updates are applied together instead.
+export const LOBBY_QUEUE_MS = 100;
 
 type LoginStateStoreData = {
   loginState: LoginState;
@@ -87,6 +101,9 @@ type LagStoreData = {
 type ExcludedPlayersStoreData = {
   excludedPlayers: Set<string>;
   setExcludedPlayers: React.Dispatch<React.SetStateAction<Set<string>>>;
+  // the subset of excludedPlayers that we blocked ourselves (the rest blocked us)
+  blockedPlayers: Set<string>;
+  setBlockedPlayers: React.Dispatch<React.SetStateAction<Set<string>>>;
   excludedPlayersFetched: boolean;
   setExcludedPlayersFetched: React.Dispatch<React.SetStateAction<boolean>>;
   pendingBlockRefresh: boolean;
@@ -176,15 +193,28 @@ type TimerStoreData = {
   setPTimedOut: (p: PlayerOrder | undefined) => void;
 };
 
+// PlacedTilesBoard is the board placedTiles goes on when that is not the
+// game's own: the game's, with the moves that come before the placed move in
+// an analysis line played on it, shown the way the game shows a played move.
+// It holds only while placedTiles is still the set it was made with.
+export type PlacedTilesBoard = {
+  placedTiles: Set<EphemeralTile>;
+  letters: Array<MachineLetter>;
+  lastPlayedTiles: PlayedTiles;
+  playerOfTileAt: PlayerOfTiles;
+};
+
 type TentativePlayData = {
   placedTilesTempScore: number | undefined;
   placedTiles: Set<EphemeralTile>;
+  placedTilesBoard: PlacedTilesBoard | undefined;
   displayedRack: Array<MachineLetter>;
   blindfoldCommand: string;
   blindfoldUseNPA: boolean;
   pendingExchangeTiles: Array<MachineLetter> | null;
   setPlacedTilesTempScore: (s: number | undefined) => void;
   setPlacedTiles: (t: Set<EphemeralTile>) => void;
+  setPlacedTilesBoard: (b: PlacedTilesBoard | undefined) => void;
   setDisplayedRack: (l: Array<MachineLetter>) => void;
   setBlindfoldCommand: (l: string) => void;
   setBlindfoldUseNPA: (l: boolean) => void;
@@ -236,6 +266,7 @@ const LobbyContext = createContext<LobbyStoreData>({
     lobbyFilterByLexicon: localStorage.getItem("lobbyFilterByLexicon"),
   },
   dispatchLobbyContext: defaultFunction,
+  queueLobbyAction: defaultFunction,
 });
 
 const LoginStateContext = createContext<LoginStateStoreData>({
@@ -259,12 +290,14 @@ const LagContext = createContext<LagStoreData>({
 const TentativePlayContext = createContext<TentativePlayData>({
   placedTilesTempScore: undefined,
   placedTiles: new Set<EphemeralTile>(),
+  placedTilesBoard: undefined,
   displayedRack: new Array<MachineLetter>(),
   blindfoldCommand: "",
   blindfoldUseNPA: false,
   pendingExchangeTiles: null,
   setPlacedTilesTempScore: defaultFunction,
   setPlacedTiles: defaultFunction,
+  setPlacedTilesBoard: defaultFunction,
   setDisplayedRack: defaultFunction,
   setBlindfoldCommand: defaultFunction,
   setBlindfoldUseNPA: defaultFunction,
@@ -275,6 +308,8 @@ const ExcludedPlayersContext = createContext<ExcludedPlayersStoreData>({
   // we do not see any messages from excludedPlayers
   excludedPlayers: new Set<string>(),
   setExcludedPlayers: defaultFunction,
+  blockedPlayers: new Set<string>(),
+  setBlockedPlayers: defaultFunction,
   excludedPlayersFetched: false,
   setExcludedPlayersFetched: defaultFunction,
   pendingBlockRefresh: false,
@@ -879,9 +914,36 @@ const RealStore = ({ children, ...props }: Props) => {
     profile: { ratings: {} },
     lobbyFilterByLexicon: localStorage.getItem("lobbyFilterByLexicon"),
   });
+  const lobbyQueue = useRef<Array<Action>>([]);
+  const lobbyQueueTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const takeLobbyQueue = useCallback(() => {
+    if (lobbyQueueTimer.current !== null) {
+      clearTimeout(lobbyQueueTimer.current);
+      lobbyQueueTimer.current = null;
+    }
+    const queued = lobbyQueue.current;
+    lobbyQueue.current = [];
+    return queued;
+  }, []);
   const dispatchLobbyContext = useCallback(
-    (action: Action) => setLobbyContext((state) => LobbyReducer(state, action)),
-    [],
+    (action: Action) => {
+      // Anything queued came first, so it applies first.
+      const actions = [...takeLobbyQueue(), action];
+      setLobbyContext((state) => actions.reduce(LobbyReducer, state));
+    },
+    [takeLobbyQueue],
+  );
+  const queueLobbyAction = useCallback(
+    (action: Action) => {
+      lobbyQueue.current.push(action);
+      if (lobbyQueueTimer.current === null) {
+        lobbyQueueTimer.current = setTimeout(() => {
+          const actions = takeLobbyQueue();
+          setLobbyContext((state) => actions.reduce(LobbyReducer, state));
+        }, LOBBY_QUEUE_MS);
+      }
+    },
+    [takeLobbyQueue],
   );
   const [loginState, setLoginState] = useState({
     username: "",
@@ -914,6 +976,9 @@ const RealStore = ({ children, ...props }: Props) => {
     number | undefined
   >(undefined);
   const [placedTiles, setPlacedTiles] = useState(new Set<EphemeralTile>());
+  const [placedTilesBoard, setPlacedTilesBoard] = useState<
+    PlacedTilesBoard | undefined
+  >(undefined);
   const [displayedRack, setDisplayedRack] = useState(
     new Array<MachineLetter>(),
   );
@@ -977,6 +1042,7 @@ const RealStore = ({ children, ...props }: Props) => {
     ActiveChatChannels | undefined
   >(undefined);
   const [excludedPlayers, setExcludedPlayers] = useState(new Set<string>());
+  const [blockedPlayers, setBlockedPlayers] = useState(new Set<string>());
   const [friends, setFriends] = useState({});
   const [pendingFriendsRefresh, setPendingFriendsRefresh] = useState(false);
   const [excludedPlayersFetched, setExcludedPlayersFetched] = useState(false);
@@ -1105,8 +1171,9 @@ const RealStore = ({ children, ...props }: Props) => {
     () => ({
       lobbyContext,
       dispatchLobbyContext,
+      queueLobbyAction,
     }),
-    [lobbyContext, dispatchLobbyContext],
+    [lobbyContext, dispatchLobbyContext, queueLobbyAction],
   );
   const loginStateStore = useMemo(
     () => ({
@@ -1133,12 +1200,14 @@ const RealStore = ({ children, ...props }: Props) => {
     () => ({
       placedTilesTempScore,
       placedTiles,
+      placedTilesBoard,
       displayedRack,
       blindfoldCommand,
       blindfoldUseNPA,
       pendingExchangeTiles,
       setPlacedTilesTempScore,
       setPlacedTiles,
+      setPlacedTilesBoard,
       setDisplayedRack,
       setBlindfoldCommand,
       setBlindfoldUseNPA,
@@ -1147,12 +1216,14 @@ const RealStore = ({ children, ...props }: Props) => {
     [
       placedTilesTempScore,
       placedTiles,
+      placedTilesBoard,
       displayedRack,
       blindfoldCommand,
       blindfoldUseNPA,
       pendingExchangeTiles,
       setPlacedTilesTempScore,
       setPlacedTiles,
+      setPlacedTilesBoard,
       setDisplayedRack,
       setBlindfoldCommand,
       setBlindfoldUseNPA,
@@ -1163,6 +1234,8 @@ const RealStore = ({ children, ...props }: Props) => {
     () => ({
       excludedPlayers,
       setExcludedPlayers,
+      blockedPlayers,
+      setBlockedPlayers,
       excludedPlayersFetched,
       setExcludedPlayersFetched,
       pendingBlockRefresh,
@@ -1171,6 +1244,8 @@ const RealStore = ({ children, ...props }: Props) => {
     [
       excludedPlayers,
       setExcludedPlayers,
+      blockedPlayers,
+      setBlockedPlayers,
       excludedPlayersFetched,
       setExcludedPlayersFetched,
       pendingBlockRefresh,

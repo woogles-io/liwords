@@ -5,6 +5,10 @@ import { Table } from "antd";
 import { signed } from "./format";
 import { PlayerScorecardModal } from "./player_scorecard_modal";
 import { competitionRanks, rankLabel } from "./ranks";
+import {
+  isOpenRound,
+  isRoundComplete,
+} from "../store/selectors/round_selectors";
 // import { PlayerTag } from './player_tags';
 
 type Props = {
@@ -45,6 +49,12 @@ export const Standings = (props: Props) => {
   if (!division) {
     return null;
   }
+
+  // Say when the standings on screen are still missing results: the round
+  // is in progress, or, with lagged pairings, the round before it still is.
+  const partial =
+    isOpenRound(division, props.selectedRound) &&
+    !isRoundComplete(division, props.selectedRound);
 
   let formatStandings;
   // Standings accumulate the results so far, so the server will happily compute
@@ -131,6 +141,12 @@ export const Standings = (props: Props) => {
   ];
   return (
     <>
+      {partial && formatStandings && (
+        <p className="readable-text-color partial-standings-note">
+          Round {props.selectedRound + 1} is still in progress, so these
+          standings are partial.
+        </p>
+      )}
       <Table
         className="standings"
         columns={columns}

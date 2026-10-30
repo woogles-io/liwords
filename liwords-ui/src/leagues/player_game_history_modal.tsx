@@ -14,6 +14,8 @@ import { timestampDate, type Timestamp } from "@bufbuild/protobuf/wkt";
 import { GameEndReason } from "../gen/api/proto/ipc/omgwords_pb";
 import { CorrespondenceTurnIndicator } from "../shared/corres_turn_indicator";
 import { UsernameWithContext } from "../shared/usernameWithContext";
+import { scorePair } from "../utils/score_pair";
+import { trackMenuItem } from "./follow_bar";
 
 const { Text } = Typography;
 
@@ -58,6 +60,9 @@ type PlayerGameHistoryModalProps = {
   // Swaps the modal over to another player's games, so an opponent can be
   // followed without going back to the standings.
   onSelectPlayer: (userId: string, username: string) => void;
+  // Tracks this player through the seasons they played (the bar above the
+  // standings); offered for anyone, the viewer included.
+  onTrack?: (userId: string) => void;
 };
 
 // One row of the season game list. Finished games carry scores, a result and an
@@ -74,11 +79,43 @@ export type GameRow = {
   playerScore: number;
   opponentScore: number;
   mistakeIndex?: number;
+  opponentMistakeIndex?: number;
   gameDate?: Date;
   gameEndReason: GameEndReason;
   lastUpdateMs?: number;
   incrementSecs: number;
   onTurnTimeBankMs: number;
+  // Live games only: tiles on the board per player, and tiles still in the
+  // bag or on a rack.
+  playerTilesPlayed: number;
+  opponentTilesPlayed: number;
+  tilesUnplayed: number;
+};
+
+const isLive = (record: { result: string }): boolean =>
+  record.result === "turn" || record.result === "in_progress";
+
+// A live game's progress: the tiles on the board out of the game's total,
+// the tiles not yet played (bag and both racks), and those in the bag. Both
+// racks hold 7 while the bag has tiles, as the game page's pool counts it.
+// Null when no tile counts came back.
+export const tileProgress = (
+  record: GameRow,
+): {
+  onBoard: number;
+  total: number;
+  unplayed: number;
+  inBag: number;
+} | null => {
+  const onBoard = record.playerTilesPlayed + record.opponentTilesPlayed;
+  const total = onBoard + record.tilesUnplayed;
+  if (!isLive(record) || total === 0) return null;
+  return {
+    onBoard,
+    total,
+    unplayed: record.tilesUnplayed,
+    inBag: Math.max(record.tilesUnplayed - 14, 0),
+  };
 };
 
 // Sort rank for the Result column: live games first (they are the actionable
@@ -142,6 +179,21 @@ export const mistakeSorter = (a: GameRow, b: GameRow): number =>
   (a.mistakeIndex ?? Number.MAX_SAFE_INTEGER) -
   (b.mistakeIndex ?? Number.MAX_SAFE_INTEGER);
 
+// Opponent's mistakes: the same, by the opponent's score.
+export const opponentMistakeSorter = (a: GameRow, b: GameRow): number =>
+  (a.opponentMistakeIndex ?? Number.MAX_SAFE_INTEGER) -
+  (b.opponentMistakeIndex ?? Number.MAX_SAFE_INTEGER);
+
+// Tiles: by how far along a live game is; finished games sort to the bottom.
+export const tilesSorter = (a: GameRow, b: GameRow): number => {
+  const pa = tileProgress(a);
+  const pb = tileProgress(b);
+  return (
+    (pa ? pa.onBoard / pa.total : Number.MAX_SAFE_INTEGER) -
+    (pb ? pb.onBoard / pb.total : Number.MAX_SAFE_INTEGER)
+  );
+};
+
 // Formats the span of the season's games for the modal title. Intl's
 // formatRange collapses the shared parts locale-appropriately (e.g.
 // "16-30 Jul 2026", "30 Jul - 14 Aug 2026", "30 Dec 2025 - 14 Jan 2026"); a
@@ -167,6 +219,7 @@ export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
   seasonStartDate,
   onChat,
   onSelectPlayer,
+  onTrack,
 }) => {
   const { data, isLoading, error } = useQuery(getPlayerSeasonGames, {
     userId,
@@ -192,7 +245,12 @@ export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
     (g) => (g.result === "turn" || g.result === "in_progress") && g.lastUpdate,
   );
   const hasMistakeData = (data?.games ?? []).some(
-    (g) => g.mistakeIndex !== undefined,
+    (g) => g.mistakeIndex !== undefined || g.opponentMistakeIndex !== undefined,
+  );
+  const hasTileData = (data?.games ?? []).some(
+    (g) =>
+      isLive(g) &&
+      g.playerTilesPlayed + g.opponentTilesPlayed + g.tilesUnplayed > 0,
   );
   const timeColumn: TableColumnsType<GameRow>[number] = {
     title: (
@@ -248,6 +306,57 @@ export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
     },
     sorter: mistakeSorter,
   };
+  const opponentMistakeColumn: TableColumnsType<GameRow>[number] = {
+    title: (
+      <Tooltip title="The opponent's BestBot Mistake Score in the same game (- until the game has been analyzed).">
+        <span style={{ cursor: "help" }}>Opp. Mistakes</span>
+      </Tooltip>
+    ),
+    key: "opponentMistakes",
+    align: "right" as const,
+    render: (_, record) => {
+      if (isLive(record)) {
+        return null;
+      }
+      if (record.opponentMistakeIndex === undefined) {
+        return "-";
+      }
+      return record.opponentMistakeIndex.toFixed(1);
+    },
+    sorter: opponentMistakeSorter,
+  };
+  const tilesColumn: TableColumnsType<GameRow>[number] = {
+    title: (
+      <Tooltip title="A live game's tiles in the bag, or on both racks once the bag is empty.">
+        <span style={{ cursor: "help" }}>Tiles</span>
+      </Tooltip>
+    ),
+    key: "tiles",
+    align: "right" as const,
+    render: (_, record) => {
+      const progress = tileProgress(record);
+      if (!progress) {
+        return null;
+      }
+      return (
+        <Tooltip
+          title={`${progress.onBoard}/${progress.total} on the board: ${username} ${record.playerTilesPlayed}, ${record.opponentUsername} ${record.opponentTilesPlayed}`}
+        >
+          <span style={{ whiteSpace: "nowrap" }}>
+            {progress.inBag > 0
+              ? `${progress.inBag} in bag`
+              : `${progress.unplayed} on racks`}
+          </span>
+        </Tooltip>
+      );
+    },
+    sorter: tilesSorter,
+  };
+
+  // The Track item of a name's menu (the viewer's own name in the title
+  // included), when the page can track.
+  const trackItems = (id: string) =>
+    onTrack ? [trackMenuItem(() => onTrack(id))] : undefined;
 
   const columns: TableColumnsType<GameRow> = [
     {
@@ -274,6 +383,7 @@ export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
             handleInfoText={() =>
               onSelectPlayer(record.opponentUserId, record.opponentUsername)
             }
+            extraItems={trackItems(record.opponentUserId)}
           />
         </strong>
       ),
@@ -320,7 +430,7 @@ export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
         // it has finished.
         return (
           <span style={{ whiteSpace: "nowrap" }}>
-            {record.playerScore}-{record.opponentScore}{" "}
+            {scorePair(record.playerScore, record.opponentScore)}{" "}
             <Text
               type={
                 spread > 0 ? "success" : spread < 0 ? "danger" : "secondary"
@@ -335,7 +445,8 @@ export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
       sorter: scoreSorter,
     },
     ...(hasLiveClocks ? [timeColumn] : []),
-    ...(hasMistakeData ? [mistakeColumn] : []),
+    ...(hasTileData ? [tilesColumn] : []),
+    ...(hasMistakeData ? [mistakeColumn, opponentMistakeColumn] : []),
     {
       title: "Date",
       dataIndex: "gameDate",
@@ -370,6 +481,7 @@ export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
       playerScore: game.playerScore,
       opponentScore: game.opponentScore,
       mistakeIndex: game.mistakeIndex,
+      opponentMistakeIndex: game.opponentMistakeIndex,
       gameDate: game.gameDate ? timestampDate(game.gameDate) : undefined,
       gameEndReason: game.gameEndReason,
       lastUpdateMs: game.lastUpdate
@@ -377,6 +489,9 @@ export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
         : undefined,
       incrementSecs: game.incrementSecs,
       onTurnTimeBankMs: Number(game.onTurnTimeBankMs),
+      playerTilesPlayed: game.playerTilesPlayed,
+      opponentTilesPlayed: game.opponentTilesPlayed,
+      tilesUnplayed: game.tilesUnplayed,
     })) || [];
 
   // Title range, shown once so the per-row Date cells can drop the year: from
@@ -412,6 +527,7 @@ export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
             userID={userId}
             sendMessage={onChat}
             omitSendMessage={!onChat}
+            extraItems={trackItems(userId)}
           />
           's Season {seasonNumber} Games
           {seasonRange ? ` (${seasonRange})` : null}
@@ -420,7 +536,7 @@ export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
       open={visible}
       onCancel={onClose}
       footer={null}
-      width={700}
+      width={840}
       zIndex={2000}
     >
       <div ref={bodyRef} tabIndex={-1} style={{ outline: "none" }}>

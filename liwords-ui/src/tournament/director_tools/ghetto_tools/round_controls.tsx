@@ -26,7 +26,11 @@ import {
   TournamentService,
 } from "../../../gen/api/proto/tournament_service/tournament_service_pb";
 import { useTournamentStoreContext } from "../../../store/store";
-import { flashError, useClient } from "../../../utils/hooks/connect";
+import {
+  flashError,
+  flashWarnings,
+  useClient,
+} from "../../../utils/hooks/connect";
 import { DisplayedGameSetting, SettingsForm } from "../game_settings_form";
 import { HelptipLabel } from "../helptip_label";
 import { RoundSetting, settingsEqual } from "../pairing_methods";
@@ -34,6 +38,10 @@ import { DivisionSelector, showError } from "./shared";
 import { RoundControlFields, rdCtrlFromSetting } from "./round_control_fields";
 import { SingleRoundControlFields } from "./round_control_fields";
 import { Modal } from "../../../utils/focus_modal";
+import {
+  pairingBasisRound,
+  roundsCompleteThrough,
+} from "../../../store/selectors/round_selectors";
 
 const SetTournamentControls = (props: { tournamentID: string }) => {
   const [modalVisible, setModalVisible] = useState(false);
@@ -393,18 +401,6 @@ const SetSingleRoundControls = (props: { tournamentID: string }) => {
     }
 
     const totalRounds = tournamentContext.divisions[division]?.numRounds;
-    const halfwayPoint = Math.ceil(totalRounds / 2);
-
-    // Validate COP can only be used in second half
-    if (roundSetting.pairingMethod === PairingMethod.PAIRING_METHOD_COP) {
-      if (userVisibleRound <= halfwayPoint) {
-        showError(
-          `COP can only be used for the second half of the tournament (round ${halfwayPoint + 1} and later). ` +
-            `You are trying to set it for round ${userVisibleRound}.`,
-        );
-        return;
-      }
-    }
 
     const ctrls = create(SingleRoundControlsRequestSchema, {
       id: props.tournamentID,
@@ -412,7 +408,7 @@ const SetSingleRoundControls = (props: { tournamentID: string }) => {
     });
     let rdCtrl;
     try {
-      rdCtrl = rdCtrlFromSetting(roundSetting, totalRounds);
+      rdCtrl = rdCtrlFromSetting(roundSetting, totalRounds, userVisibleRound);
     } catch (e) {
       message.error({
         content: (e as Error).message,
@@ -422,12 +418,53 @@ const SetSingleRoundControls = (props: { tournamentID: string }) => {
     }
     rdCtrl.round = userVisibleRound - 1; // round is 0-indexed on backend.
     ctrls.roundControls = rdCtrl;
+    // Changing the lag never re-pairs a round that already has pairings, so
+    // tell the director those pairings were kept. A round with no pairings
+    // is paired by the server right away if the round it is now paired from
+    // is complete, and the response says whether that happened. If it
+    // didn't, no result will pair it later, so the director has to.
+    const div = tournamentContext.divisions[division];
+    const lagChanged =
+      (div?.roundControls[rdCtrl.round]?.pairingLag ?? 0) !== rdCtrl.pairingLag;
+    const alreadyPaired =
+      div?.pairings[rdCtrl.round]?.roundPairings.some((p) => p?.players) ??
+      false;
+    const basis = div
+      ? pairingBasisRound(div, rdCtrl.round, rdCtrl.pairingLag)
+      : rdCtrl.round - 1;
+    const basisComplete = !!div && roundsCompleteThrough(div, basis);
     try {
-      await tClient.setSingleRoundControls(ctrls);
+      const resp = await tClient.setSingleRoundControls(ctrls);
       message.info({
         content: `Controls set for round ${userVisibleRound}`,
         duration: 3,
       });
+      if (lagChanged && alreadyPaired) {
+        message.warning({
+          content: `Round ${userVisibleRound} pairings were not changed. Use Pair entire round to re-pair it with the new setting.`,
+          duration: 10,
+        });
+      } else if (resp.paired) {
+        message.info({
+          content:
+            basis < 0
+              ? `Round ${userVisibleRound} was paired from the initial seeding.`
+              : `Round ${userVisibleRound} was paired from the results through round ${basis + 1}.`,
+          duration: 10,
+        });
+      } else if (resp.warnings.length > 0) {
+        // Pairing the round failed; the warning says what to do.
+        flashWarnings(resp.warnings);
+      } else if (
+        lagChanged &&
+        basisComplete &&
+        rdCtrl.pairingMethod !== PairingMethod.MANUAL
+      ) {
+        message.info({
+          content: `Round ${userVisibleRound} has no pairings yet. Use Pair entire round to pair it.`,
+          duration: 10,
+        });
+      }
     } catch (e) {
       flashError(e);
     }
@@ -481,6 +518,7 @@ const SetSingleRoundControls = (props: { tournamentID: string }) => {
               ? tournamentContext.divisions[division]?.numRounds
               : undefined
           }
+          round={userVisibleRound}
         />
         <Form.Item>
           <Button type="primary" onClick={() => setRoundControls()}>
@@ -522,6 +560,9 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
           // so convert proto -> editor with +1 (rdCtrlFromSetting does the -1
           // on the way back).
           resetRound: v.resetRound + 1,
+          // Pairing lag applies to every method, so it is part of what makes
+          // two rounds' settings equal.
+          pairingLag: v.pairingLag,
           // COP-specific fields
           gibsonSpreads: v.gibsonSpreads,
           hopefulnessThresholds: v.hopefulnessThresholds,
@@ -581,8 +622,6 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
     // validate round array
     let lastRd = 0;
     const totalRounds = roundArray[roundArray.length - 1].endRound;
-    const halfwayPoint = Math.ceil(totalRounds / 2);
-
     for (let i = 0; i < roundArray.length; i++) {
       const rdCtrl = roundArray[i];
       if (rdCtrl.beginRound <= lastRd) {
@@ -596,16 +635,6 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
       if (rdCtrl.beginRound > lastRd + 1) {
         showError("Round numbers must be consecutive; you cannot skip rounds");
         return;
-      }
-      // Validate COP can only be used in second half
-      if (rdCtrl.setting.pairingMethod === PairingMethod.PAIRING_METHOD_COP) {
-        if (rdCtrl.beginRound <= halfwayPoint) {
-          showError(
-            `COP can only be used for the second half of the tournament (round ${halfwayPoint + 1} and later). ` +
-              `This round range starts at round ${rdCtrl.beginRound}.`,
-          );
-          return;
-        }
       }
       lastRd = rdCtrl.endRound;
     }
@@ -622,7 +651,7 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
       for (let i = v.beginRound; i <= v.endRound; i++) {
         let rdCtrl;
         try {
-          rdCtrl = rdCtrlFromSetting(v.setting, totalRounds);
+          rdCtrl = rdCtrlFromSetting(v.setting, totalRounds, i);
         } catch (e) {
           message.error({
             content: (e as Error).message,

@@ -28,46 +28,63 @@ func PerformEndgameDuties(ctx context.Context, g *entity.Game,
 }
 
 // AdjudicateGame finishes a game by adjudication based on current scores.
-// This is used when a league season ends or when players mutually agree to adjudicate.
-// The winner is determined by the current score.
-func AdjudicateGame(ctx context.Context, g *entity.Game, stores *stores.Stores) error {
-	log := zerolog.Ctx(ctx)
+// This is used when a league season ends. The winner is determined by the
+// current score. It takes the game's lock; see withLockedGame.
+func AdjudicateGame(ctx context.Context, gameID string, stores *stores.Stores) error {
+	return withLockedGame(ctx, stores, gameID, func(g *entity.Game) error {
+		// Set game end reason to ADJUDICATED
+		g.SetGameEndReason(pb.GameEndReason_ADJUDICATED)
 
-	// Lock the game
-	g.Lock()
-	defer g.Unlock()
+		// Get scores - winner/loser will be determined by performEndgameDuties
+		// We don't set winner/loser here because performEndgameDuties will do it
 
-	// Check if game is already finished
-	if g.GameEndReason != pb.GameEndReason_NONE {
-		log.Debug().Str("gameID", g.GameID()).Interface("reason", g.GameEndReason).Msg("game already finished")
-		return nil
-	}
-
-	// Set game end reason to ADJUDICATED
-	g.SetGameEndReason(pb.GameEndReason_ADJUDICATED)
-
-	// Get scores - winner/loser will be determined by performEndgameDuties
-	// We don't set winner/loser here because performEndgameDuties will do it
-
-	// Let performEndgameDuties handle everything else
-	return performEndgameDuties(ctx, g, stores)
+		// Let performEndgameDuties handle everything else
+		return performEndgameDuties(ctx, g, stores)
+	})
 }
 
 // ForfeitGame ends a game with FORCE_FORFEIT, with the given player index as the loser.
 // The opponent automatically wins regardless of score.
-func ForfeitGame(ctx context.Context, g *entity.Game, loserIdx int, stores *stores.Stores) error {
+func ForfeitGame(ctx context.Context, gameID string, loserIdx int, stores *stores.Stores) error {
+	return withLockedGame(ctx, stores, gameID, func(g *entity.Game) error {
+		g.SetGameEndReason(pb.GameEndReason_FORCE_FORFEIT)
+		g.SetWinnerIdx(1 - loserIdx)
+		g.SetLoserIdx(loserIdx)
+
+		return performEndgameDuties(ctx, g, stores)
+	})
+}
+
+// withLockedGame takes the game's lock, loads the game inside it, and runs end
+// on it unless the game has already ended.
+//
+// The functions above take a game id rather than a loaded game for this
+// reason. A game loaded before the lock is taken can be out of date by the time
+// the lock is held: a correspondence game is a fresh copy on every load, so its
+// own mutex protects nothing, and ending the game from that copy would save
+// over any move made in between.
+func withLockedGame(ctx context.Context, stores *stores.Stores, gameID string,
+	end func(g *entity.Game) error) error {
+
+	gameLock, err := stores.GameStore.LockGame(ctx, gameID)
+	if err != nil {
+		return err
+	}
+	defer gameLock.Unlock(ctx)
+
+	g, err := stores.GameStore.Get(ctx, gameID)
+	if err != nil {
+		return err
+	}
 	g.Lock()
 	defer g.Unlock()
 
 	if g.GameEndReason != pb.GameEndReason_NONE {
-		return nil // already finished
+		zerolog.Ctx(ctx).Debug().Str("gameID", gameID).Interface("reason", g.GameEndReason).
+			Msg("game already finished")
+		return nil
 	}
-
-	g.SetGameEndReason(pb.GameEndReason_FORCE_FORFEIT)
-	g.SetWinnerIdx(1 - loserIdx)
-	g.SetLoserIdx(loserIdx)
-
-	return performEndgameDuties(ctx, g, stores)
+	return end(g)
 }
 
 func performEndgameDuties(ctx context.Context, g *entity.Game,
@@ -136,7 +153,7 @@ func performEndgameDuties(ctx context.Context, g *entity.Game,
 	}
 	if cfg, cfgErr := config.Ctx(ctx); cfgErr == nil && cfg.DualWriteTurns {
 		if penaltyEvts := g.History().Events[evtIdxBeforePenalties:]; len(penaltyEvts) > 0 {
-			if dwtErr := stores.GameStore.AppendTurns(ctx, g.GameID(), evtIdxBeforePenalties, penaltyEvts); dwtErr != nil {
+			if dwtErr := stores.GameStore.StageTurns(g, evtIdxBeforePenalties, penaltyEvts); dwtErr != nil {
 				log.Err(dwtErr).Str("gameID", g.GameID()).Msg("dual-write-turns-error-penalty")
 			}
 		}
@@ -169,7 +186,7 @@ func performEndgameDuties(ctx context.Context, g *entity.Game,
 	}
 	if cfg, cfgErr := config.Ctx(ctx); cfgErr == nil && cfg.DualWriteTurns {
 		if finalScoreEvts := g.History().Events[evtIdxBeforeFinalScores:]; len(finalScoreEvts) > 0 {
-			if dwtErr := stores.GameStore.AppendTurns(ctx, g.GameID(), evtIdxBeforeFinalScores, finalScoreEvts); dwtErr != nil {
+			if dwtErr := stores.GameStore.StageTurns(g, evtIdxBeforeFinalScores, finalScoreEvts); dwtErr != nil {
 				log.Err(dwtErr).Str("gameID", g.GameID()).Msg("dual-write-turns-error-final-scores")
 			}
 		}
@@ -213,7 +230,7 @@ func performEndgameDuties(ctx context.Context, g *entity.Game,
 	defer users[1-firstLockingIndex].Unlock()
 
 	// Send a gameEndedEvent, which rates the game.
-	evt := proto.Clone(gameEndedEvent(ctx, g, stores.UserStore)).(*pb.GameEndedEvent)
+	evt := proto.Clone(gameEndedEvent(ctx, g, users, stores.UserStore)).(*pb.GameEndedEvent)
 	wrapped := entity.WrapEvent(evt, pb.MessageType_GAME_ENDED_EVENT)
 	for _, p := range players(g) {
 		wrapped.AddAudience(entity.AudUser, p+".game."+g.GameID())
@@ -225,8 +242,8 @@ func performEndgameDuties(ctx context.Context, g *entity.Game,
 	if err != nil {
 		log.Err(err).Str("gid", g.GameID()).Msg("getting variant key")
 	} else {
-		gameStats, err := ComputeGameStats(ctx, g.History(), g.GameReq.GameRequest, variantKey,
-			evt, stores)
+		gameStats, err := computeGameStats(ctx, g.History(), g.GameReq.GameRequest, variantKey,
+			evt, stores, users)
 		if err != nil {
 			log.Err(err).Str("gid", g.GameID()).Msg("computing stats")
 		} else {
@@ -240,9 +257,14 @@ func performEndgameDuties(ctx context.Context, g *entity.Game,
 
 	// Send a notification to the lobby that this
 	// game ended. This will remove it from the list of live games.
+	// The players get it wherever they are, too: their own lists of
+	// correspondence games are on pages outside the lobby, such as a league's.
 	wrapped = entity.WrapEvent(&pb.GameDeletion{Id: g.GameID()},
 		pb.MessageType_GAME_DELETION)
 	wrapped.AddAudience(entity.AudLobby, "gameEnded")
+	for _, p := range players(g) {
+		wrapped.AddAudience(entity.AudUser, p)
+	}
 	g.SendChange(wrapped)
 
 	if g.TournamentData != nil && g.TournamentData.Id != "" {
@@ -286,6 +308,9 @@ func performEndgameDuties(ctx context.Context, g *entity.Game,
 			log.Err(err).Str("gid", g.GameID()).Msg("failed-to-update-league-standings")
 		}
 	}
+	// Now that the standings have the result, tell the league's page, however
+	// the game ended (played out, time, resignation, forfeit, adjudication).
+	sendLeagueGameUpdated(g, true)
 
 	// Enqueue league games for analysis
 	if g.LeagueDivisionID != nil {
@@ -322,6 +347,15 @@ func sendProfileUpdate(ctx context.Context, g *entity.Game, users []*entity.User
 
 func ComputeGameStats(ctx context.Context, history *macondopb.GameHistory, req *pb.GameRequest,
 	variantKey entity.VariantKey, evt *pb.GameEndedEvent, stores *stores.Stores) (*entity.Stats, error) {
+	return computeGameStats(ctx, history, req, variantKey, evt, stores, nil)
+}
+
+// computeGameStats is ComputeGameStats with the players already loaded, so
+// their profile stats needn't be fetched again. users[i] must be the user for
+// history.Players[i]; if users is nil they are fetched.
+func computeGameStats(ctx context.Context, history *macondopb.GameHistory, req *pb.GameRequest,
+	variantKey entity.VariantKey, evt *pb.GameEndedEvent, stores *stores.Stores,
+	users []*entity.User) (*entity.Stats, error) {
 
 	// stats := entity.InstantiateNewStats(1, 2))
 
@@ -347,15 +381,19 @@ func ComputeGameStats(ctx context.Context, history *macondopb.GameHistory, req *
 		p0NewProfileStats := stats.InstantiateNewStats(p0id, "")
 		p1NewProfileStats := stats.InstantiateNewStats(p1id, "")
 
-		p0ProfileStats, err := statsForUser(ctx, p0id, stores, variantKey)
-		if err != nil {
-			return nil, err
+		if users == nil {
+			u0, err := stores.UserStore.GetByUUID(ctx, p0id)
+			if err != nil {
+				return nil, err
+			}
+			u1, err := stores.UserStore.GetByUUID(ctx, p1id)
+			if err != nil {
+				return nil, err
+			}
+			users = []*entity.User{u0, u1}
 		}
-
-		p1ProfileStats, err := statsForUser(ctx, p1id, stores, variantKey)
-		if err != nil {
-			return nil, err
-		}
+		p0ProfileStats := profileStatsFor(users[0], variantKey)
+		p1ProfileStats := profileStatsFor(users[1], variantKey)
 
 		err = stats.AddStats(p0NewProfileStats, p0ProfileStats)
 		if err != nil {
@@ -517,7 +555,7 @@ func AbortGame(ctx context.Context, stores *stores.Stores,
 	return nil
 }
 
-func gameEndedEvent(ctx context.Context, g *entity.Game, userStore user.Store) *pb.GameEndedEvent {
+func gameEndedEvent(ctx context.Context, g *entity.Game, users []*entity.User, userStore user.Store) *pb.GameEndedEvent {
 	var winner, loser string
 	var tie bool
 	log := zerolog.Ctx(ctx)
@@ -544,7 +582,7 @@ func gameEndedEvent(ctx context.Context, g *entity.Game, userStore user.Store) *
 	var err error
 	var now = time.Now().Unix()
 	if g.GameReq.RatingMode == pb.RatingMode_RATED {
-		ratings, err = Rate(ctx, scores, g, winner, userStore, now)
+		ratings, err = Rate(ctx, scores, g, winner, users, userStore, now)
 		if err != nil {
 			log.Err(err).Str("gid", g.GameID()).Msg("rating-error")
 		}

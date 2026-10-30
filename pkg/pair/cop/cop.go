@@ -1410,7 +1410,10 @@ func copMethodPair(req *pb.PairRequest, logsb *strings.Builder) *pb.PairResponse
 // doesn't lock in the full factor-3 structure the simulation assumed, so
 // that simulation isn't an accurate stand-in for the rest of the field.
 func computeFactor3ForcedPairings(req *pb.PairRequest, copdata *copdatapkg.PrecompData, copRand *rand.Rand, logsb *strings.Builder) ([][2]int, [][]int, int) {
-	if pkgstnd.GetRoundsRemaining(req) != 2 {
+	// Factor 3 is decided by the rounds left to pair. With lagged pairings,
+	// a round can be paired but still in progress, so more games than that
+	// can remain; the simulations below play those rounds first.
+	if pkgstnd.GetPairingRoundsRemaining(req) != 2 {
 		logsb.WriteString("Factor 3 skipped: not 2 rounds remaining\n")
 		return nil, nil, 0
 	}
@@ -1437,37 +1440,45 @@ func computeFactor3ForcedPairings(req *pb.PairRequest, copdata *copdatapkg.Preco
 
 	// Build factor-3 pairings for the penultimate round (ranks 0v3, 1v4, 2v5,
 	// then factor M/2 for the remaining players) plus KOTH for the final round.
+	// They come after a row for each round in progress, which the simulations
+	// play with its real pairings instead. The penultimate row's ranks are
+	// those before the rounds in progress, the same ranks the forced pairs
+	// below are taken from, and the simulations resolve it that way.
 	// pairingsLen is rounded up to even so simRound can always iterate in pairs
 	// (RunParallelSimForceWinner adds a dummy bye player for odd player counts).
 	pairingsLen := numPlayers
 	if pairingsLen%2 == 1 {
 		pairingsLen++
 	}
-	f3Pairings := make([][]int, 2)
-	f3Pairings[0] = make([]int, pairingsLen) // penultimate: factor-3
-	f3Pairings[1] = make([]int, pairingsLen) // final: KOTH
+	numPendingRounds := copdata.Standings.GetNumPendingRounds()
+	f3Pairings := make([][]int, numPendingRounds+2)
+	for i := range f3Pairings {
+		f3Pairings[i] = make([]int, pairingsLen)
+	}
+	penultimate := f3Pairings[numPendingRounds] // factor-3
+	final := f3Pairings[numPendingRounds+1]     // KOTH
 	// Top 6: factor-3 pairs (0,3), (1,4), (2,5).
 	for i := 0; i < 3; i++ {
-		f3Pairings[0][2*i] = i
-		f3Pairings[0][2*i+1] = i + 3
+		penultimate[2*i] = i
+		penultimate[2*i+1] = i + 3
 	}
 	// Remaining slots (ranks 6 to pairingsLen-1): factor (pairingsLen-6)/2.
 	remCount := pairingsLen - 6
 	remFactor := remCount / 2
 	for i := 0; i < remFactor; i++ {
-		f3Pairings[0][6+2*i] = 6 + i
-		f3Pairings[0][6+2*i+1] = 6 + i + remFactor
+		penultimate[6+2*i] = 6 + i
+		penultimate[6+2*i+1] = 6 + i + remFactor
 	}
 	// Final round: KOTH (consecutive pairs).
 	for i := 0; i < pairingsLen/2; i++ {
-		f3Pairings[1][2*i] = 2 * i
-		f3Pairings[1][2*i+1] = 2*i + 1
+		final[2*i] = 2 * i
+		final[2*i+1] = 2*i + 1
 	}
 
 	// Simulate factor-3 pairings using the pre-built f3Pairings so the sim uses the
-	// correct factor-3 structure (roundsRemaining=2 < maxFactor=3, so SimFactorPairAll
-	// would cap at factor-2 internally).
-	factor3FinalRanks, totalSims, err := copdata.Standings.RunSimsWithPairings(copRand, int(req.DivisionSims), 2, f3Pairings)
+	// correct factor-3 structure (2 rounds left to pair < maxFactor=3, so
+	// SimFactorPairAll would cap at factor-2 internally).
+	factor3FinalRanks, totalSims, err := copdata.Standings.RunSimsWithPairings(copRand, int(req.DivisionSims), len(f3Pairings), f3Pairings)
 	if err != pb.PairError_SUCCESS {
 		logsb.WriteString(fmt.Sprintf("Factor 3 skipped: sim error %v\n", err))
 		return nil, nil, 0
@@ -1965,7 +1976,7 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 		playerNodes:              playerNodes,
 		lowestPossibleAbsCasher:  lowestPossibleAbsCasher,
 		lowestPossibleHopeCasher: lowestPossibleHopeCasher,
-		roundsRemaining:          pkgstnd.GetRoundsRemaining(req),
+		roundsRemaining:          pkgstnd.GetPairingRoundsRemaining(req),
 		roundPairingsRemaining:   int(req.Rounds) - copdata.CompletePairings,
 		gibsonGetsBye:            gibsonGetsBye,
 		prepairedRoundIdx:        prepairedRoundIdx,

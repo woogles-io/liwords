@@ -16,6 +16,7 @@ import { UserBadges } from "./user_badges";
 import { VerificationQueue } from "./verification_queue";
 import { ManualOrgAssignment } from "./manual_org_assignment";
 import { AnalysisStats } from "./analysis_stats";
+import { ChatReview } from "./chat_review";
 // import { TourneyManager } from './tourney_manager';
 
 type SiderProps = {
@@ -43,6 +44,7 @@ const Sider = (props: SiderProps) => {
         { key: "announcement-editor", label: "Edit Announcements" },
         { key: "puzzle-generator", label: "Puzzle Generator" },
         { key: "user-details", label: "See User Details" },
+        { key: "chat-review", label: "Chat Review" },
         { key: "perms-and-roles", label: "User Permissions and Roles" },
         { key: "badges", label: "Assign User Badges" },
         { key: "verification-queue", label: "Identity Verification Queue" },
@@ -107,6 +109,7 @@ export const Admin = () => {
             {visibleTab === "announcement-editor" && <AnnouncementEditor />}
             {visibleTab === "puzzle-generator" && <PuzzleGenerator />}
             {visibleTab === "user-details" && <UserDetails />}
+            {visibleTab === "chat-review" && <ChatReview />}
             {visibleTab === "perms-and-roles" && <PermsAndRoles />}
             {visibleTab === "badges" && <UserBadges />}
             {visibleTab === "verification-queue" && <VerificationQueue />}

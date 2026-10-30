@@ -1,10 +1,11 @@
-import { Button, Card, Table, Tooltip } from "antd";
-import moment from "moment";
+import { Button, Card, Table } from "antd";
 import React from "react";
 import { Link } from "react-router";
+import { ProfileTime } from "./profile_time";
 import { PlayerInfo } from "../gen/api/proto/ipc/omgwords_pb";
 import { AnnotatedGamesResponse_AnnotatedGame } from "../gen/api/proto/omgwords_service/omgwords_pb";
 import { timestampDate } from "@bufbuild/protobuf/wkt";
+import { VariantIcon } from "../shared/variant_icons";
 
 type Props = {
   games: Array<AnnotatedGamesResponse_AnnotatedGame>;
@@ -22,11 +23,10 @@ export const AnnotatedGamesHistoryCard = React.memo((props: Props) => {
       })
       .join(" vs ");
     const url = `/anno/${encodeURIComponent(item.gameId)}?turn=1`;
-    const whenMoment = moment(
-      item.createdAt ? timestampDate(item.createdAt) : "",
-    );
     const when = (
-      <Tooltip title={whenMoment.format("LLL")}>{whenMoment.fromNow()}</Tooltip>
+      <ProfileTime
+        at={item.createdAt ? timestampDate(item.createdAt) : undefined}
+      />
     );
     const edit =
       props.loggedInUserID === item.creatorId ? (
@@ -36,7 +36,15 @@ export const AnnotatedGamesHistoryCard = React.memo((props: Props) => {
       );
     return {
       gameId: item.gameId,
-      lexicon: item.lexicon,
+      // a game that is not classic says which variant it is
+      lexicon:
+        item.variant && item.variant !== "classic" ? (
+          <>
+            {item.lexicon} <VariantIcon vcode={item.variant} withName />
+          </>
+        ) : (
+          item.lexicon
+        ),
       when,
       link: <Link to={url}>{players}</Link>,
       edit,

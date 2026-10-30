@@ -8,6 +8,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/woogles-io/liwords/pkg/config"
+	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/gameplay"
 	"github.com/woogles-io/liwords/pkg/stores/common"
 	"github.com/woogles-io/liwords/pkg/stores/game"
@@ -65,7 +66,17 @@ func main() {
 		ratings := map[string][2]int32{}
 		if g.GameReq.RatingMode == pb.RatingMode_RATED {
 			timeStarted := g.Timers.TimeStarted / 1000
-			ratings, err = gameplay.Rate(ctx, scores, g, winner, userStore, timeStarted)
+			// Loaded per game: each game must rate against the ratings the
+			// previous one saved.
+			u0, err := userStore.GetByUUID(ctx, g.History().Players[0].UserId)
+			if err != nil {
+				panic(err)
+			}
+			u1, err := userStore.GetByUUID(ctx, g.History().Players[1].UserId)
+			if err != nil {
+				panic(err)
+			}
+			ratings, err = gameplay.Rate(ctx, scores, g, winner, []*entity.User{u0, u1}, userStore, timeStarted)
 			if err != nil {
 				panic(err)
 			}

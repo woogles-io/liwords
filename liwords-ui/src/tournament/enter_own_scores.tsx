@@ -11,6 +11,7 @@ import { TournamentService } from "../gen/api/proto/tournament_service/tournamen
 import { TournamentGameResult } from "../gen/api/proto/ipc/tournament_pb";
 import { GameEndReason } from "../gen/api/proto/ipc/omgwords_pb";
 import { ActionsPanel } from "./actions_panel";
+import { playerActiveRound } from "../store/selectors/round_selectors";
 
 type Props = {
   truncatedID: string;
@@ -69,7 +70,7 @@ const ShowResults = (props: ShowResultsProps) => {
 };
 
 type SelfPairingProps = {
-  currentRound: number;
+  round: number;
   outcome: TournamentGameResult;
 };
 
@@ -78,16 +79,16 @@ const SelfPairingDisplay = (props: SelfPairingProps) => {
   let toshow;
   switch (props.outcome) {
     case TournamentGameResult.BYE:
-      toshow = `You have a bye for round ${props.currentRound + 1}`;
+      toshow = `You have a bye for round ${props.round + 1}`;
       break;
     case TournamentGameResult.FORFEIT_LOSS:
-      toshow = `You have a forfeit loss for round ${props.currentRound + 1}`;
+      toshow = `You have a forfeit loss for round ${props.round + 1}`;
       break;
     case TournamentGameResult.FORFEIT_WIN:
-      toshow = `You have a forfeit win for round ${props.currentRound + 1}`;
+      toshow = `You have a forfeit win for round ${props.round + 1}`;
       break;
     default:
-      toshow = `Unhandled game result for round ${props.currentRound + 1}: ${
+      toshow = `Unhandled game result for round ${props.round + 1}: ${
         props.outcome
       }`;
   }
@@ -96,7 +97,7 @@ const SelfPairingDisplay = (props: SelfPairingProps) => {
 
 type ScoreFormProps = {
   opponentName: string;
-  currentRound: number;
+  round: number;
   first: boolean;
   division: Division;
   pairing: SinglePairing;
@@ -112,7 +113,7 @@ const ScoreForm = (props: ScoreFormProps) => {
     <>
       <h4 className="readable-text-color">
         You are playing {props.opponentName} ({props.opponentSeed}) in round{" "}
-        {props.currentRound + 1}.
+        {props.round + 1}.
       </h4>
 
       <h4>
@@ -155,7 +156,7 @@ const ScoreForm = (props: ScoreFormProps) => {
             division: props.division.divisionID,
             playerOneId: props.pairing.players[0].id.split(":")[0],
             playerTwoId: props.pairing.players[1].id.split(":")[0],
-            round: props.division.currentRound,
+            round: props.round,
             playerOneScore: p1score,
             playerTwoScore: p2score,
             playerOneResult: p1Result,
@@ -250,26 +251,25 @@ export const OwnScoreEnterer = (props: Props) => {
       <h4 className="readable-text-color">Tournament has not yet started.</h4>
     );
   }
-  // 0-indexed of course:
-  const currentRound = division.currentRound;
-  const pairing = division.pairings[currentRound].roundPairings.find(
-    (pairing) => {
-      if (!pairing || !pairing.players) {
-        return false;
-      }
-      return (
-        pairing.players[0].id === foundPlayer.id ||
-        pairing.players[1].id === foundPlayer.id
-      );
-    },
-  );
+  // 0-indexed of course. This is the player's earliest open round with no
+  // result, which is the current round unless a lagged round opened before
+  // the player's previous game finished.
+  const round = playerActiveRound(division, foundPlayer.id);
+  const pairing = division.pairings[round].roundPairings.find((pairing) => {
+    if (!pairing || !pairing.players) {
+      return false;
+    }
+    return (
+      pairing.players[0].id === foundPlayer.id ||
+      pairing.players[1].id === foundPlayer.id
+    );
+  });
   let opponent, opponentName, opponentSeed;
   const ourSeed = player.index + 1;
   if (!pairing) {
     return (
       <h4 className="readable-text-color">
-        Pairing not found for round {division.currentRound + 1} and player{" "}
-        {fullName}
+        Pairing not found for round {round + 1} and player {fullName}
       </h4>
     );
   }
@@ -295,10 +295,7 @@ export const OwnScoreEnterer = (props: Props) => {
     // game is ongoing
     if (pairing.players[0].id === pairing.players[1].id) {
       display = (
-        <SelfPairingDisplay
-          outcome={pairing.outcomes[0]}
-          currentRound={currentRound}
-        />
+        <SelfPairingDisplay outcome={pairing.outcomes[0]} round={round} />
       );
     } else {
       display = (
@@ -307,7 +304,7 @@ export const OwnScoreEnterer = (props: Props) => {
           opponentSeed={opponentSeed}
           ourName={fullName}
           ourSeed={ourSeed}
-          currentRound={currentRound}
+          round={round}
           first={first}
           division={division}
           pairing={pairing}
@@ -344,7 +341,7 @@ export const OwnScoreEnterer = (props: Props) => {
 
       <h4 className="readable-text-color">
         You played {opponent?.split(":")[1]} ({opponentSeed}) in round{" "}
-        {division.currentRound + 1}.
+        {round + 1}.
       </h4>
       <h4>
         You scored {myscore} and your opponent scored {theirscore}.

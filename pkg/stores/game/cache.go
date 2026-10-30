@@ -47,7 +47,9 @@ type backingStore interface {
 	Get(ctx context.Context, id string) (*entity.Game, error)
 	GetMetadata(ctx context.Context, id string) (*pb.GameInfoResponse, error)
 	GetRematchStreak(ctx context.Context, originalRequestId string) (*gs.StreakInfoResponse, error)
+	GetLatestRematchGame(ctx context.Context, originalRequestId string) (string, error)
 	GetRecentGames(ctx context.Context, username string, numGames int, offset int) (*pb.GameInfoResponses, error)
+	GetRecentGamesPage(ctx context.Context, username string, numGames int, page entity.RecentGamesPage) (*pb.GameInfoResponses, error)
 	GetRecentTourneyGames(ctx context.Context, tourneyID string, numGames int, offset int) (*pb.GameInfoResponses, error)
 	GetRecentCorrespondenceGames(ctx context.Context, username string, numGames int) (*pb.GameInfoResponses, error)
 	Set(context.Context, *entity.Game) error
@@ -68,12 +70,16 @@ type backingStore interface {
 	InsertGamePlayers(ctx context.Context, g *entity.Game) error
 	SetTimerModuleCreator(creator TimerModuleCreator)
 	SetHistoryFetcher(f HistoryFetcher)
+	// StageTurns queues a move's events to be written by the next Set, in the
+	// same transaction as the games row. The move path must use this rather
+	// than AppendTurns; see DBStore.Set.
+	StageTurns(g *entity.Game, startIdx int, events []*macondopb.GameEvent) error
 	AppendTurns(ctx context.Context, gameUUID string, startIdx int, events []*macondopb.GameEvent) error
 	GetTurns(ctx context.Context, gameUUID string) ([]models.GetGameTurnsRow, error)
 	DeleteTurns(ctx context.Context, gameUUID string) error
-	CommitArchival(ctx context.Context, gameUUID string, s3Key string) error
+	CommitArchival(ctx context.Context, gameUUID string, s3Key string, archivedTurns int) error
 	SetHistoryS3Key(ctx context.Context, gameUUID string, s3Key string) error
-	SpawnShadowCompare(ctx context.Context, g *entity.Game)
+	LockGame(ctx context.Context, gameID string) (*GameLock, error)
 }
 
 // TimerModuleCreator is a function that creates a new timer module for a game.
@@ -89,20 +95,7 @@ const (
 	// That's in addition to about 200MB base.
 	// Reduced cache cap accordingly.
 	CacheCap = 400
-
-	// GameLockExpiration is how long a game lock can be idle before cleanup.
-	// This should be longer than any possible request duration.
-	GameLockExpiration = 30 * time.Minute
-
-	// GameLockCleanupInterval is how often we check for expired locks.
-	GameLockCleanupInterval = 5 * time.Minute
 )
-
-// gameLock holds a mutex and tracks when it was last used.
-type gameLock struct {
-	mu         sync.Mutex
-	lastAccess time.Time
-}
 
 // Cache will reside in-memory, and will be per-node. If we add more nodes
 // we will need to make sure only the right nodes respond to game requests.
@@ -115,17 +108,6 @@ type Cache struct {
 	activeGamesLastUpdated time.Time
 
 	backing backingStore
-
-	// gameLocks provides per-game-ID locks for correspondence games.
-	// Since correspondence games bypass the cache and each Get() returns a new
-	// instance, the game's internal Lock() doesn't protect against concurrent
-	// access from multiple goroutines. This map ensures only one goroutine can
-	// work on a correspondence game at a time.
-	gameLocks   map[string]*gameLock
-	gameLocksMu sync.Mutex
-
-	// stopCleanup is used to signal the cleanup goroutine to stop.
-	stopCleanup chan struct{}
 }
 
 func NewCache(backing backingStore) *Cache {
@@ -152,13 +134,7 @@ func NewCache(backing backingStore) *Cache {
 		// add multiple nodes we should probably have a Redis cache for a
 		// few things (especially game quickdata).
 		activeGamesTTL: time.Second * 5,
-
-		gameLocks:   make(map[string]*gameLock),
-		stopCleanup: make(chan struct{}),
 	}
-
-	// Start the cleanup goroutine
-	go c.cleanupExpiredLocks()
 
 	return c
 }
@@ -251,8 +227,16 @@ func (c *Cache) GetRematchStreak(ctx context.Context, originalRequestId string) 
 	return c.backing.GetRematchStreak(ctx, originalRequestId)
 }
 
+func (c *Cache) GetLatestRematchGame(ctx context.Context, originalRequestId string) (string, error) {
+	return c.backing.GetLatestRematchGame(ctx, originalRequestId)
+}
+
 func (c *Cache) GetRecentGames(ctx context.Context, username string, numGames int, offset int) (*pb.GameInfoResponses, error) {
 	return c.backing.GetRecentGames(ctx, username, numGames, offset)
+}
+
+func (c *Cache) GetRecentGamesPage(ctx context.Context, username string, numGames int, page entity.RecentGamesPage) (*pb.GameInfoResponses, error) {
+	return c.backing.GetRecentGamesPage(ctx, username, numGames, page)
 }
 
 func (c *Cache) GetRecentTourneyGames(ctx context.Context, tourneyID string, numGames int, offset int) (*pb.GameInfoResponses, error) {
@@ -301,6 +285,14 @@ func (c *Cache) setOrCreate(ctx context.Context, game *entity.Game, isNew bool) 
 		err = c.backing.Set(ctx, game)
 	}
 	if err != nil {
+		// Drop it, so the next request loads the game from the database. The
+		// object here has the move applied and may still have its turn rows
+		// staged, but the save failed, so we don't know what was committed. If
+		// the commit went through and only the acknowledgement was lost, the
+		// staged rows are already in game_turns, and every later save of this
+		// object would collide with them and fail. A fresh load matches
+		// whatever actually committed.
+		c.cache.Remove(gameID)
 		return err
 	}
 	// Only add to cache if it's not a correspondence game
@@ -399,12 +391,12 @@ func (c *Cache) SetHistoryFetcher(f HistoryFetcher) {
 	c.backing.SetHistoryFetcher(f)
 }
 
-func (c *Cache) AppendTurns(ctx context.Context, gameUUID string, startIdx int, events []*macondopb.GameEvent) error {
-	return c.backing.AppendTurns(ctx, gameUUID, startIdx, events)
+func (c *Cache) StageTurns(g *entity.Game, startIdx int, events []*macondopb.GameEvent) error {
+	return c.backing.StageTurns(g, startIdx, events)
 }
 
-func (c *Cache) SpawnShadowCompare(ctx context.Context, g *entity.Game) {
-	c.backing.SpawnShadowCompare(ctx, g)
+func (c *Cache) AppendTurns(ctx context.Context, gameUUID string, startIdx int, events []*macondopb.GameEvent) error {
+	return c.backing.AppendTurns(ctx, gameUUID, startIdx, events)
 }
 
 func (c *Cache) GetTurns(ctx context.Context, gameUUID string) ([]models.GetGameTurnsRow, error) {
@@ -415,75 +407,27 @@ func (c *Cache) DeleteTurns(ctx context.Context, gameUUID string) error {
 	return c.backing.DeleteTurns(ctx, gameUUID)
 }
 
-func (c *Cache) CommitArchival(ctx context.Context, gameUUID string, s3Key string) error {
-	return c.backing.CommitArchival(ctx, gameUUID, s3Key)
+func (c *Cache) CommitArchival(ctx context.Context, gameUUID string, s3Key string, archivedTurns int) error {
+	return c.backing.CommitArchival(ctx, gameUUID, s3Key, archivedTurns)
 }
 
 func (c *Cache) SetHistoryS3Key(ctx context.Context, gameUUID string, s3Key string) error {
 	return c.backing.SetHistoryS3Key(ctx, gameUUID, s3Key)
 }
 
-// LockGame acquires a lock for the given game ID.
-// This is used to serialize access to correspondence games which bypass the cache.
-// The caller MUST call UnlockGame when done.
-func (c *Cache) LockGame(gameID string) {
-	c.gameLocksMu.Lock()
-	gl, ok := c.gameLocks[gameID]
-	if !ok {
-		gl = &gameLock{}
-		c.gameLocks[gameID] = gl
-	}
-	c.gameLocksMu.Unlock()
-
-	gl.mu.Lock()
-
-	// Update last access time while holding the lock
-	c.gameLocksMu.Lock()
-	gl.lastAccess = time.Now()
-	c.gameLocksMu.Unlock()
+// LockGame acquires the game's lock, serializing everything that plays a move
+// on it -- across app servers, not merely across goroutines here.
+//
+// It used to be a process-local map of mutexes, which was correct while there
+// was one server and became a liability the moment there might be two: two
+// processes would each take their own mutex, each load the same position, and
+// each save a move onto it, the second discarding the first.
+//
+// The caller MUST release it. See lock.go for what is being held.
+func (c *Cache) LockGame(ctx context.Context, gameID string) (*GameLock, error) {
+	return c.backing.LockGame(ctx, gameID)
 }
 
-// UnlockGame releases the lock for the given game ID.
-func (c *Cache) UnlockGame(gameID string) {
-	c.gameLocksMu.Lock()
-	gl, ok := c.gameLocks[gameID]
-	c.gameLocksMu.Unlock()
-
-	if ok {
-		gl.mu.Unlock()
-	}
-}
-
-// cleanupExpiredLocks periodically removes locks that haven't been accessed recently.
-// This prevents memory leaks from accumulating locks for games that are no longer active.
-func (c *Cache) cleanupExpiredLocks() {
-	ticker := time.NewTicker(GameLockCleanupInterval)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ticker.C:
-			c.gameLocksMu.Lock()
-			now := time.Now()
-			for gameID, gl := range c.gameLocks {
-				// Only remove if the lock is not currently held and has expired.
-				// TryLock returns true if we acquired the lock (meaning it wasn't held).
-				if gl.mu.TryLock() {
-					if now.Sub(gl.lastAccess) > GameLockExpiration {
-						delete(c.gameLocks, gameID)
-					}
-					gl.mu.Unlock()
-				}
-			}
-			c.gameLocksMu.Unlock()
-		case <-c.stopCleanup:
-			return
-		}
-	}
-}
-
-// StopCleanup stops the background lock cleanup goroutine.
-// This should be called when the cache is being shut down.
-func (c *Cache) StopCleanup() {
-	close(c.stopCleanup)
-}
+// StopCleanup is retained as a no-op so shutdown code does not have to change.
+// There is no longer a background goroutine to stop.
+func (c *Cache) StopCleanup() {}

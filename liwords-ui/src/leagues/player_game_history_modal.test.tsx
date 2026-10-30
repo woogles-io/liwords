@@ -11,10 +11,13 @@ import {
   formatSeasonRange,
   type GameRow,
   mistakeSorter,
+  opponentMistakeSorter,
   opponentSorter,
   PlayerGameHistoryModal,
   resultSorter,
   scoreSorter,
+  tileProgress,
+  tilesSorter,
   timeSorter,
 } from "./player_game_history_modal";
 
@@ -40,6 +43,9 @@ const mkRow = (o: Partial<GameRow>): GameRow => ({
   lastUpdateMs: undefined,
   incrementSecs: 0,
   onTurnTimeBankMs: 0,
+  playerTilesPlayed: 0,
+  opponentTilesPlayed: 0,
+  tilesUnplayed: 0,
   ...o,
 });
 
@@ -238,6 +244,9 @@ const mkGame = (o: Record<string, unknown>) => ({
   lastUpdate: undefined,
   incrementSecs: 0,
   onTurnTimeBankMs: BigInt(0),
+  playerTilesPlayed: 0,
+  opponentTilesPlayed: 0,
+  tilesUnplayed: 0,
   ...o,
 });
 
@@ -362,6 +371,107 @@ it("extends the title range back to the season start", () => {
   expect(title).toContain(
     formatSeasonRange(new Date(2026, 6, 1), new Date(2026, 6, 20)),
   );
+});
+
+// --- opponent mistakes and tile progress ------------------------------------
+
+it("sorts by the opponent's mistakes, unanalyzed last", () => {
+  const rows = [
+    mkRow({ gameId: "none" }),
+    mkRow({ gameId: "o4", opponentMistakeIndex: 4 }),
+    mkRow({ gameId: "o1", opponentMistakeIndex: 1 }),
+  ];
+  expect(order(rows, opponentMistakeSorter)).toEqual(["o1", "o4", "none"]);
+});
+
+it("works out a live game's tile progress", () => {
+  const live = mkRow({
+    result: "turn",
+    playerTilesPlayed: 30,
+    opponentTilesPlayed: 33,
+    tilesUnplayed: 37,
+  });
+  // 63 of 100 on the board; 37 unplayed, 23 of them in the bag.
+  expect(tileProgress(live)).toEqual({
+    onBoard: 63,
+    total: 100,
+    unplayed: 37,
+    inBag: 23,
+  });
+  // Bag empty: the 12 unplayed are all on the racks.
+  expect(
+    tileProgress({
+      ...live,
+      playerTilesPlayed: 45,
+      opponentTilesPlayed: 43,
+      tilesUnplayed: 12,
+    }),
+  ).toEqual({ onBoard: 88, total: 100, unplayed: 12, inBag: 0 });
+  expect(tileProgress({ ...live, result: "win" })).toBeNull();
+  expect(tileProgress(mkRow({ result: "turn" }))).toBeNull();
+  expect(
+    order(
+      [
+        mkRow({ gameId: "done" }),
+        { ...live, gameId: "late" },
+        {
+          ...live,
+          gameId: "early",
+          playerTilesPlayed: 5,
+          opponentTilesPlayed: 5,
+          tilesUnplayed: 90,
+        },
+      ],
+      tilesSorter,
+    ),
+  ).toEqual(["early", "late", "done"]);
+});
+
+it("shows the opponent's mistakes and a live game's tiles", () => {
+  renderModal("default", [
+    mkGame({
+      gameId: "a",
+      result: "loss",
+      mistakeIndex: 3,
+      opponentMistakeIndex: 1.25,
+    }),
+    mkGame({
+      gameId: "b",
+      result: "turn",
+      lastUpdate: timestampFromDate(new Date(Date.now() - 1000)),
+      incrementSecs: 259200,
+      playerTilesPlayed: 30,
+      opponentTilesPlayed: 33,
+      tilesUnplayed: 37,
+    }),
+    mkGame({
+      gameId: "c",
+      result: "in_progress",
+      lastUpdate: timestampFromDate(new Date(Date.now() - 1000)),
+      incrementSecs: 259200,
+      playerTilesPlayed: 45,
+      opponentTilesPlayed: 43,
+      tilesUnplayed: 12,
+    }),
+  ]);
+  const headers = screen
+    .getAllByRole("columnheader")
+    .map((h) => h.textContent ?? "");
+  expect(headers.some((h) => h.includes("Opp. Mistakes"))).toBe(true);
+  expect(headers.some((h) => h.includes("Tiles"))).toBe(true);
+  const text = screen.getByRole("table").textContent ?? "";
+  expect(text).toContain("1.3"); // 1.25 to one place
+  expect(text).toContain("23 in bag");
+  expect(text).toContain("12 on racks");
+  expect(text).not.toContain("left");
+});
+
+it("hides the Tiles column when no live game has tile counts", () => {
+  renderModal("default", mixed);
+  const headers = screen
+    .getAllByRole("columnheader")
+    .map((h) => h.textContent ?? "");
+  expect(headers.some((h) => h.includes("Tiles"))).toBe(false);
 });
 
 // --- following an opponent --------------------------------------------------

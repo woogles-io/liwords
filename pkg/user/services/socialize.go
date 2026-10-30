@@ -237,17 +237,36 @@ func (ss *SocializeService) GetFullBlocks(ctx context.Context, req *connect.Requ
 		return nil, apiserver.InternalErr(err)
 	}
 
-	users, err := ss.userStore.GetFullBlocks(ctx, user.ID)
+	blocks, err := ss.userStore.GetBlocks(ctx, user.ID)
+	if err != nil {
+		return nil, apiserver.InternalErr(err)
+	}
+	blockedBy, err := ss.userStore.GetBlockedBy(ctx, user.ID)
 	if err != nil {
 		return nil, apiserver.InternalErr(err)
 	}
 
-	basicUsers := make([]string, len(users))
-	for i, u := range users {
-		basicUsers[i] = u.UUID
+	seen := map[string]bool{}
+	userIDs := []string{}
+	blockedIDs := make([]string, len(blocks))
+	for i, u := range blocks {
+		blockedIDs[i] = u.UUID
+		if !seen[u.UUID] {
+			seen[u.UUID] = true
+			userIDs = append(userIDs, u.UUID)
+		}
+	}
+	for _, u := range blockedBy {
+		if !seen[u.UUID] {
+			seen[u.UUID] = true
+			userIDs = append(userIDs, u.UUID)
+		}
 	}
 
-	return connect.NewResponse(&pb.GetFullBlocksResponse{UserIds: basicUsers}), nil
+	return connect.NewResponse(&pb.GetFullBlocksResponse{
+		UserIds:        userIDs,
+		BlockedUserIds: blockedIDs,
+	}), nil
 }
 
 func (ss *SocializeService) GetActiveChatChannels(ctx context.Context, req *connect.Request[pb.GetActiveChatChannelsRequest],

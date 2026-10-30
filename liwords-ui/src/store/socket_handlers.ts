@@ -38,6 +38,8 @@ import {
   BroadcastGamesUpdatedEventSchema,
   LagMeasurement,
   LagMeasurementSchema,
+  LeagueGameUpdatedEvent,
+  LeagueGameUpdatedEventSchema,
   MessageType,
   ServerMessage,
   ServerMessageSchema,
@@ -139,6 +141,11 @@ import { GameDocumentEvent } from "../gen/api/proto/ipc/omgwords_pb";
 import { App } from "antd";
 import { fromBinary } from "@bufbuild/protobuf";
 import { useTournamentCompetitorState } from "../hooks/use_tournament_competitor_state";
+import { isCalledToRound } from "./selectors/round_selectors";
+import {
+  leagueGameQueryFilters,
+  scheduleLeagueRefresh,
+} from "../leagues/live_updates";
 // Feature flag.
 export const enableShowSocket =
   localStorage?.getItem("enableShowSocket") === "true";
@@ -205,6 +212,7 @@ const MsgTypesMap = {
   [MessageType.ANALYSIS_COMPLETE]: AnalysisCompleteEventSchema,
   [MessageType.BROADCAST_UPDATED]: BroadcastUpdatedEventSchema,
   [MessageType.BROADCAST_GAMES_UPDATED]: BroadcastGamesUpdatedEventSchema,
+  [MessageType.LEAGUE_GAME_UPDATED]: LeagueGameUpdatedEventSchema,
 };
 
 export const parseMsgs = (
@@ -266,7 +274,7 @@ export const useOnSocketMsg = () => {
     useGameMetaEventContext();
   const { setGameEndMessage } = useGameEndMessageStoreContext();
   const { setCurrentLagMs } = useLagStoreContext();
-  const { dispatchLobbyContext } = useLobbyStoreContext();
+  const { queueLobbyAction } = useLobbyStoreContext();
   const { tournamentContext, dispatchTournamentContext } =
     useTournamentStoreContext();
   const { loginState } = useLoginStateStoreContext();
@@ -320,7 +328,7 @@ export const useOnSocketMsg = () => {
                 break;
               }
 
-              dispatchLobbyContext({
+              queueLobbyAction({
                 actionType: ActionType.AddSoughtGame,
                 payload: soughtGame,
               });
@@ -362,7 +370,7 @@ export const useOnSocketMsg = () => {
                       "matches this tourney, and we are not in a game",
                     );
 
-                    dispatchLobbyContext({
+                    queueLobbyAction({
                       actionType: ActionType.AddSoughtGame,
                       payload: soughtGame,
                     });
@@ -393,7 +401,7 @@ export const useOnSocketMsg = () => {
               }
 
               if (!inReceiverGameList) {
-                dispatchLobbyContext({
+                queueLobbyAction({
                   actionType: ActionType.AddSoughtGame,
                   payload: soughtGame,
                 });
@@ -418,7 +426,7 @@ export const useOnSocketMsg = () => {
               }
             });
 
-            dispatchLobbyContext({
+            queueLobbyAction({
               actionType: ActionType.AddSoughtGames,
               payload: soughtGames,
             });
@@ -619,7 +627,23 @@ export const useOnSocketMsg = () => {
               },
             });
             if (tourneyCompetitorState.division === trs.division) {
-              BoopSounds.playSound("startTourneyRoundSound");
+              const division = tournamentContext.divisions[trs.division];
+              const inGame = tournamentContext.activeGames.some(
+                (ag) =>
+                  ag.players[0].displayName === loginState.username ||
+                  ag.players[1].displayName === loginState.username,
+              );
+              if (
+                !division ||
+                isCalledToRound(
+                  division,
+                  trs.round,
+                  `${loginState.userID}:${loginState.username}`,
+                  inGame,
+                )
+              ) {
+                BoopSounds.playSound("startTourneyRoundSound");
+              }
             }
             break;
           }
@@ -821,7 +845,7 @@ export const useOnSocketMsg = () => {
 
           case MessageType.SOUGHT_GAME_PROCESS_EVENT: {
             const gae = parsedMsg as SoughtGameProcessEvent;
-            dispatchLobbyContext({
+            queueLobbyAction({
               actionType: ActionType.RemoveSoughtGame,
               payload: gae.requestId,
             });
@@ -831,7 +855,7 @@ export const useOnSocketMsg = () => {
 
           case MessageType.DECLINE_SEEK_REQUEST: {
             const dec = parsedMsg as DeclineSeekRequest;
-            dispatchLobbyContext({
+            queueLobbyAction({
               actionType: ActionType.RemoveSoughtGame,
               payload: dec.requestId,
             });
@@ -860,7 +884,7 @@ export const useOnSocketMsg = () => {
           case MessageType.GAME_DELETION: {
             // lobby context, remove active game
             const gde = parsedMsg as GameDeletion;
-            dispatchLobbyContext({
+            queueLobbyAction({
               actionType: ActionType.RemoveActiveGame,
               payload: gde.id,
             });
@@ -884,7 +908,7 @@ export const useOnSocketMsg = () => {
 
             // For correspondence games, use UpdateCorrespondenceGame to handle updates
             if (activeGame.gameMode === 1) {
-              dispatchLobbyContext({
+              queueLobbyAction({
                 actionType: ActionType.UpdateCorrespondenceGame,
                 payload: {
                   correspondenceGame: activeGame,
@@ -894,7 +918,7 @@ export const useOnSocketMsg = () => {
               // For regular games, use the existing AddActiveGame logic
               const dispatchFn = tournamentContext.metadata?.id
                 ? dispatchTournamentContext
-                : dispatchLobbyContext;
+                : queueLobbyAction;
               dispatchFn({
                 actionType: ActionType.AddActiveGame,
                 payload: {
@@ -927,7 +951,7 @@ export const useOnSocketMsg = () => {
             // https://github.com/woogles-io/liwords/issues/614
             const dispatchFn = inTourney
               ? dispatchTournamentContext
-              : dispatchLobbyContext;
+              : queueLobbyAction;
 
             dispatchFn({
               actionType: ActionType.AddActiveGames,
@@ -945,7 +969,7 @@ export const useOnSocketMsg = () => {
             const corresGames = parsedMsg as GameInfoResponses;
             console.log("got correspondence games", corresGames);
 
-            dispatchLobbyContext({
+            queueLobbyAction({
               actionType: ActionType.AddCorrespondenceGames,
               payload: {
                 correspondenceGames: corresGames.gameInfo.map((g) =>
@@ -964,7 +988,7 @@ export const useOnSocketMsg = () => {
               .map((req) => SeekRequestToSoughtGame(req))
               .filter((sg) => sg !== null);
 
-            dispatchLobbyContext({
+            queueLobbyAction({
               actionType: ActionType.SetCorrespondenceSeeks,
               payload: {
                 correspondenceSeeks: soughtGames,
@@ -977,7 +1001,7 @@ export const useOnSocketMsg = () => {
             const leagueGames = parsedMsg as GameInfoResponses;
             console.log("got league correspondence games", leagueGames);
 
-            dispatchLobbyContext({
+            queueLobbyAction({
               actionType: ActionType.AddCorrespondenceGames,
               payload: {
                 correspondenceGames: leagueGames.gameInfo.map((g) =>
@@ -1040,7 +1064,7 @@ export const useOnSocketMsg = () => {
 
           case MessageType.PROFILE_UPDATE_EVENT: {
             const pue = parsedMsg as ProfileUpdate;
-            dispatchLobbyContext({
+            queueLobbyAction({
               actionType: ActionType.UpdateProfile,
               payload: pue,
             });
@@ -1139,6 +1163,12 @@ export const useOnSocketMsg = () => {
             console.log(`broadcast-games-updated slug=${ev.slug}`);
             break;
           }
+          case MessageType.LEAGUE_GAME_UPDATED: {
+            // A league page's game moved on or ended: reload what it changes.
+            const ev = parsedMsg as LeagueGameUpdatedEvent;
+            scheduleLeagueRefresh(queryClient, leagueGameQueryFilters(ev));
+            break;
+          }
         }
       });
     },
@@ -1148,7 +1178,7 @@ export const useOnSocketMsg = () => {
       challengeResultEvent,
       deleteChat,
       dispatchGameContext,
-      dispatchLobbyContext,
+      queueLobbyAction,
       dispatchTournamentContext,
       excludedPlayers,
       gameContext,

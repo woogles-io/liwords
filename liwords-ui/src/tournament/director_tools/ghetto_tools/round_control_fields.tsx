@@ -21,6 +21,32 @@ import {
   getCOPDefaults,
 } from "./cop_fields";
 
+// Why rounds beginRound..endRound (1-based) cannot have a pairing lag with
+// the given pairing method, or undefined if they can. The server enforces the
+// same rules.
+export const pairingLagDisabledReason = (
+  pairingMethod: PairingMethod,
+  beginRound?: number,
+  endRound?: number,
+  totalRounds?: number,
+): string | undefined => {
+  if (beginRound !== undefined && beginRound <= 1) {
+    return "The first round cannot be lagged, because there are no earlier results to pair from.";
+  }
+  if (pairingMethod === PairingMethod.ELIMINATION) {
+    return "Elimination rounds cannot be lagged, because they need the previous round's results.";
+  }
+  if (
+    pairingMethod === PairingMethod.PAIRING_METHOD_COP &&
+    endRound !== undefined &&
+    totalRounds !== undefined &&
+    endRound >= totalRounds - 1
+  ) {
+    return "COP rounds in the last two rounds of a division cannot be lagged, because they must use the previous round's results.";
+  }
+  return undefined;
+};
+
 export type RdCtrlFieldsProps = {
   setting: RoundSetting;
   onChange: (
@@ -31,20 +57,28 @@ export type RdCtrlFieldsProps = {
   totalRounds?: number;
 };
 
-export const SingleRoundControlFields = (props: SingleRdCtrlFieldsProps) => {
-  const { setting, beginRound, endRound, totalRounds } = props;
+type SingleRoundControlFieldsProps = SingleRdCtrlFieldsProps & {
+  // The 1-based round being edited, when editing a single round rather than a
+  // range. Only used to decide whether the round can be lagged.
+  round?: number;
+};
+
+export const SingleRoundControlFields = (
+  props: SingleRoundControlFieldsProps,
+) => {
+  const { setting, beginRound, endRound, totalRounds, round } = props;
   const addlFields = fieldsForMethod(setting.pairingMethod);
 
-  // Determine if COP should be disabled (only allowed for second half)
-  const isCOPDisabled = React.useMemo(() => {
-    if (beginRound === undefined || totalRounds === undefined) {
-      // If we don't have round information, allow COP (e.g., in single round controls)
-      return false;
-    }
-    // COP is only allowed if the BEGIN round is in the second half or later
-    const halfwayPoint = Math.ceil(totalRounds / 2);
-    return beginRound <= halfwayPoint;
-  }, [beginRound, totalRounds]);
+  const lagDisabledReason = pairingLagDisabledReason(
+    setting.pairingMethod,
+    beginRound ?? round,
+    endRound ?? round,
+    totalRounds,
+  );
+  // With no results yet, COP pairs by seed: 1v2, 3v4, and so on.
+  const copStartsFirstRound =
+    setting.pairingMethod === PairingMethod.PAIRING_METHOD_COP &&
+    (beginRound ?? round) === 1;
 
   const formItemLayout = {
     labelCol: {
@@ -83,6 +117,19 @@ export const SingleRoundControlFields = (props: SingleRdCtrlFieldsProps) => {
           round robin against every player in the other half.
         </li>
         <li>
+          - <strong>Snaked:</strong> These pairings split the division into two
+          halves the way a snake draft picks teams (seeds 1, 4, 5, 8, 9, ...
+          against 2, 3, 6, 7, 10, ...), so the halves are evenly matched. Each
+          player in one half plays a round robin against every player in the
+          other half.
+        </li>
+        <li>
+          - <strong>Team (Top vs Bottom):</strong> These pairings split the
+          division into its top and bottom halves by seed, and each player in
+          one half plays a round robin against every player in the other half.
+          The division needs an even number of players.
+        </li>
+        <li>
           - <strong>King of the hill:</strong> These pairings pair 1v2, 3v4,
           5v6, and so forth. It is a good format for the very last round of a
           tournament.
@@ -113,6 +160,27 @@ export const SingleRoundControlFields = (props: SingleRdCtrlFieldsProps) => {
     </>
   );
 
+  const pairingLagHelptip = (
+    <>
+      <p>
+        Which results this round's pairings are based on. Rounds are normally
+        paired from the results through the previous round, so they cannot be
+        paired until every game of the previous round is over.
+      </p>
+      <p>
+        A round paired from the results through two rounds back is paired as
+        soon as the round before the previous one is complete. It can then be
+        opened while the previous round is still being played, so players who
+        finish early do not wait for the slowest game. Each player still has to
+        finish their previous game before starting this one.
+      </p>
+      <p>
+        This cannot be used for the first round, for Elimination rounds, or for
+        COP rounds that are one of the last two rounds.
+      </p>
+    </>
+  );
+
   return (
     <>
       <Form.Item
@@ -129,12 +197,8 @@ export const SingleRoundControlFields = (props: SingleRdCtrlFieldsProps) => {
         >
           <Select.Option value={PairingMethod.RANDOM}>Random</Select.Option>
           <Select.Option value={PairingMethod.SWISS}>Swiss</Select.Option>
-          <Select.Option
-            value={PairingMethod.PAIRING_METHOD_COP}
-            disabled={isCOPDisabled}
-          >
+          <Select.Option value={PairingMethod.PAIRING_METHOD_COP}>
             COP (Castellano O'Connor Pairings)
-            {isCOPDisabled && " - Only for 2nd half"}
           </Select.Option>
           <Select.Option value={PairingMethod.ROUND_ROBIN}>
             Round Robin
@@ -149,31 +213,64 @@ export const SingleRoundControlFields = (props: SingleRdCtrlFieldsProps) => {
             Australian Draw
           </Select.Option>
           <Select.Option value={PairingMethod.INTERLEAVED_ROUND_ROBIN}>
-            Shirts and Skins
+            Shirts and Skins Round Robin
+          </Select.Option>
+          <Select.Option value={PairingMethod.SNAKED_ROUND_ROBIN}>
+            Snaked (Boustrophedonic) Round Robin
           </Select.Option>
           <Select.Option value={PairingMethod.FACTOR}>Factor</Select.Option>
           <Select.Option value={PairingMethod.MANUAL}>Manual</Select.Option>
           <Select.Option value={PairingMethod.TEAM_ROUND_ROBIN}>
-            Team Round Robin
+            Team (Top vs Bottom) Round Robin
           </Select.Option>
         </Select>
       </Form.Item>
-      {isCOPDisabled &&
-        setting.pairingMethod === PairingMethod.PAIRING_METHOD_COP &&
-        beginRound !== undefined &&
-        totalRounds !== undefined && (
-          <p
-            style={{
-              fontSize: "12px",
-              color: "#ff4d4f",
-              marginTop: "-8px",
-              marginBottom: "8px",
-            }}
-          >
-            COP can only be used for the second half of the tournament (round{" "}
-            {Math.ceil(totalRounds / 2) + 1} and later).
-          </p>
-        )}
+      {copStartsFirstRound && (
+        <p
+          style={{
+            fontSize: "12px",
+            color: "#faad14",
+            marginTop: "-8px",
+            marginBottom: "8px",
+          }}
+        >
+          A pre-paired scheme, such as Initial Fontes or Round Robin, is
+          recommended for the first few rounds of a tournament. With no results
+          yet, COP pairs players by seed (1 vs 2, 3 vs 4, and so on), so the top
+          players meet right away.
+        </p>
+      )}
+      <Form.Item
+        {...formItemLayout}
+        label={
+          <HelptipLabel labelText="Paired from" help={pairingLagHelptip} />
+        }
+      >
+        <Select
+          value={setting.pairingLag || 0}
+          // Leave it enabled while it is set, so that an invalid lag can be
+          // turned off.
+          disabled={!!lagDisabledReason && !setting.pairingLag}
+          onChange={(e) => {
+            props.onChange("pairingLag", e);
+          }}
+        >
+          <Select.Option value={0}>Previous round</Select.Option>
+          <Select.Option value={1}>Two rounds back</Select.Option>
+        </Select>
+      </Form.Item>
+      {lagDisabledReason && (
+        <p
+          style={{
+            fontSize: "12px",
+            color: setting.pairingLag ? "#ff4d4f" : "#666",
+            marginTop: "-8px",
+            marginBottom: "8px",
+          }}
+        >
+          {lagDisabledReason}
+        </p>
+      )}
       <p></p>
       {/* potential additional fields */}
       {addlFields.map((v: PairingMethodField, idx) => {
@@ -237,6 +334,12 @@ export const RoundControlFields = (props: RdCtrlFieldsProps) => {
   const { setting, totalRounds } = props;
   return (
     <>
+      <h5 className="readable-text-color">
+        {setting.beginRound === setting.endRound
+          ? `Round ${setting.beginRound}`
+          : `Rounds ${setting.beginRound} to ${setting.endRound}`}
+        {setting.setting.pairingLag > 0 && " (lagged)"}
+      </h5>
       <Form size="small">
         <Form.Item label="First round">
           <InputNumber
@@ -270,15 +373,39 @@ export const RoundControlFields = (props: RdCtrlFieldsProps) => {
   );
 };
 
+// round is the 1-based round this control is for, when known. It is only used
+// to validate the pairing lag.
 export const rdCtrlFromSetting = (
   rdSetting: RoundControl,
   totalRounds?: number,
+  round?: number,
 ): RoundControl => {
   const rdCtrl = create(RoundControlSchema, {
     firstMethod: FirstMethod.AUTOMATIC_FIRST,
     gamesPerRound: 1,
     pairingMethod: rdSetting.pairingMethod,
   });
+
+  // The pairing lag applies to every pairing method.
+  rdCtrl.pairingLag = rdSetting.pairingLag || 0;
+  if (rdCtrl.pairingLag > 1) {
+    throw new Error(
+      `${round !== undefined ? `Round ${round} has` : "This round has"} an invalid pairing lag of ${rdCtrl.pairingLag}. The lag must be 0 or 1.`,
+    );
+  }
+  if (rdCtrl.pairingLag > 0) {
+    const reason = pairingLagDisabledReason(
+      rdCtrl.pairingMethod,
+      round,
+      round,
+      totalRounds,
+    );
+    if (reason) {
+      throw new Error(
+        round !== undefined ? `Round ${round}: ${reason}` : reason,
+      );
+    }
+  }
 
   switch (rdSetting.pairingMethod) {
     case PairingMethod.SWISS:
@@ -339,8 +466,10 @@ export const rdCtrlFromSetting = (
       // The Reset Round field is 1-based (a round number; the default is 1 =
       // avoid all repeats), but the proto/engine store reset_round 0-based like
       // every other round. Convert on the way in: input N -> N-1. Default input
-      // 1 -> 0, which is also the proto3 zero-default ("avoid all").
-      rdCtrl.resetRound = (rdSetting.resetRound ?? 1) - 1;
+      // 1 -> 0, which is also the proto3 zero-default ("avoid all"). A new
+      // round's setting holds the proto3 default of 0 rather than undefined,
+      // while the field shows 1, so 0 is read as 1 too.
+      rdCtrl.resetRound = (rdSetting.resetRound || 1) - 1;
       break;
 
     case PairingMethod.PAIRING_METHOD_COP:

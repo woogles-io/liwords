@@ -552,15 +552,41 @@ export const usePlaceMoveCallback = () => {
   const {
     setDisplayedRack,
     setPlacedTiles,
+    setPlacedTilesBoard,
     setPlacedTilesTempScore,
     setPendingExchangeTiles,
   } = useTentativeTileContext();
 
   const placeMove = useCallback(
-    (move: AnalyzerMove) => {
+    // earlierMoves are the moves before this one in a line of moves: the board
+    // shows them as played, and this move as placed after them.
+    (move: AnalyzerMove, earlierMoves: Array<AnalyzerMove> = []) => {
       const {
-        board: { dim, letters },
+        board: { dim },
       } = examinableGameContext;
+      // The game's board with earlierMoves played on it, marked the way the
+      // game marks a played move: its tiles the last played, each tile its
+      // player's.
+      const letters = [...examinableGameContext.board.letters];
+      let { lastPlayedTiles, playerOfTileAt, onturn } = examinableGameContext;
+      for (const earlier of earlierMoves) {
+        if (!earlier.isExchange) {
+          lastPlayedTiles = {};
+          playerOfTileAt = { ...playerOfTileAt };
+          let row = earlier.row;
+          let col = earlier.col;
+          for (const t of earlier.tiles) {
+            if (t !== 0) {
+              letters[row * dim + col] = wolgesLetterToLiwordsLetter(t);
+              lastPlayedTiles[`R${row}C${col}`] = true;
+              playerOfTileAt[`R${row}C${col}`] = onturn;
+            }
+            if (earlier.vertical) ++row;
+            else ++col;
+          }
+        }
+        onturn = 1 - onturn;
+      }
       const newPlacedTiles = new Set<EphemeralTile>();
       let row = move.row;
       let col = move.col;
@@ -598,6 +624,16 @@ export const usePlaceMoveCallback = () => {
       }
       setDisplayedRack(move.leaveWithGaps);
       setPlacedTiles(newPlacedTiles);
+      setPlacedTilesBoard(
+        earlierMoves.length
+          ? {
+              placedTiles: newPlacedTiles,
+              letters,
+              lastPlayedTiles,
+              playerOfTileAt,
+            }
+          : undefined,
+      );
       setPlacedTilesTempScore(move.score);
       // Set pending exchange tiles if this is an exchange move
       setPendingExchangeTiles(move.isExchange ? move.tiles : null);
@@ -606,6 +642,7 @@ export const usePlaceMoveCallback = () => {
       examinableGameContext,
       setDisplayedRack,
       setPlacedTiles,
+      setPlacedTilesBoard,
       setPlacedTilesTempScore,
       setPendingExchangeTiles,
     ],

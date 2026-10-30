@@ -33,3 +33,24 @@ WHERE users.uuid = ANY(@user_uuids::text[])
     AND user_actions.removed_time IS NULL
     AND (user_actions.end_time IS NULL OR user_actions.end_time > NOW())
 ORDER BY users.uuid, user_actions.action_type, user_actions.start_time DESC;
+
+-- name: GetTournamentNameAndSlug :one
+SELECT name, slug FROM tournaments WHERE uuid = @uuid;
+
+-- name: GetTournamentUUIDBySlug :one
+SELECT uuid FROM tournaments WHERE LOWER(slug) = LOWER(@slug);
+
+-- name: SearchTournamentsByNameOrSlug :many
+-- Tournaments and clubs whose name or slug matches a LIKE pattern, newest
+-- first.
+SELECT uuid FROM tournaments
+WHERE name ILIKE @pattern::text OR slug ILIKE @pattern::text
+ORDER BY created_at DESC
+LIMIT @lim;
+
+-- name: SearchLeaguesByNameOrSlug :many
+-- Leagues whose name or slug matches a LIKE pattern, newest first.
+SELECT uuid::text FROM leagues
+WHERE name ILIKE @pattern::text OR slug ILIKE @pattern::text
+ORDER BY created_at DESC
+LIMIT @lim;

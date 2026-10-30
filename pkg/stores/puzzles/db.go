@@ -338,8 +338,9 @@ func (s *DBStore) GetPuzzle(ctx context.Context, userUUID string, puzzleUUID str
 	var gameId int
 	var turnNumber int
 	var beforeText string
+	var pid int64
 
-	err = tx.QueryRow(ctx, `SELECT game_id, turn_number, before_text FROM puzzles WHERE uuid = $1`, puzzleUUID).Scan(&gameId, &turnNumber, &beforeText)
+	err = tx.QueryRow(ctx, `SELECT id, game_id, turn_number, before_text FROM puzzles WHERE uuid = $1`, puzzleUUID).Scan(&pid, &gameId, &turnNumber, &beforeText)
 	if err == pgx.ErrNoRows {
 		return nil, "", -1, nil, time.Time{}, time.Time{}, nil, nil, entity.NewWooglesError(ipc.WooglesError_PUZZLE_GET_PUZZLE_UUID_NOT_FOUND, userUUID, puzzleUUID)
 	}
@@ -359,10 +360,6 @@ func (s *DBStore) GetPuzzle(ctx context.Context, userUUID string, puzzleUUID str
 	// Create the puzzle attempt if it does not exist
 	// attemptExists will also be true if the user is not logged in
 	if userLoggedIn {
-		pid, err := models.New(tx).GetPuzzleDBIDFromUUID(ctx, puzzleUUID)
-		if err != nil {
-			return nil, "", -1, nil, time.Time{}, time.Time{}, nil, nil, err
-		}
 		if attemptExists {
 			result, err := tx.Exec(ctx, `UPDATE puzzle_attempts SET updated_at = NOW() WHERE puzzle_id = $1 AND user_id = $2`, pid, uid)
 			rowsAffected := result.RowsAffected()

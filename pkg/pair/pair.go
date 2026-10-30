@@ -41,6 +41,10 @@ func Pair(members *entity.UnpairedPoolMembers) ([]int, error) {
 		pairings, err = pairInterleavedRoundRobin(members)
 	} else if pm == pb.PairingMethod_AUSTRALIAN_DRAW {
 		pairings, err = pairAustralianDraw(members)
+	} else if pm == pb.PairingMethod_WIN_GROUPS {
+		pairings, err = pairWinGroups(members)
+	} else if pm == pb.PairingMethod_SNAKED_ROUND_ROBIN {
+		pairings, err = pairSnakedRoundRobin(members)
 	} else {
 		// The remaining pairing methods are solved by
 		// reduction to minimum weight matching
@@ -95,15 +99,21 @@ func pairRoundRobin(members *entity.UnpairedPoolMembers) ([]int, error) {
 
 func pairTeamRoundRobin(members *entity.UnpairedPoolMembers) ([]int, error) {
 	return getTeamRoundRobinPairings(len(members.PoolMembers), int(members.RoundControls.Round),
-		int(members.RoundControls.GamesPerRound), false, members.Seed)
+		int(members.RoundControls.GamesPerRound), pb.PairingMethod_TEAM_ROUND_ROBIN, false, members.Seed)
 }
 
 func pairInterleavedRoundRobin(members *entity.UnpairedPoolMembers) ([]int, error) {
 	// This is a special case of the team round robin function. Perhaps the function
 	// should be renamed slightly.
 	return getTeamRoundRobinPairings(len(members.PoolMembers), int(members.RoundControls.Round),
-		1, true, members.Seed)
+		1, pb.PairingMethod_INTERLEAVED_ROUND_ROBIN, members.RoundControls.PlayWithinTeam, members.Seed)
 
+}
+
+func pairSnakedRoundRobin(members *entity.UnpairedPoolMembers) ([]int, error) {
+	return getTeamRoundRobinPairings(len(members.PoolMembers), int(members.RoundControls.Round),
+		int(members.RoundControls.GamesPerRound), pb.PairingMethod_SNAKED_ROUND_ROBIN,
+		members.RoundControls.PlayWithinTeam, members.Seed)
 }
 
 func pairKingOfTheHill(members *entity.UnpairedPoolMembers) ([]int, error) {
@@ -394,12 +404,78 @@ func getInitialFontesPairings(numberOfPlayers int, numberOfNtiles int, round int
 		return nil, fmt.Errorf("number of initial fontes rounds (%d) should be less than half the number of players (%d)", numberOfNtiles-1, numberOfPlayers)
 	}
 
-	numberOfRemainingPlayers := numberOfPlayers - (sizeOfNtiles * numberOfNtiles)
-
 	pairings := make([]int, numberOfPlayers)
 	for i := range pairings {
 		pairings[i] = -2
 	}
+
+	groupings := initialFontesGroups(numberOfPlayers, numberOfNtiles, seed)
+
+	log.Info().Str("groupings", fmt.Sprint(groupings)).Msg("initial-fontes-groupings")
+
+	for i := 0; i < len(groupings); i++ {
+		groupSize := len(groupings[i])
+		if groupSize%2 == 1 {
+			return nil, fmt.Errorf("initial fontes pairing failure for %d players, "+
+				"have odd group size of %d", numberOfPlayers, groupSize)
+		}
+
+		var groupPairings []int
+		var err error
+		if groupSize == numberOfNtiles {
+			// Standard-size N-tile group: pair with a normal round robin, as before.
+			groupPairings, err = GetRoundRobinPairings(groupSize, round, seed)
+		} else {
+			// Oversized remainder group (the leftover players folded in above via
+			// remainderOffset/remainderSpacing). Rather than a full round robin,
+			// use a fixed "shirts vs skins" cross pattern: split the group into
+			// two teams by local rank parity (odds vs evens) and rotate one team
+			// against the other each round. This only avoids repeats across all
+			// numberOfNtiles-1 fontes rounds if the group is big enough
+			// (half its size >= rounds needed); otherwise fall back to round
+			// robin, which is always safe.
+			if pairsWithShirtsVsSkins(groupSize, numberOfNtiles) {
+				groupPairings = getShirtsVsSkinsPairings(groupSize, round)
+			} else {
+				groupPairings, err = GetRoundRobinPairings(groupSize, round, seed)
+			}
+		}
+		if err != nil {
+			return nil, err
+		}
+		log.Info().Str("groupPairings", fmt.Sprint(groupPairings)).Msg("initial-fontes-group-pairings")
+		for j := 0; j < groupSize; j++ {
+			pairings[groupings[i][j]] = groupings[i][groupPairings[j]]
+		}
+	}
+
+	// Convert the "bye player" to the bye representation
+	// which is an opponent index value of -1
+
+	log.Info().Str("pairings", fmt.Sprint(pairings)).Msg("initial-fontes-pairings")
+
+	if addBye {
+		pairings[pairings[numberOfPlayers-1]] = -1
+		pairings = pairings[:numberOfPlayers-1]
+	}
+
+	log.Info().Str("pairings", fmt.Sprint(pairings)).Msg("initial-fontes-pairings-bye-correction")
+
+	for i := 0; i < len(pairings); i++ {
+		if pairings[i] < -1 {
+			return nil, fmt.Errorf("initial fontes pairing failure for %d players", numberOfPlayers)
+		}
+	}
+	return pairings, nil
+}
+
+// initialFontesGroups splits the players into the groups that Initial Fontes
+// pairs among themselves: sizeOfNtiles groups of numberOfNtiles players, the
+// last of which absorbs any remainder. numberOfPlayers counts the bye, so it
+// is even. The groups are the same for every Initial Fontes round.
+func initialFontesGroups(numberOfPlayers int, numberOfNtiles int, seed uint64) [][]int {
+	sizeOfNtiles := numberOfPlayers / numberOfNtiles
+	numberOfRemainingPlayers := numberOfPlayers - (sizeOfNtiles * numberOfNtiles)
 
 	groupings := [][]int{}
 	for i := 0; i < sizeOfNtiles; i++ {
@@ -460,65 +536,83 @@ func getInitialFontesPairings(numberOfPlayers int, numberOfNtiles int, round int
 		}
 		distributeNtilesAcrossGroups(groupings[:oversizedGroupIdx], standardGroupPlayers, rng)
 	}
+	return groupings
+}
 
-	log.Info().Str("groupings", fmt.Sprint(groupings)).Msg("initial-fontes-groupings")
+// pairsWithShirtsVsSkins says whether an Initial Fontes group of groupSize
+// players is paired shirts vs skins rather than as a round robin: only an
+// oversized group is, and only if it's big enough to get through every
+// Initial Fontes round without a repeat.
+func pairsWithShirtsVsSkins(groupSize int, numberOfNtiles int) bool {
+	return groupSize != numberOfNtiles && groupSize/2 >= numberOfNtiles-1
+}
 
-	for i := 0; i < len(groupings); i++ {
-		groupSize := len(groupings[i])
-		if groupSize%2 == 1 {
-			return nil, fmt.Errorf("initial fontes pairing failure for %d players, "+
-				"have odd group size of %d", numberOfPlayers, groupSize)
+// InitialFontesGoesFirst says whether player goes first in round of the
+// Initial Fontes rounds getInitialFontesPairings pairs with the same seed.
+//
+// Each group is its own schedule, so firsts follow it, and every player
+// alternates, apart from at most one double, and ends within one of even.
+//
+// A group paired as a round robin takes its firsts from RoundRobinGoesFirst;
+// Initial Fontes plays exactly one cycle of it. If the group has the bye, it
+// sits in the group's last seat, so the group is shuffled exactly as a round
+// robin of one fewer player with a bye, and gets that one's firsts, which
+// make up for the missed game.
+//
+// A group paired shirts vs skins has the A team alternate over the games
+// they play, starting with a team chosen by the seed, and the B team take the
+// other side. The B team then alternates too, apart from one double for each
+// B player who plays the A player that had just faced the bye.
+func InitialFontesGoesFirst(numberOfPlayers, numberOfNtiles, round, player int, seed uint64) (bool, error) {
+	if player < 0 || player >= numberOfPlayers {
+		return false, fmt.Errorf("player %d out of range for %d players", player, numberOfPlayers)
+	}
+	if numberOfPlayers < numberOfNtiles {
+		// Everyone gets a bye; see getInitialFontesPairings.
+		return true, nil
+	}
+	// The bye, if there is one, is the player after the last.
+	bye := -1
+	if numberOfPlayers%2 == 1 {
+		bye = numberOfPlayers
+		numberOfPlayers++
+	}
+	if numberOfPlayers/numberOfNtiles < 2 {
+		return false, fmt.Errorf("number of initial fontes rounds (%d) should be less than half the number of players (%d)", numberOfNtiles-1, numberOfPlayers)
+	}
+	for _, group := range initialFontesGroups(numberOfPlayers, numberOfNtiles, seed) {
+		seat := slices.Index(group, player)
+		if seat < 0 {
+			continue
 		}
-
-		var groupPairings []int
-		var err error
-		if groupSize == numberOfNtiles {
-			// Standard-size N-tile group: pair with a normal round robin, as before.
-			groupPairings, err = GetRoundRobinPairings(groupSize, round, seed)
-		} else {
-			// Oversized remainder group (the leftover players folded in above via
-			// remainderOffset/remainderSpacing). Rather than a full round robin,
-			// use a fixed "shirts vs skins" cross pattern: split the group into
-			// two teams by local rank parity (odds vs evens) and rotate one team
-			// against the other each round. This only avoids repeats across all
-			// numberOfNtiles-1 fontes rounds if the group is big enough
-			// (half its size >= rounds needed); otherwise fall back to round
-			// robin, which is always safe.
-			k := groupSize / 2
-			roundsNeeded := numberOfNtiles - 1
-			if k >= roundsNeeded {
-				groupPairings = getShirtsVsSkinsPairings(groupSize, round)
-			} else {
-				groupPairings, err = GetRoundRobinPairings(groupSize, round, seed)
+		hasBye := slices.Contains(group, bye)
+		if hasBye && group[len(group)-1] != bye {
+			return false, fmt.Errorf("initial fontes bye is not in the last seat of its group %v", group)
+		}
+		if !pairsWithShirtsVsSkins(len(group), numberOfNtiles) {
+			if hasBye {
+				return RoundRobinGoesFirst(len(group)-1, round, seat, seed)
 			}
+			return RoundRobinGoesFirst(len(group), round, seat, seed)
 		}
-		if err != nil {
-			return nil, err
+		// See getShirtsVsSkinsPairings: A seat x plays B seat (x+round)%k,
+		// and the bye, if any, is the last B seat, which A seat x plays in
+		// round k-1-x.
+		k := len(group) / 2
+		aStarts := rand.New(rand.NewPCG(seed, initialFontesFirstsStream)).IntN(2) == 1
+		aGoesFirst := func(x int) bool {
+			gamesPlayed := round
+			if hasBye && x+round >= k {
+				gamesPlayed--
+			}
+			return (gamesPlayed%2 == 0) == aStarts
 		}
-		log.Info().Str("groupPairings", fmt.Sprint(groupPairings)).Msg("initial-fontes-group-pairings")
-		for j := 0; j < groupSize; j++ {
-			pairings[groupings[i][j]] = groupings[i][groupPairings[j]]
+		if seat%2 == 0 {
+			return aGoesFirst(seat / 2), nil
 		}
+		return !aGoesFirst(((seat/2-round)%k + k) % k), nil
 	}
-
-	// Convert the "bye player" to the bye representation
-	// which is an opponent index value of -1
-
-	log.Info().Str("pairings", fmt.Sprint(pairings)).Msg("initial-fontes-pairings")
-
-	if addBye {
-		pairings[pairings[numberOfPlayers-1]] = -1
-		pairings = pairings[:numberOfPlayers-1]
-	}
-
-	log.Info().Str("pairings", fmt.Sprint(pairings)).Msg("initial-fontes-pairings-bye-correction")
-
-	for i := 0; i < len(pairings); i++ {
-		if pairings[i] < -1 {
-			return nil, fmt.Errorf("initial fontes pairing failure for %d players", numberOfPlayers)
-		}
-	}
-	return pairings, nil
+	return false, fmt.Errorf("player %d is in no initial fontes group", player)
 }
 
 // initialFontesGroupingStream is the PCG stream used to randomize Initial
@@ -542,6 +636,11 @@ func distributeNtilesAcrossGroups(groupings [][]int, rankedPlayers []int, rng *r
 		}
 	}
 }
+
+// initialFontesFirstsStream is the PCG stream InitialFontesGoesFirst uses to
+// pick the shirts vs skins team that goes first, kept distinct from the
+// stream GetRoundRobinPairings uses with the same seed.
+const initialFontesFirstsStream = 2
 
 // getShirtsVsSkinsPairings pairs an oversized Initial Fontes remainder group
 // using a fixed cross pattern instead of a round robin. Local player indices
@@ -605,23 +704,8 @@ func GetRoundRobinPairings(numberOfPlayers int, round int, seed uint64) ([]int, 
 
 	*/
 
-	players := []int{}
-	for i := 0; i < numberOfPlayers; i++ {
-		players = append(players, i)
-	}
-
+	players := roundRobinSeats(numberOfPlayers, seed)
 	bye := numberOfPlayers%2 == 1
-	// If there are an odd number of players add a bye
-	if bye {
-		players = append(players, numberOfPlayers)
-	}
-
-	source := rand.NewPCG(seed, 0)
-	rng := rand.New(source)
-	rng.Shuffle(len(players),
-		func(i, j int) {
-			players[i], players[j] = players[j], players[i]
-		})
 
 	rotatedPlayers := players[1:]
 
@@ -669,93 +753,357 @@ func GetRoundRobinPairings(numberOfPlayers int, round int, seed uint64) ([]int, 
 	return pairings, nil
 }
 
-func getTeamRoundRobinPairings(numberOfPlayers, round, gamesPerMatchup int, interleave bool, seed uint64) ([]int, error) {
-	// A team round robin contains two teams: A and B
-	// Everyone in A plays everyone in B gamesPerMatchup times (in a row for speed).
-	if numberOfPlayers%2 == 1 && !interleave {
-		return nil, errors.New("cannot have an odd number of players without interleaving team round robin pairings")
-	}
-
+// roundRobinSeats shuffles the players, and the bye (numberOfPlayers) if
+// there are an odd number of them, into GetRoundRobinPairings' seats: the
+// first seat is fixed and the rest rotate past it.
+func roundRobinSeats(numberOfPlayers int, seed uint64) []int {
 	players := []int{}
-	if !interleave {
-		for i := 0; i < numberOfPlayers; i++ {
-			players = append(players, i)
-		}
-	} else {
-		for i := 0; i < numberOfPlayers; i += 2 {
-			players = append(players, i)
-		}
-		for i := 1; i < numberOfPlayers; i += 2 {
-			players = append(players, i)
-		}
+	for i := 0; i < numberOfPlayers; i++ {
+		players = append(players, i)
 	}
 
-	bye := numberOfPlayers%2 == 1
 	// If there are an odd number of players add a bye
-	if bye {
+	if numberOfPlayers%2 == 1 {
 		players = append(players, numberOfPlayers)
 	}
 
-	l := len(players)
-
-	lbh := l / 2
-	rotatedBottomPlayers := players[lbh:l]
-
 	source := rand.NewPCG(seed, 0)
 	rng := rand.New(source)
-	rng.Shuffle(len(rotatedBottomPlayers),
+	rng.Shuffle(len(players),
 		func(i, j int) {
-			rotatedBottomPlayers[i], rotatedBottomPlayers[j] = rotatedBottomPlayers[j], rotatedBottomPlayers[i]
+			players[i], players[j] = players[j], players[i]
 		})
+	return players
+}
 
-	rotationIndex := (round / gamesPerMatchup) % lbh
-	rotatedBottomPlayers = append(rotatedBottomPlayers[rotationIndex:lbh], rotatedBottomPlayers[0:rotationIndex]...)
-
-	firstSeg := rotatedBottomPlayers[0 : lbh/2]
-	secondSeg := rotatedBottomPlayers[lbh/2 : lbh]
-
-	topHalf := players[0:lbh]
-	bottomHalf := append(firstSeg, secondSeg...)
-	utilities.Reverse(bottomHalf)
-
-	pairings := []int{}
-
-	// Assign -2 as default so if it doesn't
-	// get overwritten we know something is wrong
-	for i := 0; i < len(players); i++ {
-		pairings = append(pairings, -2)
+// RoundRobinGoesFirst says whether player goes first in round of the round
+// robin GetRoundRobinPairings pairs with the same seed.
+//
+// In each round the fixed seat plays the rotating seat at the center of the
+// circle, and the seats k ahead of and behind the center play each other.
+// The player ahead goes first when k is odd, so as the circle turns each
+// player on it alternates, apart from around their game against the fixed
+// seat; that game is free to go either way, and is used as follows.
+//
+// With an even number of players, the fixed seat alternates, starting
+// second, except that its last two rounds are swapped. That puts every
+// player's one double (which every round robin must give all but two
+// players) away from the ends of the cycle.
+//
+// With an odd number of players and the bye on the circle, each player
+// sitting out skips a first or a second, and the game against the fixed
+// seat makes it up, so that everyone has as many firsts as seconds.
+//
+// The pairings repeat in the same order every cycle, so every other cycle is
+// flipped: each pair splits their games.
+func RoundRobinGoesFirst(numberOfPlayers, round, player int, seed uint64) (bool, error) {
+	if player < 0 || player >= numberOfPlayers {
+		return false, fmt.Errorf("player %d out of range for %d players", player, numberOfPlayers)
 	}
-
-	// log.Debug().Interface("pairings", pairings).Interface("rotatedPlayers", rotatedPlayers).
-	// 	Interface("players", players).Int("numPlayers", numberOfPlayers).Int("round", round).
-	// 	Int("gamesPerMatchup", gamesPerMatchup).Int("rotationIndex", rotationIndex).
-	// 	Interface("topHalf", topHalf).Interface("bottomHalf", bottomHalf).Msg("debug-pairings")
-
-	for i := 0; i < len(players)/2; i++ {
-		pairings[topHalf[i]] = bottomHalf[i]
-		pairings[bottomHalf[i]] = topHalf[i]
+	players := roundRobinSeats(numberOfPlayers, seed)
+	circle := players[1:]
+	l := len(circle) // always odd
+	rotation := round % l
+	center := (rotation + l - 1) % l
+	flip := (round / l) % 2
+	var fixedFirst bool
+	if byeSeat := slices.Index(circle, numberOfPlayers); byeSeat >= 0 {
+		// The player at seat x sits out the round the bye is (x-b)/2 seats
+		// behind them, where b is the bye's seat, and so misses a first if
+		// that's odd. The center player goes first against the fixed seat
+		// exactly then.
+		missed := (center - byeSeat + l) % l * ((l + 1) / 2) % l
+		fixedFirst = missed%2 == 0
+	} else {
+		fixedFirst = rotation%2 == 1
+		if rotation >= l-2 {
+			fixedFirst = !fixedFirst
+		}
 	}
+	fixedFirst = fixedFirst != (flip == 1)
+	if player == players[0] {
+		return fixedFirst, nil
+	}
+	d := (slices.Index(circle, player) - center + l) % l
+	if d == 0 {
+		return !fixedFirst, nil
+	}
+	return (d+flip)%2 == 1, nil
+}
 
-	// Convert the bye from l to -1 because it's easier
-	// on the Round Robin pairing algorithm
-	if bye {
-		for i := 0; i < len(pairings); i++ {
-			if pairings[i] == numberOfPlayers {
-				pairings[i] = -1
+func getTeamRoundRobinPairings(numberOfPlayers, round, gamesPerMatchup int, method pb.PairingMethod, playWithinTeam bool,
+	seed uint64) ([]int, error) {
+	pairings, _, err := getTeamRoundRobinSchedule(numberOfPlayers, round, gamesPerMatchup, method, playWithinTeam, seed)
+	return pairings, err
+}
+
+// TeamRoundRobinGamesPerMatchup is how many rounds in a row the team-style
+// round robin of rc pairs the same two players.
+func TeamRoundRobinGamesPerMatchup(rc *pb.RoundControl) int {
+	if rc.PairingMethod == pb.PairingMethod_TEAM_ROUND_ROBIN {
+		return int(rc.GamesPerRound)
+	}
+	return 1
+}
+
+// TeamRoundRobinGoesFirst says whether player goes first in round of the
+// team-style round robin (team, interleaved or snaked) that rc describes.
+// The schedule decides firsts along with opponents, so that over the round
+// robin every player's firsts and seconds stay even; see
+// getTeamRoundRobinSchedule.
+func TeamRoundRobinGoesFirst(rc *pb.RoundControl, numberOfPlayers, round, player int, seed uint64) (bool, error) {
+	_, firsts, err := getTeamRoundRobinSchedule(numberOfPlayers, round, TeamRoundRobinGamesPerMatchup(rc),
+		rc.PairingMethod, rc.PlayWithinTeam, seed)
+	if err != nil {
+		return false, err
+	}
+	if player < 0 || player >= len(firsts) {
+		return false, fmt.Errorf("player %d out of range for %d players", player, len(firsts))
+	}
+	return firsts[player], nil
+}
+
+// getTeams splits players 0 through numberOfPlayers-1, who are in seed
+// order, into the two teams of a team-style round robin.
+func getTeams(numberOfPlayers int, method pb.PairingMethod) ([]int, []int, error) {
+	teamA, teamB := []int{}, []int{}
+	switch method {
+	case pb.PairingMethod_TEAM_ROUND_ROBIN:
+		// Top half against bottom half.
+		if numberOfPlayers%2 == 1 {
+			return nil, nil, errors.New("cannot have an odd number of players without interleaving team round robin pairings")
+		}
+		for i := 0; i < numberOfPlayers; i++ {
+			if i < numberOfPlayers/2 {
+				teamA = append(teamA, i)
+			} else {
+				teamB = append(teamB, i)
 			}
 		}
-		pairings = pairings[0 : len(pairings)-1]
+	case pb.PairingMethod_INTERLEAVED_ROUND_ROBIN:
+		// Shirts and skins: seeds 1, 3, 5, ... against seeds 2, 4, 6, ...
+		for i := 0; i < numberOfPlayers; i++ {
+			if i%2 == 0 {
+				teamA = append(teamA, i)
+			} else {
+				teamB = append(teamB, i)
+			}
+		}
+	case pb.PairingMethod_SNAKED_ROUND_ROBIN:
+		// A snake draft: seeds 1, 4, 5, 8, 9, ... against seeds 2, 3, 6, 7, ...
+		for i := 0; i < numberOfPlayers; i++ {
+			if i%4 == 0 || i%4 == 3 {
+				teamA = append(teamA, i)
+			} else {
+				teamB = append(teamB, i)
+			}
+		}
+	default:
+		return nil, nil, fmt.Errorf("pairing method %s is not a team round robin pairing method", method.String())
+	}
+	return teamA, teamB, nil
+}
+
+// getTeamRoundRobinSchedule pairs round of a team-style round robin, and says
+// who goes first in each game. pairings[i] is player i's opponent, or -1 for
+// a bye; firsts[i] says whether player i goes first.
+//
+// The players are split into two teams (see getTeams). Across teams, everyone
+// on one team plays everyone on the other, gamesPerMatchup rounds in a row.
+// Within teams (playWithinTeam), each team plays a round robin of its own.
+//
+// Firsts are decided by where each game sits in the schedule, not by player
+// numbers, so they come out even however the teams were drawn:
+//   - Across teams, every game is between the two teams, so one whole team
+//     goes first each round, alternating, and so does everyone. A team with an
+//     odd number of seats facing the bye is the exception; see below.
+//   - Within a team, the round robin is the circle method: one player stays
+//     fixed and the rest rotate around a circle. The two players k places
+//     either side of the circle's center play, and the one ahead goes first
+//     when k is odd, so everyone alternates all the way round the circle. The
+//     fixed player plays the center, alternating each round; when a team has
+//     an odd number of players the fixed seat is a bye instead.
+//   - Repeated round robins swap who goes first, so that two players who
+//     meet twice go first once each, and every two cycles everyone has gone
+//     first exactly as often as second.
+//   - Repeated games between the same two players (gamesPerMatchup) swap who
+//     goes first each time.
+func getTeamRoundRobinSchedule(numberOfPlayers, round, gamesPerMatchup int, method pb.PairingMethod,
+	playWithinTeam bool, seed uint64) ([]int, []bool, error) {
+
+	if method == pb.PairingMethod_TEAM_ROUND_ROBIN && playWithinTeam {
+		return nil, nil, errors.New("cannot play within team in team round robin pairings")
+	}
+	if gamesPerMatchup < 1 {
+		return nil, nil, fmt.Errorf("games per matchup must be at least 1, not %d", gamesPerMatchup)
+	}
+	teamA, teamB, err := getTeams(numberOfPlayers, method)
+	if err != nil {
+		return nil, nil, err
 	}
 
+	pairings := make([]int, numberOfPlayers)
+	firsts := make([]bool, numberOfPlayers)
+	for i := range pairings {
+		// Overwritten for everyone below; left over, it is an error.
+		pairings[i] = -2
+	}
+	matchupRound := round / gamesPerMatchup
+	// Which of the repeated games between the same two players this is.
+	game := round % gamesPerMatchup
+	rng := rand.New(rand.NewPCG(seed, 0))
+	bye := numberOfPlayers
+
+	// play records a game, or a bye if either player is the bye.
+	play := func(first, second int) {
+		if first == bye {
+			pairings[second] = -1
+		} else if second == bye {
+			pairings[first] = -1
+		} else {
+			pairings[first] = second
+			pairings[second] = first
+			firsts[first] = true
+		}
+	}
+
+	if !playWithinTeam {
+		// An odd number of players means one team is a player short; the bye
+		// fills that team's last seat.
+		if numberOfPlayers%2 == 1 {
+			if len(teamA) < len(teamB) {
+				teamA = append(teamA, bye)
+			} else {
+				teamB = append(teamB, bye)
+			}
+		}
+		m := len(teamA)
+		shuffledB := slices.Clone(teamB)
+		rng.Shuffle(m, func(i, j int) {
+			shuffledB[i], shuffledB[j] = shuffledB[j], shuffledB[i]
+		})
+		byeSeat := slices.Index(shuffledB, bye)
+		// The seed picks which team starts, so that the top seed doesn't
+		// always go first in the first round.
+		bStarts := rng.IntN(2) == 1
+		cycle := matchupRound / m
+		rotation := matchupRound % m
+		if method == pb.PairingMethod_SNAKED_ROUND_ROBIN && cycle%2 == 1 {
+			// Every other cycle runs backwards, so that each player's second
+			// cycle is their first read backwards: two players who meet in
+			// both go first once each, and nobody gets three firsts or
+			// seconds in a row across the turn. The team and interleaved
+			// round robins' pairings predate this and are kept as they were.
+			rotation = m - 1 - rotation
+		}
+		for i := 0; i < m; i++ {
+			s := (rotation + m - 1 - i) % m
+			var aFirst bool
+			if byeSeat >= 0 && m%2 == 1 {
+				// Team B has the bye seat and an odd number of seats, so team
+				// A's players each play one round fewer than there are, and
+				// alternating by round would leave a player who sits out a
+				// round they would have gone second in two firsts up.
+				// Instead, team A's i-th player goes first against team B's
+				// s-th when i+s is even, counting seats from the bye's: each
+				// player's opponent moves one seat along each round, so they
+				// still alternate, and team A comes out even every cycle.
+				// Team B's players are a first or second off, so every other
+				// cycle is flipped.
+				aFirst = (i+(s-byeSeat+m)%m+game)%2 == 0
+				if cycle%2 == 1 {
+					aFirst = !aFirst
+				}
+			} else {
+				// Otherwise one whole team goes first each round, team A in
+				// even rounds and team B in odd ones, and everyone alternates.
+				aFirst = round%2 == 0
+				if method != pb.PairingMethod_SNAKED_ROUND_ROBIN && (m*gamesPerMatchup)%2 == 0 && cycle%2 == 1 {
+					// A pair meets again an even number of rounds later, on
+					// the same parity, so every other cycle is flipped. (The
+					// snaked round robin's backwards cycles land on the
+					// opposite parity already.)
+					aFirst = !aFirst
+				}
+			}
+			if aFirst != bStarts {
+				play(teamA[i], shuffledB[s])
+			} else {
+				play(shuffledB[s], teamA[i])
+			}
+		}
+	} else {
+		// Each team's bye receiver, if it has a bye seat this round.
+		byeReceivers := []int{}
+		for _, team := range [][]int{teamA, teamB} {
+			if len(team) == 0 {
+				continue
+			}
+			seats := slices.Clone(team)
+			rng.Shuffle(len(seats), func(i, j int) {
+				seats[i], seats[j] = seats[j], seats[i]
+			})
+			fixed := bye
+			circle := seats
+			if len(seats)%2 == 0 {
+				fixed = seats[0]
+				circle = seats[1:]
+			}
+			n := len(circle) // always odd
+			cycle := matchupRound / n
+			center := matchupRound % n
+			if cycle%2 == 1 {
+				// Every other cycle runs backwards with firsts and seconds
+				// swapped: two players who meet in both go first once each,
+				// and each player's games read the same either way across
+				// the turn, so nobody gets three firsts or seconds in a row.
+				center = n - 1 - center
+			}
+			flip := (cycle + game) % 2
+			if (center+flip)%2 == 0 {
+				play(fixed, circle[center])
+			} else {
+				play(circle[center], fixed)
+			}
+			if fixed == bye {
+				byeReceivers = append(byeReceivers, circle[center])
+			}
+			for k := 1; k <= n/2; k++ {
+				ahead := circle[(center+k)%n]
+				behind := circle[(center-k+n)%n]
+				if (k+flip)%2 == 1 {
+					play(ahead, behind)
+				} else {
+					play(behind, ahead)
+				}
+			}
+		}
+		// When both teams have an odd number of players, both have a bye every
+		// round; rather than sit out, the two bye receivers play each other.
+		if len(byeReceivers) == 2 {
+			if (matchupRound/len(teamA)+game)%2 == 0 {
+				play(byeReceivers[0], byeReceivers[1])
+			} else {
+				play(byeReceivers[1], byeReceivers[0])
+			}
+		}
+	}
+
+	for i := range pairings {
+		if pairings[i] < -1 {
+			return nil, nil, fmt.Errorf("team round robin pairing failure for %d players", numberOfPlayers)
+		}
+	}
 	log.Debug().Interface("pairings", pairings).Int("numPlayers", numberOfPlayers).Int("round", round).
-		Int("gamesPerMatchup", gamesPerMatchup).Msg("final pairings")
-	return pairings, nil
+		Int("gamesPerMatchup", gamesPerMatchup).Bool("playWithinTeam", playWithinTeam).Msg("final team round robin pairings")
+	return pairings, firsts, nil
 }
 
 func IsStandingsIndependent(pm pb.PairingMethod) bool {
 	return pm == pb.PairingMethod_ROUND_ROBIN ||
 		pm == pb.PairingMethod_TEAM_ROUND_ROBIN ||
 		pm == pb.PairingMethod_INTERLEAVED_ROUND_ROBIN ||
+		pm == pb.PairingMethod_SNAKED_ROUND_ROBIN ||
 		pm == pb.PairingMethod_RANDOM ||
 		pm == pb.PairingMethod_INITIAL_FONTES ||
 		pm == pb.PairingMethod_MANUAL

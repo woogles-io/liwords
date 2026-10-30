@@ -1,4 +1,5 @@
 import { create, toBinary } from "@bufbuild/protobuf";
+import { notification } from "antd";
 import { MessageType } from "../gen/api/proto/ipc/ipc_pb";
 import {
   DeclineSeekRequestSchema,
@@ -86,13 +87,41 @@ export const sendSeek = (
   );
 };
 
+// Sends a seek from a form whose "Create game" button is disabled while it
+// goes, and re-enables the button half a second later whatever happens. A
+// seek that cannot be sent fails here in the page, before anything reaches
+// the server, so no error comes back for it; tell the player instead.
+export const submitSeekFromForm = (
+  sg: SoughtGame,
+  onSeekSubmit: (sg: SoughtGame) => void,
+  setFormDisabled: (disabled: boolean) => void,
+): void => {
+  try {
+    onSeekSubmit(sg);
+  } catch (e) {
+    console.error(e);
+    notification.open({
+      message: "Error",
+      description: `Your request could not be sent: ${
+        e instanceof Error ? e.message : String(e)
+      }`,
+    });
+  } finally {
+    setTimeout(() => {
+      setFormDisabled(false);
+    }, 500);
+  }
+};
+
 export const sendAccept = (
   seekID: string,
   sendSocketMsg: (msg: Uint8Array) => void,
+  alternatives: Array<string> = [],
 ): void => {
   // Eventually use the ID.
   const sa = create(SoughtGameProcessEventSchema, {});
   sa.requestId = seekID;
+  sa.alternatives = alternatives;
   sendSocketMsg(
     encodeToSocketFmt(
       MessageType.SOUGHT_GAME_PROCESS_EVENT,

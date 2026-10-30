@@ -20,6 +20,9 @@ message TournamentGameEndedEvent {
     string username = 1;
     int32 score = 2;
     TournamentGameResult result = 3;
+    // Set in RecentGames responses only. Censored players get the censored
+    // username here too.
+    string user_id = 4;
   }
 
   string game_id = 1;
@@ -83,6 +86,8 @@ enum PairingMethod {
   INTERLEAVED_ROUND_ROBIN = 10;
   PAIRING_METHOD_COP = 11;
   AUSTRALIAN_DRAW = 12;
+  WIN_GROUPS = 13;
+  SNAKED_ROUND_ROBIN = 14;
 }
 
 enum FirstMethod {
@@ -146,6 +151,19 @@ message RoundControl {
   // pairing is impossible the reset point is relaxed upward one round at a
   // time.
   uint32 reset_round = 20;
+
+  // pairing_lag is how many extra rounds of results this round's pairings
+  // lag behind: 0 (the default) pairs round R from results through round R-1,
+  // and 1 pairs it from results through round R-2, so that round R can be
+  // paired and opened while round R-1 is still being played. Only 0 and 1 are
+  // valid.
+  uint32 pairing_lag = 21;
+
+  // play_within_team is for the interleaved and snaked round robins, which
+  // split the division into two teams: when set, each team plays a round
+  // robin among itself instead of against the other team. (Not 11: that was
+  // interleave_team_round_robin, and old saved controls may still set it.)
+  bool play_within_team = 22;
 }
 
 message DivisionControls {

@@ -135,9 +135,7 @@ func TestShadowLoadMatchesAfterRealMoves(t *testing.T) {
 		_, err = entGame.PlayScoringMove(mv.coords, mv.word, true)
 		is.NoErr(err)
 		evts := entGame.History().Events[before:]
-		// Split step 3: AppendTurns writes immediately, as gameplay does until the
-		// atomic save lands in step 4, which restores StageTurns here.
-		is.NoErr(gstore.AppendTurns(ctx, gid, before, evts))
+		is.NoErr(gstore.StageTurns(entGame, before, evts))
 		is.NoErr(gstore.Set(ctx, entGame))
 	}
 
@@ -165,8 +163,7 @@ func TestShadowLoadReportsTornRead(t *testing.T) {
 	before := len(entGame.History().Events)
 	_, err = entGame.PlayScoringMove("8E", "AGUE", true)
 	is.NoErr(err)
-	// Split step 3: see TestShadowLoadMatchesAfterRealMoves.
-	is.NoErr(gstore.AppendTurns(ctx, gid, before, entGame.History().Events[before:]))
+	is.NoErr(gstore.StageTurns(entGame, before, entGame.History().Events[before:]))
 	is.NoErr(gstore.Set(ctx, entGame))
 
 	// AppendTurns has committed the ending; Set has not yet been called with it.

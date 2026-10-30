@@ -22,7 +22,9 @@ export const readyForTournamentGame = (
     );
     return false;
   }
-  const round = competitorState.currentRound;
+  // The player's active round, which differs from the current round when a
+  // lagged round opened before the player's previous game finished.
+  const round = competitorState.activeRound;
   evt.division = division;
   evt.tournamentId = tournamentID;
   evt.round = round;

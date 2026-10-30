@@ -2,8 +2,10 @@ package gameplay
 
 import (
 	"context"
+	"net/http"
 	"regexp"
 	"strings"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/rs/zerolog/log"
@@ -76,7 +78,21 @@ func (gs *GameService) GetRematchStreak(ctx context.Context, req *connect.Reques
 // offset by offset.
 func (gs *GameService) GetRecentGames(ctx context.Context, req *connect.Request[pb.RecentGamesRequest],
 ) (*connect.Response[ipc.GameInfoResponses], error) {
-	resp, err := gs.gameStore.GetRecentGames(ctx, req.Msg.Username, int(req.Msg.NumGames), int(req.Msg.Offset))
+	var resp *ipc.GameInfoResponses
+	var err error
+	if req.Msg.BeforeGameId != "" || req.Msg.Before != 0 || req.Msg.AfterGameId != "" || req.Msg.After != 0 {
+		page := entity.RecentGamesPage{
+			BeforeGameID: req.Msg.BeforeGameId,
+			Before:       time.UnixMilli(req.Msg.Before),
+			AfterGameID:  req.Msg.AfterGameId,
+		}
+		if req.Msg.After != 0 {
+			page.After = time.UnixMilli(req.Msg.After)
+		}
+		resp, err = gs.gameStore.GetRecentGamesPage(ctx, req.Msg.Username, int(req.Msg.NumGames), page)
+	} else {
+		resp, err = gs.gameStore.GetRecentGames(ctx, req.Msg.Username, int(req.Msg.NumGames), int(req.Msg.Offset))
+	}
 	if err != nil {
 		return nil, apiserver.InvalidArg(err.Error())
 	}
@@ -249,12 +265,28 @@ func (gs *GameService) GetRecentCorrespondenceGames(ctx context.Context, req *co
 	return connect.NewResponse(resp), nil
 }
 
+// logHistoryLookupFailure records enough about a failed history request to
+// tell where it came from -- the app, a stale link, a crawler -- without
+// logging the client's address.
+func logHistoryLookupFailure(ctx context.Context, method, gameID string, h http.Header, err error) {
+	_, sessErr := apiserver.GetSession(ctx)
+	log.Warn().Err(err).
+		Str("method", method).
+		Str("gameID", gameID).
+		Int("gameIDLen", len(gameID)).
+		Bool("hasSession", sessErr == nil).
+		Str("userAgent", h.Get("User-Agent")).
+		Str("referer", h.Get("Referer")).
+		Msg("history-lookup-failed")
+}
+
 // GetGCG downloads a GCG for a full native game, or a partial GCG
 // for an annotated game.
 func (gs *GameService) GetGCG(ctx context.Context, req *connect.Request[pb.GCGRequest],
 ) (*connect.Response[pb.GCGResponse], error) {
 	hist, err := gs.gameStore.GetHistory(ctx, req.Msg.GameId)
 	if err != nil {
+		logHistoryLookupFailure(ctx, "GetGCG", req.Msg.GameId, req.Header(), err)
 		return nil, apiserver.InvalidArg(err.Error())
 	}
 	anno := false
@@ -288,6 +320,7 @@ func (gs *GameService) GetGameHistory(ctx context.Context, req *connect.Request[
 ) (*connect.Response[pb.GameHistoryResponse], error) {
 	hist, err := gs.gameStore.GetHistory(ctx, req.Msg.GameId)
 	if err != nil {
+		logHistoryLookupFailure(ctx, "GetGameHistory", req.Msg.GameId, req.Header(), err)
 		return nil, apiserver.InvalidArg(err.Error())
 	}
 	if len(hist.Players) == 0 {

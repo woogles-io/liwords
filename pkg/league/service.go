@@ -14,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/woogles-io/liwords/pkg/apiserver"
@@ -1134,6 +1135,19 @@ func (ls *LeagueService) GetAllDivisionStandings(
 	if err != nil {
 		return nil, apiserver.InternalErr(fmt.Errorf("failed to get season standings: %w", err))
 	}
+
+	// Average opponent mistake index per player (users.id), over the same
+	// analyzed games as the player's own average.
+	oppMIRows, err := ls.store.GetSeasonOpponentMistakeIndex(ctx, seasonID)
+	if err != nil {
+		return nil, apiserver.InternalErr(fmt.Errorf("failed to get opponent mistake index: %w", err))
+	}
+	avgOpponentMistakeIndex := make(map[int32]float64, len(oppMIRows))
+	for _, r := range oppMIRows {
+		if r.N > 0 {
+			avgOpponentMistakeIndex[r.UserID] = r.Total / float64(r.N)
+		}
+	}
 	divisions := snapshot.Divisions
 
 	// Split the batched, division_number-ordered rows into per-division buckets
@@ -1242,6 +1256,13 @@ func (ls *LeagueService) GetAllDivisionStandings(
 					avgMistakeIndex = standing.TotalMistakeIndex.Float64 / float64(standing.GamesAnalyzed.Int32)
 				}
 
+				// Set only for players with analyzed games, so a client can
+				// tell "none" from 0.
+				var avgOpponentMI *float64
+				if v, ok := avgOpponentMistakeIndex[standing.UserID]; ok {
+					avgOpponentMI = &v
+				}
+
 				protoStandings[j] = &ipc.LeaguePlayerStanding{
 					UserId:                   userUUID,
 					Username:                 username,
@@ -1266,6 +1287,7 @@ func (ls *LeagueService) GetAllDivisionStandings(
 					TotalOpponentTilesPlayed: standing.TotalOpponentTilesPlayed.Int32,
 					PlacementStatus:          placementStatus,
 					AvgMistakeIndex:          avgMistakeIndex,
+					AvgOpponentMistakeIndex:  avgOpponentMI,
 					GamesAnalyzed:            standing.GamesAnalyzed.Int32,
 				}
 			}
@@ -1848,6 +1870,10 @@ func (ls *LeagueService) GetPlayerSeasonGames(
 			mi := row.PlayerMistakeIndex
 			game.MistakeIndex = &mi
 		}
+		if row.HasOpponentMistakeIndex {
+			omi := row.OpponentMistakeIndex
+			game.OpponentMistakeIndex = &omi
+		}
 		allGames = append(allGames, game)
 	}
 
@@ -1895,20 +1921,23 @@ func (ls *LeagueService) GetPlayerSeasonGames(
 		}
 
 		// Populate the live clock anchor so clients can tick the on-turn
-		// player's deadline. The per-turn allowance and time bank live on the
-		// game entity (not the in-progress row), so load it; this only runs for
-		// a player's handful of in-progress league games on modal open, so the
-		// per-game load is fine. On a load error the clock is simply left empty.
-		if game, gerr := ls.stores.GameStore.Get(ctx, row.GameUuid.String); gerr == nil && game != nil {
-			psg.LastUpdate = timestamppb.New(time.UnixMilli(game.Timers.TimeOfLastUpdate))
-			if game.GameReq != nil {
-				psg.IncrementSecs = game.GameReq.IncrementSeconds
+		// player's deadline.
+		psg.LastUpdate = timestamppb.New(time.UnixMilli(row.Timers.TimeOfLastUpdate))
+		if row.GameRequest.GameRequest != nil {
+			psg.IncrementSecs = row.GameRequest.GameRequest.IncrementSeconds
+		}
+		if row.PlayerOnTurn.Valid {
+			onTurn := int(row.PlayerOnTurn.Int32)
+			if onTurn >= 0 && onTurn < len(row.Timers.TimeBank) {
+				psg.OnTurnTimeBankMs = row.Timers.TimeBank[onTurn]
 			}
-			if row.PlayerOnTurn.Valid {
-				onTurn := int(row.PlayerOnTurn.Int32)
-				if onTurn >= 0 && onTurn < len(game.Timers.TimeBank) {
-					psg.OnTurnTimeBankMs = game.Timers.TimeBank[onTurn]
+			if played, unplayed, ok := tileProgressFromBytes(ls.cfg, row.History); ok {
+				if userIsPlayer0 {
+					psg.PlayerTilesPlayed, psg.OpponentTilesPlayed = played[0], played[1]
+				} else {
+					psg.PlayerTilesPlayed, psg.OpponentTilesPlayed = played[1], played[0]
 				}
+				psg.TilesUnplayed = unplayed
 			}
 		}
 
@@ -2021,6 +2050,7 @@ func (ls *LeagueService) GetLeagueRoster(
 				Draws:          row.Draws,
 				Spread:         row.Spread,
 				Result:         ipc.StandingResult(row.Result),
+				Timeouts:       proto.Int32(row.Timeouts),
 			})
 		}
 		players[i] = &pb.LeagueRosterPlayer{
@@ -2532,18 +2562,13 @@ func (ls *LeagueService) CancelPlayerResults(
 
 	gamesForfeited := int32(0)
 	for _, gameRow := range ongoingGames {
-		gameEntity, err := ls.stores.GameStore.Get(ctx, gameRow.GameID.String)
-		if err != nil {
-			return nil, apiserver.InternalErr(fmt.Errorf("failed to load game %s: %w", gameRow.GameID.String, err))
-		}
-
 		// Determine which player index is the cheater
 		loserIdx := 0
 		if gameRow.Player1ID.Int32 == cheaterDBID {
 			loserIdx = 1
 		}
 
-		if err := gameplay.ForfeitGame(ctx, gameEntity, loserIdx, ls.stores); err != nil {
+		if err := gameplay.ForfeitGame(ctx, gameRow.GameID.String, loserIdx, ls.stores); err != nil {
 			return nil, apiserver.InternalErr(fmt.Errorf("failed to forfeit game %s: %w", gameRow.GameID.String, err))
 		}
 		gamesForfeited++

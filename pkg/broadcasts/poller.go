@@ -196,6 +196,9 @@ func fetchURL(feedURL string) ([]byte, error) {
 		return nil, err
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		return nil, fmt.Errorf("feed fetch returned %s", resp.Status)
+	}
 	return io.ReadAll(resp.Body)
 }
 

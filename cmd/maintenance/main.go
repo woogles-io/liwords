@@ -234,6 +234,13 @@ func refreshPatreonIntegrationTokens(ctx context.Context, q *models.Queries, svc
 		panic(err)
 	}
 	for _, integration := range expiringIntegrations {
+		// Tier checks look users up in the campaign member list by
+		// patreon_user_id, so once we have that ID their token is unused.
+		// Only legacy rows linked before we stored it still need one.
+		var integrationData integrations.PatreonTokenResponse
+		if err := json.Unmarshal(integration.Data, &integrationData); err == nil && integrationData.PatreonUserID != "" {
+			continue
+		}
 		refreshPatreonToken(ctx, q, integration, svc)
 		time.Sleep(2 * time.Second)
 	}
@@ -286,6 +293,14 @@ func refreshPatreonToken(ctx context.Context, q *models.Queries, integration mod
 	if err != nil {
 		log.Err(err).Str("integration-uuid", integration.Uuid.String()).Msg("failed to refresh patreon token")
 		return
+	}
+	// Backfill the patreon_user_id while the token is fresh, so this row
+	// never needs refreshing again.
+	patreonUserID, err := integrations.FetchPatreonUserID(tokres.AccessToken)
+	if err != nil {
+		log.Err(err).Str("integration-uuid", integration.Uuid.String()).Msg("failed to fetch patreon user id")
+	} else {
+		tokres.PatreonUserID = patreonUserID
 	}
 	tokresjson, err := json.Marshal(tokres)
 	if err != nil {
