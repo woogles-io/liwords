@@ -4458,3 +4458,130 @@ func TestFirstsCoinFlip(t *testing.T) {
 	// 5700 tosses: a fair coin lands well within this.
 	is.True(loFirsts > 2650 && loFirsts < 3050)
 }
+
+func assignedTeamControls(numRounds int, method pb.PairingMethod) []*pb.RoundControl {
+	roundControls := []*pb.RoundControl{}
+	for round := range numRounds {
+		roundControls = append(roundControls, &pb.RoundControl{FirstMethod: pb.FirstMethod_AUTOMATIC_FIRST,
+			PairingMethod:               method,
+			GamesPerRound:               1,
+			Round:                       int32(round),
+			Factor:                      1,
+			MaxRepeats:                  1,
+			AllowOverMaxRepeats:         true,
+			RepeatRelativeWeight:        1,
+			WinDifferenceRelativeWeight: 1})
+	}
+	return roundControls
+}
+
+// portlandVsSeattle is a division of 7 Portland and 5 Seattle players, mixed
+// up in seed order, with a round robin between the teams.
+func portlandVsSeattle(is *is.I) *ClassicDivision {
+	players := &pb.TournamentPersons{}
+	for k := range 12 {
+		team := "Portland"
+		if k%5 == 2 || k%5 == 4 || k == 11 {
+			team = "Seattle"
+		}
+		players.Persons = append(players.Persons, &pb.TournamentPerson{Id: fmt.Sprintf("Player %d", k),
+			Rating: int32(2000 - k), Team: team})
+	}
+	tc, err := compactNewClassicDivision(players, assignedTeamControls(7, pb.PairingMethod_ASSIGNED_TEAM_ROUND_ROBIN), true)
+	is.NoErr(err)
+	return tc
+}
+
+func TestClassicDivisionAssignedTeams(t *testing.T) {
+	is := is.New(t)
+	tc := portlandVsSeattle(is)
+	teams := tc.playerTeams()
+	seattle := 0
+	for _, team := range teams {
+		if team == "Seattle" {
+			seattle++
+		}
+	}
+	is.Equal(seattle, 5)
+
+	met := map[[2]int]bool{}
+	for round := range 7 {
+		byes := 0
+		for playerIndex := range 12 {
+			pairing := tc.PairingMap[tc.Matrix[round][playerIndex]]
+			is.True(pairing != nil)
+			if pairing.Players[0] == pairing.Players[1] {
+				// Only the bigger team sits out.
+				is.Equal(teams[playerIndex], "Portland")
+				byes++
+				continue
+			}
+			opponent := int(pairing.Players[0])
+			if opponent == playerIndex {
+				opponent = int(pairing.Players[1])
+			}
+			is.True(teams[playerIndex] != teams[opponent])
+			is.True(!met[[2]int{playerIndex, opponent}])
+			met[[2]int{playerIndex, opponent}] = true
+			// The division recorded the firsts the schedule decided.
+			goesFirst, err := pair.TeamRoundRobinGoesFirst(tc.RoundControls[round], 12, round, playerIndex, tc.Seed, teams)
+			is.NoErr(err)
+			is.Equal(goesFirst, pairing.Players[0] == int32(playerIndex))
+		}
+		is.Equal(byes, 2)
+	}
+	// Everyone has played everyone on the other team.
+	is.Equal(len(met), 2*7*5)
+
+	// Teams are fixed once the division starts.
+	is.NoErr(tc.StartRound(true))
+	err := tc.SetPlayerTeam("Player 0", "Seattle")
+	is.Equal(err.Error(), entity.NewWooglesError(pb.WooglesError_TOURNAMENT_EDIT_TEAM_AFTER_START, tournamentName, divisionName).Error())
+	_, err = tc.AddPlayers(&pb.TournamentPersons{Persons: []*pb.TournamentPerson{{Id: "Late", Rating: 1000}}})
+	is.Equal(err.Error(), entity.NewWooglesError(pb.WooglesError_TOURNAMENT_EDIT_TEAM_AFTER_START, tournamentName, divisionName).Error())
+}
+
+func TestClassicDivisionAssignedTeamsErrors(t *testing.T) {
+	is := is.New(t)
+
+	// With teams, every round must keep teammates apart, COP included.
+	tc := portlandVsSeattle(is)
+	rcs := assignedTeamControls(7, pb.PairingMethod_ASSIGNED_TEAM_ROUND_ROBIN)
+	rcs[6].PairingMethod = pb.PairingMethod_PAIRING_METHOD_COP
+	_, _, err := tc.SetRoundControls(rcs)
+	is.Equal(err.Error(), entity.NewWooglesError(pb.WooglesError_TOURNAMENT_TEAMS_NEED_ASSIGNED_TEAM_ROUND_ROBIN, tournamentName, divisionName, "7").Error())
+	_, _, err = tc.SetSingleRoundControls(3, assignedTeamControls(4, pb.PairingMethod_SWISS)[3])
+	is.Equal(err.Error(), entity.NewWooglesError(pb.WooglesError_TOURNAMENT_TEAMS_NEED_ASSIGNED_TEAM_ROUND_ROBIN, tournamentName, divisionName, "4").Error())
+	// Manual pairing is fine.
+	rcs = assignedTeamControls(7, pb.PairingMethod_ASSIGNED_TEAM_ROUND_ROBIN)
+	rcs[6].PairingMethod = pb.PairingMethod_MANUAL
+	_, _, err = tc.SetRoundControls(rcs)
+	is.NoErr(err)
+
+	// Teammates would play each other within teams.
+	rcs = assignedTeamControls(7, pb.PairingMethod_ASSIGNED_TEAM_ROUND_ROBIN)
+	rcs[0].PlayWithinTeam = true
+	_, _, err = tc.SetRoundControls(rcs)
+	is.Equal(err.Error(), entity.NewWooglesError(pb.WooglesError_TOURNAMENT_ASSIGNED_TEAMS_WITHIN_TEAM, tournamentName, divisionName, "1").Error())
+
+	// Players can be added and given teams one at a time, and the division
+	// says what's missing when it's started too soon.
+	tc, err = compactNewClassicDivision(makeTournamentPersons(map[string]int32{"A": 2000, "B": 1900}),
+		assignedTeamControls(3, pb.PairingMethod_ASSIGNED_TEAM_ROUND_ROBIN), true)
+	is.NoErr(err)
+	err = tc.StartRound(true)
+	is.Equal(err.Error(), entity.NewWooglesError(pb.WooglesError_TOURNAMENT_ASSIGNED_TEAMS_INCOMPLETE, tournamentName, divisionName, "2").Error())
+	_, err = tc.AddPlayers(&pb.TournamentPersons{Persons: []*pb.TournamentPerson{{Id: "C", Rating: 1800, Team: "Portland"}}})
+	is.NoErr(err)
+	is.NoErr(tc.SetPlayerTeam("A", "Portland"))
+	is.NoErr(tc.SetPlayerTeam("B", "Portland"))
+	err = tc.StartRound(true)
+	is.Equal(err.Error(), entity.NewWooglesError(pb.WooglesError_TOURNAMENT_ASSIGNED_TEAMS_NOT_TWO, tournamentName, divisionName, "1").Error())
+	is.NoErr(tc.SetPlayerTeam("B", "Seattle"))
+	// Now the round robin is paired: two Portland players and one from
+	// Seattle make three rounds, with a Portland player sitting out each.
+	for round := range 3 {
+		is.True(tc.IsRoundPaired(round))
+	}
+	is.NoErr(tc.StartRound(true))
+}

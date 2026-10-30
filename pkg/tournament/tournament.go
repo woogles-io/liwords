@@ -870,7 +870,7 @@ func RemovePlayers(ctx context.Context, ts TournamentStore, us user.Store, id st
 // EditPlayer changes an existing player's details. playerID is the
 // username (or name, in IRL mode), as with RemovePlayers. Any nil field is
 // left unchanged.
-func EditPlayer(ctx context.Context, ts TournamentStore, us user.Store, id string, division string, playerID string, rating *int32, newName *string) error {
+func EditPlayer(ctx context.Context, ts TournamentStore, us user.Store, id string, division string, playerID string, rating *int32, newName *string, team *string) error {
 	t, err := ts.Get(ctx, id)
 	if err != nil {
 		return err
@@ -927,6 +927,14 @@ func EditPlayer(ctx context.Context, ts TournamentStore, us user.Store, id strin
 		newID = token + ":" + name
 	}
 
+	// The team goes first: it's the edit most likely to be refused, as
+	// teams are fixed once the division starts.
+	if team != nil {
+		err = divisionObject.DivisionManager.SetPlayerTeam(fullID, *team)
+		if err != nil {
+			return err
+		}
+	}
 	if rating != nil {
 		err = divisionObject.DivisionManager.SetPlayerRating(fullID, *rating)
 		if err != nil {
