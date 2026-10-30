@@ -2888,12 +2888,55 @@ func TestQ4TiersKeepHopefulWinnersTogether(t *testing.T) {
 	}
 }
 
-// TestFactor3YieldsToForcedContenderBye reproduces a real round (Lake George
-// 2026 WOW, division E, round 5 of 5 paired from round 3's results) where
-// Factor 3 forced Ida Ann Shapiro vs Buffy Hogan while the forced contender
-// bye (CB) forced Buffy Hogan onto the bye, leaving the round
-// OVERCONSTRAINED. Factor 3 must back down instead.
+// TestFactor3YieldsToForcedContenderBye checks that Factor 3 backs down
+// when it forces a player that the forced contender bye (CB) puts on the bye.
+// Here Factor 3 forces Ellie Parker vs Buffy Hogan with 2 rounds remaining,
+// while CB forces Buffy Hogan onto the bye, which would leave the round
+// OVERCONSTRAINED.
 func TestFactor3YieldsToForcedContenderBye(t *testing.T) {
+	is := is.New(t)
+
+	req := &pb.PairRequest{
+		PairMethod:                 pb.PairMethod_COP,
+		PlayerNames:                []string{"Sally Reeser", "Shubha Kamath", "Buffy Hogan", "Ellie Parker", "Cynthia Scotti", "Ida Ann Shapiro", "Monica Little"},
+		PlayerClasses:              make([]int32, 7),
+		GibsonSpread:               250,
+		ControlLossThreshold:       0.3,
+		HopefulnessThreshold:       0.02,
+		AllPlayers:                 7,
+		ValidPlayers:               7,
+		Rounds:                     6,
+		PlacePrizes:                2,
+		DivisionSims:               100000,
+		ControlLossSims:            25000,
+		ControlLossActivationRound: 3,
+		Seed:                       -1535541601166689806,
+	}
+	pairtestutils.AddRoundPairings(req, []int32{6, 1, 4, 5, 2, 3, 0})
+	pairtestutils.AddRoundPairings(req, []int32{2, 3, 0, 1, 6, 5, 4})
+	pairtestutils.AddRoundPairings(req, []int32{4, 5, 6, 3, 0, 1, 2})
+	pairtestutils.AddRoundPairings(req, []int32{1, 0, 3, 2, 5, 4, 6})
+	pairtestutils.AddRoundResultsStr(req, "338 50 332 348 445 419 253")
+	pairtestutils.AddRoundResultsStr(req, "362 319 280 364 417 50 282")
+	pairtestutils.AddRoundResultsStr(req, "444 356 383 50 360 349 314")
+	pairtestutils.AddRoundResultsStr(req, "428 374 311 345 337 406 50")
+
+	resp := COPPair(req)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	checkSymmetric(t, resp.Pairings)
+	is.True(strings.Contains(resp.Log, "Factor 3 expansion: forcing Sally Reeser vs Cynthia Scotti, Ida Ann Shapiro vs Shubha Kamath, Ellie Parker vs Buffy Hogan"))
+	is.True(strings.Contains(resp.Log, "Factor 3 canceled: Factor 3 forces Buffy Hogan vs Ellie Parker, but CB forces Buffy Hogan vs BYE"))
+	// Buffy Hogan still takes the forced contender bye.
+	is.Equal(resp.Pairings[2], int32(2))
+}
+
+// TestKOTHYieldsToForcedContenderBye reproduces a real round (Lake George
+// 2026 WOW, division E, round 5 of 5 paired while round 4 is still being
+// played) where the forced contender bye (CB) forces Buffy Hogan (rank 6)
+// onto the bye. Final-round KOTH must skip Buffy Hogan, as it does the
+// top-down bye recipient, rather than force Shubha Kamath (rank 5) vs Buffy
+// Hogan, which would leave the round OVERCONSTRAINED.
+func TestKOTHYieldsToForcedContenderBye(t *testing.T) {
 	is := is.New(t)
 
 	req := &pb.PairRequest{
@@ -2923,10 +2966,12 @@ func TestFactor3YieldsToForcedContenderBye(t *testing.T) {
 	resp := COPPair(req)
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
 	checkSymmetric(t, resp.Pairings)
-	is.True(strings.Contains(resp.Log, "Factor 3 expansion: forcing Sally Reeser vs Ellie Parker, Cynthia Scotti vs Shubha Kamath, Ida Ann Shapiro vs Buffy Hogan"))
-	is.True(strings.Contains(resp.Log, "Factor 3 canceled: Factor 3 forces Buffy Hogan vs Ida Ann Shapiro, but CB forces Buffy Hogan vs BYE"))
-	// Buffy Hogan still takes the forced contender bye.
-	is.Equal(resp.Pairings[2], int32(2))
+	is.True(strings.Contains(resp.Log, "Rounds Remaining: 1"))
+	is.True(strings.Contains(resp.Log, "Forced Contender Bye: Buffy Hogan"))
+	// Buffy Hogan takes the forced contender bye, and KOTH pairs the rest of
+	// the cash contenders around her: Sally Reeser vs Cynthia Scotti, Ida Ann
+	// Shapiro vs Ellie Parker and Shubha Kamath vs Monica Little.
+	is.Equal(resp.Pairings, []int32{4, 6, 2, 5, 0, 3, 1})
 }
 
 // TestFactor3Conflict checks that factor3Conflict detects another constraint

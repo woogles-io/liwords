@@ -643,11 +643,17 @@ var constraintPolicies = []constraintPolicy{
 			// against rank 12 and leaving rank 9 unpaired by KOTH altogether,
 			// so they fall through to the general weighted matching and can
 			// end up paired with someone far outside contention.
-			// 1st and 2nd are skipped the same way when FS already forces them
-			// to play each other.
+			// The forced contender bye recipient (see CB) is skipped the same
+			// way, as are 1st and 2nd when FS already forces them to play each
+			// other.
+			isByeRecipient := func(ri int) bool {
+				player := pargs.playerNodes[ri]
+				return (pargs.topDownByePlayer >= 0 && player == pargs.topDownByePlayer) ||
+					(pargs.forcedContenderByePlayer >= 0 && player == pargs.forcedContenderByePlayer)
+			}
 			rankIdxs := make([]int, 0, numPlayers)
 			for ri := 0; ri < numPlayers; ri++ {
-				if pargs.topDownByePlayer >= 0 && pargs.playerNodes[ri] == pargs.topDownByePlayer {
+				if isByeRecipient(ri) {
 					continue
 				}
 				if pargs.forcedFirstVsSecond && ri <= 1 {
@@ -713,19 +719,20 @@ var constraintPolicies = []constraintPolicy{
 				playerToCatch := -1
 				KOTHCumeGibsonSpread := int(pargs.req.GibsonSpread * 2)
 				for {
-					// Top-down byes take precedence over class prize KOTH: the bye
-					// recipient (if in this class) has no opponent at all this
-					// round, so they're skipped from the scan entirely - just like
-					// the cash-prize KOTH scan above - and the algorithm works
-					// around them, forcing the next two available class contenders
-					// together instead of dropping the forced pairing altogether.
+					// Top-down and forced contender byes take precedence over class
+					// prize KOTH: the bye recipient (if in this class) has no
+					// opponent at all this round, so they're skipped from the scan
+					// entirely - just like the cash-prize KOTH scan above - and the
+					// algorithm works around them, forcing the next two available
+					// class contenders together instead of dropping the forced
+					// pairing altogether.
 					for ri < numPlayers && (int(pargs.req.PlayerClasses[pargs.playerNodes[ri]]) != classIdx ||
-						pargs.playerNodes[ri] == pargs.topDownByePlayer || (pargs.forcedFirstVsSecond && ri <= 1)) {
+						isByeRecipient(ri) || (pargs.forcedFirstVsSecond && ri <= 1)) {
 						ri++
 					}
 					rj := ri + 1
 					for rj < numPlayers && (int(pargs.req.PlayerClasses[pargs.playerNodes[rj]]) != classIdx ||
-						pargs.playerNodes[rj] == pargs.topDownByePlayer || (pargs.forcedFirstVsSecond && rj <= 1)) {
+						isByeRecipient(rj) || (pargs.forcedFirstVsSecond && rj <= 1)) {
 						rj++
 					}
 					if rj >= numPlayers {
