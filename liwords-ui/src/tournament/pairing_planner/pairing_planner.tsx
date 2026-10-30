@@ -264,12 +264,12 @@ export const PairingPlanner = (props: Props) => {
             </Radio.Group>
             {intent === PlannerIntent.PLANNER_FAIR_START && (
               <Text size="xs" c="dimmed">
-                Want to finish with King of the Hill, or Queen then King of the
-                Hill? COP already does that. In the final round it pairs the
-                prize contenders 1 vs 2, 3 vs 4, and so on, and in the round
-                before it pairs the leaders against each other when the race is
-                close. So you can pre-pair as many rounds as you like, even all
-                but the last one or two, and let COP pair the rest.
+                Want to finish with King of the Hill? COP already does that. In
+                the final round it pairs the prize contenders 1 vs 2, 3 vs 4,
+                and so on, and in the round before it can pair 1st vs 4th, 2nd
+                vs 5th and 3rd vs 6th, or keep the top four together, when the
+                race is close. So you can pre-pair as many rounds as you like,
+                even all but the last one or two, and let COP pair the rest.
               </Text>
             )}
             {intent === PlannerIntent.PLANNER_TWO_TEAMS && !anyTeams && (
