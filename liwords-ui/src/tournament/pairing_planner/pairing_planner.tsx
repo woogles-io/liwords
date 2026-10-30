@@ -196,10 +196,20 @@ export const PairingPlanner = (props: Props) => {
               )}
               <NumberInput
                 label="Rounds to pre-pair"
+                // Not capped at the division's rounds: a division without
+                // round controls yet has none, and can still be planned.
                 description={
-                  numRounds > 0
-                    ? `The division has ${numRounds} rounds`
-                    : undefined
+                  numRounds > 0 && (
+                    <Text
+                      span
+                      inherit
+                      c={rounds > numRounds ? "red" : undefined}
+                    >
+                      {rounds > numRounds
+                        ? `More than the division's ${numRounds} rounds`
+                        : `The division has ${numRounds} rounds`}
+                    </Text>
+                  )
                 }
                 min={1}
                 max={50}
@@ -252,6 +262,16 @@ export const PairingPlanner = (props: Props) => {
                 ))}
               </SimpleGrid>
             </Radio.Group>
+            {intent === PlannerIntent.PLANNER_FAIR_START && (
+              <Text size="xs" c="dimmed">
+                Want to finish with King of the Hill, or Queen then King of the
+                Hill? COP already does that. In the final round it pairs the
+                prize contenders 1 vs 2, 3 vs 4, and so on, and in the round
+                before it pairs the leaders against each other when the race is
+                close. So you can pre-pair as many rounds as you like, even all
+                but the last one or two, and let COP pair the rest.
+              </Text>
+            )}
             {intent === PlannerIntent.PLANNER_TWO_TEAMS && !anyTeams && (
               <Alert color="yellow" title="No teams yet">
                 Give each player a team in the director tools (Players → Edit
@@ -462,7 +482,9 @@ const PairingGrid = (props: {
       : String.fromCharCode(65 + g);
 
   return (
-    <Table.ScrollContainer minWidth={300 + s.rounds.length * 64}>
+    // Native scrolling: the ScrollArea one doesn't measure its width inside
+    // an accordion panel that starts open, so it showed no scrollbar.
+    <Table.ScrollContainer type="native" minWidth={300 + s.rounds.length * 64}>
       <Table
         striped
         highlightOnHover
