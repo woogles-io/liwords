@@ -404,12 +404,78 @@ func getInitialFontesPairings(numberOfPlayers int, numberOfNtiles int, round int
 		return nil, fmt.Errorf("number of initial fontes rounds (%d) should be less than half the number of players (%d)", numberOfNtiles-1, numberOfPlayers)
 	}
 
-	numberOfRemainingPlayers := numberOfPlayers - (sizeOfNtiles * numberOfNtiles)
-
 	pairings := make([]int, numberOfPlayers)
 	for i := range pairings {
 		pairings[i] = -2
 	}
+
+	groupings := initialFontesGroups(numberOfPlayers, numberOfNtiles, seed)
+
+	log.Info().Str("groupings", fmt.Sprint(groupings)).Msg("initial-fontes-groupings")
+
+	for i := 0; i < len(groupings); i++ {
+		groupSize := len(groupings[i])
+		if groupSize%2 == 1 {
+			return nil, fmt.Errorf("initial fontes pairing failure for %d players, "+
+				"have odd group size of %d", numberOfPlayers, groupSize)
+		}
+
+		var groupPairings []int
+		var err error
+		if groupSize == numberOfNtiles {
+			// Standard-size N-tile group: pair with a normal round robin, as before.
+			groupPairings, err = GetRoundRobinPairings(groupSize, round, seed)
+		} else {
+			// Oversized remainder group (the leftover players folded in above via
+			// remainderOffset/remainderSpacing). Rather than a full round robin,
+			// use a fixed "shirts vs skins" cross pattern: split the group into
+			// two teams by local rank parity (odds vs evens) and rotate one team
+			// against the other each round. This only avoids repeats across all
+			// numberOfNtiles-1 fontes rounds if the group is big enough
+			// (half its size >= rounds needed); otherwise fall back to round
+			// robin, which is always safe.
+			if pairsWithShirtsVsSkins(groupSize, numberOfNtiles) {
+				groupPairings = getShirtsVsSkinsPairings(groupSize, round)
+			} else {
+				groupPairings, err = GetRoundRobinPairings(groupSize, round, seed)
+			}
+		}
+		if err != nil {
+			return nil, err
+		}
+		log.Info().Str("groupPairings", fmt.Sprint(groupPairings)).Msg("initial-fontes-group-pairings")
+		for j := 0; j < groupSize; j++ {
+			pairings[groupings[i][j]] = groupings[i][groupPairings[j]]
+		}
+	}
+
+	// Convert the "bye player" to the bye representation
+	// which is an opponent index value of -1
+
+	log.Info().Str("pairings", fmt.Sprint(pairings)).Msg("initial-fontes-pairings")
+
+	if addBye {
+		pairings[pairings[numberOfPlayers-1]] = -1
+		pairings = pairings[:numberOfPlayers-1]
+	}
+
+	log.Info().Str("pairings", fmt.Sprint(pairings)).Msg("initial-fontes-pairings-bye-correction")
+
+	for i := 0; i < len(pairings); i++ {
+		if pairings[i] < -1 {
+			return nil, fmt.Errorf("initial fontes pairing failure for %d players", numberOfPlayers)
+		}
+	}
+	return pairings, nil
+}
+
+// initialFontesGroups splits the players into the groups that Initial Fontes
+// pairs among themselves: sizeOfNtiles groups of numberOfNtiles players, the
+// last of which absorbs any remainder. numberOfPlayers counts the bye, so it
+// is even. The groups are the same for every Initial Fontes round.
+func initialFontesGroups(numberOfPlayers int, numberOfNtiles int, seed uint64) [][]int {
+	sizeOfNtiles := numberOfPlayers / numberOfNtiles
+	numberOfRemainingPlayers := numberOfPlayers - (sizeOfNtiles * numberOfNtiles)
 
 	groupings := [][]int{}
 	for i := 0; i < sizeOfNtiles; i++ {
@@ -463,66 +529,89 @@ func getInitialFontesPairings(numberOfPlayers int, numberOfNtiles int, round int
 			}
 		}
 	}
-
-	log.Info().Str("groupings", fmt.Sprint(groupings)).Msg("initial-fontes-groupings")
-
-	for i := 0; i < len(groupings); i++ {
-		groupSize := len(groupings[i])
-		if groupSize%2 == 1 {
-			return nil, fmt.Errorf("initial fontes pairing failure for %d players, "+
-				"have odd group size of %d", numberOfPlayers, groupSize)
-		}
-
-		var groupPairings []int
-		var err error
-		if groupSize == numberOfNtiles {
-			// Standard-size N-tile group: pair with a normal round robin, as before.
-			groupPairings, err = GetRoundRobinPairings(groupSize, round, seed)
-		} else {
-			// Oversized remainder group (the leftover players folded in above via
-			// remainderOffset/remainderSpacing). Rather than a full round robin,
-			// use a fixed "shirts vs skins" cross pattern: split the group into
-			// two teams by local rank parity (odds vs evens) and rotate one team
-			// against the other each round. This only avoids repeats across all
-			// numberOfNtiles-1 fontes rounds if the group is big enough
-			// (half its size >= rounds needed); otherwise fall back to round
-			// robin, which is always safe.
-			k := groupSize / 2
-			roundsNeeded := numberOfNtiles - 1
-			if k >= roundsNeeded {
-				groupPairings = getShirtsVsSkinsPairings(groupSize, round)
-			} else {
-				groupPairings, err = GetRoundRobinPairings(groupSize, round, seed)
-			}
-		}
-		if err != nil {
-			return nil, err
-		}
-		log.Info().Str("groupPairings", fmt.Sprint(groupPairings)).Msg("initial-fontes-group-pairings")
-		for j := 0; j < groupSize; j++ {
-			pairings[groupings[i][j]] = groupings[i][groupPairings[j]]
-		}
-	}
-
-	// Convert the "bye player" to the bye representation
-	// which is an opponent index value of -1
-
-	log.Info().Str("pairings", fmt.Sprint(pairings)).Msg("initial-fontes-pairings")
-
-	if addBye {
-		pairings[pairings[numberOfPlayers-1]] = -1
-		pairings = pairings[:numberOfPlayers-1]
-	}
-
-	log.Info().Str("pairings", fmt.Sprint(pairings)).Msg("initial-fontes-pairings-bye-correction")
-
-	for i := 0; i < len(pairings); i++ {
-		if pairings[i] < -1 {
-			return nil, fmt.Errorf("initial fontes pairing failure for %d players", numberOfPlayers)
-		}
-	}
-	return pairings, nil
+	return groupings
 }
+
+// pairsWithShirtsVsSkins says whether an Initial Fontes group of groupSize
+// players is paired shirts vs skins rather than as a round robin: only an
+// oversized group is, and only if it's big enough to get through every
+// Initial Fontes round without a repeat.
+func pairsWithShirtsVsSkins(groupSize int, numberOfNtiles int) bool {
+	return groupSize != numberOfNtiles && groupSize/2 >= numberOfNtiles-1
+}
+
+// InitialFontesGoesFirst says whether player goes first in round of the
+// Initial Fontes rounds getInitialFontesPairings pairs with the same seed.
+//
+// Each group is its own schedule, so firsts follow it, and every player
+// alternates, apart from at most one double, and ends within one of even.
+//
+// A group paired as a round robin takes its firsts from RoundRobinGoesFirst;
+// Initial Fontes plays exactly one cycle of it. If the group has the bye, it
+// sits in the group's last seat, so the group is shuffled exactly as a round
+// robin of one fewer player with a bye, and gets that one's firsts, which
+// make up for the missed game.
+//
+// A group paired shirts vs skins has the A team alternate over the games
+// they play, starting with a team chosen by the seed, and the B team take the
+// other side. The B team then alternates too, apart from one double for each
+// B player who plays the A player that had just faced the bye.
+func InitialFontesGoesFirst(numberOfPlayers, numberOfNtiles, round, player int, seed uint64) (bool, error) {
+	if player < 0 || player >= numberOfPlayers {
+		return false, fmt.Errorf("player %d out of range for %d players", player, numberOfPlayers)
+	}
+	if numberOfPlayers < numberOfNtiles {
+		// Everyone gets a bye; see getInitialFontesPairings.
+		return true, nil
+	}
+	// The bye, if there is one, is the player after the last.
+	bye := -1
+	if numberOfPlayers%2 == 1 {
+		bye = numberOfPlayers
+		numberOfPlayers++
+	}
+	if numberOfPlayers/numberOfNtiles < 2 {
+		return false, fmt.Errorf("number of initial fontes rounds (%d) should be less than half the number of players (%d)", numberOfNtiles-1, numberOfPlayers)
+	}
+	for _, group := range initialFontesGroups(numberOfPlayers, numberOfNtiles, seed) {
+		seat := slices.Index(group, player)
+		if seat < 0 {
+			continue
+		}
+		hasBye := slices.Contains(group, bye)
+		if hasBye && group[len(group)-1] != bye {
+			return false, fmt.Errorf("initial fontes bye is not in the last seat of its group %v", group)
+		}
+		if !pairsWithShirtsVsSkins(len(group), numberOfNtiles) {
+			if hasBye {
+				return RoundRobinGoesFirst(len(group)-1, round, seat, seed)
+			}
+			return RoundRobinGoesFirst(len(group), round, seat, seed)
+		}
+		// See getShirtsVsSkinsPairings: A seat x plays B seat (x+round)%k,
+		// and the bye, if any, is the last B seat, which A seat x plays in
+		// round k-1-x.
+		k := len(group) / 2
+		aStarts := rand.New(rand.NewPCG(seed, initialFontesFirstsStream)).IntN(2) == 1
+		aGoesFirst := func(x int) bool {
+			gamesPlayed := round
+			if hasBye && x+round >= k {
+				gamesPlayed--
+			}
+			return (gamesPlayed%2 == 0) == aStarts
+		}
+		if seat%2 == 0 {
+			return aGoesFirst(seat / 2), nil
+		}
+		return !aGoesFirst(((seat/2-round)%k + k) % k), nil
+	}
+	return false, fmt.Errorf("player %d is in no initial fontes group", player)
+}
+
+// initialFontesFirstsStream is the PCG stream InitialFontesGoesFirst uses to
+// pick the shirts vs skins team that goes first, kept distinct from the
+// stream GetRoundRobinPairings uses with the same seed.
+const initialFontesFirstsStream = 2
 
 // getShirtsVsSkinsPairings pairs an oversized Initial Fontes remainder group
 // using a fixed cross pattern instead of a round robin. Local player indices

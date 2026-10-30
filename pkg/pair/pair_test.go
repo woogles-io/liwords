@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"math/rand/v2"
+	"slices"
 	"testing"
 
 	"github.com/matryer/is"
@@ -741,6 +742,69 @@ func TestRoundRobinFirsts(t *testing.T) {
 					// Partway through, nobody is ever more than two off.
 					if diff := firstsMinusSeconds(g[:i+1]); diff < -2 || diff > 2 {
 						t.Fatalf("%s: player %d is %d firsts up after game %d", name, player, diff, i+1)
+					}
+				}
+			}
+		}
+	}
+}
+
+// TestInitialFontesFirsts checks that every player alternates firsts and
+// seconds through the Initial Fontes rounds, apart from at most one double,
+// and ends within one of even. The exception is an oversized group that's
+// too small for shirts vs skins and has the bye: it plays only part of a
+// round robin cycle, which can leave its players two off.
+func TestInitialFontesFirsts(t *testing.T) {
+	for numberOfNtiles := 2; numberOfNtiles <= 8; numberOfNtiles += 2 {
+		for numberOfPlayers := 2 * numberOfNtiles; numberOfPlayers <= 40; numberOfPlayers++ {
+			for seed := uint64(1); seed < 20; seed++ {
+				name := fmt.Sprintf("players=%d ntiles=%d seed=%d", numberOfPlayers, numberOfNtiles, seed)
+				games := make([][]bool, numberOfPlayers)
+				for round := 0; round < numberOfNtiles-1; round++ {
+					pairings, err := getInitialFontesPairings(numberOfPlayers, numberOfNtiles, round, seed)
+					if err != nil {
+						// Not every field size splits into even groups.
+						break
+					}
+					for player, opponent := range pairings {
+						if opponent < 0 {
+							continue
+						}
+						first, err := InitialFontesGoesFirst(numberOfPlayers, numberOfNtiles, round, player, seed)
+						if err != nil {
+							t.Fatalf("%s: %v", name, err)
+						}
+						opponentFirst, err := InitialFontesGoesFirst(numberOfPlayers, numberOfNtiles, round, opponent, seed)
+						if err != nil {
+							t.Fatalf("%s: %v", name, err)
+						}
+						if first == opponentFirst {
+							t.Fatalf("%s round %d: %d and %d both go first or both second", name, round, player, opponent)
+						}
+						games[player] = append(games[player], first)
+					}
+				}
+				maxDiff := make([]int, numberOfPlayers)
+				for _, group := range initialFontesGroups(numberOfPlayers+numberOfPlayers%2, numberOfNtiles, seed) {
+					partialWithBye := numberOfPlayers%2 == 1 && slices.Contains(group, numberOfPlayers) &&
+						len(group) != numberOfNtiles && !pairsWithShirtsVsSkins(len(group), numberOfNtiles)
+					for _, player := range group {
+						if player < numberOfPlayers {
+							maxDiff[player] = 1
+							if partialWithBye {
+								maxDiff[player] = 2
+							}
+						}
+					}
+				}
+				for player, g := range games {
+					if diff := firstsMinusSeconds(g); diff < -maxDiff[player] || diff > maxDiff[player] {
+						t.Fatalf("%s: player %d is %d firsts up", name, player, diff)
+					}
+					for i := 2; i < len(g); i++ {
+						if g[i] == g[i-1] && g[i] == g[i-2] {
+							t.Fatalf("%s: player %d has three in a row ending in round %d", name, player, i)
+						}
 					}
 				}
 			}
