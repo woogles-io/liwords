@@ -22,30 +22,87 @@ import {
   getCOPDefaults,
 } from "./cop_fields";
 
-// Why rounds beginRound..endRound (1-based) cannot have a pairing lag with
-// the given pairing method, or undefined if they can. The server enforces the
-// same rules.
+// The rounds from beginRound to endRound (1-based) that can have a pairing
+// lag with the given pairing method, as [first, last], or undefined if none
+// can. The first round has nothing before it, Elimination needs the previous
+// round's results, and so do COP's last two rounds. The server enforces the
+// same rules for each round.
+export const laggableRounds = (
+  pairingMethod: PairingMethod,
+  beginRound?: number,
+  endRound?: number,
+  totalRounds?: number,
+): [number, number] | undefined => {
+  if (pairingMethod === PairingMethod.ELIMINATION) {
+    return undefined;
+  }
+  const first = Math.max(beginRound ?? 2, 2);
+  let last = endRound ?? first;
+  if (
+    pairingMethod === PairingMethod.PAIRING_METHOD_COP &&
+    totalRounds !== undefined
+  ) {
+    last = Math.min(last, totalRounds - 2);
+  }
+  return first <= last ? [first, last] : undefined;
+};
+
+// Why none of rounds beginRound..endRound (1-based) can have a pairing lag
+// with the given pairing method, or undefined if some can.
 export const pairingLagDisabledReason = (
   pairingMethod: PairingMethod,
   beginRound?: number,
   endRound?: number,
   totalRounds?: number,
 ): string | undefined => {
-  if (beginRound !== undefined && beginRound <= 1) {
-    return "The first round cannot be lagged, because there are no earlier results to pair from.";
+  if (laggableRounds(pairingMethod, beginRound, endRound, totalRounds)) {
+    return undefined;
   }
   if (pairingMethod === PairingMethod.ELIMINATION) {
     return "Elimination rounds cannot be lagged, because they need the previous round's results.";
   }
-  if (
-    pairingMethod === PairingMethod.PAIRING_METHOD_COP &&
-    endRound !== undefined &&
-    totalRounds !== undefined &&
-    endRound >= totalRounds - 1
-  ) {
-    return "COP rounds in the last two rounds of a division cannot be lagged, because they must use the previous round's results.";
+  if ((endRound ?? beginRound) === 1) {
+    return isPrePaired(pairingMethod)
+      ? "The first round can't start early, because there is no round before it."
+      : "The first round cannot be lagged, because there are no earlier results to pair from.";
   }
-  return undefined;
+  return "COP rounds in the last two rounds of a division cannot be lagged, because they must use the previous round's results.";
+};
+
+// Which rounds of a range a pairing lag applies to, when it can't apply to
+// all of them, or undefined if it applies to every round (or none).
+export const pairingLagAppliesTo = (
+  pairingMethod: PairingMethod,
+  beginRound?: number,
+  endRound?: number,
+  totalRounds?: number,
+): string | undefined => {
+  const rounds = laggableRounds(
+    pairingMethod,
+    beginRound,
+    endRound,
+    totalRounds,
+  );
+  if (
+    !rounds ||
+    beginRound === undefined ||
+    endRound === undefined ||
+    (rounds[0] === beginRound && rounds[1] === endRound)
+  ) {
+    return undefined;
+  }
+  const which =
+    rounds[0] === rounds[1]
+      ? `round ${rounds[0]}`
+      : `rounds ${rounds[0]}–${rounds[1]}`;
+  const skipped = [];
+  if (beginRound <= 1) {
+    skipped.push("round 1 has no round before it");
+  }
+  if (rounds[1] < endRound) {
+    skipped.push("COP's last two rounds use the previous round's results");
+  }
+  return `This applies to ${which}: ${skipped.join(", and ")}.`;
 };
 
 export type RdCtrlFieldsProps = {
@@ -73,16 +130,22 @@ export const SingleRoundControlFields = (
   // Pre-paired rounds don't use results, so for them the pairing lag only
   // decides whether the round can start before the previous one ends.
   const prePaired = isPrePaired(setting.pairingMethod);
-  const firstRound = (beginRound ?? round) === 1;
-  const lagDisabledReason =
-    prePaired && firstRound
-      ? "The first round can't start early, because there is no round before it."
-      : pairingLagDisabledReason(
-          setting.pairingMethod,
-          beginRound ?? round,
-          endRound ?? round,
-          totalRounds,
-        );
+  const lagDisabledReason = pairingLagDisabledReason(
+    setting.pairingMethod,
+    beginRound ?? round,
+    endRound ?? round,
+    totalRounds,
+  );
+  // A range can include rounds the lag can't apply to, such as round 1;
+  // those rounds are saved without it.
+  const lagAppliesTo = setting.pairingLag
+    ? pairingLagAppliesTo(
+        setting.pairingMethod,
+        beginRound,
+        endRound,
+        totalRounds,
+      )
+    : undefined;
   // With no results yet, COP pairs by seed: 1v2, 3v4, and so on.
   const copStartsFirstRound =
     setting.pairingMethod === PairingMethod.PAIRING_METHOD_COP &&
@@ -351,6 +414,18 @@ export const SingleRoundControlFields = (
           {lagDisabledReason}
         </p>
       )}
+      {lagAppliesTo && (
+        <p
+          style={{
+            fontSize: "12px",
+            color: "#666",
+            marginTop: "-8px",
+            marginBottom: "8px",
+          }}
+        >
+          {lagAppliesTo}
+        </p>
+      )}
       <p></p>
       {/* potential additional fields */}
       {addlFields.map((v: PairingMethodField, idx) => {
@@ -473,18 +548,12 @@ export const rdCtrlFromSetting = (
       `${round !== undefined ? `Round ${round} has` : "This round has"} an invalid pairing lag of ${rdCtrl.pairingLag}. The lag must be 0 or 1.`,
     );
   }
-  if (rdCtrl.pairingLag > 0) {
-    const reason = pairingLagDisabledReason(
-      rdCtrl.pairingMethod,
-      round,
-      round,
-      totalRounds,
-    );
-    if (reason) {
-      throw new Error(
-        round !== undefined ? `Round ${round}: ${reason}` : reason,
-      );
-    }
+  // A range's lag skips the rounds that can't have one, such as round 1.
+  if (
+    rdCtrl.pairingLag > 0 &&
+    !laggableRounds(rdCtrl.pairingMethod, round, round, totalRounds)
+  ) {
+    rdCtrl.pairingLag = 0;
   }
 
   switch (rdSetting.pairingMethod) {

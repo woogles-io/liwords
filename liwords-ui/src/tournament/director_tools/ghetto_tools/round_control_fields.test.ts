@@ -10,6 +10,7 @@ import {
   settingsEqual,
 } from "../pairing_methods";
 import {
+  pairingLagAppliesTo,
   pairingLagDisabledReason,
   rdCtrlFromSetting,
 } from "./round_control_fields";
@@ -59,29 +60,29 @@ describe("the pairing lag of a round control", () => {
     );
   });
 
-  it("is not allowed on the first round", () => {
-    expect(() => rdCtrlFromSetting(setting({ pairingLag: 1 }), 7, 1)).toThrow(
-      /first round cannot be lagged/,
+  it("is left off the first round", () => {
+    expect(rdCtrlFromSetting(setting({ pairingLag: 1 }), 7, 1).pairingLag).toBe(
+      0,
     );
   });
 
-  it("is not allowed on an elimination round", () => {
-    expect(() =>
+  it("is left off an elimination round", () => {
+    expect(
       rdCtrlFromSetting(
         setting({ pairingMethod: PairingMethod.ELIMINATION, pairingLag: 1 }),
         7,
         5,
-      ),
-    ).toThrow(/Elimination rounds cannot be lagged/);
+      ).pairingLag,
+    ).toBe(0);
   });
 
-  it("is not allowed on a COP round in the last two rounds", () => {
+  it("is left off COP's last two rounds", () => {
     const cop = setting({
       pairingMethod: PairingMethod.PAIRING_METHOD_COP,
       pairingLag: 1,
     });
-    expect(() => rdCtrlFromSetting(cop, 7, 6)).toThrow(/COP rounds/);
-    expect(() => rdCtrlFromSetting(cop, 7, 7)).toThrow(/COP rounds/);
+    expect(rdCtrlFromSetting(cop, 7, 6).pairingLag).toBe(0);
+    expect(rdCtrlFromSetting(cop, 7, 7).pairingLag).toBe(0);
     expect(rdCtrlFromSetting(cop, 7, 5).pairingLag).toBe(1);
   });
 
@@ -102,15 +103,38 @@ describe("the pairing lag of a round control", () => {
     expect(rdCtrlFromSetting(audraw, 7, 5).pairingLag).toBe(1);
   });
 
-  it("explains a range that starts with the first round", () => {
-    expect(pairingLagDisabledReason(PairingMethod.SWISS, 1, 3, 7)).toMatch(
-      /first round/,
+  it("is allowed on a range that starts with the first round", () => {
+    expect(
+      pairingLagDisabledReason(PairingMethod.SWISS, 1, 3, 7),
+    ).toBeUndefined();
+    expect(pairingLagAppliesTo(PairingMethod.INITIAL_FONTES, 1, 6, 16)).toBe(
+      "This applies to rounds 2–6: round 1 has no round before it.",
     );
   });
 
-  it("explains a COP range that reaches the last two rounds", () => {
+  it("explains a range that is only the first round", () => {
+    expect(pairingLagDisabledReason(PairingMethod.SWISS, 1, 1, 7)).toMatch(
+      /first round cannot be lagged/,
+    );
     expect(
-      pairingLagDisabledReason(PairingMethod.PAIRING_METHOD_COP, 5, 6, 7),
+      pairingLagDisabledReason(PairingMethod.INITIAL_FONTES, 1, 1, 7),
+    ).toMatch(/first round can't start early/);
+  });
+
+  it("says which rounds of a COP range it applies to", () => {
+    expect(
+      pairingLagAppliesTo(PairingMethod.PAIRING_METHOD_COP, 4, 16, 16),
+    ).toBe(
+      "This applies to rounds 4–14: COP's last two rounds use the previous round's results.",
+    );
+    expect(
+      pairingLagAppliesTo(PairingMethod.PAIRING_METHOD_COP, 4, 12, 16),
+    ).toBeUndefined();
+  });
+
+  it("explains a COP range that is only the last two rounds", () => {
+    expect(
+      pairingLagDisabledReason(PairingMethod.PAIRING_METHOD_COP, 6, 7, 7),
     ).toMatch(/COP rounds/);
     expect(
       pairingLagDisabledReason(PairingMethod.PAIRING_METHOD_COP, 4, 5, 7),
