@@ -65,6 +65,16 @@ const intents = [
   },
 ];
 
+const thenMethods = [
+  {
+    value: `${PairingMethod.PAIRING_METHOD_COP}`,
+    label: "COP (recommended)",
+  },
+  { value: `${PairingMethod.WIN_GROUPS}`, label: "Win Groups" },
+];
+
+const teamThenMethods = [{ value: `${PairingMethod.MANUAL}`, label: "Manual" }];
+
 const errorMessage = (e: unknown) =>
   e instanceof ConnectError ? e.rawMessage : String(e);
 
@@ -110,15 +120,26 @@ export const PairingPlanner = (props: Props) => {
 
   const [intent, setIntent] = useState(PlannerIntent.PLANNER_FAIR_START);
   const [rounds, setRounds] = useState(3);
+  // The rounds the division will have, starting from what it has now; blank
+  // if it has none yet, which pre-pairs every round.
+  const [total, setTotal] = useState<number | "">("");
+  useEffect(() => {
+    setTotal(numRounds || "");
+  }, [division, numRounds]);
+  const totalRounds = total === "" ? rounds : total;
   // The whole event pre-pairs every round of the division.
   useEffect(() => {
-    if (intent === PlannerIntent.PLANNER_WHOLE_EVENT && numRounds > 0) {
-      setRounds(numRounds);
+    if (intent === PlannerIntent.PLANNER_WHOLE_EVENT && total !== "") {
+      setRounds(total);
     }
-  }, [intent, numRounds]);
+  }, [intent, total]);
   const [expected, setExpected] = useState<number | "">("");
   // For the Team Round Robin: how many rounds in a row each pair plays.
   const [perOpponent, setPerOpponent] = useState(1);
+  // What pairs the rounds after the pre-paired ones. Teammates can only be
+  // paired by the Team Round Robin or by hand.
+  const [then, setThen] = useState(PairingMethod.PAIRING_METHOD_COP);
+  const thenFor = anyTeams ? PairingMethod.MANUAL : then;
 
   // Memoized, so the debounced value (and the request) only changes when an
   // input does.
@@ -192,8 +213,8 @@ export const PairingPlanner = (props: Props) => {
           </Title>
           <Text c="dimmed" size="sm">
             See how each pre-paired scheme would pair the first rounds of a
-            division, then use the one you want. Nothing changes until you
-            confirm.
+            division, pick what pairs the rest, such as COP, and set it all at
+            once. Nothing changes until you confirm.
           </Text>
         </div>
 
@@ -203,6 +224,7 @@ export const PairingPlanner = (props: Props) => {
               {divisionNames.length > 1 && (
                 <Select
                   label="Division"
+                  description="The one to plan"
                   data={divisionNames}
                   value={division}
                   onChange={(v) => v && setDivision(v)}
@@ -211,20 +233,35 @@ export const PairingPlanner = (props: Props) => {
                 />
               )}
               <NumberInput
-                label="Rounds to pre-pair"
-                // Not capped at the division's rounds: a division without
-                // round controls yet has none, and can still be planned.
+                label="Rounds in the division"
                 description={
-                  numRounds > 0 && (
-                    <Text
-                      span
-                      inherit
-                      c={rounds > numRounds ? "red" : undefined}
-                    >
-                      {rounds > numRounds
-                        ? `More than the division's ${numRounds} rounds`
-                        : `The division has ${numRounds} rounds`}
+                  numRounds === 0
+                    ? total === ""
+                      ? "Not set yet"
+                      : "It has none now"
+                    : total !== numRounds
+                      ? `It has ${numRounds} now`
+                      : "As set now"
+                }
+                placeholder="Not set"
+                min={1}
+                max={50}
+                value={total}
+                onChange={(v) => setTotal(typeof v === "number" ? v : "")}
+                w={180}
+              />
+              <NumberInput
+                label="Rounds to pre-pair"
+                // Not capped at the division's rounds, but flagged when it's
+                // more than them.
+                // Every input has a description, so their labels line up.
+                description={
+                  total !== "" && rounds > total ? (
+                    <Text span inherit c="red">
+                      More than the {total} rounds in the division
                     </Text>
+                  ) : (
+                    "With the scheme below"
                   )
                 }
                 min={1}
@@ -298,6 +335,24 @@ export const PairingPlanner = (props: Props) => {
                 race is close. So you can pre-pair as many rounds as you like,
                 even all but the last one or two, and let COP pair the rest.
               </Text>
+            )}
+            {intent !== PlannerIntent.PLANNER_WHOLE_EVENT && (
+              <Select
+                label="Then pair the rest with"
+                description={
+                  totalRounds > rounds
+                    ? rounds + 1 === totalRounds
+                      ? `Round ${totalRounds}`
+                      : `Rounds ${rounds + 1}–${totalRounds}`
+                    : "Every round is pre-paired. Raise the rounds in the division to use this."
+                }
+                disabled={totalRounds <= rounds}
+                data={anyTeams ? teamThenMethods : thenMethods}
+                value={`${thenFor}`}
+                onChange={(v) => v && setThen(Number(v) as PairingMethod)}
+                allowDeselect={false}
+                w={260}
+              />
             )}
             {intent === PlannerIntent.PLANNER_TWO_TEAMS && !anyTeams && (
               <Alert color="yellow" title="No teams yet">
@@ -423,7 +478,9 @@ export const PairingPlanner = (props: Props) => {
           scheme={applying}
           rounds={request.rounds}
           perOpponent={request.perOpponent}
+          then={thenFor}
           numRounds={numRounds}
+          total={totalRounds}
           hasTeams={anyTeams}
           onClose={() => setApplying(undefined)}
           onDone={(summary) => {
