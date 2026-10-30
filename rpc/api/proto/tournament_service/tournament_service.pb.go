@@ -1000,7 +1000,10 @@ type EditPlayerRequest struct {
 	PlayerId string `protobuf:"bytes,3,opt,name=player_id,json=playerId,proto3" json:"player_id,omitempty"`
 	Rating   *int32 `protobuf:"varint,4,opt,name=rating,proto3,oneof" json:"rating,omitempty"`
 	// Only supported in IRL mode, where a player is identified by their name.
-	NewName       *string `protobuf:"bytes,5,opt,name=new_name,json=newName,proto3,oneof" json:"new_name,omitempty"`
+	NewName *string `protobuf:"bytes,5,opt,name=new_name,json=newName,proto3,oneof" json:"new_name,omitempty"`
+	// The player's team; empty removes them from their team. Teams can't change
+	// once the division has started.
+	Team          *string `protobuf:"bytes,6,opt,name=team,proto3,oneof" json:"team,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1066,6 +1069,13 @@ func (x *EditPlayerRequest) GetRating() int32 {
 func (x *EditPlayerRequest) GetNewName() string {
 	if x != nil && x.NewName != nil {
 		return *x.NewName
+	}
+	return ""
+}
+
+func (x *EditPlayerRequest) GetTeam() string {
+	if x != nil && x.Team != nil {
+		return *x.Team
 	}
 	return ""
 }
@@ -3648,15 +3658,17 @@ const file_proto_tournament_service_tournament_service_proto_rawDesc = "" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12'\n" +
 	"\x0fsource_division\x18\x02 \x01(\tR\x0esourceDivision\x12'\n" +
 	"\x0ftarget_division\x18\x03 \x01(\tR\x0etargetDivision\x12\x1b\n" +
-	"\tplayer_id\x18\x04 \x01(\tR\bplayerId\"\xb1\x01\n" +
+	"\tplayer_id\x18\x04 \x01(\tR\bplayerId\"\xd3\x01\n" +
 	"\x11EditPlayerRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1a\n" +
 	"\bdivision\x18\x02 \x01(\tR\bdivision\x12\x1b\n" +
 	"\tplayer_id\x18\x03 \x01(\tR\bplayerId\x12\x1b\n" +
 	"\x06rating\x18\x04 \x01(\x05H\x00R\x06rating\x88\x01\x01\x12\x1e\n" +
-	"\bnew_name\x18\x05 \x01(\tH\x01R\anewName\x88\x01\x01B\t\n" +
+	"\bnew_name\x18\x05 \x01(\tH\x01R\anewName\x88\x01\x01\x12\x17\n" +
+	"\x04team\x18\x06 \x01(\tH\x02R\x04team\x88\x01\x01B\t\n" +
 	"\a_ratingB\v\n" +
-	"\t_new_name\"\x14\n" +
+	"\t_new_nameB\a\n" +
+	"\x05_team\"\x14\n" +
 	"\x12EditPlayerResponse\"\x91\x01\n" +
 	"\x19TournamentPairingsRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1a\n" +

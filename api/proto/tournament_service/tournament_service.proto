@@ -158,6 +158,9 @@ message EditPlayerRequest {
   optional int32 rating = 4;
   // Only supported in IRL mode, where a player is identified by their name.
   optional string new_name = 5;
+  // The player's team; empty removes them from their team. Teams can't change
+  // once the division has started.
+  optional string team = 6;
 }
 
 message EditPlayerResponse {}

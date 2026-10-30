@@ -111,6 +111,8 @@ const (
 	PairingMethod_AUSTRALIAN_DRAW         PairingMethod = 12
 	PairingMethod_WIN_GROUPS              PairingMethod = 13
 	PairingMethod_SNAKED_ROUND_ROBIN      PairingMethod = 14
+	// Two teams the director assigned (TournamentPerson.team) play each other.
+	PairingMethod_ASSIGNED_TEAM_ROUND_ROBIN PairingMethod = 15
 )
 
 // Enum value maps for PairingMethod.
@@ -131,23 +133,25 @@ var (
 		12: "AUSTRALIAN_DRAW",
 		13: "WIN_GROUPS",
 		14: "SNAKED_ROUND_ROBIN",
+		15: "ASSIGNED_TEAM_ROUND_ROBIN",
 	}
 	PairingMethod_value = map[string]int32{
-		"RANDOM":                  0,
-		"ROUND_ROBIN":             1,
-		"KING_OF_THE_HILL":        2,
-		"ELIMINATION":             3,
-		"FACTOR":                  4,
-		"INITIAL_FONTES":          5,
-		"SWISS":                   6,
-		"QUICKPAIR":               7,
-		"MANUAL":                  8,
-		"TEAM_ROUND_ROBIN":        9,
-		"INTERLEAVED_ROUND_ROBIN": 10,
-		"PAIRING_METHOD_COP":      11,
-		"AUSTRALIAN_DRAW":         12,
-		"WIN_GROUPS":              13,
-		"SNAKED_ROUND_ROBIN":      14,
+		"RANDOM":                    0,
+		"ROUND_ROBIN":               1,
+		"KING_OF_THE_HILL":          2,
+		"ELIMINATION":               3,
+		"FACTOR":                    4,
+		"INITIAL_FONTES":            5,
+		"SWISS":                     6,
+		"QUICKPAIR":                 7,
+		"MANUAL":                    8,
+		"TEAM_ROUND_ROBIN":          9,
+		"INTERLEAVED_ROUND_ROBIN":   10,
+		"PAIRING_METHOD_COP":        11,
+		"AUSTRALIAN_DRAW":           12,
+		"WIN_GROUPS":                13,
+		"SNAKED_ROUND_ROBIN":        14,
+		"ASSIGNED_TEAM_ROUND_ROBIN": 15,
 	}
 )
 
@@ -543,11 +547,14 @@ func (x *ReadyForTournamentGame) GetUnready() bool {
 }
 
 type TournamentPerson struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Rating        int32                  `protobuf:"varint,2,opt,name=rating,proto3" json:"rating,omitempty"`
-	Suspended     bool                   `protobuf:"varint,3,opt,name=suspended,proto3" json:"suspended,omitempty"`
-	CheckedIn     bool                   `protobuf:"varint,4,opt,name=checked_in,json=checkedIn,proto3" json:"checked_in,omitempty"`
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	Id        string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Rating    int32                  `protobuf:"varint,2,opt,name=rating,proto3" json:"rating,omitempty"`
+	Suspended bool                   `protobuf:"varint,3,opt,name=suspended,proto3" json:"suspended,omitempty"`
+	CheckedIn bool                   `protobuf:"varint,4,opt,name=checked_in,json=checkedIn,proto3" json:"checked_in,omitempty"`
+	// The player's team, for a team round robin between teams the director
+	// assigned (ASSIGNED_TEAM_ROUND_ROBIN). Empty for no team.
+	Team          string `protobuf:"bytes,5,opt,name=team,proto3" json:"team,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -608,6 +615,13 @@ func (x *TournamentPerson) GetCheckedIn() bool {
 		return x.CheckedIn
 	}
 	return false
+}
+
+func (x *TournamentPerson) GetTeam() string {
+	if x != nil {
+		return x.Team
+	}
+	return ""
 }
 
 type TournamentPersons struct {
@@ -2377,13 +2391,14 @@ const file_proto_ipc_tournament_proto_rawDesc = "" +
 	"\tplayer_id\x18\x04 \x01(\tR\bplayerId\x12\x1d\n" +
 	"\n" +
 	"game_index\x18\x05 \x01(\x05R\tgameIndex\x12\x18\n" +
-	"\aunready\x18\x06 \x01(\bR\aunready\"w\n" +
+	"\aunready\x18\x06 \x01(\bR\aunready\"\x8b\x01\n" +
 	"\x10TournamentPerson\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x16\n" +
 	"\x06rating\x18\x02 \x01(\x05R\x06rating\x12\x1c\n" +
 	"\tsuspended\x18\x03 \x01(\bR\tsuspended\x12\x1d\n" +
 	"\n" +
-	"checked_in\x18\x04 \x01(\bR\tcheckedIn\"p\n" +
+	"checked_in\x18\x04 \x01(\bR\tcheckedIn\x12\x12\n" +
+	"\x04team\x18\x05 \x01(\tR\x04team\"p\n" +
 	"\x11TournamentPersons\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1a\n" +
 	"\bdivision\x18\x02 \x01(\tR\bdivision\x12/\n" +
@@ -2560,7 +2575,7 @@ const file_proto_ipc_tournament_proto_rawDesc = "" +
 	"\fFORFEIT_LOSS\x10\x06\x12\x0e\n" +
 	"\n" +
 	"ELIMINATED\x10\a\x12\b\n" +
-	"\x04VOID\x10\b*\xa1\x02\n" +
+	"\x04VOID\x10\b*\xc0\x02\n" +
 	"\rPairingMethod\x12\n" +
 	"\n" +
 	"\x06RANDOM\x10\x00\x12\x0f\n" +
@@ -2581,7 +2596,8 @@ const file_proto_ipc_tournament_proto_rawDesc = "" +
 	"\x0fAUSTRALIAN_DRAW\x10\f\x12\x0e\n" +
 	"\n" +
 	"WIN_GROUPS\x10\r\x12\x16\n" +
-	"\x12SNAKED_ROUND_ROBIN\x10\x0e*F\n" +
+	"\x12SNAKED_ROUND_ROBIN\x10\x0e\x12\x1d\n" +
+	"\x19ASSIGNED_TEAM_ROUND_ROBIN\x10\x0f*F\n" +
 	"\vFirstMethod\x12\x10\n" +
 	"\fMANUAL_FIRST\x10\x00\x12\x10\n" +
 	"\fRANDOM_FIRST\x10\x01\x12\x13\n" +

@@ -26,6 +26,8 @@ type PoolMember struct {
 	Wins        int
 	Draws       int
 	Spread      int
+	// Team is the player's assigned team, if any (TournamentPerson.team).
+	Team string
 }
 
 type UnpairedPoolMembers struct {

@@ -1826,7 +1826,7 @@ func TestClassicDivisionSnakedRoundRobin(t *testing.T) {
 					}
 					// The division recorded the firsts the schedule decided.
 					goesFirst, err := pair.TeamRoundRobinGoesFirst(roundControls[round], numPlayers, round,
-						playerIndex, tc.Seed)
+						playerIndex, tc.Seed, nil)
 					is.NoErr(err)
 					is.Equal(goesFirst, pairing.Players[0] == int32(playerIndex))
 				}

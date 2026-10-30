@@ -115,7 +115,7 @@ func TestTeamRoundRobin(t *testing.T) {
 						prevPhasePairingsStr := ""
 						phasePairings := map[string]int{}
 						for round := range maxRound {
-							pairings, err := getTeamRoundRobinPairings(numberOfPlayers, round, gamesPerMatchup, pmethod, false, seed)
+							pairings, err := getTeamRoundRobinPairings(numberOfPlayers, round, gamesPerMatchup, pmethod, false, seed, nil)
 							if numberOfPlayers%2 == 1 && pmethod == pb.PairingMethod_TEAM_ROUND_ROBIN {
 								is.True(err != nil)
 								continue
@@ -438,7 +438,7 @@ func TestTeamRoundRobinPairsAsBefore(t *testing.T) {
 					for round := 0; round < 3*numberOfPlayers*gamesPerMatchup; round++ {
 						want, err := previousTeamRoundRobinPairings(numberOfPlayers, round, gamesPerMatchup, interleave, seed)
 						is.NoErr(err)
-						got, err := getTeamRoundRobinPairings(numberOfPlayers, round, gamesPerMatchup, method, false, seed)
+						got, err := getTeamRoundRobinPairings(numberOfPlayers, round, gamesPerMatchup, method, false, seed, nil)
 						is.NoErr(err)
 						is.Equal(got, want)
 					}
@@ -450,7 +450,7 @@ func TestTeamRoundRobinPairsAsBefore(t *testing.T) {
 
 func TestSnakedTeams(t *testing.T) {
 	is := is.New(t)
-	teamA, teamB, err := getTeams(10, pb.PairingMethod_SNAKED_ROUND_ROBIN)
+	teamA, teamB, err := getTeams(10, pb.PairingMethod_SNAKED_ROUND_ROBIN, nil)
 	is.NoErr(err)
 	is.Equal(teamA, []int{0, 3, 4, 7, 8})
 	is.Equal(teamB, []int{1, 2, 5, 6, 9})
@@ -459,7 +459,7 @@ func TestSnakedTeams(t *testing.T) {
 	// seeds 1, 4 and 5 never meet each other, and each sits out once.
 	byes := map[int]int{}
 	for round := 0; round < 4; round++ {
-		pairings, err := getTeamRoundRobinPairings(7, round, 1, pb.PairingMethod_SNAKED_ROUND_ROBIN, false, 3)
+		pairings, err := getTeamRoundRobinPairings(7, round, 1, pb.PairingMethod_SNAKED_ROUND_ROBIN, false, 3, nil)
 		is.NoErr(err)
 		for player, opponent := range pairings {
 			if opponent == -1 {
@@ -478,7 +478,7 @@ func teamRoundRobinCycle(numberOfPlayers, gamesPerMatchup int, method pb.Pairing
 	if !playWithinTeam {
 		return (numberOfPlayers + 1) / 2 * gamesPerMatchup
 	}
-	teamA, teamB, _ := getTeams(numberOfPlayers, method)
+	teamA, teamB, _ := getTeams(numberOfPlayers, method, nil)
 	cycle := 1
 	for _, team := range [][]int{teamA, teamB} {
 		// A team plays its round robin in an odd number of rounds: one per
@@ -532,7 +532,7 @@ func TestTeamRoundRobinFirsts(t *testing.T) {
 func checkTeamRoundRobinFirsts(t *testing.T, name string, numberOfPlayers, gamesPerMatchup int,
 	method pb.PairingMethod, playWithinTeam bool, maxStreak int, seed uint64) {
 
-	teamA, _, err := getTeams(numberOfPlayers, method)
+	teamA, _, err := getTeams(numberOfPlayers, method, nil)
 	if err != nil {
 		t.Fatal(name, err)
 	}
@@ -552,7 +552,7 @@ func checkTeamRoundRobinFirsts(t *testing.T, name string, numberOfPlayers, games
 
 	for round := 0; round < 4*cycle; round++ {
 		pairings, goesFirst, err := getTeamRoundRobinSchedule(numberOfPlayers, round, gamesPerMatchup,
-			method, playWithinTeam, seed)
+			method, playWithinTeam, seed, nil)
 		if err != nil {
 			t.Fatal(name, err)
 		}
@@ -804,6 +804,93 @@ func TestInitialFontesFirsts(t *testing.T) {
 					for i := 2; i < len(g); i++ {
 						if g[i] == g[i-1] && g[i] == g[i-2] {
 							t.Fatalf("%s: player %d has three in a row ending in round %d", name, player, i)
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+// TestAssignedTeamRoundRobin checks that assigned teams of any sizes play
+// everyone on the other team once a cycle, never a teammate, with the
+// bigger team sitting out the difference, and that everyone alternates firsts
+// and seconds, with at most one double a cycle, ending each cycle within one
+// of even, and that two players who meet in both cycles split their games.
+func TestAssignedTeamRoundRobin(t *testing.T) {
+	for sizeA := 1; sizeA <= 12; sizeA++ {
+		for sizeB := 1; sizeB <= sizeA; sizeB++ {
+			for _, gamesPerMatchup := range []int{1, 2} {
+				for seed := uint64(1); seed < 10; seed++ {
+					n := sizeA + sizeB
+					name := fmt.Sprintf("teams=%d+%d games=%d seed=%d", sizeA, sizeB, gamesPerMatchup, seed)
+					// Mix the teams up in seed order; "Seattle" is the bigger
+					// team, so it's team A even though it sorts second.
+					teams := make([]string, n)
+					rng := rand.New(rand.NewPCG(seed, 9))
+					for i, p := range rng.Perm(n) {
+						teams[p] = "Portland"
+						if i < sizeA {
+							teams[p] = "Seattle"
+						}
+					}
+					cycleLength := sizeA * gamesPerMatchup
+					games := make([][]bool, n)
+					met := map[[2]int]int{}
+					wentFirst := map[[2]int]int{}
+					for round := 0; round < 2*cycleLength; round++ {
+						pairings, firsts, err := getTeamRoundRobinSchedule(n, round, gamesPerMatchup,
+							pb.PairingMethod_ASSIGNED_TEAM_ROUND_ROBIN, false, seed, teams)
+						if err != nil {
+							t.Fatalf("%s: %v", name, err)
+						}
+						byes := 0
+						for p, opp := range pairings {
+							if opp < 0 {
+								byes++
+								if teams[p] != "Seattle" {
+									t.Fatalf("%s round %d: %d on the smaller team sits out", name, round, p)
+								}
+								continue
+							}
+							if teams[p] == teams[opp] {
+								t.Fatalf("%s round %d: teammates %d and %d play", name, round, p, opp)
+							}
+							if firsts[p] == firsts[opp] {
+								t.Fatalf("%s round %d: %d and %d both go first or both second", name, round, p, opp)
+							}
+							games[p] = append(games[p], firsts[p])
+							met[[2]int{p, opp}]++
+							if firsts[p] {
+								wentFirst[[2]int{p, opp}]++
+							}
+						}
+						if byes != sizeA-sizeB {
+							t.Fatalf("%s round %d: %d byes, not %d", name, round, byes, sizeA-sizeB)
+						}
+						if (round+1)%cycleLength == 0 {
+							for p, g := range games {
+								if diff := firstsMinusSeconds(g); diff < -1 || diff > 1 {
+									t.Fatalf("%s: player %d is %d firsts up after round %d", name, p, diff, round)
+								}
+							}
+						}
+					}
+					for p := range n {
+						for q := range n {
+							if teams[p] != teams[q] && met[[2]int{p, q}] != 2*gamesPerMatchup {
+								t.Fatalf("%s: %d and %d met %d times, not %d", name, p, q, met[[2]int{p, q}], 2*gamesPerMatchup)
+							}
+							if teams[p] != teams[q] && wentFirst[[2]int{p, q}] != gamesPerMatchup {
+								t.Fatalf("%s: %d went first against %d in %d of %d games", name, p, q, wentFirst[[2]int{p, q}], 2*gamesPerMatchup)
+							}
+						}
+					}
+					for p, g := range games {
+						for i := 2; i < len(g); i++ {
+							if g[i] == g[i-1] && g[i] == g[i-2] {
+								t.Fatalf("%s: player %d has three in a row ending at game %d of %v", name, p, i, g)
+							}
 						}
 					}
 				}

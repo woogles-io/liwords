@@ -737,11 +737,21 @@ func (t *ClassicDivision) SubmitResult(round int,
 	return pmessage, nil
 }
 
+// playerTeams lists each player's team, in player order.
+func (t *ClassicDivision) playerTeams() []string {
+	teams := make([]string, len(t.Players.Persons))
+	for i, p := range t.Players.Persons {
+		teams[i] = p.Team
+	}
+	return teams
+}
+
 func isRoundDependent(pm pb.PairingMethod) bool {
 	return pm == pb.PairingMethod_ROUND_ROBIN ||
 		pm == pb.PairingMethod_TEAM_ROUND_ROBIN ||
 		pm == pb.PairingMethod_INTERLEAVED_ROUND_ROBIN ||
 		pm == pb.PairingMethod_SNAKED_ROUND_ROBIN ||
+		pm == pb.PairingMethod_ASSIGNED_TEAM_ROUND_ROBIN ||
 		pm == pb.PairingMethod_INITIAL_FONTES
 }
 
@@ -938,7 +948,8 @@ func (t *ClassicDivision) pairRound(round int, preserveByes bool) (*pb.DivisionP
 		poolMembers = append(poolMembers, &entity.PoolMember{Id: playerOrder[i].PlayerId,
 			Wins:   int(playerOrder[i].Wins),
 			Draws:  int(playerOrder[i].Draws),
-			Spread: int(playerOrder[i].Spread)})
+			Spread: int(playerOrder[i].Spread),
+			Team:   t.Players.Persons[t.PlayerIndexMap[playerOrder[i].PlayerId]].Team})
 	}
 
 	gibsonPairedPlayers := make(map[string]bool)
@@ -2276,12 +2287,13 @@ func newClassicPairing(t *ClassicDivision,
 		switchFirst = !goesFirst
 	} else if pm := t.RoundControls[round].PairingMethod; pm == pb.PairingMethod_TEAM_ROUND_ROBIN ||
 		pm == pb.PairingMethod_INTERLEAVED_ROUND_ROBIN ||
-		pm == pb.PairingMethod_SNAKED_ROUND_ROBIN {
+		pm == pb.PairingMethod_SNAKED_ROUND_ROBIN ||
+		pm == pb.PairingMethod_ASSIGNED_TEAM_ROUND_ROBIN {
 		// The schedule that paired the round also says who goes first.
 		// Players are paired in player order for these methods, so player
 		// indexes are the schedule's indexes.
 		goesFirst, err := pair.TeamRoundRobinGoesFirst(t.RoundControls[round], numPlayers, round,
-			int(playerOne), t.Seed)
+			int(playerOne), t.Seed, t.playerTeams())
 		if err != nil {
 			log.Err(err).Str("division", t.DivisionName).Int("round", round).Msg("team-round-robin-firsts")
 		}
