@@ -1417,7 +1417,8 @@ func TestScenarioMultiRound_AlbanyCSWJuly2026_LastQuarter(t *testing.T) {
 
 	base := pairtestutils.CreateAlbanyCSWJuly2026Round28PairRequest()
 
-	// Last quarter: rounds 22-28 of 28 (roundPairingsRemaining*4 <= Rounds starting at round 22).
+	// Last quarter: rounds 22-28 of 28 (round X of N with X/N > 3/4, so starting
+	// at round floor(3N/4)+1 = 22).
 	for round := int(base.Rounds)*3/4 + 1; round <= int(base.Rounds); round++ {
 		gibsonSpread := int32(scenarioGibsonSpread)
 		if round == int(base.Rounds) {
@@ -1485,10 +1486,16 @@ func makeRandomResults(pairings []int32, numPlayers int, rng *rand.Rand, spreads
 }
 
 // numResultsForRound returns how many past results to include when pairing the given
-// 1-indexed round, honouring the 1-behind / 2-behind timing rule.
+// 1-indexed round, honouring the July 4th 1-behind / 2-behind timing rule.
 func numResultsForRound(roundNum int, available int) int {
+	return numResultsForRoundWithTiming(roundNum, available, july4thOneBehindRounds)
+}
+
+// numResultsForRoundWithTiming is numResultsForRound for an event whose
+// 1-behind rounds are oneBehindRounds; every other round is paired 2 behind.
+func numResultsForRoundWithTiming(roundNum int, available int, oneBehindRounds map[int]bool) int {
 	behind := 2
-	if july4thOneBehindRounds[roundNum] {
+	if oneBehindRounds[roundNum] {
 		behind = 1
 	}
 	n := roundNum - behind
@@ -1588,6 +1595,109 @@ func TestScenarioMultiRound_July4th2026(t *testing.T) {
 			is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
 			fmt.Printf("July 4th 2026 run %d round %d pairings: %v\n", run+1, round, resp.Pairings)
 			writeScenarioLog(t, fmt.Sprintf("%s/round_%02d.log", runDir, round), resp.Log)
+
+			pairings := make([]int32, numPlayers)
+			copy(pairings, resp.Pairings)
+			allPairings = append(allPairings, &pb.RoundPairings{Pairings: pairings})
+			allResults = append(allResults, makeRandomResults(pairings, numPlayers, rng, spreadsDist))
+		}
+	}
+}
+
+// lakeGeorgeCSWOneBehindRounds lists the 1-indexed rounds of the Lake George
+// CSW Main Event that are paired 1 game behind; all other rounds are paired 2
+// behind. Taken from the timestamped a.t snapshots of the 2022 edition, which
+// had the same 15-round schedule: round 4 was paired from round 3's results
+// (together with round 5), round 8 from round 7's (together with round 9),
+// and rounds 12-15 one behind.
+var lakeGeorgeCSWOneBehindRounds = map[int]bool{
+	1: true, 4: true, 8: true, 12: true, 13: true, 14: true, 15: true,
+}
+
+// Lake George 2026 CSW Main Event, Division A: 20 players, 15 rounds, 3 rounds
+// of Initial Fontes then 12 rounds of COP, using the Division A players in seed
+// order from scrabbleplayers.org/directors/AA003954/2026-10-16-LakeGeorge-CSW-ME.
+// Prizes match the event: 4 place prizes and 1 class prize for class B (seeds
+// 11-20). Results are random, and pairings follow the event's real timing (see
+// lakeGeorgeCSWOneBehindRounds).
+// Run with: COP_SCENARIOS=1 go test -run TestScenarioMultiRound_LakeGeorgeCSW2026
+func TestScenarioMultiRound_LakeGeorgeCSW2026(t *testing.T) {
+	if os.Getenv("COP_SCENARIOS") == "" {
+		t.Skip("Skipping Lake George CSW 2026 scenario test. Set COP_SCENARIOS=1 to run.")
+	}
+	is := is.New(t)
+	spreadsDist := standings.GetScoreDifferences()
+
+	const numRuns = 10
+
+	numPlayers := 20
+	totalRounds := 15
+	fontesRounds := 3
+
+	names := []string{
+		"Will Anderson", "Joshua Castellano", "Matthew Tunnicliffe", "Matthew O'Connor",
+		"Nsikak Etim", "Ben Schoenbrun", "Dennis Ikekeregor", "Kevin Fraley",
+		"Jason Keller", "Stefan Rau", "Bradley Whitmarsh", "Niel Gan",
+		"Laurie Cohen", "Nitya Chagti", "Jamie Ryan", "Michael Thelen",
+		"Jason Ubeika", "Mark Francillon", "Daniel Blake", "Shafique Thobani",
+	}
+	// Seeds 1-10 are class A (class index 0); seeds 11-20 are class B (1).
+	classes := make([]int32, numPlayers)
+	for i := 10; i < numPlayers; i++ {
+		classes[i] = 1
+	}
+
+	for run := 0; run < numRuns; run++ {
+		seed := time.Now().UnixNano()
+		rng := rand.New(rand.NewSource(uint64(seed)))
+		runDir := fmt.Sprintf("lakegeorge_csw2026_run_%02d", run+1)
+
+		req := &pb.PairRequest{
+			PairMethod:                 pb.PairMethod_COP,
+			PlayerNames:                names,
+			PlayerClasses:              classes,
+			ClassPrizes:                []int32{1},
+			GibsonSpread:               scenarioGibsonSpread,
+			ControlLossThreshold:       0.40,
+			HopefulnessThreshold:       scenarioHopefulness,
+			AllPlayers:                 int32(numPlayers),
+			ValidPlayers:               int32(numPlayers),
+			Rounds:                     int32(totalRounds),
+			PlacePrizes:                4,
+			DivisionSims:               scenarioDivisionSims,
+			ControlLossSims:            scenarioControlLossSims,
+			TopDownByes:                true,
+			ControlLossActivationRound: 11,
+			AllowRepeatByes:            false,
+			InitialNonperfRounds:       int32(fontesRounds),
+			Seed:                       seed,
+		}
+
+		allPairings := []*pb.RoundPairings{}
+		allResults := []*pb.RoundResults{}
+
+		// Rounds 1-3 use Initial Fontes; rounds 4-15 use COP, with the event's timing.
+		for round := 1; round <= totalRounds; round++ {
+			numRes := numResultsForRoundWithTiming(round, len(allResults), lakeGeorgeCSWOneBehindRounds)
+
+			if round <= fontesRounds {
+				req.PairMethod = pb.PairMethod_PAIR_INITIAL_FONTES
+			} else {
+				req.PairMethod = pb.PairMethod_COP
+			}
+			req.DivisionPairings = allPairings
+			req.DivisionResults = allResults[:numRes]
+
+			if round == totalRounds {
+				req.GibsonSpread = scenarioLastRoundGibsonSpread
+			} else {
+				req.GibsonSpread = scenarioGibsonSpread
+			}
+
+			resp := cop.COPPair(req)
+			writeScenarioLog(t, fmt.Sprintf("%s/round_%02d.log", runDir, round), resp.Log)
+			is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+			fmt.Printf("Lake George CSW 2026 run %d round %d pairings: %v\n", run+1, round, resp.Pairings)
 
 			pairings := make([]int32, numPlayers)
 			copy(pairings, resp.Pairings)

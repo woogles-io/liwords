@@ -499,14 +499,19 @@ func initialFontesGroups(numberOfPlayers int, numberOfNtiles int, seed uint64) [
 		groupings = append(groupings, []int{})
 	}
 
+	// Which player in each N-tile (or mini-group, below) goes to which group
+	// is randomized. This must depend on the seed alone, not the round, so
+	// that every fontes round builds the same groups.
+	rng := rand.New(rand.NewPCG(seed, initialFontesGroupingStream))
+
 	if numberOfRemainingPlayers == 0 {
-		// Evenly divides into sizeOfNtiles standard-size groups; distribute
-		// players across them round robin.
-		currentGroup := 0
-		for i := 0; i < numberOfPlayers; i++ {
-			groupings[currentGroup] = append(groupings[currentGroup], i)
-			currentGroup = (currentGroup + 1) % sizeOfNtiles
+		// Evenly divides into sizeOfNtiles standard-size groups, each taking
+		// one random player from every N-tile.
+		players := make([]int, numberOfPlayers)
+		for i := range players {
+			players[i] = i
 		}
+		distributeNtilesAcrossGroups(groupings, players, rng)
 	} else {
 		// There's a remainder, so one group (the last) will be oversized by
 		// numberOfRemainingPlayers to absorb it, e.g. quartiles (numberOfNtiles=4)
@@ -516,35 +521,37 @@ func initialFontesGroups(numberOfPlayers int, numberOfNtiles int, seed uint64) [
 		// tail of the standings, spread them across the whole field: split the
 		// ranked player list into oversizedGroupSize evenly-sized mini-groups
 		// (any leftover from an uneven split is distributed across the first
-		// few mini-groups), and take the single worst-ranked player from each
-		// mini-group into the oversized group. The rest of each mini-group is
-		// distributed round robin across the other sizeOfNtiles-1 standard-size
-		// groups. E.g. 18 players, numberOfNtiles=4: 6 mini-groups of 3 ranks
-		// each (1-3, 4-6, ..., 16-18); the oversized group ends up with ranks
-		// 3, 6, 9, 12, 15, 18 - the bottom player of each mini-group.
+		// few mini-groups), and take a single random player from each
+		// mini-group into the oversized group. The rest of the players, in
+		// rank order, are split into N-tiles across the other sizeOfNtiles-1
+		// standard-size groups, each of which takes one random player from
+		// every N-tile. E.g. 18 players, numberOfNtiles=4: 6 mini-groups of 3
+		// ranks each (1-3, 4-6, ..., 16-18); the oversized group ends up with
+		// one of ranks 1-3, one of ranks 4-6, and so on.
 		oversizedGroupIdx := sizeOfNtiles - 1
 		oversizedGroupSize := numberOfNtiles + numberOfRemainingPlayers
 		numberOfMiniGroups := oversizedGroupSize
 		baseMiniGroupSize := numberOfPlayers / numberOfMiniGroups
 		extraMiniGroups := numberOfPlayers % numberOfMiniGroups
 
-		currentGroup := 0
+		standardGroupPlayers := []int{}
 		playerIdx := 0
 		for m := 0; m < numberOfMiniGroups; m++ {
 			miniGroupSize := baseMiniGroupSize
 			if m < extraMiniGroups {
 				miniGroupSize++
 			}
+			oversizedPick := rng.IntN(miniGroupSize)
 			for k := 0; k < miniGroupSize; k++ {
-				if k == miniGroupSize-1 {
+				if k == oversizedPick {
 					groupings[oversizedGroupIdx] = append(groupings[oversizedGroupIdx], playerIdx)
 				} else {
-					groupings[currentGroup] = append(groupings[currentGroup], playerIdx)
-					currentGroup = (currentGroup + 1) % oversizedGroupIdx
+					standardGroupPlayers = append(standardGroupPlayers, playerIdx)
 				}
 				playerIdx++
 			}
 		}
+		distributeNtilesAcrossGroups(groupings[:oversizedGroupIdx], standardGroupPlayers, rng)
 	}
 	return groupings
 }
@@ -623,6 +630,28 @@ func InitialFontesGoesFirst(numberOfPlayers, numberOfNtiles, round, player int, 
 		return !aGoesFirst(((seat/2-round)%k + k) % k), nil
 	}
 	return false, fmt.Errorf("player %d is in no initial fontes group", player)
+}
+
+// initialFontesGroupingStream is the PCG stream used to randomize Initial
+// Fontes group membership, kept distinct from the stream
+// GetRoundRobinPairings uses with the same seed.
+const initialFontesGroupingStream = 1
+
+// distributeNtilesAcrossGroups splits rankedPlayers (in rank order) into
+// consecutive N-tiles of len(groupings) players each, and gives every group
+// one randomly chosen player from each N-tile. Each group's players stay in
+// rank order. len(rankedPlayers) must be a multiple of len(groupings).
+func distributeNtilesAcrossGroups(groupings [][]int, rankedPlayers []int, rng *rand.Rand) {
+	numGroups := len(groupings)
+	for start := 0; start < len(rankedPlayers); start += numGroups {
+		ntile := slices.Clone(rankedPlayers[start : start+numGroups])
+		rng.Shuffle(len(ntile), func(i, j int) {
+			ntile[i], ntile[j] = ntile[j], ntile[i]
+		})
+		for g, player := range ntile {
+			groupings[g] = append(groupings[g], player)
+		}
+	}
 }
 
 // initialFontesFirstsStream is the PCG stream InitialFontesGoesFirst uses to
