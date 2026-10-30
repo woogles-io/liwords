@@ -88,6 +88,7 @@ export const fieldsForMethod = (
       break;
 
     case PairingMethod.TEAM_ROUND_ROBIN:
+    case PairingMethod.ASSIGNED_TEAM_ROUND_ROBIN:
       fields.push([
         "number",
         "gamesPerRound",

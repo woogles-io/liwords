@@ -825,13 +825,13 @@ func TestIRLRenameKeepsScorecardToken(t *testing.T) {
 	token := strings.Split(bobID, ":")[0]
 
 	newName := "Robert"
-	is.NoErr(tournament.EditPlayer(ctx, tstore, us, ty.UUID, "A", "Bob", nil, &newName))
+	is.NoErr(tournament.EditPlayer(ctx, tstore, us, ty.UUID, "A", "Bob", nil, &newName, nil))
 	is.Equal(idOf("Robert"), token+":Robert")
 	is.Equal(idOf("Bob"), "")
 
 	// Robert can be found by his new name, and the old one is free again.
 	rating := int32(1600)
-	is.NoErr(tournament.EditPlayer(ctx, tstore, us, ty.UUID, "A", "Robert", &rating, nil))
+	is.NoErr(tournament.EditPlayer(ctx, tstore, us, ty.UUID, "A", "Robert", &rating, nil, nil))
 	is.NoErr(tournament.AddPlayers(ctx, tstore, us, ty.UUID, "A",
 		makeTournamentPersons(map[string]int32{"Bob": 1000})))
 	// The new Bob can't reuse md5("Bob"): Robert still holds it.
@@ -840,8 +840,8 @@ func TestIRLRenameKeepsScorecardToken(t *testing.T) {
 
 	// Names must be non-empty and stay unique.
 	blank := "   "
-	is.True(tournament.EditPlayer(ctx, tstore, us, ty.UUID, "A", "Carol", nil, &blank) != nil)
-	is.True(tournament.EditPlayer(ctx, tstore, us, ty.UUID, "A", "Carol", nil, &newName) != nil)
+	is.True(tournament.EditPlayer(ctx, tstore, us, ty.UUID, "A", "Carol", nil, &blank, nil) != nil)
+	is.True(tournament.EditPlayer(ctx, tstore, us, ty.UUID, "A", "Carol", nil, &newName, nil) != nil)
 	// Both rejected renames left Carol alone.
 	is.True(idOf("Carol") != "")
 	is.True(tournament.AddPlayers(ctx, tstore, us, ty.UUID, "A",

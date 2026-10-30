@@ -545,4 +545,21 @@ export const errorMap: Map<number, string> = new Map<number, string>([
     1110,
     "Round $3 could not be paired automatically, so it kept the pairings it had. Use Pair entire round to pair it and see why.",
   ],
+  [
+    1111,
+    "Some players have teams, so teammates must never play each other: round $3 must use the Team Round Robin or Manual pairings. Remove the teams to use other pairings.",
+  ],
+  [
+    1112,
+    "$3 player(s) have no team. Every player needs a team for the Team Round Robin.",
+  ],
+  [1113, "The Team Round Robin needs exactly two teams; this division has $3."],
+  [
+    1114,
+    "Round $3 uses the Team Round Robin, which can't play within teams: teammates never play each other.",
+  ],
+  [
+    1115,
+    "Teams can't change once the division has started, and players can't join a division with teams after it starts.",
+  ],
 ]);

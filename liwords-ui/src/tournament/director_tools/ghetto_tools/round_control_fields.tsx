@@ -130,10 +130,12 @@ export const SingleRoundControlFields = (
           other half.
         </li>
         <li>
-          - <strong>Team (Top vs Bottom):</strong> These pairings split the
-          division into its top and bottom halves by seed, and each player in
-          one half plays a round robin against every player in the other half.
-          The division needs an even number of players.
+          - <strong>Team Round Robin:</strong> Each player on one team plays a
+          round robin against every player on the other team, using the teams
+          you give players (for example, Portland vs Seattle). Teammates never
+          play each other. If one team is bigger, its players sit out the
+          difference in byes. Once players have teams, every round must use this
+          or Manual pairings.
         </li>
         <li>
           - <strong>King of the hill:</strong> These pairings pair 1v2, 3v4,
@@ -230,8 +232,14 @@ export const SingleRoundControlFields = (
           </Select.Option>
           <Select.Option value={PairingMethod.FACTOR}>Factor</Select.Option>
           <Select.Option value={PairingMethod.MANUAL}>Manual</Select.Option>
-          <Select.Option value={PairingMethod.TEAM_ROUND_ROBIN}>
-            Team (Top vs Bottom) Round Robin
+          <Select.Option value={PairingMethod.ASSIGNED_TEAM_ROUND_ROBIN}>
+            Team Round Robin
+          </Select.Option>
+          {/* Retired in favor of the Team Round Robin between assigned
+              teams. Still listed, so divisions that used it show it, but it
+              can't be picked. */}
+          <Select.Option value={PairingMethod.TEAM_ROUND_ROBIN} disabled>
+            Top vs Bottom Round Robin (retired)
           </Select.Option>
         </Select>
       </Form.Item>
@@ -469,6 +477,7 @@ export const rdCtrlFromSetting = (
       break;
 
     case PairingMethod.TEAM_ROUND_ROBIN:
+    case PairingMethod.ASSIGNED_TEAM_ROUND_ROBIN:
       rdCtrl.gamesPerRound = rdSetting.gamesPerRound || 1;
       break;
 

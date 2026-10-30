@@ -45,6 +45,8 @@ func Pair(members *entity.UnpairedPoolMembers) ([]int, error) {
 		pairings, err = pairWinGroups(members)
 	} else if pm == pb.PairingMethod_SNAKED_ROUND_ROBIN {
 		pairings, err = pairSnakedRoundRobin(members)
+	} else if pm == pb.PairingMethod_ASSIGNED_TEAM_ROUND_ROBIN {
+		pairings, err = pairAssignedTeamRoundRobin(members)
 	} else {
 		// The remaining pairing methods are solved by
 		// reduction to minimum weight matching
@@ -99,21 +101,36 @@ func pairRoundRobin(members *entity.UnpairedPoolMembers) ([]int, error) {
 
 func pairTeamRoundRobin(members *entity.UnpairedPoolMembers) ([]int, error) {
 	return getTeamRoundRobinPairings(len(members.PoolMembers), int(members.RoundControls.Round),
-		int(members.RoundControls.GamesPerRound), pb.PairingMethod_TEAM_ROUND_ROBIN, false, members.Seed)
+		int(members.RoundControls.GamesPerRound), pb.PairingMethod_TEAM_ROUND_ROBIN, false, members.Seed, nil)
 }
 
 func pairInterleavedRoundRobin(members *entity.UnpairedPoolMembers) ([]int, error) {
 	// This is a special case of the team round robin function. Perhaps the function
 	// should be renamed slightly.
 	return getTeamRoundRobinPairings(len(members.PoolMembers), int(members.RoundControls.Round),
-		1, pb.PairingMethod_INTERLEAVED_ROUND_ROBIN, members.RoundControls.PlayWithinTeam, members.Seed)
+		1, pb.PairingMethod_INTERLEAVED_ROUND_ROBIN, members.RoundControls.PlayWithinTeam, members.Seed, nil)
 
 }
 
 func pairSnakedRoundRobin(members *entity.UnpairedPoolMembers) ([]int, error) {
 	return getTeamRoundRobinPairings(len(members.PoolMembers), int(members.RoundControls.Round),
 		int(members.RoundControls.GamesPerRound), pb.PairingMethod_SNAKED_ROUND_ROBIN,
-		members.RoundControls.PlayWithinTeam, members.Seed)
+		members.RoundControls.PlayWithinTeam, members.Seed, nil)
+}
+
+func pairAssignedTeamRoundRobin(members *entity.UnpairedPoolMembers) ([]int, error) {
+	return getTeamRoundRobinPairings(len(members.PoolMembers), int(members.RoundControls.Round),
+		int(members.RoundControls.GamesPerRound), pb.PairingMethod_ASSIGNED_TEAM_ROUND_ROBIN,
+		members.RoundControls.PlayWithinTeam, members.Seed, PoolMemberTeams(members.PoolMembers))
+}
+
+// PoolMemberTeams lists each pool member's team, in order.
+func PoolMemberTeams(poolMembers []*entity.PoolMember) []string {
+	teams := make([]string, len(poolMembers))
+	for i, pm := range poolMembers {
+		teams[i] = pm.Team
+	}
+	return teams
 }
 
 func pairKingOfTheHill(members *entity.UnpairedPoolMembers) ([]int, error) {
@@ -832,28 +849,31 @@ func RoundRobinGoesFirst(numberOfPlayers, round, player int, seed uint64) (bool,
 }
 
 func getTeamRoundRobinPairings(numberOfPlayers, round, gamesPerMatchup int, method pb.PairingMethod, playWithinTeam bool,
-	seed uint64) ([]int, error) {
-	pairings, _, err := getTeamRoundRobinSchedule(numberOfPlayers, round, gamesPerMatchup, method, playWithinTeam, seed)
+	seed uint64, teams []string) ([]int, error) {
+	pairings, _, err := getTeamRoundRobinSchedule(numberOfPlayers, round, gamesPerMatchup, method, playWithinTeam, seed, teams)
 	return pairings, err
 }
 
 // TeamRoundRobinGamesPerMatchup is how many rounds in a row the team-style
 // round robin of rc pairs the same two players.
 func TeamRoundRobinGamesPerMatchup(rc *pb.RoundControl) int {
-	if rc.PairingMethod == pb.PairingMethod_TEAM_ROUND_ROBIN {
+	if rc.PairingMethod == pb.PairingMethod_TEAM_ROUND_ROBIN ||
+		rc.PairingMethod == pb.PairingMethod_ASSIGNED_TEAM_ROUND_ROBIN {
 		return int(rc.GamesPerRound)
 	}
 	return 1
 }
 
 // TeamRoundRobinGoesFirst says whether player goes first in round of the
-// team-style round robin (team, interleaved or snaked) that rc describes.
-// The schedule decides firsts along with opponents, so that over the round
-// robin every player's firsts and seconds stay even; see
+// team-style round robin (team, interleaved, snaked or assigned teams) that
+// rc describes. teams is each player's team, for assigned teams, and may be
+// nil otherwise. The schedule decides firsts along with opponents, so that
+// over the round robin every player's firsts and seconds stay even; see
 // getTeamRoundRobinSchedule.
-func TeamRoundRobinGoesFirst(rc *pb.RoundControl, numberOfPlayers, round, player int, seed uint64) (bool, error) {
+func TeamRoundRobinGoesFirst(rc *pb.RoundControl, numberOfPlayers, round, player int, seed uint64,
+	teams []string) (bool, error) {
 	_, firsts, err := getTeamRoundRobinSchedule(numberOfPlayers, round, TeamRoundRobinGamesPerMatchup(rc),
-		rc.PairingMethod, rc.PlayWithinTeam, seed)
+		rc.PairingMethod, rc.PlayWithinTeam, seed, teams)
 	if err != nil {
 		return false, err
 	}
@@ -864,10 +884,39 @@ func TeamRoundRobinGoesFirst(rc *pb.RoundControl, numberOfPlayers, round, player
 }
 
 // getTeams splits players 0 through numberOfPlayers-1, who are in seed
-// order, into the two teams of a team-style round robin.
-func getTeams(numberOfPlayers int, method pb.PairingMethod) ([]int, []int, error) {
+// order, into the two teams of a team-style round robin. For assigned teams,
+// teams is each player's team, and team A is the bigger one.
+func getTeams(numberOfPlayers int, method pb.PairingMethod, teams []string) ([]int, []int, error) {
 	teamA, teamB := []int{}, []int{}
 	switch method {
+	case pb.PairingMethod_ASSIGNED_TEAM_ROUND_ROBIN:
+		if len(teams) != numberOfPlayers {
+			return nil, nil, fmt.Errorf("have teams for %d of %d players", len(teams), numberOfPlayers)
+		}
+		names := []string{}
+		for i, team := range teams {
+			if team == "" {
+				return nil, nil, fmt.Errorf("player %d has no team", i)
+			}
+			if !slices.Contains(names, team) {
+				names = append(names, team)
+			}
+		}
+		if len(names) != 2 {
+			return nil, nil, fmt.Errorf("an assigned team round robin needs two teams, not %d", len(names))
+		}
+		// Either way round would do; this makes it the same every time.
+		slices.Sort(names)
+		for i, team := range teams {
+			if team == names[0] {
+				teamA = append(teamA, i)
+			} else {
+				teamB = append(teamB, i)
+			}
+		}
+		if len(teamA) < len(teamB) {
+			teamA, teamB = teamB, teamA
+		}
 	case pb.PairingMethod_TEAM_ROUND_ROBIN:
 		// Top half against bottom half.
 		if numberOfPlayers%2 == 1 {
@@ -929,15 +978,19 @@ func getTeams(numberOfPlayers int, method pb.PairingMethod) ([]int, []int, error
 //   - Repeated games between the same two players (gamesPerMatchup) swap who
 //     goes first each time.
 func getTeamRoundRobinSchedule(numberOfPlayers, round, gamesPerMatchup int, method pb.PairingMethod,
-	playWithinTeam bool, seed uint64) ([]int, []bool, error) {
+	playWithinTeam bool, seed uint64, teams []string) ([]int, []bool, error) {
 
 	if method == pb.PairingMethod_TEAM_ROUND_ROBIN && playWithinTeam {
 		return nil, nil, errors.New("cannot play within team in team round robin pairings")
 	}
+	if method == pb.PairingMethod_ASSIGNED_TEAM_ROUND_ROBIN && playWithinTeam {
+		// Teammates never play each other in an assigned team round robin.
+		return nil, nil, errors.New("cannot play within team in assigned team round robin pairings")
+	}
 	if gamesPerMatchup < 1 {
 		return nil, nil, fmt.Errorf("games per matchup must be at least 1, not %d", gamesPerMatchup)
 	}
-	teamA, teamB, err := getTeams(numberOfPlayers, method)
+	teamA, teamB, err := getTeams(numberOfPlayers, method, teams)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -954,11 +1007,12 @@ func getTeamRoundRobinSchedule(numberOfPlayers, round, gamesPerMatchup int, meth
 	rng := rand.New(rand.NewPCG(seed, 0))
 	bye := numberOfPlayers
 
-	// play records a game, or a bye if either player is the bye.
+	// play records a game, or a bye if either player is a bye. Every seat
+	// numbered from bye up is a bye.
 	play := func(first, second int) {
-		if first == bye {
+		if first >= bye {
 			pairings[second] = -1
-		} else if second == bye {
+		} else if second >= bye {
 			pairings[first] = -1
 		} else {
 			pairings[first] = second
@@ -969,8 +1023,8 @@ func getTeamRoundRobinSchedule(numberOfPlayers, round, gamesPerMatchup int, meth
 
 	if !playWithinTeam {
 		// An odd number of players means one team is a player short; the bye
-		// fills that team's last seat.
-		if numberOfPlayers%2 == 1 {
+		// fills that team's last seat. (Assigned teams get theirs below.)
+		if numberOfPlayers%2 == 1 && method != pb.PairingMethod_ASSIGNED_TEAM_ROUND_ROBIN {
 			if len(teamA) < len(teamB) {
 				teamA = append(teamA, bye)
 			} else {
@@ -978,11 +1032,30 @@ func getTeamRoundRobinSchedule(numberOfPlayers, round, gamesPerMatchup int, meth
 			}
 		}
 		m := len(teamA)
-		shuffledB := slices.Clone(teamB)
-		rng.Shuffle(m, func(i, j int) {
-			shuffledB[i], shuffledB[j] = shuffledB[j], shuffledB[i]
-		})
-		byeSeat := slices.Index(shuffledB, bye)
+		var shuffledB []int
+		byeSeat := -1
+		if method == pb.PairingMethod_ASSIGNED_TEAM_ROUND_ROBIN {
+			// Assigned teams can differ in size by any number, so team B (the
+			// smaller one) gets as many bye seats as it needs, side by side:
+			// every player on team A sits out that many rounds in a row, and
+			// counting seats from the first bye seat keeps firsts even below.
+			shuffledB = slices.Clone(teamB)
+			rng.Shuffle(len(shuffledB), func(i, j int) {
+				shuffledB[i], shuffledB[j] = shuffledB[j], shuffledB[i]
+			})
+			if len(shuffledB) < m {
+				byeSeat = len(shuffledB)
+			}
+			for seat := bye; len(shuffledB) < m; seat++ {
+				shuffledB = append(shuffledB, seat)
+			}
+		} else {
+			shuffledB = slices.Clone(teamB)
+			rng.Shuffle(m, func(i, j int) {
+				shuffledB[i], shuffledB[j] = shuffledB[j], shuffledB[i]
+			})
+			byeSeat = slices.Index(shuffledB, bye)
+		}
 		// The seed picks which team starts, so that the top seed doesn't
 		// always go first in the first round.
 		bStarts := rng.IntN(2) == 1
@@ -996,10 +1069,19 @@ func getTeamRoundRobinSchedule(numberOfPlayers, round, gamesPerMatchup int, meth
 			// round robins' pairings predate this and are kept as they were.
 			rotation = m - 1 - rotation
 		}
+		if method == pb.PairingMethod_ASSIGNED_TEAM_ROUND_ROBIN && cycle%2 == 1 {
+			// Every other cycle is the one before it backwards, games
+			// against the same player included, and with firsts flipped
+			// below: each player's games read the same either way with
+			// firsts and seconds swapped, so nobody gets three in a row
+			// across the turn, and each pair splits their games.
+			rotation = m - 1 - rotation
+			game = gamesPerMatchup - 1 - game
+		}
 		for i := 0; i < m; i++ {
 			s := (rotation + m - 1 - i) % m
 			var aFirst bool
-			if byeSeat >= 0 && m%2 == 1 {
+			if method == pb.PairingMethod_ASSIGNED_TEAM_ROUND_ROBIN || (byeSeat >= 0 && m%2 == 1) {
 				// Team B has the bye seat and an odd number of seats, so team
 				// A's players each play one round fewer than there are, and
 				// alternating by round would leave a player who sits out a
@@ -1010,7 +1092,12 @@ func getTeamRoundRobinSchedule(numberOfPlayers, round, gamesPerMatchup int, meth
 				// still alternate, and team A comes out even every cycle.
 				// Team B's players are a first or second off, so every other
 				// cycle is flipped.
-				aFirst = (i+(s-byeSeat+m)%m+game)%2 == 0
+				//
+				// Assigned teams use this whatever the number of seats, with
+				// any number of bye seats in a row, or none: team A's players
+				// play the seats after the byes, which alternate, so they stay
+				// even or one off with at most one double, as do team B's.
+				aFirst = (i+(s-max(byeSeat, 0)+m)%m+game)%2 == 0
 				if cycle%2 == 1 {
 					aFirst = !aFirst
 				}
@@ -1104,6 +1191,7 @@ func IsStandingsIndependent(pm pb.PairingMethod) bool {
 		pm == pb.PairingMethod_TEAM_ROUND_ROBIN ||
 		pm == pb.PairingMethod_INTERLEAVED_ROUND_ROBIN ||
 		pm == pb.PairingMethod_SNAKED_ROUND_ROBIN ||
+		pm == pb.PairingMethod_ASSIGNED_TEAM_ROUND_ROBIN ||
 		pm == pb.PairingMethod_RANDOM ||
 		pm == pb.PairingMethod_INITIAL_FONTES ||
 		pm == pb.PairingMethod_MANUAL

@@ -82,12 +82,17 @@ enum PairingMethod {
   SWISS = 6;
   QUICKPAIR = 7;
   MANUAL = 8;
+  // Retired: the top half of the seeds against the bottom half. Kept so that
+  // divisions already using it still pair; ASSIGNED_TEAM_ROUND_ROBIN replaces
+  // it.
   TEAM_ROUND_ROBIN = 9;
   INTERLEAVED_ROUND_ROBIN = 10;
   PAIRING_METHOD_COP = 11;
   AUSTRALIAN_DRAW = 12;
   WIN_GROUPS = 13;
   SNAKED_ROUND_ROBIN = 14;
+  // Two teams the director assigned (TournamentPerson.team) play each other.
+  ASSIGNED_TEAM_ROUND_ROBIN = 15;
 }
 
 enum FirstMethod {
@@ -101,6 +106,9 @@ message TournamentPerson {
   int32 rating = 2;
   bool suspended = 3;
   bool checked_in = 4;
+  // The player's team, for a team round robin between teams the director
+  // assigned (ASSIGNED_TEAM_ROUND_ROBIN). Empty for no team.
+  string team = 5;
 }
 
 message TournamentPersons {

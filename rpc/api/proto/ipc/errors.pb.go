@@ -119,6 +119,11 @@ const (
 	WooglesError_TOURNAMENT_LAGGED_COP_LAST_ROUNDS                      WooglesError = 1108
 	WooglesError_TOURNAMENT_PREVIOUS_GAME_UNFINISHED                    WooglesError = 1109
 	WooglesError_TOURNAMENT_AUTO_PAIR_FAILED                            WooglesError = 1110
+	WooglesError_TOURNAMENT_TEAMS_NEED_ASSIGNED_TEAM_ROUND_ROBIN        WooglesError = 1111
+	WooglesError_TOURNAMENT_ASSIGNED_TEAMS_INCOMPLETE                   WooglesError = 1112
+	WooglesError_TOURNAMENT_ASSIGNED_TEAMS_NOT_TWO                      WooglesError = 1113
+	WooglesError_TOURNAMENT_ASSIGNED_TEAMS_WITHIN_TEAM                  WooglesError = 1114
+	WooglesError_TOURNAMENT_EDIT_TEAM_AFTER_START                       WooglesError = 1115
 	WooglesError_PUZZLE_VOTE_INVALID                                    WooglesError = 1074
 	WooglesError_PUZZLE_GET_RANDOM_PUZZLE_ID_NOT_FOUND                  WooglesError = 1075
 	WooglesError_PUZZLE_GET_RANDOM_PUZZLE_NOT_FOUND                     WooglesError = 1076
@@ -235,6 +240,11 @@ var (
 		1108: "TOURNAMENT_LAGGED_COP_LAST_ROUNDS",
 		1109: "TOURNAMENT_PREVIOUS_GAME_UNFINISHED",
 		1110: "TOURNAMENT_AUTO_PAIR_FAILED",
+		1111: "TOURNAMENT_TEAMS_NEED_ASSIGNED_TEAM_ROUND_ROBIN",
+		1112: "TOURNAMENT_ASSIGNED_TEAMS_INCOMPLETE",
+		1113: "TOURNAMENT_ASSIGNED_TEAMS_NOT_TWO",
+		1114: "TOURNAMENT_ASSIGNED_TEAMS_WITHIN_TEAM",
+		1115: "TOURNAMENT_EDIT_TEAM_AFTER_START",
 		1074: "PUZZLE_VOTE_INVALID",
 		1075: "PUZZLE_GET_RANDOM_PUZZLE_ID_NOT_FOUND",
 		1076: "PUZZLE_GET_RANDOM_PUZZLE_NOT_FOUND",
@@ -348,6 +358,11 @@ var (
 		"TOURNAMENT_LAGGED_COP_LAST_ROUNDS":                      1108,
 		"TOURNAMENT_PREVIOUS_GAME_UNFINISHED":                    1109,
 		"TOURNAMENT_AUTO_PAIR_FAILED":                            1110,
+		"TOURNAMENT_TEAMS_NEED_ASSIGNED_TEAM_ROUND_ROBIN":        1111,
+		"TOURNAMENT_ASSIGNED_TEAMS_INCOMPLETE":                   1112,
+		"TOURNAMENT_ASSIGNED_TEAMS_NOT_TWO":                      1113,
+		"TOURNAMENT_ASSIGNED_TEAMS_WITHIN_TEAM":                  1114,
+		"TOURNAMENT_EDIT_TEAM_AFTER_START":                       1115,
 		"PUZZLE_VOTE_INVALID":                                    1074,
 		"PUZZLE_GET_RANDOM_PUZZLE_ID_NOT_FOUND":                  1075,
 		"PUZZLE_GET_RANDOM_PUZZLE_NOT_FOUND":                     1076,
@@ -444,7 +459,7 @@ const file_proto_ipc_errors_proto_rawDesc = "" +
 	"\n" +
 	"\x16proto/ipc/errors.proto\x12\x03ipc\"(\n" +
 	"\fErrorMessage\x12\x18\n" +
-	"\amessage\x18\x01 \x01(\tR\amessage*\x96\"\n" +
+	"\amessage\x18\x01 \x01(\tR\amessage*\xf2#\n" +
 	"\fWooglesError\x12\v\n" +
 	"\aDEFAULT\x10\x00\x12*\n" +
 	"%TOURNAMENT_NEGATIVE_MAX_BYE_PLACEMENT\x10\xe9\a\x12&\n" +
@@ -540,7 +555,12 @@ const file_proto_ipc_errors_proto_rawDesc = "" +
 	"\x1dTOURNAMENT_LAGGED_ELIMINATION\x10\xd3\b\x12&\n" +
 	"!TOURNAMENT_LAGGED_COP_LAST_ROUNDS\x10\xd4\b\x12(\n" +
 	"#TOURNAMENT_PREVIOUS_GAME_UNFINISHED\x10\xd5\b\x12 \n" +
-	"\x1bTOURNAMENT_AUTO_PAIR_FAILED\x10\xd6\b\x12\x18\n" +
+	"\x1bTOURNAMENT_AUTO_PAIR_FAILED\x10\xd6\b\x124\n" +
+	"/TOURNAMENT_TEAMS_NEED_ASSIGNED_TEAM_ROUND_ROBIN\x10\xd7\b\x12)\n" +
+	"$TOURNAMENT_ASSIGNED_TEAMS_INCOMPLETE\x10\xd8\b\x12&\n" +
+	"!TOURNAMENT_ASSIGNED_TEAMS_NOT_TWO\x10\xd9\b\x12*\n" +
+	"%TOURNAMENT_ASSIGNED_TEAMS_WITHIN_TEAM\x10\xda\b\x12%\n" +
+	" TOURNAMENT_EDIT_TEAM_AFTER_START\x10\xdb\b\x12\x18\n" +
 	"\x13PUZZLE_VOTE_INVALID\x10\xb2\b\x12*\n" +
 	"%PUZZLE_GET_RANDOM_PUZZLE_ID_NOT_FOUND\x10\xb3\b\x12'\n" +
 	"\"PUZZLE_GET_RANDOM_PUZZLE_NOT_FOUND\x10\xb4\b\x12%\n" +

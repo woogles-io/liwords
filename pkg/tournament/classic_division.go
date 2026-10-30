@@ -221,7 +221,11 @@ func (t *ClassicDivision) SetRoundControls(roundControls []*pb.RoundControl) (*p
 		roundControls[i].Round = int32(i)
 	}
 
-	err := validateRoundControls(t, roundControls)
+	err := t.checkTeams(roundControls, false)
+	if err != nil {
+		return nil, nil, err
+	}
+	err = validateRoundControls(t, roundControls)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -240,7 +244,7 @@ func (t *ClassicDivision) prepair() (*pb.DivisionPairingsResponse, error) {
 		numberOfPlayers := len(t.Players.Persons)
 		initFontes := t.RoundControls[0].InitialFontes
 		if t.RoundControls[0].PairingMethod != pb.PairingMethod_MANUAL &&
-			numberOfPlayers >= int(initFontes)+1 {
+			numberOfPlayers >= int(initFontes)+1 && t.canPrepairTeams(0) {
 			newpm, err := t.PairRound(0, false)
 			if err != nil {
 				return nil, err
@@ -259,7 +263,7 @@ func (t *ClassicDivision) prepair() (*pb.DivisionPairingsResponse, error) {
 			if (pair.IsStandingsIndependent(pairingMethod) ||
 				(t.pairingBasisRound(i) < 0 && t.IsRoundPaired(i-1))) &&
 				numberOfPlayers >= int(initFontes)+1 &&
-				pairingMethod != pb.PairingMethod_MANUAL {
+				pairingMethod != pb.PairingMethod_MANUAL && t.canPrepairTeams(i) {
 				newpm, err := t.PairRound(i, false)
 				if err != nil {
 					return nil, err
@@ -282,7 +286,13 @@ func (t *ClassicDivision) SetSingleRoundControls(round int, controls *pb.RoundCo
 	}
 
 	totalRounds := len(t.RoundControls)
-	err := validateRoundControl(t, controls, totalRounds)
+	withChange := slices.Clone(t.RoundControls)
+	withChange[round] = controls
+	err := t.checkTeams(withChange, false)
+	if err != nil {
+		return nil, nil, err
+	}
+	err = validateRoundControl(t, controls, totalRounds)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -737,11 +747,100 @@ func (t *ClassicDivision) SubmitResult(round int,
 	return pmessage, nil
 }
 
+// checkTeams checks assigned teams against the round controls rcs: once any
+// player has a team, teammates must never be paired, so every round must be
+// an assigned team round robin or paired by hand. With complete, as when the
+// division starts, it also checks that the teams are ready for an assigned
+// team round robin: everyone on one of exactly two teams.
+func (t *ClassicDivision) checkTeams(rcs []*pb.RoundControl, complete bool) error {
+	hasTeams := false
+	for _, p := range t.Players.Persons {
+		if p.Team != "" {
+			hasTeams = true
+			break
+		}
+	}
+	usesAssignedTeams := false
+	for i, rc := range rcs {
+		if rc.PairingMethod == pb.PairingMethod_ASSIGNED_TEAM_ROUND_ROBIN {
+			usesAssignedTeams = true
+		} else if hasTeams && rc.PairingMethod != pb.PairingMethod_MANUAL {
+			return entity.NewWooglesError(pb.WooglesError_TOURNAMENT_TEAMS_NEED_ASSIGNED_TEAM_ROUND_ROBIN,
+				t.TournamentName, t.DivisionName, strconv.Itoa(i+1))
+		}
+	}
+	if !complete || !usesAssignedTeams {
+		return nil
+	}
+	return t.checkTeamsComplete()
+}
+
+// checkTeamsComplete checks that every player is on one of exactly two teams.
+func (t *ClassicDivision) checkTeamsComplete() error {
+	teams := map[string]bool{}
+	noTeam := 0
+	for _, p := range t.Players.Persons {
+		if p.Team == "" {
+			noTeam++
+		} else {
+			teams[p.Team] = true
+		}
+	}
+	if noTeam > 0 {
+		return entity.NewWooglesError(pb.WooglesError_TOURNAMENT_ASSIGNED_TEAMS_INCOMPLETE,
+			t.TournamentName, t.DivisionName, strconv.Itoa(noTeam))
+	}
+	if len(teams) != 2 {
+		return entity.NewWooglesError(pb.WooglesError_TOURNAMENT_ASSIGNED_TEAMS_NOT_TWO,
+			t.TournamentName, t.DivisionName, strconv.Itoa(len(teams)))
+	}
+	return nil
+}
+
+// canPrepairTeams says whether round can be paired ahead of time as far as
+// teams go. Directors add players and assign teams one at a time, so an
+// assigned team round robin waits until the teams are complete instead of
+// failing; starting the division reports what's missing.
+func (t *ClassicDivision) canPrepairTeams(round int) bool {
+	return t.RoundControls[round].PairingMethod != pb.PairingMethod_ASSIGNED_TEAM_ROUND_ROBIN ||
+		t.checkTeamsComplete() == nil
+}
+
+// SetPlayerTeam puts a player on a team, or takes them off theirs if team is
+// empty. Teams decide the pairings of an assigned team round robin, which
+// are made ahead of time, so they can't change once the division starts.
+func (t *ClassicDivision) SetPlayerTeam(playerID string, team string) error {
+	idx, ok := t.PlayerIndexMap[playerID]
+	if !ok {
+		return entity.NewWooglesError(pb.WooglesError_TOURNAMENT_NONEXISTENT_PLAYER, t.TournamentName, t.DivisionName, strconv.Itoa(int(t.CurrentRound)+1), playerID, "SetPlayerTeam")
+	}
+	team = strings.TrimSpace(team)
+	if t.Players.Persons[idx].Team == team {
+		return nil
+	}
+	if t.CurrentRound >= 0 {
+		return entity.NewWooglesError(pb.WooglesError_TOURNAMENT_EDIT_TEAM_AFTER_START, t.TournamentName, t.DivisionName)
+	}
+	t.Players.Persons[idx].Team = team
+	_, err := t.reseed()
+	return err
+}
+
+// playerTeams lists each player's team, in player order.
+func (t *ClassicDivision) playerTeams() []string {
+	teams := make([]string, len(t.Players.Persons))
+	for i, p := range t.Players.Persons {
+		teams[i] = p.Team
+	}
+	return teams
+}
+
 func isRoundDependent(pm pb.PairingMethod) bool {
 	return pm == pb.PairingMethod_ROUND_ROBIN ||
 		pm == pb.PairingMethod_TEAM_ROUND_ROBIN ||
 		pm == pb.PairingMethod_INTERLEAVED_ROUND_ROBIN ||
 		pm == pb.PairingMethod_SNAKED_ROUND_ROBIN ||
+		pm == pb.PairingMethod_ASSIGNED_TEAM_ROUND_ROBIN ||
 		pm == pb.PairingMethod_INITIAL_FONTES
 }
 
@@ -938,7 +1037,8 @@ func (t *ClassicDivision) pairRound(round int, preserveByes bool) (*pb.DivisionP
 		poolMembers = append(poolMembers, &entity.PoolMember{Id: playerOrder[i].PlayerId,
 			Wins:   int(playerOrder[i].Wins),
 			Draws:  int(playerOrder[i].Draws),
-			Spread: int(playerOrder[i].Spread)})
+			Spread: int(playerOrder[i].Spread),
+			Team:   t.Players.Persons[t.PlayerIndexMap[playerOrder[i].PlayerId]].Team})
 	}
 
 	gibsonPairedPlayers := make(map[string]bool)
@@ -1315,6 +1415,13 @@ func (t *ClassicDivision) AddPlayers(players *pb.TournamentPersons) (*pb.Divisio
 	} else {
 		if int(t.CurrentRound) == len(t.Matrix)-1 {
 			return nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_ADD_PLAYERS_LAST_ROUND, t.TournamentName, t.DivisionName, strconv.Itoa(int(t.CurrentRound+1)))
+		}
+		// Teams are fixed once the division starts, and a player joining
+		// without one couldn't be paired by the assigned team round robin.
+		for _, p := range append(slices.Clone(t.Players.Persons), players.Persons...) {
+			if p.Team != "" {
+				return nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_EDIT_TEAM_AFTER_START, t.TournamentName, t.DivisionName)
+			}
 		}
 		// Check this before the new players are added to the pairing
 		// matrix, after which no round is fully paired.
@@ -2023,6 +2130,9 @@ func (t *ClassicDivision) IsRoundStartable() error {
 		if len(t.Matrix) < 1 {
 			return entity.NewWooglesError(pb.WooglesError_TOURNAMENT_EMPTY_ROUND_CONTROLS, t.TournamentName, t.DivisionName)
 		}
+		if err := t.checkTeams(t.RoundControls, true); err != nil {
+			return err
+		}
 	}
 
 	err := t.IsRoundReady(int(t.CurrentRound + 1))
@@ -2276,12 +2386,13 @@ func newClassicPairing(t *ClassicDivision,
 		switchFirst = !goesFirst
 	} else if pm := t.RoundControls[round].PairingMethod; pm == pb.PairingMethod_TEAM_ROUND_ROBIN ||
 		pm == pb.PairingMethod_INTERLEAVED_ROUND_ROBIN ||
-		pm == pb.PairingMethod_SNAKED_ROUND_ROBIN {
+		pm == pb.PairingMethod_SNAKED_ROUND_ROBIN ||
+		pm == pb.PairingMethod_ASSIGNED_TEAM_ROUND_ROBIN {
 		// The schedule that paired the round also says who goes first.
 		// Players are paired in player order for these methods, so player
 		// indexes are the schedule's indexes.
 		goesFirst, err := pair.TeamRoundRobinGoesFirst(t.RoundControls[round], numPlayers, round,
-			int(playerOne), t.Seed)
+			int(playerOne), t.Seed, t.playerTeams())
 		if err != nil {
 			log.Err(err).Str("division", t.DivisionName).Int("round", round).Msg("team-round-robin-firsts")
 		}
@@ -2763,6 +2874,9 @@ func validateRoundControl(t *ClassicDivision, rc *pb.RoundControl, totalRounds i
 	}
 	if rc.GamesPerRound == 0 {
 		return entity.NewWooglesError(pb.WooglesError_TOURNAMENT_ZERO_GAMES_PER_ROUND, t.TournamentName, t.DivisionName, strconv.Itoa(int(rc.Round+1)))
+	}
+	if rc.PairingMethod == pb.PairingMethod_ASSIGNED_TEAM_ROUND_ROBIN && rc.PlayWithinTeam {
+		return entity.NewWooglesError(pb.WooglesError_TOURNAMENT_ASSIGNED_TEAMS_WITHIN_TEAM, t.TournamentName, t.DivisionName, strconv.Itoa(int(rc.Round+1)))
 	}
 
 	// COP-specific validations

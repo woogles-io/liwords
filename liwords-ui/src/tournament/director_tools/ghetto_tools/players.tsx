@@ -21,6 +21,7 @@ export const AddPlayers = (props: { tournamentID: string }) => {
   const [showRating, setShowRating] = useState(
     tournamentContext.metadata.irlMode,
   );
+  const [showTeam, setShowTeam] = useState(false);
   const onFinish = async (vals: Store) => {
     const players = [];
     // const playerMap: { [username: string]: number } = {};
@@ -40,6 +41,7 @@ export const AddPlayers = (props: { tournamentID: string }) => {
       players.push({
         id: username,
         rating: Number(vals.players[i].rating) || 0,
+        team: (showTeam && vals.players[i].team?.trim()) || "",
       });
     }
 
@@ -71,6 +73,12 @@ export const AddPlayers = (props: { tournamentID: string }) => {
       <Form.Item label="Enter ratings">
         <Switch checked={showRating} onChange={(c) => setShowRating(c)} />
       </Form.Item>
+      <Form.Item
+        label="Enter teams"
+        extra="Only for a team round robin between teams you choose, such as Portland vs Seattle."
+      >
+        <Switch checked={showTeam} onChange={(c) => setShowTeam(c)} />
+      </Form.Item>
 
       <Form.List name="players">
         {(fields, { add, remove }) => (
@@ -95,6 +103,11 @@ export const AddPlayers = (props: { tournamentID: string }) => {
                     rules={[{ required: true, message: "Missing rating" }]}
                   >
                     <Input placeholder="Rating" />
+                  </Form.Item>
+                )}
+                {showTeam && (
+                  <Form.Item {...field} name={[field.name, "team"]}>
+                    <Input placeholder="Team" />
                   </Form.Item>
                 )}
                 <MinusCircleOutlined onClick={() => remove(field.name)} />
@@ -176,12 +189,12 @@ export const EditPlayer = (props: { tournamentID: string }) => {
     if (changed.username === undefined) {
       return;
     }
-    // Fill in the current rating once the director picks a player.
+    // Fill in the current rating and team once the director picks a player.
     const divobj = tournamentContext.divisions[division];
     const fullID = fullPlayerID(changed.username, divobj);
     const player = divobj?.players.find((p) => p.id === fullID);
     if (player) {
-      form.setFieldsValue({ rating: player.rating });
+      form.setFieldsValue({ rating: player.rating, team: player.team });
     }
   };
 
@@ -195,6 +208,7 @@ export const EditPlayer = (props: { tournamentID: string }) => {
       playerId: vals.username,
       rating: vals.rating,
       newName,
+      team: vals.team?.trim() ?? "",
     };
     try {
       await tClient.editPlayer(obj);
@@ -228,6 +242,14 @@ export const EditPlayer = (props: { tournamentID: string }) => {
         rules={[{ required: true, message: "Missing rating" }]}
       >
         <InputNumber min={0} />
+      </Form.Item>
+
+      <Form.Item
+        name="team"
+        label="Team"
+        extra="Only for a team round robin between teams you choose. Leave blank for no team. Teams can't change once the division starts."
+      >
+        <Input />
       </Form.Item>
 
       {irlMode && (
