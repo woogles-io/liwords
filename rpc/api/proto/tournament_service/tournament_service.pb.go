@@ -3191,9 +3191,11 @@ type PreviewPlayerStats struct {
 	OtherGroupGames     int32   `protobuf:"varint,5,opt,name=other_group_games,json=otherGroupGames,proto3" json:"other_group_games,omitempty"`
 	AverageOpponentSeed float64 `protobuf:"fixed64,6,opt,name=average_opponent_seed,json=averageOpponentSeed,proto3" json:"average_opponent_seed,omitempty"`
 	// The most firsts or seconds in a row.
-	LongestRun    int32 `protobuf:"varint,7,opt,name=longest_run,json=longestRun,proto3" json:"longest_run,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	LongestRun int32 `protobuf:"varint,7,opt,name=longest_run,json=longestRun,proto3" json:"longest_run,omitempty"`
+	// How many different players they play.
+	DistinctOpponents int32 `protobuf:"varint,8,opt,name=distinct_opponents,json=distinctOpponents,proto3" json:"distinct_opponents,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *PreviewPlayerStats) Reset() {
@@ -3275,6 +3277,13 @@ func (x *PreviewPlayerStats) GetLongestRun() int32 {
 	return 0
 }
 
+func (x *PreviewPlayerStats) GetDistinctOpponents() int32 {
+	if x != nil {
+		return x.DistinctOpponents
+	}
+	return 0
+}
+
 type SchemePreview struct {
 	state             protoimpl.MessageState `protogen:"open.v1"`
 	PairingMethod     ipc.PairingMethod      `protobuf:"varint,1,opt,name=pairing_method,json=pairingMethod,proto3,enum=ipc.PairingMethod" json:"pairing_method,omitempty"`
@@ -3302,9 +3311,12 @@ type SchemePreview struct {
 	Notes     []string `protobuf:"bytes,16,rep,name=notes,proto3" json:"notes,omitempty"`
 	Suggested bool     `protobuf:"varint,17,opt,name=suggested,proto3" json:"suggested,omitempty"`
 	// What to call the scheme, such as "Snaked Round Robin, within teams".
-	Name          string `protobuf:"bytes,18,opt,name=name,proto3" json:"name,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Name string `protobuf:"bytes,18,opt,name=name,proto3" json:"name,omitempty"`
+	// The most different opponents any player misses: they could have played
+	// one more new opponent instead of each repeat, but didn't.
+	MissedOpponents int32 `protobuf:"varint,19,opt,name=missed_opponents,json=missedOpponents,proto3" json:"missed_opponents,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *SchemePreview) Reset() {
@@ -3461,6 +3473,13 @@ func (x *SchemePreview) GetName() string {
 		return x.Name
 	}
 	return ""
+}
+
+func (x *SchemePreview) GetMissedOpponents() int32 {
+	if x != nil {
+		return x.MissedOpponents
+	}
+	return 0
 }
 
 // A different number of pre-paired rounds that would suit the intent better.
@@ -4521,7 +4540,7 @@ const file_proto_tournament_service_tournament_service_proto_rawDesc = "" +
 	"\x06second\x18\x02 \x01(\x05R\x06second\"Y\n" +
 	"\fPreviewRound\x125\n" +
 	"\x05games\x18\x01 \x03(\v2\x1f.tournament_service.PreviewGameR\x05games\x12\x12\n" +
-	"\x04byes\x18\x02 \x03(\x05R\x04byes\"\x83\x02\n" +
+	"\x04byes\x18\x02 \x03(\x05R\x04byes\"\xb2\x02\n" +
 	"\x12PreviewPlayerStats\x12\x16\n" +
 	"\x06firsts\x18\x01 \x01(\x05R\x06firsts\x12\x18\n" +
 	"\aseconds\x18\x02 \x01(\x05R\aseconds\x12\x12\n" +
@@ -4530,7 +4549,8 @@ const file_proto_tournament_service_tournament_service_proto_rawDesc = "" +
 	"\x11other_group_games\x18\x05 \x01(\x05R\x0fotherGroupGames\x122\n" +
 	"\x15average_opponent_seed\x18\x06 \x01(\x01R\x13averageOpponentSeed\x12\x1f\n" +
 	"\vlongest_run\x18\a \x01(\x05R\n" +
-	"longestRun\"\xeb\x05\n" +
+	"longestRun\x12-\n" +
+	"\x12distinct_opponents\x18\b \x01(\x05R\x11distinctOpponents\"\x96\x06\n" +
 	"\rSchemePreview\x129\n" +
 	"\x0epairing_method\x18\x01 \x01(\x0e2\x12.ipc.PairingMethodR\rpairingMethod\x12(\n" +
 	"\x10play_within_team\x18\x02 \x01(\bR\x0eplayWithinTeam\x12\x1c\n" +
@@ -4551,7 +4571,8 @@ const file_proto_tournament_service_tournament_service_proto_rawDesc = "" +
 	"\fplayer_stats\x18\x0f \x03(\v2&.tournament_service.PreviewPlayerStatsR\vplayerStats\x12\x14\n" +
 	"\x05notes\x18\x10 \x03(\tR\x05notes\x12\x1c\n" +
 	"\tsuggested\x18\x11 \x01(\bR\tsuggested\x12\x12\n" +
-	"\x04name\x18\x12 \x01(\tR\x04name\"\xa8\x01\n" +
+	"\x04name\x18\x12 \x01(\tR\x04name\x12)\n" +
+	"\x10missed_opponents\x18\x13 \x01(\x05R\x0fmissedOpponents\"\xa8\x01\n" +
 	"\x11RoundsAlternative\x12\x16\n" +
 	"\x06rounds\x18\x01 \x01(\x05R\x06rounds\x129\n" +
 	"\x0epairing_method\x18\x02 \x01(\x0e2\x12.ipc.PairingMethodR\rpairingMethod\x12(\n" +

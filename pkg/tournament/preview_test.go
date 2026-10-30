@@ -66,6 +66,25 @@ func TestPreviewSuggestions(t *testing.T) {
 	is.Equal(resp.Schemes[0].TopSeedGames, int32(0))
 	is.Equal(len(resp.Alternatives), 0)
 
+	// 18 players over 18 rounds: two cycles of the snaked teams fit exactly,
+	// but everyone would meet only 9 of their 17 opponents, twice each. The
+	// round robin meets everyone, and 17 rounds of it then COP is offered.
+	for _, intent := range []tpb.PlannerIntent{tpb.PlannerIntent_PLANNER_FAIR_START, tpb.PlannerIntent_PLANNER_WHOLE_EVENT} {
+		resp, err = previewDivision(previewPlayers(18), 7, 18, intent)
+		is.NoErr(err)
+		is.Equal(resp.Schemes[0].PairingMethod, pb.PairingMethod_ROUND_ROBIN)
+		is.Equal(resp.Schemes[0].MissedOpponents, int32(0))
+		snaked := findScheme(resp, pb.PairingMethod_SNAKED_ROUND_ROBIN, false)
+		is.Equal(snaked.MissedOpponents, int32(8))
+		is.True(slices.Contains(snaked.Notes, "Players meet only 9 different opponents in 18 rounds, when they could meet up to 17."))
+		alt := resp.Alternatives[len(resp.Alternatives)-1]
+		if intent == tpb.PlannerIntent_PLANNER_WHOLE_EVENT {
+			alt = resp.Alternatives[0]
+		}
+		is.Equal(alt.Rounds, int32(17))
+		is.Equal(alt.Reason, "Pre-pair 17 rounds, a full Round Robin, and let COP pair the last round. Its final round pairs the prize contenders King of the Hill style.")
+	}
+
 	// 18 players over 7 rounds: groups of 8 can't keep seeds 1–5 apart, and
 	// neither can groups of 4, so the alternative says how often they meet.
 	resp, err = previewDivision(previewPlayers(18), 7, 7, tpb.PlannerIntent_PLANNER_FAIR_START)

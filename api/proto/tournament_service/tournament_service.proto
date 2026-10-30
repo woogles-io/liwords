@@ -382,6 +382,8 @@ message PreviewPlayerStats {
   double average_opponent_seed = 6;
   // The most firsts or seconds in a row.
   int32 longest_run = 7;
+  // How many different players they play.
+  int32 distinct_opponents = 8;
 }
 
 message SchemePreview {
@@ -411,6 +413,9 @@ message SchemePreview {
   bool suggested = 17;
   // What to call the scheme, such as "Snaked Round Robin, within teams".
   string name = 18;
+  // The most different opponents any player misses: they could have played
+  // one more new opponent instead of each repeat, but didn't.
+  int32 missed_opponents = 19;
 }
 
 // A different number of pre-paired rounds that would suit the intent better.

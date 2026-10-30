@@ -332,6 +332,7 @@ func previewScheme(s plannerScheme, players []*tpb.PreviewPlayer, teams []string
 		st := &tpb.PreviewPlayerStats{}
 		seedSum, games, run := 0, 0, 0
 		var last *bool
+		opponents := map[int]bool{}
 		for r := range rounds {
 			o := opps[r][p]
 			if o < 0 {
@@ -340,6 +341,7 @@ func previewScheme(s plannerScheme, players []*tpb.PreviewPlayer, teams []string
 			}
 			games++
 			seedSum += o + 1
+			opponents[o] = true
 			f := firsts[r][p]
 			if f {
 				st.Firsts++
@@ -364,6 +366,8 @@ func previewScheme(s plannerScheme, players []*tpb.PreviewPlayer, teams []string
 			sp.MinAverageOpponentSeed = min(sp.MinAverageOpponentSeed, st.AverageOpponentSeed)
 			sp.MaxAverageOpponentSeed = max(sp.MaxAverageOpponentSeed, st.AverageOpponentSeed)
 		}
+		st.DistinctOpponents = int32(len(opponents))
+		sp.MissedOpponents = max(sp.MissedOpponents, int32(min(games, n-1)-len(opponents)))
 		sp.MaxByes = max(sp.MaxByes, st.Byes)
 		sp.MaxFirstImbalance = max(sp.MaxFirstImbalance, int32(math.Abs(float64(st.Firsts-st.Seconds))))
 		sp.LongestRun = max(sp.LongestRun, st.LongestRun)
@@ -423,6 +427,16 @@ func schemeNotes(s plannerScheme, sp *tpb.SchemePreview, n, rounds, topSeeds int
 		notes = append(notes, fmt.Sprintf("Each player plays %s games against the other team and none against their own.", spanString(otherLo, otherHi)))
 	}
 
+	// Repeats while other opponents go unplayed.
+	if sp.MissedOpponents > 0 {
+		lo, hi := int32(math.MaxInt32), int32(0)
+		for _, st := range sp.PlayerStats {
+			lo, hi = min(lo, st.DistinctOpponents), max(hi, st.DistinctOpponents)
+		}
+		notes = append(notes, fmt.Sprintf("Players meet only %s different opponents in %d rounds, when they could meet up to %d.",
+			spanString(lo, hi), rounds, min(rounds, n-1)))
+	}
+
 	// How the rounds fit the scheme's cycle.
 	switch {
 	case cycle == 0:
@@ -433,7 +447,7 @@ func schemeNotes(s plannerScheme, sp *tpb.SchemePreview, n, rounds, topSeeds int
 	case rounds < cycle:
 		notes = append(notes, fmt.Sprintf("Only %d of the %d rounds a full cycle takes, so some players face a tougher schedule than others.", rounds, cycle))
 	default:
-		notes = append(notes, fmt.Sprintf("One full %d-round cycle and %d rounds of the next, so some pairs meet twice and others once.", cycle, rounds%cycle))
+		notes = append(notes, fmt.Sprintf("One full %d-round cycle and %s of the next, so some pairs meet twice and others once.", cycle, plural(rounds%cycle, "round", "rounds")))
 	}
 
 	notes = append(notes, fmt.Sprintf("Average opponent seed ranges from %.1f to %.1f.", sp.MinAverageOpponentSeed, sp.MaxAverageOpponentSeed))
@@ -459,9 +473,13 @@ func schemeScore(sp *tpb.SchemePreview, intent tpb.PlannerIntent, rounds int) fl
 		partial = 1
 	}
 	byes := float64(sp.MaxByes)
+	// Meeting the same opponents again while others go unplayed is worse
+	// than a cycle that doesn't fit the rounds. Two teams is the exception:
+	// there, playing only the other team is the point.
+	missed := float64(sp.MissedOpponents) * 150
 	switch intent {
 	case tpb.PlannerIntent_PLANNER_WHOLE_EVENT:
-		return partial*100 + spread*3 + byes*5
+		return missed + partial*100 + spread*3 + byes*5
 	case tpb.PlannerIntent_PLANNER_TWO_TEAMS:
 		score := partial*100 + spread*3 + byes*5
 		switch {
@@ -476,7 +494,7 @@ func schemeScore(sp *tpb.SchemePreview, intent tpb.PlannerIntent, rounds int) fl
 		// A fair start keeps the top seeds apart for later, but not by
 		// giving them all the weakest opponents, so a similar schedule for
 		// everyone counts for nearly as much.
-		return partial*100 + float64(sp.Repeats)*50 + float64(sp.TopSeedGames)*10 + spread*6 + byes*5
+		return missed + partial*100 + float64(sp.Repeats)*50 + float64(sp.TopSeedGames)*10 + spread*6 + byes*5
 	}
 }
 
@@ -569,10 +587,30 @@ func roundsAlternatives(schemes []*tpb.SchemePreview, n, rounds int, intent tpb.
 				Reason: fmt.Sprintf("Pre-pair %d rounds with Initial Fontes, so %s, and let COP pair the rest.", altRounds, meet)})
 		}
 	}
+	offered := map[int]bool{}
+	if intent != tpb.PlannerIntent_PLANNER_TWO_TEAMS && best != nil && best.CycleLength > 0 {
+		// A few rounds past full cycles of the best scheme: pre-pair the
+		// cycles and let COP pair the last rounds, which it ends King of the
+		// Hill style.
+		cycle := int(best.CycleLength)
+		if extra := rounds % cycle; rounds > cycle && extra >= 1 && extra <= 3 {
+			full := rounds - extra
+			what := "a full " + schemeName(best.PairingMethod, best.PlayWithinTeam)
+			if full > cycle {
+				what = fmt.Sprintf("%d full cycles of the %s", full/cycle, schemeName(best.PairingMethod, best.PlayWithinTeam))
+			}
+			last := "the last round"
+			if extra > 1 {
+				last = fmt.Sprintf("the last %d rounds", extra)
+			}
+			offered[full] = true
+			alts = append(alts, &tpb.RoundsAlternative{Rounds: int32(full), PairingMethod: best.PairingMethod, PlayWithinTeam: best.PlayWithinTeam,
+				Reason: fmt.Sprintf("Pre-pair %d rounds, %s, and let COP pair %s. Its final round pairs the prize contenders King of the Hill style.", full, what, last)})
+		}
+	}
 	if best == nil || !fits(best, rounds) {
 		// Nearby round counts that a scheme covers exactly, naming the best
 		// ranked scheme for each.
-		offered := map[int]bool{}
 		for _, s := range schemes {
 			c := int(s.CycleLength)
 			if !s.Available || c == 0 || c == rounds || s.PairingMethod == pb.PairingMethod_INITIAL_FONTES ||
