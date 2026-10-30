@@ -183,16 +183,27 @@ export const GhettoTools = (props: Props) => {
             >
               Controls
             </h5>
-            <Space size="small" style={{ marginBottom: 8 }}>
+            <div style={{ marginBottom: 8 }}>
               <Button
-                type="primary"
                 size="small"
                 onClick={() => navigate(`${location.pathname}?planner`)}
               >
                 Pairing planner
+                {new Date() < plannerNewUntil && (
+                  <Tag
+                    color="green"
+                    style={{
+                      marginInlineEnd: 0,
+                      fontSize: 10,
+                      lineHeight: "14px",
+                      padding: "0 4px",
+                    }}
+                  >
+                    New
+                  </Tag>
+                )}
               </Button>
-              {new Date() < plannerNewUntil && <Tag color="green">New</Tag>}
-            </Space>
+            </div>
             {makeButtonGroup(["Set tournament controls", "Set round controls"])}
             <div style={{ marginTop: 8 }}>
               {makeButtonGroup([
