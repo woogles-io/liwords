@@ -21,7 +21,8 @@ export const settingsEqual = (s1: RoundControl, s2: RoundControl): boolean => {
     s1.repeatRelativeWeight === s2.repeatRelativeWeight &&
     s1.winDifferenceRelativeWeight === s2.winDifferenceRelativeWeight &&
     s1.resetRound === s2.resetRound &&
-    s1.pairingLag === s2.pairingLag //&&
+    s1.pairingLag === s2.pairingLag &&
+    s1.playWithinTeam === s2.playWithinTeam //&&
     //    s1.controlLossActivationRound === s2.controlLossActivationRound &&
     //    s1.controlLossSims === s2.controlLossSims &&
     //    s1.controlLossThreshold === s2.controlLossThreshold &&
