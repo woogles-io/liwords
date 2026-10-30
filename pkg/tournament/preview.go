@@ -19,16 +19,23 @@ type plannerScheme struct {
 	method pb.PairingMethod
 	within bool
 	name   string
+	// For the Team Round Robin: how many rounds in a row each pair plays,
+	// its round controls' games per round. 0 means 1.
+	perOpponent int
+}
+
+func (s plannerScheme) roundsPerOpponent() int {
+	return max(s.perOpponent, 1)
 }
 
 var plannerSchemes = []plannerScheme{
-	{pb.PairingMethod_INITIAL_FONTES, false, "Initial Fontes"},
-	{pb.PairingMethod_SNAKED_ROUND_ROBIN, false, "Snaked Round Robin"},
-	{pb.PairingMethod_INTERLEAVED_ROUND_ROBIN, false, "Shirts and Skins Round Robin"},
-	{pb.PairingMethod_SNAKED_ROUND_ROBIN, true, "Snaked Round Robin, within teams"},
-	{pb.PairingMethod_INTERLEAVED_ROUND_ROBIN, true, "Shirts and Skins Round Robin, within teams"},
-	{pb.PairingMethod_ROUND_ROBIN, false, "Round Robin"},
-	{pb.PairingMethod_ASSIGNED_TEAM_ROUND_ROBIN, false, "Team Round Robin"},
+	{pb.PairingMethod_INITIAL_FONTES, false, "Initial Fontes", 0},
+	{pb.PairingMethod_SNAKED_ROUND_ROBIN, false, "Snaked Round Robin", 0},
+	{pb.PairingMethod_INTERLEAVED_ROUND_ROBIN, false, "Shirts and Skins Round Robin", 0},
+	{pb.PairingMethod_SNAKED_ROUND_ROBIN, true, "Snaked Round Robin, within teams", 0},
+	{pb.PairingMethod_INTERLEAVED_ROUND_ROBIN, true, "Shirts and Skins Round Robin, within teams", 0},
+	{pb.PairingMethod_ROUND_ROBIN, false, "Round Robin", 0},
+	{pb.PairingMethod_ASSIGNED_TEAM_ROUND_ROBIN, false, "Team Round Robin", 0},
 }
 
 func (s plannerScheme) teamSplit() bool {
@@ -41,7 +48,7 @@ func (s plannerScheme) teamSplit() bool {
 // players registered, placeholders named A, B, C and so on make up the rest,
 // seeded last. Nothing in the division changes.
 func PreviewPairings(ctx context.Context, ts TournamentStore, id, division string, rounds, expectedPlayers int,
-	intent tpb.PlannerIntent) (*tpb.PreviewPairingsResponse, error) {
+	intent tpb.PlannerIntent, roundsPerOpponent int) (*tpb.PreviewPairingsResponse, error) {
 	t, err := ts.Get(ctx, id)
 	if err != nil {
 		return nil, err
@@ -68,7 +75,7 @@ func PreviewPairings(ctx context.Context, ts TournamentStore, id, division strin
 	for i := 0; len(players) < expectedPlayers; i++ {
 		players = append(players, &tpb.PreviewPlayer{Name: placeholderName(i), Placeholder: true})
 	}
-	return previewDivision(players, cd.Seed, rounds, intent)
+	return previewDivisionPer(players, cd.Seed, rounds, intent, roundsPerOpponent)
 }
 
 // placeholderName is A, B, ..., Z, AA, AB, ...
@@ -85,6 +92,13 @@ func placeholderName(i int) string {
 // the seed, so with the division's own players and seed the preview is
 // exactly what the division will get.
 func previewDivision(players []*tpb.PreviewPlayer, seed uint64, rounds int, intent tpb.PlannerIntent) (*tpb.PreviewPairingsResponse, error) {
+	return previewDivisionPer(players, seed, rounds, intent, 1)
+}
+
+// previewDivisionPer is previewDivision with the Team Round Robin pairing
+// each pair roundsPerOpponent rounds in a row.
+func previewDivisionPer(players []*tpb.PreviewPlayer, seed uint64, rounds int, intent tpb.PlannerIntent,
+	roundsPerOpponent int) (*tpb.PreviewPairingsResponse, error) {
 	n := len(players)
 	if n < 2 {
 		return nil, fmt.Errorf("the planner needs at least two players")
@@ -102,6 +116,9 @@ func previewDivision(players []*tpb.PreviewPlayer, seed uint64, rounds int, inte
 	}
 
 	for _, s := range plannerSchemes {
+		if s.method == pb.PairingMethod_ASSIGNED_TEAM_ROUND_ROBIN {
+			s.perOpponent = roundsPerOpponent
+		}
 		resp.Schemes = append(resp.Schemes, previewScheme(s, players, teams, hasTeams, seed, rounds, topSeeds))
 	}
 	resp.Schemes = rankSchemes(resp.Schemes, intent, rounds)
@@ -143,7 +160,7 @@ func pairSchedule(s plannerScheme, players []*tpb.PreviewPlayer, seed uint64, ro
 			PairingMethod:               s.method,
 			PlayWithinTeam:              s.within,
 			FirstMethod:                 pb.FirstMethod_AUTOMATIC_FIRST,
-			GamesPerRound:               1,
+			GamesPerRound:               int32(s.roundsPerOpponent()),
 			Round:                       int32(round),
 			Factor:                      1,
 			MaxRepeats:                  1,
@@ -227,10 +244,11 @@ func previewScheme(s plannerScheme, players []*tpb.PreviewPlayer, teams []string
 	}
 
 	// Pair far enough ahead to see the whole cycle, which is never more than
-	// a round per player. Initial Fontes only ever runs its own rounds.
+	// a round per player, for each round a pair plays in a row. Initial
+	// Fontes only ever runs its own rounds.
 	horizon := rounds
 	if s.method != pb.PairingMethod_INITIAL_FONTES {
-		horizon = max(rounds, n+2)
+		horizon = max(rounds, (n+2)*s.roundsPerOpponent())
 	}
 	opps, firsts, err := pairSchedule(s, players, seed, horizon)
 	if err != nil {
@@ -296,7 +314,10 @@ func previewScheme(s plannerScheme, players []*tpb.PreviewPlayer, teams []string
 				done = done && len(seen[p]) == len(universe[p])
 			}
 			if done {
-				sp.CycleLength = int32(r + 1)
+				// A pair playing several rounds in a row finishes its last
+				// matchup after everyone has met.
+				per := s.roundsPerOpponent()
+				sp.CycleLength = int32((r + per) / per * per)
 				break
 			}
 		}
@@ -367,7 +388,9 @@ func previewScheme(s plannerScheme, players []*tpb.PreviewPlayer, teams []string
 			sp.MaxAverageOpponentSeed = max(sp.MaxAverageOpponentSeed, st.AverageOpponentSeed)
 		}
 		st.DistinctOpponents = int32(len(opponents))
-		sp.MissedOpponents = max(sp.MissedOpponents, int32(min(games, n-1)-len(opponents)))
+		// Playing a pair several rounds in a row is the point, not a miss.
+		possible := min((games+s.roundsPerOpponent()-1)/s.roundsPerOpponent(), n-1)
+		sp.MissedOpponents = max(sp.MissedOpponents, int32(possible-len(opponents)))
 		sp.MaxByes = max(sp.MaxByes, st.Byes)
 		sp.MaxFirstImbalance = max(sp.MaxFirstImbalance, int32(math.Abs(float64(st.Firsts-st.Seconds))))
 		sp.LongestRun = max(sp.LongestRun, st.LongestRun)
@@ -441,8 +464,14 @@ func schemeNotes(s plannerScheme, sp *tpb.SchemePreview, n, rounds, topSeeds int
 		for _, st := range sp.PlayerStats {
 			lo, hi = min(lo, st.DistinctOpponents), max(hi, st.DistinctOpponents)
 		}
+		per := s.roundsPerOpponent()
 		notes = append(notes, fmt.Sprintf("Players meet only %s different opponents in %d rounds, when they could meet up to %d.",
-			spanString(lo, hi), rounds, min(rounds, n-1)))
+			spanString(lo, hi), rounds, min((rounds+per-1)/per, n-1)))
+	}
+	if per := s.roundsPerOpponent(); per == 2 {
+		notes = append(notes, "Each pair plays 2 rounds in a row, going first once each.")
+	} else if per > 2 {
+		notes = append(notes, fmt.Sprintf("Each pair plays %d rounds in a row.", per))
 	}
 
 	// How the rounds fit the scheme's cycle.
@@ -467,7 +496,7 @@ func schemeNotes(s plannerScheme, sp *tpb.SchemePreview, n, rounds, topSeeds int
 	if sp.MaxByes > 0 {
 		notes = append(notes, fmt.Sprintf("Some players sit out: up to %s each.", plural(int(sp.MaxByes), "bye", "byes")))
 	}
-	if sp.Repeats > 0 && (cycle == 0 || rounds%cycle != 0) {
+	if sp.Repeats > 0 && (cycle == 0 || rounds%cycle != 0) && s.roundsPerOpponent() == 1 {
 		notes = append(notes, fmt.Sprintf("%s repeated.", plural(int(sp.Repeats), "pairing is", "pairings are")))
 	}
 	return notes

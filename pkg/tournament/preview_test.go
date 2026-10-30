@@ -215,3 +215,47 @@ func TestPreviewSentences(t *testing.T) {
 		}
 	}
 }
+
+// TestPreviewRoundsPerOpponent checks a Team Round Robin that plays each pair
+// two rounds in a row against the division itself.
+func TestPreviewRoundsPerOpponent(t *testing.T) {
+	is := is.New(t)
+	persons := &pb.TournamentPersons{}
+	for i, team := range []string{"Portland", "Seattle", "Portland", "Portland", "Seattle", "Seattle"} {
+		persons.Persons = append(persons.Persons, &pb.TournamentPerson{
+			Id: fmt.Sprintf("u%d:player%d", i, i), Rating: int32(2000 - 10*i), Team: team})
+	}
+	controls := assignedTeamControls(6, pb.PairingMethod_ASSIGNED_TEAM_ROUND_ROBIN)
+	for _, rc := range controls {
+		rc.GamesPerRound = 2
+	}
+	tc, err := compactNewClassicDivision(persons, controls, true)
+	is.NoErr(err)
+
+	players := []*tpb.PreviewPlayer{}
+	for _, p := range tc.Players.Persons {
+		players = append(players, &tpb.PreviewPlayer{Name: p.Id, Rating: p.Rating, Team: p.Team})
+	}
+	resp, err := previewDivisionPer(players, tc.Seed, 6, tpb.PlannerIntent_PLANNER_TWO_TEAMS, 2)
+	is.NoErr(err)
+	teams := findScheme(resp, pb.PairingMethod_ASSIGNED_TEAM_ROUND_ROBIN, false)
+	is.True(teams.Suggested)
+	is.Equal(teams.CycleLength, int32(6))
+	is.Equal(teams.MissedOpponents, int32(0))
+	is.True(slices.Contains(teams.Notes, "Each pair plays 2 rounds in a row, going first once each."))
+	for round, r := range teams.Rounds {
+		for _, g := range r.Games {
+			pairing := tc.PairingMap[tc.Matrix[round][g.First]]
+			is.Equal(pairing.Players, []int32{g.First, g.Second})
+		}
+	}
+	// Rounds 1 and 2 pair the same players, with firsts swapped.
+	is.Equal(len(teams.Rounds[0].Games), 3)
+	for _, g := range teams.Rounds[0].Games {
+		swapped := false
+		for _, h := range teams.Rounds[1].Games {
+			swapped = swapped || (h.First == g.Second && h.Second == g.First)
+		}
+		is.True(swapped)
+	}
+}

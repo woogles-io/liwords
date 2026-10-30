@@ -117,12 +117,21 @@ export const PairingPlanner = (props: Props) => {
     }
   }, [intent, numRounds]);
   const [expected, setExpected] = useState<number | "">("");
+  // For the Team Round Robin: how many rounds in a row each pair plays.
+  const [perOpponent, setPerOpponent] = useState(1);
 
   // Memoized, so the debounced value (and the request) only changes when an
   // input does.
   const inputs = useMemo(
-    () => ({ division, intent, rounds, expected }),
-    [division, intent, rounds, expected],
+    () => ({
+      division,
+      intent,
+      rounds,
+      expected,
+      // Only set, and shown, when planning two teams.
+      perOpponent: intent === PlannerIntent.PLANNER_TWO_TEAMS ? perOpponent : 1,
+    }),
+    [division, intent, rounds, expected, perOpponent],
   );
   const [request] = useDebouncedValue(inputs, 300);
   const [response, setResponse] = useState<PreviewPairingsResponse>();
@@ -142,6 +151,7 @@ export const PairingPlanner = (props: Props) => {
         rounds: request.rounds,
         expectedPlayers: request.expected || 0,
         intent: request.intent,
+        roundsPerOpponent: request.perOpponent,
       })
       .then((r) => {
         if (!cancelled) {
@@ -233,6 +243,17 @@ export const PairingPlanner = (props: Props) => {
                 onChange={(v) => setExpected(typeof v === "number" ? v : "")}
                 w={180}
               />
+              {intent === PlannerIntent.PLANNER_TWO_TEAMS && (
+                <NumberInput
+                  label="Rounds per opponent"
+                  description="Team Round Robin only"
+                  min={1}
+                  max={10}
+                  value={perOpponent}
+                  onChange={(v) => typeof v === "number" && setPerOpponent(v)}
+                  w={200}
+                />
+              )}
             </Group>
             <Radio.Group
               label="What should the pre-paired rounds do?"
@@ -401,6 +422,7 @@ export const PairingPlanner = (props: Props) => {
           division={division}
           scheme={applying}
           rounds={request.rounds}
+          perOpponent={request.perOpponent}
           numRounds={numRounds}
           hasTeams={anyTeams}
           onClose={() => setApplying(undefined)}
