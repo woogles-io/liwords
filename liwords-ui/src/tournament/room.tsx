@@ -16,8 +16,9 @@ import { ActionsPanel } from "./actions_panel";
 import { CompetitorStatus } from "./competitor_status";
 import "./room.scss";
 import { useTourneyMetadata } from "./utils";
-import { useSearchParams } from "react-router";
+import { useLocation, useSearchParams } from "react-router";
 import { OwnScoreEnterer } from "./enter_own_scores";
+import { PairingPlanner } from "./pairing_planner/pairing_planner";
 import { ConfigProvider } from "antd";
 import { useTournamentCompetitorState } from "../hooks/use_tournament_competitor_state";
 import { readyForTournamentGame } from "./ready";
@@ -36,6 +37,7 @@ type Props = {
 
 export const TournamentRoom = (props: Props) => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
 
   const { loginState } = useLoginStateStoreContext();
   const { tournamentContext, dispatchTournamentContext } =
@@ -193,6 +195,21 @@ export const TournamentRoom = (props: Props) => {
       <>
         <OwnScoreEnterer truncatedID={searchParams.get("es") ?? ""} />
         <div style={{ marginTop: 400 }}></div>
+      </>
+    );
+  }
+
+  if (
+    searchParams.get("planner") != null &&
+    (isDirector || canManageTournaments)
+  ) {
+    return (
+      <>
+        <TopBar />
+        <PairingPlanner
+          tournamentID={tournamentID}
+          tournamentPath={location.pathname}
+        />
       </>
     );
   }
