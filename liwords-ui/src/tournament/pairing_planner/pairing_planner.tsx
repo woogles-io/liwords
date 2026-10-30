@@ -105,10 +105,13 @@ export const PairingPlanner = (props: Props) => {
   const [rounds, setRounds] = useState(3);
   const [expected, setExpected] = useState<number | "">("");
 
-  const [request] = useDebouncedValue(
-    { division, intent, rounds, expected },
-    300,
+  // Memoized, so the debounced value (and the request) only changes when an
+  // input does.
+  const inputs = useMemo(
+    () => ({ division, intent, rounds, expected }),
+    [division, intent, rounds, expected],
   );
+  const [request] = useDebouncedValue(inputs, 300);
   const [response, setResponse] = useState<PreviewPairingsResponse>();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
