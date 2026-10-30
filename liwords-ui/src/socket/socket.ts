@@ -181,7 +181,15 @@ export const LiwordsSocket = (props: {
   const [isConnectedToSocket, setIsConnectedToSocket] = useState(false);
   const { dispatchLoginState } = loginStateStore;
   const authClient = useClient(AuthenticationService);
+  // Two token fetches can overlap: a new pathname starts another, and a dev
+  // build's StrictMode runs the effect that starts them twice.
+  // react-use-websocket opens the socket only with the url of the latest one,
+  // so only that one may tell loginState its cid. An earlier one that lands
+  // last would leave loginState with a cid no socket has, and this tab would
+  // then ignore its own new games.
+  const latestTokenFetch = useRef(0);
   const getFullSocketUrlAsync = useCallback(async () => {
+    const thisTokenFetch = ++latestTokenFetch.current;
     socketDebugCounters.tokenFetchAttempts++;
     console.log("About to request token", {
       isMounted: isMountedRef.current,
@@ -206,6 +214,13 @@ export const LiwordsSocket = (props: {
             allCounters: socketDebugCounters,
           },
         );
+        return failUrl;
+      }
+      if (thisTokenFetch !== latestTokenFetch.current) {
+        console.log("A newer token fetch has started, dropping this token", {
+          pathname,
+          timestamp: new Date().toISOString(),
+        });
         return failUrl;
       }
 
