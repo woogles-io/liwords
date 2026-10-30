@@ -8,6 +8,7 @@ import { ActiveGames } from "./active_games";
 import { CorrespondenceGames } from "./correspondence_games";
 import { findMyRealtimeRequests } from "./realtime_request";
 import { SeekForm } from "./seek_form";
+import { submitSeekFromForm } from "./sought_game_interactions";
 import {
   useContextMatchContext,
   useLobbyStoreContext,
@@ -263,10 +264,7 @@ export const GameLists = React.memo((props: Props) => {
     setBotModalVisible(false);
     setFormDisabled(true);
     if (!formDisabled) {
-      onSeekSubmit(sg);
-      setTimeout(() => {
-        setFormDisabled(false);
-      }, 500);
+      submitSeekFromForm(sg, onSeekSubmit, setFormDisabled);
     }
     resetLobbyFilter(sg.lexicon);
     // Auto-select appropriate tab after creating a seek/match

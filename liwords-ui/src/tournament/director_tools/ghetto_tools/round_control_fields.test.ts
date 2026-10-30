@@ -13,6 +13,7 @@ import {
 const setting = (fields: {
   pairingMethod?: PairingMethod;
   pairingLag?: number;
+  resetRound?: number;
 }) =>
   create(RoundControlSchema, {
     pairingMethod: PairingMethod.KING_OF_THE_HILL,
@@ -65,6 +66,17 @@ describe("the pairing lag of a round control", () => {
     ).toBeUndefined();
   });
 
+  it("is allowed and kept on an Australian Draw round", () => {
+    expect(
+      pairingLagDisabledReason(PairingMethod.AUSTRALIAN_DRAW, 2, 7, 7),
+    ).toBeUndefined();
+    const audraw = setting({
+      pairingMethod: PairingMethod.AUSTRALIAN_DRAW,
+      pairingLag: 1,
+    });
+    expect(rdCtrlFromSetting(audraw, 7, 5).pairingLag).toBe(1);
+  });
+
   it("explains a range that starts with the first round", () => {
     expect(pairingLagDisabledReason(PairingMethod.SWISS, 1, 3, 7)).toMatch(
       /first round/,
@@ -85,5 +97,22 @@ describe("the pairing lag of a round control", () => {
     expect(
       settingsEqual(setting({ pairingLag: 1 }), setting({ pairingLag: 1 })),
     ).toBe(true);
+  });
+});
+
+describe("the reset round of an Australian Draw round", () => {
+  it("is round 1 when the director leaves the field alone", () => {
+    // A new round's setting holds the proto3 default of 0, while the field
+    // shows 1.
+    const audraw = setting({ pairingMethod: PairingMethod.AUSTRALIAN_DRAW });
+    expect(rdCtrlFromSetting(audraw, 7, 3).resetRound).toBe(0);
+  });
+
+  it("is stored 0-based", () => {
+    const audraw = setting({
+      pairingMethod: PairingMethod.AUSTRALIAN_DRAW,
+      resetRound: 9,
+    });
+    expect(rdCtrlFromSetting(audraw, 16, 12).resetRound).toBe(8);
   });
 });

@@ -39,6 +39,10 @@ func soughtGameFromBytes(data []byte) (*entity.SoughtGame, error) {
 	return &entity.SoughtGame{SeekRequest: req}, nil
 }
 
+// New stores the seek. A real-time match request is refused with
+// entity.ErrMatchRequestOpen if its seeker already has one open to the same
+// receiver, or if another of their match requests is being made, or one of
+// their seeks accepted, at that moment.
 func (s *DBStore) New(ctx context.Context, game *entity.SoughtGame) error {
 	// For open seek requests, receiverConnID
 	// might return errors. This is okay, when setting
@@ -64,7 +68,7 @@ func (s *DBStore) New(ctx context.Context, game *entity.SoughtGame) error {
 		return err
 	}
 
-	return s.queries.InsertSoughtGame(ctx, models.InsertSoughtGameParams{
+	params := models.InsertSoughtGameParams{
 		Uuid:           pgtype.Text{String: id, Valid: true},
 		Seeker:         pgtype.Text{String: seeker, Valid: true},
 		SeekerConnID:   pgtype.Text{String: seekerConnID, Valid: true},
@@ -72,7 +76,48 @@ func (s *DBStore) New(ctx context.Context, game *entity.SoughtGame) error {
 		ReceiverConnID: pgtype.Text{String: receiverConnID, Valid: true},
 		Request:        request,
 		GameMode:       gameMode,
+	}
+	realtime := !gameMode.Valid || pb.GameMode(gameMode.Int32) == pb.GameMode_REAL_TIME
+	if !realtime || receiver == "" {
+		return s.queries.InsertSoughtGame(ctx, params)
+	}
+
+	// One open real-time match request per seeker and receiver: each one
+	// reaches the receiver with a sound and a row in their lobby, so a
+	// second one adds nothing but noise.
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	qtx := s.queries.WithTx(tx)
+
+	// Checked under the seeker's lock: each socket message is handled in
+	// its own goroutine, so a burst of match requests would otherwise all
+	// be checked before any was stored. Not waited for, since each waiter
+	// would hold a pool connection and a burst would starve every other
+	// request; a match request that finds it taken is refused instead.
+	locked, err := qtx.TryLockSoughtGameSeeker(ctx, seeker)
+	if err != nil {
+		return err
+	}
+	if !locked {
+		return entity.ErrMatchRequestOpen
+	}
+	open, err := qtx.RealtimeMatchRequestExists(ctx, models.RealtimeMatchRequestExistsParams{
+		SeekerID:   pgtype.Text{String: seeker, Valid: true},
+		ReceiverID: pgtype.Text{String: receiver, Valid: true},
 	})
+	if err != nil {
+		return err
+	}
+	if open {
+		return entity.ErrMatchRequestOpen
+	}
+	if err := qtx.InsertSoughtGame(ctx, params); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
 }
 
 // Get gets the sought game with the given ID.
@@ -271,14 +316,6 @@ func (s *DBStore) ListCorrespondenceSeeksForUser(ctx context.Context, userID str
 // ExistsForUser returns true if the user already has an outstanding seek request.
 func (s *DBStore) ExistsForUser(ctx context.Context, userID string) (bool, error) {
 	return s.queries.ExistsSeekForUser(ctx, pgtype.Text{String: userID, Valid: true})
-}
-
-// CanCreateSeek returns true if the user can create a new seek/match request.
-// Any number of each may be open: the first real-time one accepted takes the
-// rest down (see Claim). Returns (canCreate, conflictType, error) where
-// conflictType indicates what kind of conflict exists.
-func (s *DBStore) CanCreateSeek(ctx context.Context, userID string, gameMode pb.GameMode, receiverID string) (bool, string, error) {
-	return true, "", nil
 }
 
 // UserMatchedBy returns true if there is an open seek request from matcher for user

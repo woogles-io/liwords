@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { GameMode } from "../gen/api/proto/ipc/omgwords_pb";
 import { SoughtGame } from "../store/reducers/lobby_reducer";
-import { collapseIdenticalSeeks, identicalSeekIDs } from "./seek_collapse";
+import {
+  MAX_SEEK_ALTERNATIVES,
+  collapseIdenticalSeeks,
+  identicalSeekIDs,
+} from "./seek_collapse";
 
 const seek = (over: Partial<SoughtGame>): SoughtGame =>
   ({
@@ -107,5 +111,14 @@ describe("identicalSeekIDs", () => {
       "c",
       "d",
     ]);
+  });
+
+  it("lists no more of them than the server tries", () => {
+    const seeks = Array.from({ length: MAX_SEEK_ALTERNATIVES + 10 }, (_, i) =>
+      seek({ seekID: `s${i}` }),
+    );
+    expect(identicalSeekIDs(seeks[0], seeks)).toEqual(
+      seeks.slice(1, MAX_SEEK_ALTERNATIVES + 1).map((sg) => sg.seekID),
+    );
   });
 });

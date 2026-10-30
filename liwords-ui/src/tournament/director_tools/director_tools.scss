@@ -20,3 +20,12 @@
 .anticon-minus-circle {
   color: m($timer-out-dark);
 }
+
+// A help tooltip can hold more than fits on the screen (the pairing type
+// list does), so it scrolls instead of running off it. The tooltip opens on
+// whichever side of its icon has room, and one side always has about half
+// the screen, so 45vh always fits.
+.helptip-body {
+  max-height: 45vh;
+  overflow-y: auto;
+}

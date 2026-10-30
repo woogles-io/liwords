@@ -77,7 +77,16 @@ type ContextMatchStoreData = {
 type LobbyStoreData = {
   lobbyContext: LobbyState;
   dispatchLobbyContext: (action: Action) => void;
+  // For socket messages: applied with the others queued within
+  // LOBBY_QUEUE_MS, in order.
+  queueLobbyAction: (action: Action) => void;
 };
+
+// Each lobby update redraws the lobby's game lists, so a burst of socket
+// messages (many seeks arriving at once) redrew them once per message and
+// kept the page busy for as long as the burst, with a new game's redirect
+// waiting behind it. Queued updates are applied together instead.
+export const LOBBY_QUEUE_MS = 100;
 
 type LoginStateStoreData = {
   loginState: LoginState;
@@ -257,6 +266,7 @@ const LobbyContext = createContext<LobbyStoreData>({
     lobbyFilterByLexicon: localStorage.getItem("lobbyFilterByLexicon"),
   },
   dispatchLobbyContext: defaultFunction,
+  queueLobbyAction: defaultFunction,
 });
 
 const LoginStateContext = createContext<LoginStateStoreData>({
@@ -904,9 +914,36 @@ const RealStore = ({ children, ...props }: Props) => {
     profile: { ratings: {} },
     lobbyFilterByLexicon: localStorage.getItem("lobbyFilterByLexicon"),
   });
+  const lobbyQueue = useRef<Array<Action>>([]);
+  const lobbyQueueTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const takeLobbyQueue = useCallback(() => {
+    if (lobbyQueueTimer.current !== null) {
+      clearTimeout(lobbyQueueTimer.current);
+      lobbyQueueTimer.current = null;
+    }
+    const queued = lobbyQueue.current;
+    lobbyQueue.current = [];
+    return queued;
+  }, []);
   const dispatchLobbyContext = useCallback(
-    (action: Action) => setLobbyContext((state) => LobbyReducer(state, action)),
-    [],
+    (action: Action) => {
+      // Anything queued came first, so it applies first.
+      const actions = [...takeLobbyQueue(), action];
+      setLobbyContext((state) => actions.reduce(LobbyReducer, state));
+    },
+    [takeLobbyQueue],
+  );
+  const queueLobbyAction = useCallback(
+    (action: Action) => {
+      lobbyQueue.current.push(action);
+      if (lobbyQueueTimer.current === null) {
+        lobbyQueueTimer.current = setTimeout(() => {
+          const actions = takeLobbyQueue();
+          setLobbyContext((state) => actions.reduce(LobbyReducer, state));
+        }, LOBBY_QUEUE_MS);
+      }
+    },
+    [takeLobbyQueue],
   );
   const [loginState, setLoginState] = useState({
     username: "",
@@ -1134,8 +1171,9 @@ const RealStore = ({ children, ...props }: Props) => {
     () => ({
       lobbyContext,
       dispatchLobbyContext,
+      queueLobbyAction,
     }),
-    [lobbyContext, dispatchLobbyContext],
+    [lobbyContext, dispatchLobbyContext, queueLobbyAction],
   );
   const loginStateStore = useMemo(
     () => ({
