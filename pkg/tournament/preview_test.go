@@ -2,7 +2,9 @@ package tournament
 
 import (
 	"fmt"
+	"regexp"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -166,4 +168,50 @@ func TestPlaceholderName(t *testing.T) {
 	is.Equal(placeholderName(25), "Z")
 	is.Equal(placeholderName(26), "AA")
 	is.Equal(placeholderName(27), "AB")
+}
+
+// Every sentence the planner shows, over many fields, round counts and
+// intents, reads as a sentence: no "1 rounds", "2–2" or stray spacing.
+func TestPreviewSentences(t *testing.T) {
+	singular := regexp.MustCompile(`(^|[^\d.–])1 (rounds|times|games|byes|pairings|players|opponents|cycles|groups)\b`)
+	sameSpan := regexp.MustCompile(`\b(\d+)–(\d+)\b`)
+	teamPlayers := func(n int) []*tpb.PreviewPlayer {
+		players := previewPlayers(n)
+		for i, p := range players {
+			p.Team = []string{"Portland", "Seattle"}[i*3/(2*n)%2]
+		}
+		return players
+	}
+	for _, n := range []int{2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 16, 18, 21} {
+		for _, rounds := range []int{1, 2, 3, 4, 5, 7, 9, 11, 12, 17, 18, 20} {
+			for _, intent := range []tpb.PlannerIntent{tpb.PlannerIntent_PLANNER_FAIR_START,
+				tpb.PlannerIntent_PLANNER_WHOLE_EVENT, tpb.PlannerIntent_PLANNER_TWO_TEAMS} {
+				for _, players := range [][]*tpb.PreviewPlayer{previewPlayers(n), teamPlayers(n)} {
+					resp, err := previewDivision(players, 7, rounds, intent)
+					if err != nil {
+						t.Fatal(err)
+					}
+					sentences := []string{}
+					for _, s := range resp.Schemes {
+						sentences = append(append(sentences, s.Notes...), s.UnavailableReason)
+					}
+					for _, a := range resp.Alternatives {
+						sentences = append(sentences, a.Reason)
+					}
+					for _, s := range sentences {
+						if s == "" {
+							continue
+						}
+						bad := singular.MatchString(s) || strings.Contains(s, "  ") || !strings.HasSuffix(s, ".")
+						for _, m := range sameSpan.FindAllStringSubmatch(s, -1) {
+							bad = bad || m[1] == m[2]
+						}
+						if bad {
+							t.Errorf("%d players, %d rounds, intent %v: %q", n, rounds, intent, s)
+						}
+					}
+				}
+			}
+		}
+	}
 }

@@ -211,7 +211,7 @@ func unavailableReason(s plannerScheme, n, rounds int, hasTeams bool, teams []st
 			return "Initial Fontes needs an odd number of rounds."
 		}
 		if n < 2*(rounds+1) {
-			return fmt.Sprintf("%d rounds of Initial Fontes needs at least %d players.", rounds, 2*(rounds+1))
+			return fmt.Sprintf("%s of Initial Fontes needs at least %d players.", plural(rounds, "round", "rounds"), 2*(rounds+1))
 		}
 	}
 	return ""
@@ -392,6 +392,14 @@ func plural(n int, one, many string) string {
 	return fmt.Sprintf("%d %s", n, many)
 }
 
+// spanPlural is spanString with a unit: "1 game", "3 games", "1–2 games".
+func spanPlural(lo, hi int32, one, many string) string {
+	if lo == hi {
+		return plural(int(lo), one, many)
+	}
+	return spanString(lo, hi) + " " + many
+}
+
 func spanString(lo, hi int32) string {
 	if lo == hi {
 		return fmt.Sprint(lo)
@@ -414,17 +422,17 @@ func schemeNotes(s plannerScheme, sp *tpb.SchemePreview, n, rounds, topSeeds int
 		notes = append(notes, fmt.Sprintf("Players are split by seed into groups of %d, one from each band of the field, and play everyone in their group once.", rounds+1))
 	case s.teamSplit() && s.within:
 		if otherHi == 0 {
-			notes = append(notes, fmt.Sprintf("Each player plays %s games against their own team and none against the other team.",
-				spanString(ownLo, ownHi)))
+			notes = append(notes, fmt.Sprintf("Each player plays %s against their own team and none against the other team.",
+				spanPlural(ownLo, ownHi, "game", "games")))
 		} else {
-			notes = append(notes, fmt.Sprintf("Each player plays %s games against their own team and %s against the other team.",
-				spanString(ownLo, ownHi), spanString(otherLo, otherHi)))
+			notes = append(notes, fmt.Sprintf("Each player plays %s against their own team and %s against the other team.",
+				spanPlural(ownLo, ownHi, "game", "games"), spanString(otherLo, otherHi)))
 		}
 		if otherHi > 0 {
 			notes = append(notes, "Both teams have an odd number of players, so the player who would sit out each round plays the other team's instead.")
 		}
 	case s.teamSplit():
-		notes = append(notes, fmt.Sprintf("Each player plays %s games against the other team and none against their own.", spanString(otherLo, otherHi)))
+		notes = append(notes, fmt.Sprintf("Each player plays %s against the other team and none against their own.", spanPlural(otherLo, otherHi, "game", "games")))
 	}
 
 	// Repeats while other opponents go unplayed.
@@ -584,7 +592,7 @@ func roundsAlternatives(schemes []*tpb.SchemePreview, n, rounds int, intent tpb.
 				meet = fmt.Sprintf("seeds 1–%d meet only %d times", topSeeds, alt.TopSeedGames)
 			}
 			alts = append(alts, &tpb.RoundsAlternative{Rounds: int32(altRounds), PairingMethod: pb.PairingMethod_INITIAL_FONTES,
-				Reason: fmt.Sprintf("Pre-pair %d rounds with Initial Fontes, so %s, and let COP pair the rest.", altRounds, meet)})
+				Reason: fmt.Sprintf("Pre-pair %s with Initial Fontes, so %s, and let COP pair the rest.", plural(altRounds, "round", "rounds"), meet)})
 		}
 	}
 	offered := map[int]bool{}
@@ -605,7 +613,7 @@ func roundsAlternatives(schemes []*tpb.SchemePreview, n, rounds int, intent tpb.
 			}
 			offered[full] = true
 			alts = append(alts, &tpb.RoundsAlternative{Rounds: int32(full), PairingMethod: best.PairingMethod, PlayWithinTeam: best.PlayWithinTeam,
-				Reason: fmt.Sprintf("Pre-pair %d rounds, %s, and let COP pair %s. Its final round pairs the prize contenders King of the Hill style.", full, what, last)})
+				Reason: fmt.Sprintf("Pre-pair %s, %s, and let COP pair %s. Its final round pairs the prize contenders King of the Hill style.", plural(full, "round", "rounds"), what, last)})
 		}
 	}
 	if best == nil || !fits(best, rounds) {
@@ -624,7 +632,7 @@ func roundsAlternatives(schemes []*tpb.SchemePreview, n, rounds int, intent tpb.
 			}
 			offered[c] = true
 			alts = append(alts, &tpb.RoundsAlternative{Rounds: int32(c), PairingMethod: s.PairingMethod, PlayWithinTeam: s.PlayWithinTeam,
-				Reason: fmt.Sprintf("Pre-pair %d rounds: the %s fits that exactly.", c, schemeName(s.PairingMethod, s.PlayWithinTeam))})
+				Reason: fmt.Sprintf("Pre-pair %s: the %s fits that exactly.", plural(c, "round", "rounds"), schemeName(s.PairingMethod, s.PlayWithinTeam))})
 		}
 	}
 	return alts
