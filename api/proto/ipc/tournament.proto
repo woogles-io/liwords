@@ -82,6 +82,9 @@ enum PairingMethod {
   SWISS = 6;
   QUICKPAIR = 7;
   MANUAL = 8;
+  // Retired: the top half of the seeds against the bottom half. Kept so that
+  // divisions already using it still pair; ASSIGNED_TEAM_ROUND_ROBIN replaces
+  // it.
   TEAM_ROUND_ROBIN = 9;
   INTERLEAVED_ROUND_ROBIN = 10;
   PAIRING_METHOD_COP = 11;

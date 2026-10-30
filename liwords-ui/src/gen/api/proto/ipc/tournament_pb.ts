@@ -1199,6 +1199,10 @@ export enum PairingMethod {
   MANUAL = 8,
 
   /**
+   * Retired: the top half of the seeds against the bottom half. Kept so that
+   * divisions already using it still pair; ASSIGNED_TEAM_ROUND_ROBIN replaces
+   * it.
+   *
    * @generated from enum value: TEAM_ROUND_ROBIN = 9;
    */
   TEAM_ROUND_ROBIN = 9,

@@ -96,15 +96,18 @@ func (TournamentGameResult) EnumDescriptor() ([]byte, []int) {
 type PairingMethod int32
 
 const (
-	PairingMethod_RANDOM                  PairingMethod = 0
-	PairingMethod_ROUND_ROBIN             PairingMethod = 1
-	PairingMethod_KING_OF_THE_HILL        PairingMethod = 2
-	PairingMethod_ELIMINATION             PairingMethod = 3
-	PairingMethod_FACTOR                  PairingMethod = 4
-	PairingMethod_INITIAL_FONTES          PairingMethod = 5
-	PairingMethod_SWISS                   PairingMethod = 6
-	PairingMethod_QUICKPAIR               PairingMethod = 7
-	PairingMethod_MANUAL                  PairingMethod = 8
+	PairingMethod_RANDOM           PairingMethod = 0
+	PairingMethod_ROUND_ROBIN      PairingMethod = 1
+	PairingMethod_KING_OF_THE_HILL PairingMethod = 2
+	PairingMethod_ELIMINATION      PairingMethod = 3
+	PairingMethod_FACTOR           PairingMethod = 4
+	PairingMethod_INITIAL_FONTES   PairingMethod = 5
+	PairingMethod_SWISS            PairingMethod = 6
+	PairingMethod_QUICKPAIR        PairingMethod = 7
+	PairingMethod_MANUAL           PairingMethod = 8
+	// Retired: the top half of the seeds against the bottom half. Kept so that
+	// divisions already using it still pair; ASSIGNED_TEAM_ROUND_ROBIN replaces
+	// it.
 	PairingMethod_TEAM_ROUND_ROBIN        PairingMethod = 9
 	PairingMethod_INTERLEAVED_ROUND_ROBIN PairingMethod = 10
 	PairingMethod_PAIRING_METHOD_COP      PairingMethod = 11

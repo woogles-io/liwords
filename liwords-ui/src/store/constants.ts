@@ -547,19 +547,16 @@ export const errorMap: Map<number, string> = new Map<number, string>([
   ],
   [
     1111,
-    "Some players have teams, so teammates must never play each other: round $3 must use the Team (Assigned Teams) Round Robin or Manual pairings. Remove the teams to use other pairings.",
+    "Some players have teams, so teammates must never play each other: round $3 must use the Team Round Robin or Manual pairings. Remove the teams to use other pairings.",
   ],
   [
     1112,
-    "$3 player(s) have no team. Every player needs a team for the Team (Assigned Teams) Round Robin.",
+    "$3 player(s) have no team. Every player needs a team for the Team Round Robin.",
   ],
-  [
-    1113,
-    "The Team (Assigned Teams) Round Robin needs exactly two teams; this division has $3.",
-  ],
+  [1113, "The Team Round Robin needs exactly two teams; this division has $3."],
   [
     1114,
-    "Round $3 uses the Team (Assigned Teams) Round Robin, which can't play within teams: teammates never play each other.",
+    "Round $3 uses the Team Round Robin, which can't play within teams: teammates never play each other.",
   ],
   [
     1115,
