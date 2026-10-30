@@ -5,6 +5,18 @@ import {
   RoundControl,
 } from "../../gen/api/proto/ipc/tournament_pb";
 
+// Whether the method pairs without looking at results, so its rounds are
+// paired in advance. Mirrors pair.IsStandingsIndependent on the server.
+export const isPrePaired = (m: PairingMethod): boolean =>
+  m === PairingMethod.ROUND_ROBIN ||
+  m === PairingMethod.TEAM_ROUND_ROBIN ||
+  m === PairingMethod.INTERLEAVED_ROUND_ROBIN ||
+  m === PairingMethod.SNAKED_ROUND_ROBIN ||
+  m === PairingMethod.ASSIGNED_TEAM_ROUND_ROBIN ||
+  m === PairingMethod.RANDOM ||
+  m === PairingMethod.INITIAL_FONTES ||
+  m === PairingMethod.MANUAL;
+
 export type RoundSetting = {
   beginRound: number;
   endRound: number;

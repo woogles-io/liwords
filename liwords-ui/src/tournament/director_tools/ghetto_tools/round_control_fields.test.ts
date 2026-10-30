@@ -4,7 +4,11 @@ import {
   PairingMethod,
   RoundControlSchema,
 } from "../../../gen/api/proto/ipc/tournament_pb";
-import { fieldsForMethod, settingsEqual } from "../pairing_methods";
+import {
+  fieldsForMethod,
+  isPrePaired,
+  settingsEqual,
+} from "../pairing_methods";
 import {
   pairingLagDisabledReason,
   rdCtrlFromSetting,
@@ -167,5 +171,28 @@ describe("a Win Groups round", () => {
       pairingLag: 1,
     });
     expect(rdCtrlFromSetting(wg, 7, 5).pairingLag).toBe(1);
+  });
+});
+
+describe("pre-paired methods", () => {
+  it("are the ones that don't pair from results", () => {
+    for (const m of [
+      PairingMethod.INITIAL_FONTES,
+      PairingMethod.ROUND_ROBIN,
+      PairingMethod.SNAKED_ROUND_ROBIN,
+      PairingMethod.ASSIGNED_TEAM_ROUND_ROBIN,
+      PairingMethod.MANUAL,
+    ]) {
+      expect(isPrePaired(m)).toBe(true);
+    }
+    for (const m of [
+      PairingMethod.PAIRING_METHOD_COP,
+      PairingMethod.SWISS,
+      PairingMethod.KING_OF_THE_HILL,
+      PairingMethod.WIN_GROUPS,
+      PairingMethod.AUSTRALIAN_DRAW,
+    ]) {
+      expect(isPrePaired(m)).toBe(false);
+    }
   });
 });

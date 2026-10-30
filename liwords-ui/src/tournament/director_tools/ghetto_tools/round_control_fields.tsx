@@ -12,6 +12,7 @@ import {
 import { HelptipLabel } from "../helptip_label";
 import {
   fieldsForMethod,
+  isPrePaired,
   PairingMethodField,
   RoundSetting,
 } from "../pairing_methods";
@@ -69,12 +70,19 @@ export const SingleRoundControlFields = (
   const { setting, beginRound, endRound, totalRounds, round } = props;
   const addlFields = fieldsForMethod(setting.pairingMethod);
 
-  const lagDisabledReason = pairingLagDisabledReason(
-    setting.pairingMethod,
-    beginRound ?? round,
-    endRound ?? round,
-    totalRounds,
-  );
+  // Pre-paired rounds don't use results, so for them the pairing lag only
+  // decides whether the round can start before the previous one ends.
+  const prePaired = isPrePaired(setting.pairingMethod);
+  const firstRound = (beginRound ?? round) === 1;
+  const lagDisabledReason =
+    prePaired && firstRound
+      ? "The first round can't start early, because there is no round before it."
+      : pairingLagDisabledReason(
+          setting.pairingMethod,
+          beginRound ?? round,
+          endRound ?? round,
+          totalRounds,
+        );
   // With no results yet, COP pairs by seed: 1v2, 3v4, and so on.
   const copStartsFirstRound =
     setting.pairingMethod === PairingMethod.PAIRING_METHOD_COP &&
@@ -191,6 +199,19 @@ export const SingleRoundControlFields = (
     </>
   );
 
+  const startEarlyHelptip = (
+    <>
+      <p>
+        These rounds are paired in advance, so they don't wait for results. With
+        this on, the round can be started once the round before the previous one
+        is complete, while some games of the previous round are still being
+        played. Players who finish early don't wait for the slowest game. Each
+        player still has to finish their previous game before starting this one.
+      </p>
+      <p>You still start the round yourself.</p>
+    </>
+  );
+
   return (
     <>
       <Form.Item
@@ -277,25 +298,47 @@ export const SingleRoundControlFields = (
           players meet right away.
         </p>
       )}
-      <Form.Item
-        {...formItemLayout}
-        label={
-          <HelptipLabel labelText="Paired from" help={pairingLagHelptip} />
-        }
-      >
-        <Select
-          value={setting.pairingLag || 0}
-          // Leave it enabled while it is set, so that an invalid lag can be
-          // turned off.
-          disabled={!!lagDisabledReason && !setting.pairingLag}
-          onChange={(e) => {
-            props.onChange("pairingLag", e);
-          }}
+      {prePaired ? (
+        <Form.Item
+          {...formItemLayout}
+          label={
+            <HelptipLabel
+              labelText="Can start early"
+              help={startEarlyHelptip}
+            />
+          }
         >
-          <Select.Option value={0}>Previous round</Select.Option>
-          <Select.Option value={1}>Two rounds back</Select.Option>
-        </Select>
-      </Form.Item>
+          <Switch
+            checked={!!setting.pairingLag}
+            // Leave it enabled while it is on, so that an invalid lag can be
+            // turned off.
+            disabled={!!lagDisabledReason && !setting.pairingLag}
+            onChange={(checked) => {
+              props.onChange("pairingLag", checked ? 1 : 0);
+            }}
+          />
+        </Form.Item>
+      ) : (
+        <Form.Item
+          {...formItemLayout}
+          label={
+            <HelptipLabel labelText="Paired from" help={pairingLagHelptip} />
+          }
+        >
+          <Select
+            value={setting.pairingLag || 0}
+            // Leave it enabled while it is set, so that an invalid lag can be
+            // turned off.
+            disabled={!!lagDisabledReason && !setting.pairingLag}
+            onChange={(e) => {
+              props.onChange("pairingLag", e);
+            }}
+          >
+            <Select.Option value={0}>Previous round</Select.Option>
+            <Select.Option value={1}>Two rounds back</Select.Option>
+          </Select>
+        </Form.Item>
+      )}
       {lagDisabledReason && (
         <p
           style={{
