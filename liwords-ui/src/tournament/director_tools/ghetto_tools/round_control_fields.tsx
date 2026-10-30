@@ -69,23 +69,16 @@ export const SingleRoundControlFields = (
   const { setting, beginRound, endRound, totalRounds, round } = props;
   const addlFields = fieldsForMethod(setting.pairingMethod);
 
-  // Determine if COP should be disabled (only allowed for second half)
-  const isCOPDisabled = React.useMemo(() => {
-    if (beginRound === undefined || totalRounds === undefined) {
-      // If we don't have round information, allow COP (e.g., in single round controls)
-      return false;
-    }
-    // COP is only allowed if the BEGIN round is in the second half or later
-    const halfwayPoint = Math.ceil(totalRounds / 2);
-    return beginRound <= halfwayPoint;
-  }, [beginRound, totalRounds]);
-
   const lagDisabledReason = pairingLagDisabledReason(
     setting.pairingMethod,
     beginRound ?? round,
     endRound ?? round,
     totalRounds,
   );
+  // With no results yet, COP pairs by seed: 1v2, 3v4, and so on.
+  const copStartsFirstRound =
+    setting.pairingMethod === PairingMethod.PAIRING_METHOD_COP &&
+    (beginRound ?? round) === 1;
 
   const formItemLayout = {
     labelCol: {
@@ -191,12 +184,8 @@ export const SingleRoundControlFields = (
         >
           <Select.Option value={PairingMethod.RANDOM}>Random</Select.Option>
           <Select.Option value={PairingMethod.SWISS}>Swiss</Select.Option>
-          <Select.Option
-            value={PairingMethod.PAIRING_METHOD_COP}
-            disabled={isCOPDisabled}
-          >
+          <Select.Option value={PairingMethod.PAIRING_METHOD_COP}>
             COP (Castellano O'Connor Pairings)
-            {isCOPDisabled && " - Only for 2nd half"}
           </Select.Option>
           <Select.Option value={PairingMethod.ROUND_ROBIN}>
             Round Robin
@@ -220,22 +209,21 @@ export const SingleRoundControlFields = (
           </Select.Option>
         </Select>
       </Form.Item>
-      {isCOPDisabled &&
-        setting.pairingMethod === PairingMethod.PAIRING_METHOD_COP &&
-        beginRound !== undefined &&
-        totalRounds !== undefined && (
-          <p
-            style={{
-              fontSize: "12px",
-              color: "#ff4d4f",
-              marginTop: "-8px",
-              marginBottom: "8px",
-            }}
-          >
-            COP can only be used for the second half of the tournament (round{" "}
-            {Math.ceil(totalRounds / 2) + 1} and later).
-          </p>
-        )}
+      {copStartsFirstRound && (
+        <p
+          style={{
+            fontSize: "12px",
+            color: "#faad14",
+            marginTop: "-8px",
+            marginBottom: "8px",
+          }}
+        >
+          A pre-paired scheme, such as Initial Fontes or Round Robin, is
+          recommended for the first few rounds of a tournament. With no results
+          yet, COP pairs players by seed (1 vs 2, 3 vs 4, and so on), so the top
+          players meet right away.
+        </p>
+      )}
       <Form.Item
         {...formItemLayout}
         label={
