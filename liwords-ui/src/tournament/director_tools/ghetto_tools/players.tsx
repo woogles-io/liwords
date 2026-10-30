@@ -112,9 +112,11 @@ export const AddPlayers = (props: { tournamentID: string }) => {
       <Form.List name="players">
         {(fields, { add, remove }) => (
           <>
-            {fields.map((field) => (
+            {/* field carries a key, which would give every input in a row
+                the same key, so it's left out of the spread. */}
+            {fields.map(({ key, ...field }) => (
               <Space
-                key={field.key}
+                key={key}
                 style={{ display: "flex", marginBottom: 8 }}
                 align="baseline"
               >
