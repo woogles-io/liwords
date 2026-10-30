@@ -549,6 +549,20 @@ func initialFontesGroups(numberOfPlayers int, numberOfNtiles int, seed uint64) [
 	return groupings
 }
 
+// InitialFontesGroups lists the groups Initial Fontes pairs among themselves
+// for numberOfPlayers players over numberOfNtiles-1 rounds, without the bye.
+func InitialFontesGroups(numberOfPlayers, numberOfNtiles int, seed uint64) ([][]int, error) {
+	n := numberOfPlayers + numberOfPlayers%2
+	if numberOfPlayers < numberOfNtiles || n/numberOfNtiles < 2 {
+		return nil, fmt.Errorf("number of initial fontes rounds (%d) should be less than half the number of players (%d)", numberOfNtiles-1, n)
+	}
+	groups := [][]int{}
+	for _, group := range initialFontesGroups(n, numberOfNtiles, seed) {
+		groups = append(groups, slices.DeleteFunc(slices.Clone(group), func(p int) bool { return p >= numberOfPlayers }))
+	}
+	return groups, nil
+}
+
 // pairsWithShirtsVsSkins says whether an Initial Fontes group of groupSize
 // players is paired shirts vs skins rather than as a round robin: only an
 // oversized group is, and only if it's big enough to get through every
@@ -852,6 +866,12 @@ func TeamRoundRobinGoesFirst(rc *pb.RoundControl, numberOfPlayers, round, player
 		return false, fmt.Errorf("player %d out of range for %d players", player, len(firsts))
 	}
 	return firsts[player], nil
+}
+
+// Teams splits players 0 through numberOfPlayers-1, who are in seed order,
+// into the two teams of a team-style round robin; see getTeams.
+func Teams(numberOfPlayers int, method pb.PairingMethod, teams []string) ([]int, []int, error) {
+	return getTeams(numberOfPlayers, method, teams)
 }
 
 // getTeams splits players 0 through numberOfPlayers-1, who are in seed

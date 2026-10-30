@@ -157,6 +157,9 @@ const (
 	// TournamentServiceRunCOPProcedure is the fully-qualified name of the TournamentService's RunCOP
 	// RPC.
 	TournamentServiceRunCOPProcedure = "/tournament_service.TournamentService/RunCOP"
+	// TournamentServicePreviewPairingsProcedure is the fully-qualified name of the TournamentService's
+	// PreviewPairings RPC.
+	TournamentServicePreviewPairingsProcedure = "/tournament_service.TournamentService/PreviewPairings"
 	// TournamentServiceInitializeMonitoringKeysProcedure is the fully-qualified name of the
 	// TournamentService's InitializeMonitoringKeys RPC.
 	TournamentServiceInitializeMonitoringKeysProcedure = "/tournament_service.TournamentService/InitializeMonitoringKeys"
@@ -225,6 +228,9 @@ type TournamentServiceClient interface {
 	// or is registered in, the last played first.
 	GetEnteredTournaments(context.Context, *connect.Request[tournament_service.GetEnteredTournamentsRequest]) (*connect.Response[tournament_service.GetEnteredTournamentsResponse], error)
 	RunCOP(context.Context, *connect.Request[tournament_service.RunCopRequest]) (*connect.Response[ipc.PairResponse], error)
+	// PreviewPairings shows how each pre-paired scheme would pair the division,
+	// ranked for what the director wants. Nothing is changed.
+	PreviewPairings(context.Context, *connect.Request[tournament_service.PreviewPairingsRequest]) (*connect.Response[tournament_service.PreviewPairingsResponse], error)
 	// Monitoring/invigilation endpoints
 	InitializeMonitoringKeys(context.Context, *connect.Request[tournament_service.InitializeMonitoringKeysRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
 	RequestMonitoringStream(context.Context, *connect.Request[tournament_service.RequestMonitoringStreamRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
@@ -499,6 +505,12 @@ func NewTournamentServiceClient(httpClient connect.HTTPClient, baseURL string, o
 			connect.WithSchema(tournamentServiceMethods.ByName("RunCOP")),
 			connect.WithClientOptions(opts...),
 		),
+		previewPairings: connect.NewClient[tournament_service.PreviewPairingsRequest, tournament_service.PreviewPairingsResponse](
+			httpClient,
+			baseURL+TournamentServicePreviewPairingsProcedure,
+			connect.WithSchema(tournamentServiceMethods.ByName("PreviewPairings")),
+			connect.WithClientOptions(opts...),
+		),
 		initializeMonitoringKeys: connect.NewClient[tournament_service.InitializeMonitoringKeysRequest, tournament_service.TournamentResponse](
 			httpClient,
 			baseURL+TournamentServiceInitializeMonitoringKeysProcedure,
@@ -570,6 +582,7 @@ type tournamentServiceClient struct {
 	getMyTournaments                *connect.Client[tournament_service.GetMyTournamentsRequest, tournament_service.GetMyTournamentsResponse]
 	getEnteredTournaments           *connect.Client[tournament_service.GetEnteredTournamentsRequest, tournament_service.GetEnteredTournamentsResponse]
 	runCOP                          *connect.Client[tournament_service.RunCopRequest, ipc.PairResponse]
+	previewPairings                 *connect.Client[tournament_service.PreviewPairingsRequest, tournament_service.PreviewPairingsResponse]
 	initializeMonitoringKeys        *connect.Client[tournament_service.InitializeMonitoringKeysRequest, tournament_service.TournamentResponse]
 	requestMonitoringStream         *connect.Client[tournament_service.RequestMonitoringStreamRequest, tournament_service.TournamentResponse]
 	resetMonitoringStream           *connect.Client[tournament_service.ResetMonitoringStreamRequest, tournament_service.TournamentResponse]
@@ -783,6 +796,11 @@ func (c *tournamentServiceClient) RunCOP(ctx context.Context, req *connect.Reque
 	return c.runCOP.CallUnary(ctx, req)
 }
 
+// PreviewPairings calls tournament_service.TournamentService.PreviewPairings.
+func (c *tournamentServiceClient) PreviewPairings(ctx context.Context, req *connect.Request[tournament_service.PreviewPairingsRequest]) (*connect.Response[tournament_service.PreviewPairingsResponse], error) {
+	return c.previewPairings.CallUnary(ctx, req)
+}
+
 // InitializeMonitoringKeys calls tournament_service.TournamentService.InitializeMonitoringKeys.
 func (c *tournamentServiceClient) InitializeMonitoringKeys(ctx context.Context, req *connect.Request[tournament_service.InitializeMonitoringKeysRequest]) (*connect.Response[tournament_service.TournamentResponse], error) {
 	return c.initializeMonitoringKeys.CallUnary(ctx, req)
@@ -858,6 +876,9 @@ type TournamentServiceHandler interface {
 	// or is registered in, the last played first.
 	GetEnteredTournaments(context.Context, *connect.Request[tournament_service.GetEnteredTournamentsRequest]) (*connect.Response[tournament_service.GetEnteredTournamentsResponse], error)
 	RunCOP(context.Context, *connect.Request[tournament_service.RunCopRequest]) (*connect.Response[ipc.PairResponse], error)
+	// PreviewPairings shows how each pre-paired scheme would pair the division,
+	// ranked for what the director wants. Nothing is changed.
+	PreviewPairings(context.Context, *connect.Request[tournament_service.PreviewPairingsRequest]) (*connect.Response[tournament_service.PreviewPairingsResponse], error)
 	// Monitoring/invigilation endpoints
 	InitializeMonitoringKeys(context.Context, *connect.Request[tournament_service.InitializeMonitoringKeysRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
 	RequestMonitoringStream(context.Context, *connect.Request[tournament_service.RequestMonitoringStreamRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
@@ -1128,6 +1149,12 @@ func NewTournamentServiceHandler(svc TournamentServiceHandler, opts ...connect.H
 		connect.WithSchema(tournamentServiceMethods.ByName("RunCOP")),
 		connect.WithHandlerOptions(opts...),
 	)
+	tournamentServicePreviewPairingsHandler := connect.NewUnaryHandler(
+		TournamentServicePreviewPairingsProcedure,
+		svc.PreviewPairings,
+		connect.WithSchema(tournamentServiceMethods.ByName("PreviewPairings")),
+		connect.WithHandlerOptions(opts...),
+	)
 	tournamentServiceInitializeMonitoringKeysHandler := connect.NewUnaryHandler(
 		TournamentServiceInitializeMonitoringKeysProcedure,
 		svc.InitializeMonitoringKeys,
@@ -1237,6 +1264,8 @@ func NewTournamentServiceHandler(svc TournamentServiceHandler, opts ...connect.H
 			tournamentServiceGetEnteredTournamentsHandler.ServeHTTP(w, r)
 		case TournamentServiceRunCOPProcedure:
 			tournamentServiceRunCOPHandler.ServeHTTP(w, r)
+		case TournamentServicePreviewPairingsProcedure:
+			tournamentServicePreviewPairingsHandler.ServeHTTP(w, r)
 		case TournamentServiceInitializeMonitoringKeysProcedure:
 			tournamentServiceInitializeMonitoringKeysHandler.ServeHTTP(w, r)
 		case TournamentServiceRequestMonitoringStreamProcedure:
@@ -1416,6 +1445,10 @@ func (UnimplementedTournamentServiceHandler) GetEnteredTournaments(context.Conte
 
 func (UnimplementedTournamentServiceHandler) RunCOP(context.Context, *connect.Request[tournament_service.RunCopRequest]) (*connect.Response[ipc.PairResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tournament_service.TournamentService.RunCOP is not implemented"))
+}
+
+func (UnimplementedTournamentServiceHandler) PreviewPairings(context.Context, *connect.Request[tournament_service.PreviewPairingsRequest]) (*connect.Response[tournament_service.PreviewPairingsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tournament_service.TournamentService.PreviewPairings is not implemented"))
 }
 
 func (UnimplementedTournamentServiceHandler) InitializeMonitoringKeys(context.Context, *connect.Request[tournament_service.InitializeMonitoringKeysRequest]) (*connect.Response[tournament_service.TournamentResponse], error) {
