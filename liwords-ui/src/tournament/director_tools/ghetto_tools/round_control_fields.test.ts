@@ -14,11 +14,32 @@ const setting = (fields: {
   pairingMethod?: PairingMethod;
   pairingLag?: number;
   resetRound?: number;
+  playWithinTeam?: boolean;
 }) =>
   create(RoundControlSchema, {
     pairingMethod: PairingMethod.KING_OF_THE_HILL,
     ...fields,
   });
+
+describe("play within team", () => {
+  it("is kept for the team-splitting round robins", () => {
+    for (const pairingMethod of [
+      PairingMethod.INTERLEAVED_ROUND_ROBIN,
+      PairingMethod.SNAKED_ROUND_ROBIN,
+    ]) {
+      expect(
+        rdCtrlFromSetting(
+          setting({ pairingMethod, playWithinTeam: true }),
+          7,
+          1,
+        ).playWithinTeam,
+      ).toBe(true);
+      expect(
+        rdCtrlFromSetting(setting({ pairingMethod }), 7, 1).playWithinTeam,
+      ).toBe(false);
+    }
+  });
+});
 
 describe("the pairing lag of a round control", () => {
   it("is copied for every pairing method", () => {
