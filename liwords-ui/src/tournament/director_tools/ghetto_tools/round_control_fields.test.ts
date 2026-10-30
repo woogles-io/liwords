@@ -3,11 +3,14 @@ import { describe, expect, it } from "vitest";
 import {
   PairingMethod,
   RoundControlSchema,
+  TournamentPersonSchema,
 } from "../../../gen/api/proto/ipc/tournament_pb";
 import {
+  assignedTeamsProblem,
   fieldsForMethod,
   isPrePaired,
   settingsEqual,
+  teamNames,
 } from "../pairing_methods";
 import {
   pairingLagAppliesTo,
@@ -218,5 +221,46 @@ describe("pre-paired methods", () => {
     ]) {
       expect(isPrePaired(m)).toBe(false);
     }
+  });
+});
+
+describe("assigned teams", () => {
+  const players = (...teams: string[]) =>
+    teams.map((team, i) =>
+      create(TournamentPersonSchema, { id: `u${i}:p${i}`, team }),
+    );
+
+  it("are fine on exactly two teams", () => {
+    expect(
+      assignedTeamsProblem(players("Portland", "Seattle", "Seattle")),
+    ).toBeUndefined();
+  });
+
+  it("list every team when there are more than two, to show typos", () => {
+    expect(
+      assignedTeamsProblem(
+        players("Portland", "Portland", "Seattle", "Seattle", "Seatte"),
+      ),
+    ).toBe(
+      "The Team Round Robin needs every player on one of exactly two teams. " +
+        "This division has Portland (2 players), Seattle (2 players), Seatte (1 player). " +
+        "Fix teams in Edit player.",
+    );
+  });
+
+  it("count players without a team", () => {
+    expect(assignedTeamsProblem(players("Portland", "Seattle", ""))).toBe(
+      "The Team Round Robin needs every player on one of exactly two teams. " +
+        "This division has Portland (1 player), Seattle (1 player), 1 player without a team. " +
+        "Fix teams in Edit player.",
+    );
+  });
+
+  it("are named most players first", () => {
+    expect(teamNames(players("B", "A", "A", "", "C", "B", "A"))).toEqual([
+      "A",
+      "B",
+      "C",
+    ]);
   });
 });

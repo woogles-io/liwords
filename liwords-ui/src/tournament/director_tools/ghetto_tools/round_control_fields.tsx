@@ -8,9 +8,11 @@ import {
   PairingMethod,
   RoundControl,
   RoundControlSchema,
+  TournamentPerson,
 } from "../../../gen/api/proto/ipc/tournament_pb";
 import { HelptipLabel } from "../helptip_label";
 import {
+  assignedTeamsProblem,
   fieldsForMethod,
   isPrePaired,
   PairingMethodField,
@@ -113,6 +115,7 @@ export type RdCtrlFieldsProps = {
   ) => void;
   onRemove: () => void;
   totalRounds?: number;
+  players?: TournamentPerson[];
 };
 
 type SingleRoundControlFieldsProps = SingleRdCtrlFieldsProps & {
@@ -124,7 +127,7 @@ type SingleRoundControlFieldsProps = SingleRdCtrlFieldsProps & {
 export const SingleRoundControlFields = (
   props: SingleRoundControlFieldsProps,
 ) => {
-  const { setting, beginRound, endRound, totalRounds, round } = props;
+  const { setting, beginRound, endRound, totalRounds, round, players } = props;
   const addlFields = fieldsForMethod(setting.pairingMethod);
 
   // Pre-paired rounds don't use results, so for them the pairing lag only
@@ -147,6 +150,10 @@ export const SingleRoundControlFields = (
       )
     : undefined;
   // With no results yet, COP pairs by seed: 1v2, 3v4, and so on.
+  const teamsProblem =
+    setting.pairingMethod === PairingMethod.ASSIGNED_TEAM_ROUND_ROBIN && players
+      ? assignedTeamsProblem(players)
+      : undefined;
   const copStartsFirstRound =
     setting.pairingMethod === PairingMethod.PAIRING_METHOD_COP &&
     (beginRound ?? round) === 1;
@@ -332,6 +339,18 @@ export const SingleRoundControlFields = (
           </Select.Option>
         </Select>
       </Form.Item>
+      {teamsProblem && (
+        <p
+          style={{
+            fontSize: "12px",
+            color: "#faad14",
+            marginTop: "-8px",
+            marginBottom: "8px",
+          }}
+        >
+          {teamsProblem}
+        </p>
+      )}
       {setting.pairingMethod === PairingMethod.SWISS && (
         <p
           style={{
@@ -520,6 +539,7 @@ export const RoundControlFields = (props: RdCtrlFieldsProps) => {
           beginRound={setting.beginRound}
           endRound={setting.endRound}
           totalRounds={totalRounds}
+          players={props.players}
         />
       </Form>
       <Button onClick={props.onRemove}>- Remove</Button>
