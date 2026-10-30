@@ -105,8 +105,8 @@ export const fieldsForMethod = (
       fields.push([
         "number",
         "gamesPerRound",
-        "Games per Round",
-        "The number of games per round. For example, set this to two if you wish each team member to play the other team member twice.",
+        "Rounds per opponent",
+        "How many rounds in a row each player plays the same opponent. With 2, everyone plays each opponent twice, back to back, going first once each.",
       ]);
       break;
 
