@@ -101,8 +101,16 @@ export const PairingPlanner = (props: Props) => {
   const registered = players.filter((p) => !p.suspended).length;
   const anyTeams = players.some((p) => p.team);
 
+  const numRounds = tournamentContext.divisions[division]?.numRounds ?? 0;
+
   const [intent, setIntent] = useState(PlannerIntent.PLANNER_FAIR_START);
   const [rounds, setRounds] = useState(3);
+  // The whole event pre-pairs every round of the division.
+  useEffect(() => {
+    if (intent === PlannerIntent.PLANNER_WHOLE_EVENT && numRounds > 0) {
+      setRounds(numRounds);
+    }
+  }, [intent, numRounds]);
   const [expected, setExpected] = useState<number | "">("");
 
   // Memoized, so the debounced value (and the request) only changes when an
@@ -188,6 +196,11 @@ export const PairingPlanner = (props: Props) => {
               )}
               <NumberInput
                 label="Rounds to pre-pair"
+                description={
+                  numRounds > 0
+                    ? `The division has ${numRounds} rounds`
+                    : undefined
+                }
                 min={1}
                 max={50}
                 value={rounds}
@@ -208,7 +221,13 @@ export const PairingPlanner = (props: Props) => {
             <Radio.Group
               label="What should the pre-paired rounds do?"
               value={`${intent}`}
-              onChange={(v) => setIntent(Number(v) as PlannerIntent)}
+              onChange={(v) => {
+                const next = Number(v) as PlannerIntent;
+                if (intent === PlannerIntent.PLANNER_WHOLE_EVENT) {
+                  setRounds(3);
+                }
+                setIntent(next);
+              }}
             >
               <SimpleGrid cols={{ base: 1, sm: 3 }} mt="xs">
                 {intents.map((i) => (
