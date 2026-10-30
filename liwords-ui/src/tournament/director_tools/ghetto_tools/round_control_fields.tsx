@@ -98,7 +98,8 @@ export const SingleRoundControlFields = (
         </li>
         <li>
           - <strong>Swiss:</strong> Swiss pairings by default try to match
-          players who are performing similarly.
+          players who are performing similarly. Not recommended anymore: use COP
+          or Win Groups instead.
         </li>
         <li>
           - <strong>Win Groups:</strong> Players on the same number of wins form
@@ -205,7 +206,6 @@ export const SingleRoundControlFields = (
           }}
         >
           <Select.Option value={PairingMethod.RANDOM}>Random</Select.Option>
-          <Select.Option value={PairingMethod.SWISS}>Swiss</Select.Option>
           <Select.Option value={PairingMethod.WIN_GROUPS}>
             Win Groups
           </Select.Option>
@@ -241,8 +241,27 @@ export const SingleRoundControlFields = (
           <Select.Option value={PairingMethod.TEAM_ROUND_ROBIN} disabled>
             Top vs Bottom Round Robin (retired)
           </Select.Option>
+          {/* Not recommended anymore, so it's last and grayed out, but
+              still selectable. */}
+          <Select.Option value={PairingMethod.SWISS}>
+            <span style={{ color: "#999" }}>Swiss (not recommended)</span>
+          </Select.Option>
         </Select>
       </Form.Item>
+      {setting.pairingMethod === PairingMethod.SWISS && (
+        <p
+          style={{
+            fontSize: "12px",
+            color: "#faad14",
+            marginTop: "-8px",
+            marginBottom: "8px",
+          }}
+        >
+          Swiss isn't recommended anymore. We strongly recommend COP, or Win
+          Groups, which pairs players with the same number of wins against each
+          other.
+        </p>
+      )}
       {copStartsFirstRound && (
         <p
           style={{
