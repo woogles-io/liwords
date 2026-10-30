@@ -1,7 +1,8 @@
 // Main entry point for tournament director tools (temporary "ghetto" tools)
 
-import { Button, Divider, Space } from "antd";
+import { Button, Divider, Space, Tag } from "antd";
 import React, { useState } from "react";
+import { useLocation, useNavigate } from "react-router";
 import { TType } from "../../../gen/api/proto/tournament_service/tournament_service_pb";
 import { useTournamentStoreContext } from "../../../store/store";
 import { Modal } from "../../../utils/focus_modal";
@@ -29,6 +30,9 @@ import {
 } from "./tournament_management";
 import { ManageDirectorsModal } from "../../manage_directors_modal";
 import { UserOutlined } from "@ant-design/icons";
+
+// The pairing planner is tagged New until this date.
+const plannerNewUntil = new Date("2027-02-01");
 
 type ModalProps = {
   title: string;
@@ -106,6 +110,8 @@ export const GhettoTools = (props: Props) => {
   const [modalType, setModalType] = useState("");
   const [manageDirectorsVisible, setManageDirectorsVisible] = useState(false);
   const { tournamentContext } = useTournamentStoreContext();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const showModal = (key: string, title: string) => {
     setModalType(key);
@@ -177,6 +183,27 @@ export const GhettoTools = (props: Props) => {
             >
               Controls
             </h5>
+            <div style={{ marginBottom: 8 }}>
+              <Button
+                size="small"
+                onClick={() => navigate(`${location.pathname}?planner`)}
+              >
+                Pairing planner
+                {new Date() < plannerNewUntil && (
+                  <Tag
+                    color="green"
+                    style={{
+                      marginInlineEnd: 0,
+                      fontSize: 10,
+                      lineHeight: "14px",
+                      padding: "0 4px",
+                    }}
+                  >
+                    New
+                  </Tag>
+                )}
+              </Button>
+            </div>
             {makeButtonGroup(["Set tournament controls", "Set round controls"])}
             <div style={{ marginTop: 8 }}>
               {makeButtonGroup([

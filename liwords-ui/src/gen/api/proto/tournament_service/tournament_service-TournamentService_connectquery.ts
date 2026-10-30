@@ -231,6 +231,14 @@ export const getEnteredTournaments = TournamentService.method.getEnteredTourname
 export const runCOP = TournamentService.method.runCOP;
 
 /**
+ * PreviewPairings shows how each pre-paired scheme would pair the division,
+ * ranked for what the director wants. Nothing is changed.
+ *
+ * @generated from rpc tournament_service.TournamentService.PreviewPairings
+ */
+export const previewPairings = TournamentService.method.previewPairings;
+
+/**
  * Monitoring/invigilation endpoints
  *
  * @generated from rpc tournament_service.TournamentService.InitializeMonitoringKeys

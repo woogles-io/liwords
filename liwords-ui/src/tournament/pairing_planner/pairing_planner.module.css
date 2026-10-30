@@ -1,0 +1,26 @@
+.planner {
+  color: var(--mantine-color-text);
+}
+
+.intent[data-checked] {
+  border-color: var(--mantine-primary-color-filled);
+}
+
+.suggested {
+  border-color: var(--mantine-primary-color-filled);
+  border-width: 2px;
+}
+
+.stale {
+  opacity: 0.6;
+  transition: opacity 150ms;
+}
+
+.grid td,
+.grid th {
+  white-space: nowrap;
+}
+
+.topGame {
+  background-color: var(--mantine-primary-color-light);
+}

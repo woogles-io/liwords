@@ -525,7 +525,7 @@ export const rdCtrlFromSetting = (
       rdCtrl.controlLossThreshold =
         rdSetting.controlLossThreshold ||
         copDefaults?.controlLossThreshold ||
-        0.3;
+        0.4;
       break;
   }
   // Other cases don't matter, we've already set the pairing method.

@@ -1112,6 +1112,23 @@ func (ts *TournamentService) RunCOP(ctx context.Context, req *connect.Request[pb
 	return connect.NewResponse(&ipc.PairResponse{}), nil
 }
 
+func (ts *TournamentService) PreviewPairings(ctx context.Context, req *connect.Request[pb.PreviewPairingsRequest],
+) (*connect.Response[pb.PreviewPairingsResponse], error) {
+	err := authenticateDirector(ctx, ts, req.Msg.Id, req.Msg, false)
+	if err != nil {
+		return nil, err
+	}
+	if req.Msg.Rounds < 1 || req.Msg.Rounds > 50 || req.Msg.ExpectedPlayers > 200 {
+		return nil, apiserver.InvalidArg("pre-pair between 1 and 50 rounds, for at most 200 players")
+	}
+	resp, err := PreviewPairings(ctx, ts.tournamentStore, req.Msg.Id, req.Msg.Division, int(req.Msg.Rounds),
+		int(req.Msg.ExpectedPlayers), req.Msg.Intent)
+	if err != nil {
+		return nil, apiserver.InvalidArg(err.Error())
+	}
+	return connect.NewResponse(resp), nil
+}
+
 func (ts *TournamentService) InitializeMonitoringKeys(ctx context.Context, req *connect.Request[pb.InitializeMonitoringKeysRequest],
 ) (*connect.Response[pb.TournamentResponse], error) {
 

@@ -21,9 +21,23 @@ import (
 
 type PlayerSorter []*pb.TournamentPerson
 
-func (a PlayerSorter) Len() int           { return len(a) }
-func (a PlayerSorter) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a PlayerSorter) Less(i, j int) bool { return a[i].Rating > a[j].Rating }
+func (a PlayerSorter) Len() int      { return len(a) }
+func (a PlayerSorter) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
+
+// Less puts higher ratings first, and breaks ties by name, then ID, so that
+// players with the same rating keep the same order every time the division
+// reseeds. IDs are uuid:username, or token:name in IRL mode.
+func (a PlayerSorter) Less(i, j int) bool {
+	if a[i].Rating != a[j].Rating {
+		return a[i].Rating > a[j].Rating
+	}
+	_, ni, _ := strings.Cut(a[i].Id, ":")
+	_, nj, _ := strings.Cut(a[j].Id, ":")
+	if ni != nj {
+		return ni < nj
+	}
+	return a[i].Id < a[j].Id
+}
 
 type ClassicDivision struct {
 	TournamentName string                 `json:"tournamentName"`

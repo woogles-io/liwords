@@ -331,6 +331,109 @@ message GetEnteredTournamentsResponse {
   repeated EnteredTournament tournaments = 1;
 }
 
+// What a director wants from the rounds they pre-pair, which decides how the
+// pairing planner ranks the schemes.
+enum PlannerIntent {
+  // A fair start before COP (or another method) pairs the rest: everyone
+  // gets a similar schedule, and the top seeds are kept apart for later.
+  PLANNER_FAIR_START = 0;
+  // The pre-paired rounds are the whole event.
+  PLANNER_WHOLE_EVENT = 1;
+  // Two teams play each other, such as Portland vs Seattle.
+  PLANNER_TWO_TEAMS = 2;
+}
+
+message PreviewPairingsRequest {
+  string id = 1;
+  string division = 2;
+  // How many rounds to pre-pair.
+  int32 rounds = 3;
+  // If more than the players registered, the rest are placeholders, seeded
+  // last.
+  int32 expected_players = 4;
+  PlannerIntent intent = 5;
+}
+
+message PreviewPlayer {
+  string name = 1;
+  int32 rating = 2;
+  string team = 3;
+  bool placeholder = 4;
+}
+
+message PreviewGame {
+  // Players are indexes into PreviewPairingsResponse.players, in seed order.
+  int32 first = 1;
+  int32 second = 2;
+}
+
+message PreviewRound {
+  repeated PreviewGame games = 1;
+  repeated int32 byes = 2;
+}
+
+message PreviewPlayerStats {
+  int32 firsts = 1;
+  int32 seconds = 2;
+  int32 byes = 3;
+  // Games against players in the same team or group, and outside it.
+  int32 own_group_games = 4;
+  int32 other_group_games = 5;
+  double average_opponent_seed = 6;
+  // The most firsts or seconds in a row.
+  int32 longest_run = 7;
+  // How many different players they play.
+  int32 distinct_opponents = 8;
+}
+
+message SchemePreview {
+  ipc.PairingMethod pairing_method = 1;
+  bool play_within_team = 2;
+  bool available = 3;
+  string unavailable_reason = 4;
+  repeated PreviewRound rounds = 5;
+  // Each player's team or group (an index), or -1 when the scheme has none.
+  repeated int32 groups = 6;
+  // How many rounds it takes for everyone to play everyone the scheme pairs
+  // them with; 0 if it can't be told.
+  int32 cycle_length = 7;
+  double min_average_opponent_seed = 8;
+  double max_average_opponent_seed = 9;
+  // Games among seeds 1 to PreviewPairingsResponse.top_seeds.
+  int32 top_seed_games = 10;
+  int32 repeats = 11;
+  int32 max_byes = 12;
+  // The most anyone is off even, firsts minus seconds, at the end.
+  int32 max_first_imbalance = 13;
+  int32 longest_run = 14;
+  repeated PreviewPlayerStats player_stats = 15;
+  // Plain sentences for the director: what the scheme does with this field
+  // and what to watch out for.
+  repeated string notes = 16;
+  bool suggested = 17;
+  // What to call the scheme, such as "Snaked Round Robin, within teams".
+  string name = 18;
+  // The most different opponents any player misses: they could have played
+  // one more new opponent instead of each repeat, but didn't.
+  int32 missed_opponents = 19;
+}
+
+// A different number of pre-paired rounds that would suit the intent better.
+message RoundsAlternative {
+  int32 rounds = 1;
+  ipc.PairingMethod pairing_method = 2;
+  bool play_within_team = 3;
+  string reason = 4;
+}
+
+message PreviewPairingsResponse {
+  repeated PreviewPlayer players = 1;
+  // Best first for the intent; the suggestion, if any, is first.
+  repeated SchemePreview schemes = 2;
+  repeated RoundsAlternative alternatives = 3;
+  int32 top_seeds = 4;
+}
+
 message RunCopRequest {
   string id = 1;
   string division = 2;
@@ -444,6 +547,9 @@ service TournamentService {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   rpc RunCOP(RunCopRequest) returns (ipc.PairResponse);
+  // PreviewPairings shows how each pre-paired scheme would pair the division,
+  // ranked for what the director wants. Nothing is changed.
+  rpc PreviewPairings(PreviewPairingsRequest) returns (PreviewPairingsResponse);
 
   // Monitoring/invigilation endpoints
   rpc InitializeMonitoringKeys(InitializeMonitoringKeysRequest)
