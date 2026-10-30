@@ -66,6 +66,15 @@ func TestPreviewSuggestions(t *testing.T) {
 	is.Equal(resp.Schemes[0].TopSeedGames, int32(0))
 	is.Equal(len(resp.Alternatives), 0)
 
+	// 18 players over 7 rounds: groups of 8 can't keep seeds 1–5 apart, and
+	// neither can groups of 4, so the alternative says how often they meet.
+	resp, err = previewDivision(previewPlayers(18), 7, 7, tpb.PlannerIntent_PLANNER_FAIR_START)
+	is.NoErr(err)
+	is.Equal(resp.Schemes[0].PairingMethod, pb.PairingMethod_INITIAL_FONTES)
+	is.Equal(resp.Schemes[0].TopSeedGames, int32(3))
+	is.Equal(resp.Alternatives[0].Rounds, int32(3))
+	is.Equal(resp.Alternatives[0].Reason, "Pre-pair 3 rounds with Initial Fontes, so seeds 1–5 meet only once, and let COP pair the rest.")
+
 	// The whole event: a full round robin.
 	resp, err = previewDivision(previewPlayers(10), 7, 9, tpb.PlannerIntent_PLANNER_WHOLE_EVENT)
 	is.NoErr(err)

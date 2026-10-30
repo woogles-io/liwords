@@ -105,7 +105,10 @@ func previewDivision(players []*tpb.PreviewPlayer, seed uint64, rounds int, inte
 		resp.Schemes = append(resp.Schemes, previewScheme(s, players, teams, hasTeams, seed, rounds, topSeeds))
 	}
 	resp.Schemes = rankSchemes(resp.Schemes, intent, rounds)
-	resp.Alternatives = roundsAlternatives(resp.Schemes, n, rounds, intent, topSeeds, hasTeams)
+	fontes := func(r int) *tpb.SchemePreview {
+		return previewScheme(plannerSchemes[0], players, teams, hasTeams, seed, r, topSeeds)
+	}
+	resp.Alternatives = roundsAlternatives(resp.Schemes, n, rounds, intent, topSeeds, hasTeams, fontes)
 	return resp, nil
 }
 
@@ -533,7 +536,7 @@ func sameGames(a, b *tpb.SchemePreview) bool {
 // roundsAlternatives suggests other numbers of rounds that suit the intent
 // better than the ones asked for.
 func roundsAlternatives(schemes []*tpb.SchemePreview, n, rounds int, intent tpb.PlannerIntent, topSeeds int,
-	hasTeams bool) []*tpb.RoundsAlternative {
+	hasTeams bool, fontes func(rounds int) *tpb.SchemePreview) []*tpb.RoundsAlternative {
 	alts := []*tpb.RoundsAlternative{}
 	best := schemes[0]
 	if !best.Available {
@@ -541,14 +544,29 @@ func roundsAlternatives(schemes []*tpb.SchemePreview, n, rounds int, intent tpb.
 	}
 	if intent == tpb.PlannerIntent_PLANNER_FAIR_START && !hasTeams &&
 		(best == nil || !fits(best, rounds) || best.TopSeedGames > 0) {
-		// Initial Fontes keeps the top seeds apart; suggest the most
-		// rounds of it that this field can have, short of what was asked.
+		// Initial Fontes keeps the top seeds apart when there are enough
+		// groups for them. Suggest the round count, short of what was asked,
+		// whose preview has the fewest games among the top seeds (the most
+		// rounds, of those), if it beats the best scheme at this count.
+		var alt *tpb.SchemePreview
+		altRounds := 0
 		for r := min(rounds, n/2-1); r >= 1; r-- {
-			if r%2 == 1 && r != rounds && n >= 2*(r+1) {
-				alts = append(alts, &tpb.RoundsAlternative{Rounds: int32(r), PairingMethod: pb.PairingMethod_INITIAL_FONTES,
-					Reason: fmt.Sprintf("Pre-pair %d rounds with Initial Fontes, so seeds 1–%d never meet, and let COP pair the rest.", r, topSeeds)})
-				break
+			if r%2 == 0 || r == rounds {
+				continue
 			}
+			if sp := fontes(r); sp.Available && (alt == nil || sp.TopSeedGames < alt.TopSeedGames) {
+				alt, altRounds = sp, r
+			}
+		}
+		if alt != nil && (best == nil || alt.TopSeedGames < best.TopSeedGames) {
+			meet := fmt.Sprintf("seeds 1–%d never meet", topSeeds)
+			if alt.TopSeedGames == 1 {
+				meet = fmt.Sprintf("seeds 1–%d meet only once", topSeeds)
+			} else if alt.TopSeedGames > 1 {
+				meet = fmt.Sprintf("seeds 1–%d meet only %d times", topSeeds, alt.TopSeedGames)
+			}
+			alts = append(alts, &tpb.RoundsAlternative{Rounds: int32(altRounds), PairingMethod: pb.PairingMethod_INITIAL_FONTES,
+				Reason: fmt.Sprintf("Pre-pair %d rounds with Initial Fontes, so %s, and let COP pair the rest.", altRounds, meet)})
 		}
 	}
 	if best == nil || !fits(best, rounds) {
