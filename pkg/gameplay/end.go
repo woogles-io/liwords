@@ -286,12 +286,6 @@ func performEndgameDuties(ctx context.Context, g *entity.Game,
 		return err
 	}
 
-	if stores.GameHistoryArchiver != nil {
-		if archErr := stores.GameHistoryArchiver.ArchiveAndCleanup(ctx, g); archErr != nil {
-			zerolog.Ctx(ctx).Error().Err(archErr).Str("gameID", g.GameID()).Msg("archive-cleanup-error")
-		}
-	}
-
 	// Insert entries into game_players table for query optimization
 	err = stores.GameStore.InsertGamePlayers(ctx, g)
 	if err != nil {
@@ -326,6 +320,12 @@ func performEndgameDuties(ctx context.Context, g *entity.Game,
 
 	// send each player their new profile with updated ratings.
 	sendProfileUpdate(ctx, g, users)
+
+	// Last, as nothing here changes g after this. The upload is too slow to
+	// make the players and the game's lock wait for it.
+	if stores.GameHistoryArchiver != nil {
+		stores.GameHistoryArchiver.ArchiveInBackground(ctx, g)
+	}
 
 	return nil
 }
@@ -495,12 +495,7 @@ func AbortGame(ctx context.Context, stores *stores.Stores,
 	// CANCELLED games never started (no events), so there is nothing to archive.
 	// The maintenance task deletes them from the DB after 2 days.
 	if stores.GameHistoryArchiver != nil && gameEndReason == pb.GameEndReason_ABORTED {
-		go func() {
-			archCtx := zerolog.Ctx(ctx).WithContext(context.WithoutCancel(ctx))
-			if archErr := stores.GameHistoryArchiver.ArchiveAndCleanup(archCtx, g); archErr != nil {
-				zerolog.Ctx(archCtx).Error().Err(archErr).Str("gameID", g.GameID()).Msg("archive-cleanup-error")
-			}
-		}()
+		stores.GameHistoryArchiver.ArchiveInBackground(ctx, g)
 	}
 
 	// Insert game_players entries for ABORTED games (but not CANCELLED)

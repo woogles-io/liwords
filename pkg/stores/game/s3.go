@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"sync"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -49,10 +50,43 @@ type HistoryArchiver struct {
 	s3Client *s3.Client
 	bucket   string
 	store    archiveStore
+	inFlight sync.WaitGroup
 }
 
 func NewHistoryArchiver(bucket string, s3Client *s3.Client, store archiveStore) *HistoryArchiver {
 	return &HistoryArchiver{bucket: bucket, s3Client: s3Client, store: store}
+}
+
+// ArchiveInBackground archives a finished game without holding up the caller,
+// so the upload never runs under the game's lock. The caller hands g over: it
+// must not change it afterwards. A game whose archive fails, or never runs
+// because the process stopped, keeps its turn rows, and the maintenance sweep
+// archives it later.
+func (h *HistoryArchiver) ArchiveInBackground(ctx context.Context, g *entity.Game) {
+	ctx = context.WithoutCancel(ctx)
+	h.inFlight.Add(1)
+	go func() {
+		defer h.inFlight.Done()
+		if err := h.ArchiveAndCleanup(ctx, g); err != nil {
+			log.Error().Err(err).Str("gameID", g.GameID()).Msg("archive-cleanup-error")
+		}
+	}()
+}
+
+// Wait blocks until the archives started by ArchiveInBackground finish, or ctx
+// is done.
+func (h *HistoryArchiver) Wait(ctx context.Context) error {
+	done := make(chan struct{})
+	go func() {
+		h.inFlight.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
 // ArchiveAndCleanup is the single entry point for end-of-game archival.
