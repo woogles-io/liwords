@@ -4434,3 +4434,27 @@ func makeTournamentPersons(persons map[string]int32) *pb.TournamentPersons {
 	sort.Sort(PlayerSorter(tp.Persons))
 	return tp
 }
+
+func TestFirstsCoinFlip(t *testing.T) {
+	is := is.New(t)
+	loFirsts := 0
+	for _, seed := range []uint64{0, 1, 12345} {
+		tc := &ClassicDivision{Seed: seed}
+		for round := range 10 {
+			for lo := int32(0); lo < 20; lo++ {
+				for hi := lo + 1; hi < 20; hi++ {
+					// The same player goes first whichever is playerOne, and
+					// the toss comes out the same every time.
+					loFirst := !tc.firstsCoinFlip(lo, hi, round)
+					is.Equal(loFirst, tc.firstsCoinFlip(hi, lo, round))
+					is.Equal(loFirst, !tc.firstsCoinFlip(lo, hi, round))
+					if loFirst {
+						loFirsts++
+					}
+				}
+			}
+		}
+	}
+	// 5700 tosses: a fair coin lands well within this.
+	is.True(loFirsts > 2650 && loFirsts < 3050)
+}

@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"maps"
-	"math/rand"
+	"math/rand/v2"
 	"slices"
 	"sort"
 	"strconv"
@@ -2225,6 +2225,17 @@ func newPairingMatrix(numberOfRounds int, numberOfPlayers int) [][]string {
 	return pairings
 }
 
+// firstsCoinFlip is the coin toss for whether playerOne and playerTwo switch
+// who goes first in round. It's decided by the division's seed rather than at
+// random, so that a pairing always comes out the same, and it doesn't depend
+// on which of the two is playerOne.
+func (t *ClassicDivision) firstsCoinFlip(playerOne, playerTwo int32, round int) bool {
+	lo, hi := min(playerOne, playerTwo), max(playerOne, playerTwo)
+	pairKey := uint64(round)<<42 | uint64(lo)<<21 | uint64(hi)
+	loFirst := rand.New(rand.NewPCG(t.Seed, pairKey)).IntN(2) == 1
+	return (playerOne == lo) != loFirst
+}
+
 func newClassicPairing(t *ClassicDivision,
 	playerOne int32,
 	playerTwo int32,
@@ -2279,7 +2290,7 @@ func newClassicPairing(t *ClassicDivision,
 		playerOneFS := getPlayerFirstsAndSeconds(t, playerGoingFirst, round-1)
 		playerTwoFS := getPlayerFirstsAndSeconds(t, playerGoingSecond, round-1)
 		if firstMethod == pb.FirstMethod_RANDOM_FIRST {
-			switchFirst = rand.Intn(2) == 0
+			switchFirst = t.firstsCoinFlip(playerOne, playerTwo, round)
 		} else { // AutomaticFirst
 			if playerOneFS[0] != playerTwoFS[0] {
 				switchFirst = playerOneFS[0] > playerTwoFS[0]
@@ -2287,7 +2298,7 @@ func newClassicPairing(t *ClassicDivision,
 				switchFirst = playerOneFS[1] < playerTwoFS[1]
 			} else {
 				// Might want to use head-to-head in the future to break this up
-				switchFirst = rand.Intn(2) == 0
+				switchFirst = t.firstsCoinFlip(playerOne, playerTwo, round)
 			}
 		}
 	}
