@@ -39,7 +39,6 @@ const (
 type archiveStore interface {
 	GetTurns(ctx context.Context, gameUUID string) ([]models.GetGameTurnsRow, error)
 	CommitArchival(ctx context.Context, gameUUID string, s3Key string, archivedTurns int) error
-	DeleteTurns(ctx context.Context, gameUUID string) error
 	SetHistoryS3Key(ctx context.Context, gameUUID string, s3Key string) error
 }
 
@@ -102,25 +101,11 @@ func (h *HistoryArchiver) ArchiveAndCleanup(ctx context.Context, g *entity.Game)
 
 	expected := len(g.History().Events)
 	if len(turns) < expected {
-		// The game was in flight when dual-write was enabled: turns only cover
-		// the post-cutover events. Drop the partial rows and fall back to
-		// uploading from the in-memory history so the game is archived immediately
-		// rather than waiting for a manual backfill run.
-		l.Warn().Str("gameID", g.GameID()).
-			Int("got", len(turns)).Int("want", expected).
-			Msg("archive-partial-turns: in-flight at dual-write cutover, falling back to bytea upload")
-		if err := h.store.DeleteTurns(ctx, g.GameID()); err != nil {
-			return fmt.Errorf("archive-discard-partial: %w", err)
-		}
-		key, err := h.upload(ctx, g.GameID(), g.CreatedAt, g.History())
-		if err != nil {
-			return fmt.Errorf("archive-upload-fallback: %w", err)
-		}
-		if err := h.store.SetHistoryS3Key(ctx, g.GameID(), key); err != nil {
-			return fmt.Errorf("archive-commit-fallback: %w", err)
-		}
-		l.Info().Str("gameID", g.GameID()).Str("key", key).Msg("game-archived-fallback")
-		return nil
+		// Only a game already in progress when dual-write was turned on can
+		// have missing rows, and every such game has ended. Leave it as it is:
+		// its full history is still in games.history.
+		return fmt.Errorf("archive-missing-turns: have %d rows but history has %d events for %s",
+			len(turns), expected, g.GameID())
 	}
 	if len(turns) > expected {
 		return fmt.Errorf("archive-extra-turns: have %d rows but history has %d events for %s",

@@ -13,6 +13,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/matryer/is"
+	"google.golang.org/protobuf/encoding/protojson"
 
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 
@@ -21,29 +22,28 @@ import (
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
-// stallingArchiveStore has no turn rows, so the archiver uploads the in-memory
-// history, then holds the commit until release is closed.
+// stallingArchiveStore serves the given turn rows, then holds the commit until
+// release is closed.
 type stallingArchiveStore struct {
+	turns   []models.GetGameTurnsRow
 	release chan struct{}
 	mu      sync.Mutex
 	key     string
 }
 
 func (s *stallingArchiveStore) GetTurns(context.Context, string) ([]models.GetGameTurnsRow, error) {
-	return nil, nil
+	return s.turns, nil
 }
 
-func (s *stallingArchiveStore) CommitArchival(context.Context, string, string, int) error {
-	return nil
-}
-
-func (s *stallingArchiveStore) DeleteTurns(context.Context, string) error { return nil }
-
-func (s *stallingArchiveStore) SetHistoryS3Key(_ context.Context, _ string, key string) error {
+func (s *stallingArchiveStore) CommitArchival(_ context.Context, _ string, key string, _ int) error {
 	<-s.release
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.key = key
+	return nil
+}
+
+func (s *stallingArchiveStore) SetHistoryS3Key(context.Context, string, string) error {
 	return nil
 }
 
@@ -72,16 +72,28 @@ func TestArchiveInBackgroundReturnsAtOnceAndWaitWaits(t *testing.T) {
 		UsePathStyle: true,
 		Credentials:  credentials.NewStaticCredentialsProvider("k", "s", ""),
 	})
-	store := &stallingArchiveStore{release: make(chan struct{})}
-	archiver := NewHistoryArchiver("games-bucket", client, store)
-
 	mcg := newMacondoGame([2]*entity.User{{UUID: "u1", Username: "one"}, {UUID: "u2", Username: "two"}})
 	mcg.StartGame()
-	g := entity.NewGame(mcg, &pb.GameRequest{})
+	g := entity.NewGame(mcg, &pb.GameRequest{
+		Lexicon: "NWL20",
+		Rules:   &pb.GameRules{BoardLayoutName: "CrosswordGame", LetterDistributionName: "english"},
+	})
+	g.Quickdata = &entity.Quickdata{PlayerInfo: []*pb.PlayerInfo{
+		{Nickname: "one", UserId: "u1"}, {Nickname: "two", UserId: "u2"},
+	}}
+	g.History().PlayState = macondopb.PlayState_GAME_OVER
 	g.CreatedAt = time.Date(2026, 10, 30, 0, 0, 0, 0, time.UTC)
 	g.History().Uid = "bgArchive1"
-	g.History().Events = append(g.History().Events,
-		&macondopb.GameEvent{Type: macondopb.GameEvent_TILE_PLACEMENT_MOVE})
+	evt := &macondopb.GameEvent{Type: macondopb.GameEvent_TILE_PLACEMENT_MOVE}
+	g.History().Events = append(g.History().Events, evt)
+	raw, err := protojson.Marshal(evt)
+	is.NoErr(err)
+
+	store := &stallingArchiveStore{
+		turns:   []models.GetGameTurnsRow{{TurnIdx: 0, Event: raw}},
+		release: make(chan struct{}),
+	}
+	archiver := NewHistoryArchiver("games-bucket", client, store)
 
 	archiver.ArchiveInBackground(context.Background(), g)
 
