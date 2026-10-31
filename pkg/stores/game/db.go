@@ -737,13 +737,19 @@ func (s *DBStore) shadowCompareTurns(
 	// for exchanges (:1144). Nothing in liwords reads the count, so diffing it
 	// only buries real mismatches under false ones.
 	//
-	// Second, the last play's words once both sides agree the game is over.
-	// Ending a game drops them here, since nothing can be challenged any more,
-	// while macondo keeps them. Set runs this for the save that ends a game, so
-	// without the exclusion every game ending on a tile play would be reported.
+	// Second, the last play's words, unless they can still be challenged: the
+	// game isn't over and nothing has happened since the play. Ending a game
+	// drops them here, since nothing can be challenged any more, while macondo
+	// keeps them; Set runs this for the save that ends a game, so without the
+	// exclusion every game ending on a tile play would be reported. And a pass
+	// or an exchange drops them here, while macondo's replay keeps them
+	// (xwordbridge.DivergencesVsReconstruction has the details), so every save
+	// of a game loaded after a pass would be reported. handleChallenge refuses
+	// a challenge in both cases, so macondo's stale words are never used.
 	// Everything else is compared, play state included.
-	divs := withoutReplayNoise(xwordbridge.CompareStates(res.State, want),
-		res.State.PlayState == xwordgame.GameOver && want.PlayState == xwordgame.GameOver)
+	wordsChallengeable := events[len(events)-1].Type == macondopb.GameEvent_TILE_PLACEMENT_MOVE &&
+		!(res.State.PlayState == xwordgame.GameOver && want.PlayState == xwordgame.GameOver)
+	divs := withoutReplayNoise(xwordbridge.CompareStates(res.State, want), wordsChallengeable)
 	if len(divs) == 0 {
 		log.Debug().Str("gameID", gameID).Int("turns", len(events)).Msg("shadow-turns-ok")
 		turnsShadowCounts.ok.Add(1)
@@ -758,15 +764,15 @@ func (s *DBStore) shadowCompareTurns(
 }
 
 // withoutReplayNoise drops the per-player turn-count fields from a comparison,
-// and the last play's words when the game is over. See shadowCompareTurns for
-// why.
-func withoutReplayNoise(divs []xwordbridge.Divergence, gameOver bool) []xwordbridge.Divergence {
+// and the last play's words unless they can still be challenged. See
+// shadowCompareTurns for why.
+func withoutReplayNoise(divs []xwordbridge.Divergence, wordsChallengeable bool) []xwordbridge.Divergence {
 	out := divs[:0]
 	for _, d := range divs {
 		if strings.HasPrefix(d.Field, "turns[") {
 			continue
 		}
-		if gameOver && d.Field == "lastWordsFormed" {
+		if !wordsChallengeable && d.Field == "lastWordsFormed" {
 			continue
 		}
 		out = append(out, d)
