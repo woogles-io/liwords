@@ -44,7 +44,7 @@ Resources:
       Name: liwords-hourly-maintenance
       ScheduleExpression: cron(1 * * * ? *)
       State: ENABLED
-      Description: Hourly maintenance for liwords. Runs blog RSS updater, badge updater, and league hourly runner.
+      Description: Hourly maintenance for liwords. Runs blog RSS updater, badge updater, league hourly runner, and the pending archival sweep.
       EventBusName: default
       Targets:
         - Id: !Sub "${AWS::StackName}-HourlyMaintenanceTarget"
@@ -61,7 +61,7 @@ Resources:
                           "name": "maintenance",
                           "command": [
                               "/opt/maintenance",
-                              "blogrss-updater,sub-badge-updater,league-hourly-runner"
+                              "blogrss-updater,sub-badge-updater,league-hourly-runner,pending-archival-sweep"
                           ]
                       }
                   ]
