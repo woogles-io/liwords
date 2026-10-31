@@ -1073,6 +1073,11 @@ const RealStore = ({ children, ...props }: Props) => {
   const challengeResultEvent = useCallback(
     (sge: ServerChallengeResultEvent) => {
       console.log("sge", sge);
+      if (sge.postedToChat) {
+        // The server has posted the result in the game's chat, where it
+        // stays; it arrives as a chat message.
+        return;
+      }
       const message = sge.valid
         ? "Challenged play was valid"
         : `Play was challenged off the board! Returned tiles: ${machineWordToRunes(sortTiles(runesToMachineWord(sge.returnedTiles, gameContext.alphabet), gameContext.alphabet), gameContext.alphabet)}`;

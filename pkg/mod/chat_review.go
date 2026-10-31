@@ -60,6 +60,24 @@ const (
 // likeEscaper keeps a typed % or _ from acting as a LIKE wildcard.
 var likeEscaper = strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
 
+// reviewChats reads a channel for review. A line the server posted itself,
+// such as a challenged-off play's returned tiles, has no sender and is left
+// out: chat review is about what people said, and a game chat holding only
+// such lines stays out of the lists, as it was before the server posted them.
+func (ms *ModService) reviewChats(ctx context.Context, channel string) ([]*ipc.ChatMessage, error) {
+	msgs, err := ms.chatStore.OldChats(ctx, channel, chatReviewMaxMessages)
+	if err != nil {
+		return nil, err
+	}
+	said := make([]*ipc.ChatMessage, 0, len(msgs))
+	for _, m := range msgs {
+		if m.UserId != "" || m.Username != "" {
+			said = append(said, m)
+		}
+	}
+	return said, nil
+}
+
 // summarizeChannel counts a channel's messages per sender. ok is false when
 // username is set and the channel neither holds a message from that user nor
 // is a private chat naming them.
@@ -347,7 +365,7 @@ func (ms *ModService) ListChatChannels(ctx context.Context, req *connect.Request
 			if !strings.HasPrefix(ch, "chat.") {
 				return nil, apiserver.InvalidArg("channel must start with chat.")
 			}
-			msgs, err := ms.chatStore.OldChats(ctx, ch, chatReviewMaxMessages)
+			msgs, err := ms.reviewChats(ctx, ch)
 			if err != nil {
 				return nil, err
 			}
@@ -390,7 +408,7 @@ func (ms *ModService) ListChatChannels(ctx context.Context, req *connect.Request
 		}
 		if freshScan {
 			for ch := range played {
-				msgs, err := ms.chatStore.OldChats(ctx, ch, chatReviewMaxMessages)
+				msgs, err := ms.reviewChats(ctx, ch)
 				if err != nil || len(msgs) == 0 {
 					continue
 				}
@@ -412,7 +430,7 @@ func (ms *ModService) ListChatChannels(ctx context.Context, req *connect.Request
 			if played[ch] {
 				continue
 			}
-			msgs, err := ms.chatStore.OldChats(ctx, ch, chatReviewMaxMessages)
+			msgs, err := ms.reviewChats(ctx, ch)
 			if err != nil {
 				// the key may have expired between SCAN and XREVRANGE.
 				continue
@@ -445,7 +463,7 @@ func (ms *ModService) GetChannelChats(ctx context.Context, req *connect.Request[
 	if !strings.HasPrefix(channel, "chat.") {
 		return nil, apiserver.InvalidArg("channel must start with chat.")
 	}
-	msgs, err := ms.chatStore.OldChats(ctx, channel, chatReviewMaxMessages)
+	msgs, err := ms.reviewChats(ctx, channel)
 	if err != nil {
 		return nil, err
 	}

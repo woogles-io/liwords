@@ -2151,6 +2151,9 @@ type ServerChallengeResultEvent struct {
 	Challenger    string                 `protobuf:"bytes,2,opt,name=challenger,proto3" json:"challenger,omitempty"`
 	ChallengeRule macondo.ChallengeRule  `protobuf:"varint,3,opt,name=challenge_rule,json=challengeRule,proto3,enum=macondo.ChallengeRule" json:"challenge_rule,omitempty"`
 	ReturnedTiles string                 `protobuf:"bytes,4,opt,name=returned_tiles,json=returnedTiles,proto3" json:"returned_tiles,omitempty"`
+	// The server has posted this result as a line in the game's chats, where
+	// it stays, so the page does not add a line of its own.
+	PostedToChat  bool `protobuf:"varint,5,opt,name=posted_to_chat,json=postedToChat,proto3" json:"posted_to_chat,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2211,6 +2214,13 @@ func (x *ServerChallengeResultEvent) GetReturnedTiles() string {
 		return x.ReturnedTiles
 	}
 	return ""
+}
+
+func (x *ServerChallengeResultEvent) GetPostedToChat() bool {
+	if x != nil {
+		return x.PostedToChat
+	}
+	return false
 }
 
 type OMGWordsChallengeResultEvent struct {
@@ -3499,14 +3509,15 @@ const file_proto_ipc_omgwords_proto_rawDesc = "" +
 	"\x0etime_remaining\x18\x04 \x01(\x05R\rtimeRemaining\x12(\n" +
 	"\aplaying\x18\x05 \x01(\x0e2\x0e.ipc.PlayStateR\aplaying\x12\x17\n" +
 	"\auser_id\x18\x06 \x01(\tR\x06userId\x12#\n" +
-	"\ropponent_rack\x18\a \x01(\fR\fopponentRack\"\xb8\x01\n" +
+	"\ropponent_rack\x18\a \x01(\fR\fopponentRack\"\xde\x01\n" +
 	"\x1aServerChallengeResultEvent\x12\x14\n" +
 	"\x05valid\x18\x01 \x01(\bR\x05valid\x12\x1e\n" +
 	"\n" +
 	"challenger\x18\x02 \x01(\tR\n" +
 	"challenger\x12=\n" +
 	"\x0echallenge_rule\x18\x03 \x01(\x0e2\x16.macondo.ChallengeRuleR\rchallengeRule\x12%\n" +
-	"\x0ereturned_tiles\x18\x04 \x01(\tR\rreturnedTiles\"\xb6\x01\n" +
+	"\x0ereturned_tiles\x18\x04 \x01(\tR\rreturnedTiles\x12$\n" +
+	"\x0eposted_to_chat\x18\x05 \x01(\bR\fpostedToChat\"\xb6\x01\n" +
 	"\x1cOMGWordsChallengeResultEvent\x12\x14\n" +
 	"\x05valid\x18\x01 \x01(\bR\x05valid\x12\x1e\n" +
 	"\n" +
