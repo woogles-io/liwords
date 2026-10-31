@@ -1850,6 +1850,13 @@ func (s *DBStore) ListActiveCorrespondenceForUserAndLeague(ctx context.Context, 
 	return &pb.GameInfoResponses{GameInfo: responses}, nil
 }
 
+// ListActiveRealTimeRaw returns the columns the adjudicator needs for every
+// ongoing real-time game, so it can find the games to act on without loading
+// each one.
+func (s *DBStore) ListActiveRealTimeRaw(ctx context.Context) ([]models.ListActiveRealTimeGamesForAdjudicationRow, error) {
+	return s.queries.ListActiveRealTimeGamesForAdjudication(ctx)
+}
+
 // ListActiveCorrespondenceRaw returns raw DB rows with timer data.
 // This is used internally by ListActiveCorrespondence and the adjudication process.
 func (s *DBStore) ListActiveCorrespondenceRaw(ctx context.Context) ([]models.ListActiveCorrespondenceGamesRow, error) {

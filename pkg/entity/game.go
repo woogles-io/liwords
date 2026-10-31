@@ -419,19 +419,28 @@ func (g *Game) TimeRanOut(idx int) bool {
 	if g.Game.PlayerOnTurn() != idx {
 		return false
 	}
-	now := g.nower.Now()
+	var incrementSeconds int32
+	if g.GameReq != nil && g.GameReq.GameRequest != nil {
+		incrementSeconds = g.GameReq.IncrementSeconds
+	}
+	return g.Timers.RanOut(idx, incrementSeconds, g.nower.Now())
+}
 
+// RanOut reports whether player idx, who must be on turn, is out of time at
+// now (unix ms). Game.TimeRanOut decides with it, and so do the adjudicators,
+// from a games row without loading the game.
+func (t *Timers) RanOut(idx int, incrementSeconds int32, now int64) bool {
 	// For correspondence games with reset-to-increment, check time bank
-	if g.Timers.ResetToIncrementAfterTurn {
-		turnTime := now - g.Timers.TimeOfLastUpdate
-		allowedTime := int64(g.GameReq.IncrementSeconds) * 1000
+	if t.ResetToIncrementAfterTurn {
+		turnTime := now - t.TimeOfLastUpdate
+		allowedTime := int64(incrementSeconds) * 1000
 
 		if turnTime <= allowedTime {
 			return false // within allowed time
 		}
 
 		deficit := turnTime - allowedTime
-		if len(g.Timers.TimeBank) > idx && g.Timers.TimeBank[idx] >= deficit {
+		if len(t.TimeBank) > idx && t.TimeBank[idx] >= deficit {
 			return false // time bank covers it
 		}
 
@@ -440,8 +449,11 @@ func (g *Game) TimeRanOut(idx int) bool {
 	}
 
 	// For non-correspondence games, use simple MaxOvertime check
-	tr := g.Timers.TimeRemaining[idx] - int(now-g.Timers.TimeOfLastUpdate)
-	return tr < (-g.Timers.MaxOvertime * 60000)
+	if idx < 0 || idx >= len(t.TimeRemaining) {
+		return false
+	}
+	tr := t.TimeRemaining[idx] - int(now-t.TimeOfLastUpdate)
+	return tr < (-t.MaxOvertime * 60000)
 }
 
 func (g *Game) TimeStarted() int64 {
