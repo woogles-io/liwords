@@ -552,6 +552,12 @@ func main() {
 			// Error from closing listeners, or context timeout:
 			log.Error().Msgf("HTTP server Shutdown: %v", err)
 		}
+		// Games that ended just before the signal may still be uploading.
+		if stores.GameHistoryArchiver != nil {
+			if err := stores.GameHistoryArchiver.Wait(ctx); err != nil {
+				log.Error().Err(err).Msg("archive-wait-on-shutdown")
+			}
+		}
 		shutdownCancel()
 		pubsubCancel()
 		stores.GameStore.StopCleanup()

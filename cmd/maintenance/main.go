@@ -80,6 +80,9 @@ func main() {
 		case "expired-sessions-cleanup":
 			err := ExpiredSessionsCleanup()
 			log.Err(err).Msg("ran expiredSessionsCleanup")
+		case "pending-archival-sweep":
+			err := PendingArchivalSweep()
+			log.Err(err).Msg("ran pendingArchivalSweep")
 		case "resend-season-started-emails":
 			err := ResendSeasonStartedEmails()
 			log.Err(err).Msg("ran resendSeasonStartedEmails")

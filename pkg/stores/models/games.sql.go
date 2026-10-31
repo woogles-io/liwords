@@ -1654,6 +1654,43 @@ func (q *Queries) ListPendingArchival(ctx context.Context) ([]pgtype.Text, error
 	return items, nil
 }
 
+const listStalePendingArchival = `-- name: ListStalePendingArchival :many
+SELECT g.uuid FROM games g
+WHERE g.uuid IN (SELECT DISTINCT game_uuid FROM game_turns)
+  AND g.history_s3_key IS NULL
+  AND g.game_end_reason NOT IN (0, 7)
+  AND g.updated_at < $1
+ORDER BY g.uuid
+LIMIT $2
+`
+
+type ListStalePendingArchivalParams struct {
+	EndedBefore pgtype.Timestamptz
+	MaxGames    int32
+}
+
+// Like ListPendingArchival, but only games that ended before @ended_before:
+// a game that ended more recently may still have its archive upload running.
+func (q *Queries) ListStalePendingArchival(ctx context.Context, arg ListStalePendingArchivalParams) ([]pgtype.Text, error) {
+	rows, err := q.db.Query(ctx, listStalePendingArchival, arg.EndedBefore, arg.MaxGames)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []pgtype.Text
+	for rows.Next() {
+		var uuid pgtype.Text
+		if err := rows.Scan(&uuid); err != nil {
+			return nil, err
+		}
+		items = append(items, uuid)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const outstandingAnnotatedGames = `-- name: OutstandingAnnotatedGames :many
 SELECT game_uuid, private_broadcast FROM annotated_game_metadata
 WHERE creator_uuid = $1 AND done = 'f'
