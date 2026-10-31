@@ -53,6 +53,9 @@ class Loadable {
 }
 
 const loadablesByKey: { [key: string]: Array<Loadable> } = {};
+// Which Loadable a cached name came from, so a name that is dropped from the
+// wasm can also be put back into a fetchable state. See dropUnneeded.
+const loadableByCacheKey: { [cacheKey: string]: Loadable } = {};
 {
   const filenames = [
     "CSW15.kad",
@@ -171,6 +174,7 @@ const loadablesByKey: { [key: string]: Array<Loadable> } = {};
       if (cacheKey) {
         lexicons[lexicon] = true;
         loadables[filename] = new Loadable(cacheKey, `/wasm/2024/${filename}`);
+        loadableByCacheKey[cacheKey] = loadables[filename];
         continue;
       }
     }
@@ -226,6 +230,47 @@ export const getLexiconKey = (loadableKey: string) =>
 export const getLeaveKey = (loadableKey: string) =>
   loadablesByKey[loadableKey]?.[1]?.cacheKey?.replace(/^klv\//, "");
 
+// Forget everything the wasm is holding that this request does not want. A tab
+// that opens several games otherwise accumulates every lexicon it has ever
+// touched, and none of them are small. A wasm built before wolges-wasm had
+// evict_kwg and evict_klv has nothing to drop them with, and keeps them all,
+// as before.
+//
+// Resetting the Loadable is not optional. It is single-use: once its buffer has
+// been handed over it reports itself done, and asking again yields undefined,
+// which reaches precache_kwg as an empty array and panics the wasm on the next
+// lookup ("index out of bounds: the len is 0 but the index is 1", kwg.rs). A
+// panic there is not recoverable -- nothing unwinds, so the instance is spent.
+// Dropping a name without making its file fetchable again would therefore trade
+// a little memory for a dead module.
+const dropUnneeded = (
+  wolges: typeof import("wolges-wasm"),
+  cachedStuffs: { [cacheKey: string]: boolean },
+  needed: Set<string>,
+) => {
+  const evicting = wolges as typeof wolges & {
+    evict_kwg?: (key: string) => boolean;
+    evict_klv?: (key: string) => boolean;
+  };
+  const { evict_kwg, evict_klv } = evicting;
+  if (!evict_kwg || !evict_klv) return;
+  for (const cacheKey of Object.keys(cachedStuffs)) {
+    if (needed.has(cacheKey)) continue;
+    const splitAt = cacheKey.indexOf("/");
+    const type = cacheKey.substring(0, splitAt);
+    const name = cacheKey.substring(splitAt + 1);
+    if (type === "klv") {
+      evict_klv(name);
+    } else if (type === "kwg") {
+      evict_kwg(name);
+    } else {
+      continue; // not ours to drop, and not something we put there
+    }
+    loadableByCacheKey[cacheKey]?.reset();
+    delete cachedStuffs[cacheKey];
+  }
+};
+
 export const getWolges = async (loadableKey: string) =>
   unrace.run(async () => {
     // Allow these files to start loading.
@@ -240,6 +285,14 @@ export const getWolges = async (loadableKey: string) =>
     if (!cachedStuffs) {
       wolgesCache.set(wolges, (cachedStuffs = {}));
     }
+
+    // Before loading rather than after, so the outgoing tables are gone by the
+    // time the incoming ones are built and the two are never both resident.
+    dropUnneeded(
+      wolges,
+      cachedStuffs,
+      new Set(effectiveLoadables.map((loadable) => loadable.cacheKey)),
+    );
 
     await Promise.all(
       effectiveLoadables.map(async (loadable) => {

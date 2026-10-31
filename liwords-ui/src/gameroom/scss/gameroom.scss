@@ -264,6 +264,11 @@ p.streak-loss {
         color: m($gray-medium);
       }
 
+      .analyzer-error {
+        margin: 4px 0;
+        color: m($timer-out-dark);
+      }
+
       table {
         width: 100%;
       }
