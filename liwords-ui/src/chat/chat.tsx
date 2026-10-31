@@ -68,6 +68,11 @@ let globalUnsentChatCache: { [key: string]: { [key: string]: string } } = {};
 const MAX_MESSAGE_LENGTH = 500;
 const MAX_WEBSOCKET_MESSAGE_SIZE = 1800; // Conservative limit (backend is 2048)
 
+// A page hidden this long may come back to a socket the server dropped: it
+// drops one whose pings go unanswered for 15 seconds, and a phone app asleep
+// in the background answers none.
+const CATCH_UP_AFTER_HIDDEN_MS = 15000;
+
 // Helper function to determine the correct default tab
 const getDefaultTab = (
   suppressDefault: boolean,
@@ -160,7 +165,7 @@ export const entitiesMaxHeight = (
 export const Chat = React.memo((props: Props) => {
   const { loginState } = useLoginStateStoreContext();
   const competitorState = useTournamentCompetitorState();
-  const { loggedIn, userID } = loginState;
+  const { connectedToSocket, loggedIn, userID } = loginState;
   const collectionContext = useCollectionContext();
   const { notification } = App.useApp();
   const [hasScroll, setHasScroll] = useState(false);
@@ -189,6 +194,7 @@ export const Chat = React.memo((props: Props) => {
     chat: chatEntities,
     clearChat,
     addChats,
+    mergeChats,
     setChatChannels,
     setCurrentChatChannel,
   } = useChatStoreContext();
@@ -205,6 +211,9 @@ export const Chat = React.memo((props: Props) => {
   const channelType = useMemo(() => {
     return channel?.split(".")[1] || "";
   }, [channel]);
+  // The lobby's help chat is disabled: its messages are never shown.
+  const chatDisabled =
+    defaultChannel === "chat.lobby" && channel === "chat.lobby";
 
   const canonicalizedChannel = useMemo(() => {
     switch (channelType) {
@@ -751,6 +760,124 @@ export const Chat = React.memo((props: Props) => {
     }
   }, [channel, handleChannelChange]);
 
+  // The channel shown, fetched again and merged into the chat, for messages
+  // the socket did not deliver. A channel picked meanwhile loads its own,
+  // and the disabled help chat has nothing to show.
+  const catchUp = useCallback(async () => {
+    const ch = channel;
+    if (!ch || ch !== lastChannel.current || chatDisabled) {
+      return;
+    }
+    let chats;
+    try {
+      chats = await socializeClient.getChatsForChannel({ channel: ch });
+    } catch (e) {
+      // Offline still; the socket catches up on reconnecting.
+      console.log("chat catch-up failed", e);
+      return;
+    }
+    if (ch === lastChannel.current) {
+      mergeChats(chats.messages.map(chatMessageToChatEntity), ch);
+    }
+  }, [channel, chatDisabled, mergeChats, socializeClient]);
+
+  // The channels shown as unread, so that catching up flags only others.
+  const unreadChannels = useRef(new Set<string>());
+  useEffect(() => {
+    unreadChannels.current = new Set([
+      ...(updatedChannels ?? []),
+      ...unseenMessages.map((m) => m.channel),
+    ]);
+  }, [updatedChannels, unseenMessages]);
+
+  // The channel list fetched again. As on loading the page, the listed
+  // channels the server marks as updated since this user was last seen (the
+  // socket going down marks that time) are flagged, but not the one shown,
+  // which catches up by itself.
+  const catchUpChannels = useCallback(async () => {
+    if (!loggedIn || !channelsFetched) {
+      return;
+    }
+    let resp;
+    try {
+      resp = await socializeClient.getActiveChatChannels({
+        number: 20,
+        offset: 0,
+        tournamentId: props.tournamentID || "",
+        leagueId: props.leagueID || "",
+      });
+    } catch (e) {
+      console.log("chat channels catch-up failed", e);
+      return;
+    }
+    setChatChannels(resp);
+    const missed = resp.channels
+      .filter(
+        (ch) =>
+          ch.hasUpdate &&
+          ch.name !== channel &&
+          !unreadChannels.current.has(ch.name) &&
+          listsChannel(
+            ch,
+            props.defaultChannel,
+            props.tournamentID,
+            excludedPlayers,
+          ),
+      )
+      .map((ch) => ch.name);
+    if (missed.length) {
+      setUpdatedChannels((u) => new Set([...(u ?? []), ...missed]));
+      setNotificationCount((n) => n + missed.length);
+    }
+  }, [
+    channel,
+    channelsFetched,
+    excludedPlayers,
+    loggedIn,
+    props.defaultChannel,
+    props.leagueID,
+    props.tournamentID,
+    setChatChannels,
+    socializeClient,
+  ]);
+
+  // The socket delivers chat only while connected. Back after being down (a
+  // phone app asleep in the background, a dropped network), the chat fetches
+  // what was said meanwhile.
+  const socketWas = useRef<"unseen" | "up" | "down">("unseen");
+  useEffect(() => {
+    if (connectedToSocket) {
+      if (socketWas.current === "down") {
+        catchUp();
+        catchUpChannels();
+      }
+      socketWas.current = "up";
+    } else if (socketWas.current === "up") {
+      socketWas.current = "down";
+    }
+  }, [connectedToSocket, catchUp, catchUpChannels]);
+
+  // Back from the background after a while, the chat catches up at once: its
+  // socket can look connected then though the server dropped it, and is
+  // replaced only once nothing has come through it for a while.
+  useEffect(() => {
+    let hiddenSince = document.hidden ? Date.now() : 0;
+    const onVisibilityChange = () => {
+      if (document.hidden) {
+        hiddenSince = Date.now();
+        return;
+      }
+      if (hiddenSince && Date.now() - hiddenSince >= CATCH_UP_AFTER_HIDDEN_MS) {
+        catchUp();
+      }
+      hiddenSince = 0;
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, [catchUp]);
+
   // When user is scrolling, auto-scroll may be enabled or disabled.
   // This handler is set through onScroll.
   const handleChatScrolled = useCallback(() => {
@@ -1088,7 +1215,7 @@ export const Chat = React.memo((props: Props) => {
                   </>
                 ) : null}
               </div>
-              {defaultChannel === "chat.lobby" && channel === "chat.lobby" ? (
+              {chatDisabled ? (
                 <React.Fragment key="chat-disabled">
                   <p className="disabled-message">Help chat is disabled.</p>
                 </React.Fragment>

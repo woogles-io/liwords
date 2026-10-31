@@ -82,6 +82,33 @@ describe("the chat store", () => {
     });
     expect(result.current.chat.map((c) => c.id)).toEqual(["a", "b"]);
   });
+
+  it("merges a history fetched again without replacing the list", () => {
+    const { result } = renderHook(() => useChatStoreContext(), {
+      wrapper: Store,
+    });
+    act(() => {
+      result.current.addChat(serverMsg("a"));
+    });
+    const before = result.current.chatGeneration;
+    act(() => {
+      result.current.mergeChats(
+        [
+          {
+            entityType: ChatEntityType.UserChat,
+            sender: "someone",
+            message: "missed",
+            id: "1-0",
+            timestamp: BigInt(1),
+            channel: "chat.league.x",
+          },
+        ],
+        "chat.league.x",
+      );
+    });
+    expect(result.current.chatGeneration).toBe(before);
+    expect(result.current.chat.map((c) => c.id)).toEqual(["a", "1-0"]);
+  });
 });
 
 describe("the lobby store", () => {

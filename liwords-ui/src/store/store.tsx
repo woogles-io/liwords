@@ -34,6 +34,7 @@ import {
   PlayerOfTiles,
 } from "../utils/cwgame/common";
 import { ActiveChatChannels } from "../gen/api/proto/user_service/user_service_pb";
+import { mergeChatHistory } from "../chat/chat_history";
 import {
   defaultTournamentState,
   TournamentReducer,
@@ -151,6 +152,7 @@ type ChatStoreData = {
   addChats: (chats: Array<ChatEntityObj>) => void;
   clearChat: () => void;
   deleteChat: (id: string, channel: string) => void;
+  mergeChats: (history: Array<ChatEntityObj>, channel: string) => void;
   chat: Array<ChatEntityObj>;
   chatChannels: ActiveChatChannels | undefined;
   chatGeneration: number;
@@ -364,6 +366,7 @@ const ChatContext = createContext<ChatStoreData>({
   chatChannels: undefined,
   chatGeneration: 0,
   deleteChat: defaultFunction,
+  mergeChats: defaultFunction,
   currentChatChannel: "",
   setCurrentChatChannel: defaultFunction,
   setChatChannels: defaultFunction,
@@ -1110,6 +1113,17 @@ const RealStore = ({ children, ...props }: Props) => {
     });
   }, []);
 
+  // Brings a channel's latest messages, fetched again, into the chat without
+  // replacing it, so the generation stays and so does what was posted in.
+  const mergeChats = useCallback(
+    (history: Array<ChatEntityObj>, channel: string) => {
+      setChat((oldChat) =>
+        mergeChatHistory(oldChat, history, channel, MaxChatLength),
+      );
+    },
+    [],
+  );
+
   const setPresence = useCallback((entity: PresenceEntity) => {
     setPresences((prevPresences) => {
       // filter out the current entity then add it if we're not deleting
@@ -1298,6 +1312,7 @@ const RealStore = ({ children, ...props }: Props) => {
       addChats,
       clearChat,
       deleteChat,
+      mergeChats,
       chat,
       chatChannels,
       chatGeneration,
@@ -1313,6 +1328,7 @@ const RealStore = ({ children, ...props }: Props) => {
       chatChannels,
       chatGeneration,
       deleteChat,
+      mergeChats,
       currentChatChannel,
       setChatChannels,
       setCurrentChatChannel,
