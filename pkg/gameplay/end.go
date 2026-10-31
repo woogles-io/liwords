@@ -76,8 +76,6 @@ func withLockedGame(ctx context.Context, stores *stores.Stores, gameID string,
 	if err != nil {
 		return err
 	}
-	g.Lock()
-	defer g.Unlock()
 
 	if g.GameEndReason != pb.GameEndReason_NONE {
 		zerolog.Ctx(ctx).Debug().Str("gameID", gameID).Interface("reason", g.GameEndReason).
@@ -281,7 +279,7 @@ func performEndgameDuties(ctx context.Context, g *entity.Game,
 		}
 	}
 
-	// Save and unload the game from the cache.
+	// Save the game.
 
 	err = stores.GameStore.Set(ctx, g)
 	if err != nil {
@@ -513,7 +511,7 @@ func AbortGame(ctx context.Context, stores *stores.Stores,
 			// Don't fail the abort if game_players insert fails
 		}
 	}
-	// Unload the game
+	// Drop it from the cached lobby listing.
 	log.Info().Msg("game-aborted-unload-cache")
 	stores.GameStore.Unload(ctx, g.GameID())
 

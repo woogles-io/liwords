@@ -10,6 +10,9 @@ import (
 
 	"github.com/lithammer/shortuuid/v4"
 	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"lukechampine.com/frand"
 
 	"github.com/domino14/macondo/game"
@@ -177,6 +180,11 @@ func (b *Bus) goHandleBotMove(ctx context.Context, resp *macondo.BotResponse,
 	gid, replyChan string) {
 
 	go func() {
+		// Its own trace, so a bot move's database work and lock show up in
+		// Jaeger under one span rather than loose.
+		ctx, span := otel.Tracer("bus-message-processor").Start(ctx, "bus.HandleBotMove",
+			trace.WithAttributes(attribute.String("game.id", gid)))
+		defer span.End()
 		defer func() {
 			// acknowledge the NATS message - empty response is fine.
 			err := b.natsconn.Publish(replyChan, []byte{})
@@ -198,8 +206,6 @@ func (b *Bus) goHandleBotMove(ctx context.Context, resp *macondo.BotResponse,
 			log.Err(err).Str("gid", gid).Msg("cant-handle-bot-move")
 			return
 		}
-		g.Lock()
-		defer g.Unlock()
 		// These should both be the bot:
 		onTurn := g.Game.PlayerOnTurn()
 		userID := g.Game.PlayerIDOnTurn()
@@ -242,8 +248,6 @@ func (b *Bus) readyForGame(ctx context.Context, evt *pb.ReadyForGame, userID str
 		log.Err(err).Str("gid", evt.GameId).Msg("ready-for-game-get-failed")
 		return err
 	}
-	g.Lock()
-	defer g.Unlock()
 
 	log.Debug().Str("userID", userID).Interface("playing", g.Playing()).Msg("ready-for-game")
 	if g.Playing() == macondopb.PlayState_GAME_OVER {
@@ -511,8 +515,6 @@ func (b *Bus) sendGameRefresher(ctx context.Context, gameID, connID, userID stri
 		log.Err(err).Str("gid", gameID).Msg("send-game-refresher-get-failed")
 		return err
 	}
-	entGame.RLock()
-	defer entGame.RUnlock()
 
 	var evt *entity.EventWrapper
 	log.Debug().Str("gameid", entGame.History().Uid).Msg("sent-refresher")
@@ -555,17 +557,16 @@ func (b *Bus) adjudicateGames(ctx context.Context, correspondenceOnly bool) erro
 	now := time.Now()
 	log.Debug().Bool("correspondence", correspondenceOnly).Interface("active-games", gs).Msg("maybe-adjudicating...")
 	for _, g := range gs.GameInfo {
-		// These will likely be in the cache.
+		// Read without the game lock, only to decide what to do; anything that
+		// changes the game takes the lock and loads it again.
 		entGame, err := b.stores.GameStore.Get(ctx, g.GameId)
 		if err != nil {
 			log.Err(err).Str("gid", g.GameId).Msg("adjudicate-get-game-failed")
 			return err
 		}
-		entGame.RLock()
 		onTurn := entGame.Game.PlayerOnTurn()
 		started := entGame.Started
 		timeRanOut := entGame.TimeRanOut(onTurn)
-		entGame.RUnlock()
 
 		if started && timeRanOut {
 			log.Debug().Str("gid", g.GameId).Msg("adjudicating-time-ran-out")
@@ -585,30 +586,7 @@ func (b *Bus) adjudicateGames(ctx context.Context, correspondenceOnly bool) erro
 					Interface("created", entGame.CreatedAt).
 					Msg("canceling-never-started")
 
-				log.Debug().Str("gid", g.GameId).Msg("locking")
-				gameLock, lerr := b.stores.GameStore.LockGame(ctx, g.GameId)
-				if lerr != nil {
-					log.Err(lerr).Str("gid", g.GameId).Msg("cant-lock-for-abort")
-					continue
-				}
-				// Load again inside the lock. entGame was read without it, and
-				// the game may have started or ended since.
-				lockedGame, gerr := b.stores.GameStore.Get(ctx, g.GameId)
-				if gerr != nil {
-					log.Err(gerr).Str("gid", g.GameId).Msg("cant-reload-for-abort")
-					gameLock.Unlock(ctx)
-					continue
-				}
-				lockedGame.Lock()
-				stillUnstarted := !lockedGame.Started && lockedGame.GameEndReason == pb.GameEndReason_NONE
-				if stillUnstarted {
-					err = gameplay.AbortGame(ctx, b.stores, lockedGame, pb.GameEndReason_CANCELLED)
-					log.Err(err).Str("gid", g.GameId).Msg("adjudicating-after-abort-game")
-				}
-				lockedGame.Unlock()
-				gameLock.Unlock(ctx)
-				log.Debug().Str("gid", g.GameId).Msg("unlocking")
-				if !stillUnstarted {
+				if !b.cancelIfStillUnstarted(ctx, g.GameId) {
 					continue
 				}
 
@@ -629,6 +607,30 @@ func (b *Bus) adjudicateGames(ctx context.Context, correspondenceOnly bool) erro
 	log.Debug().Interface("active-games", gs).Msg("exiting-adjudication...")
 
 	return nil
+}
+
+// cancelIfStillUnstarted cancels a game that never started, reporting whether
+// it did. The game is loaded again inside its lock: the caller's copy was read
+// without it, and the game may have started or ended since.
+func (b *Bus) cancelIfStillUnstarted(ctx context.Context, gameID string) bool {
+	gameLock, err := b.stores.GameStore.LockGame(ctx, gameID)
+	if err != nil {
+		log.Err(err).Str("gid", gameID).Msg("cant-lock-for-abort")
+		return false
+	}
+	defer gameLock.Unlock(ctx)
+
+	g, err := b.stores.GameStore.Get(ctx, gameID)
+	if err != nil {
+		log.Err(err).Str("gid", gameID).Msg("cant-reload-for-abort")
+		return false
+	}
+	if g.Started || g.GameEndReason != pb.GameEndReason_NONE {
+		return false
+	}
+	err = gameplay.AbortGame(ctx, b.stores, g, pb.GameEndReason_CANCELLED)
+	log.Err(err).Str("gid", gameID).Msg("adjudicating-after-abort-game")
+	return true
 }
 
 // adjudicateCorrespondenceGames is an optimized version for correspondence games

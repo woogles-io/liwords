@@ -112,9 +112,6 @@ func (ffm *ForceFinishManager) RepairForceFinishedGames(
 			continue
 		}
 
-		// Lock the game for modification
-		gameEntity.Lock()
-
 		// Migrate old FORCE_FORFEIT (8) to ADJUDICATED (9)
 		if gameEntity.GameEndReason == pb.GameEndReason_FORCE_FORFEIT {
 			gameEntity.SetGameEndReason(pb.GameEndReason_ADJUDICATED)
@@ -154,7 +151,6 @@ func (ffm *ForceFinishManager) RepairForceFinishedGames(
 
 		// Save the updated game
 		err = ffm.stores.GameStore.Set(ctx, gameEntity)
-		gameEntity.Unlock()
 		if err != nil {
 			result.Errors = append(result.Errors, fmt.Sprintf("failed to save game %s: %v", gameRow.GameID.String, err))
 			continue

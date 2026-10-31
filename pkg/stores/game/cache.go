@@ -9,15 +9,13 @@ import (
 	"github.com/google/uuid"
 
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
-	lru "github.com/hashicorp/golang-lru"
 	"github.com/rs/zerolog/log"
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/metric"
 	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/stores/models"
 	gs "github.com/woogles-io/liwords/rpc/api/proto/game_service"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/metric"
 )
 
 var (
@@ -75,33 +73,30 @@ type backingStore interface {
 	// than AppendTurns; see DBStore.Set.
 	StageTurns(g *entity.Game, startIdx int, events []*macondopb.GameEvent) error
 	AppendTurns(ctx context.Context, gameUUID string, startIdx int, events []*macondopb.GameEvent) error
+	LockGame(ctx context.Context, gameID string) (*GameLock, error)
 	GetTurns(ctx context.Context, gameUUID string) ([]models.GetGameTurnsRow, error)
 	DeleteTurns(ctx context.Context, gameUUID string) error
 	CommitArchival(ctx context.Context, gameUUID string, s3Key string, archivedTurns int) error
 	SetHistoryS3Key(ctx context.Context, gameUUID string, s3Key string) error
-	LockGame(ctx context.Context, gameID string) (*GameLock, error)
 }
 
 // TimerModuleCreator is a function that creates a new timer module for a game.
 type TimerModuleCreator func() entity.Nower
 
-const (
-	// Assume every game takes up roughly 50KB in memory
-	// This is roughly 200 MB and allows for 4000 simultaneous games.
-	// We will want to increase this as we grow (as well as the size of our container)
-
-	// Note: above is overly optimistic.
-	// It seems each cache slot is taking about 750kB.
-	// That's in addition to about 200MB base.
-	// Reduced cache cap accordingly.
-	CacheCap = 400
-)
-
-// Cache will reside in-memory, and will be per-node. If we add more nodes
-// we will need to make sure only the right nodes respond to game requests.
+// Cache no longer caches games. It used to hold up to 400 of them in an LRU,
+// per node, which is a per-node answer to a question that now has more than one
+// node: a game cached here goes stale the moment another server plays a move on
+// it, and it would do so while holding the game lock correctly -- serialized,
+// and reading a position from before the move it was serialized against.
+//
+// What remains is a five-second cache of the *active games listing*, which is a
+// different thing: a lobby view that may lag slightly, not a position that must
+// not. Everything else passes straight through to the database.
+//
+// The name is now wrong and should be changed; that is a rename across
+// pkg/stores, kept out of this change so the diff stays about behaviour.
 type Cache struct {
 	sync.RWMutex // used for the activeGames cache.
-	cache        *lru.Cache
 	activeGames  *pb.GameInfoResponses
 
 	activeGamesTTL         time.Duration
@@ -111,17 +106,8 @@ type Cache struct {
 }
 
 func NewCache(backing backingStore) *Cache {
-
-	lrucache, err := lru.New(CacheCap)
-	if err != nil {
-		panic(err)
-	}
-
 	c := &Cache{
 		backing: backing,
-		cache:   lrucache,
-
-		// games:   make(map[string]*entity.Game),
 		// Have a non-trivial TTL for the cache of active games.
 		// XXX: This might act poorly if the following happens within the TTL:
 		//  - active games gets cached
@@ -135,16 +121,13 @@ func NewCache(backing backingStore) *Cache {
 		// few things (especially game quickdata).
 		activeGamesTTL: time.Second * 5,
 	}
-
 	return c
 }
 
-// Unload unloads the game from the cache
+// Unload expires the active games listing. There is no game to unload any
+// more, but a finished game must stop appearing in the lobby immediately rather
+// than for up to another five seconds.
 func (c *Cache) Unload(ctx context.Context, id string) {
-	c.cache.Remove(id)
-	// Let's also expire the active games cache. The only time we ever
-	// call Unload is when a game is over - so we don't want to go back
-	// to the lobby and still show our game as active.
 	c.Lock()
 	defer c.Unlock()
 	c.activeGamesLastUpdated = time.Time{}
@@ -159,8 +142,7 @@ func (c *Cache) SetGameEventChan(ch chan<- *entity.EventWrapper) {
 	c.backing.SetGameEventChan(ch)
 }
 
-// Get gets a game from the cache.. it loads it into the cache if it's not there.
-// Correspondence games bypass the cache and always go to the DB.
+// Get loads a game from the database. Each call returns a new copy.
 func (c *Cache) Get(ctx context.Context, id string) (*entity.Game, error) {
 	cacheMetricsOnce.Do(initCacheMetrics)
 	start := time.Now()
@@ -169,57 +151,12 @@ func (c *Cache) Get(ctx context.Context, id string) (*entity.Game, error) {
 	ctx, span := tracer.Start(ctx, "cache.Get")
 	defer span.End()
 
-	// Check if we already have it in cache (correspondence games won't be cached)
-	g, ok := c.cache.Get(id)
-	if ok && g != nil {
-		span.SetAttributes(
-			attribute.Bool("cache.hit", true),
-			attribute.Bool("game.correspondence", false),
-		)
-		cacheLookups.Add(ctx, 1, metric.WithAttributes(
-			attribute.Bool("hit", true),
-			attribute.Bool("correspondence", false),
-		))
-		cacheLoadDurMs.Record(ctx, float64(time.Since(start).Milliseconds()),
-			metric.WithAttributes(attribute.Bool("hit", true)))
-		return g.(*entity.Game), nil
-	}
-
-	// Recheck after locking, to ensure it is still not there.
-	c.Lock()
-	defer c.Unlock()
-	g, ok = c.cache.Get(id)
-	if ok && g != nil {
-		span.SetAttributes(
-			attribute.Bool("cache.hit", true),
-			attribute.Bool("game.correspondence", false),
-		)
-		cacheLookups.Add(ctx, 1, metric.WithAttributes(
-			attribute.Bool("hit", true),
-			attribute.Bool("correspondence", false),
-		))
-		cacheLoadDurMs.Record(ctx, float64(time.Since(start).Milliseconds()),
-			metric.WithAttributes(attribute.Bool("hit", true)))
-		return g.(*entity.Game), nil
-	}
-	log.Debug().Str("gameid", id).Msg("not-in-cache")
-	uncachedGame, err := c.backing.Get(ctx, id)
-	isCorrespondence := err == nil && uncachedGame.IsCorrespondence()
-	if err == nil && !isCorrespondence {
-		// Only add to cache if it's not a correspondence game
-		c.cache.Add(id, uncachedGame)
-	}
-	span.SetAttributes(
-		attribute.Bool("cache.hit", false),
-		attribute.Bool("game.correspondence", isCorrespondence),
-	)
-	cacheLookups.Add(ctx, 1, metric.WithAttributes(
-		attribute.Bool("hit", false),
-		attribute.Bool("correspondence", isCorrespondence),
-	))
-	cacheLoadDurMs.Record(ctx, float64(time.Since(start).Milliseconds()),
-		metric.WithAttributes(attribute.Bool("hit", false)))
-	return uncachedGame, err
+	// Every load reads the database. Correspondence games always did -- they
+	// were never cached, because each request needs the position as it is now
+	// -- and this is that path for every game.
+	g, err := c.backing.Get(ctx, id)
+	cacheLoadDurMs.Record(ctx, float64(time.Since(start).Milliseconds()))
+	return g, err
 }
 
 // Just call the DB implementation for now
@@ -253,13 +190,12 @@ func (c *Cache) GetMetadata(ctx context.Context, id string) (*pb.GameInfoRespons
 	return c.backing.GetMetadata(ctx, id)
 }
 
-// Set sets a game in the cache, AND in the backing store. This ensures if the
-// node crashes the game doesn't just vanish.
+// Set saves a game to the database.
 func (c *Cache) Set(ctx context.Context, game *entity.Game) error {
 	return c.setOrCreate(ctx, game, false)
 }
 
-// Create creates the game in the cache as well as the store.
+// Create inserts a new game into the database.
 func (c *Cache) Create(ctx context.Context, game *entity.Game) error {
 	return c.setOrCreate(ctx, game, true)
 }
@@ -284,22 +220,7 @@ func (c *Cache) setOrCreate(ctx context.Context, game *entity.Game, isNew bool) 
 	} else {
 		err = c.backing.Set(ctx, game)
 	}
-	if err != nil {
-		// Drop it, so the next request loads the game from the database. The
-		// object here has the move applied and may still have its turn rows
-		// staged, but the save failed, so we don't know what was committed. If
-		// the commit went through and only the acknowledgement was lost, the
-		// staged rows are already in game_turns, and every later save of this
-		// object would collide with them and fail. A fresh load matches
-		// whatever actually committed.
-		c.cache.Remove(gameID)
-		return err
-	}
-	// Only add to cache if it's not a correspondence game
-	if !game.IsCorrespondence() {
-		c.cache.Add(gameID, game)
-	}
-	return nil
+	return err
 }
 
 // ListActive lists all active games in the given tournament ID (optional) or
@@ -362,8 +283,10 @@ func (c *Cache) Count(ctx context.Context) (int64, error) {
 	return c.backing.Count(ctx)
 }
 
+// CachedCount reports zero: no games are held in memory any more. Kept only so
+// the interface in pkg/gameplay does not have to change in this commit.
 func (c *Cache) CachedCount(ctx context.Context) int {
-	return c.cache.Len()
+	return 0
 }
 
 func (c *Cache) Disconnect() {
