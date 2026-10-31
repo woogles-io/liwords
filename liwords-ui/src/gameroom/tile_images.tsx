@@ -23,6 +23,7 @@ const TileImagesSingle = React.memo((props: { letterDistribution: string }) => {
   //       http://liwords.localhost/tile_images/german
   //       http://liwords.localhost/tile_images/norwegian
   //       http://liwords.localhost/tile_images/catalan
+  //       http://liwords.localhost/tile_images/catalan_super
   //       http://liwords.localhost/tile_images/spanish
   //    3.1. In Inspect Elements, find the relevant node (marked in the source),
   //         right-click it, and choose "Capture node screenshot".
@@ -126,11 +127,15 @@ const TileImagesSingle = React.memo((props: { letterDistribution: string }) => {
   };
 
   const groupName = props.letterDistribution || "english";
+  // Golang names are camel case, so catalan_super's start with catalanSuper.
+  const goName = groupName.replace(/_([a-z])/g, (_, c: string) =>
+    c.toUpperCase(),
+  );
   commitLine(`//go:embed letterdistributions/${groupName}`);
-  commitLine(`var ${groupName}LetterDistributionCSVBytes []byte`);
+  commitLine(`var ${goName}LetterDistributionCSVBytes []byte`);
   commitLine("");
   commitLine(`//go:embed tiles-${groupName}.png`);
-  commitLine(`var ${groupName}TilesBytes []byte`);
+  commitLine(`var ${goName}TilesBytes []byte`);
   commitLine("");
   commitLine(`const squareDim = ${squareDim}`);
   commitLine(`const monospacedFontDimX = ${monospacedFontDimX}`);
@@ -139,8 +144,14 @@ const TileImagesSingle = React.memo((props: { letterDistribution: string }) => {
   ++indentLevel;
   const orig = { yOffset, y, x, curDimY, curDimX, curNumCols };
   let numTextCols = 0;
+  // A super set is played on the 21x21 board. English shares its tiles with
+  // english_super, whose tiles score the same; catalan_super scores two of
+  // its tiles higher than catalan does, so it has tiles of its own.
   for (const [letterDistributionName, boardConfig] of [
-    [groupName, "standardBoardConfig"],
+    [
+      groupName,
+      groupName.endsWith("_super") ? "superBoardConfig" : "standardBoardConfig",
+    ],
     ...(groupName === "english"
       ? [[`${groupName}_super`, "superBoardConfig"]]
       : []),
@@ -148,7 +159,7 @@ const TileImagesSingle = React.memo((props: { letterDistribution: string }) => {
     ({ yOffset, y, x, curDimY, curDimX, curNumCols } = orig);
     commitLine(`${JSON.stringify(letterDistributionName)}: {`);
     ++indentLevel;
-    commitLine(`TilesBytes: ${groupName}TilesBytes,`);
+    commitLine(`TilesBytes: ${goName}TilesBytes,`);
     commitLine("Tile0Src: map[byte][2]int{");
     for (const c of shownLetters) recordPos(c);
     commitLine("},");
