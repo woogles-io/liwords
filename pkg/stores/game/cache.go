@@ -59,6 +59,7 @@ type backingStore interface {
 	ListActiveCorrespondenceForUser(ctx context.Context, userID string) (*pb.GameInfoResponses, error)
 	ListActiveCorrespondenceForUserAndLeague(ctx context.Context, leagueID uuid.UUID, userID string) (*pb.GameInfoResponses, error)
 	ListActiveCorrespondenceRaw(ctx context.Context) ([]models.ListActiveCorrespondenceGamesRow, error)
+	ListActiveRealTimeRaw(ctx context.Context) ([]models.ListActiveRealTimeGamesForAdjudicationRow, error)
 	Count(ctx context.Context) (int64, error)
 	GameEventChan() chan<- *entity.EventWrapper
 	SetGameEventChan(ch chan<- *entity.EventWrapper)
@@ -270,6 +271,12 @@ func (c *Cache) ListActiveCorrespondenceForUser(ctx context.Context, userID stri
 // Don't cache correspondence game lists, always query DB.
 func (c *Cache) ListActiveCorrespondenceForUserAndLeague(ctx context.Context, leagueID uuid.UUID, userID string) (*pb.GameInfoResponses, error) {
 	return c.backing.ListActiveCorrespondenceForUserAndLeague(ctx, leagueID, userID)
+}
+
+// ListActiveRealTimeRaw returns raw DB rows for ongoing real-time games, for
+// the adjudicator.
+func (c *Cache) ListActiveRealTimeRaw(ctx context.Context) ([]models.ListActiveRealTimeGamesForAdjudicationRow, error) {
+	return c.backing.ListActiveRealTimeRaw(ctx)
 }
 
 // ListActiveCorrespondenceRaw returns raw DB rows for correspondence games.

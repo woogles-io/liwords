@@ -313,6 +313,15 @@ WHERE game_end_reason = 0 -- NONE (ongoing games)
     AND COALESCE((game_request->>'game_mode')::int, 0) != 1 -- Exclude CORRESPONDENCE games
 ORDER BY id;
 
+-- name: ListActiveRealTimeGamesForAdjudication :many
+-- Only what the adjudicator needs to decide whether an ongoing real-time game
+-- has timed out or never started, so it does not have to load every game.
+SELECT uuid, started, player_on_turn, timers, game_request, type, created_at, quickdata, tournament_id
+FROM games
+WHERE game_end_reason = 0 -- NONE (ongoing games)
+    AND COALESCE((game_request->>'game_mode')::int, 0) != 1 -- Exclude CORRESPONDENCE games
+ORDER BY id;
+
 -- name: ListActiveTournamentGames :many
 SELECT quickdata, uuid, started, tournament_data, game_request, player_on_turn, league_id, season_id, league_division_id
 FROM games
