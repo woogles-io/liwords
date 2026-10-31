@@ -8,6 +8,8 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/woogles-io/liwords/pkg/entity"
 	tl "github.com/woogles-io/liwords/pkg/tournament"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 
 	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/tournament_service"
@@ -73,9 +75,18 @@ func NewCache(backing backingStore) *Cache {
 }
 
 // Get gets a tournament from the cache. It loads it into the cache if it's not there.
+//
+// The span counts every lookup, hits included, so we can tell how many loads
+// per second the database would take without this cache. Before the span only
+// misses showed up, as select queries.
 func (c *Cache) Get(ctx context.Context, id string) (*entity.Tournament, error) {
+	ctx, span := otel.Tracer("tournament-cache").Start(ctx, "cache.Get")
+	defer span.End()
+	span.SetAttributes(attribute.String("tournament.id", id))
+
 	tm, ok := c.cache.Get(id)
 	if ok && tm != nil {
+		span.SetAttributes(attribute.Bool("cache.hit", true))
 		return tm.(*entity.Tournament), nil
 	}
 
@@ -84,8 +95,10 @@ func (c *Cache) Get(ctx context.Context, id string) (*entity.Tournament, error) 
 	defer c.Unlock()
 	tm, ok = c.cache.Get(id)
 	if ok && tm != nil {
+		span.SetAttributes(attribute.Bool("cache.hit", true))
 		return tm.(*entity.Tournament), nil
 	}
+	span.SetAttributes(attribute.Bool("cache.hit", false))
 	log.Info().Str("tournamentid", id).Msg("not-in-cache")
 	uncachedTournament, err := c.backing.Get(ctx, id)
 	if err == nil {
