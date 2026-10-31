@@ -2939,8 +2939,11 @@ type PreviewPairingsRequest struct {
 	// last.
 	ExpectedPlayers int32         `protobuf:"varint,4,opt,name=expected_players,json=expectedPlayers,proto3" json:"expected_players,omitempty"`
 	Intent          PlannerIntent `protobuf:"varint,5,opt,name=intent,proto3,enum=tournament_service.PlannerIntent" json:"intent,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// For the Team Round Robin: how many rounds in a row each pair plays (its
+	// round controls' games_per_round). 0 means 1.
+	RoundsPerOpponent int32 `protobuf:"varint,6,opt,name=rounds_per_opponent,json=roundsPerOpponent,proto3" json:"rounds_per_opponent,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *PreviewPairingsRequest) Reset() {
@@ -3006,6 +3009,13 @@ func (x *PreviewPairingsRequest) GetIntent() PlannerIntent {
 		return x.Intent
 	}
 	return PlannerIntent_PLANNER_FAIR_START
+}
+
+func (x *PreviewPairingsRequest) GetRoundsPerOpponent() int32 {
+	if x != nil {
+		return x.RoundsPerOpponent
+	}
+	return 0
 }
 
 type PreviewPlayer struct {
@@ -4523,13 +4533,14 @@ const file_proto_tournament_service_tournament_service_proto_rawDesc = "" +
 	"registered\x18\b \x01(\bR\n" +
 	"registered\"h\n" +
 	"\x1dGetEnteredTournamentsResponse\x12G\n" +
-	"\vtournaments\x18\x01 \x03(\v2%.tournament_service.EnteredTournamentR\vtournaments\"\xc2\x01\n" +
+	"\vtournaments\x18\x01 \x03(\v2%.tournament_service.EnteredTournamentR\vtournaments\"\xf2\x01\n" +
 	"\x16PreviewPairingsRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1a\n" +
 	"\bdivision\x18\x02 \x01(\tR\bdivision\x12\x16\n" +
 	"\x06rounds\x18\x03 \x01(\x05R\x06rounds\x12)\n" +
 	"\x10expected_players\x18\x04 \x01(\x05R\x0fexpectedPlayers\x129\n" +
-	"\x06intent\x18\x05 \x01(\x0e2!.tournament_service.PlannerIntentR\x06intent\"q\n" +
+	"\x06intent\x18\x05 \x01(\x0e2!.tournament_service.PlannerIntentR\x06intent\x12.\n" +
+	"\x13rounds_per_opponent\x18\x06 \x01(\x05R\x11roundsPerOpponent\"q\n" +
 	"\rPreviewPlayer\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x16\n" +
 	"\x06rating\x18\x02 \x01(\x05R\x06rating\x12\x12\n" +

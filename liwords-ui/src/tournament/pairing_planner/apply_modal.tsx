@@ -1,15 +1,5 @@
 import React, { useState } from "react";
-import {
-  Alert,
-  Button,
-  Group,
-  Modal,
-  NumberInput,
-  Select,
-  Stack,
-  Table,
-  Text,
-} from "@mantine/core";
+import { Alert, Button, Group, Modal, Stack, Table, Text } from "@mantine/core";
 import { create } from "@bufbuild/protobuf";
 import { ConnectError } from "@connectrpc/connect";
 import {
@@ -34,22 +24,18 @@ type Props = {
   scheme: SchemePreview;
   // How many rounds to pre-pair with the scheme.
   rounds: number;
+  // What pairs the rounds after them, to start with.
+  then: PairingMethod;
+  // For the Team Round Robin: how many rounds in a row each pair plays.
+  perOpponent: number;
   // The division's rounds now; 0 if it has no round controls yet.
   numRounds: number;
+  // The rounds it will have.
+  total: number;
   hasTeams: boolean;
   onClose: () => void;
   onDone: (summary: string) => void;
 };
-
-const thenMethods = [
-  {
-    value: `${PairingMethod.PAIRING_METHOD_COP}`,
-    label: "COP (recommended)",
-  },
-  { value: `${PairingMethod.WIN_GROUPS}`, label: "Win Groups" },
-];
-
-const teamThenMethods = [{ value: `${PairingMethod.MANUAL}`, label: "Manual" }];
 
 const methodName = (m: PairingMethod) =>
   m === PairingMethod.PAIRING_METHOD_COP
@@ -65,10 +51,9 @@ export const ApplyModal = (props: Props) => {
   const tClient = useClient(TournamentService);
   const { scheme, rounds, numRounds, hasTeams } = props;
 
-  const [total, setTotal] = useState(Math.max(numRounds, rounds));
-  const [then, setThen] = useState(
-    hasTeams ? PairingMethod.MANUAL : PairingMethod.PAIRING_METHOD_COP,
-  );
+  const total = props.total;
+  // Chosen on the planner page.
+  const then = props.then;
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -94,6 +79,11 @@ export const ApplyModal = (props: Props) => {
             ? create(RoundControlSchema, {
                 pairingMethod: scheme.pairingMethod,
                 playWithinTeam: scheme.playWithinTeam,
+                gamesPerRound:
+                  scheme.pairingMethod ===
+                  PairingMethod.ASSIGNED_TEAM_ROUND_ROBIN
+                    ? props.perOpponent
+                    : 1,
               })
             : create(RoundControlSchema, { pairingMethod: then });
         controls.push(rdCtrlFromSetting(setting, total, r));
@@ -119,31 +109,23 @@ export const ApplyModal = (props: Props) => {
       opened
       onClose={props.onClose}
       title={`Set round controls for ${props.division}`}
+      // The title is an h2, which the app's global h2 style would enlarge.
+      styles={{
+        title: { fontSize: "var(--mantine-font-size-lg)", fontWeight: 700 },
+      }}
       size="lg"
     >
       <Stack gap="md">
-        <NumberInput
-          label="Rounds in the division"
-          description={
-            numRounds > 0 && total !== numRounds
-              ? `It has ${numRounds} now; this changes it to ${total}.`
-              : undefined
-          }
-          min={rounds}
-          max={50}
-          value={total}
-          onChange={(v) => typeof v === "number" && setTotal(v)}
-          w={200}
-        />
-        {rest && (
-          <Select
-            label={`After the ${rounds} pre-paired ${rounds === 1 ? "round" : "rounds"}`}
-            data={hasTeams ? teamThenMethods : thenMethods}
-            value={`${then}`}
-            onChange={(v) => v && setThen(Number(v) as PairingMethod)}
-            allowDeselect={false}
-            w={260}
-          />
+        {numRounds > 0 && total !== numRounds && (
+          <Text size="sm">
+            This changes the division from {numRounds} to {total} rounds.
+          </Text>
+        )}
+        {rounds > total && (
+          <Alert color="red">
+            You're pre-pairing {rounds} rounds, but the division has {total}.
+            Change one of them on the planner page.
+          </Alert>
         )}
         <Table withTableBorder>
           <Table.Tbody>
@@ -172,7 +154,11 @@ export const ApplyModal = (props: Props) => {
           <Button variant="default" onClick={props.onClose}>
             Cancel
           </Button>
-          <Button onClick={apply} loading={saving} disabled={!!teamProblem}>
+          <Button
+            onClick={apply}
+            loading={saving}
+            disabled={!!teamProblem || rounds > total}
+          >
             Set round controls
           </Button>
         </Group>

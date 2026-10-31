@@ -8,10 +8,13 @@ import {
   PairingMethod,
   RoundControl,
   RoundControlSchema,
+  TournamentPerson,
 } from "../../../gen/api/proto/ipc/tournament_pb";
 import { HelptipLabel } from "../helptip_label";
 import {
+  assignedTeamsProblem,
   fieldsForMethod,
+  isPrePaired,
   PairingMethodField,
   RoundSetting,
 } from "../pairing_methods";
@@ -21,30 +24,87 @@ import {
   getCOPDefaults,
 } from "./cop_fields";
 
-// Why rounds beginRound..endRound (1-based) cannot have a pairing lag with
-// the given pairing method, or undefined if they can. The server enforces the
-// same rules.
+// The rounds from beginRound to endRound (1-based) that can have a pairing
+// lag with the given pairing method, as [first, last], or undefined if none
+// can. The first round has nothing before it, Elimination needs the previous
+// round's results, and so do COP's last two rounds. The server enforces the
+// same rules for each round.
+export const laggableRounds = (
+  pairingMethod: PairingMethod,
+  beginRound?: number,
+  endRound?: number,
+  totalRounds?: number,
+): [number, number] | undefined => {
+  if (pairingMethod === PairingMethod.ELIMINATION) {
+    return undefined;
+  }
+  const first = Math.max(beginRound ?? 2, 2);
+  let last = endRound ?? first;
+  if (
+    pairingMethod === PairingMethod.PAIRING_METHOD_COP &&
+    totalRounds !== undefined
+  ) {
+    last = Math.min(last, totalRounds - 2);
+  }
+  return first <= last ? [first, last] : undefined;
+};
+
+// Why none of rounds beginRound..endRound (1-based) can have a pairing lag
+// with the given pairing method, or undefined if some can.
 export const pairingLagDisabledReason = (
   pairingMethod: PairingMethod,
   beginRound?: number,
   endRound?: number,
   totalRounds?: number,
 ): string | undefined => {
-  if (beginRound !== undefined && beginRound <= 1) {
-    return "The first round cannot be lagged, because there are no earlier results to pair from.";
+  if (laggableRounds(pairingMethod, beginRound, endRound, totalRounds)) {
+    return undefined;
   }
   if (pairingMethod === PairingMethod.ELIMINATION) {
     return "Elimination rounds cannot be lagged, because they need the previous round's results.";
   }
-  if (
-    pairingMethod === PairingMethod.PAIRING_METHOD_COP &&
-    endRound !== undefined &&
-    totalRounds !== undefined &&
-    endRound >= totalRounds - 1
-  ) {
-    return "COP rounds in the last two rounds of a division cannot be lagged, because they must use the previous round's results.";
+  if ((endRound ?? beginRound) === 1) {
+    return isPrePaired(pairingMethod)
+      ? "The first round can't start early, because there is no round before it."
+      : "The first round cannot be lagged, because there are no earlier results to pair from.";
   }
-  return undefined;
+  return "COP rounds in the last two rounds of a division cannot be lagged, because they must use the previous round's results.";
+};
+
+// Which rounds of a range a pairing lag applies to, when it can't apply to
+// all of them, or undefined if it applies to every round (or none).
+export const pairingLagAppliesTo = (
+  pairingMethod: PairingMethod,
+  beginRound?: number,
+  endRound?: number,
+  totalRounds?: number,
+): string | undefined => {
+  const rounds = laggableRounds(
+    pairingMethod,
+    beginRound,
+    endRound,
+    totalRounds,
+  );
+  if (
+    !rounds ||
+    beginRound === undefined ||
+    endRound === undefined ||
+    (rounds[0] === beginRound && rounds[1] === endRound)
+  ) {
+    return undefined;
+  }
+  const which =
+    rounds[0] === rounds[1]
+      ? `round ${rounds[0]}`
+      : `rounds ${rounds[0]}–${rounds[1]}`;
+  const skipped = [];
+  if (beginRound <= 1) {
+    skipped.push("round 1 has no round before it");
+  }
+  if (rounds[1] < endRound) {
+    skipped.push("COP's last two rounds use the previous round's results");
+  }
+  return `This applies to ${which}: ${skipped.join(", and ")}.`;
 };
 
 export type RdCtrlFieldsProps = {
@@ -55,6 +115,7 @@ export type RdCtrlFieldsProps = {
   ) => void;
   onRemove: () => void;
   totalRounds?: number;
+  players?: TournamentPerson[];
 };
 
 type SingleRoundControlFieldsProps = SingleRdCtrlFieldsProps & {
@@ -66,16 +127,33 @@ type SingleRoundControlFieldsProps = SingleRdCtrlFieldsProps & {
 export const SingleRoundControlFields = (
   props: SingleRoundControlFieldsProps,
 ) => {
-  const { setting, beginRound, endRound, totalRounds, round } = props;
+  const { setting, beginRound, endRound, totalRounds, round, players } = props;
   const addlFields = fieldsForMethod(setting.pairingMethod);
 
+  // Pre-paired rounds don't use results, so for them the pairing lag only
+  // decides whether the round can start before the previous one ends.
+  const prePaired = isPrePaired(setting.pairingMethod);
   const lagDisabledReason = pairingLagDisabledReason(
     setting.pairingMethod,
     beginRound ?? round,
     endRound ?? round,
     totalRounds,
   );
+  // A range can include rounds the lag can't apply to, such as round 1;
+  // those rounds are saved without it.
+  const lagAppliesTo = setting.pairingLag
+    ? pairingLagAppliesTo(
+        setting.pairingMethod,
+        beginRound,
+        endRound,
+        totalRounds,
+      )
+    : undefined;
   // With no results yet, COP pairs by seed: 1v2, 3v4, and so on.
+  const teamsProblem =
+    setting.pairingMethod === PairingMethod.ASSIGNED_TEAM_ROUND_ROBIN && players
+      ? assignedTeamsProblem(players)
+      : undefined;
   const copStartsFirstRound =
     setting.pairingMethod === PairingMethod.PAIRING_METHOD_COP &&
     (beginRound ?? round) === 1;
@@ -98,7 +176,8 @@ export const SingleRoundControlFields = (
         </li>
         <li>
           - <strong>Swiss:</strong> Swiss pairings by default try to match
-          players who are performing similarly.
+          players who are performing similarly. Not recommended anymore: use COP
+          or Win Groups instead.
         </li>
         <li>
           - <strong>Win Groups:</strong> Players on the same number of wins form
@@ -190,6 +269,19 @@ export const SingleRoundControlFields = (
     </>
   );
 
+  const startEarlyHelptip = (
+    <>
+      <p>
+        These rounds are paired in advance, so they don't wait for results. With
+        this on, the round can be started once the round before the previous one
+        is complete, while some games of the previous round are still being
+        played. Players who finish early don't wait for the slowest game. Each
+        player still has to finish their previous game before starting this one.
+      </p>
+      <p>You still start the round yourself.</p>
+    </>
+  );
+
   return (
     <>
       <Form.Item
@@ -205,7 +297,6 @@ export const SingleRoundControlFields = (
           }}
         >
           <Select.Option value={PairingMethod.RANDOM}>Random</Select.Option>
-          <Select.Option value={PairingMethod.SWISS}>Swiss</Select.Option>
           <Select.Option value={PairingMethod.WIN_GROUPS}>
             Win Groups
           </Select.Option>
@@ -241,8 +332,39 @@ export const SingleRoundControlFields = (
           <Select.Option value={PairingMethod.TEAM_ROUND_ROBIN} disabled>
             Top vs Bottom Round Robin (retired)
           </Select.Option>
+          {/* Not recommended anymore, so it's last and grayed out, but
+              still selectable. */}
+          <Select.Option value={PairingMethod.SWISS}>
+            <span style={{ color: "#999" }}>Swiss (not recommended)</span>
+          </Select.Option>
         </Select>
       </Form.Item>
+      {teamsProblem && (
+        <p
+          style={{
+            fontSize: "12px",
+            color: "#faad14",
+            marginTop: "-8px",
+            marginBottom: "8px",
+          }}
+        >
+          {teamsProblem}
+        </p>
+      )}
+      {setting.pairingMethod === PairingMethod.SWISS && (
+        <p
+          style={{
+            fontSize: "12px",
+            color: "#faad14",
+            marginTop: "-8px",
+            marginBottom: "8px",
+          }}
+        >
+          Swiss isn't recommended anymore. We strongly recommend COP, or Win
+          Groups, which pairs players with the same number of wins against each
+          other.
+        </p>
+      )}
       {copStartsFirstRound && (
         <p
           style={{
@@ -258,25 +380,47 @@ export const SingleRoundControlFields = (
           players meet right away.
         </p>
       )}
-      <Form.Item
-        {...formItemLayout}
-        label={
-          <HelptipLabel labelText="Paired from" help={pairingLagHelptip} />
-        }
-      >
-        <Select
-          value={setting.pairingLag || 0}
-          // Leave it enabled while it is set, so that an invalid lag can be
-          // turned off.
-          disabled={!!lagDisabledReason && !setting.pairingLag}
-          onChange={(e) => {
-            props.onChange("pairingLag", e);
-          }}
+      {prePaired ? (
+        <Form.Item
+          {...formItemLayout}
+          label={
+            <HelptipLabel
+              labelText="Can start early"
+              help={startEarlyHelptip}
+            />
+          }
         >
-          <Select.Option value={0}>Previous round</Select.Option>
-          <Select.Option value={1}>Two rounds back</Select.Option>
-        </Select>
-      </Form.Item>
+          <Switch
+            checked={!!setting.pairingLag}
+            // Leave it enabled while it is on, so that an invalid lag can be
+            // turned off.
+            disabled={!!lagDisabledReason && !setting.pairingLag}
+            onChange={(checked) => {
+              props.onChange("pairingLag", checked ? 1 : 0);
+            }}
+          />
+        </Form.Item>
+      ) : (
+        <Form.Item
+          {...formItemLayout}
+          label={
+            <HelptipLabel labelText="Paired from" help={pairingLagHelptip} />
+          }
+        >
+          <Select
+            value={setting.pairingLag || 0}
+            // Leave it enabled while it is set, so that an invalid lag can be
+            // turned off.
+            disabled={!!lagDisabledReason && !setting.pairingLag}
+            onChange={(e) => {
+              props.onChange("pairingLag", e);
+            }}
+          >
+            <Select.Option value={0}>Previous round</Select.Option>
+            <Select.Option value={1}>Two rounds back</Select.Option>
+          </Select>
+        </Form.Item>
+      )}
       {lagDisabledReason && (
         <p
           style={{
@@ -287,6 +431,18 @@ export const SingleRoundControlFields = (
           }}
         >
           {lagDisabledReason}
+        </p>
+      )}
+      {lagAppliesTo && (
+        <p
+          style={{
+            fontSize: "12px",
+            color: "#666",
+            marginTop: "-8px",
+            marginBottom: "8px",
+          }}
+        >
+          {lagAppliesTo}
         </p>
       )}
       <p></p>
@@ -383,6 +539,7 @@ export const RoundControlFields = (props: RdCtrlFieldsProps) => {
           beginRound={setting.beginRound}
           endRound={setting.endRound}
           totalRounds={totalRounds}
+          players={props.players}
         />
       </Form>
       <Button onClick={props.onRemove}>- Remove</Button>
@@ -411,18 +568,12 @@ export const rdCtrlFromSetting = (
       `${round !== undefined ? `Round ${round} has` : "This round has"} an invalid pairing lag of ${rdCtrl.pairingLag}. The lag must be 0 or 1.`,
     );
   }
-  if (rdCtrl.pairingLag > 0) {
-    const reason = pairingLagDisabledReason(
-      rdCtrl.pairingMethod,
-      round,
-      round,
-      totalRounds,
-    );
-    if (reason) {
-      throw new Error(
-        round !== undefined ? `Round ${round}: ${reason}` : reason,
-      );
-    }
+  // A range's lag skips the rounds that can't have one, such as round 1.
+  if (
+    rdCtrl.pairingLag > 0 &&
+    !laggableRounds(rdCtrl.pairingMethod, round, round, totalRounds)
+  ) {
+    rdCtrl.pairingLag = 0;
   }
 
   switch (rdSetting.pairingMethod) {

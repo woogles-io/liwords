@@ -500,6 +500,7 @@ const SetSingleRoundControls = (props: { tournamentID: string }) => {
       <Form>
         <SingleRoundControlFields
           setting={roundSetting}
+          players={tournamentContext.divisions[division]?.players}
           onChange={(
             fieldName: keyof RoundControl,
             value:
@@ -744,6 +745,7 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
             key={`rdctrl-${idx}`}
             setting={v}
             totalRounds={totalRounds}
+            players={tournamentContext.divisions[division]?.players}
             onChange={(
               fieldName: string,
               value: string | number | boolean | number[] | string[],
