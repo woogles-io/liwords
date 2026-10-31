@@ -494,11 +494,20 @@ body.mode--dark {
     .anticon {
       color: #282828;
     }
+    // Dark mode's link color is this very background.
+    a {
+      color: #135380;
+    }
   }
   .ant-message-notice-content {
     background-color: #c9f0ff;
     color: #282828;
     .anticon {
+      color: #135380;
+    }
+    // The birthdate reminder is a link, and dark mode's link color is too
+    // light for it here.
+    a {
       color: #135380;
     }
   }
