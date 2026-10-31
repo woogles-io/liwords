@@ -77,6 +77,9 @@ var frenchLetterDistributionCSVBytes []byte
 //go:embed letterdistributions/german
 var germanLetterDistributionCSVBytes []byte
 
+//go:embed letterdistributions/german_super
+var germanSuperLetterDistributionCSVBytes []byte
+
 //go:embed letterdistributions/norwegian
 var norwegianLetterDistributionCSVBytes []byte
 
@@ -1346,6 +1349,7 @@ func init() {
 		{name: "english_super", csvBytes: englishSuperLetterDistributionCSVBytes},
 		{name: "french", csvBytes: frenchLetterDistributionCSVBytes},
 		{name: "german", csvBytes: germanLetterDistributionCSVBytes},
+		{name: "german_super", csvBytes: germanSuperLetterDistributionCSVBytes},
 		{name: "norwegian", csvBytes: norwegianLetterDistributionCSVBytes},
 		{name: "catalan", csvBytes: catalanLetterDistributionCSVBytes},
 		{name: "polish", csvBytes: polishLetterDistributionCSVBytes},
@@ -1358,6 +1362,13 @@ func init() {
 		}
 		lds[entry.name] = ld
 	}
+
+	// A tile's score is drawn on it, and the super German set scores every
+	// tile as the German set does, so it is drawn with the German sprites, as
+	// english_super is with the English ones, on the 21x21 board.
+	germanSuper := *tilesMeta["german"]
+	germanSuper.BoardConfig = superBoardConfig
+	tilesMeta["german_super"] = &germanSuper
 
 	headerImg, headerColors, err := loadImageAndDistinctOpaqueColors(headerBytes)
 	if err != nil {
