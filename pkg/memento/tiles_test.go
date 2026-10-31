@@ -1,11 +1,13 @@
 package memento
 
 import (
+	"bytes"
 	"encoding/json"
 	"io/ioutil"
 	"testing"
 
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
+	"github.com/domino14/word-golib/tilemapping"
 	"github.com/matryer/is"
 )
 
@@ -391,4 +393,50 @@ func BenchmarkRenderPNG(b *testing.B) {
 		_, err := RenderImage(hist, wf)
 		is.NoErr(err)
 	}
+}
+
+// The super Catalan set has its own counts and, for two tiles, its own
+// scores, and is drawn on the 21x21 board.
+func TestCatalanSuperDrawer(t *testing.T) {
+	is := is.New(t)
+	bd, ok := BoardDrawers["catalan_super"]
+	is.True(ok)
+	is.Equal(len(bd.BoardConfig), 21)
+	ld := bd.LetterDistribution
+	is.Equal(ld.NumTotalLetters(), uint(200))
+	tm := ld.TileMapping()
+	// the cedilla C and the geminated L score more than in the Catalan set
+	for letter, want := range map[string]int{"\u00c7": 12, "L\u00b7L": 15, "NY": 10, "A": 1} {
+		mls, err := tilemapping.ToMachineLetters(letter, tm)
+		is.NoErr(err)
+		is.Equal(len(mls), 1)
+		is.Equal(ld.Score(mls[0]), want)
+	}
+	is.Equal(BoardDrawers["catalan"].LetterDistribution.NumTotalLetters(), uint(100))
+}
+
+// A tile's score is drawn on it, so two tile sets that share a sprite sheet,
+// as english and english_super do, must have the same letters with the same
+// scores. catalan_super scores two tiles higher than catalan, so it cannot
+// use catalan's sheet.
+func TestSharedSpriteSheetsScoreAlike(t *testing.T) {
+	is := is.New(t)
+	shared := 0
+	for a, ma := range tilesMeta {
+		for b, mb := range tilesMeta {
+			if a >= b || !bytes.Equal(ma.TilesBytes, mb.TilesBytes) {
+				continue
+			}
+			shared++
+			lda := BoardDrawers[a].LetterDistribution
+			ldb := BoardDrawers[b].LetterDistribution
+			tma, tmb := lda.TileMapping(), ldb.TileMapping()
+			is.Equal(tma.NumLetters(), tmb.NumLetters()) // same number of letters
+			for ml := tilemapping.MachineLetter(0); ml < tilemapping.MachineLetter(tma.NumLetters()); ml++ {
+				is.Equal(tma.Letter(ml), tmb.Letter(ml)) // same letter
+				is.Equal(lda.Score(ml), ldb.Score(ml))   // same score
+			}
+		}
+	}
+	is.True(shared > 0) // english and english_super share one
 }
