@@ -770,6 +770,13 @@ p.streak-loss {
 .definitions {
   font-family: $font-monospaced;
 
+  // A long list scrolls instead of running off the screen. The popup opens
+  // on whichever side of its tile has room, and that side has at least half
+  // the screen less half a tile (tiles are at most 44px). The popup adds 24px
+  // of padding and 12px for its arrow, so 60px less than half always fits.
+  max-height: calc(50vh - 60px);
+  overflow-y: auto;
+
   background-color: m($card-background);
 
   .definition-entry {

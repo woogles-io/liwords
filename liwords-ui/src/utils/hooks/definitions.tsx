@@ -158,7 +158,19 @@ export const useDefinitionAndPhonyChecker = ({
     return {
       x: showDefinitionHover.x,
       y: showDefinitionHover.y,
-      content: <ul className="definitions">{entries}</ul>,
+      content: (
+        <ul
+          className="definitions"
+          // the pointer on the definitions keeps them up, as on their tile,
+          // so a list taller than the popup's cap can be scrolled. leaving
+          // the board does not hide them at once: on the way here, the
+          // pointer may cross the coordinates or the board's edge.
+          onMouseEnter={() => setWillHideDefinitionHover(false)}
+          onMouseLeave={() => setWillHideDefinitionHover(true)}
+        >
+          {entries}
+        </ul>
+      ),
     };
   }, [anagrams, showDefinitionHover, wordInfo]);
 
