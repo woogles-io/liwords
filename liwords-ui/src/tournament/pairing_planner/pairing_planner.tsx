@@ -93,6 +93,8 @@ const groupWord = (s: SchemePreview) =>
 
 const hasGroups = (s: SchemePreview) => s.groups.some((g) => g >= 0);
 
+const groupTints = ["teal", "grape", "orange", "lime", "pink", "cyan"];
+
 export const PairingPlanner = (props: Props) => {
   const { tournamentContext } = useTournamentStoreContext();
   const tClient = useClient(TournamentService);
@@ -599,6 +601,16 @@ const PairingGrid = (props: {
   const n = response.players.length;
   const showTeams = response.players.some((p) => p.team);
   const showGroups = hasGroups(s);
+  // With more than one group, each group's rows get their own faint tint,
+  // so a group's players can be picked out of the seed order. Blue is left
+  // out: it shades the games among the top seeds.
+  const tinted = new Set(s.groups.filter((g) => g >= 0)).size > 1;
+  const groupTint = (g: number): React.CSSProperties | undefined =>
+    tinted && g >= 0
+      ? ({
+          "--group-tint": `var(--mantine-color-${groupTints[g % groupTints.length]}-light)`,
+        } as React.CSSProperties)
+      : undefined;
 
   const cells = useMemo(
     () =>
@@ -625,7 +637,7 @@ const PairingGrid = (props: {
     // an accordion panel that starts open, so it showed no scrollbar.
     <Table.ScrollContainer type="native" minWidth={300 + s.rounds.length * 64}>
       <Table
-        striped
+        striped={!tinted}
         highlightOnHover
         withColumnBorders
         verticalSpacing={4}
@@ -653,7 +665,11 @@ const PairingGrid = (props: {
           {response.players.map((p, i) => {
             const st = s.playerStats[i];
             return (
-              <Table.Tr key={i}>
+              <Table.Tr
+                key={i}
+                className={tinted ? classes.groupTint : undefined}
+                style={groupTint(s.groups[i])}
+              >
                 <Table.Td>{i + 1}</Table.Td>
                 <Table.Td c={p.placeholder ? "dimmed" : undefined}>
                   {p.name}
@@ -702,9 +718,9 @@ const PairingGrid = (props: {
           })}
         </Table.Tbody>
       </Table>
-      {top > 1 && (
+      {top > 1 && s.topSeedGames > 0 && (
         <Text fz="xs" c="dimmed" mt={4}>
-          Shaded cells are games between two of the top {top} seeds.
+          Outlined cells are games between two of the top {top} seeds.
         </Text>
       )}
     </Table.ScrollContainer>

@@ -491,7 +491,11 @@ func schemeNotes(s plannerScheme, sp *tpb.SchemePreview, n, rounds, topSeeds int
 	if sp.TopSeedGames == 0 {
 		notes = append(notes, fmt.Sprintf("Seeds 1–%d never meet.", topSeeds))
 	} else {
-		notes = append(notes, fmt.Sprintf("Seeds 1–%d play each other %s.", topSeeds, plural(int(sp.TopSeedGames), "time", "times")))
+		times := plural(int(sp.TopSeedGames), "time", "times")
+		if sp.TopSeedGames == 1 {
+			times = "once"
+		}
+		notes = append(notes, fmt.Sprintf("Seeds 1–%d play each other %s.", topSeeds, times))
 	}
 	if sp.MaxByes > 0 {
 		notes = append(notes, fmt.Sprintf("Some players sit out: up to %s each.", plural(int(sp.MaxByes), "bye", "byes")))
