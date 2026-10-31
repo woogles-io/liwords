@@ -23,9 +23,11 @@
 
 // A help tooltip can hold more than fits on the screen (the pairing type
 // list does), so it scrolls instead of running off it. The tooltip opens on
-// whichever side of its icon has room, and one side always has about half
-// the screen, so 45vh always fits.
+// whichever side of its icon has room, and one side always has at least
+// half the screen less half the icon. The body's padding is inside its
+// height, so what else needs room there is the arrow's gap to the icon, 12px
+// at most, and half the 14px icon.
 .helptip-body {
-  max-height: 45vh;
+  max-height: calc(50vh - 20px);
   overflow-y: auto;
 }
