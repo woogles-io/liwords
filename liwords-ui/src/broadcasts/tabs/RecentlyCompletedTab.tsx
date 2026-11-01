@@ -46,6 +46,7 @@ export const RecentlyCompletedTab: React.FC<Props> = ({ stats }) => {
           title: "Rd",
           dataIndex: "round",
           key: "round",
+          align: "right" as const,
           width: 45,
         },
         {
@@ -72,6 +73,7 @@ export const RecentlyCompletedTab: React.FC<Props> = ({ stats }) => {
         {
           title: "Spread",
           key: "spread",
+          align: "right" as const,
           width: 70,
           render: (_, r) =>
             spreadLabel(r.player1Score, r.player2Score, r.winner),
@@ -79,6 +81,7 @@ export const RecentlyCompletedTab: React.FC<Props> = ({ stats }) => {
         {
           title: "Bingos",
           key: "bingos",
+          align: "right" as const,
           width: 65,
           render: (_, r) => {
             const total = r.player1Bingos + r.player2Bingos;

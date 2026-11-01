@@ -76,6 +76,7 @@ export const ArchiveTab: React.FC<Props> = ({ stats, totalRounds }) => {
             title: "Rd",
             dataIndex: "round",
             key: "round",
+            align: "right" as const,
             width: 45,
             sorter: (a, b) =>
               a.round !== b.round
@@ -87,6 +88,7 @@ export const ArchiveTab: React.FC<Props> = ({ stats, totalRounds }) => {
             title: "Tbl",
             dataIndex: "tableNumber",
             key: "tableNumber",
+            align: "right" as const,
             width: 45,
             render: (n: number) => `#${n}`,
           },
@@ -120,6 +122,7 @@ export const ArchiveTab: React.FC<Props> = ({ stats, totalRounds }) => {
           {
             title: "Spread",
             key: "spread",
+            align: "right" as const,
             width: 65,
             sorter: (a, b) =>
               Math.abs(a.player1Score - a.player2Score) -
@@ -129,6 +132,7 @@ export const ArchiveTab: React.FC<Props> = ({ stats, totalRounds }) => {
           {
             title: "Combined",
             key: "combined",
+            align: "right" as const,
             width: 80,
             sorter: (a, b) =>
               a.player1Score +
@@ -139,6 +143,7 @@ export const ArchiveTab: React.FC<Props> = ({ stats, totalRounds }) => {
           {
             title: "Bingos",
             key: "bingos",
+            align: "right" as const,
             width: 65,
             sorter: (a, b) =>
               a.player1Bingos +
@@ -150,6 +155,7 @@ export const ArchiveTab: React.FC<Props> = ({ stats, totalRounds }) => {
             title: "Moves",
             dataIndex: "moveCount",
             key: "moves",
+            align: "right" as const,
             width: 60,
             sorter: (a, b) => a.moveCount - b.moveCount,
             render: (n: number) => n || "—",
