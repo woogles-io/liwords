@@ -446,7 +446,10 @@ func (sm *StandingsManager) sortStandings(standings []PlayerStanding) {
 	})
 }
 
-// markOutcomes assigns promotion/relegation/stayed outcomes based on rank
+// markOutcomes assigns promotion/relegation/stayed outcomes based on
+// competition rank: players level on points and spread share a rank, so a tie
+// across the promotion line sends all of them up and a tie across the
+// relegation line keeps all of them in the division.
 func (sm *StandingsManager) markOutcomes(
 	standings []PlayerStanding,
 	divisionNumber int32,
@@ -465,8 +468,8 @@ func (sm *StandingsManager) markOutcomes(
 	isHighestDivision := divisionNumber == 1
 	isLowestDivision := divisionNumber >= highestRegularDivision
 
-	// Compute competition rank for champion assignment.
-	// Only use competition rank when games have been played.
+	// Compute competition rank for the champion and the promotion and
+	// relegation lines. Only use competition rank when games have been played.
 	hasGames := len(standings) > 0 && (standings[0].Wins+standings[0].Losses+standings[0].Draws) > 0
 	compRank := 1
 	for i := range standings {
@@ -477,14 +480,18 @@ func (sm *StandingsManager) markOutcomes(
 				compRank = i + 1
 			}
 		}
+		rank := i + 1
+		if hasGames {
+			rank = compRank
+		}
 
 		if compRank == 1 && isHighestDivision && (hasGames || i == 0) {
 			// Competition rank 1 in Division 1 is the champion (handles ties)
 			standings[i].Outcome = pb.StandingResult_RESULT_CHAMPION
-		} else if i+1 <= promotionCount && !isHighestDivision {
+		} else if rank <= promotionCount && !isHighestDivision {
 			// Top performers get promoted (unless already in Division 1)
 			standings[i].Outcome = pb.StandingResult_RESULT_PROMOTED
-		} else if i+1 > divSize-relegationCount && !isLowestDivision {
+		} else if rank > divSize-relegationCount && !isLowestDivision {
 			// Bottom performers get relegated (unless in lowest division)
 			standings[i].Outcome = pb.StandingResult_RESULT_RELEGATED
 		} else {
