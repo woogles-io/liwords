@@ -12,7 +12,9 @@ const evictKlv = vi.fn();
 
 // The wasm, with or without the evict functions newer wolges-wasm builds have.
 // Without them, a real module reads them as undefined; the mock says so, as a
-// vitest mock throws on a name it was not given.
+// vitest mock throws on a name it was not given. Each test calls it once,
+// before it imports the loader: vitest resolves the mocks queued before an
+// import concurrently, so two for the same module land in either order.
 const mockWolges = (canEvict: boolean) =>
   vi.doMock("wolges-wasm", () => ({
     precache_kwg: (name: string, data: Uint8Array) => precacheKwg(name, data),
@@ -30,7 +32,6 @@ beforeEach(() => {
   // The loader keeps what it has cached in module scope, so each test needs its
   // own copy of the module or the second one starts with the first one's state.
   vi.resetModules();
-  mockWolges(true);
   fetched = [];
   vi.stubGlobal("fetch", (path: string) => {
     fetched.push(path);
@@ -46,6 +47,7 @@ const loaded = (mock: typeof precacheKwg) =>
 
 describe("getWolges", () => {
   it("reloads a lexicon it evicted, with its bytes intact", async () => {
+    mockWolges(true);
     const { getWolges } = await import("./loader");
 
     const sizeOf = (path: string) => bodyFor(path).length;
@@ -79,6 +81,7 @@ describe("getWolges", () => {
   });
 
   it("keeps what the request still needs", async () => {
+    mockWolges(true);
     const { getWolges } = await import("./loader");
 
     // CSW21 and CSW21.WordSmog share a leave table, so switching between them
