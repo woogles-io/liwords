@@ -20,7 +20,12 @@ import {
 import { SeasonRegistrationsResponse } from "../gen/api/proto/league_service/league_service_pb";
 import { trackMenuItem } from "./follow_bar";
 import { PlayerGameHistoryModal } from "./player_game_history_modal";
-import { competitionRanksOf, zoneRank, zoneRowClass } from "./standings_zones";
+import {
+  competitionRanksOf,
+  resultRowClass,
+  zoneRank,
+  zoneRowClass,
+} from "./standings_zones";
 import { DisplayUserTitle } from "../shared/display_title";
 import { UsernameWithContext } from "../shared/usernameWithContext";
 
@@ -316,9 +321,16 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
 
   const noGamesPlayed = dataSource.every((d) => d.gamesPlayed === 0);
 
-  // Once the division is finished, zones go by competition rank, as its
-  // outcomes do; until then by position (see zoneRank).
-  const getRowClassName = (record: { rank: number }) => {
+  // A closed season's rows take the zone of their stored result (see
+  // resultRowClass). Before that: once the division is finished, zones go by
+  // competition rank, as its outcomes do; until then by position (see
+  // zoneRank).
+  const getRowClassName = (record: {
+    rank: number;
+    result: StandingResult;
+  }) => {
+    const stored = resultRowClass(record.result);
+    if (stored !== null) return stored;
     const idx = dataSource.findIndex((x) => x.rank === record.rank);
     const rank =
       idx < 0

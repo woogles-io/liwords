@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { competitionRanksOf, zoneRank, zoneRowClass } from "./standings_zones";
+import { StandingResult } from "../gen/api/proto/ipc/league_pb";
+import {
+  competitionRanksOf,
+  resultRowClass,
+  zoneRank,
+  zoneRowClass,
+} from "./standings_zones";
 
 // 15 players, 5 up and 5 down, in server order: level on points and spread at
 // the promotion line (5th, 6th), at the relegation line (10th, 11th), and
@@ -114,6 +120,28 @@ describe("standings zones", () => {
       ...Array(5).fill(""),
       ...Array(5).fill("relegation-row"),
     ]);
+  });
+
+  it("colors a closed season by its stored results, whatever rule decided them", () => {
+    // closed when position decided ties: the 6th, level with the 5th, stayed,
+    // and the 11th, level with the 10th, went down
+    const byPosition = [
+      ...Array(5).fill(StandingResult.RESULT_PROMOTED),
+      ...Array(5).fill(StandingResult.RESULT_STAYED),
+      ...Array(5).fill(StandingResult.RESULT_RELEGATED),
+    ];
+    const zones = competitionRanksOf(rows).map(
+      (r, i) =>
+        resultRowClass(byPosition[i]) ??
+        zoneRowClass(zoneRank(i + 1, r.rank, true), 5, 5, rows.length),
+    );
+    expect(zones).toEqual([
+      ...Array(5).fill("promotion-row"),
+      ...Array(5).fill(""),
+      ...Array(5).fill("relegation-row"),
+    ]);
+    expect(resultRowClass(StandingResult.RESULT_CHAMPION)).toBe("");
+    expect(resultRowClass(StandingResult.RESULT_NONE)).toBeNull();
   });
 
   it("shares the better zone only once the division is finished", () => {

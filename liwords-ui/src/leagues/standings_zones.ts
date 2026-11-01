@@ -1,3 +1,5 @@
+import { StandingResult } from "../gen/api/proto/ipc/league_pb";
+
 // Compute competition ranks: tied players (same points + spread) share a rank.
 // rows are in server order (sorted by points desc, spread desc, username).
 export const competitionRanksOf = (
@@ -34,6 +36,23 @@ export const zoneRank = (
   competitionRank: number,
   finished: boolean,
 ): number => (finished ? competitionRank : position);
+
+// The zone a closed season's stored result puts a row in, whatever rule
+// decided it (seasons closed before ties shared the better outcome included);
+// null while the season runs, with no result yet.
+export const resultRowClass = (result: StandingResult): string | null => {
+  switch (result) {
+    case StandingResult.RESULT_PROMOTED:
+      return "promotion-row";
+    case StandingResult.RESULT_RELEGATED:
+      return "relegation-row";
+    case StandingResult.RESULT_STAYED:
+    case StandingResult.RESULT_CHAMPION:
+      return "";
+    default:
+      return null;
+  }
+};
 
 // The zone a rank falls in.
 export const zoneRowClass = (
