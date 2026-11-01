@@ -988,7 +988,8 @@ export const LeaguePage = (props: Props) => {
                       next division). Red rows indicate relegation zones (bottom
                       players will move down). The number of players in the
                       promotion and relegation zones is determined by the size
-                      of the division.
+                      of the division; players tied on both points and spread at
+                      the edge of a zone share the better outcome.
                     </p>
                     <p>
                       <strong>Note:</strong> If additional divisions are added

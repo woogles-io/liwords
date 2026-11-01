@@ -20,6 +20,7 @@ import {
 import { SeasonRegistrationsResponse } from "../gen/api/proto/league_service/league_service_pb";
 import { trackMenuItem } from "./follow_bar";
 import { PlayerGameHistoryModal } from "./player_game_history_modal";
+import { competitionRanksOf, zoneRowClass } from "./standings_zones";
 import { DisplayUserTitle } from "../shared/display_title";
 import { UsernameWithContext } from "../shared/usernameWithContext";
 
@@ -150,17 +151,6 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
   const promotionCount = division.divisionNumber === 1 ? 0 : baseCount;
   const relegationCount =
     division.divisionNumber === totalDivisions ? 0 : baseCount;
-
-  const getRowClassName = (record: { rank: number }) => {
-    const rank = record.rank;
-    if (promotionCount > 0 && rank <= promotionCount) {
-      return "promotion-row";
-    }
-    if (relegationCount > 0 && rank > divisionSize - relegationCount) {
-      return "relegation-row";
-    }
-    return "";
-  };
 
   // Helper function to calculate average (returns "-" if no games played)
   const formatAvg = (total: number, gamesPlayed: number, decimals = 1) => {
@@ -322,30 +312,18 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
 
   // Compute competition ranks: tied players (same points + spread) share a rank.
   // dataSource is in server order (sorted by points desc, spread desc, username).
-  const competitionRanks = (() => {
-    const stats = dataSource.map((d) => ({
-      points: d.wins * 2 + d.draws,
-      spread: d.spread,
-    }));
-    const ranks: Array<{ rank: number; tied: boolean }> = [];
-    let currentRank = 1;
-    for (let i = 0; i < stats.length; i++) {
-      if (
-        i > 0 &&
-        (stats[i].points !== stats[i - 1].points ||
-          stats[i].spread !== stats[i - 1].spread)
-      ) {
-        currentRank = i + 1;
-      }
-      ranks.push({ rank: currentRank, tied: currentRank <= i });
-    }
-    for (let i = 1; i < ranks.length; i++) {
-      if (ranks[i].tied) ranks[i - 1].tied = true;
-    }
-    return ranks;
-  })();
+  const competitionRanks = competitionRanksOf(dataSource);
 
   const noGamesPlayed = dataSource.every((d) => d.gamesPlayed === 0);
+
+  // Zones go by competition rank, as the season's outcomes do: players level
+  // on points and spread at the edge of a zone share the better outcome.
+  const getRowClassName = (record: { rank: number }) => {
+    const idx = dataSource.findIndex((x) => x.rank === record.rank);
+    const rank =
+      noGamesPlayed || idx < 0 ? record.rank : competitionRanks[idx].rank;
+    return zoneRowClass(rank, promotionCount, relegationCount, divisionSize);
+  };
   // April 1 easter egg: March 31 12:00 UTC - April 2 12:00 UTC (covers all timezones)
   const now = new Date();
   const y = now.getUTCFullYear();

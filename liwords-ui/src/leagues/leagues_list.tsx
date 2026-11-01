@@ -241,7 +241,9 @@ export const LeaguesList = () => {
               <p>
                 At the end of the season, your final points total determines
                 whether you'll be promoted, relegated, or stay in your current
-                division for the next season.
+                division for the next season. Players still tied on both points
+                and spread across a promotion or relegation line share the
+                better outcome: they all move up, or they all stay.
               </p>
             </Panel>
 
