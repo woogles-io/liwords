@@ -190,12 +190,17 @@ func (sm *StandingsManager) markDivisionOutcomes(
 	// Sort standings to determine rank
 	SortStandingsByRank(standings)
 
-	// Convert to PlayerStanding for markOutcomes
+	// Convert to PlayerStanding for markOutcomes, with the records it ranks
+	// ties by
 	playerStandings := make([]PlayerStanding, len(standings))
 	for i, s := range standings {
 		playerStandings[i] = PlayerStanding{
 			UserID:     s.UserID,
 			DivisionID: division.Uuid,
+			Wins:       int(s.Wins.Int32),
+			Losses:     int(s.Losses.Int32),
+			Draws:      int(s.Draws.Int32),
+			Spread:     int(s.Spread.Int32),
 			Rank:       i + 1,
 		}
 	}
