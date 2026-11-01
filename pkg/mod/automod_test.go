@@ -10,6 +10,7 @@ import (
 
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/domino14/word-golib/tilemapping"
+	"github.com/gomodule/redigo/redis"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/lithammer/shortuuid/v4"
 	"github.com/matryer/is"
@@ -69,6 +70,17 @@ func (ec *evtConsumer) consumeEventChan(ctx context.Context,
 	}
 }
 
+// testRedisPool dials REDIS_URL, which CI sets. A challenge posts its result
+// to the game's chats there. With no REDIS_URL every dial fails, and so does
+// the post, which the game then does without.
+func testRedisPool() *redis.Pool {
+	return &redis.Pool{
+		MaxIdle:     3,
+		IdleTimeout: 240 * time.Second,
+		Dial:        func() (redis.Conn, error) { return redis.DialURL(os.Getenv("REDIS_URL")) },
+	}
+}
+
 func recreateDB() (*pgxpool.Pool, *stores.Stores, *config.Config) {
 	err := common.RecreateTestDB(pkg)
 	if err != nil {
@@ -82,7 +94,7 @@ func recreateDB() (*pgxpool.Pool, *stores.Stores, *config.Config) {
 
 	cfg := DefaultConfig
 	cfg.DBConnDSN = common.TestingPostgresConnDSN(pkg) // for gorm stores
-	stores, err := stores.NewInitializedStores(pool, nil, cfg)
+	stores, err := stores.NewInitializedStores(pool, testRedisPool(), cfg)
 
 	// Insert a couple of users into the table.
 
