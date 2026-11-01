@@ -215,6 +215,12 @@ const MsgTypesMap = {
   [MessageType.LEAGUE_GAME_UPDATED]: LeagueGameUpdatedEventSchema,
 };
 
+// A length of 0xffff means the real length follows the type byte, as four
+// big-endian bytes. Two bytes only reach 65,534, and some messages, such as a
+// whole division of a large tournament, are bigger. See ExtendedFrameLength in
+// pkg/entity/event.go.
+const EXTENDED_FRAME_LENGTH = 0xffff;
+
 export const parseMsgs = (
   msg: Uint8Array,
 ): Array<{
@@ -227,14 +233,27 @@ export const parseMsgs = (
   const msgs = [];
 
   while (msg.length > 0) {
-    // Extract message length from the first two bytes
-    const msgLength = msg[0] * 256 + msg[1];
+    // Extract message length from the first two bytes. It counts the type
+    // byte.
+    let msgLength = msg[0] * 256 + msg[1];
 
     // Extract message type from the third byte
     const msgType = msg[2] as MessageType;
 
+    let headerLength = 3;
+    if (msgLength === EXTENDED_FRAME_LENGTH) {
+      msgLength =
+        msg[3] * 2 ** 24 + msg[4] * 2 ** 16 + msg[5] * 2 ** 8 + msg[6];
+      headerLength = 7;
+    }
+    if (!(msgLength >= 1) || msg.length < headerLength + msgLength - 1) {
+      throw new Error(
+        `Truncated socket message: length ${msgLength}, ${msg.length} bytes`,
+      );
+    }
+
     // Extract the payload for the message
-    const msgBytes = msg.slice(3, 3 + (msgLength - 1));
+    const msgBytes = msg.slice(headerLength, headerLength + (msgLength - 1));
 
     // Parse the message using the appropriate schema
     const schema = MsgTypesMap[msgType];
@@ -252,7 +271,7 @@ export const parseMsgs = (
     });
 
     // Remove the processed message from the input buffer
-    msg = msg.slice(3 + (msgLength - 1));
+    msg = msg.slice(headerLength + (msgLength - 1));
   }
   return msgs;
 };

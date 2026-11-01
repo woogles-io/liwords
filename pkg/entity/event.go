@@ -133,16 +133,52 @@ func (e *EventWrapper) Serialize() ([]byte, error) {
 	return b.Bytes(), nil
 }
 
+// ExtendedFrameLength in a header's length field means the real length
+// follows the type byte, as four big-endian bytes. Two bytes only reach 65,534,
+// and some messages, such as a whole division of a large tournament, are
+// bigger. The type stays at the third byte, where the socket server reads it.
+//
+// Readers learn this form before anything writes it, so that no client is sent
+// a frame it can't read. Messages under the limit keep the two-byte form.
+const ExtendedFrameLength = 0xFFFF
+
+// readFrameHeader reads a header in either form and returns the message type
+// and the length of the message that follows it.
+func readFrameHeader(r io.Reader) (byte, int, error) {
+	var short uint16
+	var msgType uint8
+	if err := binary.Read(r, binary.BigEndian, &short); err != nil {
+		return 0, 0, err
+	}
+	if err := binary.Read(r, binary.BigEndian, &msgType); err != nil {
+		return 0, 0, err
+	}
+	n := uint32(short)
+	if short == ExtendedFrameLength {
+		if err := binary.Read(r, binary.BigEndian, &n); err != nil {
+			return 0, 0, err
+		}
+	}
+	if n < 1 {
+		return 0, 0, fmt.Errorf("bad frame length %d", n)
+	}
+	// The length counts the type byte.
+	return msgType, int(n - 1), nil
+}
+
 // EventFromByteArray takes in a serialized event and deserializes it.
 // The event must have been serialized with an extra header.
 func EventFromByteArray(arr []byte) (*EventWrapper, error) {
 	b := bytes.NewReader(arr)
-	var msgtypeint int8
-	var msglen int16
-	binary.Read(b, binary.BigEndian, &msglen)
-	binary.Read(b, binary.BigEndian, &msgtypeint)
+	msgtypeint, msglen, err := readFrameHeader(b)
+	if err != nil {
+		return nil, err
+	}
+	if msglen > b.Len() {
+		return nil, fmt.Errorf("frame says %d bytes, %d left", msglen, b.Len())
+	}
 	var message proto.Message
-	msgBytes := make([]byte, msglen-1)
+	msgBytes := make([]byte, msglen)
 	msgType := pb.MessageType(msgtypeint)
 	switch msgType {
 	case pb.MessageType_SERVER_GAMEPLAY_EVENT:
@@ -164,14 +200,14 @@ func EventFromByteArray(arr []byte) (*EventWrapper, error) {
 	default:
 		return nil, fmt.Errorf("event of type %s not handled", msgType.String())
 	}
-	_, err := io.ReadFull(b, msgBytes)
+	_, err = io.ReadFull(b, msgBytes)
 	if err != nil {
 		return nil, err
 	}
 
 	// Assume it's protobuf unless it's surrounded by two { } brackets.
 	// This is kind of ghetto but fast.
-	if msgBytes[0] == '{' && msgBytes[len(msgBytes)-1] == '}' {
+	if len(msgBytes) > 0 && msgBytes[0] == '{' && msgBytes[len(msgBytes)-1] == '}' {
 		err = json.Unmarshal(msgBytes, message)
 		if err != nil {
 			return nil, err

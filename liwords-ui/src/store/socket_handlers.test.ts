@@ -4,14 +4,18 @@ import {
   GameEvent_Type,
   GameEventSchema,
 } from "../gen/api/proto/vendored/macondo/macondo_pb";
-import { MessageType } from "../gen/api/proto/ipc/ipc_pb";
+import {
+  MessageType,
+  ServerMessage,
+  ServerMessageSchema,
+} from "../gen/api/proto/ipc/ipc_pb";
 import {
   ServerChallengeResultEvent,
   ServerChallengeResultEventSchema,
   ServerGameplayEvent,
   ServerGameplayEventSchema,
 } from "../gen/api/proto/ipc/omgwords_pb";
-import { create } from "@bufbuild/protobuf";
+import { create, toBinary } from "@bufbuild/protobuf";
 
 const toArr = (s: string) => {
   const bytes = new Uint8Array(Math.ceil(s.length / 2));
@@ -80,4 +84,87 @@ it("parses multiple messages", () => {
   expect((res[3].parsedMsg as ServerGameplayEvent).event?.cumulative).toEqual(
     537,
   );
+});
+
+// Builds a frame the way pkg/entity/event.go does: a two-byte length counting
+// the type byte, or 0xffff and a four-byte length after the type.
+const frame = (
+  msgType: MessageType,
+  body: Uint8Array,
+  extended: boolean,
+): Uint8Array => {
+  const n = body.length + 1;
+  const header = extended
+    ? [
+        0xff,
+        0xff,
+        msgType,
+        (n >>> 24) & 0xff,
+        (n >>> 16) & 0xff,
+        (n >>> 8) & 0xff,
+        n & 0xff,
+      ]
+    : [n >> 8, n & 0xff, msgType];
+  const out = new Uint8Array(header.length + body.length);
+  out.set(header);
+  out.set(body, header.length);
+  return out;
+};
+
+const concat = (...parts: Uint8Array[]): Uint8Array => {
+  const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
+  let off = 0;
+  for (const p of parts) {
+    out.set(p, off);
+    off += p.length;
+  }
+  return out;
+};
+
+const serverMessage = (text: string) =>
+  toBinary(ServerMessageSchema, create(ServerMessageSchema, { message: text }));
+
+it("parses a message too big for a two-byte length", () => {
+  const big = "x".repeat(100_000);
+  const body = serverMessage(big);
+  expect(body.length).toBeGreaterThan(0xffff);
+  const res = parseMsgs(frame(MessageType.SERVER_MESSAGE, body, true));
+  expect(res.length).toBe(1);
+  expect(res[0].msgType).toBe(MessageType.SERVER_MESSAGE);
+  expect((res[0].parsedMsg as ServerMessage).message).toBe(big);
+});
+
+it("parses extended and two-byte messages sent together", () => {
+  const big = "y".repeat(70_000);
+  const res = parseMsgs(
+    concat(
+      frame(MessageType.SERVER_MESSAGE, serverMessage("before"), false),
+      frame(MessageType.SERVER_MESSAGE, serverMessage(big), true),
+      frame(MessageType.SERVER_MESSAGE, serverMessage("after"), false),
+    ),
+  );
+  expect(res.map((r) => (r.parsedMsg as ServerMessage).message)).toEqual([
+    "before",
+    big,
+    "after",
+  ]);
+});
+
+it("parses two-byte lengths above 32K", () => {
+  const text = "z".repeat(40_000);
+  const res = parseMsgs(
+    frame(MessageType.SERVER_MESSAGE, serverMessage(text), false),
+  );
+  expect((res[0].parsedMsg as ServerMessage).message).toBe(text);
+});
+
+it("rejects a truncated message", () => {
+  for (const extended of [false, true]) {
+    const f = frame(
+      MessageType.SERVER_MESSAGE,
+      serverMessage("hello"),
+      extended,
+    );
+    expect(() => parseMsgs(f.slice(0, f.length - 2))).toThrow(/Truncated/);
+  }
 });

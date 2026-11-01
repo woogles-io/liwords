@@ -247,10 +247,24 @@ func (c *Client) writePump() {
 			}
 			w.Write(message)
 
-			// Add queued messages to the current websocket message.
+			// Add queued messages to the current websocket message. A frame
+			// too big for a two-byte length goes in a websocket message of its
+			// own: a client that can't read it then loses only that frame, not
+			// the ones batched with it.
+			alone := needsExtendedLength(message)
 			n := len(c.send)
 			for i := 0; i < n; i++ {
-				w.Write(<-c.send)
+				next := <-c.send
+				if alone || needsExtendedLength(next) {
+					if err := w.Close(); err != nil {
+						return
+					}
+					if w, err = c.conn.NextWriter(websocket.BinaryMessage); err != nil {
+						return
+					}
+				}
+				w.Write(next)
+				alone = needsExtendedLength(next)
 			}
 
 			if err := w.Close(); err != nil {
@@ -349,4 +363,11 @@ func ServeWS(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	go client.writePump()
 	go client.readPump()
 	log.Debug().Str("connID", connID).Msg("leaving-servews")
+}
+
+// needsExtendedLength reports whether a frame's message is too long for the
+// two-byte length in its header. See entity.ExtendedFrameLength.
+func needsExtendedLength(frame []byte) bool {
+	// Three header bytes; the length counts the type byte.
+	return len(frame)-3+1 >= entity.ExtendedFrameLength
 }
