@@ -1,4 +1,5 @@
 import React from "react";
+import { create } from "@bufbuild/protobuf";
 import {
   act,
   cleanup,
@@ -7,7 +8,10 @@ import {
   screen,
 } from "@testing-library/react";
 import GameControls, { Props } from "./game_controls";
-import { ChallengeRule } from "../gen/api/proto/vendored/macondo/macondo_pb";
+import {
+  ChallengeRule,
+  GameEventSchema,
+} from "../gen/api/proto/vendored/macondo/macondo_pb";
 
 const mockedUsedNavigate = vi.fn();
 
@@ -22,6 +26,8 @@ vi.mock("@connectrpc/connect-query", () => ({
   useQuery: () => ({ data: mockedGameOwner() }),
 }));
 
+const mockedGameContext = vi.fn();
+
 vi.mock("../store/store", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../store/store")>();
   return {
@@ -29,6 +35,11 @@ vi.mock("../store/store", async (importOriginal) => {
     useLoginStateStoreContext: () => ({
       loginState: { userID: "me", loggedIn: true },
     }),
+    // the store's game unless a test gives one
+    useGameContextStoreContext: () => {
+      const store = actual.useGameContextStoreContext();
+      return mockedGameContext(store) ?? store;
+    },
   };
 });
 
@@ -67,7 +78,10 @@ function renderGameControls(props: Partial<Props> = {}) {
   return render(<GameControls {...defaultProps} {...props} />);
 }
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  mockedGameContext.mockReset();
+});
 
 it("fires clicks on rematch only once", async () => {
   const onRematch = vi.fn();
@@ -154,4 +168,39 @@ it("ignores 2 while examining a game outside the editor", () => {
   const pressPass = capturePassShortcut({ isExamining: true });
   pressPass();
   expect(screen.queryByText("Are you sure you wish to pass?")).toBeNull();
+});
+
+// A game in play, two moves in, with "me" as a player.
+const inPlay = () =>
+  mockedGameContext.mockImplementation((store) => ({
+    ...store,
+    gameContext: {
+      ...store.gameContext,
+      gameID: "abc",
+      players: [
+        { userID: "me", score: 0, onturn: true, currentRack: [] },
+        { userID: "them", score: 0, onturn: false, currentRack: [] },
+      ],
+      turns: [
+        create(GameEventSchema, { playerIndex: 0 }),
+        create(GameEventSchema, { playerIndex: 1 }),
+      ],
+    },
+  }));
+
+it("lets a player examine a correspondence game in play", async () => {
+  inPlay();
+  const onExamine = vi.fn();
+  renderGameControls({ examineInPlay: true, onExamine });
+  fireEvent.click(screen.getByText("Options"));
+  fireEvent.click(await screen.findByText("Examine"));
+  expect(onExamine).toHaveBeenCalledTimes(1);
+});
+
+it("does not let a player examine other games in play", async () => {
+  inPlay();
+  renderGameControls();
+  fireEvent.click(screen.getByText("Options"));
+  expect(await screen.findByText("PNG")).toBeInTheDocument();
+  expect(screen.queryByText("Examine")).toBeNull();
 });

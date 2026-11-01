@@ -979,6 +979,16 @@ export const Table = React.memo((props: Props) => {
       examinableGameContext.players.find((p) => p.onturn)?.currentRack ??
       new Array<MachineLetter>();
   }
+  // A player may examine their own correspondence game while it is in play,
+  // to look back or save an earlier position, but sees no analysis there.
+  const correspondenceGame =
+    gameInfo.gameRequest?.gameMode === GameMode.CORRESPONDENCE;
+  const examiningOwnGameInPlay =
+    isExamining &&
+    !!us &&
+    !gameDone &&
+    !props.annotated &&
+    gameInfo.type !== GameType.ANNOTATED;
   const sortedRack = useMemo(
     () => sortTiles(rack, gameContext.alphabet),
     [rack, gameContext.alphabet],
@@ -1016,7 +1026,9 @@ export const Table = React.memo((props: Props) => {
   ]);
 
   const searchedTurn = useMemo(() => searchParams.get("turn"), [searchParams]);
-  const turnAsStr = us && !gameDone ? "" : (searchedTurn ?? ""); // Do not examine our current games.
+  // Do not examine our current games, but for correspondence ones.
+  const turnAsStr =
+    us && !gameDone && !correspondenceGame ? "" : (searchedTurn ?? "");
   // ?analysis=computer, from the "Computer analysis ready" toast, opens a
   // finished game with its computer analysis showing. It is read once, here.
   const openComputerAnalysis =
@@ -1368,7 +1380,7 @@ export const Table = React.memo((props: Props) => {
               />
             ) : null}
           </ChatIfVisible>
-          {isExamining ? (
+          {isExamining && !examiningOwnGameInPlay ? (
             <Analyzer includeCard />
           ) : (
             <React.Fragment key="not-examining">
@@ -1516,6 +1528,7 @@ export const Table = React.memo((props: Props) => {
           />
           <ScoreCard
             isExamining={isExamining}
+            hideAnalyzer={examiningOwnGameInPlay}
             onSeek={scorecardSeek}
             isInMobileView={isInMobileView}
             events={examinableGameContext.turns}

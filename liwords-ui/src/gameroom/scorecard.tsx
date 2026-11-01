@@ -46,6 +46,8 @@ const { screenSizeDesktop, screenSizeLaptop, screenSizeTablet } = variables;
 
 type Props = {
   isExamining?: boolean;
+  // Examining shows the notepad, not the analyzer (a player's game in play).
+  hideAnalyzer?: boolean;
   // Seek to an event index when not already examining (e.g. annotated games).
   onSeek?: (evtIdx: number) => void;
   events: Array<GameEvent>;
@@ -967,7 +969,7 @@ export const ScoreCard = React.memo((props: Props) => {
     >
       {twoColHeader}
       <div ref={el} style={cardStyle}>
-        {props.isExamining ? (
+        {props.isExamining && !props.hideAnalyzer ? (
           <Analyzer style={analyzerStyle} />
         ) : (
           <Notepad style={notepadStyle} />

@@ -300,6 +300,8 @@ export type Props = {
     | null;
   tournamentPairedMode?: boolean;
   isLeagueGame?: boolean;
+  // A player may examine this game while it is in play, without analysis.
+  examineInPlay?: boolean;
   showNudge: boolean;
   showAbort: boolean;
   exitableExaminer?: boolean;
@@ -462,6 +464,12 @@ const GameControls = React.memo((props: Props) => {
         key: "nudge",
       });
     }
+    if (props.examineInPlay) {
+      items.push({
+        label: "Examine",
+        key: "examine",
+      });
+    }
     items.push({
       label: "PNG",
       key: "download-png-turn",
@@ -481,7 +489,13 @@ const GameControls = React.memo((props: Props) => {
       });
     }
     return items;
-  }, [props.showAbort, props.showNudge, props.isLeagueGame, props.onFlipBoard]);
+  }, [
+    props.showAbort,
+    props.showNudge,
+    props.examineInPlay,
+    props.isLeagueGame,
+    props.onFlipBoard,
+  ]);
 
   // this gameDone is slightly different from the one in table.tsx,
   // but it's good enough, otherwise we need to prop-drill further.
@@ -562,6 +576,9 @@ const GameControls = React.memo((props: Props) => {
         break;
       case "nudge":
         props.onNudge();
+        break;
+      case "examine":
+        props.onExamine();
         break;
       case "download-png-turn":
         downloadGameImg(
