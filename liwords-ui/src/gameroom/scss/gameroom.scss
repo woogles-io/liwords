@@ -548,6 +548,11 @@ p.streak-loss {
         white-space: nowrap;
       }
 
+      th.ca-num,
+      td.ca-num {
+        text-align: right;
+      }
+
       tr.ca-sim-played {
         background-color: rgba(0, 102, 204, 0.08);
       }
