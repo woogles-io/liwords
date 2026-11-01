@@ -20,7 +20,7 @@ import {
 import { SeasonRegistrationsResponse } from "../gen/api/proto/league_service/league_service_pb";
 import { trackMenuItem } from "./follow_bar";
 import { PlayerGameHistoryModal } from "./player_game_history_modal";
-import { competitionRanksOf, zoneRowClass } from "./standings_zones";
+import { competitionRanksOf, zoneRank, zoneRowClass } from "./standings_zones";
 import { DisplayUserTitle } from "../shared/display_title";
 import { UsernameWithContext } from "../shared/usernameWithContext";
 
@@ -316,12 +316,14 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
 
   const noGamesPlayed = dataSource.every((d) => d.gamesPlayed === 0);
 
-  // Zones go by competition rank, as the season's outcomes do: players level
-  // on points and spread at the edge of a zone share the better outcome.
+  // Once the division is finished, zones go by competition rank, as its
+  // outcomes do; until then by position (see zoneRank).
   const getRowClassName = (record: { rank: number }) => {
     const idx = dataSource.findIndex((x) => x.rank === record.rank);
     const rank =
-      noGamesPlayed || idx < 0 ? record.rank : competitionRanks[idx].rank;
+      idx < 0
+        ? record.rank
+        : zoneRank(record.rank, competitionRanks[idx].rank, divisionCompleted);
     return zoneRowClass(rank, promotionCount, relegationCount, divisionSize);
   };
   // April 1 easter egg: March 31 12:00 UTC - April 2 12:00 UTC (covers all timezones)

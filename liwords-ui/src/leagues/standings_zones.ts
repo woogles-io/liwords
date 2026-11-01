@@ -25,9 +25,17 @@ export const competitionRanksOf = (
   return ranks;
 };
 
-// The zone a rank falls in. Zones go by competition rank, as the season's
-// outcomes do: players level on points and spread at the edge of a zone share
-// the better outcome.
+// The rank a row's zone goes by. A finished division's ties share the better
+// zone, as its outcomes do; while games remain, ties run wide (the whole
+// division level before the first result, all but two after it), so the zones
+// go by position.
+export const zoneRank = (
+  position: number,
+  competitionRank: number,
+  finished: boolean,
+): number => (finished ? competitionRank : position);
+
+// The zone a rank falls in.
 export const zoneRowClass = (
   rank: number,
   promotionCount: number,

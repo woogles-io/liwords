@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { competitionRanksOf, zoneRowClass } from "./standings_zones";
+import { competitionRanksOf, zoneRank, zoneRowClass } from "./standings_zones";
 
 // 15 players, 5 up and 5 down, in server order: level on points and spread at
 // the promotion line (5th, 6th), at the relegation line (10th, 11th), and
@@ -46,9 +46,9 @@ describe("standings zones", () => {
     ]);
   });
 
-  it("puts a tie at the edge of a zone on its better side", () => {
-    const zones = competitionRanksOf(rows).map((r) =>
-      zoneRowClass(r.rank, 5, 5, rows.length),
+  it("in a finished division, puts a tie at the edge of a zone on its better side", () => {
+    const zones = competitionRanksOf(rows).map((r, i) =>
+      zoneRowClass(zoneRank(i + 1, r.rank, true), 5, 5, rows.length),
     );
     expect(zones).toEqual([
       "promotion-row",
@@ -67,6 +67,30 @@ describe("standings zones", () => {
       "relegation-row",
       "relegation-row",
     ]);
+  });
+
+  it("keeps zones by position while games remain", () => {
+    // after the first result: one winner, thirteen level at 0 and 0, one loser
+    const early = [
+      { wins: 1, draws: 0, spread: 50 },
+      ...Array.from({ length: 13 }, () => ({ wins: 0, draws: 0, spread: 0 })),
+      { wins: 0, draws: 0, spread: -50 },
+    ];
+    const ranks = competitionRanksOf(early).map((r) => r.rank);
+    expect(ranks).toEqual([1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 15]);
+    const zones = ranks.map((r, i) =>
+      zoneRowClass(zoneRank(i + 1, r, false), 5, 5, early.length),
+    );
+    expect(zones).toEqual([
+      ...Array(5).fill("promotion-row"),
+      ...Array(5).fill(""),
+      ...Array(5).fill("relegation-row"),
+    ]);
+  });
+
+  it("shares the better zone only once the division is finished", () => {
+    expect(zoneRank(6, 5, true)).toBe(5);
+    expect(zoneRank(6, 5, false)).toBe(6);
   });
 
   it("has no promotion zone in the top division and no relegation zone in the bottom one", () => {
