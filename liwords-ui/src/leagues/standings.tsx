@@ -548,6 +548,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
       title: <ColHeader title="Spr" tooltip="Cumulative spread" />,
       dataIndex: "spread",
       key: "spread",
+      align: "right" as const,
       width: 55,
       sorter: (a: StandingRecord, b: StandingRecord) => {
         if (a.spread < b.spread) return -1;
@@ -584,6 +585,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
         />
       ),
       key: "avgScore",
+      align: "right" as const,
       width: 50,
       sorter: (a: StandingRecord, b: StandingRecord) => {
         const avgA = a.gamesPlayed > 0 ? a.totalScore / a.gamesPlayed : 0;
@@ -602,6 +604,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
         <ColHeader title="OScAV" tooltip="Average opponent score per game" />
       ),
       key: "avgOppScore",
+      align: "right" as const,
       width: 55,
       sorter: (a: StandingRecord, b: StandingRecord) => {
         const avgA =
@@ -629,6 +632,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
         />
       ),
       key: "avgMistakeIndex",
+      align: "right" as const,
       width: 50,
       sorter: (a: StandingRecord, b: StandingRecord) => {
         // Players with no analysis sort to the bottom
@@ -655,6 +659,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
               />
             ),
             key: "avgOpponentMistakeIndex",
+            align: "right" as const,
             width: 50,
             sorter: (a: StandingRecord, b: StandingRecord) => {
               // Players with no analysis sort to the bottom
@@ -682,6 +687,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
         />
       ),
       key: "avgBingos",
+      align: "right" as const,
       width: 45,
       sorter: (a: StandingRecord, b: StandingRecord) => {
         const avgA = a.gamesPlayed > 0 ? a.totalBingos / a.gamesPlayed : 0;
@@ -700,6 +706,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
         <ColHeader title="OBAV" tooltip="Average opponent bingos per game" />
       ),
       key: "avgOppBingos",
+      align: "right" as const,
       width: 50,
       sorter: (a: StandingRecord, b: StandingRecord) => {
         const avgA =
@@ -723,6 +730,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
         />
       ),
       key: "turnAvg",
+      align: "right" as const,
       width: 45,
       sorter: (a: StandingRecord, b: StandingRecord) => {
         const avgA = a.totalTurns > 0 ? a.totalScore / a.totalTurns : 0;
@@ -747,6 +755,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
         />
       ),
       key: "highGame",
+      align: "right" as const,
       width: 45,
       sorter: (a: StandingRecord, b: StandingRecord) => a.highGame - b.highGame,
       sortDirections: ["descend", "ascend"] as SortOrder[],
@@ -764,6 +773,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
         />
       ),
       key: "highTurn",
+      align: "right" as const,
       width: 45,
       sorter: (a: StandingRecord, b: StandingRecord) => a.highTurn - b.highTurn,
       sortDirections: ["descend", "ascend"] as SortOrder[],
@@ -781,6 +791,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
         />
       ),
       key: "avgTiles",
+      align: "right" as const,
       width: 45,
       sorter: (a: StandingRecord, b: StandingRecord) => {
         const avgA = a.gamesPlayed > 0 ? a.totalTilesPlayed / a.gamesPlayed : 0;
@@ -802,6 +813,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
         />
       ),
       key: "avgOppTiles",
+      align: "right" as const,
       width: 50,
       sorter: (a: StandingRecord, b: StandingRecord) => {
         const avgA =
@@ -825,6 +837,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
         />
       ),
       key: "avgTurns",
+      align: "right" as const,
       width: 50,
       sorter: (a: StandingRecord, b: StandingRecord) => {
         const avgA = a.gamesPlayed > 0 ? a.totalTurns / a.gamesPlayed : 0;
@@ -846,6 +859,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
         />
       ),
       key: "avgBlanks",
+      align: "right" as const,
       width: 40,
       sorter: (a: StandingRecord, b: StandingRecord) => {
         const avgA = a.gamesPlayed > 0 ? a.blanksPlayed / a.gamesPlayed : 0;
@@ -864,6 +878,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
         <ColHeader title="W%" tooltip="Win percentage (draws count as half)" />
       ),
       key: "winPct",
+      align: "right" as const,
       width: 50,
       sorter: (a: StandingRecord, b: StandingRecord) => {
         const pctA =
@@ -898,6 +913,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
       ),
       dataIndex: "timeouts",
       key: "timeouts",
+      align: "right" as const,
       width: 40,
       sorter: (a: StandingRecord, b: StandingRecord) => a.timeouts - b.timeouts,
       sortDirections: ["descend", "ascend"] as SortOrder[],
