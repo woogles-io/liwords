@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useEffect } from "react";
 import { Input, Select, Space, Table, Typography } from "antd";
 import type { BroadcastGameStat } from "../../gen/api/proto/broadcast_service/broadcast_service_pb";
+import { AlignedScorePair } from "../../shared/score_pair";
 import { GameLink } from "./GameLink";
 
 const { Text } = Typography;
@@ -114,7 +115,12 @@ export const ArchiveTab: React.FC<Props> = ({ stats, totalRounds }) => {
             title: "Score",
             key: "score",
             width: 120,
-            render: (_, r) => `${r.player1Score} – ${r.player2Score}`,
+            render: (_, r) => (
+              <AlignedScorePair
+                first={r.player1Score}
+                second={r.player2Score}
+              />
+            ),
             sorter: (a, b) =>
               Math.max(a.player1Score, a.player2Score) -
               Math.max(b.player1Score, b.player2Score),
