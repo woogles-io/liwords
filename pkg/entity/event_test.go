@@ -97,3 +97,54 @@ func TestDeserializeTruncatedFrame(t *testing.T) {
 	_, err = EventFromByteArray([]byte{0xFF})
 	is.True(err != nil)
 }
+
+// Serialize writes the two-byte header whenever the length fits, byte for byte
+// what it wrote before the extended form existed, and the extended header
+// only when it doesn't.
+func TestSerializeHeaderForm(t *testing.T) {
+	is := is.New(t)
+	for _, tc := range []struct {
+		uidLen   int
+		extended bool
+	}{
+		{10, false},
+		{40_000, false},
+		{65_000, false},
+		{70_000, true},
+		{1_000_000, true},
+	} {
+		evt := &pb.GameHistoryRefresher{
+			History: &macondopb.GameHistory{Uid: strings.Repeat("x", tc.uidLen)},
+		}
+		body, err := proto.Marshal(evt)
+		is.NoErr(err)
+		w := WrapEvent(evt, pb.MessageType_GAME_HISTORY_REFRESHER)
+		arr, err := w.Serialize()
+		is.NoErr(err)
+
+		is.Equal(arr, frameWithHeader(pb.MessageType_GAME_HISTORY_REFRESHER, body, tc.extended))
+		ew, err := EventFromByteArray(arr)
+		is.NoErr(err)
+		is.True(proto.Equal(ew.Event, evt))
+	}
+}
+
+// The boundary: 65,533 bytes is the last length the two-byte form holds.
+func TestFrameHeaderBoundary(t *testing.T) {
+	is := is.New(t)
+	for n, extended := range map[int]bool{65_533: false, 65_534: true} {
+		var b bytes.Buffer
+		writeFrameHeader(&b, n, 24)
+		if extended {
+			is.Equal(b.Bytes()[:2], []byte{0xFF, 0xFF})
+			is.Equal(b.Len(), 7)
+		} else {
+			is.Equal(b.Len(), 3)
+		}
+		hdr := b.Bytes()
+		msgType, got, err := readFrameHeader(bytes.NewReader(hdr))
+		is.NoErr(err)
+		is.Equal(msgType, byte(24))
+		is.Equal(got, n)
+	}
+}
