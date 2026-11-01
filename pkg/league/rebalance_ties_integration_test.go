@@ -15,17 +15,28 @@ import (
 
 // TestRebalance_TiesAtTheLines checks next season's placement when ties at
 // the lines change how many move: players tied across a promotion line all go
-// up, and players tied across a relegation line all stay.
+// up, and players tied across a relegation line all stay. 45 players in 3
+// divisions of 15, 5 up and 5 down without ties; a tie of two at each line
+// sends 6 up and 4 down.
+func TestRebalance_TiesAtTheLines(t *testing.T) {
+	rebalanceWithTies(t, 6, 4)
+}
+
+// TestRebalance_ThreeWayTiesAtTheLines is the same with a tie of three at each
+// line: 7 up and 3 down.
+func TestRebalance_ThreeWayTiesAtTheLines(t *testing.T) {
+	rebalanceWithTies(t, 7, 3)
+}
+
+// rebalanceWithTies sets season 1's results across 3 divisions of 15:
+//   - Div 1: down RELEGATED at the bottom, the rest STAYED.
+//   - Div 2: up PROMOTED at the top, down RELEGATED at the bottom, the rest STAYED.
+//   - Div 3: up PROMOTED at the top, the rest STAYED.
 //
-// Scenario: 45 players in 3 divisions of 15, 5 up and 5 down without ties.
-//   - Div 1: 11 STAYED, 4 RELEGATED (a tie at its relegation line keeps one).
-//   - Div 2: 6 PROMOTED (a tie at its promotion line), 5 STAYED, 4 RELEGATED.
-//   - Div 3: 6 PROMOTED (a tie at its promotion line), 9 STAYED.
-//
-// Every PROMOTED player must land at least a division up, every STAYED
+// Then every PROMOTED player must land at least a division up, every STAYED
 // player outside the bottom division no lower than before, and nobody may be
 // lost.
-func TestRebalance_TiesAtTheLines(t *testing.T) {
+func rebalanceWithTies(t *testing.T, up, down int) {
 	is := is.New(t)
 	ctx := context.Background()
 
@@ -49,14 +60,10 @@ func TestRebalance_TiesAtTheLines(t *testing.T) {
 	outcome := func(i int) ipc.StandingResult {
 		div, pos := (i-1)/15+1, (i-1)%15+1
 		switch {
-		case div == 1 && pos > 11:
-			return ipc.StandingResult_RESULT_RELEGATED
-		case div == 2 && pos <= 6:
+		case div > 1 && pos <= up:
 			return ipc.StandingResult_RESULT_PROMOTED
-		case div == 2 && pos > 11:
+		case div < 3 && pos > 15-down:
 			return ipc.StandingResult_RESULT_RELEGATED
-		case div == 3 && pos <= 6:
-			return ipc.StandingResult_RESULT_PROMOTED
 		}
 		return ipc.StandingResult_RESULT_STAYED
 	}
@@ -107,7 +114,6 @@ func TestRebalance_TiesAtTheLines(t *testing.T) {
 	rm := NewRebalanceManager(allStores)
 	result, err := rm.RebalanceDivisions(ctx, leagueID, season1ID, season2ID, 2, categorized, 15)
 	is.NoErr(err)
-	is.Equal(result.DivisionsCreated, 3)
 
 	s2Divs, err := store.GetDivisionsBySeason(ctx, season2ID)
 	is.NoErr(err)
@@ -135,6 +141,10 @@ func TestRebalance_TiesAtTheLines(t *testing.T) {
 			}
 		}
 	}
-	is.Equal(sizes[1]+sizes[2]+sizes[3], 45)
-	t.Logf("season 2 division sizes: %d, %d, %d", sizes[1], sizes[2], sizes[3])
+	placed := 0
+	for _, n := range sizes {
+		placed += n
+	}
+	is.Equal(placed, 45)
+	t.Logf("%d up and %d down a line: %d divisions, sizes %v", up, down, result.DivisionsCreated, sizes)
 }

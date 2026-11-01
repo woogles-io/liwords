@@ -69,6 +69,34 @@ describe("standings zones", () => {
     ]);
   });
 
+  it("in a finished division, puts a tie of three at the edge of a zone on its better side", () => {
+    const three = [
+      { wins: 11, draws: 0, spread: 600 },
+      { wins: 10, draws: 0, spread: 400 },
+      { wins: 9, draws: 0, spread: 300 },
+      { wins: 9, draws: 0, spread: 200 },
+      { wins: 8, draws: 0, spread: 100 },
+      { wins: 8, draws: 0, spread: 100 },
+      { wins: 8, draws: 0, spread: 100 },
+      { wins: 7, draws: 0, spread: 50 },
+      { wins: 7, draws: 0, spread: -10 },
+      { wins: 6, draws: 0, spread: -20 },
+      { wins: 6, draws: 0, spread: -20 },
+      { wins: 6, draws: 0, spread: -20 },
+      { wins: 5, draws: 0, spread: -100 },
+      { wins: 4, draws: 0, spread: -200 },
+      { wins: 2, draws: 0, spread: -400 },
+    ];
+    const zones = competitionRanksOf(three).map((r, i) =>
+      zoneRowClass(zoneRank(i + 1, r.rank, true), 5, 5, three.length),
+    );
+    expect(zones).toEqual([
+      ...Array(7).fill("promotion-row"),
+      ...Array(5).fill(""),
+      ...Array(3).fill("relegation-row"),
+    ]);
+  });
+
   it("keeps zones by position while games remain", () => {
     // after the first result: one winner, thirteen level at 0 and 0, one loser
     const early = [
