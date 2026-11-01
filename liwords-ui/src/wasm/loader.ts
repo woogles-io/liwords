@@ -244,6 +244,9 @@ export const getLeaveKey = (loadableKey: string) =>
 // panic there is not recoverable -- nothing unwinds, so the instance is spent.
 // Dropping a name without making its file fetchable again would therefore trade
 // a little memory for a dead module.
+//
+// A wasm with sims refuses to drop a lexicon while a live sim made with it holds
+// it, and throws to say so. That lexicon is still loaded, so it stays cached.
 const dropUnneeded = (
   wolges: typeof import("wolges-wasm"),
   cachedStuffs: { [cacheKey: string]: boolean },
@@ -260,12 +263,17 @@ const dropUnneeded = (
     const splitAt = cacheKey.indexOf("/");
     const type = cacheKey.substring(0, splitAt);
     const name = cacheKey.substring(splitAt + 1);
-    if (type === "klv") {
-      evict_klv(name);
-    } else if (type === "kwg") {
-      evict_kwg(name);
-    } else {
+    if (type !== "klv" && type !== "kwg") {
       continue; // not ours to drop, and not something we put there
+    }
+    try {
+      if (type === "klv") {
+        evict_klv(name);
+      } else {
+        evict_kwg(name);
+      }
+    } catch {
+      continue;
     }
     loadableByCacheKey[cacheKey]?.reset();
     delete cachedStuffs[cacheKey];
