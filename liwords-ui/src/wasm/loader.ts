@@ -148,6 +148,7 @@ const loadablesByKey: { [key: string]: Array<Loadable> } = {};
     "super-NWL20.klv2",
     "super-NWL23.klv2",
     "super-NSWL23.klv2",
+    "super-RD29.klv2",
   ];
 
   // convention-over-configuration.
