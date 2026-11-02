@@ -60,6 +60,9 @@ export type Props = {
   playerInfoMap?: Map<string, string>;
   onInfoTextClick?: (userId: string) => void;
   ref?: React.Ref<ChatHandle>;
+  // The game's first player: in the game's own channel, their initial is
+  // tilted, as on the scorecard and the player cards.
+  firstPlayerID?: string;
 };
 
 // userid -> channel -> string
@@ -814,6 +817,11 @@ export const Chat = React.memo((props: Props) => {
                   : undefined
               }
               onInfoTextClick={props.onInfoTextClick}
+              first={
+                !!props.firstPlayerID &&
+                ent.senderId === props.firstPlayerID &&
+                ent.channel === defaultChannel
+              }
             />
           );
         }),
@@ -823,6 +831,8 @@ export const Chat = React.memo((props: Props) => {
       props.highlightText,
       props.playerInfoMap,
       props.onInfoTextClick,
+      props.firstPlayerID,
+      defaultChannel,
       channel,
       sendNewMessage,
     ],

@@ -36,6 +36,7 @@ type EntityProps = {
   sendMessage?: (uuid: string, username: string) => void;
   infoText?: string;
   onInfoTextClick?: (userId: string) => void;
+  first?: boolean;
 };
 
 const deleteMessage = (
@@ -124,6 +125,7 @@ export const ChatEntity = (props: EntityProps) => {
             <PlayerAvatar
               player={{
                 userId: props.senderId,
+                first: props.first,
               }}
               username={props.sender}
             />

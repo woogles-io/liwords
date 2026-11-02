@@ -1377,6 +1377,7 @@ export const Table = React.memo((props: Props) => {
                   isObserver,
                 )}
                 tournamentID={gameInfo.tournamentId}
+                firstPlayerID={gameInfo.players.find((p) => p.first)?.userId}
               />
             ) : null}
           </ChatIfVisible>
