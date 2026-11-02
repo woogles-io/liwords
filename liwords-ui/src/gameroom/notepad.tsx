@@ -9,7 +9,7 @@ import React, {
 import { Button, Card } from "antd";
 import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
 import {
-  useGameContextStoreContext,
+  useExaminableGameContextStoreContext,
   useTentativeTileContext,
 } from "../store/store";
 import { sortTiles } from "../store/constants";
@@ -140,7 +140,8 @@ export const Notepad = React.memo((props: NotepadProps) => {
   const { curNotepad, setCurNotepad, feRackInfo } = useContext(NotepadContext);
   const { displayedRack, placedTiles, placedTilesTempScore } =
     useTentativeTileContext();
-  const { gameContext } = useGameContextStoreContext();
+  // The board shown: the position examined, if any, on which tiles are placed.
+  const { gameContext } = useExaminableGameContextStoreContext();
   const board = gameContext.board;
   const addPlay = useCallback(() => {
     const contiguousTiles = contiguousTilesFromTileSet(placedTiles, board);
