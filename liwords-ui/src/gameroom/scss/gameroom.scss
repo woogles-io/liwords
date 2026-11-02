@@ -437,6 +437,17 @@ p.streak-loss {
   td.lab-n {
     text-align: right;
   }
+
+  // a candidate's way out of the sim
+  td.lab-remove {
+    color: m($gray-medium);
+    cursor: pointer;
+    font-size: 11px;
+
+    &:hover {
+      color: m($gray-extreme);
+    }
+  }
 }
 
 .computer-analysis {

@@ -5,6 +5,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { useRef } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -31,6 +32,10 @@ vi.mock("../wasm/lab", () => ({
     if (request.op === "sim") {
       const plays = JSON.parse(request.args!.plays!) as Array<object>;
       return { job: 1, added: plays.map((play) => ({ play, was: "absent" })) };
+    }
+    if (["add", "remove"].includes(request.op)) {
+      const plays = JSON.parse(request.args!.plays!) as Array<object>;
+      return plays.map((play) => ({ play, was: "absent" }));
     }
     return undefined;
   },
@@ -63,6 +68,51 @@ const clock = vi.hoisted(() => ({ now: 0 }));
 vi.mock("./analyzer_lab", async (importOriginal) => {
   const actual = await importOriginal<typeof import("./analyzer_lab")>();
   return { ...actual, labNow: () => clock.now };
+});
+
+// The page's own wasm, faked: play_score takes every play, scoring a placed
+// one 10, each with a static equity of 4, unless a test says otherwise.
+const page = vi.hoisted(() => ({
+  scored: [] as Array<object>,
+  answer: undefined as object | undefined,
+}));
+vi.mock("../wasm/loader", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../wasm/loader")>();
+  return {
+    ...actual,
+    getWolges: async () => ({
+      play_score: (request: string) => {
+        const [play] = JSON.parse(request).plays;
+        page.scored.push(play);
+        return JSON.stringify([
+          page.answer ?? {
+            ...play,
+            ...(play.action === "play" ? { score: 10 } : {}),
+            result: "scored",
+            canonical: true,
+            valid: true,
+            invalid_words: [],
+            equity: 4,
+          },
+        ]);
+      },
+    }),
+  };
+});
+
+// The tiles placed on the board, which a test sets.
+const tentative = vi.hoisted(() => ({
+  placedTiles: new Set<{ row: number; col: number; letter: number }>(),
+}));
+vi.mock("../store/store", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../store/store")>();
+  return {
+    ...actual,
+    useTentativeTileContext: () => ({
+      ...actual.useTentativeTileContext(),
+      placedTiles: tentative.placedTiles,
+    }),
+  };
 });
 
 window.RUNTIME_CONFIGURATION = {};
@@ -119,6 +169,9 @@ beforeEach(() => {
   lab.listeners.clear();
   board.placed.length = 0;
   clock.now = 0;
+  page.scored.length = 0;
+  page.answer = undefined;
+  tentative.placedTiles = new Set();
   frameTime = 0;
   frameStamps = [];
   dueAtNextFrame = new Map();
@@ -184,6 +237,8 @@ const Sim = (props: {
 
 const ba = { action: "play", down: false, lane: 7, idx: 7, word: [B, A] };
 const ab = { action: "play", down: false, lane: 7, idx: 7, word: [A, B] };
+const ai = { action: "play", down: false, lane: 7, idx: 7, word: [A, I] };
+const be = { action: "play", down: false, lane: 7, idx: 7, word: [B, E] };
 
 const stat = (mean: number) => ({ mean, variance: 0 });
 const candidate = (
@@ -203,6 +258,29 @@ const start = async () => {
   act(() => screen.getByRole("button", { name: "Start" }).click());
   await waitFor(() => expect(lab.calls.some((c) => c.op === "run")).toBe(true));
 };
+
+// BE placed across from the middle square
+const placeBE = () => {
+  tentative.placedTiles = new Set([
+    { row: 7, col: 7, letter: B },
+    { row: 7, col: 8, letter: E },
+  ]);
+};
+
+// A tap on a row's button, which asks before it acts.
+const tap = (button: HTMLElement) => {
+  fireEvent.pointerDown(button, { pointerType: "touch" });
+  fireEvent.pointerUp(button, { pointerType: "touch" });
+  fireEvent.click(button, { detail: 1 });
+};
+
+// The question a tap asked, answered with the button named.
+const reply = (name: string) =>
+  act(() =>
+    within(document.querySelector(".ant-popconfirm") as HTMLElement)
+      .getByRole("button", { name })
+      .click(),
+  );
 
 describe("the sim panel", () => {
   it("lists the moves by static equity until the sim starts, then sims them", async () => {
@@ -610,7 +688,180 @@ describe("the sim panel", () => {
     expect(lab.calls.some((c) => c.op === "free")).toBe(false);
   });
 
-  it("lists the moves again once another job takes the worker", async () => {
+  it("lists the moves again, the user's changes kept, once another job takes the worker", async () => {
+    placeBE();
+    render(
+      <Store>
+        <Sim lab={midgame()} moves={[listed(ba), listed(ab)]} />
+      </Store>,
+    );
+    act(() => screen.getByRole("button", { name: "Add" }).click());
+    await waitFor(() => expect(bodyRows()).toHaveLength(3));
+    await start();
+    emit({
+      job: 1,
+      answer: {
+        iterations: 32,
+        candidates: [
+          candidate(ba, 0.5),
+          candidate(ab, 0.4),
+          candidate({ ...be, score: 10, equity: 4 }, 0.3),
+        ],
+      },
+      done: false,
+    });
+    emit({ job: 1, freed: true });
+    expect(
+      screen.getByText("Static equity until the sim starts."),
+    ).toBeInTheDocument();
+    expect(bodyRows()).toHaveLength(3);
+    expect(screen.getByRole("button", { name: "Start" })).toBeEnabled();
+  });
+
+  it("takes a candidate out, before a sim and in one", async () => {
+    render(
+      <Store>
+        <Sim
+          lab={midgame()}
+          moves={[
+            listed(ba, { equity: 3 }),
+            listed(ab, { equity: 2 }),
+            listed(ai, { equity: 1 }),
+          ]}
+        />
+      </Store>,
+    );
+    act(() => screen.getAllByRole("button", { name: "Take out" })[1].click());
+    expect(bodyRows()).toEqual([
+      `${JSON.stringify(ba)}+3.00`,
+      `${JSON.stringify(ai)}+1.00`,
+    ]);
+    expect(lab.calls).toEqual([]);
+
+    await start();
+    const sim = lab.calls.find((c) => c.op === "sim");
+    expect(JSON.parse((sim?.args as { plays: string }).plays)).toEqual([
+      ba,
+      ai,
+    ]);
+    emit({
+      job: 1,
+      answer: {
+        iterations: 32,
+        candidates: [candidate(ba, 0.5), candidate(ai, 0.3)],
+      },
+      done: false,
+    });
+    act(() => screen.getAllByRole("button", { name: "Take out" })[1].click());
+    // gone at once, and the sim told
+    expect(bodyRows()).toEqual([`${JSON.stringify(ba)}50.0%0.000.0%32`]);
+    await waitFor(() =>
+      expect(lab.calls.some((c) => c.op === "read")).toBe(true),
+    );
+    const removed = lab.calls.find((c) => c.op === "remove");
+    expect(JSON.parse((removed?.args as { plays: string }).plays)).toEqual([
+      ai,
+    ]);
+  });
+
+  it("adds the move placed on the board, at once with its static equity, and to a sim", async () => {
+    placeBE();
+    const { rerender } = render(
+      <Store>
+        <Sim lab={midgame()} moves={[listed(ba), listed(ab)]} />
+      </Store>,
+    );
+    act(() => screen.getByRole("button", { name: "Add" }).click());
+    await waitFor(() => expect(bodyRows()).toHaveLength(3));
+    expect(page.scored).toEqual([{ ...be, score: 0 }]);
+    expect(bodyRows()).toContain("8HBE+4.00");
+    expect(lab.calls).toEqual([]);
+
+    await start();
+    const sim = lab.calls.find((c) => c.op === "sim");
+    expect(JSON.parse((sim?.args as { plays: string }).plays)).toEqual([
+      ba,
+      ab,
+      be,
+    ]);
+    emit({
+      job: 1,
+      answer: {
+        iterations: 32,
+        candidates: [
+          candidate(ba, 0.5),
+          candidate(ab, 0.4),
+          candidate({ ...be, score: 10, equity: 4 }, 0.3),
+        ],
+      },
+      done: false,
+    });
+
+    // AI placed, added to the sim made: it shows as soon as the sim is read
+    tentative.placedTiles = new Set([
+      { row: 7, col: 7, letter: A },
+      { row: 7, col: 8, letter: I },
+    ]);
+    rerender(
+      <Store>
+        <Sim lab={midgame()} moves={[listed(ba), listed(ab)]} />
+      </Store>,
+    );
+    act(() => screen.getByRole("button", { name: "Add" }).click());
+    await waitFor(() =>
+      expect(lab.calls.some((c) => c.op === "read")).toBe(true),
+    );
+    const add = lab.calls.find((c) => c.op === "add");
+    expect(JSON.parse((add?.args as { plays: string }).plays)).toEqual([ai]);
+    emit({
+      job: 1,
+      answer: {
+        iterations: 32,
+        candidates: [
+          candidate(ba, 0.5),
+          candidate(ab, 0.4),
+          candidate({ ...be, score: 10, equity: 4 }, 0.3),
+          candidate({ ...ai, score: 10, equity: 4 }, 0, { n: 0 }),
+        ],
+      },
+      done: false,
+    });
+    expect(bodyRows()).toHaveLength(4);
+    expect(bodyRows()[3]).toBe("8HAI+4.000");
+  });
+
+  it("turns down a phony, naming its words, and a move listed already", async () => {
+    placeBE();
+    page.answer = {
+      ...be,
+      score: 10,
+      result: "scored",
+      canonical: true,
+      valid: false,
+      invalid_words: [
+        [B, A, 26, 17, 16, E],
+        [21, B],
+      ],
+      equity: 50,
+    };
+    render(
+      <Store>
+        <Sim lab={midgame()} moves={[listed(ba), listed(be)]} />
+      </Store>,
+    );
+    act(() => screen.getByRole("button", { name: "Add" }).click());
+    expect(
+      await screen.findByText("Not added: BAZQPE and UB are not in CSW24."),
+    ).toBeInTheDocument();
+    page.answer = undefined;
+    act(() => screen.getByRole("button", { name: "Add" }).click());
+    expect(
+      await screen.findByText("That move is listed already."),
+    ).toBeInTheDocument();
+    expect(bodyRows()).toHaveLength(2);
+  });
+
+  it("keeps the rows' order while a row's button has the keyboard", async () => {
     render(
       <Store>
         <Sim lab={midgame()} moves={[listed(ba), listed(ab)]} />
@@ -625,12 +876,265 @@ describe("the sim panel", () => {
       },
       done: false,
     });
-    emit({ job: 1, freed: true });
+    const first = screen.getAllByRole("button", { name: "Take out" })[0];
+    act(() => first.focus());
+    emit({
+      job: 1,
+      answer: {
+        iterations: 64,
+        candidates: [
+          candidate(ba, 0.3, { n: 64 }),
+          candidate(ab, 0.6, { n: 64 }),
+        ],
+      },
+      done: false,
+    });
+    // the button keyed still takes out the move it was on
+    act(() => first.click());
+    await waitFor(() =>
+      expect(lab.calls.some((c) => c.op === "remove")).toBe(true),
+    );
+    const removed = lab.calls.find((c) => c.op === "remove");
+    expect(JSON.parse((removed?.args as { plays: string }).plays)).toEqual([
+      ba,
+    ]);
+    act(() => first.blur());
+  });
+
+  it("takes the sim's order again once the pointer that clicked a row's button has left", async () => {
+    render(
+      <Store>
+        <Sim lab={midgame()} moves={[listed(ba), listed(ab), listed(ai)]} />
+      </Store>,
+    );
+    await start();
+    emit({
+      job: 1,
+      answer: {
+        iterations: 32,
+        candidates: [
+          candidate(ba, 0.5),
+          candidate(ab, 0.4),
+          candidate(ai, 0.3),
+        ],
+      },
+      done: false,
+    });
+    const table = document.querySelector(".lab-panel table")!;
+    fireEvent.pointerMove(table, { pointerType: "mouse" });
+    const takeOut = screen.getAllByRole("button", { name: "Take out" })[2];
+    // the press leaves the keyboard where it was: the button takes no focus
+    expect(fireEvent.mouseDown(takeOut)).toBe(false);
+    fireEvent.click(takeOut, { detail: 1 });
+    await waitFor(() =>
+      expect(lab.calls.some((c) => c.op === "remove")).toBe(true),
+    );
+    fireEvent.pointerLeave(table);
+    emit({
+      job: 1,
+      answer: {
+        iterations: 64,
+        candidates: [
+          candidate(ba, 0.3, { n: 64 }),
+          candidate(ab, 0.6, { n: 64 }),
+        ],
+      },
+      done: false,
+    });
+    expect(bodyRows()[0]).toBe(`${JSON.stringify(ab)}60.0%0.000.0%64`);
+  });
+
+  it("lets the rows go once the row whose button had the keyboard is taken out", async () => {
+    render(
+      <Store>
+        <Sim lab={midgame()} moves={[listed(ba), listed(ab), listed(ai)]} />
+      </Store>,
+    );
+    await start();
+    emit({
+      job: 1,
+      answer: {
+        iterations: 32,
+        candidates: [
+          candidate(ba, 0.5),
+          candidate(ab, 0.4),
+          candidate(ai, 0.3),
+        ],
+      },
+      done: false,
+    });
+    const last = screen.getAllByRole("button", { name: "Take out" })[2];
+    act(() => last.focus());
+    fireEvent.keyDown(last, { key: "Enter" });
+    await waitFor(() =>
+      expect(lab.calls.some((c) => c.op === "remove")).toBe(true),
+    );
+    const removed = lab.calls.find((c) => c.op === "remove");
+    expect(JSON.parse((removed?.args as { plays: string }).plays)).toEqual([
+      ai,
+    ]);
+    // its row gone, and the keyboard with it: AB, leading now, comes first
+    emit({
+      job: 1,
+      answer: {
+        iterations: 64,
+        candidates: [
+          candidate(ba, 0.3, { n: 64 }),
+          candidate(ab, 0.6, { n: 64 }),
+        ],
+      },
+      done: false,
+    });
+    expect(bodyRows()[0]).toBe(`${JSON.stringify(ab)}60.0%0.000.0%64`);
+  });
+
+  it("takes out the candidate a touch began on, though the rows take the sim's order before its click", async () => {
+    render(
+      <Store>
+        <Sim lab={midgame()} moves={[listed(ba), listed(ab)]} />
+      </Store>,
+    );
+    await start();
+    emit({
+      job: 1,
+      answer: {
+        iterations: 32,
+        candidates: [candidate(ba, 0.5), candidate(ab, 0.4)],
+      },
+      done: false,
+    });
+    const first = screen.getAllByRole("button", { name: "Take out" })[0];
+    fireEvent.pointerDown(first, { pointerType: "touch" });
+    fireEvent.pointerUp(first, { pointerType: "touch" });
+    emit({
+      job: 1,
+      answer: {
+        iterations: 64,
+        candidates: [
+          candidate(ba, 0.3, { n: 64 }),
+          candidate(ab, 0.6, { n: 64 }),
+        ],
+      },
+      done: false,
+    });
+    // the button the touch began on holds AB now; the tap asks of BA, the
+    // rows back as they were where it landed
+    expect(bodyRows()[0]).toBe(`${JSON.stringify(ab)}60.0%0.000.0%64`);
+    fireEvent.click(first, { detail: 1 });
     expect(
-      screen.getByText("Static equity until the sim starts."),
+      await screen.findByText(`Take out ${JSON.stringify(ba)}?`),
     ).toBeInTheDocument();
+    expect(bodyRows()[0]).toBe(`${JSON.stringify(ba)}30.0%0.000.0%64`);
+    reply("Take out");
+    await waitFor(() =>
+      expect(lab.calls.some((c) => c.op === "remove")).toBe(true),
+    );
+    const removed = lab.calls.find((c) => c.op === "remove");
+    expect(JSON.parse((removed?.args as { plays: string }).plays)).toEqual([
+      ba,
+    ]);
+  });
+
+  it("asks before a tap takes out a move, the rows holding while it asks", async () => {
+    render(
+      <Store>
+        <Sim lab={midgame()} moves={[listed(ba), listed(ab)]} />
+      </Store>,
+    );
+    await start();
+    emit({
+      job: 1,
+      answer: {
+        iterations: 32,
+        candidates: [candidate(ba, 0.5), candidate(ab, 0.4)],
+      },
+      done: false,
+    });
+    tap(screen.getAllByRole("button", { name: "Take out" })[0]);
+    expect(
+      await screen.findByText(`Take out ${JSON.stringify(ba)}?`),
+    ).toBeInTheDocument();
+    // AB now leads, but the rows hold while the question is asked
+    emit({
+      job: 1,
+      answer: {
+        iterations: 64,
+        candidates: [
+          candidate(ba, 0.3, { n: 64 }),
+          candidate(ab, 0.6, { n: 64 }),
+        ],
+      },
+      done: false,
+    });
+    expect(bodyRows()[0]).toBe(`${JSON.stringify(ba)}30.0%0.000.0%64`);
+    // canceled, nothing is taken out, and the rows take the sim's order
+    reply("Cancel");
+    expect(lab.calls.some((c) => c.op === "remove")).toBe(false);
     expect(bodyRows()).toHaveLength(2);
-    expect(screen.getByRole("button", { name: "Start" })).toBeEnabled();
+    expect(bodyRows()[0]).toBe(`${JSON.stringify(ab)}60.0%0.000.0%64`);
+    // a click with the mouse takes out at once
+    act(() => screen.getAllByRole("button", { name: "Take out" })[0].click());
+    expect(bodyRows()).toEqual([`${JSON.stringify(ba)}30.0%0.000.0%64`]);
+  });
+
+  it("lets the rows go once a tap's question goes, though the page says a mouse came over them, and puts no move on the board", async () => {
+    render(
+      <Store>
+        <Sim lab={midgame()} moves={[listed(ba), listed(ab), listed(ai)]} />
+      </Store>,
+    );
+    await start();
+    const answer = (iterations: number, wins: Array<number>) =>
+      emit({
+        job: 1,
+        answer: {
+          iterations,
+          candidates: [ba, ab, ai].map((play, i) =>
+            candidate(play, wins[i], { n: iterations }),
+          ),
+        },
+        done: false,
+      });
+    answer(32, [0.5, 0.4, 0.3]);
+    tap(screen.getAllByRole("button", { name: "Take out" })[0]);
+    expect(
+      await screen.findByText(`Take out ${JSON.stringify(ba)}?`),
+    ).toBeInTheDocument();
+    reply("Cancel");
+    // the question gone, the page says a mouse came over where the tap was
+    fireEvent.pointerOver(document.querySelector(".lab-panel tbody td")!, {
+      pointerType: "mouse",
+    });
+    answer(64, [0.3, 0.6, 0.4]);
+    expect(bodyRows()[0]).toBe(`${JSON.stringify(ab)}60.0%0.000.0%64`);
+    // an answer to it, either one, is no click on its row
+    tap(screen.getAllByRole("button", { name: "Take out" })[2]);
+    expect(
+      await screen.findByText(`Take out ${JSON.stringify(ba)}?`),
+    ).toBeInTheDocument();
+    reply("Take out");
+    await waitFor(() =>
+      expect(lab.calls.some((c) => c.op === "remove")).toBe(true),
+    );
+    expect(board.placed).toEqual([]);
+  });
+
+  it("changes nothing a sim is made of while it starts", async () => {
+    placeBE();
+    render(
+      <Store>
+        <Sim lab={midgame()} moves={[listed(ba), listed(ab)]} />
+      </Store>,
+    );
+    act(() => screen.getByRole("button", { name: "Start" }).click());
+    expect(screen.getByText("Starting...")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add" })).toBeDisabled();
+    expect(screen.queryAllByRole("button", { name: "Take out" })).toEqual([]);
+    await waitFor(() =>
+      expect(lab.calls.some((c) => c.op === "run")).toBe(true),
+    );
+    expect(screen.getByRole("button", { name: "Add" })).toBeEnabled();
+    expect(screen.getAllByRole("button", { name: "Take out" })).toHaveLength(2);
   });
 });
 

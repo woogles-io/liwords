@@ -5,29 +5,43 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { Button, Tooltip } from "antd";
+import { Button, Popconfirm, Tooltip } from "antd";
 import {
   CaretRightOutlined,
   CloseOutlined,
   ExperimentOutlined,
   PauseOutlined,
+  PlusOutlined,
 } from "@ant-design/icons";
-import { Alphabet } from "../constants/alphabets";
+import { Alphabet, machineWordToRunes } from "../constants/alphabets";
 import {
   ChallengeRule,
   GameEvent_Type,
 } from "../gen/api/proto/vendored/macondo/macondo_pb";
-import { useExaminableGameContextStoreContext } from "../store/store";
-import { MachineLetter, MachineWord } from "../utils/cwgame/common";
+import {
+  useExaminableGameContextStoreContext,
+  useTentativeTileContext,
+} from "../store/store";
+import { Board } from "../utils/cwgame/board";
+import {
+  Direction,
+  EphemeralTile,
+  MachineLetter,
+  MachineWord,
+} from "../utils/cwgame/common";
+import { contiguousTilesFromTileSet } from "../utils/cwgame/scoring";
 import {
   refitOnPageChanges,
   roomClass,
   roomInWindow,
 } from "../utils/window_room";
 import { labCall, onLabEvent } from "../wasm/lab";
-import { getLoadableFiles } from "../wasm/loader";
+import { getLoadableFiles, getWolges } from "../wasm/loader";
 import {
   AnalyzerMove,
+  JsonMove,
+  analyzerMoveFromJsonMove,
+  liwordsLetterToWolgesLetter,
   parseExaminableGameContext,
   usePlaceMoveCallback,
 } from "./analyzer";
@@ -62,6 +76,17 @@ type SimAnswer = {
     SimCandidate & { play: WasmPlay; plies?: Array<{ bingo: number }> }
   >;
 };
+
+// A play as the wasm's play_score answers for it: checked, its score
+// recounted, and its static equity; or why it is no play here.
+type ScoredPlay =
+  | (WasmPlay & {
+      result: "scored";
+      valid: boolean;
+      invalid_words: Array<Array<number>>;
+      equity: number;
+    })
+  | { result: "error"; error: string };
 
 // The examined position as the lab's jobs take it.
 export type LabPosition = {
@@ -141,6 +166,21 @@ const goneOutText = (lab: LabPosition) =>
   lab.challengeable
     ? "The other player has gone out, but the play can still be challenged."
     : "The other player has gone out: the game is over.";
+
+const toAnalyzerMove = (
+  play: WasmPlay,
+  value: number,
+  letters: Array<MachineLetter>,
+  rack: MachineWord,
+  lab: LabPosition,
+) =>
+  analyzerMoveFromJsonMove(
+    { ...play, equity: value } as JsonMove,
+    lab.dim,
+    letters,
+    rack,
+    lab.alphabet,
+  );
 
 const signed = (x: number, digits = 0) =>
   `${x > 0 ? "+" : ""}${x.toFixed(digits)}`;
@@ -325,6 +365,37 @@ const playKey = (play: WasmPlay) =>
       : { action: play.action, tiles: play.tiles },
   );
 
+// The move placed on the board, as the wasm writes a play (its score 0, which
+// play_score counts again), or null if the tiles placed make none.
+const placedPlay = (
+  placed: Set<EphemeralTile>,
+  board: Board,
+): WasmPlay | null => {
+  const run = placed.size ? contiguousTilesFromTileSet(placed, board) : null;
+  if (!run) return null;
+  const [tiles, direction] = run;
+  const down = direction === Direction.Vertical;
+  return {
+    action: "play",
+    down,
+    lane: down ? tiles[0].col : tiles[0].row,
+    idx: down ? tiles[0].row : tiles[0].col,
+    word: tiles.map((t) =>
+      t.fresh ? liwordsLetterToWolgesLetter(t.letter) : 0,
+    ),
+    score: 0,
+  };
+};
+
+// The user's own changes to a position's candidates: the moves added, and the
+// plays taken out (by playKey).
+type SimEdits = {
+  added: Array<AnalyzerMove>;
+  removed: Array<string>;
+};
+
+const noEdits: SimEdits = { added: [], removed: [] };
+
 // A sim made in the lab's worker: the position it is of, its job there, each
 // candidate as the sim holds it (by playKey), and how it stands; done once it
 // stopped by itself.
@@ -359,13 +430,25 @@ const leftOutText = (m: AnalyzerMove, lexicon: string | undefined) => {
     : `${m.displayMove} is not simmed: it is a phony.`;
 };
 
+// A play checked and scored on the page's own wasm, as the analyzer checks and
+// scores the move played.
+const scorePlay = async (lab: LabPosition, play: WasmPlay) => {
+  const wolges = await getWolges(lab.loadableKey);
+  const [scored]: Array<ScoredPlay> = JSON.parse(
+    await wolges.play_score(
+      JSON.stringify({ ...lab.position, leave: lab.leave, plays: [play] }),
+    ),
+  );
+  return scored;
+};
+
 export type LabSim = ReturnType<typeof useLabSim>;
 
 // The examined position's sim, which the analyzer keeps while it is open, so
-// that closing the panel only stops it: the last sim made keeps its rollouts
-// until another job takes the lab's worker. Nothing is simmed until the user
-// starts it, with the moves listed then; until then each shows its static
-// equity.
+// that closing the panel only stops it. Each position keeps the moves the user
+// added and took out, and the last sim made keeps its rollouts until another
+// job takes the lab's worker. Nothing is simmed until the user starts it, with
+// the moves listed then; until then each shows its static equity.
 export const useLabSim = (
   lab: LabPosition | null,
   // the analyzer's moves, the sim's candidates
@@ -373,6 +456,7 @@ export const useLabSim = (
   // whether the panel shows: a sim hidden, or left for another position, stops
   shown: boolean,
 ) => {
+  const [allEdits, setAllEdits] = useState(() => new Map<string, SimEdits>());
   const [sim, setSim] = useState<MadeSim | null>(null);
   const [starting, setStarting] = useState(false);
   const startingRef = useRef(false);
@@ -380,11 +464,26 @@ export const useLabSim = (
   // tried at, until the next try
   const [note, setNote] = useState<{ key: string; text: string }>();
   const key = lab?.key;
-  // The moves listed, the one played among them, which a sim made now holds;
-  // a phony is no candidate, as the wasm turns down a call with one.
-  const candidates = useMemo(
+  const edits = (key !== undefined && allEdits.get(key)) || noEdits;
+  const changeEdits = (at: string, change: (e: SimEdits) => SimEdits) =>
+    setAllEdits((all) => new Map(all).set(at, change(all.get(at) ?? noEdits)));
+  // The moves listed, the one played among them; a phony is no candidate, as
+  // the wasm turns down a call with one.
+  const listed = useMemo(
     () => (moves ?? []).filter((m) => m.valid ?? true),
     [moves],
+  );
+  // what a sim made now holds: the moves listed, with the user's changes
+  const candidates = useMemo(
+    () => [
+      ...listed.filter(
+        (m) => !edits.removed.includes(playKey(JSON.parse(m.jsonKey))),
+      ),
+      ...edits.added.filter(
+        (a) => !listed.some((m) => m.jsonKey === a.jsonKey),
+      ),
+    ],
+    [listed, edits],
   );
   // the sim made of this position, while the worker holds it
   const made = sim && sim.key === key ? sim : null;
@@ -508,13 +607,96 @@ export const useLabSim = (
     }
   };
 
+  // Take a candidate out; a sim made of the position forgets it and its
+  // rollouts.
+  const remove = (play: WasmPlay) => {
+    if (!lab) return;
+    const at = lab.key;
+    const removed = playKey(play);
+    setNote(undefined);
+    changeEdits(at, (e) => ({
+      added: e.added.filter((m) => playKey(JSON.parse(m.jsonKey)) !== removed),
+      removed: [...e.removed, removed],
+    }));
+    if (!made) return;
+    const { job } = made;
+    labCall({ op: "remove", args: { job, plays: JSON.stringify([play]) } })
+      .then(() => labCall({ op: "read", args: { job } }))
+      .catch((e) =>
+        setNote({ key: at, text: `Not taken out: ${errorText(e)}` }),
+      );
+  };
+
+  // Add a move, checked and scored as the analyzer checks and scores the move
+  // played, so that it shows at once with its static equity; a sim made of the
+  // position rolls it out from its next iteration on.
+  const add = async (play: WasmPlay) => {
+    if (!lab) return;
+    const at = lab.key;
+    const refuse = (text: string) =>
+      setNote({ key: at, text: `Not added: ${text}` });
+    setNote(undefined);
+    let scored: ScoredPlay;
+    try {
+      scored = await scorePlay(lab, play);
+    } catch (e) {
+      refuse(errorText(e));
+      return;
+    }
+    if (scored.result === "error") {
+      refuse(scored.error);
+      return;
+    }
+    if (!scored.valid) {
+      const words = scored.invalid_words.map((w) =>
+        machineWordToRunes(w, lab.alphabet, false, true),
+      );
+      refuse(
+        `${listWords(words)} ${words.length > 1 ? "are" : "is"} not in ${lab.position.lexicon ?? "the lexicon"}.`,
+      );
+      return;
+    }
+    const added = playKey(scored);
+    if (candidates.some((m) => playKey(JSON.parse(m.jsonKey)) === added)) {
+      setNote({ key: at, text: "That move is listed already." });
+      return;
+    }
+    const move = toAnalyzerMove(
+      scored,
+      scored.equity,
+      lab.letters,
+      lab.rack,
+      lab,
+    );
+    changeEdits(at, (e) => ({
+      added: [...e.added, move],
+      removed: e.removed.filter((r) => r !== added),
+    }));
+    if (!made) return;
+    const { job } = made;
+    try {
+      const [joined] = await labCall<Array<{ play: WasmPlay }>>({
+        op: "add",
+        args: { job, plays: JSON.stringify([JSON.parse(added)]) },
+      });
+      setSim((s) =>
+        s?.job === job
+          ? { ...s, held: new Map(s.held).set(playKey(joined.play), move) }
+          : s,
+      );
+      await labCall({ op: "read", args: { job } });
+    } catch (e) {
+      refuse(errorText(e));
+    }
+  };
+
   // The rows shown: the sim's candidates as its last answer has them, those
   // rolled out first, by the chance to win and then equity, and the rest
   // after; or, before a sim, the moves by their static equity.
   const rows = useMemo(() => {
     if (made?.answer) {
       return made.answer.candidates
-        .slice()
+        .filter((c) => !edits.removed.includes(playKey(c.play)))
         .sort((a, b) => Number(a.n === 0) - Number(b.n === 0) || simOrder(a, b))
         .flatMap((c) => {
           const move = made.held.get(playKey(c.play));
@@ -528,7 +710,7 @@ export const useLabSim = (
         play: JSON.parse(move.jsonKey) as WasmPlay,
         stat: undefined,
       }));
-  }, [made, candidates]);
+  }, [made, edits.removed, candidates]);
 
   const runningCandidates =
     made?.answer?.candidates.filter((c) => c.state === "running").length ?? 0;
@@ -545,8 +727,76 @@ export const useLabSim = (
       : !over && !starting && candidates.length > 1,
     run,
     stop,
+    add,
+    remove,
   };
 };
+
+// What a tap on a row's button asks before it acts, until it is answered.
+type Asking = {
+  question: string;
+  okText: string;
+  confirm: () => void;
+  cancel: () => void;
+};
+
+type RowButtonProps = {
+  label: string;
+  tip: string;
+  icon: typeof CloseOutlined;
+  onClick: (e: React.UIEvent) => void;
+  asking?: Asking;
+};
+
+// An icon in a candidate's row that acts on the candidate, clicked or keyed,
+// without also placing its move as a click on the row does. A press on it
+// leaves the keyboard where it was, so that a click holds the rows' order no
+// longer than the pointer stays; a tap asks first, by the icon, in place of
+// its tooltip. The tooltip holds the same element whichever icon it shows, as
+// a tooltip given another sets itself up again.
+const RowButton = (props: RowButtonProps) => {
+  const { label, tip, icon: Icon, onClick, asking } = props;
+  const act = (e: React.UIEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onClick(e);
+  };
+  const button = (
+    <span
+      role="button"
+      aria-label={label}
+      tabIndex={0}
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={act}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") act(e);
+      }}
+    >
+      <Icon />
+    </span>
+  );
+  return asking ? (
+    <Popconfirm
+      open
+      title={asking.question}
+      okText={asking.okText}
+      cancelText="Cancel"
+      onConfirm={asking.confirm}
+      onCancel={asking.cancel}
+      onOpenChange={(open) => {
+        if (!open) asking.cancel();
+      }}
+    >
+      {button}
+    </Popconfirm>
+  ) : (
+    <Tooltip title={tip}>{button}</Tooltip>
+  );
+};
+
+// A move as a question names it: where it goes, then the move.
+const moveName = (m: AnalyzerMove) =>
+  [m.coordinates, m.displayMove].filter(Boolean).join(" ");
 
 type SimPanelProps = {
   lab: LabPosition;
@@ -559,14 +809,29 @@ type SimPanelProps = {
 export const SimPanel = (props: SimPanelProps) => {
   const { lab, moves, sim, onClose } = props;
   const placeMove = usePlaceMoveCallback();
+  const { placedTiles } = useTentativeTileContext();
+  const { gameContext } = useExaminableGameContextStoreContext();
+  const placed = useMemo(
+    () => placedPlay(placedTiles, gameContext.board),
+    [placedTiles, gameContext.board],
+  );
   // Nothing unseen: the other player has gone out.
   const over = lab.unseen.length === 0;
   const { made } = sim;
+  // While a sim starts, the moves it is made of stay as they are.
+  const fixed = sim.starting;
 
-  // While the pointer is in the rows, they keep the order they had when it
-  // came, so that what is clicked is the move that was there; once it has
-  // left, the rows take the sim's order again.
-  const [order, setOrder] = useState<Array<string> | null>(null);
+  // While the pointer or the keyboard is in the rows, or a tap's question is
+  // asked, they keep the order they had when it came, so that what is clicked,
+  // keyed, or tapped is the move that was there; once all have gone, the rows
+  // take the sim's order again.
+  const [hold, setHold] = useState<{
+    pointer: boolean;
+    focus: boolean;
+    ask: boolean;
+    order: Array<string> | null;
+  }>({ pointer: false, focus: false, ask: false, order: null });
+  const order = hold.order;
   const rows = useMemo(() => {
     if (!order) return sim.rows;
     const at = new Map(order.map((k, i) => [k, i]));
@@ -576,18 +841,108 @@ export const SimPanel = (props: SimPanelProps) => {
         (at.get(b.move.jsonKey) ?? at.size),
     );
   }, [sim.rows, order]);
-  const holdBy = (on: boolean) =>
-    setOrder((o) => (on ? (o ?? rows.map((r) => r.move.jsonKey)) : null));
+  // a hold begun by a tap's question keeps the order the tap landed on
+  const holdBy = (
+    by: "pointer" | "focus" | "ask",
+    on: boolean,
+    from?: Array<string>,
+  ) =>
+    setHold((h) => {
+      // the same state when nothing changes, so that a mouse moving over the
+      // rows renders nothing more
+      if (h[by] === on) return h;
+      const next = { ...h, [by]: on };
+      return {
+        ...next,
+        order:
+          next.pointer || next.focus || next.ask
+            ? (h.order ?? from ?? rows.map((r) => r.move.jsonKey))
+            : null,
+      };
+    });
   // The row a press began in, which its click acts on: on touch the pointer
   // leaves as the finger lifts, before the click comes, and the rows may take
   // the sim's order between the two. A click that no press made (its detail 0,
   // as a screen reader's) acts on the row it lands on.
-  const pressed = useRef<LabSim["rows"][number] | null>(null);
-  const rowFor = (place: number, e: React.UIEvent) => {
-    const row = e.detail > 0 && pressed.current ? pressed.current : rows[place];
+  const pressed = useRef<{
+    row: LabSim["rows"][number];
+    touch: boolean;
+    order: Array<string>;
+  } | null>(null);
+  const pressAt = (place: number, e: React.UIEvent) => {
+    const at = e.detail > 0 ? pressed.current : null;
     pressed.current = null;
-    return row;
+    return at ?? { row: rows[place], touch: false, order: undefined };
   };
+  const rowFor = (place: number, e: React.UIEvent) => pressAt(place, e).row;
+
+  // On a touch screen nothing holds the rows while a finger aims, so a tap on
+  // a row's button asks first, naming the move it landed on: a remove or a
+  // hold, at a place, at the position it was asked.
+  const [asking, setAsking] = useState<{
+    key: string;
+    place: number;
+    button: "remove" | "hold";
+    question: string;
+    okText: string;
+    act: () => void;
+  } | null>(null);
+  const stopAsking = () => {
+    setAsking(null);
+    holdBy("ask", false);
+  };
+  // A click or a key acts on its row at once; a tap asks.
+  const actOn = (
+    place: number,
+    button: "remove" | "hold",
+    e: React.UIEvent,
+    verb: (row: LabSim["rows"][number]) => string,
+    act: (row: LabSim["rows"][number]) => void,
+  ) => {
+    const { row, touch, order: landed } = pressAt(place, e);
+    if (!touch) {
+      act(row);
+      return;
+    }
+    holdBy("ask", true, landed);
+    setAsking({
+      key: lab.key,
+      place,
+      button,
+      question: `${verb(row)} ${moveName(row.move)}?`,
+      okText: verb(row),
+      act: () => act(row),
+    });
+  };
+  const askingAt = (
+    place: number,
+    button: "remove" | "hold",
+  ): Asking | undefined =>
+    asking &&
+    asking.key === lab.key &&
+    asking.place === place &&
+    asking.button === button
+      ? {
+          question: asking.question,
+          okText: asking.okText,
+          confirm: () => {
+            stopAsking();
+            asking.act();
+          },
+          cancel: stopAsking,
+        }
+      : undefined;
+
+  // A row taken out with the button the keyboard was on takes the focus with
+  // it, and the table hears no blur: the rows let go then too; and a question
+  // asked at another position goes.
+  const table = useRef<HTMLTableElement>(null);
+  useEffect(() => {
+    if (hold.focus && !table.current?.contains(document.activeElement)) {
+      holdBy("focus", false);
+    }
+    if (asking && asking.key !== lab.key) stopAsking();
+  });
   // The phony among the moves listed, which the sim leaves out.
   const phonies = over ? [] : (moves ?? []).filter((m) => !(m.valid ?? true));
 
@@ -630,23 +985,42 @@ export const SimPanel = (props: SimPanelProps) => {
       stop={sim.stop}
       resume={sim.run}
       onClose={onClose}
+      buttons={
+        <Tooltip title="Add the move placed on the board">
+          <Button
+            shape="circle"
+            size="small"
+            icon={<PlusOutlined />}
+            aria-label="Add"
+            disabled={!placed || over || fixed}
+            onClick={() => placed && sim.add(placed)}
+          />
+        </Tooltip>
+      }
     >
       <table
         // A mouse or a pen holds the rows from when it moves over them, not
         // from when the page says it came, which the page says too of a mouse
         // that never moved once what was under it went; a touch holds them
         // while it presses.
+        ref={table}
         onPointerMove={(e) => {
-          if (e.pointerType !== "touch") holdBy(true);
+          if (e.pointerType !== "touch") holdBy("pointer", true);
         }}
         onPointerDown={(e) => {
-          if (e.pointerType === "touch") holdBy(true);
+          if (e.pointerType === "touch") holdBy("pointer", true);
         }}
         onPointerUp={(e) => {
-          if (e.pointerType === "touch") holdBy(false);
+          if (e.pointerType === "touch") holdBy("pointer", false);
         }}
-        onPointerCancel={() => holdBy(false)}
-        onPointerLeave={() => holdBy(false)}
+        onPointerCancel={() => holdBy("pointer", false)}
+        onPointerLeave={() => holdBy("pointer", false)}
+        onFocus={() => holdBy("focus", true)}
+        onBlur={(e) => {
+          if (!e.currentTarget.contains(e.relatedTarget)) {
+            holdBy("focus", false);
+          }
+        }}
       >
         {rows.length > 0 && (
           <thead>
@@ -671,23 +1045,38 @@ export const SimPanel = (props: SimPanelProps) => {
               <th className="lab-n">
                 <ColumnName name="N" tip="Its rollouts" />
               </th>
+              <th className="lab-remove" />
             </tr>
           </thead>
         )}
         <tbody>
           {rows.map(({ move: m, stat }, place) => (
             <tr
-              key={m.jsonKey}
+              // keyed by place, not by move: a re-sort then changes what each
+              // row holds and moves none, as a tooltip moved sets itself up
+              // again
+              key={place}
               className={
                 stat && stat.state !== "running" ? "lab-pruned" : undefined
               }
-              onPointerDown={() => {
-                pressed.current = rows[place];
+              onPointerDown={(e) => {
+                pressed.current = {
+                  row: rows[place],
+                  touch: e.pointerType === "touch",
+                  order: rows.map((r) => r.move.jsonKey),
+                };
               }}
               onPointerCancel={() => {
                 pressed.current = null;
               }}
-              onClick={(e) => placeMove(rowFor(place, e).move)}
+              // a click on what the row shows in front of the page, as a tap's
+              // question, comes here too, along React's tree, and is none of
+              // the row's
+              onClick={(e) => {
+                if (e.currentTarget.contains(e.target as Node)) {
+                  placeMove(rowFor(place, e).move);
+                }
+              }}
             >
               <td className="move-coords">{m.coordinates}</td>
               <td className="move">{m.displayMove}</td>
@@ -701,6 +1090,25 @@ export const SimPanel = (props: SimPanelProps) => {
                 {stat?.n && stat.plies?.[0] ? percent(stat.plies[0].bingo) : ""}
               </td>
               <td className="lab-n">{stat?.n}</td>
+              <td className="lab-remove">
+                {!fixed && (
+                  <RowButton
+                    label="Take out"
+                    tip="Take out"
+                    icon={CloseOutlined}
+                    onClick={(e) =>
+                      actOn(
+                        place,
+                        "remove",
+                        e,
+                        () => "Take out",
+                        (row) => sim.remove(row.play),
+                      )
+                    }
+                    asking={askingAt(place, "remove")}
+                  />
+                )}
+              </td>
             </tr>
           ))}
         </tbody>

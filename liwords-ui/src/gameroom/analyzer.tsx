@@ -71,7 +71,7 @@ type AnalyzerProps = {
   style?: React.CSSProperties;
 };
 
-type JsonMove =
+export type JsonMove =
   | {
       equity: number;
       action: "exchange";
