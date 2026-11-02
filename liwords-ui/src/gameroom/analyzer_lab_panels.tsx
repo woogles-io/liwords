@@ -1,4 +1,5 @@
 import React, {
+  useCallback,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -19,6 +20,7 @@ import {
   CaretRightOutlined,
   CloseOutlined,
   ExperimentOutlined,
+  FlagOutlined,
   OrderedListOutlined,
   PauseOutlined,
   PlusOutlined,
@@ -63,10 +65,13 @@ import {
   liwordsLetterToWolgesLetter,
   parseExaminableGameContext,
   usePlaceMoveCallback,
+  wolgesLetterToLiwordsLetter,
 } from "./analyzer";
 import {
   SimCandidate,
   SimStat,
+  endgameBag,
+  endgameMemoryMb,
   labNow,
   passesAtEnd,
   scorelessTurnsAtEnd,
@@ -74,7 +79,7 @@ import {
   unseenBy,
 } from "./analyzer_lab";
 
-export type LabView = "sim";
+export type LabView = "sim" | "endgame";
 
 // A play as the wasm writes one, with no equity.
 type WasmPlay =
@@ -87,6 +92,22 @@ type WasmPlay =
       score: number;
     }
   | { action: "exchange"; tiles: Array<number> };
+
+type EndgameAnswer = {
+  steps: number;
+  exact: boolean;
+  play: WasmPlay | null;
+  value: number;
+  spread: number;
+  depth: number;
+} & (
+  | { bag: 0; line: Array<{ play: WasmPlay; value: number }> }
+  | {
+      bag: 1;
+      win: number;
+      tiles: Array<{ tile: number; count: number; value: number }>;
+    }
+);
 
 // A ply of a candidate's rollouts: how many reached it, the score made on it,
 // and the share of them whose play took a whole rack.
@@ -118,7 +139,7 @@ export type LabPosition = {
   alphabet: Alphabet;
   rack: MachineWord;
   unseen: MachineWord;
-  // the fields the wasm's sim_new takes, less the leave
+  // the fields the wasm's sim_new and endgame_new share, less the leave
   position: {
     rack: MachineWord;
     board: Array<Array<number>>;
@@ -133,6 +154,8 @@ export type LabPosition = {
   // whether the other player has gone out with the play just made, which the
   // game's rules still let the player to move challenge off
   challengeable: boolean;
+  // each player's name, by seat
+  names: Array<string>;
   // the position, as a string, to tell one from another
   key: string;
 };
@@ -163,6 +186,10 @@ export const useLabPosition = (
     };
     const unseen = unseenBy(gameContext.pool, rackNum);
     const { turns } = gameContext;
+    const names = ["", ""];
+    for (const [name, seat] of Object.entries(gameContext.nickToPlayerOrder)) {
+      names[seat === "p1" ? 1 : 0] = name;
+    }
     return {
       loadableKey,
       dim,
@@ -177,6 +204,7 @@ export const useLabPosition = (
         turns[turns.length - 1]?.type === GameEvent_Type.TILE_PLACEMENT_MOVE &&
         challengeRule !== undefined &&
         challengeRule !== ChallengeRule.VOID,
+      names,
       key: JSON.stringify([position, boardObj.leave]),
     };
   }, [gameContext, lexicon, variant, challengeRule]);
@@ -203,6 +231,32 @@ const toAnalyzerMove = (
     rack,
     lab.alphabet,
   );
+
+// The plays of an endgame's line, each made on the board the plays before it
+// leave, from the rack its player then holds: the player to move's, then the
+// other's, which with an empty bag is every unseen tile.
+const lineMoves = (
+  line: Array<{ play: WasmPlay; value: number }>,
+  lab: LabPosition,
+) => {
+  const letters = [...lab.letters];
+  const racks = [lab.rack, lab.unseen];
+  return line.map(({ play, value }, ply) => {
+    const move = toAnalyzerMove(play, value, letters, racks[ply % 2], lab);
+    if (!move.isExchange) {
+      let row = move.row;
+      let col = move.col;
+      for (const t of move.tiles) {
+        if (t !== 0)
+          letters[row * lab.dim + col] = wolgesLetterToLiwordsLetter(t);
+        if (move.vertical) ++row;
+        else ++col;
+      }
+    }
+    racks[ply % 2] = move.leave;
+    return move;
+  });
+};
 
 const signed = (x: number, digits = 0) =>
   `${x > 0 ? "+" : ""}${x.toFixed(digits)}`;
@@ -263,6 +317,80 @@ const ranText = (ms: number) => {
   if (h > 0) return `${h} h ${m % 60} min ${s % 60} s`;
   if (m > 0) return `${m} min ${s % 60} s`;
   return `${s} s`;
+};
+
+type JobState<T> = {
+  job?: number;
+  answer?: T;
+  error?: string;
+  running: boolean;
+};
+
+// A job in the lab's worker for as long as the panel shows it: made when the
+// position changes, run in steps as long as a frame, and freed when the panel
+// goes.
+const useLabJob = <T,>(start: (() => Promise<number>) | null, key: string) => {
+  const [state, setState] = useState<JobState<T>>({ running: false });
+  useEffect(() => {
+    setState({ running: false });
+    if (!start) return;
+    let current = true;
+    let job: number | undefined;
+    const stopListening = onLabEvent((e) => {
+      if (!current || e.job !== job) return;
+      setState((s) => ({
+        ...s,
+        answer: (e.answer as T) ?? s.answer,
+        error: e.error,
+        // a step that was under way when a stop was sent leaves it stopped
+        running: s.running && !e.done && !e.error,
+      }));
+    });
+    (async () => {
+      try {
+        const made = await start();
+        if (!current) {
+          labCall({ op: "free", args: { job: made } }).catch(() => {});
+          return;
+        }
+        job = made;
+        const ms = await frameMs();
+        if (!current) return;
+        setState({ job, running: true });
+        await labCall({ op: "run", args: { job, ms } });
+      } catch (e) {
+        if (current) {
+          setState({
+            running: false,
+            error: e instanceof Error ? e.message : String(e),
+          });
+        }
+      }
+    })();
+    return () => {
+      current = false;
+      stopListening();
+      if (job !== undefined) {
+        labCall({ op: "free", args: { job } }).catch(() => {});
+      }
+    };
+    // start is made anew on each render; key says when it differs
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+  const stop = useCallback(() => {
+    labCall({ op: "stop" }).catch(() => {});
+    setState((s) => ({ ...s, running: false }));
+  }, []);
+  const resume = useCallback(async () => {
+    const { job } = state;
+    if (job === undefined) return;
+    const ms = await frameMs();
+    setState((s) => ({ ...s, running: true }));
+    labCall({ op: "run", args: { job, ms } }).catch((e) =>
+      setState((s) => ({ ...s, running: false, error: String(e) })),
+    );
+  }, [state]);
+  return { ...state, stop, resume };
 };
 
 // A column's name, with what the column holds on hover.
@@ -370,6 +498,172 @@ const PanelFrame = (props: PanelFrameProps) => {
       <div className="lab-status">{props.status}</div>
       {props.children}
     </div>
+  );
+};
+
+type EndgamePanelProps = {
+  lab: LabPosition;
+  onClose: () => void;
+};
+
+export const EndgamePanel = (props: EndgamePanelProps) => {
+  const { lab, onClose } = props;
+  const placeMove = usePlaceMoveCallback();
+  // Nothing unseen: the other player has gone out.
+  const over = lab.unseen.length === 0;
+  const bag = endgameBag(lab.unseen.length, lab.rack.length);
+  const solvable = !over && bag !== null && bag <= 1;
+  const job = useLabJob<EndgameAnswer>(
+    solvable
+      ? async () => {
+          // An endgame makes its own word graph from the lexicon's, and reads
+          // no leaves.
+          await labCall({
+            op: "prepare",
+            args: {
+              files: getLoadableFiles(lab.loadableKey).filter((f) =>
+                f.cacheKey.startsWith("kwg/"),
+              ),
+            },
+          });
+          return labCall<number>({
+            op: "endgame",
+            args: {
+              request: JSON.stringify({
+                ...lab.position,
+                max_memory_mb: endgameMemoryMb(),
+              }),
+            },
+          });
+        }
+      : null,
+    lab.key,
+  );
+  const { answer } = job;
+  // the answer from its first depth on: before that, it has no value or win
+  // to give, which the wasm leaves out or gives as 0
+  const solved = answer && answer.depth > 0 ? answer : undefined;
+  const ranMs = useRunMs(job.job, job.running);
+  const line = useMemo(
+    () => (solved?.bag === 0 ? lineMoves(solved.line, lab) : []),
+    [solved, lab],
+  );
+  const best = useMemo(
+    () =>
+      solved?.bag === 1 && solved.play
+        ? toAnalyzerMove(solved.play, solved.value, lab.letters, lab.rack, lab)
+        : null,
+    [solved, lab],
+  );
+
+  // the players by who moves first in the line: the player to move, then the
+  // other
+  const names = [lab.position.turn, 1 - lab.position.turn].map(
+    (seat) => lab.names[seat] || `Player ${seat + 1}`,
+  );
+  const runes = (tiles: MachineWord) =>
+    machineWordToRunes(tiles, lab.alphabet, false, true);
+
+  let status: React.ReactNode;
+  if (over) {
+    status = goneOutText(lab);
+  } else if (!solvable) {
+    status =
+      bag === null
+        ? "Needs the full rack of the player to move."
+        : `The bag holds ${bag} tiles.`;
+  } else if (job.error) {
+    status = <span className="analyzer-error">{job.error}</span>;
+  } else if (!solved || !solved.play) {
+    status = "Solving...";
+  } else {
+    const depth = `depth ${solved.depth} after ${ranText(ranMs)}${solved.exact ? ", exact" : job.running ? ", solving" : ", stopped"}`;
+    status =
+      solved.bag === 0
+        ? `Value ${signed(solved.value)}, spread ${signed(solved.spread)}, ${depth}`
+        : `Expected value ${signed(solved.value, 2)}, wins ${percent(solved.win)}, ${depth}`;
+  }
+
+  return (
+    <PanelFrame
+      title={bag === 1 ? "Endgame, one tile in the bag" : "Endgame"}
+      status={status}
+      running={job.running}
+      canResume={job.job !== undefined && !answer?.exact && !job.error}
+      stop={job.stop}
+      resume={job.resume}
+      onClose={onClose}
+    >
+      {solvable && (
+        // what each player holds: with an empty bag the other player holds
+        // every tile unseen, and with one in the bag all but that one
+        <div className="lab-racks">
+          <div>
+            {names[0]} to move: {runes(lab.rack)}
+          </div>
+          <div>
+            {bag === 0 ? names[1] : "Unseen"}: {runes(lab.unseen)}
+          </div>
+        </div>
+      )}
+      <table>
+        {(line.length > 0 || best) && (
+          <thead>
+            <tr>
+              <th className="lab-who" />
+              <th className="move-coords" />
+              <th className="move" />
+              <th className="move-score">Score</th>
+              <th className="move-leave">Leave</th>
+              <th className="move-equity">
+                <ColumnName
+                  name="Value"
+                  tip="What the player gains from here to the game's end"
+                />
+              </th>
+            </tr>
+          </thead>
+        )}
+        <tbody>
+          {line.map((m, ply) => (
+            <tr
+              key={ply}
+              className={ply % 2 ? "lab-other" : undefined}
+              onClick={() => placeMove(m, line.slice(0, ply))}
+            >
+              <td className="lab-who">{names[ply % 2]}</td>
+              <td className="move-coords">{m.coordinates}</td>
+              <td className="move">{m.displayMove}</td>
+              <td className="move-score">{m.score}</td>
+              <td className="move-leave">{runes(m.leave)}</td>
+              <td className="move-equity">{signed(m.equity)}</td>
+            </tr>
+          ))}
+          {best && (
+            <tr onClick={() => placeMove(best)}>
+              <td className="lab-who">{names[0]}</td>
+              <td className="move-coords">{best.coordinates}</td>
+              <td className="move">{best.displayMove}</td>
+              <td className="move-score">{best.score}</td>
+              <td className="move-leave">{runes(best.leave)}</td>
+              <td className="move-equity">{signed(best.equity, 2)}</td>
+            </tr>
+          )}
+          {solved?.bag === 1 &&
+            solved.tiles.map((t) => (
+              <tr key={t.tile} className="lab-tile">
+                <td className="lab-who" />
+                <td className="move-coords" />
+                <td className="move" colSpan={3}>
+                  {machineLetterToRune(t.tile, lab.alphabet)} in the bag
+                  {t.count > 1 ? ` (${t.count})` : ""}
+                </td>
+                <td className="move-equity">{signed(t.value)}</td>
+              </tr>
+            ))}
+        </tbody>
+      </table>
+    </PanelFrame>
   );
 };
 
@@ -1814,6 +2108,15 @@ export const LabButtons = (props: LabButtonsProps) => {
           icon={<ExperimentOutlined />}
           type={view === "sim" ? "primary" : "default"}
           onClick={() => setView(view === "sim" ? null : "sim")}
+        />
+      </Tooltip>
+      <Tooltip title="Solve the endgame">
+        <Button
+          shape="circle"
+          size="small"
+          icon={<FlagOutlined />}
+          type={view === "endgame" ? "primary" : "default"}
+          onClick={() => setView(view === "endgame" ? null : "endgame")}
         />
       </Tooltip>
     </span>

@@ -6,6 +6,7 @@ import {
 } from "../gen/api/proto/vendored/macondo/macondo_pb";
 import {
   SimCandidate,
+  endgameBag,
   passesAtEnd,
   scorelessTurnsAtEnd,
   simOrder,
@@ -50,6 +51,18 @@ describe("the tiles unseen", () => {
   it("takes the player's own rack out of the pool", () => {
     // two As, an E, a blank in the pool; an A and the blank on the rack
     expect(unseenBy({ 1: 2, 5: 1, 0: 1 }, [1, 0])).toEqual([1, 5]);
+  });
+});
+
+describe("the endgame's bag", () => {
+  it("is what a full rack of the rest leaves, or unknown", () => {
+    expect(endgameBag(7, 7)).toBe(0);
+    expect(endgameBag(3, 4)).toBe(0);
+    expect(endgameBag(8, 7)).toBe(1);
+    expect(endgameBag(9, 7)).toBe(2);
+    // tiles in the bag and a short rack: a partial rack, so unknown
+    expect(endgameBag(8, 6)).toBeNull();
+    expect(endgameBag(5, 0)).toBeNull();
   });
 });
 

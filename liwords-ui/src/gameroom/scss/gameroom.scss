@@ -390,6 +390,13 @@ p.streak-loss {
     text-align: left;
   }
 
+  // what each player holds, over an endgame's line
+  .lab-racks {
+    color: m($gray-medium);
+    padding: 0 12px 6px;
+    text-align: left;
+  }
+
   // The lab's rows hold more columns than the analyzer's, so they sit closer.
   th,
   td {
@@ -421,7 +428,12 @@ p.streak-loss {
     white-space: nowrap;
   }
 
-  td.move {
+  th.move-leave {
+    text-align: left;
+  }
+
+  td.move,
+  td.move-leave {
     min-width: 0;
   }
 
@@ -429,8 +441,13 @@ p.streak-loss {
     width: auto;
   }
 
+  tr.lab-other td,
   tr.lab-pruned td {
     color: m($gray-medium);
+  }
+
+  tr.lab-tile {
+    cursor: default;
   }
 
   td.lab-bingo,
