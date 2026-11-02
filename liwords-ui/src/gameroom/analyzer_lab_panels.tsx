@@ -13,6 +13,7 @@ import {
   OrderedListOutlined,
   PauseOutlined,
   PlusOutlined,
+  ProfileOutlined,
   SettingOutlined,
   SwapOutlined,
 } from "@ant-design/icons";
@@ -38,6 +39,7 @@ import {
   MachineWord,
 } from "../utils/cwgame/common";
 import { contiguousTilesFromTileSet } from "../utils/cwgame/scoring";
+import { Modal } from "../utils/focus_modal";
 import {
   refitOnPageChanges,
   roomClass,
@@ -55,6 +57,7 @@ import {
 } from "./analyzer";
 import {
   SimCandidate,
+  SimStat,
   labNow,
   passesAtEnd,
   scorelessTurnsAtEnd,
@@ -76,13 +79,15 @@ type WasmPlay =
     }
   | { action: "exchange"; tiles: Array<number> };
 
+// A ply of a candidate's rollouts: how many reached it, the score made on it,
+// and the share of them whose play took a whole rack.
+type SimPly = { n: number; score: SimStat; bingo: number };
+
 // A sim's answer: its iterations, and its candidates, each with its rollouts'
 // plies, the first of them the opponent's reply.
 type SimAnswer = {
   iterations: number;
-  candidates: Array<
-    SimCandidate & { play: WasmPlay; plies?: Array<{ bingo: number }> }
-  >;
+  candidates: Array<SimCandidate & { play: WasmPlay; plies?: Array<SimPly> }>;
 };
 
 // A play as the wasm's play_score answers for it: checked, its score
@@ -957,6 +962,7 @@ export const SimPanel = (props: SimPanelProps) => {
   const { made } = sim;
   // While a sim starts, the moves it is made of stay as they are.
   const fixed = sim.starting;
+  const [details, setDetails] = useState(false);
 
   // While the pointer or the keyboard is in the rows, or a tap's question is
   // asked, they keep the order they had when it came, so that what is clicked,
@@ -1159,9 +1165,27 @@ export const SimPanel = (props: SimPanelProps) => {
             disabled={fixed}
             onChange={sim.changeSettings}
           />
+          <Tooltip title="Details">
+            <Button
+              shape="circle"
+              size="small"
+              icon={<ProfileOutlined />}
+              aria-label="Details"
+              disabled={!made?.answer}
+              onClick={() => setDetails(true)}
+            />
+          </Tooltip>
         </React.Fragment>
       }
     >
+      {made?.answer && (
+        <SimDetails
+          open={details}
+          onClose={() => setDetails(false)}
+          title={`${made.answer.iterations} iterations of ${machineWordToRunes(lab.rack, lab.alphabet, false, true)}`}
+          rows={sim.rows}
+        />
+      )}
       <table
         // A mouse or a pen holds the rows from when it moves over them, not
         // from when the page says it came, which the page says too of a mouse
@@ -1299,6 +1323,107 @@ export const SimPanel = (props: SimPanelProps) => {
         </tbody>
       </table>
     </PanelFrame>
+  );
+};
+
+// What a ply of a sim's rollouts is called, as Quackle calls them: the
+// opponent's next turn and the player's own, then each one's turns by number.
+const plyName = (ply: number) => {
+  const turn = Math.floor(ply / 2) + 1;
+  const whose = ply % 2 ? "Your" : "Opponent's";
+  return turn === 1 ? `${whose} next turn` : `${whose} turn ${turn}`;
+};
+
+const sd = (stat: SimStat) => Math.sqrt(stat.variance);
+
+type SimDetailsProps = {
+  open: boolean;
+  onClose: () => void;
+  title: string;
+  rows: LabSim["rows"];
+};
+
+// A sim's numbers in full: each candidate's chance to win and equity with
+// their standard deviations, its score, and its static equity; then each
+// ply's score, its standard deviation, and how often it is a bingo.
+const SimDetails = (props: SimDetailsProps) => {
+  const { open, onClose, title, rows } = props;
+  const stats = rows.flatMap(({ move, stat }) =>
+    stat ? [{ move, stat }] : [],
+  );
+  const plies = Math.max(
+    0,
+    ...stats.map(({ stat }) => stat.plies?.length ?? 0),
+  );
+  const name = (m: AnalyzerMove) => `${m.coordinates} ${m.displayMove}`.trim();
+  return (
+    <Modal
+      className="lab-details"
+      open={open}
+      onCancel={onClose}
+      footer={null}
+      title={title}
+      width={640}
+    >
+      <table>
+        <thead>
+          <tr>
+            <th />
+            <th>Win</th>
+            <th>SD</th>
+            <th>Equity</th>
+            <th>SD</th>
+            <th>Score</th>
+            <th>Static</th>
+            <th>N</th>
+          </tr>
+        </thead>
+        <tbody>
+          {stats.map(({ move: m, stat }) => (
+            <tr key={m.jsonKey}>
+              <td className="lab-details-move">{name(m)}</td>
+              <td>{stat.n ? percent(stat.win.mean) : ""}</td>
+              <td>{stat.n ? percent(sd(stat.win)) : ""}</td>
+              <td>{stat.n ? signed(stat.equity.mean, 2) : ""}</td>
+              <td>{stat.n ? sd(stat.equity).toFixed(1) : ""}</td>
+              <td>{m.score}</td>
+              <td>{signed(m.equity, 2)}</td>
+              <td>{stat.n}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {Array.from({ length: plies }, (_, ply) => (
+        <React.Fragment key={ply}>
+          <h4>{plyName(ply)}</h4>
+          <table>
+            <thead>
+              <tr>
+                <th />
+                <th>Score</th>
+                <th>SD</th>
+                <th>Bingo</th>
+                <th>N</th>
+              </tr>
+            </thead>
+            <tbody>
+              {stats.map(({ move: m, stat }) => {
+                const p = stat.plies?.[ply];
+                return (
+                  <tr key={m.jsonKey}>
+                    <td className="lab-details-move">{name(m)}</td>
+                    <td>{p?.n ? p.score.mean.toFixed(1) : ""}</td>
+                    <td>{p?.n ? sd(p.score).toFixed(1) : ""}</td>
+                    <td>{p?.n ? percent(p.bingo) : ""}</td>
+                    <td>{p?.n}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </React.Fragment>
+      ))}
+    </Modal>
   );
 };
 

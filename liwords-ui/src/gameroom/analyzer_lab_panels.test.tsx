@@ -1458,6 +1458,58 @@ describe("the sim panel", () => {
     ).toBeInTheDocument();
     expect(lab.calls.some((c) => c.op === "sim")).toBe(false);
   });
+
+  it("shows a sim's details, each candidate and then each ply", async () => {
+    render(
+      <Store>
+        <Sim
+          lab={midgame()}
+          moves={[listed(ba, { equity: 3 }), listed(ab, { equity: 2 })]}
+        />
+      </Store>,
+    );
+    expect(screen.getByRole("button", { name: "Details" })).toBeDisabled();
+    await start();
+    // four plies, the ply numbered i scoring 30 + i, 4 either way, a bingo a
+    // quarter of the time
+    const plies = Array.from({ length: 4 }, (_, i) => ({
+      n: 32,
+      score: { mean: 30 + i, variance: 16 },
+      bingo: 0.25,
+    }));
+    emit({
+      job: 1,
+      answer: {
+        iterations: 32,
+        candidates: [
+          { ...candidate(ba, 0.5, { equity: 9 }), plies },
+          { ...candidate(ab, 0.4, { equity: 3 }), plies },
+        ],
+      },
+      done: false,
+    });
+    act(() => screen.getByRole("button", { name: "Details" }).click());
+    expect(
+      await screen.findByText("32 iterations of AABEEII"),
+    ).toBeInTheDocument();
+    const details = document.querySelector(".lab-details")!;
+    const tables = [...details.querySelectorAll("table")];
+    const rowsOf = (table: Element) =>
+      [...table.querySelectorAll("tbody tr")].map((r) => r.textContent);
+    expect(
+      [...details.querySelectorAll("h4")].map((h) => h.textContent),
+    ).toEqual([
+      "Opponent's next turn",
+      "Your next turn",
+      "Opponent's turn 2",
+      "Your turn 2",
+    ]);
+    expect(rowsOf(tables[0])).toEqual([
+      `${JSON.stringify(ba)}50.0%0.0%+9.000.010+3.0032`,
+      `${JSON.stringify(ab)}40.0%0.0%+3.000.010+2.0032`,
+    ]);
+    expect(rowsOf(tables[4])[0]).toBe(`${JSON.stringify(ba)}33.04.025.0%32`);
+  });
 });
 
 describe("a panel's card", () => {

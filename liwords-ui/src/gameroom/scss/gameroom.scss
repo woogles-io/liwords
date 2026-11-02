@@ -505,6 +505,35 @@ p.streak-loss {
   }
 }
 
+// a sim's numbers in full: the candidates, then each ply of their rollouts
+.lab-details {
+  h4 {
+    margin: 16px 0 4px;
+  }
+
+  table {
+    @include type-monospace;
+    width: 100%;
+  }
+
+  th,
+  td {
+    padding: 2px 6px;
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  th {
+    color: m($gray-medium);
+    font-weight: normal;
+  }
+
+  td.lab-details-move {
+    font-weight: bold;
+    text-align: left;
+  }
+}
+
 .computer-analysis {
   display: flex;
   flex-direction: column;
