@@ -321,6 +321,124 @@ p.streak-loss {
   }
 }
 
+// The analyzer lab, for whoever has turned it on (analyzer_lab.ts).
+.analyzer-controls .lab-controls {
+  align-items: center;
+  display: inline-flex;
+  gap: 4px;
+  margin-right: 8px;
+
+  // Small circles, on or off: the page's own button rules make every circle
+  // 32px tall and give a filled button margins of its own.
+  button.ant-btn-circle.ant-btn-sm {
+    height: 24px;
+    margin: 0;
+  }
+}
+
+// The card colors its header's icon buttons for a filled button; these are
+// outlined until on.
+.game-container
+  .analyzer-card
+  .ant-card-extra
+  .lab-controls
+  button.ant-btn-icon-only.ant-btn-default {
+  border-color: m($gray-subtle);
+  color: m($gray-medium);
+}
+
+// While a panel is open, the card is no shorter than its own height and as
+// tall as what it shows needs, up to the room the panel gives it (useLabRoom,
+// analyzer_lab_panels.tsx), past which the panel scrolls.
+.game-container .analyzer-card .ant-card-body.lab-room {
+  height: auto;
+  min-height: var(--lab-own);
+
+  .analyzer-container .suggestions {
+    max-height: var(--lab-room);
+  }
+
+  // grown to the window's bottom as well (grow_to_window_bottom.ts), the
+  // larger room of the two
+  &.grow-to-bottom .analyzer-container .suggestions {
+    max-height: max(var(--lab-room), var(--grow-room));
+  }
+}
+
+.analyzer-container .suggestions .lab-panel {
+  // at the top of what holds it, and as wide, where the score card, turned to
+  // the analyzer, centers what it holds: a panel taller than that scrolls
+  // from its head
+  align-self: flex-start;
+  width: 100%;
+
+  .lab-head {
+    align-items: center;
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 12px;
+  }
+
+  .lab-buttons button.ant-btn-circle.ant-btn-sm {
+    height: 24px;
+    margin: 0 0 0 6px;
+  }
+
+  .lab-status {
+    overflow-wrap: anywhere;
+    padding: 0 12px 6px;
+    text-align: left;
+  }
+
+  // The lab's rows hold more columns than the analyzer's, so they sit closer.
+  th,
+  td {
+    padding-left: 2px;
+    padding-right: 2px;
+
+    &:first-child {
+      padding-left: 12px;
+    }
+
+    &:last-child {
+      padding-right: 12px;
+    }
+  }
+
+  // the columns' names, which are no move to click
+  thead tr {
+    cursor: default;
+
+    &:hover {
+      background-color: transparent;
+    }
+  }
+
+  th {
+    color: m($gray-medium);
+    font-weight: normal;
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  td.move {
+    min-width: 0;
+  }
+
+  td.move-equity {
+    width: auto;
+  }
+
+  tr.lab-pruned td {
+    color: m($gray-medium);
+  }
+
+  td.lab-bingo,
+  td.lab-n {
+    text-align: right;
+  }
+}
+
 .computer-analysis {
   display: flex;
   flex-direction: column;
