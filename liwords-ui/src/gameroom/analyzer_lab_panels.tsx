@@ -17,6 +17,7 @@ import {
   Tooltip,
 } from "antd";
 import {
+  BorderInnerOutlined,
   CaretRightOutlined,
   CloseOutlined,
   ExperimentOutlined,
@@ -78,6 +79,7 @@ import {
   simOrder,
   unseenBy,
 } from "./analyzer_lab";
+import { LabHooks, publishLabHooks } from "./lab_hooks";
 
 export type LabView = "sim" | "endgame";
 
@@ -2095,12 +2097,23 @@ const TopMovesButton = (props: TopMovesButtonProps) => {
 type LabButtonsProps = {
   view: LabView | null;
   setView: (view: LabView | null) => void;
+  hooks: boolean;
+  setHooks: (hooks: boolean) => void;
 };
 
 export const LabButtons = (props: LabButtonsProps) => {
-  const { view, setView } = props;
+  const { view, setView, hooks, setHooks } = props;
   return (
     <span className="lab-controls">
+      <Tooltip title="Hooks: across on top, down below">
+        <Button
+          shape="circle"
+          size="small"
+          icon={<BorderInnerOutlined />}
+          type={hooks ? "primary" : "default"}
+          onClick={() => setHooks(!hooks)}
+        />
+      </Tooltip>
       <Tooltip title="Sim these moves">
         <Button
           shape="circle"
@@ -2121,4 +2134,59 @@ export const LabButtons = (props: LabButtonsProps) => {
       </Tooltip>
     </span>
   );
+};
+
+// Publish the examined position's hooks for the board to draw, while on.
+export const usePublishLabHooks = (lab: LabPosition | null, on: boolean) => {
+  const [publisher] = useState(() => Symbol("analyzer"));
+  const loadableKey = lab?.loadableKey;
+  const request =
+    on && lab
+      ? JSON.stringify({
+          board: lab.position.board,
+          lexicon: lab.position.lexicon,
+          rules: lab.position.rules,
+        })
+      : null;
+  const dim = lab?.dim ?? 0;
+  const alphabet = lab?.alphabet;
+  useEffect(() => {
+    if (!request || !loadableKey || !alphabet) {
+      publishLabHooks(publisher, null);
+      return;
+    }
+    let current = true;
+    (async () => {
+      try {
+        const wolges = await getWolges(loadableKey);
+        const answer: {
+          squares: Array<{
+            row: number;
+            col: number;
+            across: Array<number> | null;
+            down: Array<number> | null;
+          }>;
+        } = JSON.parse(await wolges.hooks(request));
+        if (!current) return;
+        const runes = (letters: Array<number> | null) =>
+          letters?.map((t) => machineLetterToRune(t, alphabet, false, true)) ??
+          null;
+        const squares: LabHooks["squares"] = new Array(dim * dim);
+        for (const s of answer.squares) {
+          squares[s.row * dim + s.col] = {
+            across: runes(s.across),
+            down: runes(s.down),
+          };
+        }
+        publishLabHooks(publisher, { dim, squares });
+      } catch (e) {
+        console.error("hooks failed", e);
+        if (current) publishLabHooks(publisher, null);
+      }
+    })();
+    return () => {
+      current = false;
+    };
+  }, [publisher, request, loadableKey, dim, alphabet]);
+  useEffect(() => () => publishLabHooks(publisher, null), [publisher]);
 };
