@@ -1563,6 +1563,89 @@ describe("the sim panel", () => {
       click.mockRestore();
     }
   });
+
+  // The unpruned box in the settings, set so and applied.
+  const setUnpruned = (unpruned: boolean) => {
+    act(() => screen.getByRole("button", { name: "Sim settings" }).click());
+    const box = screen.getByRole("checkbox", { name: /Unpruned/ });
+    if ((box as HTMLInputElement).checked !== unpruned) {
+      act(() => box.click());
+    }
+    act(() => screen.getByRole("button", { name: "Apply" }).click());
+  };
+
+  it("sims even one move unpruned, each candidate rolled out until stopped", async () => {
+    render(
+      <Store>
+        <Sim lab={midgame()} moves={[listed(ba)]} />
+      </Store>,
+    );
+    expect(
+      screen.getByText("Needs two or more moves to sim."),
+    ).toBeInTheDocument();
+    setUnpruned(true);
+    expect(
+      screen.getByText("Static equity until the sim starts."),
+    ).toBeInTheDocument();
+    await start();
+    expect(lab.calls.find((c) => c.op === "run")?.args).toEqual({
+      job: 1,
+      ms: 8,
+      prune: false,
+    });
+    emit({
+      job: 1,
+      answer: { iterations: 32, candidates: [candidate(ba, 0.5)] },
+      done: false,
+    });
+    expect(
+      screen.getByText("32 iterations after 0 s, 1 running; 1 ply; unpruned"),
+    ).toBeInTheDocument();
+  });
+
+  it("applies unpruned, or not, to the sim made, keeping its rollouts", async () => {
+    render(
+      <Store>
+        <Sim lab={midgame()} moves={[listed(ba), listed(ab)]} />
+      </Store>,
+    );
+    await start();
+    emit({
+      job: 1,
+      answer: {
+        iterations: 64,
+        candidates: [
+          candidate(ba, 0.9, { n: 64 }),
+          candidate(ab, 0.1, { n: 48, state: "pruned" }),
+        ],
+      },
+      done: true,
+    });
+    expect(screen.getByRole("button", { name: "Resume" })).toBeDisabled();
+    setUnpruned(true);
+    // the sim made stays, with more to do now
+    expect(
+      screen.getByText(
+        "64 iterations after 0 s, 1 running, stopped; 1 ply; unpruned",
+      ),
+    ).toBeInTheDocument();
+    expect(lab.calls.some((c) => c.op === "free")).toBe(false);
+    act(() => screen.getByRole("button", { name: "Resume" }).click());
+    await waitFor(() =>
+      expect(lab.calls[lab.calls.length - 1]).toEqual({
+        op: "run",
+        args: { job: 1, ms: 8, prune: false },
+      }),
+    );
+    // running, it takes the change from its next step on
+    setUnpruned(false);
+    await waitFor(() =>
+      expect(lab.calls[lab.calls.length - 1]).toEqual({
+        op: "run",
+        args: { job: 1, ms: 8 },
+      }),
+    );
+  });
 });
 
 describe("a panel's card", () => {

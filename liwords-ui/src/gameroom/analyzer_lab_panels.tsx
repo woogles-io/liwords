@@ -5,7 +5,15 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { Button, Input, InputNumber, Popconfirm, Popover, Tooltip } from "antd";
+import {
+  Button,
+  Checkbox,
+  Input,
+  InputNumber,
+  Popconfirm,
+  Popover,
+  Tooltip,
+} from "antd";
 import {
   CaretRightOutlined,
   CloseOutlined,
@@ -428,10 +436,15 @@ const DEFAULT_SIM_PLIES = 4;
 
 // What a sim is made with, as the user sets it: the plies each rollout plays,
 // and the tiles known to be on the opponent's rack, written as tiles are, a
-// blank as ?.
-export type SimSettings = { plies: number; known: string };
+// blank as ?; and whether it prunes none of its candidates, rolling each out
+// until stopped.
+export type SimSettings = { plies: number; known: string; unpruned: boolean };
 
-const defaultSimSettings: SimSettings = { plies: DEFAULT_SIM_PLIES, known: "" };
+const defaultSimSettings: SimSettings = {
+  plies: DEFAULT_SIM_PLIES,
+  known: "",
+  unpruned: false,
+};
 
 // The tiles written as known on the opponent's rack, or why they cannot be
 // there: each one a tile of the game, and all of them among the tiles unseen.
@@ -583,12 +596,12 @@ export const useLabSim = (
   };
 
   // Run the sim made on, each step as long as a frame.
-  const runOn = async (job: number) => {
+  const runOn = async (job: number, unpruned: boolean) => {
     const ms = await frameMs();
     setSim((s) => (s?.job === job ? { ...s, running: true, done: false } : s));
     labCall({
       op: "run",
-      args: { job, ms },
+      args: unpruned ? { job, ms, prune: false } : { job, ms },
     }).catch((e) =>
       setSim((s) =>
         s?.job === job ? { ...s, running: false, error: errorText(e) } : s,
@@ -596,19 +609,26 @@ export const useLabSim = (
     );
   };
 
-  // New settings are for the next sim made; the sim made goes, as its
-  // rollouts were made with the old ones.
+  // New plies or tiles are for the next sim made; the sim made goes, as its
+  // rollouts were made with the old ones. Whether it prunes applies to the
+  // sim made from its next step on.
   const changeSettings = (next: SimSettings) => {
     setSettings(next);
     setNote(undefined);
-    setSim(null);
+    if (next.plies !== settings.plies || next.known !== settings.known) {
+      setSim(null);
+    } else if (made && next.unpruned !== settings.unpruned) {
+      if (made.running) runOn(made.job, next.unpruned);
+      // done as it was pruning, it may have more to do now
+      else setSim((s) => (s?.job === made.job ? { ...s, done: false } : s));
+    }
   };
 
   // Run the sim made of this position on, or make one of the moves listed.
   const run = async () => {
     if (!lab) return;
     if (made) {
-      runOn(made.job);
+      runOn(made.job, settings.unpruned);
       return;
     }
     if (startingRef.current) return;
@@ -656,7 +676,7 @@ export const useLabSim = (
       });
       await labCall({
         op: "run",
-        args: { job, ms },
+        args: settings.unpruned ? { job, ms, prune: false } : { job, ms },
       });
     } catch (e) {
       setSim((s) => (s?.key === at ? { ...s, running: false } : s));
@@ -862,7 +882,7 @@ export const useLabSim = (
     ranMs,
     canRun: made
       ? !made.error && !made.done && runningCandidates > 0
-      : !over && !starting && candidates.length > 1,
+      : !over && !starting && candidates.length > (settings.unpruned ? 0 : 1),
     run,
     stop,
     add,
@@ -1115,7 +1135,9 @@ export const SimPanel = (props: SimPanelProps) => {
     status = "Starting...";
   } else if (moves == null) {
     status = "Analyzing...";
-  } else if (sim.candidates.length < 2) {
+  } else if (sim.settings.unpruned && sim.candidates.length === 0) {
+    status = "Needs a move to sim.";
+  } else if (!sim.settings.unpruned && sim.candidates.length < 2) {
     status = "Needs two or more moves to sim.";
   } else {
     status = "Static equity until the sim starts.";
@@ -1466,7 +1488,7 @@ const SimDetails = (props: SimDetailsProps) => {
 // What a sim was made with: the plies its rollouts play, as its answer has
 // them; then the other settings the user set.
 const settingsText = (settings: SimSettings, plies: number | undefined) =>
-  `${plies !== undefined ? `; ${plies} ${plies === 1 ? "ply" : "plies"}` : ""}${settings.known.trim() ? `; the opponent holds ${settings.known.trim().toUpperCase()}` : ""}`;
+  `${plies !== undefined ? `; ${plies} ${plies === 1 ? "ply" : "plies"}` : ""}${settings.known.trim() ? `; the opponent holds ${settings.known.trim().toUpperCase()}` : ""}${settings.unpruned ? "; unpruned" : ""}`;
 
 type SimSettingsButtonProps = {
   settings: SimSettings;
@@ -1475,17 +1497,23 @@ type SimSettingsButtonProps = {
 };
 
 // The plies a sim's rollouts play, never left unset, and the tiles known to
-// be on the opponent's rack, applied to the next sim made.
+// be on the opponent's rack, applied to the next sim made; and whether it
+// prunes, applied to the sim made as well.
 const SimSettingsButton = (props: SimSettingsButtonProps) => {
   const { settings, disabled, onChange } = props;
   const [open, setOpen] = useState(false);
   const [plies, setPlies] = useState<number | null>(settings.plies);
   const [known, setKnown] = useState(settings.known);
+  const [unpruned, setUnpruned] = useState(settings.unpruned);
   const apply = () => {
     if (plies === null) return;
     setOpen(false);
-    if (plies !== settings.plies || known !== settings.known) {
-      onChange({ plies, known });
+    if (
+      plies !== settings.plies ||
+      known !== settings.known ||
+      unpruned !== settings.unpruned
+    ) {
+      onChange({ plies, known, unpruned });
     }
   };
   return (
@@ -1496,6 +1524,7 @@ const SimSettingsButton = (props: SimSettingsButtonProps) => {
         if (o) {
           setPlies(settings.plies);
           setKnown(settings.known);
+          setUnpruned(settings.unpruned);
         }
       }}
       trigger="click"
@@ -1523,6 +1552,15 @@ const SimSettingsButton = (props: SimSettingsButtonProps) => {
               onPressEnter={apply}
             />
           </label>
+          <Checkbox
+            checked={unpruned}
+            onChange={(e) => setUnpruned(e.target.checked)}
+          >
+            Unpruned
+            <span className="lab-settings-note">
+              Each candidate rolls out until the sim is stopped.
+            </span>
+          </Checkbox>
           <Button
             size="small"
             type="primary"

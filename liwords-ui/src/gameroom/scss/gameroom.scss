@@ -503,6 +503,18 @@ p.streak-loss {
     flex-direction: column;
     gap: 2px;
   }
+
+  // a checkbox beside its name, with a note under the name
+  .ant-checkbox-wrapper {
+    align-items: flex-start;
+    flex-direction: row;
+
+    .lab-settings-note {
+      color: m($gray-medium);
+      display: block;
+      font-size: 12px;
+    }
+  }
 }
 
 // a sim's numbers in full: the candidates, then each ply of their rollouts

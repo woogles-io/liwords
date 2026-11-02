@@ -219,6 +219,28 @@ describe("the lab's worker", () => {
     expect(events().map((e) => e.done)).toEqual([false, true]);
   });
 
+  it("prunes none when told, rolling out while any candidate runs", async () => {
+    wasm.sim_step
+      .mockReturnValueOnce(simAnswer("running", "pruned", "pruned"))
+      .mockReturnValueOnce(simAnswer("paused", "pruned", "pruned"));
+    const { job } = (await send(1, "sim", { request: "{}", plays: "[]" }))
+      .result as { job: number };
+    await send(2, "run", { job, ms: 10, prune: false });
+    await vi.waitFor(() => expect(events().some((e) => e.done)).toBe(true));
+    expect(events().map((e) => e.done)).toEqual([false, true]);
+    expect(wasm.sim_step).toHaveBeenCalledWith(
+      9,
+      JSON.stringify({ ms: 10, prune: false }),
+    );
+    // and a read of it says so too
+    wasm.sim_step.mockReturnValueOnce(JSON.stringify({ candidates: [] }));
+    await send(3, "read", { job });
+    expect(wasm.sim_step).toHaveBeenLastCalledWith(
+      9,
+      JSON.stringify({ iterations: 0, prune: false }),
+    );
+  });
+
   it("analyzes a position, keeping the job held while its tables stay", async () => {
     const files = [
       { cacheKey: "kwg/CSW24", path: "/wasm/2024/CSW24.kwg" },
