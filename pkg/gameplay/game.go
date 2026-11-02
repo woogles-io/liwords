@@ -42,6 +42,8 @@ var (
 	errNotOnTurn          = errors.New("player not on turn")
 	errTimeDidntRunOut    = errors.New("got time ran out, but it did not actually")
 	errGameAlreadyStarted = errors.New("game already started")
+
+	errChallengeNotLastPlay = errors.New("only the last play can be challenged")
 )
 
 const (
@@ -333,6 +335,13 @@ func minusMLs(a, b []tilemapping.MachineLetter) []tilemapping.MachineLetter {
 	return a[:wa]
 }
 
+// lastEventIsPlay reports whether the last event in the history placed tiles,
+// which is the only thing a challenge can be made against.
+func lastEventIsPlay(h *macondopb.GameHistory) bool {
+	n := len(h.Events)
+	return n > 0 && h.Events[n-1].Type == macondopb.GameEvent_TILE_PLACEMENT_MOVE
+}
+
 func calculateReturnedTiles(cfg *config.Config, letdist string, playerRack string, lastEventRack string, lastEventTiles string) (string, error) {
 	dist, err := tilemapping.GetDistribution(cfg.WGLConfig(), letdist)
 	if err != nil {
@@ -432,6 +441,13 @@ func handleChallenge(ctx context.Context, entGame *entity.Game, stores *stores.S
 	if entGame.ChallengeRule() == macondopb.ChallengeRule_VOID {
 		// The front-end shouldn't even show the button.
 		return errors.New("challenges not acceptable in void")
+	}
+	// Only the play immediately before can be challenged. This can't be left to
+	// macondo: a game it rebuilds from history keeps the last play's words
+	// through a pass or an exchange, and every game is rebuilt on every event,
+	// so it would rule on a play from two turns ago.
+	if !lastEventIsPlay(entGame.Game.History()) {
+		return errChallengeNotLastPlay
 	}
 	numEvts := len(entGame.Game.History().Events)
 	// curTurn := entGame.Game.Turn()
