@@ -91,6 +91,16 @@ func RegisterUser(ctx context.Context, username string, password string, email s
 	}
 	email = strings.TrimSpace(email)
 
+	// Check for an existing account before hashing the password, which is the
+	// expensive part. Most failed sign-ups are for a taken username or email.
+	// The unique indexes below still catch a race.
+	if _, err := userStore.Get(ctx, username); err == nil {
+		return errors.New("That username has already been signed up, please log in")
+	}
+	if _, err := userStore.GetByEmail(ctx, email); err == nil {
+		return errors.New("That email address has already been signed up, please log in with your existing username")
+	}
+
 	config := auth.NewPasswordConfig(argonConfig.Time, argonConfig.Memory, argonConfig.Threads, argonConfig.Keylen)
 	hashPass, err := auth.GeneratePassword(config, password)
 	if err != nil {
