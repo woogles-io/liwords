@@ -3,7 +3,20 @@
 import {
   PairingMethod,
   RoundControl,
+  TournamentPerson,
 } from "../../gen/api/proto/ipc/tournament_pb";
+
+// Whether the method pairs without looking at results, so its rounds are
+// paired in advance. Mirrors pair.IsStandingsIndependent on the server.
+export const isPrePaired = (m: PairingMethod): boolean =>
+  m === PairingMethod.ROUND_ROBIN ||
+  m === PairingMethod.TEAM_ROUND_ROBIN ||
+  m === PairingMethod.INTERLEAVED_ROUND_ROBIN ||
+  m === PairingMethod.SNAKED_ROUND_ROBIN ||
+  m === PairingMethod.ASSIGNED_TEAM_ROUND_ROBIN ||
+  m === PairingMethod.RANDOM ||
+  m === PairingMethod.INITIAL_FONTES ||
+  m === PairingMethod.MANUAL;
 
 export type RoundSetting = {
   beginRound: number;
@@ -92,8 +105,8 @@ export const fieldsForMethod = (
       fields.push([
         "number",
         "gamesPerRound",
-        "Games per Round",
-        "The number of games per round. For example, set this to two if you wish each team member to play the other team member twice.",
+        "Rounds per opponent",
+        "How many rounds in a row each player plays the same opponent. With 2, everyone plays each opponent twice, back to back, going first once each.",
       ]);
       break;
 
@@ -142,4 +155,47 @@ export const fieldsForMethod = (
   }
 
   return fields;
+};
+
+// The division's team names, most players first.
+export const teamNames = (players: TournamentPerson[]): string[] => {
+  const counts = new Map<string, number>();
+  for (const p of players) {
+    if (p.team) {
+      counts.set(p.team, (counts.get(p.team) ?? 0) + 1);
+    }
+  }
+  return [...counts.keys()].sort(
+    (a, b) => counts.get(b)! - counts.get(a)! || a.localeCompare(b),
+  );
+};
+
+// Why the players can't play a Team Round Robin, which needs every player on
+// one of exactly two teams, or undefined if they can. Lists the teams, so a
+// misspelled team name stands out.
+export const assignedTeamsProblem = (
+  players: TournamentPerson[],
+): string | undefined => {
+  const active = players.filter((p) => !p.suspended);
+  const names = teamNames(active);
+  const noTeam = active.filter((p) => !p.team).length;
+  if (names.length === 2 && noTeam === 0) {
+    return undefined;
+  }
+  const parts = names.map((t) => {
+    const n = active.filter((p) => p.team === t).length;
+    return `${t} (${n} ${n === 1 ? "player" : "players"})`;
+  });
+  if (noTeam > 0) {
+    parts.push(
+      `${noTeam} ${noTeam === 1 ? "player" : "players"} without a team`,
+    );
+  }
+  return [
+    "The Team Round Robin needs every player on one of exactly two teams.",
+    parts.length ? `This division has ${parts.join(", ")}.` : "",
+    "Fix teams in Edit player.",
+  ]
+    .filter(Boolean)
+    .join(" ");
 };

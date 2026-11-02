@@ -6,6 +6,7 @@ import { Modal } from "../../../utils/focus_modal";
 import {
   PairingMethod,
   RoundControl,
+  TournamentPerson,
 } from "../../../gen/api/proto/ipc/tournament_pb";
 import { HelptipLabel } from "../helptip_label";
 
@@ -19,6 +20,8 @@ export type SingleRdCtrlFieldsProps = {
   beginRound?: number;
   endRound?: number;
   totalRounds?: number;
+  // The division's players, to check its teams.
+  players?: TournamentPerson[];
 };
 
 // Get default COP values

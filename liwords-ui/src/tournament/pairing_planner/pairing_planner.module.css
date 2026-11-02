@@ -21,6 +21,18 @@
   white-space: nowrap;
 }
 
+/* A group's rows, tinted with --group-tint: stronger in light mode, where
+   the light colors are paler. */
+.groupTint {
+  background-color: color-mix(in srgb, var(--group-tint) 60%, transparent);
+}
+
+:global([data-mantine-color-scheme="dark"]) .groupTint {
+  background-color: color-mix(in srgb, var(--group-tint) 35%, transparent);
+}
+
+/* An outline rather than a fill, so it shows over the group tints. */
 .topGame {
-  background-color: var(--mantine-primary-color-light);
+  box-shadow: inset 0 0 0 2px var(--mantine-primary-color-filled);
+  font-weight: 700;
 }

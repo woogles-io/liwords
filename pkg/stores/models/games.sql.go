@@ -1463,6 +1463,58 @@ func (q *Queries) ListActiveGames(ctx context.Context) ([]ListActiveGamesRow, er
 	return items, nil
 }
 
+const listActiveRealTimeGamesForAdjudication = `-- name: ListActiveRealTimeGamesForAdjudication :many
+SELECT uuid, started, player_on_turn, timers, game_request, type, created_at, quickdata, tournament_id
+FROM games
+WHERE game_end_reason = 0 -- NONE (ongoing games)
+    AND COALESCE((game_request->>'game_mode')::int, 0) != 1 -- Exclude CORRESPONDENCE games
+ORDER BY id
+`
+
+type ListActiveRealTimeGamesForAdjudicationRow struct {
+	Uuid         pgtype.Text
+	Started      pgtype.Bool
+	PlayerOnTurn pgtype.Int4
+	Timers       entity.Timers
+	GameRequest  entity.GameRequest
+	Type         pgtype.Int4
+	CreatedAt    pgtype.Timestamptz
+	Quickdata    entity.Quickdata
+	TournamentID pgtype.Text
+}
+
+// Only what the adjudicator needs to decide whether an ongoing real-time game
+// has timed out or never started, so it does not have to load every game.
+func (q *Queries) ListActiveRealTimeGamesForAdjudication(ctx context.Context) ([]ListActiveRealTimeGamesForAdjudicationRow, error) {
+	rows, err := q.db.Query(ctx, listActiveRealTimeGamesForAdjudication)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListActiveRealTimeGamesForAdjudicationRow
+	for rows.Next() {
+		var i ListActiveRealTimeGamesForAdjudicationRow
+		if err := rows.Scan(
+			&i.Uuid,
+			&i.Started,
+			&i.PlayerOnTurn,
+			&i.Timers,
+			&i.GameRequest,
+			&i.Type,
+			&i.CreatedAt,
+			&i.Quickdata,
+			&i.TournamentID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listActiveRealtimeGamesWithBotOnTurn = `-- name: ListActiveRealtimeGamesWithBotOnTurn :many
 SELECT g.uuid
 FROM games g
@@ -1636,6 +1688,43 @@ ORDER BY g.uuid
 // ABORTED (5) is included: those games had real play and should be archived for audit.
 func (q *Queries) ListPendingArchival(ctx context.Context) ([]pgtype.Text, error) {
 	rows, err := q.db.Query(ctx, listPendingArchival)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []pgtype.Text
+	for rows.Next() {
+		var uuid pgtype.Text
+		if err := rows.Scan(&uuid); err != nil {
+			return nil, err
+		}
+		items = append(items, uuid)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listStalePendingArchival = `-- name: ListStalePendingArchival :many
+SELECT g.uuid FROM games g
+WHERE g.uuid IN (SELECT DISTINCT game_uuid FROM game_turns)
+  AND g.history_s3_key IS NULL
+  AND g.game_end_reason NOT IN (0, 7)
+  AND g.updated_at < $1
+ORDER BY g.uuid
+LIMIT $2
+`
+
+type ListStalePendingArchivalParams struct {
+	EndedBefore pgtype.Timestamptz
+	MaxGames    int32
+}
+
+// Like ListPendingArchival, but only games that ended before @ended_before:
+// a game that ended more recently may still have its archive upload running.
+func (q *Queries) ListStalePendingArchival(ctx context.Context, arg ListStalePendingArchivalParams) ([]pgtype.Text, error) {
+	rows, err := q.db.Query(ctx, listStalePendingArchival, arg.EndedBefore, arg.MaxGames)
 	if err != nil {
 		return nil, err
 	}

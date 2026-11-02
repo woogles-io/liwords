@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/domino14/macondo/game"
@@ -225,7 +224,6 @@ func (g *GameRequest) Scan(value interface{}) error {
 // and we should save most of the included fields here, especially the
 // macondo.game.History (which can be exported as GCG, etc in the future)
 type Game struct {
-	sync.RWMutex
 	game.Game
 
 	DBID        uint
@@ -266,20 +264,11 @@ type Game struct {
 	// pendingTurns holds the game_turns rows for moves played into this game
 	// but not yet written. See StageTurns.
 	//
-	// Concurrency: exactly like every other mutable field here -- Timers,
-	// GameEndReason, MetaEvents -- callers hold the Game's write lock while the
-	// move path runs (HandleEvent takes it and defers Unlock across both the
-	// move and the save). It deliberately does NOT get a mutex of its own. The
-	// Game's own RWMutex cannot be reused, because it is already held and is
-	// not reentrant, and adding a second lock for one field would give the
-	// false impression that this field is guarded when its neighbours are not.
-	//
-	// The real fix is upstream: this mutex exists only because the LRU cache
-	// shares one *Game between goroutines. When the cache goes, each request
-	// loads its own game and there is nothing to guard. A pg advisory lock does
-	// not help here and never could -- it serializes writers across app
-	// servers, which is a different problem from two goroutines writing the
-	// same Go struct.
+	// Concurrency: none needed, like every other field here. Each request
+	// loads its own *Game and no other goroutine sees it; writers are kept
+	// apart by the game's database lock, taken before the load and released
+	// after the save (pkg/stores/game/lock.go). The Game used to carry a mutex
+	// because the LRU cache handed one *Game to every goroutine.
 	pendingTurns []PendingTurn
 }
 
@@ -430,19 +419,28 @@ func (g *Game) TimeRanOut(idx int) bool {
 	if g.Game.PlayerOnTurn() != idx {
 		return false
 	}
-	now := g.nower.Now()
+	var incrementSeconds int32
+	if g.GameReq != nil && g.GameReq.GameRequest != nil {
+		incrementSeconds = g.GameReq.IncrementSeconds
+	}
+	return g.Timers.RanOut(idx, incrementSeconds, g.nower.Now())
+}
 
+// RanOut reports whether player idx, who must be on turn, is out of time at
+// now (unix ms). Game.TimeRanOut decides with it, and so do the adjudicators,
+// from a games row without loading the game.
+func (t *Timers) RanOut(idx int, incrementSeconds int32, now int64) bool {
 	// For correspondence games with reset-to-increment, check time bank
-	if g.Timers.ResetToIncrementAfterTurn {
-		turnTime := now - g.Timers.TimeOfLastUpdate
-		allowedTime := int64(g.GameReq.IncrementSeconds) * 1000
+	if t.ResetToIncrementAfterTurn {
+		turnTime := now - t.TimeOfLastUpdate
+		allowedTime := int64(incrementSeconds) * 1000
 
 		if turnTime <= allowedTime {
 			return false // within allowed time
 		}
 
 		deficit := turnTime - allowedTime
-		if len(g.Timers.TimeBank) > idx && g.Timers.TimeBank[idx] >= deficit {
+		if len(t.TimeBank) > idx && t.TimeBank[idx] >= deficit {
 			return false // time bank covers it
 		}
 
@@ -451,8 +449,11 @@ func (g *Game) TimeRanOut(idx int) bool {
 	}
 
 	// For non-correspondence games, use simple MaxOvertime check
-	tr := g.Timers.TimeRemaining[idx] - int(now-g.Timers.TimeOfLastUpdate)
-	return tr < (-g.Timers.MaxOvertime * 60000)
+	if idx < 0 || idx >= len(t.TimeRemaining) {
+		return false
+	}
+	tr := t.TimeRemaining[idx] - int(now-t.TimeOfLastUpdate)
+	return tr < (-t.MaxOvertime * 60000)
 }
 
 func (g *Game) TimeStarted() int64 {

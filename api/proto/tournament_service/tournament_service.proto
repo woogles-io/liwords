@@ -352,6 +352,9 @@ message PreviewPairingsRequest {
   // last.
   int32 expected_players = 4;
   PlannerIntent intent = 5;
+  // For the Team Round Robin: how many rounds in a row each pair plays (its
+  // round controls' games_per_round). 0 means 1.
+  int32 rounds_per_opponent = 6;
 }
 
 message PreviewPlayer {

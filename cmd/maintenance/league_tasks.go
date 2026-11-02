@@ -68,6 +68,9 @@ func initLeagueStores(ctx context.Context, cfg *config.Config) (*stores.Stores, 
 		awscfg, awsErr := awsconfig.LoadDefaultConfig(ctx)
 		if awsErr != nil {
 			log.Warn().Err(awsErr).Msg("league-stores: aws-config-failed, game archival will be skipped")
+		} else if awscfg.Region == "" {
+			// Every upload would fail, so say so once rather than once per game.
+			log.Error().Msg("league-stores: AWS_REGION not set, game archival will be skipped")
 		} else {
 			s3Client := s3.NewFromConfig(awscfg, utilities.CustomClientOptions)
 			allStores.GameHistoryArchiver = gamestore.NewHistoryArchiver(bucket, s3Client, allStores.GameStore)
@@ -101,7 +104,8 @@ func parseLeagueSettings(settingsJSON []byte) (*pb.LeagueSettings, error) {
 func LeagueHourlyRunner() error {
 	log.Info().Msg("starting league hourly runner maintenance task")
 
-	ctx := context.Background()
+	// Adjudication logs through the context's logger, archive errors included.
+	ctx := log.Logger.WithContext(context.Background())
 	cfg := &config.Config{}
 	cfg.Load(nil)
 
@@ -159,6 +163,14 @@ func LeagueHourlyRunner() error {
 			Bool("seasonStarted", result.SeasonStarted).
 			Int("gamesCreated", result.GamesCreated).
 			Msg("✓ League lifecycle tasks completed")
+	}
+
+	// Adjudicated games upload their archives in the background; let them
+	// finish before the task exits.
+	if allStores.GameHistoryArchiver != nil {
+		if err := allStores.GameHistoryArchiver.Wait(ctx); err != nil {
+			log.Error().Err(err).Msg("archive-wait")
+		}
 	}
 
 	log.Info().Int("totalTasksRun", totalTasksRun).Msg("completed league hourly runner")

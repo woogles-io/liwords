@@ -313,6 +313,15 @@ WHERE game_end_reason = 0 -- NONE (ongoing games)
     AND COALESCE((game_request->>'game_mode')::int, 0) != 1 -- Exclude CORRESPONDENCE games
 ORDER BY id;
 
+-- name: ListActiveRealTimeGamesForAdjudication :many
+-- Only what the adjudicator needs to decide whether an ongoing real-time game
+-- has timed out or never started, so it does not have to load every game.
+SELECT uuid, started, player_on_turn, timers, game_request, type, created_at, quickdata, tournament_id
+FROM games
+WHERE game_end_reason = 0 -- NONE (ongoing games)
+    AND COALESCE((game_request->>'game_mode')::int, 0) != 1 -- Exclude CORRESPONDENCE games
+ORDER BY id;
+
 -- name: ListActiveTournamentGames :many
 SELECT quickdata, uuid, started, tournament_data, game_request, player_on_turn, league_id, season_id, league_division_id
 FROM games
@@ -485,6 +494,17 @@ JOIN game_turns gt ON gt.game_uuid = g.uuid
 WHERE g.history_s3_key IS NULL
   AND g.game_end_reason NOT IN (0, 7)
 ORDER BY g.uuid;
+
+-- name: ListStalePendingArchival :many
+-- Like ListPendingArchival, but only games that ended before @ended_before:
+-- a game that ended more recently may still have its archive upload running.
+SELECT g.uuid FROM games g
+WHERE g.uuid IN (SELECT DISTINCT game_uuid FROM game_turns)
+  AND g.history_s3_key IS NULL
+  AND g.game_end_reason NOT IN (0, 7)
+  AND g.updated_at < @ended_before
+ORDER BY g.uuid
+LIMIT @max_games;
 
 -- name: ListByteaBackfillBatch :many
 -- Finished games needing direct bytea→S3 archival (no game_turns assembly).

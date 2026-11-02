@@ -62,7 +62,8 @@ any of these, or it will be skipped.
 | 3 | `referee-split-3-shadows` | rewritten `-shadow-turns`, new `-shadow-turns-load`, `GetGameWithTurns`, archive-contract log, `cmd/profile-game-load` | none with flags off | `SHADOW_TURNS`, `SHADOW_TURNS_LOAD` |
 | 4 | `referee-split-4-atomic-save` | `StageTurns`; turn rows and the games row in one transaction; `CommitArchival` count check | **yes**: a failed `game_turns` write fails the move | none |
 | 5 | `referee-split-5-session-lock` | session advisory lock replaces the in-process mutex map | **yes**: DB round trip per move, holds a pool connection, `ErrGameLockBusy` | none |
-| 6 | `referee-split-6-no-cache` | remove the game LRU cache; automod `Classify` refactor and its tests (they replace a test that needs the cache) | **yes**: every load hits the DB | none |
+| 6a | `automod-classify` | automod `Classify` refactor and its tests, plus the gameplay automod gate tests; split out of 6 so 6 is only about the cache | none | none |
+| 6 | `referee-split-6-no-cache` | remove the game LRU cache and the game object's mutex; drop `TestNotoriety` | **yes**: every load hits the DB | none |
 | 7 | `referee-split-7-ongoing-games` | `ongoing_games` migration, queries, writer; mikado docs | none with the flag off | `WRITE_ONGOING_GAMES` |
 
 Step 1 was cut down on 2026-10-10. It used to carry #1975's automod changes;
@@ -82,9 +83,11 @@ are split by hunk; the step that finishes a file is in **bold**.
 | File | Steps |
 |---|---|
 | `.gitignore` | **1** |
-| `pkg/mod/automod.go` | **6**, without the verdict guard (deviation) |
-| `pkg/mod/classify_test.go`, `pkg/mod/automod_accumulation_test.go` | **6** |
-| `pkg/mod/automod_test.go` (deleted in reference) | **deleted in 6** |
+| `pkg/mod/automod.go` | **6a**, without the verdict guard (deviation) |
+| `pkg/mod/classify_test.go`, `pkg/mod/automod_accumulation_test.go` | **6a** |
+| `pkg/gameplay/automod_gate_test.go` | **6a** (new; not in the reference) |
+| `pkg/mod/automod_test.go` (trimmed to its shared helpers in the reference; `TestNotoriety` removed) | **6** |
+| `pkg/entity/game.go` (mutex removed) | **6** (deviation) |
 | `db/migrations/*_notoriousgames_unique.*` | **1**, comment rewritten (deviation) |
 | `db/migrations/*_automod_verdicts.*`, `db/queries/mod.sql`, `pkg/stores/mod/db.go`, `pkg/stores/models/mod.sql.go`, `pkg/mod/automod_apply_test.go` | never: dropped, see below |
 | `db/migrations/*_games_uuid_unique.*` | **1b** |
@@ -150,22 +153,35 @@ that removes it.
 
 ### Coverage the reference branch dropped
 
-The replacement automod tests (step 6) test `Classify` and the notoriety
-accumulation directly. Two things the deleted end-to-end test checked are not
-covered by them:
+The replacement automod tests test `Classify` and the notoriety accumulation
+directly. Two things the removed end-to-end test checked were not covered by
+them:
 
 - casual (unrated) games never reach automod. The gate is in
   `pkg/gameplay/end.go`.
 - `performEndgameDuties` calls automod at all.
 
-Before 6 merges, add a `pkg/gameplay` test for both, or accept the gap
-explicitly.
+Covered in 6a by `pkg/gameplay/automod_gate_test.go`: a rated game resigned
+without a play files `NO_PLAY`, a casual one files nothing. Removing the
+automod call fails the first; removing the rated-only check fails the second.
 
 ## Deliberate deviations
 
 Everything here differs from the reference on purpose. Each is its own commit,
 each file is listed in `ledger.sh` (as `DEVIATION` or `DROPPED`), and together
 they explain the whole final diff against the reference.
+
+### Tests that came to master after the reference (step 6)
+
+`pkg/mod/chat_review_db_test.go` arrived on master with #2083, after the
+reference. It used the `makeGame` and `playGame` helpers that the reference
+removes from `automod_test.go`, and it relied on the cache. `playGame` sets
+racks and a fake clock on the caller's `*entity.Game`, and the game started on
+a 1970 clock. Without the cache every move loads a fresh copy on the real
+clock, which sees the game's time long expired and refuses the move ("game is
+not currently active"). Step 6 keeps `makeGame` in `automod_test.go`, now
+starting games on the real clock, and drops `playGame`. The test ends its game
+by resigning and measures the recent-game window from the real end time.
 
 ### Deliberately dropped: automod idempotency (issue #2036)
 
@@ -203,7 +219,7 @@ What went where:
 | `automod_verdicts` table, queries, `RecordAutomodVerdict`, `automod_apply_test.go` | dropped (#2036) |
 | automod moved after the save (`end.go` hunks 3, 4) | dropped (#2036) |
 | `Classify` split out of `Automod`, `classify_test.go`, `automod_accumulation_test.go` | step 6, without the verdict guard. That is what replaces `TestNotoriety`, which stops working without the cache |
-| `pkg/mod/automod_test.go` deleted | step 6 |
+| `pkg/mod/automod_test.go` trimmed to its helpers | step 6 |
 | `models.go` `AutomodVerdict` struct | never generated |
 
 ### How step 6 keeps automod correct without the cache and without the table
@@ -211,7 +227,8 @@ What went where:
 1. **`TestNotoriety` is replaced, not fixed.** Bring #1975's `Classify`
    refactor and its two test files, minus `RecordAutomodVerdict` (the
    `NotorietyStore` method and the guard at the top of `updateNotoriety`).
-   Neither test file uses the guard. Then delete `automod_test.go`.
+   Neither test file uses the guard. Then trim `automod_test.go` to the
+   helpers the new tests share, as the reference does.
 2. **Ending a game twice stays prevented, by the lock.** With the cache gone,
    the protection is the game lock held from load to save (step 5): a second
    `TimedOut` waits for the first, reloads, and sees the game ended. That
@@ -355,6 +372,34 @@ stays intact, but the test fails on the duplicate-key error it logs. The same
 helper runs on one server: correspondence games fail the same way without the
 lock, since each load is a fresh copy; real-time games pass without it, because
 the cached object's own mutex serializes them -- until step 6.
+
+### No game mutex (step 6)
+
+The reference removes the LRU but keeps `entity.Game`'s embedded
+`sync.RWMutex` and every `g.Lock()`/`g.RLock()`. That mutex existed only
+because the cache handed one `*Game` to every goroutine; the reference's own
+comment on `pendingTurns` says so. With every load a private copy it guards
+nothing, and keeping it means every writer takes two locks for one job. Step 6
+removes the mutex and all its uses: the move paths (`HandleEvent`, `TimedOut`,
+`HandleMetaEvent`, `withLockedGame`, bot moves, ready), the read-only paths
+(`sendGameRefresher`, `adjudicateGames`' first pass) and the force-finish
+repair. Writers take the game's database lock only; readers take nothing.
+
+The never-started cancel in `adjudicateGames` becomes `cancelIfStillUnstarted`,
+which can defer its unlock because it returns after each game. Comments that
+described the cache (`cache.go`'s `Get`, `Set`, `Create`, `Unload`;
+`HandleEvent`; `end.go`; `adjudicateGames`) are corrected. Bot moves get a
+`bus.HandleBotMove` span so their lock spans have a parent.
+
+With the cache gone, `TestConcurrentMovesOnOneServerRealTime` fails without
+the lock like the other variants (240 duplicate turns over 3 runs), and
+`TestConcurrentMovesFromTwoServersRealTime` is added.
+
+Deviation from the reference: `pkg/entity/game.go`, `pkg/gameplay/game.go`,
+`pkg/gameplay/meta_events.go`, `pkg/stores/game/cache.go`, and further changes
+to `pkg/gameplay/end.go`, `pkg/bus/gameplay.go`,
+`pkg/league/force_finish_games.go`, `pkg/gameplay/end_lock_test.go` and
+`pkg/gameplay/concurrent_moves_test.go`.
 
 Deviation from the reference: `pkg/stores/game/lock.go`,
 `pkg/stores/game/lock_test.go`, `pkg/gameplay/concurrent_moves_test.go`, and
@@ -565,6 +610,13 @@ pkg/gameplay/concurrent_moves_test.go
 db/queries/game_lock.sql
 pkg/stores/models/game_lock.sql.go
 pkg/mod/automod.go
+pkg/gameplay/automod_gate_test.go
+pkg/entity/game.go
+pkg/mod/automod_test.go
+pkg/mod/chat_review_db_test.go
+pkg/gameplay/game.go
+pkg/gameplay/meta_events.go
+pkg/stores/game/cache.go
 pkg/stores/models/models.go
 db/migrations/202610090003_notoriousgames_unique.up.sql
 pkg/xwordgame/apply.go
@@ -692,9 +744,10 @@ Deployed column is the code.
 | 1b | `referee-split-1b-games-uuid` | #2027 | 2026-10-09 | store + gameplay ✅ | ✅ | ✅ 2026-10-10 (index built by hand first; schema `202610090004`) |
 | 2 | `referee-split-2-referee` | #2028 | 2026-10-10 (review fixes) | full suite ✅ (corpus tests skip) | ✅ | ✅ 2026-10-12 (`liwords-api:317`) |
 | 3 | `referee-split-3-shadows` | #2029 | 2026-10-10 | full suite ✅; gameplay with flags on, matches master | ✅ | ✅ 2026-10-12 (`liwords-api:317`, `SHADOW_TURNS` and `SHADOW_TURNS_LOAD` on) |
-| 4 | `referee-split-4-atomic-save` | #2053 | 2026-10-12 | full suite ✅; gameplay with flags on: no mismatches | ✅ 2026-10-22 | |
-| 5 | `referee-split-5-session-lock` | #2065 | 2026-10-22 | full suite ✅; gameplay with flags on: no mismatches; store, gameplay, league and bus ✅ on PostgreSQL 14.6, the production version | | |
-| 6 | `referee-split-6-no-cache` | | | | | |
+| 4 | `referee-split-4-atomic-save` | #2053 | 2026-10-12 | full suite ✅; gameplay with flags on: no mismatches | ✅ 2026-10-22 | ✅ 2026-10-22 (`liwords-api:319`; `:320` with #2066) |
+| 5 | `referee-split-5-session-lock` | #2065 | 2026-10-22 | full suite ✅; gameplay with flags on: no mismatches; store, gameplay, league and bus ✅ on PostgreSQL 14.6, the production version | ✅ 2026-10-24 | ✅ 2026-10-24 (`liwords-api:321`) |
+| 6a | `automod-classify` | #2090 | n/a (from the reference, minus the guard) | `pkg/mod`, `pkg/gameplay` ✅ | | |
+| 6 | `referee-split-6-no-cache` | | 2026-10-24 | full suite ✅ (`TestStandings` fails on master too); gameplay, bus, store, league, mod ✅ with `-race` | | |
 | 7 | `referee-split-7-ongoing-games` | | | | | |
 
 After the split (see "After the split"):

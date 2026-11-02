@@ -4,7 +4,7 @@ import {
   PlusOutlined,
   UpOutlined,
 } from "@ant-design/icons";
-import { Button, Divider, Form, Input, message } from "antd";
+import { Button, Checkbox, Divider, Form, Input, message } from "antd";
 import { Store } from "rc-field-form/lib/interface";
 import React, { useEffect } from "react";
 import { ConfigService } from "../gen/api/proto/config_service/config_service_pb";
@@ -81,6 +81,15 @@ export const AnnouncementEditor = () => {
                       rows={4}
                       placeholder="Body - you can use Markdown, but avoid links in here."
                     />
+                  </Form.Item>
+                  <Form.Item
+                    {...restField}
+                    name={[name, "pinned"]}
+                    valuePropName="checked"
+                    label="Pinned"
+                    tooltip="Pinned announcements are never replaced by new blog posts. Pin a blog post and put it above the auto-updated blog announcement to keep it at the top."
+                  >
+                    <Checkbox />
                   </Form.Item>
                   <Button
                     onClick={() => remove(name)}

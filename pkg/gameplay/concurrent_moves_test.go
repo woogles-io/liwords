@@ -67,6 +67,13 @@ func TestConcurrentMovesFromTwoServers(t *testing.T) {
 	contestedMoves(t, 2, pb.GameMode_CORRESPONDENCE)
 }
 
+// Real-time games across two servers. Before the game cache was removed,
+// each server kept its own copy of a real-time game, and the copies drifted
+// apart; now both load from the database like correspondence games.
+func TestConcurrentMovesFromTwoServersRealTime(t *testing.T) {
+	contestedMoves(t, 2, pb.GameMode_REAL_TIME)
+}
+
 // The same on one server. A correspondence game is still a fresh copy on every
 // load, so two goroutines on the same server are as independent as two
 // servers, and only the game lock keeps them apart.
@@ -74,10 +81,8 @@ func TestConcurrentMovesOnOneServerCorrespondence(t *testing.T) {
 	contestedMoves(t, 1, pb.GameMode_CORRESPONDENCE)
 }
 
-// A real-time game on one server, which is production today: the cache hands
-// both goroutines the same object, and that object's own mutex already keeps
-// them apart -- this passes with the game lock disabled. It becomes a test of
-// the game lock once the cache is gone and every load is a fresh copy.
+// A real-time game on one server. Every load is a fresh copy, so as with
+// correspondence games only the game lock keeps the two callers apart.
 func TestConcurrentMovesOnOneServerRealTime(t *testing.T) {
 	contestedMoves(t, 1, pb.GameMode_REAL_TIME)
 }
@@ -160,9 +165,7 @@ func contestedMoves(t *testing.T, servers int, mode pb.GameMode) {
 					results <- outcome{game: gi, round: r, errs: []string{err.Error()}}
 					return
 				}
-				g.RLock()
 				onTurn := g.Game.PlayerIDOnTurn()
-				g.RUnlock()
 				cge := &pb.ClientGameplayEvent{Type: pb.ClientGameplayEvent_PASS, GameId: gid}
 
 				// Both callers are released together.
@@ -212,10 +215,7 @@ func contestedMoves(t *testing.T, servers int, mode pb.GameMode) {
 		for _, st := range []*stores.Stores{storesA, storesB} {
 			g, err := st.GameStore.Get(ctx, gid)
 			is.NoErr(err)
-			g.RLock()
-			n := len(g.History().Events)
-			g.RUnlock()
-			is.Equal(n, rounds)
+			is.Equal(len(g.History().Events), rounds)
 		}
 		var rows int
 		is.NoErr(pool.QueryRow(ctx,

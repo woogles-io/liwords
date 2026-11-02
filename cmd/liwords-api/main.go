@@ -481,11 +481,6 @@ func main() {
 		return fmt.Sprintf("%d", runtime.NumGoroutine())
 	}))
 
-	expvar.Publish("gameCacheSize", expvar.Func(func() interface{} {
-		ct := stores.GameStore.CachedCount(context.Background())
-		return fmt.Sprintf("%d", ct)
-	}))
-
 	expvar.Publish("userCacheSize", expvar.Func(func() interface{} {
 		ct := stores.UserStore.CachedCount(context.Background())
 		return fmt.Sprintf("%d", ct)
@@ -556,6 +551,12 @@ func main() {
 		if err := srv.Shutdown(ctx); err != nil {
 			// Error from closing listeners, or context timeout:
 			log.Error().Msgf("HTTP server Shutdown: %v", err)
+		}
+		// Games that ended just before the signal may still be uploading.
+		if stores.GameHistoryArchiver != nil {
+			if err := stores.GameHistoryArchiver.Wait(ctx); err != nil {
+				log.Error().Err(err).Msg("archive-wait-on-shutdown")
+			}
 		}
 		shutdownCancel()
 		pubsubCancel()

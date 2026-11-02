@@ -43,12 +43,10 @@ func TestAdjudicateLoadsTheGameInsideTheLock(t *testing.T) {
 	// The move in progress: a pass, played and saved under the lock.
 	mover, err := gs.stores.GameStore.Get(ctx, gid)
 	is.NoErr(err)
-	mover.Lock()
 	onTurn := mover.Game.PlayerOnTurn()
 	pass := move.NewPassMove(mover.Game.RackFor(onTurn).TilesOn(), mover.Game.Alphabet())
 	err = gameplay.PlayMove(ctx, mover, gs.stores, mover.Game.PlayerIDOnTurn(), onTurn,
 		mover.TimeRemaining(onTurn), pass)
-	mover.Unlock()
 	is.NoErr(err)
 	gameLock.Unlock(ctx)
 

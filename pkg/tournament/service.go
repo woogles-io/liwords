@@ -1118,11 +1118,12 @@ func (ts *TournamentService) PreviewPairings(ctx context.Context, req *connect.R
 	if err != nil {
 		return nil, err
 	}
-	if req.Msg.Rounds < 1 || req.Msg.Rounds > 50 || req.Msg.ExpectedPlayers > 200 {
-		return nil, apiserver.InvalidArg("pre-pair between 1 and 50 rounds, for at most 200 players")
+	if req.Msg.Rounds < 1 || req.Msg.Rounds > 50 || req.Msg.ExpectedPlayers > 200 ||
+		req.Msg.RoundsPerOpponent < 0 || req.Msg.RoundsPerOpponent > 10 {
+		return nil, apiserver.InvalidArg("pre-pair between 1 and 50 rounds, for at most 200 players, at most 10 rounds against each opponent")
 	}
 	resp, err := PreviewPairings(ctx, ts.tournamentStore, req.Msg.Id, req.Msg.Division, int(req.Msg.Rounds),
-		int(req.Msg.ExpectedPlayers), req.Msg.Intent)
+		int(req.Msg.ExpectedPlayers), req.Msg.Intent, int(req.Msg.RoundsPerOpponent))
 	if err != nil {
 		return nil, apiserver.InvalidArg(err.Error())
 	}

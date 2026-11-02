@@ -3,9 +3,17 @@ import { describe, expect, it } from "vitest";
 import {
   PairingMethod,
   RoundControlSchema,
+  TournamentPersonSchema,
 } from "../../../gen/api/proto/ipc/tournament_pb";
-import { fieldsForMethod, settingsEqual } from "../pairing_methods";
 import {
+  assignedTeamsProblem,
+  fieldsForMethod,
+  isPrePaired,
+  settingsEqual,
+  teamNames,
+} from "../pairing_methods";
+import {
+  pairingLagAppliesTo,
   pairingLagDisabledReason,
   rdCtrlFromSetting,
 } from "./round_control_fields";
@@ -55,29 +63,29 @@ describe("the pairing lag of a round control", () => {
     );
   });
 
-  it("is not allowed on the first round", () => {
-    expect(() => rdCtrlFromSetting(setting({ pairingLag: 1 }), 7, 1)).toThrow(
-      /first round cannot be lagged/,
+  it("is left off the first round", () => {
+    expect(rdCtrlFromSetting(setting({ pairingLag: 1 }), 7, 1).pairingLag).toBe(
+      0,
     );
   });
 
-  it("is not allowed on an elimination round", () => {
-    expect(() =>
+  it("is left off an elimination round", () => {
+    expect(
       rdCtrlFromSetting(
         setting({ pairingMethod: PairingMethod.ELIMINATION, pairingLag: 1 }),
         7,
         5,
-      ),
-    ).toThrow(/Elimination rounds cannot be lagged/);
+      ).pairingLag,
+    ).toBe(0);
   });
 
-  it("is not allowed on a COP round in the last two rounds", () => {
+  it("is left off COP's last two rounds", () => {
     const cop = setting({
       pairingMethod: PairingMethod.PAIRING_METHOD_COP,
       pairingLag: 1,
     });
-    expect(() => rdCtrlFromSetting(cop, 7, 6)).toThrow(/COP rounds/);
-    expect(() => rdCtrlFromSetting(cop, 7, 7)).toThrow(/COP rounds/);
+    expect(rdCtrlFromSetting(cop, 7, 6).pairingLag).toBe(0);
+    expect(rdCtrlFromSetting(cop, 7, 7).pairingLag).toBe(0);
     expect(rdCtrlFromSetting(cop, 7, 5).pairingLag).toBe(1);
   });
 
@@ -98,15 +106,38 @@ describe("the pairing lag of a round control", () => {
     expect(rdCtrlFromSetting(audraw, 7, 5).pairingLag).toBe(1);
   });
 
-  it("explains a range that starts with the first round", () => {
-    expect(pairingLagDisabledReason(PairingMethod.SWISS, 1, 3, 7)).toMatch(
-      /first round/,
+  it("is allowed on a range that starts with the first round", () => {
+    expect(
+      pairingLagDisabledReason(PairingMethod.SWISS, 1, 3, 7),
+    ).toBeUndefined();
+    expect(pairingLagAppliesTo(PairingMethod.INITIAL_FONTES, 1, 6, 16)).toBe(
+      "This applies to rounds 2–6: round 1 has no round before it.",
     );
   });
 
-  it("explains a COP range that reaches the last two rounds", () => {
+  it("explains a range that is only the first round", () => {
+    expect(pairingLagDisabledReason(PairingMethod.SWISS, 1, 1, 7)).toMatch(
+      /first round cannot be lagged/,
+    );
     expect(
-      pairingLagDisabledReason(PairingMethod.PAIRING_METHOD_COP, 5, 6, 7),
+      pairingLagDisabledReason(PairingMethod.INITIAL_FONTES, 1, 1, 7),
+    ).toMatch(/first round can't start early/);
+  });
+
+  it("says which rounds of a COP range it applies to", () => {
+    expect(
+      pairingLagAppliesTo(PairingMethod.PAIRING_METHOD_COP, 4, 16, 16),
+    ).toBe(
+      "This applies to rounds 4–14: COP's last two rounds use the previous round's results.",
+    );
+    expect(
+      pairingLagAppliesTo(PairingMethod.PAIRING_METHOD_COP, 4, 12, 16),
+    ).toBeUndefined();
+  });
+
+  it("explains a COP range that is only the last two rounds", () => {
+    expect(
+      pairingLagDisabledReason(PairingMethod.PAIRING_METHOD_COP, 6, 7, 7),
     ).toMatch(/COP rounds/);
     expect(
       pairingLagDisabledReason(PairingMethod.PAIRING_METHOD_COP, 4, 5, 7),
@@ -167,5 +198,69 @@ describe("a Win Groups round", () => {
       pairingLag: 1,
     });
     expect(rdCtrlFromSetting(wg, 7, 5).pairingLag).toBe(1);
+  });
+});
+
+describe("pre-paired methods", () => {
+  it("are the ones that don't pair from results", () => {
+    for (const m of [
+      PairingMethod.INITIAL_FONTES,
+      PairingMethod.ROUND_ROBIN,
+      PairingMethod.SNAKED_ROUND_ROBIN,
+      PairingMethod.ASSIGNED_TEAM_ROUND_ROBIN,
+      PairingMethod.MANUAL,
+    ]) {
+      expect(isPrePaired(m)).toBe(true);
+    }
+    for (const m of [
+      PairingMethod.PAIRING_METHOD_COP,
+      PairingMethod.SWISS,
+      PairingMethod.KING_OF_THE_HILL,
+      PairingMethod.WIN_GROUPS,
+      PairingMethod.AUSTRALIAN_DRAW,
+    ]) {
+      expect(isPrePaired(m)).toBe(false);
+    }
+  });
+});
+
+describe("assigned teams", () => {
+  const players = (...teams: string[]) =>
+    teams.map((team, i) =>
+      create(TournamentPersonSchema, { id: `u${i}:p${i}`, team }),
+    );
+
+  it("are fine on exactly two teams", () => {
+    expect(
+      assignedTeamsProblem(players("Portland", "Seattle", "Seattle")),
+    ).toBeUndefined();
+  });
+
+  it("list every team when there are more than two, to show typos", () => {
+    expect(
+      assignedTeamsProblem(
+        players("Portland", "Portland", "Seattle", "Seattle", "Seatte"),
+      ),
+    ).toBe(
+      "The Team Round Robin needs every player on one of exactly two teams. " +
+        "This division has Portland (2 players), Seattle (2 players), Seatte (1 player). " +
+        "Fix teams in Edit player.",
+    );
+  });
+
+  it("count players without a team", () => {
+    expect(assignedTeamsProblem(players("Portland", "Seattle", ""))).toBe(
+      "The Team Round Robin needs every player on one of exactly two teams. " +
+        "This division has Portland (1 player), Seattle (1 player), 1 player without a team. " +
+        "Fix teams in Edit player.",
+    );
+  });
+
+  it("are named most players first", () => {
+    expect(teamNames(players("B", "A", "A", "", "C", "B", "A"))).toEqual([
+      "A",
+      "B",
+      "C",
+    ]);
   });
 });
