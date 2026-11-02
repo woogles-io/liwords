@@ -102,3 +102,104 @@ func TestMarkOutcomes_ThreeDivisions(t *testing.T) {
 	is.Equal(div3Relegated, 0)
 	is.Equal(div3Stayed, 16)
 }
+
+// TestMarkOutcomes_TiesAtTheLines checks that players level on points and
+// spread share the better outcome at the promotion and relegation lines.
+func TestMarkOutcomes_TiesAtTheLines(t *testing.T) {
+	is := is.New(t)
+	sm := &StandingsManager{}
+
+	// 15 players in a middle division with PROMO_N_DIV_3: 5 up and 5 down,
+	// sorted as the standings are, by points and then spread.
+	records := []struct{ wins, losses, spread int }{
+		{11, 3, 605},
+		{9, 5, 694},
+		{9, 5, 347},
+		{9, 5, 319},
+		{8, 6, 186},
+		{8, 6, 186}, // level with 5th, across the promotion line
+		{7, 7, -131},
+		{7, 7, -200},
+		{6, 8, 165},
+		{6, 8, -18},
+		{6, 8, -18}, // level with 10th, across the relegation line
+		{5, 9, -192},
+		{4, 10, -729},
+		{4, 10, -729}, // level with 13th, both inside the relegation zone
+		{2, 12, -618},
+	}
+	standings := make([]PlayerStanding, len(records))
+	for i, r := range records {
+		standings[i] = PlayerStanding{
+			UserID: int32(i + 1),
+			Wins:   r.wins,
+			Losses: r.losses,
+			Spread: r.spread,
+		}
+	}
+	sm.markOutcomes(standings, 3, 5, pb.PromotionFormula_PROMO_N_DIV_3)
+
+	const (
+		up   = pb.StandingResult_RESULT_PROMOTED
+		stay = pb.StandingResult_RESULT_STAYED
+		down = pb.StandingResult_RESULT_RELEGATED
+	)
+	want := []pb.StandingResult{
+		up, up, up, up, up, up,
+		stay, stay, stay, stay, stay,
+		down, down, down, down,
+	}
+	for i, s := range standings {
+		is.Equal(s.Outcome, want[i]) // outcome at this position
+	}
+}
+
+// TestMarkOutcomes_ThreeWayTies checks that a tie of more than two shares the
+// better outcome whole: three level across the promotion line all go up, and
+// three level across the relegation line all stay.
+func TestMarkOutcomes_ThreeWayTies(t *testing.T) {
+	is := is.New(t)
+	sm := &StandingsManager{}
+
+	records := []struct{ wins, losses, spread int }{
+		{11, 3, 600},
+		{10, 4, 400},
+		{9, 5, 300},
+		{9, 5, 200},
+		{8, 6, 100},
+		{8, 6, 100},
+		{8, 6, 100}, // 5th to 7th level, across the promotion line
+		{7, 7, 50},
+		{7, 7, -10},
+		{6, 8, -20},
+		{6, 8, -20},
+		{6, 8, -20}, // 10th to 12th level, across the relegation line
+		{5, 9, -100},
+		{4, 10, -200},
+		{2, 12, -400},
+	}
+	standings := make([]PlayerStanding, len(records))
+	for i, r := range records {
+		standings[i] = PlayerStanding{
+			UserID: int32(i + 1),
+			Wins:   r.wins,
+			Losses: r.losses,
+			Spread: r.spread,
+		}
+	}
+	sm.markOutcomes(standings, 3, 5, pb.PromotionFormula_PROMO_N_DIV_3)
+
+	const (
+		up   = pb.StandingResult_RESULT_PROMOTED
+		stay = pb.StandingResult_RESULT_STAYED
+		down = pb.StandingResult_RESULT_RELEGATED
+	)
+	want := []pb.StandingResult{
+		up, up, up, up, up, up, up,
+		stay, stay, stay, stay, stay,
+		down, down, down,
+	}
+	for i, s := range standings {
+		is.Equal(s.Outcome, want[i]) // outcome at this position
+	}
+}
