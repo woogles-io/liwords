@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/matryer/is"
@@ -238,8 +239,10 @@ func TestDoubleChallengeBadWord(t *testing.T) {
 	gs.cancel()
 	<-gs.donechan
 	log.Info().Interface("evts", gs.consumer.evts).Msg("evts")
-	// evts: history, banjoer*, challenge, phony_tiles_returned
-	is.Equal(len(gs.consumer.evts), 4)
+	// evts: history, banjoer*, challenge, its line in the players' and the
+	// observers' chats (only with a Redis to store them in), and
+	// phony_tiles_returned
+	is.True(len(gs.consumer.evts) >= 4)
 	// get some fields to make sure the move was played properly.
 	evt := gs.consumer.evts[1].Event.(*pb.ServerGameplayEvent)
 	is.Equal(evt.Event.Score, int32(88))
@@ -247,7 +250,20 @@ func TestDoubleChallengeBadWord(t *testing.T) {
 	is.Equal(evt.TimeRemaining, int32((25*60000)+1250))
 	sge := gs.consumer.evts[2].Event.(*pb.ServerChallengeResultEvent)
 	is.Equal(sge.Valid, false)
-	evt = gs.consumer.evts[3].Event.(*pb.ServerGameplayEvent)
+	is.Equal(sge.PostedToChat, os.Getenv("REDIS_URL") != "")
+	rest := gs.consumer.evts[3:]
+	if sge.PostedToChat {
+		for _, channel := range []string{"chat.game.", "chat.gametv."} {
+			cm := rest[0].Event.(*pb.ChatMessage)
+			is.Equal(cm.Channel, channel+gs.g.GameID())
+			is.Equal(cm.UserId, "")
+			is.True(strings.HasPrefix(cm.Message,
+				"Play was challenged off the board! Returned tiles: "))
+			rest = rest[1:]
+		}
+	}
+	is.Equal(len(rest), 1)
+	evt = rest[0].Event.(*pb.ServerGameplayEvent)
 	is.Equal(evt.Event.LostScore, int32(88))
 	is.Equal(evt.Event.Type, macondopb.GameEvent_PHONY_TILES_RETURNED)
 	// Time remaining here is for the person who made the challenge.
@@ -481,8 +497,10 @@ func TestDoubleChallengeGoodWord(t *testing.T) {
 	gs.cancel()
 	<-gs.donechan
 	log.Info().Interface("evts", gs.consumer.evts).Msg("evts")
-	// evts: history, banjo, challenge, unsuccessful_chall_turn_loss
-	is.Equal(len(gs.consumer.evts), 4)
+	// evts: history, banjo, challenge, its line in the players' and the
+	// observers' chats (only with a Redis to store them in), and
+	// unsuccessful_chall_turn_loss
+	is.True(len(gs.consumer.evts) >= 4)
 	// get some fields to make sure the move was played properly.
 	evt := gs.consumer.evts[1].Event.(*pb.ServerGameplayEvent)
 	is.Equal(evt.Event.Score, int32(34))
@@ -490,7 +508,19 @@ func TestDoubleChallengeGoodWord(t *testing.T) {
 	is.Equal(evt.TimeRemaining, int32((25*60000)+1250))
 	sge := gs.consumer.evts[2].Event.(*pb.ServerChallengeResultEvent)
 	is.Equal(sge.Valid, true)
-	evt = gs.consumer.evts[3].Event.(*pb.ServerGameplayEvent)
+	is.Equal(sge.PostedToChat, os.Getenv("REDIS_URL") != "")
+	rest := gs.consumer.evts[3:]
+	if sge.PostedToChat {
+		for _, channel := range []string{"chat.game.", "chat.gametv."} {
+			cm := rest[0].Event.(*pb.ChatMessage)
+			is.Equal(cm.Channel, channel+gs.g.GameID())
+			is.Equal(cm.UserId, "")
+			is.Equal(cm.Message, "Challenged play was valid")
+			rest = rest[1:]
+		}
+	}
+	is.Equal(len(rest), 1)
+	evt = rest[0].Event.(*pb.ServerGameplayEvent)
 	is.Equal(evt.Event.Type, macondopb.GameEvent_UNSUCCESSFUL_CHALLENGE_TURN_LOSS)
 	// Time remaining here is for the person who made the challenge.
 	// They lose their turn but still get 5 seconds back.

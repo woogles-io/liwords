@@ -379,6 +379,54 @@ func calculateReturnedTiles(cfg *config.Config, letdist string, playerRack strin
 	return tilemapping.MachineWord(returnedMLs).UserVisible(dist.TileMapping()), nil
 }
 
+// challengeResultLine is the chat line for a challenge's result. A play
+// challenged off the board lists the tiles its player drew after it, which
+// go back to the bag, in machine letter order (calculateReturnedTiles sorts
+// them), so a blank comes first.
+func challengeResultLine(valid bool, returnedTiles string) string {
+	if valid {
+		return "Challenged play was valid"
+	}
+	if returnedTiles == "" {
+		return "Play was challenged off the board!"
+	}
+	return "Play was challenged off the board! Returned tiles: " + returnedTiles
+}
+
+type chatAdder interface {
+	AddChat(ctx context.Context, senderUsername, senderUID, msg, channel,
+		channelFriendly string, regulateChat bool) (*pb.ChatMessage, error)
+}
+
+// postChallengeResult stores a challenge's result line in both of the
+// game's chats, the players' and the observers', so it is still there when a
+// chat is loaded again. The line has no sender. It returns the events that
+// show the line to whoever is in the game now, and whether both lines were
+// stored. If one was not, no event goes out and the page shows the line on
+// its own, as it did before the server posted it.
+func postChallengeResult(ctx context.Context, chats chatAdder, gameID,
+	line string) ([]*entity.EventWrapper, bool) {
+	var evts []*entity.EventWrapper
+	for _, c := range []struct {
+		channel  string
+		audience entity.EventAudienceType
+	}{
+		{"chat.game." + gameID, entity.AudGame},
+		{"chat.gametv." + gameID, entity.AudGameTV},
+	} {
+		cm, err := chats.AddChat(ctx, "", "", line, c.channel, "", false)
+		if err != nil {
+			log.Err(err).Str("gameID", gameID).Str("channel", c.channel).
+				Msg("challenge-result-chat-error")
+			return nil, false
+		}
+		evt := entity.WrapEvent(cm, pb.MessageType_CHAT_MESSAGE)
+		evt.AddAudience(c.audience, gameID)
+		evts = append(evts, evt)
+	}
+	return evts, true
+}
+
 func handleChallenge(ctx context.Context, entGame *entity.Game, stores *stores.Stores,
 	timeRemaining int, challengerID string) error {
 	if entGame.ChallengeRule() == macondopb.ChallengeRule_VOID {
@@ -420,10 +468,16 @@ func handleChallenge(ctx context.Context, entGame *entity.Game, stores *stores.S
 		Challenger:    challengerID,
 		ReturnedTiles: returnedTiles,
 	}
+	var chatLines []*entity.EventWrapper
+	chatLines, resultEvent.PostedToChat = postChallengeResult(ctx, stores.ChatStore,
+		entGame.GameID(), challengeResultLine(valid, returnedTiles))
 	evt := entity.WrapEvent(resultEvent, pb.MessageType_SERVER_CHALLENGE_RESULT_EVENT)
 	evt.AddAudience(entity.AudGame, entGame.GameID())
 	evt.AddAudience(entity.AudGameTV, entGame.GameID())
 	entGame.SendChange(evt)
+	for _, line := range chatLines {
+		entGame.SendChange(line)
+	}
 
 	newEvts := entGame.Game.History().Events
 
