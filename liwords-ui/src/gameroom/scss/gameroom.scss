@@ -438,7 +438,8 @@ p.streak-loss {
     text-align: right;
   }
 
-  // a candidate's way out of the sim
+  // a candidate's pause or resume, and its way out of the sim
+  td.lab-hold,
   td.lab-remove {
     color: m($gray-medium);
     cursor: pointer;

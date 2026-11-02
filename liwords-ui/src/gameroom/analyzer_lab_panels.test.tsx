@@ -33,7 +33,7 @@ vi.mock("../wasm/lab", () => ({
       const plays = JSON.parse(request.args!.plays!) as Array<object>;
       return { job: 1, added: plays.map((play) => ({ play, was: "absent" })) };
     }
-    if (["add", "remove"].includes(request.op)) {
+    if (["add", "remove", "pause", "resume"].includes(request.op)) {
       const plays = JSON.parse(request.args!.plays!) as Array<object>;
       return plays.map((play) => ({ play, was: "absent" }));
     }
@@ -1160,6 +1160,90 @@ describe("the sim panel", () => {
     await waitFor(() => expect(bodyRows()).toHaveLength(4));
     expect(page.scored[1]).toEqual({ action: "exchange", tiles: [] });
     expect(bodyRows()).toContain("Pass+4.00");
+  });
+
+  it("pauses a candidate and resumes one", async () => {
+    render(
+      <Store>
+        <Sim lab={midgame()} moves={[listed(ba), listed(ab)]} />
+      </Store>,
+    );
+    await start();
+    emit({
+      job: 1,
+      answer: {
+        iterations: 32,
+        candidates: [
+          candidate(ba, 0.5),
+          candidate(ab, 0.4, { state: "pruned" }),
+        ],
+      },
+      done: false,
+    });
+    act(() => screen.getByRole("button", { name: "Pause candidate" }).click());
+    await waitFor(() =>
+      expect(lab.calls.some((c) => c.op === "pause")).toBe(true),
+    );
+    const paused = lab.calls.find((c) => c.op === "pause");
+    expect(JSON.parse((paused?.args as { plays: string }).plays)).toEqual([ba]);
+    act(() => screen.getByRole("button", { name: "Resume candidate" }).click());
+    await waitFor(() =>
+      expect(lab.calls.some((c) => c.op === "resume")).toBe(true),
+    );
+    const resumed = lab.calls.find((c) => c.op === "resume");
+    expect(JSON.parse((resumed?.args as { plays: string }).plays)).toEqual([
+      ab,
+    ]);
+    await waitFor(() =>
+      expect(lab.calls.filter((c) => c.op === "read")).toHaveLength(2),
+    );
+  });
+
+  it("pauses the candidate a touch began on, as its button showed then", async () => {
+    render(
+      <Store>
+        <Sim lab={midgame()} moves={[listed(ba), listed(ab)]} />
+      </Store>,
+    );
+    await start();
+    emit({
+      job: 1,
+      answer: {
+        iterations: 32,
+        candidates: [
+          candidate(ba, 0.5),
+          candidate(ab, 0.4, { state: "paused" }),
+        ],
+      },
+      done: false,
+    });
+    const pause = screen.getByRole("button", { name: "Pause candidate" });
+    fireEvent.pointerDown(pause, { pointerType: "touch" });
+    fireEvent.pointerUp(pause, { pointerType: "touch" });
+    // AB, paused, leads now: the button the touch began on shows its Resume
+    emit({
+      job: 1,
+      answer: {
+        iterations: 64,
+        candidates: [
+          candidate(ba, 0.3, { n: 64 }),
+          candidate(ab, 0.6, { n: 64, state: "paused" }),
+        ],
+      },
+      done: false,
+    });
+    expect(pause).toHaveAccessibleName("Resume candidate");
+    fireEvent.click(pause, { detail: 1 });
+    expect(
+      await screen.findByText(`Pause ${JSON.stringify(ba)}?`),
+    ).toBeInTheDocument();
+    reply("Pause");
+    await waitFor(() =>
+      expect(lab.calls.some((c) => c.op === "pause")).toBe(true),
+    );
+    const paused = lab.calls.find((c) => c.op === "pause");
+    expect(JSON.parse((paused?.args as { plays: string }).plays)).toEqual([ba]);
+    expect(lab.calls.some((c) => c.op === "resume")).toBe(false);
   });
 });
 

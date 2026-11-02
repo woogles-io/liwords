@@ -15,6 +15,8 @@ const wasm = vi.hoisted(() => ({
     ]),
   ),
   sim_remove: vi.fn(),
+  sim_pause: vi.fn(() => "[]"),
+  sim_resume: vi.fn(() => "[]"),
   sim_step: vi.fn(),
   sim_free: vi.fn(),
 }));
@@ -193,6 +195,27 @@ describe("the lab's worker", () => {
     expect((await send(5, "add", { job: job + 1, plays: "[]" })).error).toBe(
       "no such sim",
     );
+  });
+
+  it("pauses a sim's candidates and resumes them", async () => {
+    const { job } = (await send(1, "sim", { request: "{}", plays: "[]" }))
+      .result as { job: number };
+    const plays = JSON.stringify([{ action: "exchange", tiles: [] }]);
+    await send(2, "pause", { job, plays });
+    expect(wasm.sim_pause).toHaveBeenCalledWith(9, plays);
+    await send(3, "resume", { job, plays });
+    expect(wasm.sim_resume).toHaveBeenCalledWith(9, plays);
+  });
+
+  it("rolls one candidate out while the others are paused, and is done once none runs", async () => {
+    wasm.sim_step
+      .mockReturnValueOnce(simAnswer("running", "paused", "pruned"))
+      .mockReturnValueOnce(simAnswer("paused", "paused", "pruned"));
+    const { job } = (await send(1, "sim", { request: "{}", plays: "[]" }))
+      .result as { job: number };
+    await send(2, "run", { job, ms: 10 });
+    await vi.waitFor(() => expect(events().some((e) => e.done)).toBe(true));
+    expect(events().map((e) => e.done)).toEqual([false, true]);
   });
 
   it("stops stepping when told", async () => {

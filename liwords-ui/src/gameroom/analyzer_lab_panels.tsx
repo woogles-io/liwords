@@ -632,6 +632,26 @@ export const useLabSim = (
       );
   };
 
+  // Pause a candidate, keeping its rollouts, or roll a paused or pruned one out
+  // again from the sim's next iteration on.
+  const hold = (play: WasmPlay, paused: boolean) => {
+    if (!lab || !made) return;
+    const at = lab.key;
+    const { job } = made;
+    setNote(undefined);
+    labCall({
+      op: paused ? "pause" : "resume",
+      args: { job, plays: JSON.stringify([play]) },
+    })
+      .then(() => labCall({ op: "read", args: { job } }))
+      .catch((e) =>
+        setNote({
+          key: at,
+          text: `${paused ? "Not paused" : "Not resumed"}: ${errorText(e)}`,
+        }),
+      );
+  };
+
   // Add a move, checked and scored as the analyzer checks and scores the move
   // played, so that it shows at once with its static equity; a sim made of the
   // position rolls it out from its next iteration on.
@@ -734,6 +754,7 @@ export const useLabSim = (
     stop,
     add,
     remove,
+    hold,
   };
 };
 
@@ -948,6 +969,16 @@ export const SimPanel = (props: SimPanelProps) => {
     }
     if (asking && asking.key !== lab.key) stopAsking();
   });
+  // Pauses the candidate in a row, or resumes it, as its button showed when
+  // the press began.
+  const holdRow = (place: number, e: React.UIEvent) =>
+    actOn(
+      place,
+      "hold",
+      e,
+      (row) => (row.stat?.state === "running" ? "Pause" : "Resume"),
+      (row) => sim.hold(row.play, row.stat?.state === "running"),
+    );
   // The phony among the moves listed, which the sim leaves out.
   const phonies = over ? [] : (moves ?? []).filter((m) => !(m.valid ?? true));
 
@@ -1058,6 +1089,7 @@ export const SimPanel = (props: SimPanelProps) => {
               <th className="lab-n">
                 <ColumnName name="N" tip="Its rollouts" />
               </th>
+              <th className="lab-hold" />
               <th className="lab-remove" />
             </tr>
           </thead>
@@ -1103,6 +1135,26 @@ export const SimPanel = (props: SimPanelProps) => {
                 {stat?.n && stat.plies?.[0] ? percent(stat.plies[0].bingo) : ""}
               </td>
               <td className="lab-n">{stat?.n}</td>
+              <td className="lab-hold">
+                {stat &&
+                  (stat.state === "running" ? (
+                    <RowButton
+                      label="Pause candidate"
+                      tip="Pause"
+                      icon={PauseOutlined}
+                      onClick={(e) => holdRow(place, e)}
+                      asking={askingAt(place, "hold")}
+                    />
+                  ) : (
+                    <RowButton
+                      label="Resume candidate"
+                      tip="Resume"
+                      icon={CaretRightOutlined}
+                      onClick={(e) => holdRow(place, e)}
+                      asking={askingAt(place, "hold")}
+                    />
+                  ))}
+              </td>
               <td className="lab-remove">
                 {!fixed && (
                   <RowButton
