@@ -39,6 +39,7 @@ export const StandingsTab: React.FC<Props> = ({ players }) => {
           title: "#",
           dataIndex: "rank",
           key: "rank",
+          align: "right" as const,
           width: 40,
         },
         {
@@ -51,6 +52,7 @@ export const StandingsTab: React.FC<Props> = ({ players }) => {
           title: "Rating",
           dataIndex: "rating",
           key: "rating",
+          align: "right" as const,
           width: 70,
           sorter: (a, b) => a.rating - b.rating,
           render: (r: number) => r || "—",
@@ -71,6 +73,7 @@ export const StandingsTab: React.FC<Props> = ({ players }) => {
           title: "Spread",
           dataIndex: "spread",
           key: "spread",
+          align: "right" as const,
           width: 70,
           sorter: (a, b) => a.spread - b.spread,
           render: (s: number) => (s > 0 ? `+${s}` : s),
@@ -79,6 +82,7 @@ export const StandingsTab: React.FC<Props> = ({ players }) => {
           title: "GP",
           dataIndex: "gamesPlayed",
           key: "gamesPlayed",
+          align: "right" as const,
           width: 50,
         },
       ]}

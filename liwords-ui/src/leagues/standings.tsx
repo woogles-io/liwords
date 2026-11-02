@@ -20,6 +20,12 @@ import {
 import { SeasonRegistrationsResponse } from "../gen/api/proto/league_service/league_service_pb";
 import { trackMenuItem } from "./follow_bar";
 import { PlayerGameHistoryModal } from "./player_game_history_modal";
+import {
+  competitionRanksOf,
+  resultRowClass,
+  zoneRank,
+  zoneRowClass,
+} from "./standings_zones";
 import { DisplayUserTitle } from "../shared/display_title";
 import { UsernameWithContext } from "../shared/usernameWithContext";
 
@@ -150,17 +156,6 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
   const promotionCount = division.divisionNumber === 1 ? 0 : baseCount;
   const relegationCount =
     division.divisionNumber === totalDivisions ? 0 : baseCount;
-
-  const getRowClassName = (record: { rank: number }) => {
-    const rank = record.rank;
-    if (promotionCount > 0 && rank <= promotionCount) {
-      return "promotion-row";
-    }
-    if (relegationCount > 0 && rank > divisionSize - relegationCount) {
-      return "relegation-row";
-    }
-    return "";
-  };
 
   // Helper function to calculate average (returns "-" if no games played)
   const formatAvg = (total: number, gamesPlayed: number, decimals = 1) => {
@@ -322,30 +317,27 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
 
   // Compute competition ranks: tied players (same points + spread) share a rank.
   // dataSource is in server order (sorted by points desc, spread desc, username).
-  const competitionRanks = (() => {
-    const stats = dataSource.map((d) => ({
-      points: d.wins * 2 + d.draws,
-      spread: d.spread,
-    }));
-    const ranks: Array<{ rank: number; tied: boolean }> = [];
-    let currentRank = 1;
-    for (let i = 0; i < stats.length; i++) {
-      if (
-        i > 0 &&
-        (stats[i].points !== stats[i - 1].points ||
-          stats[i].spread !== stats[i - 1].spread)
-      ) {
-        currentRank = i + 1;
-      }
-      ranks.push({ rank: currentRank, tied: currentRank <= i });
-    }
-    for (let i = 1; i < ranks.length; i++) {
-      if (ranks[i].tied) ranks[i - 1].tied = true;
-    }
-    return ranks;
-  })();
+  const competitionRanks = competitionRanksOf(dataSource);
 
   const noGamesPlayed = dataSource.every((d) => d.gamesPlayed === 0);
+
+  // A closed season's rows take the zone of their stored result (see
+  // resultRowClass). Before that: once the division is finished, zones go by
+  // competition rank, as its outcomes do; until then by position (see
+  // zoneRank).
+  const getRowClassName = (record: {
+    rank: number;
+    result: StandingResult;
+  }) => {
+    const stored = resultRowClass(record.result);
+    if (stored !== null) return stored;
+    const idx = dataSource.findIndex((x) => x.rank === record.rank);
+    const rank =
+      idx < 0
+        ? record.rank
+        : zoneRank(record.rank, competitionRanks[idx].rank, divisionCompleted);
+    return zoneRowClass(rank, promotionCount, relegationCount, divisionSize);
+  };
   // April 1 easter egg: March 31 12:00 UTC - April 2 12:00 UTC (covers all timezones)
   const now = new Date();
   const y = now.getUTCFullYear();
@@ -548,6 +540,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
       title: <ColHeader title="Spr" tooltip="Cumulative spread" />,
       dataIndex: "spread",
       key: "spread",
+      align: "right" as const,
       width: 55,
       sorter: (a: StandingRecord, b: StandingRecord) => {
         if (a.spread < b.spread) return -1;
@@ -584,6 +577,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
         />
       ),
       key: "avgScore",
+      align: "right" as const,
       width: 50,
       sorter: (a: StandingRecord, b: StandingRecord) => {
         const avgA = a.gamesPlayed > 0 ? a.totalScore / a.gamesPlayed : 0;
@@ -602,6 +596,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
         <ColHeader title="OScAV" tooltip="Average opponent score per game" />
       ),
       key: "avgOppScore",
+      align: "right" as const,
       width: 55,
       sorter: (a: StandingRecord, b: StandingRecord) => {
         const avgA =
@@ -629,6 +624,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
         />
       ),
       key: "avgMistakeIndex",
+      align: "right" as const,
       width: 50,
       sorter: (a: StandingRecord, b: StandingRecord) => {
         // Players with no analysis sort to the bottom
@@ -655,6 +651,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
               />
             ),
             key: "avgOpponentMistakeIndex",
+            align: "right" as const,
             width: 50,
             sorter: (a: StandingRecord, b: StandingRecord) => {
               // Players with no analysis sort to the bottom
@@ -682,6 +679,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
         />
       ),
       key: "avgBingos",
+      align: "right" as const,
       width: 45,
       sorter: (a: StandingRecord, b: StandingRecord) => {
         const avgA = a.gamesPlayed > 0 ? a.totalBingos / a.gamesPlayed : 0;
@@ -700,6 +698,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
         <ColHeader title="OBAV" tooltip="Average opponent bingos per game" />
       ),
       key: "avgOppBingos",
+      align: "right" as const,
       width: 50,
       sorter: (a: StandingRecord, b: StandingRecord) => {
         const avgA =
@@ -723,6 +722,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
         />
       ),
       key: "turnAvg",
+      align: "right" as const,
       width: 45,
       sorter: (a: StandingRecord, b: StandingRecord) => {
         const avgA = a.totalTurns > 0 ? a.totalScore / a.totalTurns : 0;
@@ -747,6 +747,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
         />
       ),
       key: "highGame",
+      align: "right" as const,
       width: 45,
       sorter: (a: StandingRecord, b: StandingRecord) => a.highGame - b.highGame,
       sortDirections: ["descend", "ascend"] as SortOrder[],
@@ -764,6 +765,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
         />
       ),
       key: "highTurn",
+      align: "right" as const,
       width: 45,
       sorter: (a: StandingRecord, b: StandingRecord) => a.highTurn - b.highTurn,
       sortDirections: ["descend", "ascend"] as SortOrder[],
@@ -781,6 +783,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
         />
       ),
       key: "avgTiles",
+      align: "right" as const,
       width: 45,
       sorter: (a: StandingRecord, b: StandingRecord) => {
         const avgA = a.gamesPlayed > 0 ? a.totalTilesPlayed / a.gamesPlayed : 0;
@@ -802,6 +805,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
         />
       ),
       key: "avgOppTiles",
+      align: "right" as const,
       width: 50,
       sorter: (a: StandingRecord, b: StandingRecord) => {
         const avgA =
@@ -825,6 +829,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
         />
       ),
       key: "avgTurns",
+      align: "right" as const,
       width: 50,
       sorter: (a: StandingRecord, b: StandingRecord) => {
         const avgA = a.gamesPlayed > 0 ? a.totalTurns / a.gamesPlayed : 0;
@@ -846,6 +851,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
         />
       ),
       key: "avgBlanks",
+      align: "right" as const,
       width: 40,
       sorter: (a: StandingRecord, b: StandingRecord) => {
         const avgA = a.gamesPlayed > 0 ? a.blanksPlayed / a.gamesPlayed : 0;
@@ -864,6 +870,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
         <ColHeader title="W%" tooltip="Win percentage (draws count as half)" />
       ),
       key: "winPct",
+      align: "right" as const,
       width: 50,
       sorter: (a: StandingRecord, b: StandingRecord) => {
         const pctA =
@@ -898,6 +905,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
       ),
       dataIndex: "timeouts",
       key: "timeouts",
+      align: "right" as const,
       width: 40,
       sorter: (a: StandingRecord, b: StandingRecord) => a.timeouts - b.timeouts,
       sortDirections: ["descend", "ascend"] as SortOrder[],

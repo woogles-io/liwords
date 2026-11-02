@@ -315,12 +315,7 @@ const Board = React.memo((props: Props) => {
       onPointerCancel={onPointerUp}
     >
       <BoardCoordLabels gridDim={props.gridSize} flipped={flipped} />
-      <div
-        className="board-spaces-container"
-        id="board"
-        onMouseLeave={props.handleUnsetHover}
-        {...outerDivProps}
-      >
+      <div className="board-spaces-container" id="board" {...outerDivProps}>
         <BoardSpaces
           gridDim={props.gridSize}
           gridLayout={props.gridLayout}

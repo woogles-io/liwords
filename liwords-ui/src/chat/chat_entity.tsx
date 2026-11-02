@@ -36,6 +36,7 @@ type EntityProps = {
   sendMessage?: (uuid: string, username: string) => void;
   infoText?: string;
   onInfoTextClick?: (userId: string) => void;
+  first?: boolean;
 };
 
 const deleteMessage = (
@@ -102,7 +103,15 @@ export const ChatEntity = (props: EntityProps) => {
   if (props.highlight || fromMod || fromAdmin) {
     senderClass = "special-sender";
   }
-  switch (props.entityType) {
+  // A line the server posts in a channel, such as a challenged-off play's
+  // returned tiles, is kept like a message but has no sender.
+  const entityType =
+    props.entityType === ChatEntityType.UserChat &&
+    !props.senderId &&
+    !props.sender
+      ? ChatEntityType.ServerMsg
+      : props.entityType;
+  switch (entityType) {
     case ChatEntityType.ServerMsg:
       el = (
         <div>
@@ -124,6 +133,7 @@ export const ChatEntity = (props: EntityProps) => {
             <PlayerAvatar
               player={{
                 userId: props.senderId,
+                first: props.first,
               }}
               username={props.sender}
             />

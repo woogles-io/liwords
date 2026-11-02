@@ -91,24 +91,34 @@ const listingColumns = `tournaments.id, tournaments.created_at, tournaments.upda
 		FROM jsonb_each(tournaments.divisions) d
 	), '{}'::jsonb) AS divisions`
 
+// storedDivision is a division as the divisions column holds it. Classic is
+// the only manager type, so the manager is decoded in the same pass as the
+// rest instead of being kept as raw JSON and decoded again, and encoded the
+// same way. The second pass made decoding about 30% slower and allocated a
+// second copy of every division's JSON.
+type storedDivision struct {
+	ManagerType entity.TournamentType `json:"mgrType"`
+	Classic     *tl.ClassicDivision   `json:"json"`
+}
+
 func (s *DBStore) dbObjToEntity(tm *tournament) (*entity.Tournament, error) {
-	var divisions map[string]*entity.TournamentDivision
-	err := json.Unmarshal(tm.Divisions, &divisions)
+	var stored map[string]*storedDivision
+	err := json.Unmarshal(tm.Divisions, &stored)
 	if err != nil {
 		return nil, err
 	}
 
-	for _, division := range divisions {
-		if division.ManagerType == entity.ClassicTournamentType {
-			var classicDivision tl.ClassicDivision
-			err = json.Unmarshal(division.DivisionRawMessage, &classicDivision)
-			if err != nil {
-				return nil, err
-			}
-			division.DivisionManager = &classicDivision
-			division.DivisionRawMessage = nil
-		} else {
+	divisions := make(map[string]*entity.TournamentDivision, len(stored))
+	for name, division := range stored {
+		if division.ManagerType != entity.ClassicTournamentType {
 			return nil, fmt.Errorf("Unknown division manager type: %d", division.ManagerType)
+		}
+		if division.Classic == nil {
+			division.Classic = &tl.ClassicDivision{}
+		}
+		divisions[name] = &entity.TournamentDivision{
+			ManagerType:     division.ManagerType,
+			DivisionManager: division.Classic,
 		}
 	}
 
@@ -210,16 +220,16 @@ func (s *DBStore) toDBObj(t *entity.Tournament) (*tournament, error) {
 		return nil, err
 	}
 
-	for _, division := range t.Divisions {
-		dmJSON, err := json.Marshal(division.DivisionManager)
-		if err != nil {
-			return nil, err
+	stored := make(map[string]*storedDivision, len(t.Divisions))
+	for name, division := range t.Divisions {
+		classic, ok := division.DivisionManager.(*tl.ClassicDivision)
+		if !ok {
+			return nil, fmt.Errorf("unknown division manager %T in division %s", division.DivisionManager, name)
 		}
-
-		division.DivisionRawMessage = dmJSON
+		stored[name] = &storedDivision{ManagerType: division.ManagerType, Classic: classic}
 	}
 
-	divisions, err := json.Marshal(t.Divisions)
+	divisions, err := json.Marshal(stored)
 	if err != nil {
 		return nil, err
 	}

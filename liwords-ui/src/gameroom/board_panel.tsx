@@ -1397,6 +1397,7 @@ export const BoardPanel = React.memo((props: Props) => {
         tournamentSlug={props.tournamentSlug}
         tournamentPairedMode={props.tournamentPairedMode}
         isLeagueGame={!!props.leagueID}
+        examineInPlay={isCorrespondenceGame}
         lexicon={props.lexicon}
         challengeRule={props.challengeRule}
         setHandlePassShortcut={setHandlePassShortcut}

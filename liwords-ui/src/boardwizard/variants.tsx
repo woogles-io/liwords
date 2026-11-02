@@ -7,14 +7,16 @@ import { VariantIcon } from "../shared/variant_icons";
 
 // A new annotated game's rules for its lexicon and variant. The server sets
 // the board and tiles from the variant itself; these are the ones it picks:
-// ZOMGWords (classic_super) on the 21x21 board with the 200-tile English set.
+// a super variant, such as ZOMGWords (classic_super), on the 21x21 board
+// with the lexicon's 200-tile set, which the English and Catalan tiles have.
 export const annotatedGameRules = (lexicon: string, variant: string) => {
   const big = variant.endsWith("_super");
+  const letterDistribution = defaultLetterDistribution(lexicon);
   return create(GameRulesSchema, {
     boardLayoutName: big ? "SuperCrosswordGame" : "CrosswordGame",
     letterDistributionName: big
-      ? "english_super"
-      : defaultLetterDistribution(lexicon),
+      ? `${letterDistribution}_super`
+      : letterDistribution,
     variantName: variant,
   });
 };

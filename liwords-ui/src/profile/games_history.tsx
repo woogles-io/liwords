@@ -20,6 +20,7 @@ import { challengeRuleNamesShort } from "../constants/challenge_rules";
 import { GameEndReason } from "../gen/api/proto/ipc/omgwords_pb";
 import { ChallengeRule } from "../gen/api/proto/vendored/macondo/macondo_pb";
 import { lexiconCodeToProfileRatingName } from "../shared/lexica";
+import { AlignedScorePair } from "../shared/score_pair";
 import { ProfileTime } from "./profile_time";
 import { timestampDate } from "@bufbuild/protobuf/wkt";
 
@@ -95,7 +96,10 @@ export const GamesHistoryCard = React.memo((props: Props) => {
       );
       const scores = item.scores ? (
         <Link to={`/game/${encodeURIComponent(String(item.gameId ?? ""))}`}>
-          {item.scores[userplace]} - {item.scores[1 - userplace]}
+          <AlignedScorePair
+            first={item.scores[userplace]}
+            second={item.scores[1 - userplace]}
+          />
         </Link>
       ) : (
         ""

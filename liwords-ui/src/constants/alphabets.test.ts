@@ -1,6 +1,8 @@
 import {
   StandardCatalanAlphabet,
   StandardEnglishAlphabet,
+  SuperCatalanAlphabet,
+  alphabetFromName,
   runesToRuneArray,
   runesToMachineWord,
   machineWordToRunes,
@@ -75,4 +77,19 @@ it("test playedtiles through", () => {
   const arr = Array.from([1, 13 | 0x80, 0, 0, 10, 14, 10, 19 | 0x80, 6, 0]);
   expect(machineWordToRunes(arr, alphabet, true)).toEqual("Al·l..IMIquE.");
   expect(runesToMachineWord("Al·l..IMIquE.", alphabet)).toEqual(arr);
+});
+
+it("has the super Catalan set: the Catalan letters, 200 of them", () => {
+  const letters = SuperCatalanAlphabet.letters;
+  expect(letters.map((l) => l.rune)).toEqual(
+    StandardCatalanAlphabet.letters.map((l) => l.rune),
+  );
+  expect(letters.reduce((n, l) => n + l.count, 0)).toBe(200);
+  // the cedilla C and the geminated L score more than in the Catalan set
+  const score = (rune: string) => SuperCatalanAlphabet.letterMap[rune].score;
+  expect([score("Ç"), score("L·L"), score("NY")]).toEqual([12, 15, 10]);
+  expect(alphabetFromName("catalan_super")).toBe(SuperCatalanAlphabet);
+  expect(runesToMachineWord("AL·LOQUIMIQUES", SuperCatalanAlphabet)).toEqual(
+    runesToMachineWord("AL·LOQUIMIQUES", StandardCatalanAlphabet),
+  );
 });

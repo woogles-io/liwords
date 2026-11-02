@@ -43,6 +43,7 @@ import { useLoginStateStoreContext } from "../store/store";
 import { hasPermission, Perm } from "../mod/perms";
 import { BroadcastDirectorPanel } from "./BroadcastDirectorPanel";
 import { BroadcastAnnotatorPanel } from "./BroadcastAnnotatorPanel";
+import { AlignedScorePair } from "../shared/score_pair";
 import { flashError } from "../utils/hooks/connect";
 import { useQueryClient } from "@tanstack/react-query";
 import { StandingsTab } from "./tabs/StandingsTab";
@@ -331,7 +332,10 @@ export const BroadcastRoom: React.FC = () => {
         }
         return (
           <span>
-            {row.player1Score} – {row.player2Score}
+            <AlignedScorePair
+              first={row.player1Score}
+              second={row.player2Score}
+            />
             {row.scoresFinalized && (
               <Tag color="green" style={{ marginLeft: 6 }}>
                 Final

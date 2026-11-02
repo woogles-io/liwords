@@ -333,6 +333,9 @@ message ServerChallengeResultEvent {
   string                challenger     = 2;
   macondo.ChallengeRule challenge_rule = 3;
   string                returned_tiles = 4;
+  // The server has posted this result as a line in the game's chats, where
+  // it stays, so the page does not add a line of its own.
+  bool                  posted_to_chat = 5;
 }
 
 message OMGWordsChallengeResultEvent {
