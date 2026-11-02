@@ -5,15 +5,20 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { Button, Popconfirm, Tooltip } from "antd";
+import { Button, Popconfirm, Popover, Tooltip } from "antd";
 import {
   CaretRightOutlined,
   CloseOutlined,
   ExperimentOutlined,
   PauseOutlined,
   PlusOutlined,
+  SwapOutlined,
 } from "@ant-design/icons";
-import { Alphabet, machineWordToRunes } from "../constants/alphabets";
+import {
+  Alphabet,
+  machineLetterToRune,
+  machineWordToRunes,
+} from "../constants/alphabets";
 import {
   ChallengeRule,
   GameEvent_Type,
@@ -986,16 +991,24 @@ export const SimPanel = (props: SimPanelProps) => {
       resume={sim.run}
       onClose={onClose}
       buttons={
-        <Tooltip title="Add the move placed on the board">
-          <Button
-            shape="circle"
-            size="small"
-            icon={<PlusOutlined />}
-            aria-label="Add"
-            disabled={!placed || over || fixed}
-            onClick={() => placed && sim.add(placed)}
+        <React.Fragment>
+          <Tooltip title="Add the move placed on the board">
+            <Button
+              shape="circle"
+              size="small"
+              icon={<PlusOutlined />}
+              aria-label="Add"
+              disabled={!placed || over || fixed}
+              onClick={() => placed && sim.add(placed)}
+            />
+          </Tooltip>
+          <ExchangeButton
+            rack={lab.rack}
+            alphabet={lab.alphabet}
+            disabled={over || lab.rack.length === 0 || fixed}
+            onAdd={sim.add}
           />
-        </Tooltip>
+        </React.Fragment>
       }
     >
       <table
@@ -1114,6 +1127,84 @@ export const SimPanel = (props: SimPanelProps) => {
         </tbody>
       </table>
     </PanelFrame>
+  );
+};
+
+type ExchangeButtonProps = {
+  rack: MachineWord;
+  alphabet: Alphabet;
+  disabled: boolean;
+  onAdd: (play: WasmPlay) => void;
+};
+
+// Tiles picked from the rack, to add their exchange; or a pass, an exchange of
+// no tiles.
+const ExchangeButton = (props: ExchangeButtonProps) => {
+  const { rack, alphabet, disabled, onAdd } = props;
+  const [open, setOpen] = useState(false);
+  // the rack's tiles picked, by index
+  const [picked, setPicked] = useState(() => new Set<number>());
+  const toggle = (i: number) =>
+    setPicked((p) => {
+      const next = new Set(p);
+      if (!next.delete(i)) next.add(i);
+      return next;
+    });
+  const add = (tiles: MachineWord) => {
+    setOpen(false);
+    setPicked(new Set());
+    onAdd({ action: "exchange", tiles });
+  };
+  return (
+    <Popover
+      open={open}
+      onOpenChange={(o) => {
+        setOpen(o);
+        if (!o) setPicked(new Set());
+      }}
+      trigger="click"
+      content={
+        <div className="lab-exchange">
+          <div className="lab-exchange-tiles">
+            {rack.map((t, i) => (
+              <Button
+                key={i}
+                size="small"
+                type={picked.has(i) ? "primary" : "default"}
+                aria-pressed={picked.has(i)}
+                onClick={() => toggle(i)}
+              >
+                {machineLetterToRune(t, alphabet, false, true)}
+              </Button>
+            ))}
+          </div>
+          <div className="lab-exchange-actions">
+            <Button
+              size="small"
+              disabled={picked.size === 0}
+              onClick={() =>
+                add([...picked].sort((a, b) => a - b).map((i) => rack[i]))
+              }
+            >
+              Exchange
+            </Button>
+            <Button size="small" onClick={() => add([])}>
+              Pass
+            </Button>
+          </div>
+        </div>
+      }
+    >
+      <Tooltip title="Add an exchange or a pass">
+        <Button
+          shape="circle"
+          size="small"
+          icon={<SwapOutlined />}
+          aria-label="Exchange or pass"
+          disabled={disabled}
+        />
+      </Tooltip>
+    </Popover>
   );
 };
 

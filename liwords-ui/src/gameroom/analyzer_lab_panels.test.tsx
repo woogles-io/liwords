@@ -1129,12 +1129,37 @@ describe("the sim panel", () => {
     act(() => screen.getByRole("button", { name: "Start" }).click());
     expect(screen.getByText("Starting...")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Add" })).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Exchange or pass" }),
+    ).toBeDisabled();
     expect(screen.queryAllByRole("button", { name: "Take out" })).toEqual([]);
     await waitFor(() =>
       expect(lab.calls.some((c) => c.op === "run")).toBe(true),
     );
     expect(screen.getByRole("button", { name: "Add" })).toBeEnabled();
     expect(screen.getAllByRole("button", { name: "Take out" })).toHaveLength(2);
+  });
+
+  it("adds an exchange of the tiles picked, or a pass", async () => {
+    render(
+      <Store>
+        <Sim lab={midgame()} moves={[listed(ba), listed(ab)]} />
+      </Store>,
+    );
+    act(() => screen.getByRole("button", { name: "Exchange or pass" }).click());
+    // the rack's B, and the first of its two Es
+    act(() => screen.getByRole("button", { name: "B" }).click());
+    act(() => screen.getAllByRole("button", { name: "E" })[0].click());
+    act(() => screen.getByRole("button", { name: "Exchange" }).click());
+    await waitFor(() => expect(bodyRows()).toHaveLength(3));
+    expect(page.scored).toEqual([{ action: "exchange", tiles: [B, E] }]);
+    expect(bodyRows()).toContain("Exch. BE+4.00");
+
+    act(() => screen.getByRole("button", { name: "Exchange or pass" }).click());
+    act(() => screen.getByRole("button", { name: "Pass" }).click());
+    await waitFor(() => expect(bodyRows()).toHaveLength(4));
+    expect(page.scored[1]).toEqual({ action: "exchange", tiles: [] });
+    expect(bodyRows()).toContain("Pass+4.00");
   });
 });
 

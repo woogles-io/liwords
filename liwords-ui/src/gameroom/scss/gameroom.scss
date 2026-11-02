@@ -450,6 +450,26 @@ p.streak-loss {
   }
 }
 
+// the exchange picker: the rack's tiles, then its two ways to add
+.lab-exchange {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  .lab-exchange-tiles,
+  .lab-exchange-actions {
+    display: flex;
+    gap: 4px;
+  }
+
+  // The site gives a primary button other margins and no border, so a tile
+  // picked would move and shrink: it keeps the box of a tile not picked.
+  .lab-exchange-tiles button.ant-btn-primary {
+    border: 1px solid transparent;
+    margin: 0 6px;
+  }
+}
+
 .computer-analysis {
   display: flex;
   flex-direction: column;
