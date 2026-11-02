@@ -359,7 +359,11 @@ outerfor:
 				break
 			}
 			for _, topic := range topics {
-				b.natsconn.Publish(topic, data)
+				// Fails for a message over the server's max_payload (1MB by
+				// default), which would otherwise vanish without a trace.
+				if err := b.natsconn.Publish(topic, data); err != nil {
+					log.Err(err).Str("topic", topic).Int("bytes", len(data)).Msg("pub-error")
+				}
 			}
 
 		// Regular Go chan message from within liwords:
@@ -375,7 +379,11 @@ outerfor:
 				break
 			}
 			for _, topic := range topics {
-				b.natsconn.Publish(topic, data)
+				// Fails for a message over the server's max_payload (1MB by
+				// default), which would otherwise vanish without a trace.
+				if err := b.natsconn.Publish(topic, data); err != nil {
+					log.Err(err).Str("topic", topic).Int("bytes", len(data)).Msg("pub-error")
+				}
 			}
 
 		case <-ctx.Done():
