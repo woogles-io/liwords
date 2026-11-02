@@ -47,7 +47,8 @@ when it merges. If anything with a higher number has merged in the meantime,
 renumber it.
 
 The reference branch numbers `ongoing_games` lowest (`202610090001`), but it
-ships last. Kept as-is, it would be skipped.
+ships last. Kept as-is, it would be skipped. It landed as `202611020001`,
+after #2166's `202611010001`.
 
 Also: PR #2023 (`202610080001_drop_analysis_result`) must be deployed before
 any of these, or it will be skipped.
@@ -149,7 +150,7 @@ that removes it.
   removes the LRU.
 - **Step 3: `pkg/config/config.go` has `ShadowTurnsLoad` but not
   `WriteOngoingGames`.** The reference adds both in the same hunks; the second
-  lands with `ongoing_games` in 7.
+  lands with `ongoing_games` in 7. (Done in step 7.)
 
 ### Coverage the reference branch dropped
 
@@ -436,6 +437,24 @@ includes the wordsmog lexicon file (`.kwg` vs macondo's `.kad`) and
 `RulesFor` ignoring a failed lexicon load. An earlier note here said those
 touched the shadows; they don't, because replay never checks words.
 
+### The `ongoing_games` migration's foreign-key note (step 7)
+
+The reference migration explains its missing foreign key to `games.uuid` by
+`games.uuid` not being unique. Step 1b made it unique, so that reason is
+gone. The foreign key is still left out, and the note now gives the reasons
+that remain: creating it takes a SHARE ROW EXCLUSIVE lock on `games`, which
+waits behind every in-flight write while the migration runs at startup, and
+it guards against nothing that happens. The only code that deletes a games
+row deletes annotated games, which never get an `ongoing_games` row, and the
+row is written in the transaction that updates its games row. Only the
+comment changed; the schema is the reference's.
+
+After step 7 the ledger shows `pkg/config/config.go` as INTERMEDIATE. That is
+master moving on, not the split: the only difference from the reference is
+the Turnstile human-check settings master added after it. Likewise
+`models.go` differs only by what master dropped (`AutomodVerdict`, the
+analysis `result` column).
+
 ### For step 7: the mikado graph and `xwordgame_remaining.md`
 
 They say "delete xwordbridge" when macondo leaves the live path. Only the
@@ -450,8 +469,11 @@ a position rebuilt from game_turns") is drawn as a separate, earlier step than
 `DBStore.Get` returns an `entity.Game` embedding macondo's game, and
 `StateFromTurns` returns an xwordgame position. They are one step, phase 2
 below; merge the nodes and replace the "what is left" list with the phases.
-Correct all of this when those docs land in step 7 (a deviation; add them to
-the ledger's list then).
+Corrected when those docs landed in step 7 (deviations, in the ledger's
+list). Both were rewritten to the state of 2026-11-02 rather than patched:
+the graph also gained the zero-downtime work (`zdt_plan.md`) and the
+follow-ups after step 6, and `xwordgame_remaining.md` lost its September
+deploy order, which the split replaced.
 
 ## After the split: putting xwordgame on the live path
 
@@ -570,8 +592,10 @@ Per step, from `xwordgame_remaining.md`:
    `liwords-maintenance` task, so it changes only when that task definition
    is pointed at a build with step 5. Update it on a day with no rollover.
 6. *Watch* p99 load latency, DB CPU.
-7. Turn on `WRITE_ONGOING_GAMES`. *Watch* move errors, and
-   `SELECT count(*) FROM ongoing_games` against unfinished games in `games`.
+7. Turn on `WRITE_ONGOING_GAMES`. *Watch* move errors. Then run the checks
+   in `xwordgame_remaining.md`, "Rolling out `ongoing_games`": comparing
+   counts is not enough, because there is no backfill and an idle game has
+   no row until its next save.
 
 ## ledger.sh
 
@@ -626,6 +650,10 @@ pkg/xwordgame/challenge_test.go
 pkg/xwordgame/state.go
 pkg/xwordbridge/quirks.go
 docs/mikado/xwordgame_review.md
+db/migrations/202611020001_ongoing_games.up.sql
+docs/mikado/remove-game-caches.dot
+docs/mikado/remove-game-caches.svg
+docs/mikado/xwordgame_remaining.md
 "
 # Reference changes that will not land at all (issue #2036). They must stay
 # at master.
@@ -693,9 +721,9 @@ them against `08da29c33`:
 |---|---|---|---|
 | `db/queries/games.sql` | 2 | 1 | none |
 | `pkg/gameplay/end.go` | | | 1, 2 (step 4); 3, 4 dropped |
-| `pkg/stores/game/db.go` | 13 | 2, 4, 5, 6, 8, 9, 10, 11, 17 | 7, 12, 14, 15, 16 (4); 1, 3 (5); 14's `syncOngoingGame` part and 12's `writeOngoing` (7) |
+| `pkg/stores/game/db.go` | 13 | 2, 4, 5, 6, 8, 9, 10, 11, 17 | none: 7, 12, 14, 15, 16 landed in 4; 1, 3 in 5; 14's `syncOngoingGame` part and 12's `writeOngoing` in 7 |
 | `pkg/stores/game/s3.go` | | 1, 3, 5 | 2, 4 (step 4) |
-| `pkg/config/config.go` | | 1, 2 minus the `WriteOngoingGames` lines | those lines (7) |
+| `pkg/config/config.go` | | 1, 2 minus the `WriteOngoingGames` lines | none: those lines landed in 7 |
 
 ```python
 #!/usr/bin/env python3
@@ -746,9 +774,16 @@ Deployed column is the code.
 | 3 | `referee-split-3-shadows` | #2029 | 2026-10-10 | full suite ✅; gameplay with flags on, matches master | ✅ | ✅ 2026-10-12 (`liwords-api:317`, `SHADOW_TURNS` and `SHADOW_TURNS_LOAD` on) |
 | 4 | `referee-split-4-atomic-save` | #2053 | 2026-10-12 | full suite ✅; gameplay with flags on: no mismatches | ✅ 2026-10-22 | ✅ 2026-10-22 (`liwords-api:319`; `:320` with #2066) |
 | 5 | `referee-split-5-session-lock` | #2065 | 2026-10-22 | full suite ✅; gameplay with flags on: no mismatches; store, gameplay, league and bus ✅ on PostgreSQL 14.6, the production version | ✅ 2026-10-24 | ✅ 2026-10-24 (`liwords-api:321`) |
-| 6a | `automod-classify` | #2090 | n/a (from the reference, minus the guard) | `pkg/mod`, `pkg/gameplay` ✅ | | |
-| 6 | `referee-split-6-no-cache` | | 2026-10-24 | full suite ✅ (`TestStandings` fails on master too); gameplay, bus, store, league, mod ✅ with `-race` | | |
-| 7 | `referee-split-7-ongoing-games` | | | | | |
+| 6a | `automod-classify` | #2090 | n/a (from the reference, minus the guard) | `pkg/mod`, `pkg/gameplay` ✅ | ✅ 2026-10-30 | ✅ 2026-10-31 (`liwords-api:325`) |
+| 6 | `referee-split-6-no-cache` | #2091 | 2026-10-24 | full suite ✅ (`TestStandings` fails on master too); gameplay, bus, store, league, mod ✅ with `-race` | ✅ 2026-10-31 | ✅ 2026-10-31 (`liwords-api:325`) |
+| 7 | `referee-split-7-ongoing-games` | | 2026-11-02 | store ✅; gameplay, store, bus, league, mod, tournament ✅ with the flag forced on | | |
+
+Follow-ups deployed with step 6 in `liwords-api:325`: #2146 (archive without
+the game lock, no partial-rows fallback) and #2159 (adjudicate real-time games
+from their rows). Merged 2026-11-02, not yet deployed: #2162 (hourly
+pending-archival sweep; the maintenance task definition already has it) and
+#2163 (challenges only after a tile placement; ends the `lastWordsFormed`
+shadow noise).
 
 After the split (see "After the split"):
 
