@@ -1,6 +1,6 @@
-// The analyzer lab's own wolges-wasm instance, for its long jobs, stepped a
-// few milliseconds at a time so that the page never waits on one. It holds one
-// job at a time, and only the tables that job needs.
+// The analyzer lab's own wolges-wasm instance, for its long jobs: a sim or an
+// endgame, stepped a few milliseconds at a time so that the page never waits
+// on one. It holds one job at a time, and only the tables that job needs.
 //
 // A request {id, op, args} gets {id, result} or {id, error} back, in the order
 // sent. While a job runs, each step's answer comes as {event: {job, answer,
@@ -19,6 +19,7 @@ export type LabRequest =
   | { op: "prepare"; args: { files: Array<LabFile> } }
   // the position's plays, best first, as many as the request's count asks
   | { op: "analyze"; args: { request: string } }
+  | { op: "endgame"; args: { request: string } }
   | { op: "sim"; args: { request: string; plays: string } }
   // plays joining a sim, or leaving it; each answers as the sim holds it
   | { op: "add"; args: { job: number; plays: string } }
@@ -35,11 +36,21 @@ export type LabRequest =
   | { op: "free"; args: { job: number } };
 type Job = {
   id: number;
+  kind: "sim" | "endgame";
   handle: number;
-  // false when the sim's last run said to prune none of its candidates
+  // false when a sim's last run said to prune none of its candidates
   prune?: boolean;
+  // an endgame's: the depth its last step reached, and how long its next step
+  // runs where that is longer than the run's frame
+  depth?: number;
+  stepMs?: number;
 };
-type Answer = { candidates?: Array<{ state: string }> };
+type Answer = {
+  exact?: boolean;
+  bag?: number;
+  depth?: number;
+  candidates?: Array<{ state: string }>;
+};
 
 // How a sim prunes its candidates, told to it at every step: wolges's own
 // numbers (https://github.com/andy-k/wolges/blob/main/src/move_picker.rs: a
@@ -87,15 +98,17 @@ const later = (next: () => void) => {
 const freeJob = (wolges: Wolges) => {
   running = false;
   if (!job) return;
-  wolges.sim_free(job.handle);
+  if (job.kind === "sim") wolges.sim_free(job.handle);
+  else wolges.endgame_free(job.handle);
   post({ event: { job: job.id, freed: true } });
   job = null;
 };
 
-// Nothing left to do: a sim with no candidate running, or, unless it prunes
-// none, with fewer than two candidates it has not pruned (running or paused),
-// nothing left to tell apart.
+// Nothing left to do: an exact endgame; or a sim with no candidate running,
+// or, unless it prunes none, with fewer than two candidates it has not pruned
+// (running or paused), nothing left to tell apart.
 const isDone = (j: Job, answer: Answer) => {
+  if (j.kind === "endgame") return !!answer.exact;
   const states = (answer.candidates ?? []).map((c) => c.state);
   return (
     !states.includes("running") ||
@@ -107,8 +120,28 @@ const step = async (j: Job, chain: number, ms: number) => {
   if (!running || job !== j || chain !== chainId) return;
   const wolges = await wolgesPromise;
   try {
-    const request = JSON.stringify({ ms, ...pruning(j.prune !== false) });
-    const answer: Answer = JSON.parse(wolges.sim_step(j.handle, request));
+    const request = JSON.stringify(
+      j.kind === "sim"
+        ? { ms, ...pruning(j.prune !== false) }
+        : { ms: j.stepMs ?? ms },
+    );
+    const answer: Answer = JSON.parse(
+      j.kind === "sim"
+        ? wolges.sim_step(j.handle, request)
+        : wolges.endgame_step(j.handle, request),
+    );
+    // An empty bag's solve starts again from the top at each step, on the
+    // table it keeps, so a step too short to get past the depth reached gets
+    // no deeper: while the depth stays, each step runs twice as long as the
+    // last, and a frame again once it rises. A sim, or a solve with a tile in
+    // the bag, goes on where its last step stopped.
+    if (j.kind === "endgame") {
+      j.stepMs =
+        answer.bag === 0 && answer.depth === j.depth
+          ? (j.stepMs ?? ms) * 2
+          : undefined;
+      j.depth = answer.depth;
+    }
     const done = isDone(j, answer);
     if (done) running = false;
     post({ event: { job: j.id, answer, done } });
@@ -158,6 +191,14 @@ const handle = async (req: LabRequest): Promise<unknown> => {
       return undefined;
     case "analyze":
       return JSON.parse(wolges.analyze(req.args.request));
+    case "endgame":
+      freeJob(wolges);
+      job = {
+        id: ++lastJobId,
+        kind: "endgame",
+        handle: wolges.endgame_new(req.args.request),
+      };
+      return job.id;
     case "sim": {
       freeJob(wolges);
       const handle = wolges.sim_new(req.args.request);
@@ -169,14 +210,16 @@ const handle = async (req: LabRequest): Promise<unknown> => {
         wolges.sim_free(handle);
         throw e;
       }
-      job = { id: ++lastJobId, handle };
+      job = { id: ++lastJobId, kind: "sim", handle };
       return { job: job.id, added };
     }
     case "add":
     case "remove":
     case "pause":
     case "resume": {
-      if (!job || job.id !== req.args.job) throw new Error("no such sim");
+      if (!job || job.id !== req.args.job || job.kind !== "sim") {
+        throw new Error("no such sim");
+      }
       const change = {
         add: wolges.sim_add,
         remove: wolges.sim_remove,
@@ -188,10 +231,15 @@ const handle = async (req: LabRequest): Promise<unknown> => {
     case "read": {
       if (!job || job.id !== req.args.job) throw new Error("no such job");
       const answer: Answer = JSON.parse(
-        wolges.sim_step(
-          job.handle,
-          JSON.stringify({ iterations: 0, ...pruning(job.prune !== false) }),
-        ),
+        job.kind === "sim"
+          ? wolges.sim_step(
+              job.handle,
+              JSON.stringify({
+                iterations: 0,
+                ...pruning(job.prune !== false),
+              }),
+            )
+          : wolges.endgame_step(job.handle, JSON.stringify({ ms: 0 })),
       );
       post({ event: { job: job.id, answer, done: isDone(job, answer) } });
       return undefined;
@@ -201,6 +249,8 @@ const handle = async (req: LabRequest): Promise<unknown> => {
       running = true;
       const j = job;
       j.prune = req.args.prune;
+      // a run's steps start at its frame again
+      j.stepMs = undefined;
       const chain = ++chainId;
       const { ms } = req.args;
       later(() => step(j, chain, ms));
