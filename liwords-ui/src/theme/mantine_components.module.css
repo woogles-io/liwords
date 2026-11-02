@@ -116,3 +116,121 @@
      Mantine's 1px solid showing through. */
   border: 0;
 }
+
+/* ========================================================================== *
+ * Card
+ *
+ * From App.scss's global .ant-card rules. Note the background is
+ * $card-background, not $background -- they diverge in dark mode (#3a3a3a vs
+ * #282828), and Mantine's Paper defaults to --mantine-color-body, which our
+ * resolver points at $background. So this has to be stated.
+ * ========================================================================== */
+.card {
+  background-color: var(--woogles-color-card-background);
+  color: var(--woogles-color-gray-extreme);
+  box-shadow: var(--woogles-shadow);
+}
+
+.card :global(h1),
+.card :global(h2),
+.card :global(h3),
+.card :global(h4) {
+  font-family: "Mulish", sans-serif;
+  font-weight: bold;
+  letter-spacing: 0;
+}
+
+/* `.ant-card-bordered { border: 1px solid m($off-background) }` */
+.card[data-with-border] {
+  border: 1px solid var(--woogles-color-off-background);
+}
+
+/* ========================================================================== *
+ * Modal -- from base.scss @mixin modal
+ * ========================================================================== */
+.modalContent {
+  font-family: "Mulish", sans-serif;
+  background: var(--woogles-color-background);
+  color: var(--woogles-color-gray-extreme);
+}
+
+.modalHeader {
+  background: var(--woogles-color-background);
+  color: var(--woogles-color-gray-extreme);
+}
+
+.modalTitle {
+  font-family: "Mulish", sans-serif;
+  font-weight: 700;
+  color: var(--woogles-color-gray-extreme);
+}
+
+/*
+ * Mobile modals go full screen. This is real behaviour people rely on, not
+ * cosmetics -- @mixin modal drops the margin and radius, fills the viewport and
+ * pins the footer with full-width buttons. The breakpoint is
+ * $screen-mobile-min + 1 = 769px, kept as a literal because this file is plain
+ * CSS and cannot read the Sass variable.
+ */
+@media (max-width: 769px) {
+  .modalContent {
+    height: 100vh;
+    width: 100vw;
+    box-shadow: none;
+    padding-bottom: 48px;
+    border-radius: 0;
+  }
+
+  .modalInner {
+    padding: 0;
+  }
+
+  .modalHeader {
+    border-radius: 0;
+  }
+
+  /* The mask is the page background rather than a scrim, so a full-screen
+     modal reads as a page rather than an overlay. */
+  .modalOverlay {
+    background: var(--woogles-color-background);
+  }
+}
+
+/* ========================================================================== *
+ * Inputs
+ *
+ * Mantine's Input underpins TextInput, PasswordInput, Textarea, NumberInput and
+ * Select, so theming it once covers all of them.
+ *
+ * The #b9b9b9 border comes from the antd Input/InputNumber token in themes.tsx
+ * -- it is not one of the --woogles-* tokens, and is deliberately the same in
+ * both colour modes.
+ * ========================================================================== */
+.inputLabel {
+  color: var(--woogles-color-gray-extreme);
+}
+
+/*
+ * These are not settable through `vars`: Mantine types --input-bg, --input-bd
+ * and friends as variant-resolved rather than author-supplied, so they live
+ * here on the `input` part instead.
+ */
+.input {
+  background: var(--woogles-color-background);
+  color: var(--woogles-color-gray-extreme);
+  border-color: #b9b9b9;
+}
+
+.input::placeholder {
+  color: var(--woogles-color-gray-medium);
+}
+
+/*
+ * NumberInput's background is $card-background where every other input is
+ * $background (`.ant-input-number-input` in App.scss). That looks like an
+ * accident in the original rather than a decision, but it is what ships today,
+ * so it is reproduced. Worth revisiting deliberately later.
+ */
+.numberInput {
+  background: var(--woogles-color-card-background);
+}
