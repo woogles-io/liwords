@@ -18,9 +18,10 @@ export type LabHooks = {
 };
 
 // A square's line of hook letters: all of them if they fit, else as many
-// whole tiles as fit beside the count of the rest. A tile of several letters
-// comes bracketed and takes its width. fits says whether a line fits the
-// square; where nothing measures it, every line does.
+// whole tiles as fit beside the count of the rest; the square's tooltip lists
+// them all. A tile of several letters comes bracketed and takes its width.
+// fits says whether a line fits the square; where nothing measures it, every
+// line does.
 export const hookLine = (
   letters: Array<string>,
   fits: (line: string) => boolean = () => true,
@@ -38,6 +39,20 @@ export const hookLine = (
   }
   return `${shown}+${letters.length - n}`;
 };
+
+// A square's tooltip, a line for each way: the letters that make the run of
+// tiles that way a word, none if no letter does, and any where no tile is
+// beside the square that way.
+export const hookLines = (square: HookSquare) =>
+  (
+    [
+      ["Across", square.across],
+      ["Down", square.down],
+    ] as const
+  ).map(
+    ([way, letters]) =>
+      `${way}: ${letters === null ? "any" : letters.length ? letters.join("") : "none"}`,
+  );
 
 const publishedHooks = new Map<symbol, LabHooks>();
 let currentHooks: LabHooks | null = null;

@@ -1,6 +1,6 @@
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { hookLine, publishLabHooks, useLabHooks } from "./lab_hooks";
+import { hookLine, hookLines, publishLabHooks, useLabHooks } from "./lab_hooks";
 
 describe("hooks", () => {
   it("writes a square's line whole while it fits, else a few and how many more", () => {
@@ -22,6 +22,17 @@ describe("hooks", () => {
     expect(hookLine([..."MNOWY"], fits)).toBe("MN+3");
     expect(hookLine([..."MNOW"], fits)).toBe("MNOW");
     expect(hookLine([..."ABDEFHJKLMNPTYZ"])).toBe("ABDEFHJKLMNPTYZ");
+  });
+
+  it("lists both ways in a square's tooltip, any where no tile is beside it", () => {
+    expect(hookLines({ across: [..."ADS"], down: null })).toEqual([
+      "Across: ADS",
+      "Down: any",
+    ]);
+    expect(hookLines({ across: [], down: ["S"] })).toEqual([
+      "Across: none",
+      "Down: S",
+    ]);
   });
 
   it("shows what an open analyzer publishes, and nothing once none is", () => {

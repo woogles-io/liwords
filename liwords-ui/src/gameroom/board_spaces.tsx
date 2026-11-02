@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef } from "react";
 import BoardSpace from "./board_space";
+import { hookLines, useLabHooks } from "./lab_hooks";
 import { PlacementArrow } from "../utils/cwgame/tile_placement";
 import { BonusType } from "../constants/board_layout";
 import { useDrop, XYCoord } from "react-dnd";
@@ -76,6 +77,8 @@ const BoardSpaces = React.memo((props: Props) => {
   // y row, x col
   const midway = Math.trunc(gridDim / 2);
 
+  // The analyzer lab's hooks, listed in full on a square's hover.
+  const hooks = useLabHooks();
   const spaces = useMemo(() => {
     const spaces = [];
     for (let y = 0; y < gridDim; y += 1) {
@@ -86,6 +89,8 @@ const BoardSpaces = React.memo((props: Props) => {
           placementArrow.show &&
           placementArrow.row === y &&
           placementArrow.col === x;
+        const hookSquare =
+          hooks?.dim === gridDim ? hooks.squares[y * gridDim + x] : undefined;
         spaces.push(
           <BoardSpace
             bonusType={sq as BonusType}
@@ -93,6 +98,7 @@ const BoardSpaces = React.memo((props: Props) => {
             arrow={showArrow}
             arrowHoriz={placementArrow.horizontal}
             startingSquare={startingSquare}
+            hookLines={hookSquare && hookLines(hookSquare)}
             clicked={() => squareClicked(y, x)}
             handleTileDrop={(rackIndex, tileIndex) => {
               if (handleTileDrop) {
@@ -111,6 +117,7 @@ const BoardSpaces = React.memo((props: Props) => {
     placementArrow,
     squareClicked,
     handleTileDrop,
+    hooks,
   ]);
 
   return (

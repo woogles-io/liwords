@@ -42,7 +42,8 @@ const useLineFits = (grid: HTMLDivElement | null) => {
 // The letters each empty square beside a tile takes, over the board, while the
 // analyzer's lab shows hooks; a way no letter fits is marked "-". Those making
 // the word across sit on top and those making the word down below, as many
-// whole tiles as fit with how many more.
+// whole tiles as fit with how many more; the board's own square lists them
+// all on hover.
 export const LabHooksOverlay = React.memo((props: Props) => {
   const hooks = useLabHooks();
   const [grid, setGrid] = useState<HTMLDivElement | null>(null);
