@@ -1182,7 +1182,9 @@ export const SimPanel = (props: SimPanelProps) => {
         <SimDetails
           open={details}
           onClose={() => setDetails(false)}
-          title={`${made.answer.iterations} iterations of ${machineWordToRunes(lab.rack, lab.alphabet, false, true)}`}
+          lab={lab}
+          iterations={made.answer.iterations}
+          settings={sim.settings}
           rows={sim.rows}
         />
       )}
@@ -1339,15 +1341,18 @@ const sd = (stat: SimStat) => Math.sqrt(stat.variance);
 type SimDetailsProps = {
   open: boolean;
   onClose: () => void;
-  title: string;
+  lab: LabPosition;
+  iterations: number;
+  settings: SimSettings;
   rows: LabSim["rows"];
 };
 
 // A sim's numbers in full: each candidate's chance to win and equity with
 // their standard deviations, its score, and its static equity; then each
-// ply's score, its standard deviation, and how often it is a bingo.
+// ply's score, its standard deviation, and how often it is a bingo. They can
+// be saved to a file, as the wasm gives them.
 const SimDetails = (props: SimDetailsProps) => {
-  const { open, onClose, title, rows } = props;
+  const { open, onClose, lab, iterations, settings, rows } = props;
   const stats = rows.flatMap(({ move, stat }) =>
     stat ? [{ move, stat }] : [],
   );
@@ -1356,13 +1361,44 @@ const SimDetails = (props: SimDetailsProps) => {
     ...stats.map(({ stat }) => stat.plies?.length ?? 0),
   );
   const name = (m: AnalyzerMove) => `${m.coordinates} ${m.displayMove}`.trim();
+  const rack = machineWordToRunes(lab.rack, lab.alphabet, false, true);
+  const save = () => {
+    const saved = {
+      rack,
+      lexicon: lab.position.lexicon,
+      rules: lab.position.rules,
+      iterations,
+      plies,
+      known: settings.known.trim().toUpperCase(),
+      candidates: stats.map(({ move: m, stat }) => ({
+        move: name(m),
+        score: m.score,
+        static_equity: m.equity,
+        state: stat.state,
+        n: stat.n,
+        win: stat.win,
+        equity: stat.equity,
+        plies: stat.plies,
+      })),
+    };
+    const url = URL.createObjectURL(
+      new Blob([JSON.stringify(saved, null, 2)], {
+        type: "application/json",
+      }),
+    );
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `sim-${rack}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
   return (
     <Modal
       className="lab-details"
       open={open}
       onCancel={onClose}
-      footer={null}
-      title={title}
+      footer={<Button onClick={save}>Save</Button>}
+      title={`${iterations} iterations of ${rack}`}
       width={640}
     >
       <table>

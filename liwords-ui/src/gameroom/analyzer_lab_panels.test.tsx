@@ -1510,6 +1510,59 @@ describe("the sim panel", () => {
     ]);
     expect(rowsOf(tables[4])[0]).toBe(`${JSON.stringify(ba)}33.04.025.0%32`);
   });
+
+  it("saves a sim's numbers to a file", async () => {
+    let saved: Blob | undefined;
+    vi.stubGlobal("URL", {
+      ...URL,
+      createObjectURL: (blob: Blob) => {
+        saved = blob;
+        return "blob:sim";
+      },
+      revokeObjectURL: () => {},
+    });
+    const click = vi
+      .spyOn(HTMLAnchorElement.prototype, "click")
+      .mockImplementation(() => {});
+    try {
+      render(
+        <Store>
+          <Sim lab={midgame()} moves={[listed(ba), listed(ab)]} />
+        </Store>,
+      );
+      await start();
+      emit({
+        job: 1,
+        answer: {
+          iterations: 32,
+          candidates: [candidate(ba, 0.5), candidate(ab, 0.4)],
+        },
+        done: false,
+      });
+      act(() => screen.getByRole("button", { name: "Details" }).click());
+      act(() => screen.getByRole("button", { name: "Save" }).click());
+      expect(click).toHaveBeenCalledTimes(1);
+      expect((click.mock.contexts[0] as HTMLAnchorElement).download).toBe(
+        "sim-AABEEII.json",
+      );
+      const json = JSON.parse(await saved!.text());
+      // the plies as the sim's numbers have them, one here
+      expect(json).toMatchObject({
+        rack: "AABEEII",
+        lexicon: "CSW24",
+        iterations: 32,
+        plies: 1,
+        known: "",
+      });
+      expect(json.candidates.map((c: { move: string }) => c.move)).toEqual([
+        JSON.stringify(ba),
+        JSON.stringify(ab),
+      ]);
+      expect(json.candidates[0]).toMatchObject({ n: 32, win: { mean: 0.5 } });
+    } finally {
+      click.mockRestore();
+    }
+  });
 });
 
 describe("a panel's card", () => {
