@@ -18,6 +18,11 @@ type LabFile = { cacheKey: string; path: string };
 export type LabRequest =
   | { op: "prepare"; args: { files: Array<LabFile> } }
   | { op: "sim"; args: { request: string; plays: string } }
+  // plays joining a sim, or leaving it; each answers as the sim holds it
+  | { op: "add"; args: { job: number; plays: string } }
+  | { op: "remove"; args: { job: number; plays: string } }
+  // the job's answer as it stands, sent as a step's is, without stepping
+  | { op: "read"; args: { job: number } }
   // the job stepped ms at a time until it is done or stopped
   | { op: "run"; args: { job: number; ms: number } }
   | { op: "stop" }
@@ -143,6 +148,26 @@ const handle = async (req: LabRequest): Promise<unknown> => {
       }
       job = { id: ++lastJobId, handle };
       return { job: job.id, added };
+    }
+    case "add":
+    case "remove": {
+      if (!job || job.id !== req.args.job) throw new Error("no such sim");
+      const change = {
+        add: wolges.sim_add,
+        remove: wolges.sim_remove,
+      }[req.op];
+      return JSON.parse(change(job.handle, req.args.plays));
+    }
+    case "read": {
+      if (!job || job.id !== req.args.job) throw new Error("no such job");
+      const answer: Answer = JSON.parse(
+        wolges.sim_step(
+          job.handle,
+          JSON.stringify({ iterations: 0, ...pruning }),
+        ),
+      );
+      post({ event: { job: job.id, answer, done: isDone(answer) } });
+      return undefined;
     }
     case "run": {
       if (!job || job.id !== req.args.job) throw new Error("no such job");

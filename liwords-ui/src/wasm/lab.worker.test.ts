@@ -14,6 +14,7 @@ const wasm = vi.hoisted(() => ({
       { play: { action: "exchange", tiles: [] }, was: "absent" },
     ]),
   ),
+  sim_remove: vi.fn(),
   sim_step: vi.fn(),
   sim_free: vi.fn(),
 }));
@@ -156,6 +157,42 @@ describe("the lab's worker", () => {
       "plays[0]: no such play",
     );
     expect(wasm.sim_free).toHaveBeenCalledWith(9);
+  });
+
+  it("adds plays to a sim and removes them, and reads it as it stands", async () => {
+    const job = (
+      (await send(1, "sim", { request: "{}", plays: "[]" })).result as {
+        job: number;
+      }
+    ).job;
+    const play = { action: "play", down: false, lane: 7, idx: 7, word: [1] };
+    wasm.sim_add.mockReturnValueOnce(JSON.stringify([{ play, was: "absent" }]));
+    const added = await send(2, "add", { job, plays: JSON.stringify([play]) });
+    expect(wasm.sim_add).toHaveBeenLastCalledWith(9, JSON.stringify([play]));
+    expect(added.result).toEqual([{ play, was: "absent" }]);
+
+    wasm.sim_remove.mockReturnValueOnce(
+      JSON.stringify([{ play, was: "running" }]),
+    );
+    const removed = await send(3, "remove", {
+      job,
+      plays: JSON.stringify([play]),
+    });
+    expect(removed.result).toEqual([{ play, was: "running" }]);
+
+    // a read steps nothing and answers as a step does, saying how the sim
+    // prunes as a step does
+    wasm.sim_step.mockReturnValueOnce(JSON.stringify({ candidates: [] }));
+    await send(4, "read", { job });
+    expect(wasm.sim_step).toHaveBeenCalledWith(
+      9,
+      JSON.stringify({ iterations: 0, ...pruned }),
+    );
+    expect(events()).toEqual([{ job, answer: { candidates: [] }, done: true }]);
+
+    expect((await send(5, "add", { job: job + 1, plays: "[]" })).error).toBe(
+      "no such sim",
+    );
   });
 
   it("stops stepping when told", async () => {
