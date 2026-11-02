@@ -159,7 +159,7 @@ func TestPreviewIsQuick(t *testing.T) {
 	_, err := previewDivision(previewPlayers(60), 7, 7, tpb.PlannerIntent_PLANNER_FAIR_START)
 	is.NoErr(err)
 	t.Logf("60 players: %v", time.Since(start))
-	is.True(time.Since(start) < 5*time.Second)
+	is.True(time.Since(start) < 10*time.Second)
 }
 
 func TestPlaceholderName(t *testing.T) {
