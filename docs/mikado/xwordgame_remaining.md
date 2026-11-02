@@ -17,7 +17,7 @@ it. Nothing is served from the new path yet: macondo still referees every move.
 | | |
 |---|---|
 | schema version | `202610090004` (2026-11-02; #2166's `202611010001` not yet deployed) |
-| API | `liwords-api:325` (`master-gh2046`), since 2026-10-31; `SHADOW_TURNS`, `SHADOW_TURNS_LOAD`, `DUAL_WRITE_TURNS` on |
+| API | `liwords-api:326` (`master-gh2083`, master `8287124f1`), since 2026-11-02 05:28 UTC; `SHADOW_TURNS`, `SHADOW_TURNS_LOAD`, `DUAL_WRITE_TURNS` on |
 | `games` | ~13.3M rows (estimate); 2,092 unfinished, all native, all with both player ids |
 | `game_turns` | 30,610 rows over 2,047 games; none belong to a finished game or an archived one |
 | `ongoing_games` | does not exist yet; created by `202611020001` |
@@ -90,7 +90,9 @@ the previous play's words after a pass or an exchange, where the live path
 clears them. That was all of the 306 `shadow-turns-mismatch` lines seen on
 2026-11-01 (16 games, every one a `lastWordsFormed` difference). #2163 refuses
 a challenge unless the last event is a tile placement and drops that field from
-the comparison when it cannot be challenged. Once #2163 is deployed, the bar is
+the comparison when it cannot be challenged. #2163 deployed on 2026-11-02 at 05:28 UTC, and there has not been a mismatch
+since: in the first eleven hours, 163,450 load comparisons and 119,332 save
+comparisons, none torn, none with too few or too many rows. The bar is
 zero `shadow-turns-mismatch` and `shadow-load-mismatch` for a week including a
 weekend. Then phase 1 (`pr1975_split.md`, "After the split").
 
@@ -275,8 +277,8 @@ Correctness on the live path (all unconditional, no flag, all deployed):
   sweep runs hourly (#2162).
 - **The adjudicator decides from rows** rather than loading every live game
   every 10 seconds (#2159).
-- **A challenge is refused unless the last event is a tile placement** (#2163;
-  merged, deploy pending). It used to be gated only in the UI.
+- **A challenge is refused unless the last event is a tile placement** (#2163,
+  deployed 2026-11-02). It used to be gated only in the UI.
 
 Not carried over from #1975: automod idempotency (`automod_verdicts`), which
 became issue #2036. See `pr1975_split.md`, "Deliberately dropped".
@@ -292,7 +294,8 @@ Evidence-gathering, behind flags, serving nothing:
 
 ## What is left, in order
 
-- [ ] **Shadows quiet**, after #2163 deploys (above).
+- [ ] **Shadows quiet** for a week including a weekend, counted from #2163's
+      deploy on 2026-11-02 (above).
 - [ ] **Phases 1 to 3** — xwordgame decides live moves next to macondo, then
       serves, then macondo leaves the live path. They are in
       `pr1975_split.md`, "After the split", and the work items in #2037.

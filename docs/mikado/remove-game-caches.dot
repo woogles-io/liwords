@@ -47,7 +47,7 @@ digraph RedoGameModel {
     GameCacheRemoved [label = "Remove game cache ✅\n(LRU and the game mutex gone; every load\nhits the DB. Step 6, #2091, 2026-10-31)";];
     CheapGameLoad [label = "Per-move load is cheap enough ✅\n(no cache, every load replays through macondo:\ngame.Get p50 1.4 ms, p99 55 ms on production,\n2026-11-01; lock held p50 8.3 ms)";];
     AdjudicateFromRows [label = "Adjudicator decides from rows ✅\n(no full game load per active game\nevery 10 s; re-checks under the lock. #2159)";];
-    ChallengeGuard [label = "Refuse challenges unless the last\nevent is a tile placement ✅\n(server side; was UI only. Removes the\nshadow noise from macondo's replay. #2163,\nmerged 2026-11-02, deploy pending)";];
+    ChallengeGuard [label = "Refuse challenges unless the last\nevent is a tile placement ✅\n(server side; was UI only. Removes the\nshadow noise from macondo's replay. #2163,\ndeployed 2026-11-02)";];
     OngoingGamesWriter [label = "ongoing_games table + writer ✅\n(row kept in the save tx; flag\nWRITE_ONGOING_GAMES, off. Split step 7)";];
     TournamentCacheSpan [label = "Trace tournament cache lookups ✅\n(tournament-cache span, cache.hit attr. #2161)";];
     TournamentUuidIndex [label = "Tournament uuid unique index,\none-pass division decode ✅ (#2166)";];
@@ -70,7 +70,7 @@ digraph RedoGameModel {
     OTelObservability [label = "Re-enable the OTel meter provider\n(otel.go — disabled for a heap leak.\nNeeds delta temporality + deny-by-default\nviews + OTLP. Traces are unaffected.)";];
 
     // ── The referee: phases 1-3 (pr1975_split.md, "After the split") ─────
-    ProdShadowEvidence [label = "Shadows quiet on production traffic\n(zero shadow-turns-mismatch and\nshadow-load-mismatch for a week including\na weekend, after #2163 deploys)";];
+    ProdShadowEvidence [label = "Shadows quiet on production traffic\n(zero shadow-turns-mismatch and\nshadow-load-mismatch for a week including\na weekend, counted from #2163's\ndeploy on 2026-11-02)";];
     ShadowReferee [label = "Phase 1: xwordgame decides live moves\nalongside macondo, compared, serves nothing\n(SHADOW_REFEREE; referee-shadow-mismatch)";];
     XwordgameServes [label = "Phase 2: xwordgame serves, position rebuilt\nfrom game_turns (StateFromTurns)\n(XWORDGAME_REFEREE; real-time first,\ncorrespondence last; history bytea\nstill written for instant rollback)";];
     MacondoOffLivePath [label = "Phase 3: macondo off the live path\n(entity.Game holds the xwordgame position;\nstop writing history bytea)";];

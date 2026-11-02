@@ -780,9 +780,9 @@ Deployed column is the code.
 
 Follow-ups deployed with step 6 in `liwords-api:325`: #2146 (archive without
 the game lock, no partial-rows fallback) and #2159 (adjudicate real-time games
-from their rows). Merged 2026-11-02, not yet deployed: #2162 (hourly
-pending-archival sweep; the maintenance task definition already has it) and
-#2163 (challenges only after a tile placement; ends the `lastWordsFormed`
+from their rows). Deployed 2026-11-02 in `liwords-api:326`: #2162
+(hourly pending-archival sweep; the maintenance task definition already had it)
+and #2163 (challenges only after a tile placement; ends the `lastWordsFormed`
 shadow noise).
 
 After the split (see "After the split"):
