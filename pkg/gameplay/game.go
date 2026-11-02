@@ -961,14 +961,12 @@ func shouldCensorRacksForViewers(ctx context.Context, g *entity.Game, s *stores.
 		return true
 	}
 	if g.TournamentData != nil && g.TournamentData.Id != "" && s.TournamentStore != nil {
-		t, err := s.TournamentStore.Get(ctx, g.TournamentData.Id)
+		private, err := s.TournamentStore.PrivateAnalysis(ctx, g.TournamentData.Id)
 		if err != nil {
 			// Can't verify tournament settings — censor to be safe.
 			return true
 		}
-		if t.ExtraMeta != nil && t.ExtraMeta.PrivateAnalysis {
-			return true
-		}
+		return private
 	}
 	return false
 }

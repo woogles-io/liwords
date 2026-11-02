@@ -164,6 +164,23 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Tournament, error
 	return s.dbObjToEntity(tm)
 }
 
+// PrivateAnalysis reports whether a tournament hides players' racks from
+// observers. It reads that one setting instead of loading the tournament, so
+// the move path doesn't decode every division to get a boolean.
+func (s *DBStore) PrivateAnalysis(ctx context.Context, id string) (bool, error) {
+	var private []bool
+	result := s.db.WithContext(ctx).Model(&tournament{}).
+		Where("uuid = ?", id).
+		Pluck("coalesce((extra_meta->>'privateAnalysis')::boolean, false)", &private)
+	if result.Error != nil {
+		return false, result.Error
+	}
+	if len(private) == 0 {
+		return false, gorm.ErrRecordNotFound
+	}
+	return private[0], nil
+}
+
 func (s *DBStore) GetBySlug(ctx context.Context, slug string) (*entity.Tournament, error) {
 	tm := &tournament{}
 	ctxDB := s.db.WithContext(ctx)
