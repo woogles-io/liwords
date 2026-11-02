@@ -231,6 +231,15 @@ export const getLexiconKey = (loadableKey: string) =>
 export const getLeaveKey = (loadableKey: string) =>
   loadablesByKey[loadableKey]?.[1]?.cacheKey?.replace(/^klv\//, "");
 
+// The files an analysis under this key reads, each with its cache key and where
+// it is served, for a wasm instance that loads them for itself: the analyzer
+// lab's worker.
+export const getLoadableFiles = (loadableKey: string) =>
+  (loadablesByKey[loadableKey] ?? []).map((loadable) => ({
+    cacheKey: loadable.cacheKey,
+    path: loadable.path,
+  }));
+
 // Forget everything the wasm is holding that this request does not want. A tab
 // that opens several games otherwise accumulates every lexicon it has ever
 // touched, and none of them are small. A wasm built before wolges-wasm had
