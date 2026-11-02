@@ -199,10 +199,13 @@ func (*ConfigResponse) Descriptor() ([]byte, []int) {
 }
 
 type Announcement struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Title         string                 `protobuf:"bytes,1,opt,name=title,proto3" json:"title,omitempty"`
-	Link          string                 `protobuf:"bytes,2,opt,name=link,proto3" json:"link,omitempty"`
-	Body          string                 `protobuf:"bytes,3,opt,name=body,proto3" json:"body,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Title string                 `protobuf:"bytes,1,opt,name=title,proto3" json:"title,omitempty"`
+	Link  string                 `protobuf:"bytes,2,opt,name=link,proto3" json:"link,omitempty"`
+	Body  string                 `protobuf:"bytes,3,opt,name=body,proto3" json:"body,omitempty"`
+	// Pinned announcements are never replaced by SetSingleAnnouncement (e.g. the
+	// blog RSS updater). They stay where they are until edited or removed.
+	Pinned        bool `protobuf:"varint,4,opt,name=pinned,proto3" json:"pinned,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -256,6 +259,13 @@ func (x *Announcement) GetBody() string {
 		return x.Body
 	}
 	return ""
+}
+
+func (x *Announcement) GetPinned() bool {
+	if x != nil {
+		return x.Pinned
+	}
+	return false
 }
 
 type SetAnnouncementsRequest struct {
@@ -1324,11 +1334,12 @@ const file_proto_config_service_config_service_proto_rawDesc = "" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\"&\n" +
 	"\x10SetFEHashRequest\x12\x12\n" +
 	"\x04hash\x18\x01 \x01(\tR\x04hash\"\x10\n" +
-	"\x0eConfigResponse\"L\n" +
+	"\x0eConfigResponse\"d\n" +
 	"\fAnnouncement\x12\x14\n" +
 	"\x05title\x18\x01 \x01(\tR\x05title\x12\x12\n" +
 	"\x04link\x18\x02 \x01(\tR\x04link\x12\x12\n" +
-	"\x04body\x18\x03 \x01(\tR\x04body\"]\n" +
+	"\x04body\x18\x03 \x01(\tR\x04body\x12\x16\n" +
+	"\x06pinned\x18\x04 \x01(\bR\x06pinned\"]\n" +
 	"\x17SetAnnouncementsRequest\x12B\n" +
 	"\rannouncements\x18\x01 \x03(\v2\x1c.config_service.AnnouncementR\rannouncements\"\x19\n" +
 	"\x17GetAnnouncementsRequest\"[\n" +

@@ -12,6 +12,9 @@ message Announcement {
   string title = 1;
   string link = 2;
   string body = 3;
+  // Pinned announcements are never replaced by SetSingleAnnouncement (e.g. the
+  // blog RSS updater). They stay where they are until edited or removed.
+  bool pinned = 4;
 }
 
 message SetAnnouncementsRequest { repeated Announcement announcements = 1; }
