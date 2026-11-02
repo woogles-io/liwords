@@ -572,7 +572,14 @@ const AnnouncementsContent = () => {
   const renderAnnouncements = announcements.map((a, idx) => (
     <a href={a.link} target="_blank" rel="noopener noreferrer" key={idx}>
       <li>
-        <h4>{a.title}</h4>
+        <h4>
+          {a.pinned && (
+            <span role="img" aria-label="Pinned" title="Pinned">
+              📌{" "}
+            </span>
+          )}
+          {a.title}
+        </h4>
         <div>
           <ReactMarkdown
             components={{
