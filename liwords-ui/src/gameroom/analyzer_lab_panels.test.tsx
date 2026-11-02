@@ -21,14 +21,17 @@ import {
 } from "./analyzer_lab_panels";
 
 // The lab's worker, faked: a job made is job 1, a sim holds each play as it
-// is given, and the test sends the steps' answers.
+// is given, an analysis finds the plays a test sets, and the test sends the
+// steps' answers.
 const lab = vi.hoisted(() => ({
   calls: [] as Array<{ op: string; args?: object }>,
   listeners: new Set<(e: LabEvent) => void>(),
+  top: [] as Array<object>,
 }));
 vi.mock("../wasm/lab", () => ({
   labCall: async (request: { op: string; args?: { plays?: string } }) => {
     lab.calls.push(request);
+    if (request.op === "analyze") return lab.top;
     if (request.op === "sim") {
       const plays = JSON.parse(request.args!.plays!) as Array<object>;
       return { job: 1, added: plays.map((play) => ({ play, was: "absent" })) };
@@ -169,6 +172,7 @@ beforeEach(() => {
   lab.listeners.clear();
   board.placed.length = 0;
   clock.now = 0;
+  lab.top = [];
   page.scored.length = 0;
   page.answer = undefined;
   tentative.placedTiles = new Set();
@@ -1132,6 +1136,7 @@ describe("the sim panel", () => {
     expect(
       screen.getByRole("button", { name: "Exchange or pass" }),
     ).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Top moves" })).toBeDisabled();
     expect(screen.queryAllByRole("button", { name: "Take out" })).toEqual([]);
     await waitFor(() =>
       expect(lab.calls.some((c) => c.op === "run")).toBe(true),
@@ -1244,6 +1249,94 @@ describe("the sim panel", () => {
     const paused = lab.calls.find((c) => c.op === "pause");
     expect(JSON.parse((paused?.args as { plays: string }).plays)).toEqual([ba]);
     expect(lab.calls.some((c) => c.op === "resume")).toBe(false);
+  });
+
+  // The top moves asked for, as many as count says, or as the box starts.
+  const addTop = (count?: string) => {
+    act(() => screen.getByRole("button", { name: "Top moves" }).click());
+    if (count !== undefined) {
+      fireEvent.change(screen.getByRole("spinbutton", { name: "Top moves" }), {
+        target: { value: count },
+      });
+    }
+    act(() =>
+      screen.getByRole("button", { name: "Add the top moves" }).click(),
+    );
+  };
+
+  it("adds the position's top moves, as many as asked, at once and to a sim", async () => {
+    lab.top = [
+      { ...ba, score: 10, equity: 3 },
+      { ...be, score: 12, equity: 6 },
+      { ...ai, score: 8, equity: 1 },
+    ];
+    render(
+      <Store>
+        <Sim
+          lab={midgame()}
+          moves={[listed(ba, { equity: 3 }), listed(ab, { equity: 2 })]}
+        />
+      </Store>,
+    );
+    // the count starts at the 15 the analyzer asks for
+    act(() => screen.getByRole("button", { name: "Top moves" }).click());
+    expect(screen.getByRole("spinbutton", { name: "Top moves" })).toHaveValue(
+      "15",
+    );
+    act(() => screen.getByRole("button", { name: "Top moves" }).click());
+    addTop("3");
+    await waitFor(() => expect(bodyRows()).toHaveLength(4));
+    const analyzed = lab.calls.find((c) => c.op === "analyze");
+    expect(
+      JSON.parse((analyzed?.args as { request: string }).request),
+    ).toMatchObject({ count: 3, leave: "CSW24", scores: [300, 290] });
+    expect(bodyRows()).toEqual([
+      "8HBE+6.00",
+      `${JSON.stringify(ba)}+3.00`,
+      `${JSON.stringify(ab)}+2.00`,
+      "8HAI+1.00",
+    ]);
+
+    await start();
+    const sim = lab.calls.find((c) => c.op === "sim");
+    expect(JSON.parse((sim?.args as { plays: string }).plays)).toEqual([
+      ba,
+      ab,
+      be,
+      ai,
+    ]);
+    emit({
+      job: 1,
+      answer: {
+        iterations: 32,
+        candidates: [
+          candidate(ba, 0.5),
+          candidate(ab, 0.4),
+          candidate(be, 0.3),
+          candidate(ai, 0.2),
+        ],
+      },
+      done: false,
+    });
+
+    // a sim made rolls out only those it lacks
+    const pass = { action: "exchange", tiles: [] };
+    lab.top = [...lab.top, { ...pass, equity: -5 }];
+    addTop("4");
+    await waitFor(() =>
+      expect(lab.calls.some((c) => c.op === "read")).toBe(true),
+    );
+    const added = lab.calls.find((c) => c.op === "add");
+    expect(JSON.parse((added?.args as { plays: string }).plays)).toEqual([
+      pass,
+    ]);
+
+    // and none, when all are listed
+    lab.top = [{ ...ba, score: 10, equity: 3 }];
+    addTop();
+    expect(
+      await screen.findByText("Those moves are listed already."),
+    ).toBeInTheDocument();
   });
 });
 

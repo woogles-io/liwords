@@ -17,6 +17,8 @@ type Wolges = Awaited<typeof wolgesPromise>;
 type LabFile = { cacheKey: string; path: string };
 export type LabRequest =
   | { op: "prepare"; args: { files: Array<LabFile> } }
+  // the position's plays, best first, as many as the request's count asks
+  | { op: "analyze"; args: { request: string } }
   | { op: "sim"; args: { request: string; plays: string } }
   // plays joining a sim, or leaving it; each answers as the sim holds it
   | { op: "add"; args: { job: number; plays: string } }
@@ -111,12 +113,13 @@ const step = async (j: Job, chain: number, ms: number) => {
 };
 
 // Load the files a job needs, after dropping the ones it does not: one
-// lexicon's tables at a time, as on the page.
+// lexicon's tables at a time, as on the page. The job held goes first when
+// any are dropped, and stays when none are.
 const prepare = async (wolges: Wolges, files: Array<LabFile>) => {
-  freeJob(wolges);
   const wanted = new Set(files.map((f) => f.cacheKey));
-  for (const cacheKey of [...loaded]) {
-    if (wanted.has(cacheKey)) continue;
+  const unwanted = [...loaded].filter((cacheKey) => !wanted.has(cacheKey));
+  if (unwanted.length) freeJob(wolges);
+  for (const cacheKey of unwanted) {
     if (cacheKey.startsWith("klv/")) wolges.evict_klv(nameOf(cacheKey));
     else wolges.evict_kwg(nameOf(cacheKey));
     loaded.delete(cacheKey);
@@ -144,6 +147,8 @@ const handle = async (req: LabRequest): Promise<unknown> => {
     case "prepare":
       await prepare(wolges, req.args.files);
       return undefined;
+    case "analyze":
+      return JSON.parse(wolges.analyze(req.args.request));
     case "sim": {
       freeJob(wolges);
       const handle = wolges.sim_new(req.args.request);

@@ -8,6 +8,7 @@ const wasm = vi.hoisted(() => ({
   precache_klv: vi.fn(),
   evict_kwg: vi.fn(() => true),
   evict_klv: vi.fn(() => true),
+  analyze: vi.fn(),
   sim_new: vi.fn(() => 9),
   sim_add: vi.fn(() =>
     JSON.stringify([
@@ -216,6 +217,29 @@ describe("the lab's worker", () => {
     await send(2, "run", { job, ms: 10 });
     await vi.waitFor(() => expect(events().some((e) => e.done)).toBe(true));
     expect(events().map((e) => e.done)).toEqual([false, true]);
+  });
+
+  it("analyzes a position, keeping the job held while its tables stay", async () => {
+    const files = [
+      { cacheKey: "kwg/CSW24", path: "/wasm/2024/CSW24.kwg" },
+      { cacheKey: "klv/CSW24", path: "/wasm/2024/CSW24.klv2" },
+    ];
+    await send(1, "prepare", { files });
+    const { job } = (await send(2, "sim", { request: "{}", plays: "[]" }))
+      .result as { job: number };
+    await send(3, "prepare", { files });
+    expect(wasm.sim_free).not.toHaveBeenCalled();
+
+    const plays = [{ action: "exchange", tiles: [], equity: 1 }];
+    wasm.analyze.mockReturnValueOnce(JSON.stringify(plays));
+    const top = await send(4, "analyze", { request: '{"count":1}' });
+    expect(wasm.analyze).toHaveBeenCalledWith('{"count":1}');
+    expect(top.result).toEqual(plays);
+
+    // tables dropped take the job with them
+    await send(5, "prepare", { files: files.slice(0, 1) });
+    expect(wasm.sim_free).toHaveBeenCalledWith(9);
+    expect(events()).toEqual([{ job, freed: true }]);
   });
 
   it("stops stepping when told", async () => {

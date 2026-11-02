@@ -5,11 +5,12 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { Button, Popconfirm, Popover, Tooltip } from "antd";
+import { Button, InputNumber, Popconfirm, Popover, Tooltip } from "antd";
 import {
   CaretRightOutlined,
   CloseOutlined,
   ExperimentOutlined,
+  OrderedListOutlined,
   PauseOutlined,
   PlusOutlined,
   SwapOutlined,
@@ -715,6 +716,64 @@ export const useLabSim = (
     }
   };
 
+  // Add the position's top moves, as many as asked, to those listed: the lab's
+  // worker finds them, each with its static equity, and a sim made of the
+  // position rolls out those it lacks from its next iteration on.
+  const addTop = async (count: number) => {
+    if (!lab) return;
+    const at = lab.key;
+    const refuse = (text: string) =>
+      setNote({ key: at, text: `Not added: ${text}` });
+    setNote(undefined);
+    let plays: Array<WasmPlay & { equity: number }>;
+    try {
+      await labCall({
+        op: "prepare",
+        args: { files: getLoadableFiles(lab.loadableKey) },
+      });
+      plays = await labCall({
+        op: "analyze",
+        args: {
+          request: JSON.stringify({ ...lab.position, leave: lab.leave, count }),
+        },
+      });
+    } catch (e) {
+      refuse(errorText(e));
+      return;
+    }
+    const have = new Set(candidates.map((m) => playKey(JSON.parse(m.jsonKey))));
+    const fresh = plays.filter((p) => !have.has(playKey(p)));
+    if (fresh.length === 0) {
+      setNote({ key: at, text: "Those moves are listed already." });
+      return;
+    }
+    const keys = fresh.map(playKey);
+    const moves = fresh.map((p) =>
+      toAnalyzerMove(p, p.equity, lab.letters, lab.rack, lab),
+    );
+    changeEdits(at, (e) => ({
+      added: [...e.added, ...moves],
+      removed: e.removed.filter((r) => !keys.includes(r)),
+    }));
+    if (!made) return;
+    const { job } = made;
+    try {
+      const joined = await labCall<Array<{ play: WasmPlay }>>({
+        op: "add",
+        args: { job, plays: JSON.stringify(keys.map((k) => JSON.parse(k))) },
+      });
+      setSim((s) => {
+        if (s?.job !== job) return s;
+        const held = new Map(s.held);
+        joined.forEach((j, i) => held.set(playKey(j.play), moves[i]));
+        return { ...s, held };
+      });
+      await labCall({ op: "read", args: { job } });
+    } catch (e) {
+      refuse(errorText(e));
+    }
+  };
+
   // The rows shown: the sim's candidates as its last answer has them, those
   // rolled out first, by the chance to win and then equity, and the rest
   // after; or, before a sim, the moves by their static equity.
@@ -755,6 +814,7 @@ export const useLabSim = (
     add,
     remove,
     hold,
+    addTop,
   };
 };
 
@@ -1039,6 +1099,10 @@ export const SimPanel = (props: SimPanelProps) => {
             disabled={over || lab.rack.length === 0 || fixed}
             onAdd={sim.add}
           />
+          <TopMovesButton
+            disabled={over || lab.rack.length === 0 || fixed}
+            onAdd={sim.addTop}
+          />
         </React.Fragment>
       }
     >
@@ -1253,6 +1317,69 @@ const ExchangeButton = (props: ExchangeButtonProps) => {
           size="small"
           icon={<SwapOutlined />}
           aria-label="Exchange or pass"
+          disabled={disabled}
+        />
+      </Tooltip>
+    </Popover>
+  );
+};
+
+type TopMovesButtonProps = {
+  disabled: boolean;
+  onAdd: (count: number) => void;
+};
+
+// A count of the position's top moves to add, as many as asked, starting at
+// the 15 the analyzer asks for.
+const TopMovesButton = (props: TopMovesButtonProps) => {
+  const { disabled, onAdd } = props;
+  const [open, setOpen] = useState(false);
+  const [count, setCount] = useState<number | null>(null);
+  const add = () => {
+    if (count === null || count < 1) return;
+    setOpen(false);
+    onAdd(count);
+  };
+  return (
+    <Popover
+      open={open}
+      onOpenChange={(o) => {
+        setOpen(o);
+        if (o) setCount(15);
+      }}
+      trigger="click"
+      content={
+        <div className="lab-top">
+          <label>
+            Top moves
+            <InputNumber
+              size="small"
+              aria-label="Top moves"
+              min={1}
+              precision={0}
+              value={count}
+              onChange={(v) => setCount(v)}
+              onPressEnter={add}
+            />
+          </label>
+          <Button
+            size="small"
+            type="primary"
+            aria-label="Add the top moves"
+            disabled={count === null || count < 1}
+            onClick={add}
+          >
+            Add
+          </Button>
+        </div>
+      }
+    >
+      <Tooltip title="Add the position's top moves">
+        <Button
+          shape="circle"
+          size="small"
+          icon={<OrderedListOutlined />}
+          aria-label="Top moves"
           disabled={disabled}
         />
       </Tooltip>
