@@ -776,7 +776,7 @@ Deployed column is the code.
 | 5 | `referee-split-5-session-lock` | #2065 | 2026-10-22 | full suite ✅; gameplay with flags on: no mismatches; store, gameplay, league and bus ✅ on PostgreSQL 14.6, the production version | ✅ 2026-10-24 | ✅ 2026-10-24 (`liwords-api:321`) |
 | 6a | `automod-classify` | #2090 | n/a (from the reference, minus the guard) | `pkg/mod`, `pkg/gameplay` ✅ | ✅ 2026-10-30 | ✅ 2026-10-31 (`liwords-api:325`) |
 | 6 | `referee-split-6-no-cache` | #2091 | 2026-10-24 | full suite ✅ (`TestStandings` fails on master too); gameplay, bus, store, league, mod ✅ with `-race` | ✅ 2026-10-31 | ✅ 2026-10-31 (`liwords-api:325`) |
-| 7 | `referee-split-7-ongoing-games` | | 2026-11-02 | store ✅; gameplay, store, bus, league, mod, tournament ✅ with the flag forced on | | |
+| 7 | `referee-split-7-ongoing-games` | #2178 | 2026-11-02 | store ✅; gameplay, store, bus, league, mod, tournament ✅ with the flag forced on | | |
 
 Follow-ups deployed with step 6 in `liwords-api:325`: #2146 (archive without
 the game lock, no partial-rows fallback) and #2159 (adjudicate real-time games
