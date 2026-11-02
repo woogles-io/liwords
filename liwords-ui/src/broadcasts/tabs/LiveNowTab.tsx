@@ -2,6 +2,7 @@ import React from "react";
 import { Table, Tag, Typography } from "antd";
 import { PlayCircleOutlined } from "@ant-design/icons";
 import type { BroadcastGameStat } from "../../gen/api/proto/broadcast_service/broadcast_service_pb";
+import { AlignedScorePair } from "../../shared/score_pair";
 import { GameLink } from "./GameLink";
 
 const { Text } = Typography;
@@ -43,12 +44,14 @@ export const LiveNowTab: React.FC<Props> = ({ stats }) => {
           title: "Rd",
           dataIndex: "round",
           key: "round",
+          align: "right" as const,
           width: 45,
         },
         {
           title: "Table",
           dataIndex: "tableNumber",
           key: "tableNumber",
+          align: "right" as const,
           width: 55,
           render: (n: number) => <Text strong>#{n}</Text>,
         },
@@ -69,7 +72,12 @@ export const LiveNowTab: React.FC<Props> = ({ stats }) => {
             if (!r.currentScore1 && !r.currentScore2) {
               return <Text type="secondary">—</Text>;
             }
-            return `${r.currentScore1} – ${r.currentScore2}`;
+            return (
+              <AlignedScorePair
+                first={r.currentScore1}
+                second={r.currentScore2}
+              />
+            );
           },
         },
         {

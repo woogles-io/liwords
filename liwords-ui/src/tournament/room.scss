@@ -22,6 +22,9 @@
         text-align: right;
       }
     }
+    .ant-table-cell.scores {
+      text-align: right;
+    }
   }
 
   .ant-tag-bye,
@@ -103,6 +106,8 @@
   .player {
     font-weight: 700;
   }
+  .wins,
+  .losses,
   .spread {
     text-align: right;
   }

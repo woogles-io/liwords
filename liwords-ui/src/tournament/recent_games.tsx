@@ -7,6 +7,7 @@ import {
   TournamentGameResult,
 } from "../gen/api/proto/ipc/tournament_pb";
 import { GameEndReason } from "../gen/api/proto/ipc/omgwords_pb";
+import { AlignedScorePair } from "../shared/score_pair";
 
 type Props = {
   games: Array<TournamentGameEndedEvent>;
@@ -56,7 +57,10 @@ export const RecentTourneyGames = React.memo((props: Props) => {
       );
       const scores = (
         <Link to={`/game/${encodeURIComponent(String(item.gameId ?? ""))}`}>
-          {item.players[0].score} - {item.players[1].score}
+          <AlignedScorePair
+            first={item.players[0].score}
+            second={item.players[1].score}
+          />
         </Link>
       );
       const whenMoment = moment.unix(item.time ? Number(item.time) : 0);

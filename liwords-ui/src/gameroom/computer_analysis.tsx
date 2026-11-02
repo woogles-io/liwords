@@ -571,10 +571,10 @@ const SimPlaysTable: React.FC<{
           <tr>
             <th>Coord</th>
             <th>Move</th>
-            <th>Score</th>
+            <th className="ca-num">Score</th>
             <th>Leave</th>
-            <th>Win%</th>
-            <th>Equity</th>
+            <th className="ca-num">Win%</th>
+            <th className="ca-num">Equity</th>
             <th></th>
           </tr>
         </thead>
@@ -591,10 +591,10 @@ const SimPlaysTable: React.FC<{
                 >
                   <td className="ca-coord">{parsed.coordinates}</td>
                   <td className="ca-move-word">{parsed.displayMove}</td>
-                  <td className="ca-bold">{p.score}</td>
+                  <td className="ca-bold ca-num">{p.score}</td>
                   <td>{p.leave}</td>
-                  <td>{(p.winProb * 100).toFixed(1)}%</td>
-                  <td>
+                  <td className="ca-num">{(p.winProb * 100).toFixed(1)}%</td>
+                  <td className="ca-num">
                     {p.equity >= 0 ? "+" : ""}
                     {p.equity.toFixed(1)}
                   </td>
@@ -672,9 +672,9 @@ const PEGPlaysTable: React.FC<{
           <tr>
             <th>Coord</th>
             <th>Move</th>
-            <th>Score</th>
-            <th>Win%</th>
-            {hasSpread && <th>Spread</th>}
+            <th className="ca-num">Score</th>
+            <th className="ca-num">Win%</th>
+            {hasSpread && <th className="ca-num">Spread</th>}
             <th></th>
           </tr>
         </thead>
@@ -690,10 +690,10 @@ const PEGPlaysTable: React.FC<{
                 >
                   <td className="ca-coord">{parsed.coordinates}</td>
                   <td className="ca-move-word">{parsed.displayMove}</td>
-                  <td className="ca-bold">{p.score}</td>
-                  <td>{(p.winProb * 100).toFixed(1)}%</td>
+                  <td className="ca-bold ca-num">{p.score}</td>
+                  <td className="ca-num">{(p.winProb * 100).toFixed(1)}%</td>
                   {hasSpread && (
-                    <td>
+                    <td className="ca-num">
                       {p.hasSpread
                         ? `${p.avgSpread >= 0 ? "+" : ""}${p.avgSpread.toFixed(1)}`
                         : "—"}

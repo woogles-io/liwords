@@ -1,0 +1,19 @@
+// A pair of scores lined up on its hyphen (score_pair.tsx).
+.aligned-score-pair {
+  display: inline-flex;
+  white-space: nowrap;
+
+  .aligned-score-pair-first {
+    min-width: 3ch;
+    text-align: right;
+  }
+
+  .aligned-score-pair-hyphen {
+    margin: 0 0.3em;
+  }
+
+  .aligned-score-pair-second {
+    min-width: 3ch;
+    text-align: left;
+  }
+}

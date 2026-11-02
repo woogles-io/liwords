@@ -538,6 +538,7 @@ export const LeagueRoster: React.FC<Props> = ({
     {
       title: <Tooltip title="Number of seasons played">#S</Tooltip>,
       key: "count",
+      align: "right" as const,
       width: 40,
       render: (_: unknown, record: LeagueRosterPlayer) => record.seasons.length,
       sorter: (a: LeagueRosterPlayer, b: LeagueRosterPlayer) =>
@@ -551,6 +552,7 @@ export const LeagueRoster: React.FC<Props> = ({
           {
             title: <Tooltip title="Timeouts, all seasons">#TO</Tooltip>,
             key: "timeouts",
+            align: "right" as const,
             width: 48,
             render: (_: unknown, record: LeagueRosterPlayer) => {
               const total = totalTimeouts(record);
