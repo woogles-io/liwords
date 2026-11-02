@@ -337,8 +337,9 @@ describe("the sim panel", () => {
       },
       done: false,
     });
+    // with the plies its rollouts play, as the sim's answer has them
     expect(
-      screen.getByText("32 iterations after 0 s, 2 running"),
+      screen.getByText("32 iterations after 0 s, 2 running; 1 ply"),
     ).toBeInTheDocument();
     expect(headRow()).toBe("WinEquityBingoN");
     expect(bodyRows()).toEqual([
@@ -430,7 +431,7 @@ describe("the sim panel", () => {
       done: false,
     });
     expect(
-      screen.getByText("40 iterations after 0 s, 2 running, stopped"),
+      screen.getByText("40 iterations after 0 s, 2 running, stopped; 1 ply"),
     ).toBeInTheDocument();
     act(() => screen.getByRole("button", { name: "Resume" }).click());
     await waitFor(() =>
@@ -651,7 +652,7 @@ describe("the sim panel", () => {
       done: true,
     });
     expect(
-      screen.getByText("64 iterations after 0 s, 1 running, done"),
+      screen.getByText("64 iterations after 0 s, 1 running, done; 1 ply"),
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Resume" })).toBeDisabled();
   });
@@ -685,7 +686,7 @@ describe("the sim panel", () => {
       </Store>,
     );
     expect(
-      screen.getByText("32 iterations after 0 s, 2 running, stopped"),
+      screen.getByText("32 iterations after 0 s, 2 running, stopped; 1 ply"),
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Resume" })).toBeEnabled();
     expect(lab.calls.filter((c) => c.op === "sim")).toHaveLength(1);
@@ -1137,6 +1138,7 @@ describe("the sim panel", () => {
       screen.getByRole("button", { name: "Exchange or pass" }),
     ).toBeDisabled();
     expect(screen.getByRole("button", { name: "Top moves" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Sim settings" })).toBeDisabled();
     expect(screen.queryAllByRole("button", { name: "Take out" })).toEqual([]);
     await waitFor(() =>
       expect(lab.calls.some((c) => c.op === "run")).toBe(true),
@@ -1337,6 +1339,124 @@ describe("the sim panel", () => {
     expect(
       await screen.findByText("Those moves are listed already."),
     ).toBeInTheDocument();
+  });
+
+  // Set in the settings, applied: the sim made goes, and the next one takes
+  // them.
+  const setSettings = (plies: string, known: string) => {
+    act(() => screen.getByRole("button", { name: "Sim settings" }).click());
+    const field = screen.getByRole("spinbutton", { name: "Plies" });
+    // the wasm says what count it takes
+    expect(field).not.toHaveAttribute("aria-valuemax");
+    fireEvent.change(field, {
+      target: { value: plies },
+    });
+    fireEvent.change(screen.getByPlaceholderText("tiles, ? a blank"), {
+      target: { value: known },
+    });
+    act(() => screen.getByRole("button", { name: "Apply" }).click());
+  };
+
+  it("makes a sim with the plies and the opponent's tiles set, dropping the one made", async () => {
+    render(
+      <Store>
+        <Sim lab={midgame()} moves={[listed(ba), listed(ab)]} />
+      </Store>,
+    );
+    await start();
+    // plies never set are liwords's own 4, sent with the sim
+    const first = lab.calls.find((c) => c.op === "sim");
+    expect(JSON.parse((first?.args as { request: string }).request).plies).toBe(
+      4,
+    );
+    emit({
+      job: 1,
+      answer: {
+        iterations: 32,
+        candidates: [candidate(ba, 0.5), candidate(ab, 0.4)],
+      },
+      done: false,
+    });
+    setSettings("2", "ie");
+    expect(
+      screen.getByText("Static equity until the sim starts."),
+    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(lab.calls.some((c) => c.op === "free")).toBe(true),
+    );
+    lab.calls.length = 0;
+    await start();
+    const sim = lab.calls.find((c) => c.op === "sim");
+    const request = JSON.parse((sim?.args as { request: string }).request);
+    expect(request.plies).toBe(2);
+    expect(request.known).toEqual([I, E]);
+    // the sim's answer has each candidate's two plies
+    const twoPlies = (c: ReturnType<typeof candidate>) => ({
+      ...c,
+      plies: [c.plies[0], c.plies[0]],
+    });
+    emit({
+      job: 1,
+      answer: {
+        iterations: 32,
+        candidates: [
+          twoPlies(candidate(ba, 0.5)),
+          twoPlies(candidate(ab, 0.4)),
+        ],
+      },
+      done: false,
+    });
+    expect(
+      screen.getByText(
+        "32 iterations after 0 s, 2 running; 2 plies; the opponent holds IE",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("starts the plies at 4, and applies no settings with them left empty", async () => {
+    render(
+      <Store>
+        <Sim lab={midgame()} moves={[listed(ba), listed(ab)]} />
+      </Store>,
+    );
+    act(() => screen.getByRole("button", { name: "Sim settings" }).click());
+    const field = screen.getByRole("spinbutton", { name: "Plies" });
+    expect(field).toHaveValue("4");
+    fireEvent.change(field, { target: { value: "" } });
+    const apply = screen.getByRole("button", { name: "Apply" });
+    expect(apply).toBeDisabled();
+    expect(
+      document.querySelector(".ant-input-number-status-error"),
+    ).toContainElement(field);
+    // nor by Enter in the tiles' field
+    fireEvent.keyDown(screen.getByPlaceholderText("tiles, ? a blank"), {
+      key: "Enter",
+      code: "Enter",
+      keyCode: 13,
+    });
+    // closed so, the next sim takes the plies it had
+    act(() => screen.getByRole("button", { name: "Sim settings" }).click());
+    await start();
+    const sim = lab.calls.find((c) => c.op === "sim");
+    expect(JSON.parse((sim?.args as { request: string }).request).plies).toBe(
+      4,
+    );
+  });
+
+  it("starts no sim with tiles the opponent cannot hold", async () => {
+    render(
+      <Store>
+        <Sim lab={midgame()} moves={[listed(ba), listed(ab)]} />
+      </Store>,
+    );
+    setSettings("4", "zz");
+    act(() => screen.getByRole("button", { name: "Start" }).click());
+    expect(
+      await screen.findByText(
+        "Not started: ZZ are not all among the tiles unseen.",
+      ),
+    ).toBeInTheDocument();
+    expect(lab.calls.some((c) => c.op === "sim")).toBe(false);
   });
 });
 

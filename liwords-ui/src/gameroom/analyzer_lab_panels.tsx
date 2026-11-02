@@ -5,7 +5,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { Button, InputNumber, Popconfirm, Popover, Tooltip } from "antd";
+import { Button, Input, InputNumber, Popconfirm, Popover, Tooltip } from "antd";
 import {
   CaretRightOutlined,
   CloseOutlined,
@@ -13,12 +13,14 @@ import {
   OrderedListOutlined,
   PauseOutlined,
   PlusOutlined,
+  SettingOutlined,
   SwapOutlined,
 } from "@ant-design/icons";
 import {
   Alphabet,
   machineLetterToRune,
   machineWordToRunes,
+  runesToMachineWord,
 } from "../constants/alphabets";
 import {
   ChallengeRule,
@@ -415,9 +417,41 @@ type MadeSim = {
   done: boolean;
 };
 
-// The plies a sim's rollouts play: liwords's own count, sent with every sim
-// made.
+// The plies a sim's rollouts play until the user sets others: liwords's own
+// count, sent with every sim made.
 const DEFAULT_SIM_PLIES = 4;
+
+// What a sim is made with, as the user sets it: the plies each rollout plays,
+// and the tiles known to be on the opponent's rack, written as tiles are, a
+// blank as ?.
+export type SimSettings = { plies: number; known: string };
+
+const defaultSimSettings: SimSettings = { plies: DEFAULT_SIM_PLIES, known: "" };
+
+// The tiles written as known on the opponent's rack, or why they cannot be
+// there: each one a tile of the game, and all of them among the tiles unseen.
+const knownTiles = (
+  written: string,
+  lab: LabPosition,
+): { tiles: MachineWord } | { error: string } => {
+  const text = written.replace(/\s/g, "").toUpperCase();
+  let tiles: MachineWord;
+  try {
+    tiles = [
+      ...Array.from(text.matchAll(/\?/g), () => 0),
+      ...runesToMachineWord(text.replace(/\?/g, ""), lab.alphabet),
+    ];
+  } catch {
+    return { error: `${written.trim()} is not tiles of this game` };
+  }
+  const left = [...lab.unseen];
+  for (const t of tiles) {
+    const at = left.indexOf(t);
+    if (at < 0) return { error: `${text} are not all among the tiles unseen` };
+    left.splice(at, 1);
+  }
+  return { tiles };
+};
 
 const errorText = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
@@ -464,6 +498,7 @@ export const useLabSim = (
 ) => {
   const [allEdits, setAllEdits] = useState(() => new Map<string, SimEdits>());
   const [sim, setSim] = useState<MadeSim | null>(null);
+  const [settings, setSettings] = useState(defaultSimSettings);
   const [starting, setStarting] = useState(false);
   const startingRef = useRef(false);
   // what the user last tried that came to nothing, at the position it was
@@ -556,6 +591,14 @@ export const useLabSim = (
     );
   };
 
+  // New settings are for the next sim made; the sim made goes, as its
+  // rollouts were made with the old ones.
+  const changeSettings = (next: SimSettings) => {
+    setSettings(next);
+    setNote(undefined);
+    setSim(null);
+  };
+
   // Run the sim made of this position on, or make one of the moves listed.
   const run = async () => {
     if (!lab) return;
@@ -564,10 +607,15 @@ export const useLabSim = (
       return;
     }
     if (startingRef.current) return;
+    const at = lab.key;
+    const known = knownTiles(settings.known, lab);
+    if ("error" in known) {
+      setNote({ key: at, text: `Not started: ${known.error}.` });
+      return;
+    }
     startingRef.current = true;
     setStarting(true);
     setNote(undefined);
-    const at = lab.key;
     const plays = candidates;
     try {
       const [ms] = await Promise.all([
@@ -586,7 +634,8 @@ export const useLabSim = (
           request: JSON.stringify({
             ...lab.position,
             leave: lab.leave,
-            plies: DEFAULT_SIM_PLIES,
+            plies: settings.plies,
+            known: known.tiles,
           }),
           plays: JSON.stringify(plays.map((m) => JSON.parse(m.jsonKey))),
         },
@@ -815,6 +864,8 @@ export const useLabSim = (
     remove,
     hold,
     addTop,
+    settings,
+    changeSettings,
   };
 };
 
@@ -1053,7 +1104,7 @@ export const SimPanel = (props: SimPanelProps) => {
     const running = made.answer.candidates.filter(
       (c) => c.state === "running",
     ).length;
-    status = `${made.answer.iterations} iterations after ${ranText(sim.ranMs)}, ${running} running${made.running ? "" : made.done || running === 0 ? ", done" : ", stopped"}`;
+    status = `${made.answer.iterations} iterations after ${ranText(sim.ranMs)}, ${running} running${made.running ? "" : made.done || running === 0 ? ", done" : ", stopped"}${settingsText(sim.settings, made.answer.candidates[0]?.plies?.length)}`;
   } else if (made || sim.starting) {
     status = "Starting...";
   } else if (moves == null) {
@@ -1102,6 +1153,11 @@ export const SimPanel = (props: SimPanelProps) => {
           <TopMovesButton
             disabled={over || lab.rack.length === 0 || fixed}
             onAdd={sim.addTop}
+          />
+          <SimSettingsButton
+            settings={sim.settings}
+            disabled={fixed}
+            onChange={sim.changeSettings}
           />
         </React.Fragment>
       }
@@ -1243,6 +1299,90 @@ export const SimPanel = (props: SimPanelProps) => {
         </tbody>
       </table>
     </PanelFrame>
+  );
+};
+
+// What a sim was made with: the plies its rollouts play, as its answer has
+// them; then the other settings the user set.
+const settingsText = (settings: SimSettings, plies: number | undefined) =>
+  `${plies !== undefined ? `; ${plies} ${plies === 1 ? "ply" : "plies"}` : ""}${settings.known.trim() ? `; the opponent holds ${settings.known.trim().toUpperCase()}` : ""}`;
+
+type SimSettingsButtonProps = {
+  settings: SimSettings;
+  disabled: boolean;
+  onChange: (settings: SimSettings) => void;
+};
+
+// The plies a sim's rollouts play, never left unset, and the tiles known to
+// be on the opponent's rack, applied to the next sim made.
+const SimSettingsButton = (props: SimSettingsButtonProps) => {
+  const { settings, disabled, onChange } = props;
+  const [open, setOpen] = useState(false);
+  const [plies, setPlies] = useState<number | null>(settings.plies);
+  const [known, setKnown] = useState(settings.known);
+  const apply = () => {
+    if (plies === null) return;
+    setOpen(false);
+    if (plies !== settings.plies || known !== settings.known) {
+      onChange({ plies, known });
+    }
+  };
+  return (
+    <Popover
+      open={open}
+      onOpenChange={(o) => {
+        setOpen(o);
+        if (o) {
+          setPlies(settings.plies);
+          setKnown(settings.known);
+        }
+      }}
+      trigger="click"
+      content={
+        <div className="lab-settings">
+          <label>
+            Plies
+            <InputNumber
+              size="small"
+              aria-label="Plies"
+              min={1}
+              precision={0}
+              status={plies === null ? "error" : undefined}
+              value={plies}
+              onChange={(v) => setPlies(v)}
+            />
+          </label>
+          <label>
+            The opponent holds
+            <Input
+              size="small"
+              value={known}
+              placeholder="tiles, ? a blank"
+              onChange={(e) => setKnown(e.target.value)}
+              onPressEnter={apply}
+            />
+          </label>
+          <Button
+            size="small"
+            type="primary"
+            disabled={plies === null}
+            onClick={apply}
+          >
+            Apply
+          </Button>
+        </div>
+      }
+    >
+      <Tooltip title="Sim settings">
+        <Button
+          shape="circle"
+          size="small"
+          icon={<SettingOutlined />}
+          aria-label="Sim settings"
+          disabled={disabled}
+        />
+      </Tooltip>
+    </Popover>
   );
 };
 

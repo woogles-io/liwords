@@ -484,6 +484,27 @@ p.streak-loss {
   }
 }
 
+// The analyzer's card sits in the chat area, whose gear icons are larger and
+// gray; the sim's gear is drawn as the icons beside it are.
+.analyzer-container .suggestions .lab-panel .lab-buttons .anticon-setting {
+  color: inherit;
+  cursor: inherit;
+  font-size: inherit;
+}
+
+// a sim's settings, each named over its field, then the button applying them
+.lab-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  label {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+}
+
 .computer-analysis {
   display: flex;
   flex-direction: column;
