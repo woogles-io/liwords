@@ -485,8 +485,12 @@ jobs:
           awk '{print $1}' /tmp/s3-files-with-dates.txt | sort > /tmp/s3-files.txt
           echo "S3 bucket has $(wc -l < /tmp/s3-files.txt) total files"
 
-          # Find files in S3 that are NOT in current deployment
-          comm -23 /tmp/s3-files.txt /tmp/deployed-files.txt > /tmp/files-to-delete.txt
+          # Find files in S3 that are NOT in current deployment. The
+          # analyzer's word graphs and leave tables in wasm/<dir>/ (the dir
+          # liwords-ui/wasm-files.json names) are not built, so they are never
+          # old files.
+          KEPT="wasm/$(jq -r .dir "${GITHUB_WORKSPACE}/liwords-ui/wasm-files.json")/"
+          comm -23 /tmp/s3-files.txt /tmp/deployed-files.txt | { grep -v "^${KEPT}" || true; } > /tmp/files-to-delete.txt
           DELETE_COUNT=$(wc -l < /tmp/files-to-delete.txt)
 
           if [ "$DELETE_COUNT" -gt 0 ]; then
