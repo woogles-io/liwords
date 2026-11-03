@@ -1178,7 +1178,7 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
           ) : null}
         </div>
       ) : (
-        <div className="suggestions" style={props.style}>
+        <div className="suggestions suggestions-loading" style={props.style}>
           <RedoOutlined spin />
         </div>
       )}
