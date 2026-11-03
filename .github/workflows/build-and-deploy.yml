@@ -70,6 +70,9 @@ jobs:
               - "go.mod"
               - "go.sum"
               - "scripts/**"
+              # what the Go tests read
+              - "data/**"
+              - "liwords-ui/wasm-files.json"
             frontend:
               - "liwords-ui/**"
             migrations:
@@ -138,6 +141,34 @@ jobs:
 
       - name: Build API
         run: cd cmd/liwords-api && go build
+
+      # The tests read the analyzer's word graphs through data/lexica/gaddag,
+      # and git does not keep them. The cache gives back the files as last
+      # kept, under this list of them (liwords-ui/wasm-files.json) or an
+      # earlier one, and fetch-wasm.mjs fetches only those missing or changed;
+      # they are kept again at once, not at the job's end, so a branch whose
+      # tests fail keeps them too.
+      - name: Name the analyzer's files' directory
+        id: wasm
+        run: echo "dir=liwords-ui/public/wasm/$(jq -r .dir liwords-ui/wasm-files.json)" >> "${GITHUB_OUTPUT}"
+
+      - name: Restore the analyzer's word graphs
+        id: wasm-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ steps.wasm.outputs.dir }}
+          key: wasm-${{ hashFiles('liwords-ui/wasm-files.json') }}
+          restore-keys: wasm-
+
+      - name: Fetch the analyzer's word graphs
+        run: node liwords-ui/scripts/fetch-wasm.mjs --strict
+
+      - name: Keep the analyzer's word graphs
+        if: steps.wasm-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ steps.wasm.outputs.dir }}
+          key: wasm-${{ hashFiles('liwords-ui/wasm-files.json') }}
 
       - name: Test API
         run: go test -race ./...

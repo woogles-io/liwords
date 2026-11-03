@@ -23,8 +23,10 @@ local.env
 
 cmd/convert-pb/convert-pb
 liwords-ui/public/wasm/macondo.wasm
-# the analyzer's 2026 files, which liwords-ui/scripts/fetch-wasm.mjs fetches
-liwords-ui/public/wasm/2026/
+# the analyzer's 2026 files, which liwords-ui/scripts/fetch-wasm.mjs fetches,
+# in a directory kept there for data/lexica/gaddag before they are fetched
+liwords-ui/public/wasm/2026/*
+!liwords-ui/public/wasm/2026/.gitkeep
 
 *.out
 

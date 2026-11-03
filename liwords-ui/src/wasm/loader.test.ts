@@ -54,7 +54,7 @@ describe("getWolges", () => {
 
     await getWolges("CSW21");
     expect(loaded(precacheKwg)).toEqual([
-      { name: "CSW21", length: sizeOf("/wasm/2024/CSW21.kwg") },
+      { name: "CSW21", length: sizeOf("/wasm/2026/CSW21.kwg") },
     ]);
     expect(evictKwg).not.toHaveBeenCalled();
 
@@ -63,7 +63,7 @@ describe("getWolges", () => {
     expect(evictKlv).toHaveBeenCalledWith("CSW21");
     expect(loaded(precacheKwg)).toContainEqual({
       name: "RD29",
-      length: sizeOf("/wasm/2024/RD29.kwg"),
+      length: sizeOf("/wasm/2026/RD29.kwg"),
     });
 
     // Back again. This is the assertion the change exists for: the second
@@ -77,7 +77,7 @@ describe("getWolges", () => {
 
     // And it really did go back to the network for them rather than keeping
     // them alive somewhere.
-    expect(fetched.filter((p) => p === "/wasm/2024/CSW21.kwg")).toHaveLength(2);
+    expect(fetched.filter((p) => p === "/wasm/2026/CSW21.kwg")).toHaveLength(2);
   });
 
   it("keeps what the request still needs", async () => {
@@ -106,6 +106,6 @@ describe("getWolges", () => {
     expect(loaded(precacheKwg).filter((c) => c.name === "CSW21")).toHaveLength(
       1,
     );
-    expect(fetched.filter((p) => p === "/wasm/2024/CSW21.kwg")).toHaveLength(1);
+    expect(fetched.filter((p) => p === "/wasm/2026/CSW21.kwg")).toHaveLength(1);
   });
 });

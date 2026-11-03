@@ -9,7 +9,7 @@ This covers a **new edition of a lexicon whose alphabet woogles already supports
 
 Work carefully. The repo usually has unrelated untracked files, and the old edition's files are still needed by existing games. Several steps affect production and must never be done without explicit approval.
 
-Throughout, `OLD` is the edition being replaced (e.g. `NSF25`), `NEW` is the new one (e.g. `NSF26`), and `WASM=liwords-ui/public/wasm/2024`. `data/lexica/gaddag` is a symlink to `WASM`, so local dev and CI read the same files.
+Throughout, `OLD` is the edition being replaced (e.g. `NSF25`), `NEW` is the new one (e.g. `NSF26`), and `WASM=liwords-ui/public/wasm/2026`. `data/lexica/gaddag` is a symlink to `WASM`, so local dev and CI read the same files.
 
 ## 0. Pin down the inputs
 
@@ -57,9 +57,9 @@ Start from an up-to-date `master` on a new branch: `git fetch && git checkout -b
 
 ## 3. Put the files in place
 
-Copy into `$WASM`: `NEW.kwg`, `NEW.kad`, `NEW.klv2` (from `OLD.klv2` or the supplied file), and `super-NEW.klv2` if OLD has a super table. Check with `md5` that the copies match their sources.
+Copy into `$WASM`: `NEW.kwg`, `NEW.kad`, `NEW.klv2` (from `OLD.klv2` or the supplied file), and `super-NEW.klv2` if OLD has a super table. Check with `md5` that the copies match their sources. Then list them in `liwords-ui/wasm-files.json` with `node scripts/fetch-wasm.mjs --write` (in `liwords-ui`). That file is what gets committed; the files themselves go to the bucket before the PR merges (step 8).
 
-**Never delete, rename or overwrite OLD's files.** Existing games, annotated games, the analyzer, and macondo's download-on-demand (it fetches from `$WASM` on GitHub master) all load lexica by name.
+**Never delete, rename, or overwrite OLD's files.** Existing games, annotated games, the analyzer, and macondo's download-on-demand all load lexica by name. macondo's download-on-demand fetched from `$WASM` on GitHub master while that was `liwords-ui/public/wasm/2024`, which is still in git; a file that is only in the 2026 bucket is not on GitHub, so check macondo before counting on it to find NEW.
 
 ## 4. Wire NEW into liwords
 
@@ -98,7 +98,7 @@ Optional but worth it: start the app, open the browser analyzer or WordSmog in N
 
 ## 7. Commit and PR
 
-Stage only the files you touched, plus the new binaries. Commit, then **ask before pushing**. PR body:
+Stage only the files you touched, plus `liwords-ui/wasm-files.json` (the new binaries themselves stay out of git). Commit, then **ask before pushing**. PR body:
 - source list (file name and date), NEW code, alphabet
 - the build summary: kept count, dropped counts and why, the three check results, added and removed counts with a few examples
 - klv2 provenance (reused from OLD, or new)
@@ -108,7 +108,7 @@ Stage only the files you touched, plus the new binaries. Commit, then **ask befo
 
 Order matters, because the API's word service only picks up kwgs that exist when it starts.
 
-**Before merging:**
+**Before merging:** upload `NEW.kwg`, `NEW.kad`, `NEW.klv2`, and `super-NEW.klv2` to `s3://woogles.io/wasm/2026/`, where the browser's analyzer, `npm run fetch-wasm`, and CI get them. The PR's checks cannot pass before that: CI fetches every file `wasm-files.json` lists. Then:
 1. Copy the files to the EFS data volume with `scripts/deploy_to_efs.sh NEW OLD`. It does a dry run by default: it lists the local md5s, shows OLD's files on the volume, and flags any NEW target that already exists. Show the user that output, then run it with `--apply` only once they approve. The script never overwrites anything. The volume is mounted at `/mnt/efs` on `woogles-wg` (`ssh woogles-wg`, as ec2-user, which owns the files), with data under `/mnt/efs/data`:
    - `lexica/gaddag/2024/`: `NEW.kwg`, `NEW.kad`, `NEW.klv2`, `super-NEW.klv2`. This is what the API, the bot and the analysis workers read. The `2024` is the KWG path prefix; it's not `lexica/gaddag/`.
    - `strategy/NEW/leaves.klv2` (+ `super-leaves.klv2`): the legacy leaves folder. Every current lexicon has one, identical to its gaddag klv2.
