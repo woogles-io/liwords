@@ -9,6 +9,7 @@ import React, {
 import { App, Button, Card, Switch, Tooltip } from "antd";
 import { BulbOutlined, RobotOutlined } from "@ant-design/icons";
 import { useQuery, useMutation } from "@connectrpc/connect-query";
+import { useGrowToWindowBottom } from "../utils/grow_to_window_bottom";
 import { flashError } from "../utils/hooks/connect";
 import { useLocalStorageBool } from "../utils/use_local_storage";
 import {
@@ -1110,6 +1111,15 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
     </div>
   );
 
+  // The card takes the room the chat above it leaves when collapsed
+  // (chat.tsx).
+  const [chatHidden] = useLocalStorageBool("chatCollapsed");
+  const card = useRef<HTMLDivElement>(null);
+  useGrowToWindowBottom(
+    card,
+    !!props.includeCard && chatHidden && !(showComputerAnalysis && gameDone),
+  );
+
   if (showComputerAnalysis && gameDone) {
     const computerAnalysisContent = (
       <ComputerAnalysis
@@ -1188,6 +1198,7 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
   if (props.includeCard) {
     return (
       <Card
+        ref={card}
         title="Analyzer"
         className="analyzer-card"
         extra={analyzerControls}
