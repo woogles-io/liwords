@@ -544,6 +544,24 @@ p.streak-loss {
     font-weight: bold;
     text-align: left;
   }
+
+  // the view, by ply or by move; a table's row shows its move's block
+  .lab-details-view {
+    margin-bottom: 8px;
+  }
+
+  tbody tr {
+    cursor: pointer;
+  }
+
+  .lab-details-block {
+    @include type-monospace;
+
+    ul {
+      margin: 0;
+      padding-left: 16px;
+    }
+  }
 }
 
 .computer-analysis {

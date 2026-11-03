@@ -12,6 +12,7 @@ import {
   InputNumber,
   Popconfirm,
   Popover,
+  Radio,
   Tooltip,
 } from "antd";
 import {
@@ -1383,6 +1384,20 @@ const SimDetails = (props: SimDetailsProps) => {
     ...stats.map(({ stat }) => stat.plies?.length ?? 0),
   );
   const name = (m: AnalyzerMove) => `${m.coordinates} ${m.displayMove}`.trim();
+  // The numbers by ply, a table each, or by move, a block each, as Quackle
+  // gives them; a move's row clicked in a table shows its block.
+  const [view, setView] = useState<"ply" | "move">("ply");
+  const [shown, setShown] = useState<string | null>(null);
+  const blocks = useRef(new Map<string, HTMLElement>());
+  useEffect(() => {
+    if (view === "move" && shown !== null) {
+      blocks.current.get(shown)?.scrollIntoView({ block: "nearest" });
+    }
+  }, [view, shown]);
+  const showBlock = (key: string) => {
+    setShown(key);
+    setView("move");
+  };
   const rack = machineWordToRunes(lab.rack, lab.alphabet, false, true);
   const save = () => {
     const saved = {
@@ -1423,64 +1438,121 @@ const SimDetails = (props: SimDetailsProps) => {
       title={`${iterations} iterations of ${rack}`}
       width={640}
     >
-      <table>
-        <thead>
-          <tr>
-            <th />
-            <th>Win</th>
-            <th>SD</th>
-            <th>Equity</th>
-            <th>SD</th>
-            <th>Score</th>
-            <th>Static</th>
-            <th>N</th>
-          </tr>
-        </thead>
-        <tbody>
-          {stats.map(({ move: m, stat }) => (
-            <tr key={m.jsonKey}>
-              <td className="lab-details-move">{name(m)}</td>
-              <td>{stat.n ? percent(stat.win.mean) : ""}</td>
-              <td>{stat.n ? percent(sd(stat.win)) : ""}</td>
-              <td>{stat.n ? signed(stat.equity.mean, 2) : ""}</td>
-              <td>{stat.n ? sd(stat.equity).toFixed(1) : ""}</td>
-              <td>{m.score}</td>
-              <td>{signed(m.equity, 2)}</td>
-              <td>{stat.n}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      {Array.from({ length: plies }, (_, ply) => (
-        <React.Fragment key={ply}>
-          <h4>{plyName(ply)}</h4>
+      <Radio.Group
+        className="lab-details-view"
+        optionType="button"
+        size="small"
+        value={view}
+        onChange={(e) => {
+          setShown(null);
+          setView(e.target.value);
+        }}
+        options={[
+          { label: "By ply", value: "ply" },
+          { label: "By move", value: "move" },
+        ]}
+      />
+      {view === "move" ? (
+        stats.map(({ move: m, stat }) => (
+          <div
+            key={m.jsonKey}
+            className="lab-details-block"
+            ref={(el) => {
+              if (el) {
+                blocks.current.set(m.jsonKey, el);
+              } else {
+                blocks.current.delete(m.jsonKey);
+              }
+            }}
+          >
+            <h4>{name(m)}</h4>
+            <ul>
+              {stat.n ? (
+                <React.Fragment>
+                  <li>{`Win: ${percent(stat.win.mean)} (SD ${percent(sd(stat.win))})`}</li>
+                  <li>{`Equity: ${signed(stat.equity.mean, 2)} (SD ${sd(stat.equity).toFixed(1)})`}</li>
+                </React.Fragment>
+              ) : (
+                <li>No rollouts</li>
+              )}
+              <li>{`Score: ${m.score}, static ${signed(m.equity, 2)}`}</li>
+              <li>{`N: ${stat.n}`}</li>
+              {(stat.plies ?? []).map((p, ply) => {
+                if (!p.n) {
+                  return null;
+                }
+                const score = `${p.score.mean.toFixed(1)} (SD ${sd(p.score).toFixed(1)})`;
+                return (
+                  <li key={ply}>
+                    {`${plyName(ply)}: ${score}, bingo ${percent(p.bingo)}`}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ))
+      ) : (
+        <React.Fragment>
           <table>
             <thead>
               <tr>
                 <th />
-                <th>Score</th>
+                <th>Win</th>
                 <th>SD</th>
-                <th>Bingo</th>
+                <th>Equity</th>
+                <th>SD</th>
+                <th>Score</th>
+                <th>Static</th>
                 <th>N</th>
               </tr>
             </thead>
             <tbody>
-              {stats.map(({ move: m, stat }) => {
-                const p = stat.plies?.[ply];
-                return (
-                  <tr key={m.jsonKey}>
-                    <td className="lab-details-move">{name(m)}</td>
-                    <td>{p?.n ? p.score.mean.toFixed(1) : ""}</td>
-                    <td>{p?.n ? sd(p.score).toFixed(1) : ""}</td>
-                    <td>{p?.n ? percent(p.bingo) : ""}</td>
-                    <td>{p?.n}</td>
-                  </tr>
-                );
-              })}
+              {stats.map(({ move: m, stat }) => (
+                <tr key={m.jsonKey} onClick={() => showBlock(m.jsonKey)}>
+                  <td className="lab-details-move">{name(m)}</td>
+                  <td>{stat.n ? percent(stat.win.mean) : ""}</td>
+                  <td>{stat.n ? percent(sd(stat.win)) : ""}</td>
+                  <td>{stat.n ? signed(stat.equity.mean, 2) : ""}</td>
+                  <td>{stat.n ? sd(stat.equity).toFixed(1) : ""}</td>
+                  <td>{m.score}</td>
+                  <td>{signed(m.equity, 2)}</td>
+                  <td>{stat.n}</td>
+                </tr>
+              ))}
             </tbody>
           </table>
+          {Array.from({ length: plies }, (_, ply) => (
+            <React.Fragment key={ply}>
+              <h4>{plyName(ply)}</h4>
+              <table>
+                <thead>
+                  <tr>
+                    <th />
+                    <th>Score</th>
+                    <th>SD</th>
+                    <th>Bingo</th>
+                    <th>N</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {stats.map(({ move: m, stat }) => {
+                    const p = stat.plies?.[ply];
+                    return (
+                      <tr key={m.jsonKey} onClick={() => showBlock(m.jsonKey)}>
+                        <td className="lab-details-move">{name(m)}</td>
+                        <td>{p?.n ? p.score.mean.toFixed(1) : ""}</td>
+                        <td>{p?.n ? sd(p.score).toFixed(1) : ""}</td>
+                        <td>{p?.n ? percent(p.bingo) : ""}</td>
+                        <td>{p?.n}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </React.Fragment>
+          ))}
         </React.Fragment>
-      ))}
+      )}
     </Modal>
   );
 };

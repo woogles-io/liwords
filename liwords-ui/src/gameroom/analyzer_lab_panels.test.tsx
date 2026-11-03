@@ -1511,6 +1511,74 @@ describe("the sim panel", () => {
     expect(rowsOf(tables[4])[0]).toBe(`${JSON.stringify(ba)}33.04.025.0%32`);
   });
 
+  it("shows a sim's details by move, a block a candidate, a row's when clicked", async () => {
+    const scroll = vi.fn();
+    Element.prototype.scrollIntoView = scroll;
+    try {
+      render(
+        <Store>
+          <Sim
+            lab={midgame()}
+            moves={[listed(ba, { equity: 3 }), listed(ab, { equity: 2 })]}
+          />
+        </Store>,
+      );
+      await start();
+      const plies = Array.from({ length: 2 }, (_, i) => ({
+        n: 32,
+        score: { mean: 30 + i, variance: 16 },
+        bingo: 0.25,
+      }));
+      emit({
+        job: 1,
+        answer: {
+          iterations: 32,
+          candidates: [
+            { ...candidate(ba, 0.5, { equity: 9 }), plies },
+            { ...candidate(ab, 0.4, { equity: 3 }), plies },
+          ],
+        },
+        done: false,
+      });
+      act(() => screen.getByRole("button", { name: "Details" }).click());
+      expect(
+        await screen.findByText("32 iterations of AABEEII"),
+      ).toBeInTheDocument();
+      const details = document.querySelector(".lab-details")!;
+      const blocks = () => [...details.querySelectorAll(".lab-details-block")];
+      expect(blocks()).toHaveLength(0);
+
+      act(() => screen.getByRole("radio", { name: "By move" }).click());
+      expect(blocks().map((b) => b.querySelector("h4")?.textContent)).toEqual([
+        JSON.stringify(ba),
+        JSON.stringify(ab),
+      ]);
+      expect(
+        [...blocks()[0].querySelectorAll("li")].map((li) => li.textContent),
+      ).toEqual([
+        "Win: 50.0% (SD 0.0%)",
+        "Equity: +9.00 (SD 0.0)",
+        "Score: 10, static +3.00",
+        "N: 32",
+        "Opponent's next turn: 30.0 (SD 4.0), bingo 25.0%",
+        "Your next turn: 31.0 (SD 4.0), bingo 25.0%",
+      ]);
+      expect(scroll).not.toHaveBeenCalled();
+
+      act(() => screen.getByRole("radio", { name: "By ply" }).click());
+      expect(blocks()).toHaveLength(0);
+      const second = details
+        .querySelectorAll("table")[0]
+        .querySelectorAll("tbody tr")[1] as HTMLElement;
+      act(() => second.click());
+      expect(blocks()).toHaveLength(2);
+      expect(scroll).toHaveBeenCalledTimes(1);
+      expect(scroll.mock.contexts[0]).toBe(blocks()[1]);
+    } finally {
+      delete (Element.prototype as { scrollIntoView?: unknown }).scrollIntoView;
+    }
+  });
+
   it("saves a sim's numbers to a file", async () => {
     let saved: Blob | undefined;
     vi.stubGlobal("URL", {
