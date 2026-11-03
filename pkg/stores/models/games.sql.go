@@ -984,23 +984,24 @@ func (q *Queries) GetRecentTourneyGames(ctx context.Context, arg GetRecentTourne
 }
 
 const getRematchStreak = `-- name: GetRematchStreak :many
-SELECT g.uuid, g.winner_idx, g.quickdata
-FROM games g
-WHERE g.uuid IN (
-  SELECT DISTINCT gp.game_uuid
-  FROM game_players gp
-  WHERE gp.original_request_id = $1::text
-    AND gp.game_end_reason NOT IN (0, 5, 7) -- NONE, ABORTED, CANCELLED
-)
-ORDER BY g.created_at DESC
+SELECT gp.game_uuid, gp.won, u.uuid AS user_uuid, u.username
+FROM game_players gp
+JOIN users u ON u.id = gp.player_id
+WHERE gp.original_request_id = $1::text
+  AND gp.game_end_reason NOT IN (0, 5, 7) -- NONE, ABORTED, CANCELLED
+ORDER BY gp.created_at DESC, gp.game_uuid, gp.player_index
 `
 
 type GetRematchStreakRow struct {
-	Uuid      pgtype.Text
-	WinnerIdx pgtype.Int4
-	Quickdata entity.Quickdata
+	GameUuid string
+	Won      pgtype.Bool
+	UserUuid string
+	Username string
 }
 
+// Two rows per game, newest game first. It reads only game_players and users:
+// streaks can run to hundreds of games, and reading each one's games row
+// (for quickdata) was slow whenever those rows weren't cached.
 func (q *Queries) GetRematchStreak(ctx context.Context, originalRequestID string) ([]GetRematchStreakRow, error) {
 	rows, err := q.db.Query(ctx, getRematchStreak, originalRequestID)
 	if err != nil {
@@ -1010,7 +1011,12 @@ func (q *Queries) GetRematchStreak(ctx context.Context, originalRequestID string
 	var items []GetRematchStreakRow
 	for rows.Next() {
 		var i GetRematchStreakRow
-		if err := rows.Scan(&i.Uuid, &i.WinnerIdx, &i.Quickdata); err != nil {
+		if err := rows.Scan(
+			&i.GameUuid,
+			&i.Won,
+			&i.UserUuid,
+			&i.Username,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

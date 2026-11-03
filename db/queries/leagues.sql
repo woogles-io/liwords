@@ -371,28 +371,28 @@ WHERE ls.id = cur.id
 -- analyzed games. It counts the same games as RefreshDivisionMistakeIndex
 -- (each game once, its newest job with both players' indexes), so dividing
 -- by n gives the average opponent mistake index over the player's analyzed
--- games.
+-- games. Players come from game_players rather than games: its rows are
+-- small and stay cached, while reading old seasons' games rows was slow.
 WITH latest AS (
     SELECT DISTINCT ON (aj.game_id)
-        g.player0_id,
-        g.player1_id,
+        aj.game_id,
         aj.player0_mistake_index AS mi0,
         aj.player1_mistake_index AS mi1
     FROM analysis_jobs aj
-    JOIN games g ON g.uuid = aj.game_id
-    WHERE g.season_id = sqlc.arg(season_id)::uuid
+    WHERE aj.game_id IN (
+        SELECT gp.game_uuid FROM game_players gp
+        WHERE gp.league_season_id = sqlc.arg(season_id)::uuid
+    )
       AND aj.player0_mistake_index IS NOT NULL
       AND aj.player1_mistake_index IS NOT NULL
     ORDER BY aj.game_id, aj.created_at DESC
-),
-per_player AS (
-    SELECT player0_id AS user_id, mi1 AS opponent_mi FROM latest WHERE player0_id IS NOT NULL
-    UNION ALL
-    SELECT player1_id AS user_id, mi0 AS opponent_mi FROM latest WHERE player1_id IS NOT NULL
 )
-SELECT user_id::INT AS user_id, SUM(opponent_mi)::FLOAT8 AS total, COUNT(*)::INT AS n
-FROM per_player
-GROUP BY user_id;
+SELECT gp.player_id::INT AS user_id,
+       SUM(CASE gp.player_index WHEN 0 THEN l.mi1 ELSE l.mi0 END)::FLOAT8 AS total,
+       COUNT(*)::INT AS n
+FROM latest l
+JOIN game_players gp ON gp.game_uuid = l.game_id
+GROUP BY gp.player_id;
 
 -- name: DeleteDivisionStandings :exec
 DELETE FROM league_standings
