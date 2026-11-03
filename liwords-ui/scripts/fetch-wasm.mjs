@@ -11,8 +11,16 @@
 //                                         it: exits 1 if any file is missing
 //   node scripts/fetch-wasm.mjs --write   lists the files public/wasm/<dir>/
 //                                         holds in wasm-files.json again
+//   node scripts/fetch-wasm.mjs --check   as CI runs it before a build:
+//                                         exits 1 unless every file is
+//                                         served, at its size and with its
+//                                         sha256, fetching none of them
 // WOOGLES_WASM_BASE, when set, is fetched from in place of the manifest's
-// base, which ends with a slash, as it must.
+// base, which ends with a slash, as it must. woogles.io answers a file it
+// lacks with its page (HTTP 200, text/html), and many of the files share a
+// size, so a file is only taken as served when it comes with the sha256 the
+// bucket keeps as its metadata (x-amz-meta-sha256, which upload-wasm.mjs
+// sets) and that sha256 is the listed one.
 import { createHash } from "node:crypto";
 import { mkdir, readFile, readdir, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -22,9 +30,36 @@ const ui = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const manifestPath = path.join(ui, "wasm-files.json");
 const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
 const dir = path.join(ui, "public", "wasm", manifest.dir);
+const base = process.env.WOOGLES_WASM_BASE || manifest.base;
 const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
 
-if (process.argv.includes("--write")) {
+if (process.argv.includes("--check")) {
+  const missing = [];
+  for (const { name, size, sha256: sum } of manifest.files) {
+    const url = `${base}${manifest.dir}/${name}`;
+    try {
+      const response = await fetch(url, { method: "HEAD" });
+      const length = Number(response.headers.get("content-length"));
+      const kept = response.headers.get("x-amz-meta-sha256");
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      if (response.headers.get("content-type")?.startsWith("text/html")) {
+        throw new Error("the site's page, not the file");
+      }
+      if (length !== size) throw new Error(`${length} bytes, not ${size}`);
+      if (!kept) throw new Error("no sha256 kept with it");
+      if (kept !== sum) throw new Error(`sha256 ${kept}, not the listed one`);
+    } catch (e) {
+      missing.push(`${url}: ${e instanceof Error ? e.message : e}`);
+    }
+  }
+  if (missing.length) {
+    console.error(
+      `${missing.length} of the ${manifest.files.length} files wasm-files.json lists ${missing.length === 1 ? "is" : "are"} not served:\n  ${missing.join("\n  ")}`,
+    );
+    process.exit(1);
+  }
+  console.log(`all ${manifest.files.length} files are served`);
+} else if (process.argv.includes("--write")) {
   // every file but the ones git keeps there (.gitkeep) and a fetch cut short
   const names = (await readdir(dir))
     .filter((name) => !name.startsWith(".") && !name.endsWith(".part"))
@@ -41,7 +76,6 @@ if (process.argv.includes("--write")) {
   console.log(`wasm-files.json lists ${files.length} files`);
 } else {
   const strict = process.argv.includes("--strict");
-  const base = process.env.WOOGLES_WASM_BASE || manifest.base;
   await mkdir(dir, { recursive: true });
   const missing = [];
   let fetched = 0;

@@ -406,6 +406,13 @@ jobs:
       - name: Test Frontend
         run: cd liwords-ui && npm run test
 
+      # The page asks woogles.io for the analyzer's files, which
+      # liwords-ui/scripts/upload-wasm.mjs uploads to the bucket: no page naming
+      # them is built, or deployed, before each one is served there with its
+      # size and sha256.
+      - name: Check the analyzer's files are served
+        run: cd liwords-ui && node scripts/fetch-wasm.mjs --check
+
       - name: Build Frontend
         run: cd liwords-ui && npm run build
 

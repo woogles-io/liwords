@@ -108,7 +108,7 @@ Stage only the files you touched, plus `liwords-ui/wasm-files.json` (the new bin
 
 Order matters, because the API's word service only picks up kwgs that exist when it starts.
 
-**Before merging:** upload `NEW.kwg`, `NEW.kad`, `NEW.klv2`, and `super-NEW.klv2` to `s3://woogles.io/wasm/2026/`, where the browser's analyzer, `npm run fetch-wasm`, and CI get them. The PR's checks cannot pass before that: CI fetches every file `wasm-files.json` lists. Then:
+**Before merging:** upload `NEW.kwg`, `NEW.kad`, `NEW.klv2`, and `super-NEW.klv2` to `s3://woogles.io/wasm/2026/`, where the browser's analyzer, `npm run fetch-wasm`, and CI get them, with `node scripts/upload-wasm.mjs` in `liwords-ui`: a dry run first, then `--apply` once the user approves. It keeps each file's sha256 with it in the bucket. The PR's checks cannot pass before that: CI checks that every file `wasm-files.json` lists is served with its size and sha256. Then:
 1. Copy the files to the EFS data volume with `scripts/deploy_to_efs.sh NEW OLD`. It does a dry run by default: it lists the local md5s, shows OLD's files on the volume, and flags any NEW target that already exists. Show the user that output, then run it with `--apply` only once they approve. The script never overwrites anything. The volume is mounted at `/mnt/efs` on `woogles-wg` (`ssh woogles-wg`, as ec2-user, which owns the files), with data under `/mnt/efs/data`:
    - `lexica/gaddag/2024/`: `NEW.kwg`, `NEW.kad`, `NEW.klv2`, `super-NEW.klv2`. This is what the API, the bot and the analysis workers read. The `2024` is the KWG path prefix; it's not `lexica/gaddag/`.
    - `strategy/NEW/leaves.klv2` (+ `super-leaves.klv2`): the legacy leaves folder. Every current lexicon has one, identical to its gaddag klv2.
