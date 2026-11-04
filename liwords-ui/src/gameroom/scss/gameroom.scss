@@ -205,11 +205,13 @@ p.streak-loss {
     .ant-card-body {
       padding: 0;
 
+      // what the analyzer lists starts at the card's top, however short;
+      // only its spinner, while it works, sits in the middle
       .analyzer-container {
         display: flex;
         width: 100%;
         height: 100%;
-        align-items: center;
+        align-items: flex-start;
         justify-content: center;
 
         .analyze-trigger,
@@ -220,6 +222,10 @@ p.streak-loss {
         .suggestions {
           max-height: 244px;
           overflow-y: auto;
+
+          &.suggestions-loading {
+            align-self: center;
+          }
         }
       }
     }
