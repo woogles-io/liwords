@@ -1609,6 +1609,7 @@ export const Table = React.memo((props: Props) => {
       children={ret}
       lexicon={gameInfo.gameRequest?.lexicon ?? ""}
       variant={gameInfo.gameRequest?.rules?.variantName}
+      challengeRule={gameInfo.gameRequest?.challengeRule}
       openComputerAnalysisSignal={openComputerAnalysisSignal}
     />
   );

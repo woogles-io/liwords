@@ -645,6 +645,7 @@ export const BoardEditor = () => {
       children={ret}
       lexicon={gameContext.gameDocument.lexicon}
       variant={gameContext.gameDocument.variant}
+      challengeRule={macChallengeRule}
     />
   );
   return ret;
