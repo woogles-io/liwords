@@ -197,8 +197,8 @@ func ValidateGameRequest(ctx context.Context, req *pb.GameRequest) error {
 	}
 	// Modify the game request if the variant calls for it. A super variant
 	// plays its lexicon's 200-tile set on the 21x21 board; the sets that
-	// exist are the English one, for the lexica isEnglish names, and the
-	// Catalan one.
+	// exist are the English one, for the lexica isEnglish names, the Catalan
+	// one, and the German one.
 	if req.Rules.VariantName == string(game.VarClassicSuper) ||
 		req.Rules.VariantName == string(game.VarWordSmogSuper) {
 		super, ok := SuperLetterDistribution(ld)

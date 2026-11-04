@@ -314,7 +314,7 @@ const parseExaminableGameContext = (
     loadableKey += ".WordSmog";
   }
   if (variant === "classic_super" || variant === "wordsmog_super") {
-    // only english and catalan supported.
+    // only english, catalan, and german supported.
     rules += "Super";
     loadableKey = `super-${loadableKey}`;
   }

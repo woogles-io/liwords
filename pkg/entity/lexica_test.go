@@ -31,7 +31,7 @@ func TestHistoricalLexicaCannotStartGames(t *testing.T) {
 }
 
 // A super variant plays its lexicon's 200-tile set on the 21x21 board:
-// English and Catalan have one.
+// English, Catalan, and German have one.
 func TestSuperVariantsTakeTheLexiconsSuperSet(t *testing.T) {
 	is := is.New(t)
 	ctx := context.Background()
@@ -39,6 +39,7 @@ func TestSuperVariantsTakeTheLexiconsSuperSet(t *testing.T) {
 		"CSW24": "english_super",
 		"NWL23": "english_super",
 		"DISC2": "catalan_super",
+		"RD29":  "german_super",
 	} {
 		for _, variant := range []string{"classic_super", "wordsmog_super"} {
 			req := newGameRequest(lexicon)
@@ -52,7 +53,7 @@ func TestSuperVariantsTakeTheLexiconsSuperSet(t *testing.T) {
 		}
 	}
 	// no super set; NSWL23 was not offered the super variants before either
-	for _, lexicon := range []string{"RD29", "FRA24", "NSWL23"} {
+	for _, lexicon := range []string{"FRA24", "OSPS52", "NSWL23"} {
 		req := newGameRequest(lexicon)
 		req.Rules.VariantName = "classic_super"
 		err := ValidateGameRequest(ctx, req)
