@@ -79,6 +79,37 @@ func (q *Queries) GetOngoingGame(ctx context.Context, gameUuid string) (OngoingG
 	return i, err
 }
 
+const listLiveGamesWithoutOngoingRow = `-- name: ListLiveGamesWithoutOngoingRow :many
+SELECT g.uuid::text AS uuid
+FROM games g
+WHERE g.game_end_reason = 0
+    AND g.type IS DISTINCT FROM 1
+    AND NOT EXISTS (SELECT 1 FROM ongoing_games o WHERE o.game_uuid = g.uuid)
+ORDER BY g.id
+`
+
+// For the backfill: games that are still being played and have no row. Not
+// annotated games (type 1), which are never saved through Set.
+func (q *Queries) ListLiveGamesWithoutOngoingRow(ctx context.Context) ([]string, error) {
+	rows, err := q.db.Query(ctx, listLiveGamesWithoutOngoingRow)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var uuid string
+		if err := rows.Scan(&uuid); err != nil {
+			return nil, err
+		}
+		items = append(items, uuid)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listOngoingCorrespondenceGames = `-- name: ListOngoingCorrespondenceGames :many
 SELECT game_uuid, started, on_turn, play_state, timers, game_type,
        tournament_id, league_id, season_id, league_division_id,
@@ -520,9 +551,15 @@ INSERT INTO ongoing_games (
     $1, $2, $3,
     $4, $5, $6, $7, $8,
     $9, $10,
-    $11, $12, $13, $14,
-    $15, $16, $17,
-    $18, $19, $20,
+    $11, $12,
+    -- Readiness is copied from the games row on insert, so a game whose row is
+    -- created after a player has readied (the backfill, or the first save
+    -- after the flag goes on) does not lose that player's bit. From then on
+    -- SetReady writes both.
+    COALESCE((SELECT g.ready_flag FROM games g WHERE g.uuid = $1), 0),
+    $13,
+    $14, $15, $16,
+    $17, $18, $19,
     now(), now()
 )
 ON CONFLICT (game_uuid) DO UPDATE SET
@@ -533,9 +570,8 @@ ON CONFLICT (game_uuid) DO UPDATE SET
     -- ready_flag is deliberately NOT updated here. It is owned by
     -- SetOngoingGameReady, which ORs one bit per player into it, and a save
     -- landing between the two players readying would otherwise wipe the first
-    -- one and make them ready up again. games.ready_flag has exactly this bug
-    -- today -- UpdateGame writes a literal 0 to it on every save -- and there is
-    -- no reason to carry it across. The value in the INSERT above therefore
+    -- one and make them ready up again (the bug games.ready_flag had until
+    -- UpdateGame stopped writing it). The value in the INSERT above therefore
     -- applies only when the row is first created.
     started = EXCLUDED.started,
     updated_at = now()
@@ -554,7 +590,6 @@ type UpsertOngoingGameParams struct {
 	Player1ID          int32
 	Timers             []byte
 	MetaEvents         []byte
-	ReadyFlag          int64
 	Started            bool
 	GameMode           int16
 	GameType           int16
@@ -566,11 +601,10 @@ type UpsertOngoingGameParams struct {
 
 // The single write path for a live game's row.
 //
-// It is the reason no backfill is needed. A game already in progress when this
-// code deploys has no row here; rather than migrating 12M rows, the row is
-// written the first time the game is saved, so new games and in-flight games
-// take the identical path and a game that is never touched again never needs
-// converting.
+// A game gets its row the first time it is saved with WRITE_ONGOING_GAMES on.
+// Games that were already live when the flag went on, and are not saved again
+// soon, get theirs from the backfill (`maintenance ongoing-games-backfill`),
+// which goes through this same query under the game's lock.
 //
 // The rules columns are immutable, so ON CONFLICT deliberately does not rewrite
 // them -- if they ever disagreed with the row that exists, the existing row is
@@ -593,7 +627,6 @@ func (q *Queries) UpsertOngoingGame(ctx context.Context, arg UpsertOngoingGamePa
 		arg.Player1ID,
 		arg.Timers,
 		arg.MetaEvents,
-		arg.ReadyFlag,
 		arg.Started,
 		arg.GameMode,
 		arg.GameType,

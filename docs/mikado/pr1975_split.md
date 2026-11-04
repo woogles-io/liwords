@@ -455,6 +455,28 @@ the Turnstile human-check settings master added after it. Likewise
 `models.go` differs only by what master dropped (`AutomodVerdict`, the
 analysis `result` column).
 
+### The `ongoing_games` backfill and readiness (step 7)
+
+The reference has no backfill: a game gets its row the first time it is saved
+with the flag on. That leaves out every live game that is not saved again soon,
+idle correspondence games and games nobody has moved in (45 of the 2,091 live
+games on 2026-11-02, the oldest six days old), so the table could not be checked
+by counting, and nothing could read it until every such game had been played.
+Step 7 adds `BackfillOngoingGame` and the `ongoing-games-backfill` maintenance
+command. Each game is written under its own game lock, skipped if it has ended
+or already has a row, so it is safe to run again.
+
+It also fixes readiness, which the reference leaves wrong in the row: the
+insert wrote a literal 0 and nothing ever updated it, because `SetReady`
+writes only `games`. Now the insert copies `games.ready_flag`, and `SetReady`
+(with the flag on) ORs the bit into both rows in one transaction. The upsert
+still never rewrites `ready_flag` on conflict. That is why
+`db/queries/ongoing_games.sql`, `ongoing.go`, `ongoing_test.go` and the
+generated `ongoing_games.sql.go` are in the ledger's deviations list, along
+with `cmd/maintenance/main.go`, which gains the command. The reference's
+version of that file is older than master's (it predates the pending-archival
+sweep and the Patreon changes), so the step adds one `case` to master's.
+
 ### For step 7: the mikado graph and `xwordgame_remaining.md`
 
 They say "delete xwordbridge" when macondo leaves the live path. Only the
@@ -592,10 +614,10 @@ Per step, from `xwordgame_remaining.md`:
    `liwords-maintenance` task, so it changes only when that task definition
    is pointed at a build with step 5. Update it on a day with no rollover.
 6. *Watch* p99 load latency, DB CPU.
-7. Turn on `WRITE_ONGOING_GAMES`. *Watch* move errors. Then run the checks
-   in `xwordgame_remaining.md`, "Rolling out `ongoing_games`": comparing
-   counts is not enough, because there is no backfill and an idle game has
-   no row until its next save.
+7. Turn on `WRITE_ONGOING_GAMES`. *Watch* move errors. Then run
+   `ongoing-games-backfill` once (flag on in the API first, never before),
+   and the checks in `xwordgame_remaining.md`, "Rolling out
+   `ongoing_games`".
 
 ## ledger.sh
 
@@ -651,6 +673,11 @@ pkg/xwordgame/state.go
 pkg/xwordbridge/quirks.go
 docs/mikado/xwordgame_review.md
 db/migrations/202611020001_ongoing_games.up.sql
+db/queries/ongoing_games.sql
+cmd/maintenance/main.go
+pkg/stores/game/ongoing.go
+pkg/stores/game/ongoing_test.go
+pkg/stores/models/ongoing_games.sql.go
 docs/mikado/remove-game-caches.dot
 docs/mikado/remove-game-caches.svg
 docs/mikado/xwordgame_remaining.md

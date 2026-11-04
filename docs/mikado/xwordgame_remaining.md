@@ -31,16 +31,36 @@ it. Nothing is served from the new path yet: macondo still referees every move.
    deliberately no foreign key; the migration says why).
 2. **Deploy the code with the flag off.** No change: `Set` writes the row only
    when `WRITE_ONGOING_GAMES` is on.
-3. **Turn on `WRITE_ONGOING_GAMES`.** From then on every save of a live game
-   upserts its row inside the save transaction, and the save that ends a game
-   deletes it. **Behaviour change:** a failure here fails the move. That is the
-   price of a listing that can never disagree with the game it names. There is
-   no backfill: a game gets its row the next time it is saved, so live games
-   appear as they are played, and an idle correspondence game appears at its
-   next move.
+3. **Turn on `WRITE_ONGOING_GAMES`** in the API task definition. From then on
+   every save of a live game upserts its row inside the save transaction, and
+   the save that ends a game deletes it. **Behavior change:** a failure here
+   fails the move. That is the price of a listing that can never disagree with
+   the game it names.
    *Watch:* move error rates (`handle-event` errors, failed saves).
-4. **Check it** before anything reads it, with `bin/proddb` (read-only). Once
-   real-time games started before the flip have ended, give or take an hour:
+4. **Backfill**, once the API with the flag on is the only one running. Games
+   that were live before the flip and have not been saved since -- idle
+   correspondence games, and games nobody has moved in -- have no row until
+   this runs. It is a one-off run of the maintenance task, with a build that
+   has step 7, the flag set on the run as well (it refuses to start without
+   it), and the command as an override:
+
+   ```bash
+   aws ecs run-task --cluster woogles-prod --launch-type EC2 \
+     --task-definition liwords-maintenance \
+     --overrides '{"containerOverrides":[{"name":"maintenance",
+       "command":["/opt/maintenance","ongoing-games-backfill"],
+       "environment":[{"name":"WRITE_ONGOING_GAMES","value":"1"}]}]}'
+   ```
+
+   Never run it before the flag is on in the API: a game that ends in between
+   would keep its row, because the save that ended it did not know to delete
+   it. Each game is written under its own game lock, the one every move holds,
+   and skipped if it has ended or already has a row, so it is safe to run
+   again. It logs `ongoing-backfill-done` with `wrote`, `skipped`, `failed`
+   and `remaining`; `remaining` should be 0, and a game whose lock was busy
+   shows as `ongoing-backfill-failed` and is picked up by running it again.
+   About 2,000 games, each a lock, a load and one insert: well under a minute.
+5. **Check it** before anything reads it, with `bin/proddb` (read-only):
 
    ```sql
    SET statement_timeout = '30s';
@@ -50,31 +70,34 @@ it. Nothing is served from the new path yet: macondo still referees every move.
    -- rows with no games row at all: must be 0
    SELECT count(*) FROM ongoing_games o
    WHERE NOT EXISTS (SELECT 1 FROM games g WHERE g.uuid = o.game_uuid);
-   -- live games saved since the flip with no row: must be 0
+   -- live games with no row: must be 0 after the backfill
    SELECT count(*) FROM games g
-   WHERE g.game_end_reason = 0 AND g.updated_at > '<flag-on time>'
+   WHERE g.game_end_reason = 0 AND g.type IS DISTINCT FROM 1
      AND NOT EXISTS (SELECT 1 FROM ongoing_games o WHERE o.game_uuid = g.uuid);
    -- the denormalized fields agree: must be 0
    SELECT count(*) FROM ongoing_games o JOIN games g ON g.uuid = o.game_uuid
    WHERE o.on_turn IS DISTINCT FROM g.player_on_turn::smallint
       OR o.started IS DISTINCT FROM g.started
       OR o.timers::jsonb IS DISTINCT FROM g.timers::jsonb
+      OR o.ready_flag IS DISTINCT FROM COALESCE(g.ready_flag, 0)
       OR o.player0_id <> g.player0_id OR o.player1_id <> g.player1_id
       OR o.tournament_id IS DISTINCT FROM g.tournament_id
       OR o.league_division_id IS DISTINCT FROM g.league_division_id;
    ```
 
-   The fourth query can be briefly non-zero for a game whose move commits
-   between the two reads; re-run it before worrying.
+   The third and fourth can be briefly non-zero for a game created or moved
+   between the two reads; re-run them before worrying. Run them again a day
+   later, and after a busy weekend.
 
 **Do not turn the flag off and on again** without cleaning up. A game that ends
-while the flag is off keeps its row. If it ever is turned off, delete the rows
-the first query finds before relying on the table.
+while the flag is off keeps its row, and a ready while it is off is missing
+from the row. If it ever is turned off, delete every row and run the backfill
+again once it is back on.
 
-Two things the row does not track yet, on purpose: `ready_flag` is only written
-on insert (`SetReady` still writes `games.ready_flag`), and the rules columns
-are never rewritten. Both are fine while nothing reads the table; moving the
-listings onto it is when `SetReady` moves too.
+Readiness: the insert copies `games.ready_flag`, and with the flag on `SetReady`
+ORs the player's bit into both rows in one transaction (the caller holds the
+game lock, as every save does). The rules columns are never rewritten on
+conflict; they are fixed when a game is created.
 
 ### Then let the shadows run
 

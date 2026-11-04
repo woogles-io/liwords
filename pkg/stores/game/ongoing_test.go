@@ -167,3 +167,123 @@ func TestSaveDoesNotClobberReadiness(t *testing.T) {
 	is.NoErr(err)
 	is.Equal(flag, 3)
 }
+
+func contains(ids []string, id string) bool {
+	for _, x := range ids {
+		if x == id {
+			return true
+		}
+	}
+	return false
+}
+
+// A game that was live before the flag went on, and is not saved again, gets
+// its row from the backfill -- the same row a save would have written.
+func TestOngoingBackfill(t *testing.T) {
+	is := is.New(t)
+	ustore, gstore := recreateDB()
+	defer gstore.Disconnect()
+	defer ustore.(*user.DBStore).Disconnect()
+	ctx := writeOngoingCtx()
+
+	// One player readied before the row existed.
+	_, err := gstore.dbPool.Exec(ctx, "UPDATE games SET ready_flag = 1 WHERE uuid = $1", ongoingGID)
+	is.NoErr(err)
+
+	ids, err := gstore.ListLiveGamesWithoutOngoingRow(ctx)
+	is.NoErr(err)
+	is.True(contains(ids, ongoingGID))
+
+	wrote, err := gstore.BackfillOngoingGame(ctx, ongoingGID)
+	is.NoErr(err)
+	is.True(wrote)
+
+	entGame, err := gstore.Get(ctx, ongoingGID)
+	is.NoErr(err)
+	row, err := gstore.queries.GetOngoingGame(ctx, ongoingGID)
+	is.NoErr(err)
+	is.Equal(int(row.PlayState), int(entGame.Playing()))
+	is.Equal(int(row.OnTurn.Int16), entGame.PlayerOnTurn())
+	is.Equal(row.Lexicon, entGame.History().Lexicon)
+	is.Equal(row.Player0ID, int32(entGame.PlayerDBIDs[0]))
+	is.Equal(row.ReadyFlag, int64(1)) // copied, not reset
+
+	// Idempotent: the second run finds the row and leaves it.
+	wrote, err = gstore.BackfillOngoingGame(ctx, ongoingGID)
+	is.NoErr(err)
+	is.True(!wrote)
+	ids, err = gstore.ListLiveGamesWithoutOngoingRow(ctx)
+	is.NoErr(err)
+	is.True(!contains(ids, ongoingGID))
+}
+
+// A game that ended is not ongoing, so the backfill must not give it a row --
+// whether the listing was read before it ended or after.
+func TestOngoingBackfillSkipsEndedGames(t *testing.T) {
+	is := is.New(t)
+	ustore, gstore := recreateDB()
+	defer gstore.Disconnect()
+	defer ustore.(*user.DBStore).Disconnect()
+	ctx := writeOngoingCtx()
+
+	ids, err := gstore.ListLiveGamesWithoutOngoingRow(ctx)
+	is.NoErr(err)
+	is.True(contains(ids, ongoingGID))
+
+	// It ends after the listing was read. Saved with the flag off, so there is
+	// no row for the save to delete.
+	off := DefaultConfig.WithContext(context.Background())
+	entGame, err := gstore.Get(off, ongoingGID)
+	is.NoErr(err)
+	entGame.SetGameEndReason(pb.GameEndReason_STANDARD)
+	entGame.SetPlaying(macondopb.PlayState_GAME_OVER)
+	is.NoErr(gstore.Set(off, entGame))
+
+	wrote, err := gstore.BackfillOngoingGame(ctx, ongoingGID)
+	is.NoErr(err)
+	is.True(!wrote)
+	is.Equal(ongoingCount(t, gstore), 0)
+
+	ids, err = gstore.ListLiveGamesWithoutOngoingRow(ctx)
+	is.NoErr(err)
+	is.True(!contains(ids, ongoingGID))
+}
+
+// The first save after the flag goes on copies readiness from the games row,
+// and from then on SetReady keeps both in step.
+func TestOngoingReadinessFollowsTheGame(t *testing.T) {
+	is := is.New(t)
+	ustore, gstore := recreateDB()
+	defer gstore.Disconnect()
+	defer ustore.(*user.DBStore).Disconnect()
+	ctx := writeOngoingCtx()
+
+	_, err := gstore.dbPool.Exec(ctx, "UPDATE games SET ready_flag = 0 WHERE uuid = $1", ongoingGID)
+	is.NoErr(err)
+
+	// Player 0 readies before the game has a row.
+	flag, err := gstore.SetReady(ctx, ongoingGID, 0)
+	is.NoErr(err)
+	is.Equal(flag, 1)
+	is.Equal(ongoingCount(t, gstore), 0)
+
+	entGame, err := gstore.Get(ctx, ongoingGID)
+	is.NoErr(err)
+	is.NoErr(gstore.Set(ctx, entGame))
+	row, err := gstore.queries.GetOngoingGame(ctx, ongoingGID)
+	is.NoErr(err)
+	is.Equal(row.ReadyFlag, int64(1))
+
+	// Player 1 readies once the row exists: both rows get the bit.
+	flag, err = gstore.SetReady(ctx, ongoingGID, 1)
+	is.NoErr(err)
+	is.Equal(flag, 3)
+	row, err = gstore.queries.GetOngoingGame(ctx, ongoingGID)
+	is.NoErr(err)
+	is.Equal(row.ReadyFlag, int64(3))
+
+	// Readying again changes nothing and is not an error.
+	flag, err = gstore.SetReady(ctx, ongoingGID, 1)
+	is.NoErr(err)
+	is.Equal(flag, 0)
+}

@@ -1,10 +1,9 @@
 -- The single write path for a live game's row.
 --
--- It is the reason no backfill is needed. A game already in progress when this
--- code deploys has no row here; rather than migrating 12M rows, the row is
--- written the first time the game is saved, so new games and in-flight games
--- take the identical path and a game that is never touched again never needs
--- converting.
+-- A game gets its row the first time it is saved with WRITE_ONGOING_GAMES on.
+-- Games that were already live when the flag went on, and are not saved again
+-- soon, get theirs from the backfill (`maintenance ongoing-games-backfill`),
+-- which goes through this same query under the game's lock.
 --
 -- The rules columns are immutable, so ON CONFLICT deliberately does not rewrite
 -- them -- if they ever disagreed with the row that exists, the existing row is
@@ -26,7 +25,13 @@ INSERT INTO ongoing_games (
     @game_uuid, @play_state, @on_turn,
     @lexicon, @letter_distribution, @board_layout, @variant, @challenge_rule,
     @player0_id, @player1_id,
-    @timers, @meta_events, @ready_flag, @started,
+    @timers, @meta_events,
+    -- Readiness is copied from the games row on insert, so a game whose row is
+    -- created after a player has readied (the backfill, or the first save
+    -- after the flag goes on) does not lose that player's bit. From then on
+    -- SetReady writes both.
+    COALESCE((SELECT g.ready_flag FROM games g WHERE g.uuid = @game_uuid), 0),
+    @started,
     @game_mode, @game_type, @tournament_id,
     @league_id, @season_id, @league_division_id,
     now(), now()
@@ -39,9 +44,8 @@ ON CONFLICT (game_uuid) DO UPDATE SET
     -- ready_flag is deliberately NOT updated here. It is owned by
     -- SetOngoingGameReady, which ORs one bit per player into it, and a save
     -- landing between the two players readying would otherwise wipe the first
-    -- one and make them ready up again. games.ready_flag has exactly this bug
-    -- today -- UpdateGame writes a literal 0 to it on every save -- and there is
-    -- no reason to carry it across. The value in the INSERT above therefore
+    -- one and make them ready up again (the bug games.ready_flag had until
+    -- UpdateGame stopped writing it). The value in the INSERT above therefore
     -- applies only when the row is first created.
     started = EXCLUDED.started,
     updated_at = now();
@@ -142,3 +146,13 @@ WHERE g.on_turn IS NOT NULL
     AND lower(u.username) != 'bestbot'
     AND (sqlc.narg('game_mode')::smallint IS NULL OR g.game_mode = sqlc.narg('game_mode')::smallint)
 ORDER BY g.created_at;
+
+-- name: ListLiveGamesWithoutOngoingRow :many
+-- For the backfill: games that are still being played and have no row. Not
+-- annotated games (type 1), which are never saved through Set.
+SELECT g.uuid::text AS uuid
+FROM games g
+WHERE g.game_end_reason = 0
+    AND g.type IS DISTINCT FROM 1
+    AND NOT EXISTS (SELECT 1 FROM ongoing_games o WHERE o.game_uuid = g.uuid)
+ORDER BY g.id;

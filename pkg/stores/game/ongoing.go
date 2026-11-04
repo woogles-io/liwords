@@ -16,9 +16,11 @@ package game
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/woogles-io/liwords/pkg/entity"
@@ -139,11 +141,9 @@ func ongoingParams(g *entity.Game) (models.UpsertOngoingGameParams, error) {
 
 		Timers:     timersJSON,
 		MetaEvents: metaJSON,
-		// Readiness is owned by SetReady, which ORs a bit into the row; the
-		// upsert must not clobber it, and the query leaves it alone on
-		// conflict. This value therefore only applies to the first insert.
-		ReadyFlag: 0,
-		Started:   g.Started,
+		// No ready_flag: the insert copies it from the games row, and after
+		// that SetReady owns it. The upsert never rewrites it.
+		Started: g.Started,
 
 		GameMode:         gameMode,
 		GameType:         gameType,
@@ -152,4 +152,70 @@ func ongoingParams(g *entity.Game) (models.UpsertOngoingGameParams, error) {
 		SeasonID:         seasonID,
 		LeagueDivisionID: divisionID,
 	}, nil
+}
+
+// setOngoingReady mirrors one player's ready bit into the ongoing row. No row
+// yet is fine: the insert that creates it copies games.ready_flag. Neither is
+// a bit that is already set, which the query reports as no rows.
+func setOngoingReady(ctx context.Context, q *models.Queries, gid string, pidx int) error {
+	_, err := q.SetOngoingGameReady(ctx, models.SetOngoingGameReadyParams{
+		GameUuid:  gid,
+		PlayerIdx: int32(pidx),
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil
+	}
+	return err
+}
+
+// BackfillOngoingGame writes the ongoing_games row for a live game that does
+// not have one, and reports whether it did.
+//
+// Saves create rows from the moment WRITE_ONGOING_GAMES is on, so this is only
+// for games that were live before then and have not been saved since. Run it
+// after the flag is on in the API, never before: a game that ends in between
+// would keep its row, because the save that ended it did not know to delete
+// it.
+//
+// It takes the game's lock, the same one every move holds, so no move, ready
+// or ending can land between reading the game and writing its row. If the game
+// ended, or a save wrote the row first, there is nothing to do.
+func (s *DBStore) BackfillOngoingGame(ctx context.Context, gid string) (bool, error) {
+	lock, err := s.LockGame(ctx, gid)
+	if err != nil {
+		return false, err
+	}
+	defer lock.Unlock(ctx)
+
+	g, err := s.Get(ctx, gid)
+	if err != nil {
+		return false, err
+	}
+	if g.Playing() == macondopb.PlayState_GAME_OVER || g.GameEndReason != pb.GameEndReason_NONE {
+		return false, nil
+	}
+	params, err := ongoingParams(g)
+	if err != nil {
+		return false, err
+	}
+
+	wrote := false
+	err = withGameTx(ctx, s.dbPool, func(ctx context.Context, q *models.Queries) error {
+		if _, err := q.GetOngoingGame(ctx, gid); err == nil {
+			return nil // a save got there first; its row is current
+		} else if !errors.Is(err, pgx.ErrNoRows) {
+			return err
+		}
+		wrote = true
+		return q.UpsertOngoingGame(ctx, params)
+	})
+	if err != nil {
+		return false, err
+	}
+	return wrote, nil
+}
+
+// ListLiveGamesWithoutOngoingRow lists the games BackfillOngoingGame is for.
+func (s *DBStore) ListLiveGamesWithoutOngoingRow(ctx context.Context) ([]string, error) {
+	return s.queries.ListLiveGamesWithoutOngoingRow(ctx)
 }

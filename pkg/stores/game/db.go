@@ -1910,6 +1910,9 @@ func (s *DBStore) ListAllIDs(ctx context.Context) ([]string, error) {
 }
 
 func (s *DBStore) SetReady(ctx context.Context, gid string, pidx int) (int, error) {
+	if cfg, cfgErr := config.Ctx(ctx); cfgErr == nil && cfg.WriteOngoingGames {
+		return s.setReadyWithOngoing(ctx, gid, pidx)
+	}
 	readyFlag, err := s.queries.SetReady(ctx, models.SetReadyParams{
 		PlayerIdx: int32(pidx),
 		Uuid:      common.ToPGTypeText(gid),
@@ -1926,6 +1929,33 @@ func (s *DBStore) SetReady(ctx context.Context, gid string, pidx int) (int, erro
 
 	log.Debug().Int("playerIdx", pidx).Str("gid", gid).Int("readyFlag", int(readyFlag.Int64)).Msg("player-set-ready")
 	return int(readyFlag.Int64), nil
+}
+
+// setReadyWithOngoing is SetReady with the ongoing row kept in step, in one
+// transaction. The caller holds the game's lock (readyForGame does), and so
+// does every save, so the row cannot be created between the two updates and
+// miss the bit.
+func (s *DBStore) setReadyWithOngoing(ctx context.Context, gid string, pidx int) (int, error) {
+	var flag int
+	err := withGameTx(ctx, s.dbPool, func(ctx context.Context, q *models.Queries) error {
+		readyFlag, err := q.SetReady(ctx, models.SetReadyParams{
+			PlayerIdx: int32(pidx),
+			Uuid:      common.ToPGTypeText(gid),
+		})
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil // no such game, or this player was already ready
+		}
+		if err != nil {
+			return err
+		}
+		flag = int(readyFlag.Int64)
+		return setOngoingReady(ctx, q, gid, pidx)
+	})
+	if err != nil {
+		log.Err(err).Int("playerIdx", pidx).Str("gid", gid).Msg("setting-ready")
+		return 0, err
+	}
+	return flag, nil
 }
 
 func (s *DBStore) Disconnect() {
