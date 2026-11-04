@@ -174,7 +174,7 @@ const loadableByCacheKey: { [cacheKey: string]: Loadable } = {};
               : null;
       if (cacheKey) {
         lexicons[lexicon] = true;
-        loadables[filename] = new Loadable(cacheKey, `/wasm/2024/${filename}`);
+        loadables[filename] = new Loadable(cacheKey, `/wasm/2026/${filename}`);
         loadableByCacheKey[cacheKey] = loadables[filename];
         continue;
       }
