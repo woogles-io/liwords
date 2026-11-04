@@ -9,6 +9,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/gomodule/redigo/redis"
 	"github.com/lithammer/shortuuid/v4"
 	"github.com/rs/zerolog/log"
 
@@ -58,6 +59,7 @@ Email: %s
 `
 
 var errPasswordTooShort = errors.New("your password is too short, use 8 or more characters")
+var errTooManyFailedLogins = errors.New("too many failed login attempts, please try again later. If you've forgotten your password, you can reset it")
 
 type AuthenticationService struct {
 	userStore      user.Store
@@ -69,11 +71,12 @@ type AuthenticationService struct {
 	argonConfig    config.ArgonConfig
 	secureCookies  bool
 	q              *models.Queries
+	loginLimit     *loginLimiter
 }
 
 func NewAuthenticationService(u user.Store, ss sessions.SessionStore, cs config.ConfigStore,
 	secretKey string, emailDebugMode bool, discordToken string, cfg config.ArgonConfig,
-	secureCookies bool, q *models.Queries) *AuthenticationService {
+	secureCookies bool, q *models.Queries, redisPool *redis.Pool) *AuthenticationService {
 	return &AuthenticationService{
 		userStore:      u,
 		sessionStore:   ss,
@@ -83,7 +86,36 @@ func NewAuthenticationService(u user.Store, ss sessions.SessionStore, cs config.
 		discordToken:   discordToken,
 		argonConfig:    cfg,
 		secureCookies:  secureCookies,
-		q:              q}
+		q:              q,
+		loginLimit:     newLoginLimiter(redisPool)}
+}
+
+func (as *AuthenticationService) passwordConfig() *PasswordConfig {
+	return NewPasswordConfig(as.argonConfig.Time, as.argonConfig.Memory, as.argonConfig.Threads, as.argonConfig.Keylen)
+}
+
+// passwordErr maps an error from hashing or checking a password.
+func passwordErr(err error) error {
+	if errors.Is(err, ErrHasherBusy) {
+		return connect.NewError(connect.CodeUnavailable, err)
+	}
+	return apiserver.InternalErr(err)
+}
+
+// rehash stores a password again with the current settings. It runs after the
+// login response and gives up quietly if the hasher is busy; the next login
+// tries again.
+func (as *AuthenticationService) rehash(uuid, password string) {
+	hash, err := GeneratePassword(as.passwordConfig(), password)
+	if err != nil {
+		log.Debug().Err(err).Str("userID", uuid).Msg("rehash-password")
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := as.userStore.SetPassword(ctx, uuid, hash); err != nil {
+		log.Err(err).Str("userID", uuid).Msg("rehash-password")
+	}
 }
 
 func modActionExistsErr(err error) error {
@@ -99,10 +131,16 @@ func (as *AuthenticationService) Login(ctx context.Context, r *connect.Request[p
 ) (*connect.Response[pb.LoginResponse], error) {
 
 	r.Msg.Username = strings.TrimSpace(r.Msg.Username)
+	ip, clientID := apiserver.ClientIP(ctx), apiserver.ClientID(ctx)
+	if !as.loginLimit.allowed(ctx, r.Msg.Username, ip, clientID) {
+		log.Info().Str("username", r.Msg.Username).Msg("login-rate-limited")
+		return nil, connect.NewError(connect.CodeResourceExhausted, errTooManyFailedLogins)
+	}
 	log.Debug().Str("username", r.Msg.Username).Msg("Login: about to get user")
 	user, err := as.userStore.Get(ctx, r.Msg.Username)
 	if err != nil {
 		log.Err(err).Str("username", r.Msg.Username).Msg("getting-user")
+		as.loginLimit.failed(ctx, r.Msg.Username, ip)
 		return nil, apiserver.Unauthenticated("bad login")
 	}
 	log.Debug().Str("username", r.Msg.Username).Msg("Login: user retrieved successfully")
@@ -110,11 +148,13 @@ func (as *AuthenticationService) Login(ctx context.Context, r *connect.Request[p
 	matches, err := ComparePassword(r.Msg.Password, user.Password)
 	if err != nil {
 		log.Error().Err(err).Msg("Login: error comparing password")
-		return nil, apiserver.InternalErr(err)
+		return nil, passwordErr(err)
 	}
 	if !matches {
+		as.loginLimit.failed(ctx, r.Msg.Username, ip)
 		return nil, apiserver.Unauthenticated("password incorrect")
 	}
+	as.loginLimit.succeeded(ctx, r.Msg.Username, ip, clientID)
 	log.Debug().Msg("Login: password matched, checking mod actions")
 
 	// Check if email is verified
@@ -143,6 +183,9 @@ func (as *AuthenticationService) Login(ctx context.Context, r *connect.Request[p
 		return nil, apiserver.InternalErr(err)
 	}
 	apiserver.RecordClient(ctx, as.userStore, user.UUID)
+	if NeedsRehash(as.passwordConfig(), user.Password) {
+		go as.rehash(user.UUID, r.Msg.Password)
+	}
 	return connect.NewResponse(&pb.LoginResponse{}), nil
 }
 
@@ -389,13 +432,12 @@ func (as *AuthenticationService) ResetPasswordStep2(ctx context.Context, r *conn
 			return nil, modActionExistsErr(err)
 		}
 
-		config := NewPasswordConfig(as.argonConfig.Time, as.argonConfig.Memory, as.argonConfig.Threads, as.argonConfig.Keylen)
 		if len(r.Msg.Password) < 8 {
 			return nil, apiserver.InvalidArg(errPasswordTooShort.Error())
 		}
-		hashPass, err := GeneratePassword(config, r.Msg.Password)
+		hashPass, err := GeneratePassword(as.passwordConfig(), r.Msg.Password)
 		if err != nil {
-			return nil, apiserver.InternalErr(err)
+			return nil, passwordErr(err)
 		}
 		err = as.userStore.SetPassword(ctx, uuid, hashPass)
 		if err != nil {
@@ -431,7 +473,7 @@ func (as *AuthenticationService) ChangePassword(ctx context.Context, r *connect.
 
 	matches, err := ComparePassword(r.Msg.OldPassword, user.Password)
 	if err != nil {
-		return nil, err
+		return nil, passwordErr(err)
 	}
 	if !matches {
 		return nil, apiserver.InvalidArg("your password is incorrect")
@@ -441,10 +483,9 @@ func (as *AuthenticationService) ChangePassword(ctx context.Context, r *connect.
 		return nil, apiserver.InvalidArg(errPasswordTooShort.Error())
 	}
 
-	config := NewPasswordConfig(as.argonConfig.Time, as.argonConfig.Memory, as.argonConfig.Threads, as.argonConfig.Keylen)
-	hashPass, err := GeneratePassword(config, r.Msg.NewPassword)
+	hashPass, err := GeneratePassword(as.passwordConfig(), r.Msg.NewPassword)
 	if err != nil {
-		return nil, apiserver.InternalErr(err)
+		return nil, passwordErr(err)
 	}
 	err = as.userStore.SetPassword(ctx, user.UUID, hashPass)
 	if err != nil {
@@ -474,7 +515,7 @@ func (as *AuthenticationService) NotifyAccountClosure(ctx context.Context, r *co
 
 	matches, err := ComparePassword(r.Msg.Password, user.Password)
 	if err != nil {
-		return nil, apiserver.InternalErr(err)
+		return nil, passwordErr(err)
 	}
 	if !matches {
 		return nil, apiserver.Unauthenticated("password incorrect")

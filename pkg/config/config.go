@@ -143,7 +143,7 @@ func (c *Config) Load(args []string) error {
 	fs.IntVar(&c.ArgonConfig.Keylen, "argon-key-len", 32, "the Argon key length")
 	fs.IntVar(&c.ArgonConfig.Time, "argon-time", 1, "the Argon time")
 	fs.IntVar(&c.ArgonConfig.Memory, "argon-memory", 64*1024, "the Argon memory (KB)")
-	fs.IntVar(&c.ArgonConfig.Threads, "argon-threads", 4, "the Argon threads")
+	fs.IntVar(&c.ArgonConfig.Threads, "argon-threads", 1, "the Argon threads")
 	err = fs.Parse(args)
 	// build the DB conn string from the passed-in DB arguments
 	c.DBConnUri = common.PostgresConnUri(c.DBHost, c.DBPort, c.DBName, c.DBUser, c.DBPassword, c.DBSSLMode)
