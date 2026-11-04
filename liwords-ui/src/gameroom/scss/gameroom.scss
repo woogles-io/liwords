@@ -1659,12 +1659,6 @@ p.rune {
   width: $tile-size-laptop;
   height: $tile-size-laptop;
 
-  &.selected {
-    position: relative;
-    top: -30px;
-    box-shadow: $card-shadow;
-  }
-
   p.rune {
     font-size: $tile-font-size-laptop;
     line-height: 35px;
@@ -1805,6 +1799,42 @@ p.rune {
 .exchange {
   .rack {
     width: 100%;
+  }
+
+  // the tiles to exchange, then the tiles kept, each row under its name,
+  // centered as the rack is, and each tile at its place in the rack in either
+  // row; a row is as wide as its tiles, and its name starts where they do
+  .exchange-row {
+    margin: 0 auto;
+    max-width: 100%;
+    width: fit-content;
+
+    // in by a tile's margin
+    .label {
+      margin: 0 2px;
+    }
+
+    .rack {
+      margin: 4px 0 12px;
+    }
+
+    // the place a tile in the other row leaves, as large as that tile
+    .exchange-place {
+      flex-shrink: 0;
+      height: $tile-size-laptop;
+      margin: 2px;
+      width: $tile-size-laptop;
+    }
+  }
+
+  // the tiles kept, level with the button beside them; every other modal's
+  // footer keeps its items at the bottom
+  .ant-modal-footer {
+    align-items: center;
+
+    .label {
+      margin: 0;
+    }
   }
 
   .pool {

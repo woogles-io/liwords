@@ -45,14 +45,17 @@ const pinMainThread = (ms: number) => {
   }
 };
 
-const tiles = () => Array.from(document.querySelectorAll(".rack .tile"));
+// a tile by its place in the rack, in whichever row it is drawn
+const tileAt = (idx: number) =>
+  document.querySelector(`[data-rack-index="${idx}"] .tile`)!;
+// the tiles drawn in the row to exchange, in the rack's order
 const selectedTiles = () =>
-  tiles()
-    .map((t, i) => (t.classList.contains("selected") ? RACK[i] : null))
-    .filter((x): x is number => x !== null);
+  Array.from(
+    document.querySelectorAll('[data-row="exchange"] [data-rack-index]'),
+  ).map((el) => RACK[Number(el.getAttribute("data-rack-index"))]);
 const exchangeButton = () =>
-  Array.from(document.querySelectorAll("button")).find(
-    (b) => b.textContent === "Exchange",
+  Array.from(document.querySelectorAll("button")).find((b) =>
+    b.textContent?.startsWith("Exchange"),
   )!;
 
 function renderModal(onOk: (t: MachineWord) => void) {
@@ -78,14 +81,15 @@ it("submits every tile it is drawing as selected, even with the main thread pinn
   await new Promise((r) => setTimeout(r, 200));
 
   // Select six, then -- the way someone double-checking their rack does --
-  // spot the one tile that isn't flipped up, click it, and immediately submit.
+  // spot the one tile still among those kept, click it, and immediately
+  // submit.
   for (const i of [0, 1, 3, 4, 5, 6]) {
-    click(tiles()[i]);
+    click(tileAt(i));
     await macrotask();
   }
-  click(tiles()[K_INDEX]);
+  click(tileAt(K_INDEX));
   await commit();
-  expect(selectedTiles()).toEqual(RACK); // the K is drawn flipped up
+  expect(selectedTiles()).toEqual(RACK); // the K is drawn in the row to exchange
   pinMainThread(120);
 
   click(exchangeButton());
@@ -122,7 +126,7 @@ it("keeps tiles clicked in the first moments after the modal opens", async () =>
 
   // No settling wait: click straight away, inside the window that the modal
   // used to clear on a 100ms timer.
-  click(tiles()[K_INDEX]);
+  click(tileAt(K_INDEX));
   await new Promise((r) => setTimeout(r, 250));
 
   expect(selectedTiles()).toEqual([RACK[K_INDEX]]);
@@ -138,7 +142,7 @@ it("does not carry a selection over from a previous visit to the modal", async (
     sent = t;
   });
   await new Promise((r) => setTimeout(r, 200));
-  click(tiles()[0]);
+  click(tileAt(0));
   await macrotask();
 
   const rerender = (modalVisible: boolean) =>
@@ -163,7 +167,7 @@ it("does not carry a selection over from a previous visit to the modal", async (
   await new Promise((r) => setTimeout(r, 200));
 
   expect(selectedTiles()).toEqual([]);
-  click(tiles()[K_INDEX]);
+  click(tileAt(K_INDEX));
   await macrotask();
   click(exchangeButton());
   await macrotask();

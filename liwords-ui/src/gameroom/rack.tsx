@@ -47,7 +47,7 @@ type Props = {
 
 const RACK_DROP_RESULT = { rack: true };
 
-const prefersReducedMotion = () =>
+export const prefersReducedMotion = () =>
   window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
 
 const measureRack = (rackElement: HTMLElement): RackGeometry | null => {
