@@ -14,6 +14,12 @@ HTTP API, then reports:
 Query parameters are used for duplicate detection but never printed: they
 include session IDs and email addresses.
 
+Fetching through Jaeger's API can OOM-kill prod Jaeger, and Jaeger only keeps
+about a day of spans. Prefer fetching straight from its OpenSearch store:
+
+  .claude/skills/jaeger/scripts/jaeger_es.py fetch --out /tmp/traces --since 6h
+  scripts/jaeger-audit.py --cache-dir /tmp/traces
+
 Usage:
   scripts/jaeger-audit.py                       # last 7 days, 40 traces/op
   scripts/jaeger-audit.py --lookback 1d --limit 100
