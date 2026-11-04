@@ -94,6 +94,27 @@ describe("getWolges", () => {
     expect(loaded(precacheKlv)).toHaveLength(1);
   });
 
+  it("keeps a lexicon the wasm refuses to drop", async () => {
+    mockWolges(true);
+    evictKwg.mockImplementationOnce((name: string) => {
+      throw `lexicon "${name}": sims [1] hold it; free them first`;
+    });
+    const { getWolges } = await import("./loader");
+
+    await getWolges("CSW21");
+    // RD29 loads all the same, beside the graph CSW21's sim still holds.
+    await getWolges("RD29");
+    expect(evictKwg).toHaveBeenCalledWith("CSW21");
+    expect(loaded(precacheKwg).map((c) => c.name)).toEqual(["CSW21", "RD29"]);
+
+    // That graph is still loaded, so coming back neither fetches nor loads it.
+    await getWolges("CSW21");
+    expect(loaded(precacheKwg).filter((c) => c.name === "CSW21")).toHaveLength(
+      1,
+    );
+    expect(fetched.filter((p) => p.endsWith("/CSW21.kwg"))).toHaveLength(1);
+  });
+
   it("keeps everything with a wasm that cannot evict", async () => {
     mockWolges(false);
     const { getWolges } = await import("./loader");

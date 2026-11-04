@@ -19,9 +19,21 @@ import {
   getAnalysisStatus,
   requestAnalysis as requestBestBotAnalysis,
 } from "../gen/api/proto/analysis_service/analysis_service-AnalysisService_connectquery";
-import { PlayState } from "../gen/api/proto/vendored/macondo/macondo_pb";
+import {
+  ChallengeRule,
+  PlayState,
+} from "../gen/api/proto/vendored/macondo/macondo_pb";
 import { GameType } from "../gen/api/proto/ipc/omgwords_pb";
 import { ComputerAnalysis } from "./computer_analysis";
+import { ANALYZER_LAB_KEY } from "./analyzer_lab";
+import {
+  EndgamePanel,
+  LabButtons,
+  LabView,
+  SimPanel,
+  useLabPosition,
+  useLabSim,
+} from "./analyzer_lab_panels";
 import { defaultLetterDistribution } from "../lobby/sought_game_interactions";
 import {
   useExaminableGameContextStoreContext,
@@ -60,7 +72,7 @@ type AnalyzerProps = {
   style?: React.CSSProperties;
 };
 
-type JsonMove =
+export type JsonMove =
   | {
       equity: number;
       action: "exchange";
@@ -128,7 +140,7 @@ export type AnalyzerMove = {
   isExchange: boolean;
 };
 
-const wolgesLetterToLiwordsLetter = (i: number) => {
+export const wolgesLetterToLiwordsLetter = (i: number) => {
   if (i < 0) {
     // wolges-wasm encodes blanks as negative numbers. Convert to our internal
     // format.
@@ -289,7 +301,7 @@ export const analyzerMoveFromJsonMove = (
   }
 };
 
-const parseExaminableGameContext = (
+export const parseExaminableGameContext = (
   examinableGameContext: GameState,
   lexicon: string,
   variant?: string,
@@ -364,6 +376,7 @@ const AnalyzerContext = React.createContext<{
   setShowMovesForTurn: (a: number) => void;
   lexicon: string;
   variant?: string;
+  challengeRule?: ChallengeRule;
   showComputerAnalysis: boolean;
   setShowComputerAnalysis: React.Dispatch<React.SetStateAction<boolean>>;
 }>({
@@ -377,6 +390,7 @@ const AnalyzerContext = React.createContext<{
   setAutoMode: () => {},
   lexicon: "",
   variant: undefined,
+  challengeRule: undefined,
   showComputerAnalysis: false,
   setShowComputerAnalysis: () => {},
 });
@@ -387,6 +401,8 @@ type AnalyzerContextProviderProps = {
   children: React.ReactNode;
   lexicon: string;
   variant?: string;
+  // the game's challenge rule, where the page knows it
+  challengeRule?: ChallengeRule;
   // Bumping this shows the computer analysis, as its button does.
   openComputerAnalysisSignal?: number;
 };
@@ -394,7 +410,13 @@ type AnalyzerContextProviderProps = {
 export const AnalyzerContextProvider = (
   props: AnalyzerContextProviderProps,
 ) => {
-  const { children, lexicon, variant, openComputerAnalysisSignal = 0 } = props;
+  const {
+    children,
+    lexicon,
+    variant,
+    challengeRule,
+    openComputerAnalysisSignal = 0,
+  } = props;
   const [, setMovesCacheId] = useState(0);
   const rerenderMoves = useCallback(
     () => setMovesCacheId((n) => (n + 1) | 0),
@@ -538,6 +560,7 @@ export const AnalyzerContextProvider = (
       setShowMovesForTurn,
       lexicon,
       variant,
+      challengeRule,
       showComputerAnalysis,
       setShowComputerAnalysis,
     }),
@@ -552,6 +575,7 @@ export const AnalyzerContextProvider = (
       setShowMovesForTurn,
       lexicon,
       variant,
+      challengeRule,
       showComputerAnalysis,
       setShowComputerAnalysis,
     ],
@@ -703,6 +727,7 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
     setShowMovesForTurn,
     lexicon,
     variant,
+    challengeRule,
     showComputerAnalysis,
     setShowComputerAnalysis,
   } = useContext(AnalyzerContext);
@@ -1028,6 +1053,27 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
     return cachedMoves;
   }, [showMoves, cachedMoves, currentEvaluatedMove]);
 
+  const [analyzerLab] = useLocalStorageBool(ANALYZER_LAB_KEY);
+  const [labView, setLabView] = useState<LabView | null>(null);
+  // The lab opens wherever the analyzer does, which a player's own game in
+  // play never shows.
+  const labOpen = analyzerLab && !showComputerAnalysis;
+  const labPosition = useLabPosition(lexicon, variant, challengeRule);
+  // A sim takes the analyzer's moves, at each position it is shown. Each copy
+  // of the analyzer on the page (the score card holds another) hides the moves
+  // again when the position changes, so this asks again whenever they are
+  // hidden, as Auto does.
+  useEffect(() => {
+    if (labOpen && labView === "sim") {
+      handleExaminer();
+    }
+  }, [labOpen, labView, handleExaminer, showMovesForTurn]);
+  const labSim = useLabSim(
+    labOpen ? labPosition : null,
+    moves,
+    labOpen && labView === "sim",
+  );
+
   const [showEquityLoss] = useLocalStorageBool("enableShowEquityLoss");
   const equityBase = React.useMemo(
     () =>
@@ -1074,6 +1120,7 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
   );
   const analyzerControls = (
     <div className="analyzer-controls">
+      {labOpen && <LabButtons view={labView} setView={setLabView} />}
       <Button
         className="analyze-trigger"
         shape="circle"
@@ -1161,9 +1208,26 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
             : null,
         )
       : null;
+  const labPanel =
+    labOpen && labView && labPosition ? (
+      <div className="suggestions" style={props.style}>
+        {labView === "endgame" ? (
+          <EndgamePanel lab={labPosition} onClose={() => setLabView(null)} />
+        ) : (
+          <SimPanel
+            lab={labPosition}
+            moves={moves}
+            sim={labSim}
+            onClose={() => setLabView(null)}
+          />
+        )}
+      </div>
+    ) : null;
   const analyzerContainer = (
     <div className="analyzer-container">
-      {!examinerLoading ? (
+      {labPanel ? (
+        labPanel
+      ) : !examinerLoading ? (
         <div className="suggestions" style={props.style}>
           {note && <p className="rack-note">{note}</p>}
           {analyzerError && (
