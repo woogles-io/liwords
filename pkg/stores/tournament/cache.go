@@ -18,6 +18,7 @@ import (
 type backingStore interface {
 	Get(ctx context.Context, id string) (*entity.Tournament, error)
 	GetBySlug(ctx context.Context, id string) (*entity.Tournament, error)
+	PrivateAnalysis(ctx context.Context, id string) (bool, error)
 	Set(context.Context, *entity.Tournament) error
 	Create(context.Context, *entity.Tournament) error
 	GetRecentGames(ctx context.Context, tourneyID string, numGames int, offset int) (*pb.RecentGamesResponse, error)
@@ -109,6 +110,13 @@ func (c *Cache) Get(ctx context.Context, id string) (*entity.Tournament, error) 
 
 func (c *Cache) GetBySlug(ctx context.Context, id string) (*entity.Tournament, error) {
 	return c.backing.GetBySlug(ctx, id)
+}
+
+// PrivateAnalysis reads the setting from the database, not the cache. A hit
+// would be cheaper today, but callers shouldn't depend on the cache, which is
+// going away.
+func (c *Cache) PrivateAnalysis(ctx context.Context, id string) (bool, error) {
+	return c.backing.PrivateAnalysis(ctx, id)
 }
 
 // Set sets a tournament in the cache, AND in the backing store. This ensures if the

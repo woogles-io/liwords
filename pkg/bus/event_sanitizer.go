@@ -52,10 +52,10 @@ func sanitize(us user.Store, gs gameplay.GameStore, ts *tournament.Cache, evt *e
 				if game.IsCorrespondence() || game.LeagueID != nil {
 					shouldCensor = true
 				} else if game.TournamentData != nil && game.TournamentData.Id != "" && ts != nil {
-					t, err := ts.Get(context.Background(), game.TournamentData.Id)
+					private, err := ts.PrivateAnalysis(context.Background(), game.TournamentData.Id)
 					if err != nil {
 						shouldCensor = true // Can't verify — censor to be safe.
-					} else if t.ExtraMeta != nil && t.ExtraMeta.PrivateAnalysis {
+					} else if private {
 						shouldCensor = true
 					}
 				}

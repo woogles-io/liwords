@@ -179,6 +179,47 @@ func TestNewTournamentIRLMode(t *testing.T) {
 	is.Equal(online.ExtraMeta.IRLMode, false)
 }
 
+// PrivateAnalysis reads the setting straight from the database, so it has to
+// see a director's change as soon as it is saved.
+func TestPrivateAnalysis(t *testing.T) {
+	is := is.New(t)
+	ctx := context.Background()
+	stores, cfg := recreateDB()
+	defer stores.Disconnect()
+	tstore := stores.TournamentStore
+
+	directors := makeTournamentPersons(map[string]int32{"Kieran:Kieran": 0})
+	ty, err := makeTournament(ctx, tstore, cfg, directors, "private")
+	is.NoErr(err)
+
+	private, err := tstore.PrivateAnalysis(ctx, ty.UUID)
+	is.NoErr(err)
+	is.Equal(private, false)
+
+	err = tournament.SetTournamentMetadata(ctx, tstore, &pb.TournamentMetadata{
+		Id:              ty.UUID,
+		PrivateAnalysis: true,
+	}, true)
+	is.NoErr(err)
+	private, err = tstore.PrivateAnalysis(ctx, ty.UUID)
+	is.NoErr(err)
+	is.Equal(private, true)
+
+	err = tournament.SetTournamentMetadata(ctx, tstore, &pb.TournamentMetadata{
+		Id:   ty.UUID,
+		Name: tournamentName,
+		Slug: "/tournament/private",
+		Type: pb.TType_STANDARD,
+	}, false)
+	is.NoErr(err)
+	private, err = tstore.PrivateAnalysis(ctx, ty.UUID)
+	is.NoErr(err)
+	is.Equal(private, false)
+
+	_, err = tstore.PrivateAnalysis(ctx, "no-such-tournament")
+	is.True(err != nil)
+}
+
 func TestTournamentSingleDivision(t *testing.T) {
 	is := is.New(t)
 	ctx := context.Background()
