@@ -285,6 +285,8 @@ export const getWolges = async (loadableKey: string) =>
     let cachedStuffs = wolgesCache.get(wolges);
     if (!cachedStuffs) {
       wolgesCache.set(wolges, (cachedStuffs = {}));
+      // Once a page, so the build in use can be read from the console.
+      console.log(wolges.version());
     }
 
     // Before loading rather than after, so the outgoing tables are gone by the

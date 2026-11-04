@@ -17,6 +17,7 @@ const evictKlv = vi.fn();
 // import concurrently, so two for the same module land in either order.
 const mockWolges = (canEvict: boolean) =>
   vi.doMock("wolges-wasm", () => ({
+    version: () => "wolges-wasm under test",
     precache_kwg: (name: string, data: Uint8Array) => precacheKwg(name, data),
     precache_klv: (name: string, data: Uint8Array) => precacheKlv(name, data),
     evict_kwg: canEvict ? (name: string) => evictKwg(name) : undefined,
