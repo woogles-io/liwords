@@ -3,6 +3,7 @@ package emailer
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -18,6 +19,27 @@ const (
 	charset       = "UTF-8"
 )
 
+var (
+	clientOnce sync.Once
+	client     *sesv2.Client
+	clientErr  error
+)
+
+// sesClient builds the SES client once. The client caches its credentials
+// until they expire; building a new one for every email fetched them again
+// each time, which took about 3.7 seconds from the API host.
+func sesClient() (*sesv2.Client, error) {
+	clientOnce.Do(func() {
+		cfg, err := config.LoadDefaultConfig(context.Background(), config.WithRegion(region))
+		if err != nil {
+			clientErr = fmt.Errorf("failed to load AWS config: %w", err)
+			return
+		}
+		client = sesv2.NewFromConfig(cfg)
+	})
+	return client, clientErr
+}
+
 // SendSimpleMessage sends an email via Amazon SES.
 // The debugMode parameter controls whether to actually send or just log.
 // The bccAddress parameter optionally adds a BCC recipient.
@@ -31,15 +53,13 @@ func SendSimpleMessage(debugMode bool, recipient, subject, body string, bccAddre
 		return "debug-mode", nil
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	cfg, err := config.LoadDefaultConfig(ctx, config.WithRegion(region))
+	client, err := sesClient()
 	if err != nil {
-		return "", fmt.Errorf("failed to load AWS config: %w", err)
+		return "", err
 	}
 
-	client := sesv2.NewFromConfig(cfg)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 
 	destination := &types.Destination{
 		ToAddresses: []string{recipient},
