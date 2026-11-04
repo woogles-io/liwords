@@ -863,55 +863,54 @@ func (s *DBStore) GetLatestRematchGame(ctx context.Context, originalRequestId st
 }
 
 func (s *DBStore) GetRematchStreak(ctx context.Context, originalRequestId string) (*gs.StreakInfoResponse, error) {
-	games, err := s.queries.GetRematchStreak(ctx, originalRequestId)
+	rows, err := s.queries.GetRematchStreak(ctx, originalRequestId)
 	if err != nil {
 		return nil, err
 	}
 
 	resp := &gs.StreakInfoResponse{
-		Streak: make([]*gs.StreakInfoResponse_SingleGameInfo, len(games)),
+		Streak: make([]*gs.StreakInfoResponse_SingleGameInfo, 0, len(rows)/2),
 	}
 
-	if len(games) == 0 {
-		return resp, nil
-	}
+	// Rows come two per game, newest game first. The players are taken from
+	// the newest game and sorted by username descending; each game's winner
+	// is an index into that order, or -1 for a tie.
+	for i := 0; i < len(rows); {
+		j := i
+		for j < len(rows) && rows[j].GameUuid == rows[i].GameUuid {
+			j++
+		}
+		game := rows[i:j]
+		i = j
 
-	for idx, g := range games {
-		// Use quickdata from each individual game (like original GORM implementation)
-		mdata := g.Quickdata
-
-		if idx == 0 {
-			// Establish consistent player ordering from first game, sorted by nickname descending
-			playersInfo := make([]*gs.StreakInfoResponse_PlayerInfo, len(mdata.PlayerInfo))
-			for i, p := range mdata.PlayerInfo {
-				playersInfo[i] = &gs.StreakInfoResponse_PlayerInfo{
-					Nickname: p.Nickname,
-					Uuid:     p.UserId,
-				}
+		if resp.PlayersInfo == nil {
+			for _, r := range game {
+				resp.PlayersInfo = append(resp.PlayersInfo, &gs.StreakInfoResponse_PlayerInfo{
+					Nickname: r.Username,
+					Uuid:     r.UserUuid,
+				})
 			}
-			// Sort by nickname descending (like original)
-			sort.Slice(playersInfo, func(i, j int) bool { return playersInfo[i].Nickname > playersInfo[j].Nickname })
-			resp.PlayersInfo = playersInfo
+			sort.Slice(resp.PlayersInfo, func(a, b int) bool {
+				return resp.PlayersInfo[a].Nickname > resp.PlayersInfo[b].Nickname
+			})
 		}
 
 		winner := int32(-1)
-		if g.WinnerIdx.Valid {
-			winner = g.WinnerIdx.Int32
-		}
-
-		// Normalize winner index like original implementation
-		if len(resp.PlayersInfo) > 0 && len(mdata.PlayerInfo) > 0 &&
-			resp.PlayersInfo[0].Nickname != mdata.PlayerInfo[0].Nickname {
-
-			if winner != -1 {
-				winner = 1 - winner // Flip the winner index
+		for _, r := range game {
+			if !r.Won.Valid || !r.Won.Bool {
+				continue
+			}
+			for idx, p := range resp.PlayersInfo {
+				if p.Uuid == r.UserUuid {
+					winner = int32(idx)
+				}
 			}
 		}
 
-		resp.Streak[idx] = &gs.StreakInfoResponse_SingleGameInfo{
-			GameId: g.Uuid.String,
+		resp.Streak = append(resp.Streak, &gs.StreakInfoResponse_SingleGameInfo{
+			GameId: game[0].GameUuid,
 			Winner: winner,
-		}
+		})
 	}
 
 	return resp, nil

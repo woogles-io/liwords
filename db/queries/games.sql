@@ -76,15 +76,15 @@ FROM games
 WHERE uuid = @uuid;
 
 -- name: GetRematchStreak :many
-SELECT g.uuid, g.winner_idx, g.quickdata
-FROM games g
-WHERE g.uuid IN (
-  SELECT DISTINCT gp.game_uuid
-  FROM game_players gp
-  WHERE gp.original_request_id = @original_request_id::text
-    AND gp.game_end_reason NOT IN (0, 5, 7) -- NONE, ABORTED, CANCELLED
-)
-ORDER BY g.created_at DESC;
+-- Two rows per game, newest game first. It reads only game_players and users:
+-- streaks can run to hundreds of games, and reading each one's games row
+-- (for quickdata) was slow whenever those rows weren't cached.
+SELECT gp.game_uuid, gp.won, u.uuid AS user_uuid, u.username
+FROM game_players gp
+JOIN users u ON u.id = gp.player_id
+WHERE gp.original_request_id = @original_request_id::text
+  AND gp.game_end_reason NOT IN (0, 5, 7) -- NONE, ABORTED, CANCELLED
+ORDER BY gp.created_at DESC, gp.game_uuid, gp.player_index;
 
 -- name: GetLatestRematchGame :one
 -- The most recent finished game in a rematch streak. MATERIALIZED keeps the
