@@ -25,6 +25,26 @@ it. Nothing is served from the new path yet: macondo still referees every move.
 | `game.lock.held` | p50 8.3 ms, p99 65 ms; `game.lock.wait` p99 10.6 ms |
 | games with real meta events | 2.61% (sampled 2026-09-02), at most 10 per game |
 
+## The life of an `ongoing_games` row
+
+With `WRITE_ONGOING_GAMES` on, each step below is in the same transaction as
+the `games` write it goes with:
+
+| When | Code | The row |
+|---|---|---|
+| A game is created (seek, rematch, tournament or league pairing, bot game) | `Create`, from `InstantiateNewGame` | inserted, `started` false; `ready_flag` copied from `games` |
+| A player readies | `SetReady` | its bit ORed into `ready_flag` |
+| Both are ready, or the game starts without the ready step | `StartGame` → `Set` | `started`, `timers` |
+| Every move, challenge, pass, exchange, meta event | `Set` | `play_state`, `on_turn`, `timers`, `meta_events`, `updated_at` |
+| The game ends, any way at all (standard, resign, timeout, adjudication, force-finish, abort, cancel) | `Set` with an end reason | **deleted** |
+
+Players, rules, mode, type, tournament and league are written at insert and
+never rewritten. A games row outlives its `ongoing_games` row: it is archived
+to S3, its turn rows deleted, and if it was cancelled it is deleted itself
+two days later. Annotated games and puzzles never have a row; neither is
+created by `Create` or saved by `Set`. Games already live when the flag went
+on get theirs from the backfill.
+
 ## Rolling out `ongoing_games`
 
 1. **Merge.** The migration runs: an empty table, no lock on `games` (there is
@@ -32,8 +52,9 @@ it. Nothing is served from the new path yet: macondo still referees every move.
 2. **Deploy the code with the flag off.** No change: `Set` writes the row only
    when `WRITE_ONGOING_GAMES` is on.
 3. **Turn on `WRITE_ONGOING_GAMES`** in the API task definition. From then on
-   every save of a live game upserts its row inside the save transaction, and
-   the save that ends a game deletes it. **Behavior change:** a failure here
+   a new game gets its row in the transaction that creates it, every save of a
+   live game upserts it inside the save transaction, and the save that ends a
+   game deletes it. **Behavior change:** a failure here
    fails the move. That is the price of a listing that can never disagree with
    the game it names.
    *Watch:* move error rates (`handle-event` errors, failed saves).

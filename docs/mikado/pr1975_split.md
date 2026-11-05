@@ -444,10 +444,12 @@ The reference migration explains its missing foreign key to `games.uuid` by
 gone. The foreign key is still left out, and the note now gives the reasons
 that remain: creating it takes a SHARE ROW EXCLUSIVE lock on `games`, which
 waits behind every in-flight write while the migration runs at startup, and
-it guards against nothing that happens. The only code that deletes a games
-row deletes annotated games, which never get an `ongoing_games` row, and the
-row is written in the transaction that updates its games row. Only the
-comment changed; the schema is the reference's.
+it guards against nothing that happens. Two things delete games rows:
+deleting an annotated game, which never gets an `ongoing_games` row, and
+`cancelled-games-cleanup`, which deletes games cancelled more than two days
+ago, whose row went in the save that cancelled them. And the row is written in
+the transaction that creates or updates its games row. Only the comment
+changed; the schema is the reference's.
 
 After step 7 the ledger shows `pkg/config/config.go` as INTERMEDIATE. That is
 master moving on, not the split: the only difference from the reference is
@@ -466,7 +468,13 @@ Step 7 adds `BackfillOngoingGame` and the `ongoing-games-backfill` maintenance
 command. Each game is written under its own game lock, skipped if it has ended
 or already has a row, so it is safe to run again.
 
-It also fixes readiness, which the reference leaves wrong in the row: the
+It also writes the row in `Create`, in the transaction that inserts the games
+row. The reference writes it only from `Set`, and a game's first save is
+`StartGame`, after both players have readied, so a game waiting for its
+players, or one that never starts and is aborted, would have had no row for
+its whole life.
+
+And it fixes readiness, which the reference leaves wrong in the row: the
 insert wrote a literal 0 and nothing ever updated it, because `SetReady`
 writes only `games`. Now the insert copies `games.ready_flag`, and `SetReady`
 (with the flag on) ORs the bit into both rows in one transaction. The upsert

@@ -1594,7 +1594,7 @@ func (s *DBStore) Create(ctx context.Context, g *entity.Game) error {
 		leagueDivisionID = pgtype.UUID{Bytes: *g.LeagueDivisionID, Valid: true}
 	}
 
-	return s.queries.CreateGame(ctx, models.CreateGameParams{
+	params := models.CreateGameParams{
 		CreatedAt:        pgtype.Timestamptz{Time: g.CreatedAt, Valid: true},
 		UpdatedAt:        pgtype.Timestamptz{Time: g.CreatedAt, Valid: true},
 		Uuid:             common.ToPGTypeText(g.GameID()),
@@ -1619,6 +1619,21 @@ func (s *DBStore) Create(ctx context.Context, g *entity.Game) error {
 		SeasonID:         seasonID,
 		LeagueDivisionID: leagueDivisionID,
 		LastKnownRacks:   g.History().LastKnownRacks,
+	}
+
+	if cfg, cfgErr := config.Ctx(ctx); cfgErr != nil || !cfg.WriteOngoingGames {
+		return s.queries.CreateGame(ctx, params)
+	}
+	// A game is ongoing from the moment it exists, not from its first save:
+	// that is StartGame, after both players have readied, so a game waiting
+	// for its players -- or one that never starts and is aborted -- would
+	// otherwise be missing from the listings for its whole life. Same
+	// transaction as the games row, for the same reason as in Set.
+	return withGameTx(ctx, s.dbPool, func(ctx context.Context, q *models.Queries) error {
+		if err := q.CreateGame(ctx, params); err != nil {
+			return err
+		}
+		return syncOngoingGame(ctx, q, g)
 	})
 }
 

@@ -7,6 +7,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/matryer/is"
 
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
@@ -286,4 +287,39 @@ func TestOngoingReadinessFollowsTheGame(t *testing.T) {
 	flag, err = gstore.SetReady(ctx, ongoingGID, 1)
 	is.NoErr(err)
 	is.Equal(flag, 0)
+}
+
+// A game is ongoing from the moment it is created, not from its first save:
+// that is StartGame, which waits for both players to ready.
+func TestOngoingRowFromCreation(t *testing.T) {
+	is := is.New(t)
+	ustore, gstore := recreateDB()
+	defer gstore.Disconnect()
+	defer ustore.(*user.DBStore).Disconnect()
+
+	for _, tc := range []struct {
+		name string
+		ctx  context.Context
+		uid  string
+		want bool
+	}{
+		{"flag on", writeOngoingCtx(), "ongoingCreateOn0000000", true},
+		{"flag off", DefaultConfig.WithContext(context.Background()), "ongoingCreateOff000000", false},
+	} {
+		entGame, err := gstore.Get(tc.ctx, ongoingGID)
+		is.NoErr(err)
+		entGame.History().Uid = tc.uid
+		entGame.Started = false
+		is.NoErr(gstore.Create(tc.ctx, entGame))
+
+		row, err := gstore.queries.GetOngoingGame(tc.ctx, tc.uid)
+		if !tc.want {
+			is.Equal(err, pgx.ErrNoRows) // tc.name
+			continue
+		}
+		is.NoErr(err)
+		is.Equal(row.Started, false)
+		is.Equal(row.ReadyFlag, int64(0))
+		is.Equal(row.Player0ID, int32(entGame.PlayerDBIDs[0]))
+	}
 }

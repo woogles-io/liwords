@@ -111,9 +111,11 @@ CREATE INDEX idx_ongoing_games_league_division ON ongoing_games (league_division
 -- games.uuid, even though games.uuid is unique now (202610090004). Creating
 -- one takes a SHARE ROW EXCLUSIVE lock on `games`, which waits behind every
 -- in-flight write to it while this migration runs on startup, and it would
--- guard against nothing that happens: the only code that deletes a games row
--- deletes annotated games, which never get a row here. The row is written in
--- the transaction that updates the games row, so it cannot name a game that
--- does not exist.
+-- guard against nothing that happens. Two things delete games rows: deleting
+-- an annotated game, which never gets a row here, and the maintenance cleanup
+-- of games cancelled more than two days ago, whose row went in the same
+-- transaction as the save that cancelled them. The row is written in the
+-- transaction that creates or updates the games row, so it cannot name a game
+-- that does not exist.
 
 COMMIT;
