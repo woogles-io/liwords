@@ -120,3 +120,56 @@ func TestReadyFromBothPlayersStartsTheGame(t *testing.T) {
 	is.True(loaded.Started)
 	is.Equal(readyFlag(t, ctx, g.GameID()), int64(3))
 }
+
+// Both players readied but the start did not happen -- StartGame's save
+// failed, or the server stopped between the two. The next ready from either
+// player must start it; it used to read the flag as 0 and do nothing, and the
+// game was cancelled a minute later as never started.
+func TestReadyRetriesAStartThatFailed(t *testing.T) {
+	is := is.New(t)
+	ctx, b, st, users := readyTestSetup(t)
+
+	g := readyTestGame(t, ctx, st, users, pb.GameMode_REAL_TIME)
+	is.NoErr(st.GameStore.Set(ctx, g))
+
+	// Both bits set, game not started: what a failed start leaves behind.
+	for i := range users {
+		_, err := st.GameStore.SetReady(ctx, g.GameID(), i)
+		is.NoErr(err)
+	}
+	loaded, err := st.GameStore.Get(ctx, g.GameID())
+	is.NoErr(err)
+	is.True(!loaded.Started)
+
+	// Player 1 reopens the game room.
+	is.NoErr(b.readyForGame(ctx, &pb.ReadyForGame{GameId: g.GameID()}, users[1].UUID))
+	loaded, err = st.GameStore.Get(ctx, g.GameID())
+	is.NoErr(err)
+	is.True(loaded.Started)
+}
+
+// Readying is idempotent and always reports where the flag stands, including
+// on a game whose flag is NULL (the column is nullable; NULL | bit is NULL).
+func TestSetReadyReportsTheFlag(t *testing.T) {
+	is := is.New(t)
+	ctx, _, st, users := readyTestSetup(t)
+
+	g := readyTestGame(t, ctx, st, users, pb.GameMode_REAL_TIME)
+	pool, err := common.OpenTestingDB(internalTestPkg)
+	is.NoErr(err)
+	defer pool.Close()
+	_, err = pool.Exec(ctx, "UPDATE games SET ready_flag = NULL WHERE uuid = $1", g.GameID())
+	is.NoErr(err)
+
+	for _, want := range []int{1, 1} {
+		rf, err := st.GameStore.SetReady(ctx, g.GameID(), 0)
+		is.NoErr(err)
+		is.Equal(rf, want)
+	}
+	rf, err := st.GameStore.SetReady(ctx, g.GameID(), 1)
+	is.NoErr(err)
+	is.Equal(rf, 3)
+	rf, err = st.GameStore.SetReady(ctx, g.GameID(), 0)
+	is.NoErr(err)
+	is.Equal(rf, 3)
+}

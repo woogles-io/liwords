@@ -405,10 +405,20 @@ WHERE g.game_end_reason = 0 -- NONE (ongoing games)
 ORDER BY g.id;
 
 -- name: SetReady :one
+-- Returns the flag as it now stands, including when this player's bit was
+-- already set. readyForGame starts the game when it reads 3, so a start that
+-- failed after both players readied is retried the next time either one opens
+-- the game room. It used to update nothing in that case and report 0, and the
+-- game could then never start; it was cancelled as never started.
+--
+-- That condition was what kept two simultaneous readies from both reading 3.
+-- The game lock does that now: readyForGame holds it, reloads the game and
+-- stops if it has started, and StartGame refuses a started game.
+--
+-- COALESCE because the column is nullable and NULL | bit is NULL.
 UPDATE games
-SET ready_flag = ready_flag | (1 << @player_idx::integer)
+SET ready_flag = COALESCE(ready_flag, 0) | (1 << @player_idx::integer)
 WHERE uuid = @uuid
-    AND ready_flag & (1 << @player_idx::integer) = 0
 RETURNING ready_flag;
 
 -- name: ListAllIDs :many
