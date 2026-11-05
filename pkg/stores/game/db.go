@@ -1902,7 +1902,8 @@ func (s *DBStore) SetReady(ctx context.Context, gid string, pidx int) (int, erro
 	})
 
 	if err != nil {
-		// Handle case where no rows are updated (game doesn't exist or already ready)
+		// No such game. (A bit already set is not this case any more: the
+		// query returns the flag regardless.)
 		if err == pgx.ErrNoRows {
 			return 0, nil
 		}
