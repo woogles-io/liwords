@@ -569,6 +569,34 @@ func UnverifiedUsersCleanup() error {
 	followingsDeleted := resultFollowings.RowsAffected()
 	log.Info().Int64("followingsDeleted", followingsDeleted).Msg("deleted unverified user followings")
 
+	// Delete mod actions next (foreign key constraint).
+	// All three user_actions FKs to users are NO ACTION, which behaves like
+	// RESTRICT at commit time, so a single leftover row aborts the whole
+	// transaction and the cleanup silently deletes nothing.
+	// Cover applier_id and remover_id too: an unverified account could be the
+	// applier or remover on someone else's action.
+	queryUserActions := `
+		DELETE FROM user_actions
+		WHERE user_id IN (
+			SELECT id FROM users
+			WHERE verified = false AND created_at < NOW() - INTERVAL '48 hours'
+		)
+		OR applier_id IN (
+			SELECT id FROM users
+			WHERE verified = false AND created_at < NOW() - INTERVAL '48 hours'
+		)
+		OR remover_id IN (
+			SELECT id FROM users
+			WHERE verified = false AND created_at < NOW() - INTERVAL '48 hours'
+		)
+	`
+	resultUserActions, err := tx.Exec(ctx, queryUserActions)
+	if err != nil {
+		return err
+	}
+	userActionsDeleted := resultUserActions.RowsAffected()
+	log.Info().Int64("userActionsDeleted", userActionsDeleted).Msg("deleted unverified user mod actions")
+
 	// Delete profiles (foreign key constraint)
 	queryProfiles := `
 		DELETE FROM profiles
@@ -604,6 +632,7 @@ func UnverifiedUsersCleanup() error {
 	log.Info().
 		Int64("blockingsDeleted", blockingsDeleted).
 		Int64("followingsDeleted", followingsDeleted).
+		Int64("userActionsDeleted", userActionsDeleted).
 		Int64("profilesDeleted", profilesDeleted).
 		Int64("usersDeleted", usersDeleted).
 		Msg("unverified users cleanup complete")
