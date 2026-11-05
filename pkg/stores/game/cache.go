@@ -65,8 +65,6 @@ type backingStore interface {
 	SetGameEventChan(ch chan<- *entity.EventWrapper)
 	Disconnect()
 	SetReady(ctx context.Context, gid string, pidx int) (int, error)
-	BackfillOngoingGame(ctx context.Context, gid string) (bool, error)
-	ListLiveGamesWithoutOngoingRow(ctx context.Context) ([]string, error)
 	GetHistory(ctx context.Context, id string) (*macondopb.GameHistory, error)
 	InsertGamePlayers(ctx context.Context, g *entity.Game) error
 	SetTimerModuleCreator(creator TimerModuleCreator)
@@ -304,16 +302,6 @@ func (c *Cache) Disconnect() {
 
 func (c *Cache) SetReady(ctx context.Context, gid string, pidx int) (int, error) {
 	return c.backing.SetReady(ctx, gid, pidx)
-}
-
-// BackfillOngoingGame: see DBStore.BackfillOngoingGame.
-func (c *Cache) BackfillOngoingGame(ctx context.Context, gid string) (bool, error) {
-	return c.backing.BackfillOngoingGame(ctx, gid)
-}
-
-// ListLiveGamesWithoutOngoingRow: see DBStore.ListLiveGamesWithoutOngoingRow.
-func (c *Cache) ListLiveGamesWithoutOngoingRow(ctx context.Context) ([]string, error) {
-	return c.backing.ListLiveGamesWithoutOngoingRow(ctx)
 }
 
 func (c *Cache) GetHistory(ctx context.Context, id string) (*macondopb.GameHistory, error) {

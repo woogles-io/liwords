@@ -83,9 +83,6 @@ func main() {
 		case "pending-archival-sweep":
 			err := PendingArchivalSweep()
 			log.Err(err).Msg("ran pendingArchivalSweep")
-		case "ongoing-games-backfill":
-			err := OngoingGamesBackfill()
-			log.Err(err).Msg("ran ongoingGamesBackfill")
 		case "resend-season-started-emails":
 			err := ResendSeasonStartedEmails()
 			log.Err(err).Msg("ran resendSeasonStartedEmails")

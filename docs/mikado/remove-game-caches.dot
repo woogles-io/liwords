@@ -87,7 +87,7 @@ digraph RedoGameModel {
     CacheWrapperCleanup [label = "Delete the Cache wrapper\n(cache.go is a pass-through now,\nplus the per-server activeGames TTL)";];
 
     // ── MakeDBFaster prerequisites ────────────────────────────────────────
-    OngoingPopulated [label = "ongoing_games populated and checked\n(WRITE_ONGOING_GAMES on, then the\nongoing-games-backfill maintenance run;\nrows agree with games for live games;\nxwordgame_remaining.md)";];
+    OngoingPopulated [label = "ongoing_games populated and checked\n(WRITE_ONGOING_GAMES on, then the\nbackfill-ongoing-games run;\nrows agree with games for live games;\nxwordgame_remaining.md)";];
     ListingsOnOngoingGames [label = "Move active-game listings onto ongoing_games\n(ends the idx_games_game_end_reason bloat:\n~114 ms per active-games query today)";];
     TurnsBinaryProto [label = "game_turns.event jsonb → bytea proto\n(no backfill: rows are deleted at archival)";];
     DropUnusedGamesIndexes [label = "Drop unused indexes on games\n(~2.4 GB with near-zero scans;\nxwordgame_remaining.md)";];

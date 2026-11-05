@@ -2,7 +2,7 @@
 --
 -- A game gets its row the first time it is saved with WRITE_ONGOING_GAMES on.
 -- Games that were already live when the flag went on, and are not saved again
--- soon, get theirs from the backfill (`maintenance ongoing-games-backfill`),
+-- soon, get theirs from the backfill (`cmd/backfill-ongoing-games`),
 -- which goes through this same query under the game's lock.
 --
 -- The rules columns are immutable, so ON CONFLICT deliberately does not rewrite

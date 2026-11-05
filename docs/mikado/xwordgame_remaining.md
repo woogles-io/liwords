@@ -61,26 +61,27 @@ on get theirs from the backfill.
 4. **Backfill**, once the API with the flag on is the only one running. Games
    that were live before the flip and have not been saved since -- idle
    correspondence games, and games nobody has moved in -- have no row until
-   this runs. It is a one-off run of the maintenance task, with a build that
-   has step 7, the flag set on the run as well (it refuses to start without
-   it), and the command as an override:
+   this runs. It is a one-off command, `cmd/backfill-ongoing-games`, built and
+   run by hand like `upload-game-archive`, with the API's database env vars,
+   `MACONDO_DATA_PATH` (each game is loaded), and the flag set for it as well:
+   it refuses to run without it.
 
    ```bash
-   aws ecs run-task --cluster woogles-prod --launch-type EC2 \
-     --task-definition liwords-maintenance \
-     --overrides '{"containerOverrides":[{"name":"maintenance",
-       "command":["/opt/maintenance","ongoing-games-backfill"],
-       "environment":[{"name":"WRITE_ONGOING_GAMES","value":"1"}]}]}'
+   GOOS=linux GOARCH=amd64 go build -o backfill-ongoing-games ./cmd/backfill-ongoing-games
+   # on the server, with the API's DB_* env and MACONDO_DATA_PATH:
+   WRITE_ONGOING_GAMES=1 ./backfill-ongoing-games --dry-run   # lists them, writes nothing
+   WRITE_ONGOING_GAMES=1 ./backfill-ongoing-games --all
    ```
 
    Never run it before the flag is on in the API: a game that ends in between
    would keep its row, because the save that ended it did not know to delete
    it. Each game is written under its own game lock, the one every move holds,
    and skipped if it has ended or already has a row, so it is safe to run
-   again. It logs `ongoing-backfill-done` with `wrote`, `skipped`, `failed`
-   and `remaining`; `remaining` should be 0, and a game whose lock was busy
-   shows as `ongoing-backfill-failed` and is picked up by running it again.
-   About 2,000 games, each a lock, a load and one insert: well under a minute.
+   again. It ends with a `done` line giving `wrote`, `skipped`, `failed` and
+   `remaining`; `remaining` should be 0. A game whose lock was busy is logged
+   as `backfill-failed`, the command exits 1, and running it again picks the
+   game up. About 2,000 games, each a lock, a load and one insert: well under
+   a minute.
 5. **Check it** before anything reads it, with `bin/proddb` (read-only):
 
    ```sql
