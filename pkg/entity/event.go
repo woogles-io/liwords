@@ -101,7 +101,8 @@ func (e *EventWrapper) AddExcludedUsers(ids []string) {
 // Serialize serializes the event to a byte array.
 // Our encoding inserts a two byte big-endian number indicating the length
 // of the coming bytes, then a byte representing the message type to the
-// start of the event.
+// start of the event. A message too long for two bytes gets the extended
+// header instead; see ExtendedFrameLength.
 func (e *EventWrapper) Serialize() ([]byte, error) {
 	var b bytes.Buffer
 
@@ -114,8 +115,7 @@ func (e *EventWrapper) Serialize() ([]byte, error) {
 			return nil, err
 		}
 		if e.protocol == EvtSerializationProtoWithHeader {
-			binary.Write(&b, binary.BigEndian, int16(len(data)+1))
-			binary.Write(&b, binary.BigEndian, int8(e.Type))
+			writeFrameHeader(&b, len(data), byte(e.Type))
 		}
 
 	case EvtSerializationJSON, EvtSerializationJSONWithHeader:
@@ -124,8 +124,7 @@ func (e *EventWrapper) Serialize() ([]byte, error) {
 			return nil, err
 		}
 		if e.protocol == EvtSerializationJSONWithHeader {
-			binary.Write(&b, binary.BigEndian, int16(len(data)+1))
-			binary.Write(&b, binary.BigEndian, int8(e.Type))
+			writeFrameHeader(&b, len(data), byte(e.Type))
 		}
 	}
 
@@ -138,9 +137,23 @@ func (e *EventWrapper) Serialize() ([]byte, error) {
 // and some messages, such as a whole division of a large tournament, are
 // bigger. The type stays at the third byte, where the socket server reads it.
 //
-// Readers learn this form before anything writes it, so that no client is sent
-// a frame it can't read. Messages under the limit keep the two-byte form.
+// Messages that fit keep the two-byte form, so clients from before the
+// extended form existed can still read them.
 const ExtendedFrameLength = 0xFFFF
+
+// writeFrameHeader writes the header for a message of n bytes of the given
+// type, in the two-byte form if the length fits and the extended one if not.
+func writeFrameHeader(b *bytes.Buffer, n int, msgType byte) {
+	// The length counts the type byte.
+	if n+1 < ExtendedFrameLength {
+		binary.Write(b, binary.BigEndian, uint16(n+1))
+		b.WriteByte(msgType)
+		return
+	}
+	binary.Write(b, binary.BigEndian, uint16(ExtendedFrameLength))
+	b.WriteByte(msgType)
+	binary.Write(b, binary.BigEndian, uint32(n+1))
+}
 
 // readFrameHeader reads a header in either form and returns the message type
 // and the length of the message that follows it.
@@ -228,8 +241,7 @@ func EventFromByteArray(arr []byte) (*EventWrapper, error) {
 // to refactor the code that uses it in the future.
 func BytesFromSerializedEvent(evt []byte, evtType byte) []byte {
 	var b bytes.Buffer
-	binary.Write(&b, binary.BigEndian, int16(len(evt)+1))
-	binary.Write(&b, binary.BigEndian, int8(evtType))
+	writeFrameHeader(&b, len(evt), evtType)
 	b.Write(evt)
 	return b.Bytes()
 }
