@@ -45,6 +45,14 @@ const scoreStyle: React.CSSProperties = {
   fontSize: "13px",
   whiteSpace: "nowrap",
 };
+// A just-ended row's second line is laid out as its first: how the game ended
+// shortens as the name does (nameStyle), and its mistakes sit under the score.
+const endedLineStyle: React.CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  gap: "8px",
+  whiteSpace: "nowrap",
+};
 
 // How long a finished game stays under "Just ended".
 const JUST_ENDED_MS = 24 * 60 * 60 * 1000;
@@ -88,6 +96,16 @@ const endedAgo = (ms: number): string => {
 // A score's spread, shown on hovering it: "+12", "-3", "+0".
 const spreadText = (spread: number): string =>
   `${spread >= 0 ? "+" : ""}${spread}`;
+
+// The game's BestBot Mistake Index for each side, the player's first as in the
+// score: "MI 3.2-5.1", or "MI -" until the game has been analyzed, which gives
+// both at once. Absent (not 0) means unanalyzed, since 0 is a perfect game.
+export const mistakesText = (g: PlayerSeasonGame): string =>
+  g.mistakeIndex === undefined || g.opponentMistakeIndex === undefined
+    ? "MI -"
+    : `MI ${g.mistakeIndex.toFixed(1)}-${g.opponentMistakeIndex.toFixed(1)}`;
+const mistakesTitle =
+  "Mistake Index from BestBot analysis, yours then your opponent's (lower is better; 0 is a perfect game; - until the game has been analyzed)";
 
 // "3-1 (+120)", "2-2-1 (-5)".
 const h2hCompactText = (record: H2HRecord): string => {
@@ -286,25 +304,30 @@ export const LeagueCorrespondenceGames: React.FC<
               </Tooltip>
             </span>
           </div>
-          <div className="turn-indicator-compact">
-            {/* the size and weight of the line, as "Their turn" has */}
-            <Text
-              type={
-                g.result === "win"
-                  ? "success"
-                  : g.result === "loss"
-                    ? "danger"
-                    : "secondary"
-              }
-              style={{
-                fontSize: "inherit",
-                fontWeight: "inherit",
-                lineHeight: "inherit",
-              }}
-            >
-              {resultText(g)}
-            </Text>{" "}
-            {endedAgo(timestampDate(g.gameDate!).getTime())}
+          <div className="turn-indicator-compact" style={endedLineStyle}>
+            <span style={nameStyle}>
+              {/* the size and weight of the line, as "Their turn" has */}
+              <Text
+                type={
+                  g.result === "win"
+                    ? "success"
+                    : g.result === "loss"
+                      ? "danger"
+                      : "secondary"
+                }
+                style={{
+                  fontSize: "inherit",
+                  fontWeight: "inherit",
+                  lineHeight: "inherit",
+                }}
+              >
+                {resultText(g)}
+              </Text>{" "}
+              {endedAgo(timestampDate(g.gameDate!).getTime())}
+            </span>
+            <Tooltip placement="left" title={mistakesTitle}>
+              <span style={{ flexShrink: 0 }}>{mistakesText(g)}</span>
+            </Tooltip>
           </div>
         </div>
       </div>
