@@ -102,6 +102,14 @@ const cells = (username: string) => {
 };
 
 describe("the roster with a season not started", () => {
+  it("gives no rank in its column, the order being alphabetical", () => {
+    renderRoster();
+    for (const username of ["andy", "bea", "cal"]) {
+      expect(cells(username).s26).toBe("D1");
+    }
+    expect(cells("andy").s25).toBe("D1#2");
+  });
+
   it("puts nobody first in Peak for being first alphabetically", () => {
     renderRoster();
     // Last of three is the worst andy can finish: his D1 #2 stands.

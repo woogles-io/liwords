@@ -475,10 +475,13 @@ export const LeagueRoster: React.FC<Props> = ({
   //         with another player in the same (season, division) group, i.e.
   //         a tied finish rather than a sole one. Players in a group with no
   //         games played are treated as tied (no sole finish to claim yet).
+  //   unplayed: set of "seasonNumber:divisionNumber" groups with no games
+  //         played, whose server order is alphabetical, not a standing.
   const compRankInfo = useMemo(() => {
     const map = new Map<string, number>();
     const tied = new Set<string>();
-    if (!data?.players) return { rank: map, tied };
+    const unplayed = new Set<string>();
+    if (!data?.players) return { rank: map, tied, unplayed };
 
     // Group entries by (season, division)
     const groups = new Map<
@@ -505,6 +508,7 @@ export const LeagueRoster: React.FC<Props> = ({
       // No games played yet: nobody holds a sole finish.
       if (entries.every((e) => e.points === 0 && e.spread === 0)) {
         for (const e of entries) tied.add(`${seasonNumber}:${e.userId}`);
+        unplayed.add(groupKey);
         continue;
       }
       entries.sort((a, b) => a.rank - b.rank);
@@ -530,7 +534,7 @@ export const LeagueRoster: React.FC<Props> = ({
       }
     }
 
-    return { rank: map, tied };
+    return { rank: map, tied, unplayed };
   }, [data?.players]);
   const compRankMap = compRankInfo.rank;
 
@@ -838,7 +842,12 @@ export const LeagueRoster: React.FC<Props> = ({
             {h2hDot}
             {formatSeason(
               season,
-              compRankMap.get(`${sn}:${record.userId}`),
+              // A season in progress shows no rank before anybody in its
+              // division has played: the order would be alphabetical.
+              inProgress(season, inProgressSeasons) &&
+                compRankInfo.unplayed.has(`${sn}:${season.divisionNumber}`)
+                ? 0
+                : compRankMap.get(`${sn}:${record.userId}`),
               sn === activeSeasonNumber,
               gameTooltip,
             )}
