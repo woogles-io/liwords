@@ -312,6 +312,7 @@ export const ActionsPanel = React.memo((props: Props) => {
               isDirector={isDirector}
               isFullDirector={isFullDirector}
               showFirst={props.showFirst}
+              showTables={tournamentContext.metadata.irlMode}
               tentative={pairingsTentative}
             />
           </div>
