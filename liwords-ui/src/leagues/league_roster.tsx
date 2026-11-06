@@ -97,6 +97,8 @@ const formatSeason = (
   hideTimeouts?: boolean,
   // A season in progress, shown at the worst place it can still finish.
   provisional?: boolean,
+  // A rank shared with another player, marked "=" as the standings mark it.
+  shared?: boolean,
 ) => {
   if (!season) return <span className="roster-empty">{"\u2014"}</span>;
   if (season.divisionNumber === 0) {
@@ -148,6 +150,7 @@ const formatSeason = (
             style={provisional ? { fontStyle: "italic" } : undefined}
           >
             #{displayRank}
+            {shared && "="}
           </span>
         )}
         {!hideResult && resultIcon(season.result)}
@@ -751,6 +754,7 @@ export const LeagueRoster: React.FC<Props> = ({
               undefined,
               true,
               peak.provisional,
+              peak.tied,
             )}
             <span style={{ fontSize: 11, opacity: 0.65, marginLeft: 2 }}>
               {"\u00b7"}S{peak.season.seasonNumber}
@@ -850,6 +854,9 @@ export const LeagueRoster: React.FC<Props> = ({
                 : compRankMap.get(`${sn}:${record.userId}`),
               sn === activeSeasonNumber,
               gameTooltip,
+              false,
+              false,
+              compRankInfo.tied.has(`${sn}:${record.userId}`),
             )}
           </span>
         );

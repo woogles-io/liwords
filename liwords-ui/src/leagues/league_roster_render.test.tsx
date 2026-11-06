@@ -60,7 +60,7 @@ const player = (
   seasons: Array<ReturnType<typeof finished>>,
 ) => create(LeagueRosterPlayerSchema, { userId: username, username, seasons });
 
-const renderRoster = () => {
+const renderRoster = (calWins = 2) => {
   answers.value = {
     GetLeagueRoster: create(LeagueRosterResponseSchema, {
       seasonNumbers: [25, 26],
@@ -70,7 +70,7 @@ const renderRoster = () => {
           finished(25, 2, 1, 5, StandingResult.RESULT_PROMOTED),
           notStarted(2),
         ]),
-        player("cal", [finished(25, 1, 3, 2), notStarted(3)]),
+        player("cal", [finished(25, 1, 3, calWins), notStarted(3)]),
         player("dee", [finished(25, 1, 1, 4, StandingResult.RESULT_CHAMPION)]),
       ],
     }),
@@ -130,5 +130,19 @@ describe("the roster with a season not started", () => {
       peak: "D1#3\u00b7S25",
       italic: false,
     });
+  });
+});
+
+describe("a shared finish in the roster", () => {
+  it("is marked, in its season and in Peak", () => {
+    // cal draws level with andy on wins and spread: both second.
+    renderRoster(3);
+    for (const username of ["andy", "cal"]) {
+      expect(cells(username)).toMatchObject({
+        s25: "D1#2=",
+        peak: "D1#2=\u00b7S25",
+      });
+    }
+    expect(cells("dee").s25).toBe("D1#1");
   });
 });
