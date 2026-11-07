@@ -981,11 +981,13 @@ export const Table = React.memo((props: Props) => {
   }
   // A player may examine their own correspondence game while it is in play,
   // to look back or save an earlier position, but sees no analysis there.
+  // Until the game's metadata names its players, a game in play counts as
+  // the viewer's own: a ?turn= link can start examining before it arrives.
   const correspondenceGame =
     gameInfo.gameRequest?.gameMode === GameMode.CORRESPONDENCE;
   const examiningOwnGameInPlay =
     isExamining &&
-    !!us &&
+    (!!us || gameInfo.gameId !== gameID) &&
     !gameDone &&
     !props.annotated &&
     gameInfo.type !== GameType.ANNOTATED;
