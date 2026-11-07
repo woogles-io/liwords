@@ -732,7 +732,9 @@ func (b *Bus) seekDeclined(ctx context.Context, evt *pb.DeclineSeekRequest, user
 		return err
 	}
 
-	if sg.SeekRequest.ReceivingUser.UserId != userID {
+	// Only a match request has a receiving user; an open seek has none, and
+	// nobody may decline it.
+	if sg.SeekRequest.GetReceivingUser().GetUserId() != userID {
 		return errors.New("request userID does not match")
 	}
 

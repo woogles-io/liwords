@@ -6,7 +6,9 @@ package bus
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"time"
@@ -187,7 +189,9 @@ outerfor:
 			go func(msgCtx context.Context, span trace.Span, subtopics []string, data []byte) {
 				defer span.End()
 				log := zerolog.Ctx(msgCtx)
-				err := b.handleNatsPublish(msgCtx, subtopics[2:], data)
+				err := recoverToError(msgCtx, func() error {
+					return b.handleNatsPublish(msgCtx, subtopics[2:], data)
+				})
 				if err != nil {
 					span.RecordError(err)
 					log.Err(err).Msg("process-message-publish-error")
@@ -233,7 +237,9 @@ outerfor:
 			go func(reqCtx context.Context, span trace.Span) {
 				defer span.End()
 				log := zerolog.Ctx(reqCtx)
-				err := b.handleNatsRequest(reqCtx, subtopics[2], msg.Reply, msg.Data)
+				err := recoverToError(reqCtx, func() error {
+					return b.handleNatsRequest(reqCtx, subtopics[2], msg.Reply, msg.Data)
+				})
 				if err != nil {
 					span.RecordError(err)
 					log.Err(err).Msg("process-message-request-error")
@@ -1385,4 +1391,21 @@ func (b *Bus) sendPresenceContext(ctx context.Context, userID, username string, 
 	}
 	// Also send OUR presence to users in this channel.
 	return b.broadcastPresence(username, userID, anon, []string{presenceChan}, false)
+}
+
+// recoverToError runs f and turns a panic in it into an error, so that one bad
+// message fails alone instead of taking down the whole process. It must run
+// inside the deferred span.End(): the otel SDK records a panic that reaches
+// End and then panics again.
+func recoverToError(ctx context.Context, f func() error) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			zerolog.Ctx(ctx).Error().
+				Interface("panic", r).
+				Str("stack", string(debug.Stack())).
+				Msg("recovered-panic-in-message-handler")
+			err = errors.New("internal server error")
+		}
+	}()
+	return f()
 }
