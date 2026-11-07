@@ -26,6 +26,10 @@ const organizationNames: Record<string, string> = {
 
 const organizationName = (code: string) => organizationNames[code] || code;
 
+// WESPA, the world body: the circle of one of its titles is ringed
+// (display_title.scss)
+const worldOrganization = "wespa";
+
 // Every verified title of a player, by username, fetched once, as the
 // circle's tooltip first opens; a failed fetch is tried again the next time.
 const titlesByUsername = new Map<string, Promise<Array<OrganizationTitle>>>();
@@ -103,6 +107,11 @@ export const DisplayUserTitle: React.FC<DisplayUserTitleProps> = ({ uuid }) => {
       onOpenChange={listTitles}
     >
       <span
+        className={
+          briefProfile.titleOrganizationCode === worldOrganization
+            ? "title-circle world"
+            : "title-circle"
+        }
         style={{
           display: "inline-flex",
           alignItems: "center",
@@ -115,7 +124,6 @@ export const DisplayUserTitle: React.FC<DisplayUserTitleProps> = ({ uuid }) => {
           color: styles.color,
           fontSize: "9px",
           fontWeight: "bold",
-          marginLeft: "8px",
           cursor: "default",
           verticalAlign: "middle",
         }}

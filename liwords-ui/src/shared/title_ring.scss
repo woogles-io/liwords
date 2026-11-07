@@ -1,0 +1,6 @@
+// The ring around a WESPA title's circle (display_title.scss): the open gap
+// between circle and ring, the ring's width, and how far it reaches past the
+// circle. Definitions only: this file emits no CSS.
+$title-ring-gap: 1px;
+$title-ring-width: 1px;
+$title-ring-reach: $title-ring-gap + $title-ring-width;

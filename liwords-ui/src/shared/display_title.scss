@@ -1,3 +1,19 @@
+@use "./title_ring" as *;
+
+.title-circle {
+  margin-left: 8px;
+}
+
+// the circle of a WESPA title: a ring outside it in its own color, the gap
+// between them left open so that whatever lies behind shows through; it
+// takes no height, so a line that clips what overflows it leaves room for it
+// (playerCards.scss), and keeps what follows it on the line off the ring
+.title-circle.world {
+  margin-right: $title-ring-reach;
+  outline: $title-ring-width solid currentColor;
+  outline-offset: $title-ring-gap;
+}
+
 // the circle's tooltip: each title on a line of its own, the tooltip as wide
 // as the longest
 .ant-tooltip.title-tooltip {
