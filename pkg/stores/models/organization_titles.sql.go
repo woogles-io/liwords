@@ -13,13 +13,14 @@ import (
 )
 
 const getAllUsersWithOrganization = `-- name: GetAllUsersWithOrganization :many
-SELECT users.uuid as user_uuid, users.username, integrations.integration_name, integrations.data
+SELECT integrations.uuid, users.uuid as user_uuid, users.username, integrations.integration_name, integrations.data
 FROM integrations
 JOIN users ON users.id = integrations.user_id
 WHERE integration_name = $1
 `
 
 type GetAllUsersWithOrganizationRow struct {
+	Uuid            uuid.UUID
 	UserUuid        string
 	Username        string
 	IntegrationName string
@@ -36,6 +37,7 @@ func (q *Queries) GetAllUsersWithOrganization(ctx context.Context, integrationNa
 	for rows.Next() {
 		var i GetAllUsersWithOrganizationRow
 		if err := rows.Scan(
+			&i.Uuid,
 			&i.UserUuid,
 			&i.Username,
 			&i.IntegrationName,

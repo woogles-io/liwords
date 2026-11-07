@@ -5,7 +5,7 @@ WHERE user_id = (SELECT id FROM users WHERE users.uuid = @user_uuid)
 AND integration_name = ANY(@organization_codes::text[]);
 
 -- name: GetAllUsersWithOrganization :many
-SELECT users.uuid as user_uuid, users.username, integrations.integration_name, integrations.data
+SELECT integrations.uuid, users.uuid as user_uuid, users.username, integrations.integration_name, integrations.data
 FROM integrations
 JOIN users ON users.id = integrations.user_id
 WHERE integration_name = @integration_name;

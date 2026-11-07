@@ -36,7 +36,7 @@ func recreateDB(t *testing.T) (*pgxpool.Pool, *models.Queries) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, u := range []string{"stays", "other"} {
+	for _, u := range []string{"stays", "promoted", "lapsed", "other"} {
 		err := userStore.New(context.Background(), &entity.User{Username: u, Email: u + "@woogles.io", UUID: u})
 		if err != nil {
 			t.Fatal(err)
@@ -139,4 +139,84 @@ func TestManuallySetOrgMembershipSG(t *testing.T) {
 	// a member the list does not have, and a number with its type, are refused
 	is.True(assign("6") != nil)
 	is.True(assign("0005M") != nil)
+}
+
+func profileTitle(t *testing.T, pool *pgxpool.Pool, userUUID string) (string, string) {
+	var title, org *string
+	err := pool.QueryRow(context.Background(),
+		`SELECT title, title_organization FROM profiles WHERE user_id = (SELECT id FROM users WHERE uuid = $1)`,
+		userUUID).Scan(&title, &org)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if title == nil || org == nil {
+		return "", ""
+	}
+	return *title, *org
+}
+
+func TestRefreshOrganizationTitles(t *testing.T) {
+	is := is.New(t)
+	ctx := context.Background()
+	pool, q := recreateDB(t)
+
+	list := `{"players": [
+  {"id": "4", "name": "Stays, Sarah", "title": "SM"}
+, {"id": "5", "name": "Promoted, Tony", "title": "GM"}
+]}
+`
+	status := http.StatusOK
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(status)
+		w.Write([]byte(list))
+	}))
+	defer server.Close()
+	t.Setenv("SG_TITLES_URL", server.URL)
+
+	link(t, q, "stays", organizations.OrgSG, organizations.OrganizationIntegrationData{
+		MemberID: "0004", FullName: "Stays, Sarah", RawTitle: "SM", Verified: true})
+	link(t, q, "promoted", organizations.OrgSG, organizations.OrganizationIntegrationData{
+		MemberID: "5", FullName: "Promoted, Tony", RawTitle: "NM", Verified: true})
+	link(t, q, "lapsed", organizations.OrgSG, organizations.OrganizationIntegrationData{
+		MemberID: "6", FullName: "Lapsed, Lee", RawTitle: "M", Verified: true})
+	// a WESPA title stays untouched, and shows once the SG title is gone
+	link(t, q, "lapsed", organizations.OrgWESPA, organizations.OrganizationIntegrationData{
+		MemberID: "123", FullName: "Lee Lapsed", RawTitle: "M", Verified: true})
+
+	is.NoErr(RefreshOrganizationTitles(ctx, q, organizations.OrgSG))
+
+	is.Equal(stored(t, q, "stays", organizations.OrgSG).RawTitle, "SM")
+	is.Equal(stored(t, q, "promoted", organizations.OrgSG).RawTitle, "GM")
+	lapsed := stored(t, q, "lapsed", organizations.OrgSG)
+	is.Equal(lapsed.RawTitle, "")
+	is.Equal(lapsed.FullName, "Lapsed, Lee") // the stored name is kept
+	is.Equal(stored(t, q, "lapsed", organizations.OrgWESPA).RawTitle, "M")
+
+	title, org := profileTitle(t, pool, "promoted")
+	is.Equal(title, "Grandmaster")
+	is.Equal(org, "sg")
+	title, org = profileTitle(t, pool, "stays")
+	is.Equal(title, "Senior Master")
+	is.Equal(org, "sg")
+	title, org = profileTitle(t, pool, "lapsed")
+	is.Equal(title, "Master")
+	is.Equal(org, "wespa")
+
+	// a failed download, or a broken list, changes no one's title
+	for _, broken := range []struct {
+		status int
+		list   string
+	}{
+		{http.StatusInternalServerError, list},
+		{http.StatusOK, `{"players": [` + "\n]}\n"},
+		{http.StatusOK, `{"players": [{"id": "5", "name": "Promoted, Tony", "title": "GM"}`},
+	} {
+		status, list = broken.status, broken.list
+		is.True(RefreshOrganizationTitles(ctx, q, organizations.OrgSG) != nil)
+		is.Equal(stored(t, q, "stays", organizations.OrgSG).RawTitle, "SM")
+		is.Equal(stored(t, q, "promoted", organizations.OrgSG).RawTitle, "GM")
+		title, org = profileTitle(t, pool, "promoted")
+		is.Equal(title, "Grandmaster")
+		is.Equal(org, "sg")
+	}
 }

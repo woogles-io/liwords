@@ -1011,6 +1011,83 @@ func (s *OrganizationService) organizationIntegrations(ctx context.Context, user
 	})
 }
 
+// RefreshOrganizationTitles refreshes one organization's title for every
+// user linked to it, so that a title gained or lost shows without anyone
+// pressing refresh. It is for a scheduled job, and for an organization whose
+// list needs no credentials: one integration instance serves every user, so
+// a whole-file list is downloaded once, and a failed download changes no
+// one's title.
+func RefreshOrganizationTitles(ctx context.Context, q *models.Queries, orgCode organizations.OrganizationCode) error {
+	meta, err := organizations.GetOrganizationMetadata(orgCode)
+	if err != nil {
+		return err
+	}
+	if meta.RequiresAuth {
+		return fmt.Errorf("%s requires credentials for refresh", meta.Name)
+	}
+	integration, err := organizations.GetIntegration(orgCode)
+	if err != nil {
+		return err
+	}
+	links, err := q.GetAllUsersWithOrganization(ctx, string(orgCode))
+	if err != nil {
+		return err
+	}
+
+	s := &OrganizationService{queries: q}
+	failed := 0
+	for _, link := range links {
+		var integData organizations.OrganizationIntegrationData
+		if err := integData.FromJSON(link.Data); err != nil {
+			failed++
+			log.Error().Err(err).Str("org", string(orgCode)).Str("user_uuid", link.UserUuid).Msg("failed to parse integration data")
+			continue
+		}
+
+		titleInfo, err := integration.FetchTitle(integData.MemberID, nil)
+		if err != nil {
+			failed++
+			log.Error().Err(err).Str("org", string(orgCode)).Str("user_uuid", link.UserUuid).Msg("failed to fetch title from public API")
+			continue
+		}
+
+		// Update integration data with latest from API
+		integData.RawTitle = titleInfo.RawTitle
+		if titleInfo.FullName != "" {
+			// A list that drops a member gives no name; keep the stored one
+			integData.FullName = titleInfo.FullName
+		}
+		now := time.Now()
+		integData.LastFetched = &now
+
+		dataJSON, err := integData.ToJSON()
+		if err != nil {
+			failed++
+			continue
+		}
+		err = q.UpdateIntegrationData(ctx, models.UpdateIntegrationDataParams{
+			Uuid: link.Uuid,
+			Data: dataJSON,
+		})
+		if err != nil {
+			failed++
+			log.Error().Err(err).Str("org", string(orgCode)).Str("user_uuid", link.UserUuid).Msg("failed to update integration data")
+			continue
+		}
+
+		// Update profile title with highest title
+		if err := s.updateProfileTitle(ctx, link.UserUuid); err != nil {
+			log.Error().Err(err).Str("user_uuid", link.UserUuid).Msg("failed to update profile title")
+		}
+	}
+
+	log.Info().Str("org", string(orgCode)).Int("links", len(links)).Int("failed", failed).Msg("organization titles refreshed")
+	if failed > 0 {
+		return fmt.Errorf("%d of %d %s titles were not refreshed", failed, len(links), meta.Name)
+	}
+	return nil
+}
+
 // GetCachedRealName returns the cached real name from the integrations table
 func (s *OrganizationService) GetCachedRealName(ctx context.Context, userUUID string, orgCode string) (string, error) {
 	integrationData, err := s.queries.GetIntegrationData(ctx, models.GetIntegrationDataParams{
