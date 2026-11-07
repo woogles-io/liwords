@@ -559,6 +559,48 @@ export const Table = React.memo((props: Props) => {
     gameContext.turns,
   ]);
 
+  // A player's page has the game's metadata from before the game started: it
+  // says ready only once the metadata is in, and the clocks start when both
+  // players are ready. So time_started is still 0 there, and the move times
+  // fetch it again, once, when they are first wanted.
+  const refetchedStartRef = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    if (
+      !isExamining ||
+      !gameDone ||
+      props.annotated ||
+      gameInfo.type === GameType.ANNOTATED ||
+      gameInfo.gameId !== gameID ||
+      gameInfo.timeStarted ||
+      refetchedStartRef.current === gameID
+    ) {
+      return;
+    }
+    refetchedStartRef.current = gameID;
+    gmClient.getMetadata({ gameId: gameID }).then(
+      (resp) => {
+        if (resp.timeStarted) {
+          setGameInfo((gi) =>
+            gi.gameId === resp.gameId
+              ? { ...gi, timeStarted: resp.timeStarted }
+              : gi,
+          );
+        }
+      },
+      // The times stay hidden.
+      () => {},
+    );
+  }, [
+    isExamining,
+    gameDone,
+    props.annotated,
+    gameInfo.type,
+    gameInfo.gameId,
+    gameInfo.timeStarted,
+    gameID,
+    gmClient,
+  ]);
+
   // Can add time if: unrated casual real-time game only (not tournament, league, correspondence, rated, or vs bot)
   const canAddTime = useMemo(() => {
     return (
