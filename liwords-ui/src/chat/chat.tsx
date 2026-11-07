@@ -140,6 +140,45 @@ export const inputMaxHeight = (list: HTMLElement, input: HTMLElement): number =>
     ),
   );
 
+// The message list's cap that the chat's layout sets (setHeight): the chat's
+// height less its context panel's, at least 106 px, less 100 px.
+export const layoutListCap = (chatHeight: number, contextHeight: number) =>
+  chatHeight - (contextHeight > 106 ? contextHeight : 106) - 100;
+
+// What each chat could last give up while its messages were shown.
+const lastRoomToGive = new WeakMap<HTMLElement, number>();
+
+// How much of its height the chat can give up to a card below it (the
+// analyzer's, grow_to_window_bottom.ts): none while collapsed, else down to
+// where its message list keeps the height it keeps in view above the input,
+// under both that room and the layout's cap. While its messages are not
+// shown, as on its Players tab, what it could last give up then, or what the
+// layout's cap alone allows, so that it is as tall on either tab.
+export const roomToGive = (chat: HTMLElement): number => {
+  if (chat.classList.contains("collapsed")) {
+    return 0;
+  }
+  const shown = (el: Element) => el.getClientRects().length > 0;
+  const list = [...chat.querySelectorAll<HTMLElement>(".entities")].find(shown);
+  const input = [
+    ...chat.querySelectorAll<HTMLElement>('textarea[name="chat-input"]'),
+  ].find(shown);
+  if (!list || !input) {
+    return (
+      lastRoomToGive.get(chat) ??
+      Math.max(0, layoutListCap(chat.clientHeight, 0) - MIN_CHAT_LIST_PX)
+    );
+  }
+  const context = chat.querySelector<HTMLElement>("#chat-context");
+  const room = roomAboveInput(list, input);
+  const cap = context?.clientHeight
+    ? layoutListCap(chat.clientHeight, context.clientHeight)
+    : room;
+  const give = Math.max(0, Math.min(room, cap) - MIN_CHAT_LIST_PX);
+  lastRoomToGive.set(chat, give);
+  return give;
+};
+
 // How many rows (1 to 6) of input fit in a height, given the input's line
 // height and its vertical padding and border.
 export const rowsThatFit = (
@@ -385,9 +424,7 @@ export const Chat = React.memo((props: Props) => {
       document.getElementById("chat-context")?.clientHeight;
     const calculatedEntitiesHeight =
       contextPanelHeight && tabPaneHeight
-        ? tabPaneHeight -
-          (contextPanelHeight > 106 ? contextPanelHeight : 106) -
-          100
+        ? layoutListCap(tabPaneHeight, contextPanelHeight)
         : undefined;
     if (maxEntitiesHeight !== calculatedEntitiesHeight) {
       setMaxEntitiesHeight(calculatedEntitiesHeight);

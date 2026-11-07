@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   entitiesMaxHeight,
   inputMaxHeight,
+  layoutListCap,
   MIN_CHAT_LIST_PX,
   roomAboveInput,
+  roomToGive,
   rowsThatFit,
 } from "./chat";
 
@@ -45,6 +47,75 @@ describe("inputMaxHeight", () => {
 
   it("is never negative", () => {
     expect(inputMaxHeight(at(400), at(410, 420))).toBe(0);
+  });
+});
+
+describe("roomToGive", () => {
+  // a chat whose message list starts at listTop and whose input starts at
+  // inputTop, the list shown or not
+  const chat = (listTop: number, inputTop: number, listShown = true) => {
+    const el = document.createElement("div");
+    const place = (child: HTMLElement, top: number, shown: boolean) => {
+      child.getBoundingClientRect = () => ({ top, bottom: top }) as DOMRect;
+      child.getClientRects = () =>
+        (shown ? [{}] : []) as unknown as DOMRectList;
+      el.appendChild(child);
+    };
+    const list = document.createElement("div");
+    list.className = "entities game";
+    place(list, listTop, listShown);
+    const input = document.createElement("textarea");
+    input.name = "chat-input";
+    place(input, inputTop, listShown);
+    return el;
+  };
+
+  it("gives down to where the list keeps its minimum above the input", () => {
+    expect(roomToGive(chat(283, 795))).toBe(795 - 283 - MIN_CHAT_LIST_PX);
+  });
+
+  it("gives nothing while collapsed", () => {
+    const collapsed = chat(283, 795);
+    collapsed.classList.add("collapsed");
+    expect(roomToGive(collapsed)).toBe(0);
+  });
+
+  it("gives what it last could while its messages are not shown", () => {
+    const tabbed = chat(283, 795);
+    expect(roomToGive(tabbed)).toBe(795 - 283 - MIN_CHAT_LIST_PX);
+    tabbed.querySelectorAll<HTMLElement>("div, textarea").forEach((el) => {
+      el.getClientRects = () => [] as unknown as DOMRectList;
+    });
+    expect(roomToGive(tabbed)).toBe(795 - 283 - MIN_CHAT_LIST_PX);
+  });
+
+  it("gives what the layout's cap alone allows before its messages were ever shown", () => {
+    const hidden = chat(283, 795, false);
+    Object.defineProperty(hidden, "clientHeight", { value: 353 });
+    // 353 - 106 - 100 = 147
+    expect(roomToGive(hidden)).toBe(147 - MIN_CHAT_LIST_PX);
+  });
+
+  it("is never negative", () => {
+    expect(roomToGive(chat(283, 300))).toBe(0);
+  });
+
+  it("keeps the list its minimum under the layout's cap too", () => {
+    const capped = chat(283, 795);
+    Object.defineProperty(capped, "clientHeight", { value: 353 });
+    const context = document.createElement("div");
+    context.id = "chat-context";
+    Object.defineProperty(context, "clientHeight", { value: 67 });
+    capped.appendChild(context);
+    // a cap of 353 - 106 - 100 = 147, under the room of 512 above the input
+    expect(roomToGive(capped)).toBe(147 - MIN_CHAT_LIST_PX);
+  });
+});
+
+describe("layoutListCap", () => {
+  it("leaves the context panel at least 106 px, and 100 px more", () => {
+    expect(layoutListCap(353, 67)).toBe(147);
+    expect(layoutListCap(353, 120)).toBe(133);
   });
 });
 

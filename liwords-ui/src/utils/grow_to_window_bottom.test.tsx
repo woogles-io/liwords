@@ -1,5 +1,5 @@
 import { cleanup, render } from "@testing-library/react";
-import { useRef } from "react";
+import { useMemo, useRef } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { useGrowToWindowBottom } from "./grow_to_window_bottom";
 
@@ -112,5 +112,173 @@ describe("useGrowToWindowBottom", () => {
     rects = layOut(200, 499);
     render(<Card on />);
     expect(body().style.getPropertyValue("--grow-room")).toBe("190px");
+  });
+});
+
+describe("useGrowToWindowBottom with a card above that gives up height", () => {
+  // the card above 355 px tall at its full height; the growing card's body
+  // as in layOut, its room 236 px in a window 760 px tall
+  const layOutBelow = () => {
+    vi.stubGlobal("innerHeight", 760);
+    return vi
+      .spyOn(HTMLElement.prototype, "getBoundingClientRect")
+      .mockImplementation(function (this: HTMLElement) {
+        if (this.id === "above") {
+          return { top: 0, bottom: 355, height: 355 } as DOMRect;
+        }
+        const bottom = this.classList.contains("ant-card-body") ? 689 : 690;
+        return { top: 499, bottom, height: 190 } as DOMRect;
+      });
+  };
+
+  // a list that holds hidden px more than it shows
+  const List = (props: { hidden: number }) => (
+    <div
+      className="list"
+      ref={(el) => {
+        if (el) {
+          Object.defineProperty(el, "scrollHeight", {
+            configurable: true,
+            value: 150 + props.hidden,
+          });
+          Object.defineProperty(el, "clientHeight", {
+            configurable: true,
+            value: 150,
+          });
+        }
+      }}
+    />
+  );
+
+  const Below = (props: { spare: number; hidden: number; on?: boolean }) => {
+    const card = useRef<HTMLDivElement>(null);
+    const giver = useMemo(
+      () => ({
+        card: () => document.getElementById("above"),
+        spare: () => props.spare,
+        list: ".list",
+      }),
+      [props.spare],
+    );
+    useGrowToWindowBottom(card, props.on ?? true, giver);
+    return (
+      <div>
+        <div id="above" />
+        <div ref={card}>
+          <div className="ant-card-body">
+            <List hidden={props.hidden} />
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const above = () => document.getElementById("above")!;
+
+  let rects: { mockRestore: () => void } | undefined;
+  afterEach(() => {
+    rects?.mockRestore();
+    cleanup();
+    vi.unstubAllGlobals();
+  });
+
+  it("takes what the list needs past its room from the card above", () => {
+    rects = layOutBelow();
+    // the body needs 190 + 250 = 440 px, 204 px past its room of 236
+    render(<Below spare={300} hidden={250} />);
+    expect(above()).toHaveClass("gives-room");
+    expect(above().style.getPropertyValue("--give-height")).toBe("151px");
+    expect(body().style.getPropertyValue("--grow-room")).toBe("440px");
+  });
+
+  it("takes no more than the card above can spare", () => {
+    rects = layOutBelow();
+    render(<Below spare={100} hidden={250} />);
+    expect(above().style.getPropertyValue("--give-height")).toBe("255px");
+    expect(body().style.getPropertyValue("--grow-room")).toBe("336px");
+  });
+
+  it("takes nothing while the list fits its room", () => {
+    rects = layOutBelow();
+    render(<Below spare={300} hidden={40} />);
+    expect(above()).not.toHaveClass("gives-room");
+    expect(above().style.getPropertyValue("--give-height")).toBe("");
+    expect(body().style.getPropertyValue("--grow-room")).toBe("236px");
+  });
+
+  it("keeps what it took as the list gets shorter", () => {
+    rects = layOutBelow();
+    const { rerender } = render(<Below spare={300} hidden={250} />);
+    rerender(<Below spare={300} hidden={0} />);
+    window.dispatchEvent(new Event("resize"));
+    expect(above().style.getPropertyValue("--give-height")).toBe("151px");
+  });
+
+  it("gives it back once the card above can spare nothing", () => {
+    rects = layOutBelow();
+    const { rerender } = render(<Below spare={300} hidden={250} />);
+    rerender(<Below spare={0} hidden={250} />);
+    expect(above()).not.toHaveClass("gives-room");
+    expect(body().style.getPropertyValue("--grow-room")).toBe("236px");
+  });
+
+  it("measures again as the card above shows another of its tabs", async () => {
+    rects = layOutBelow();
+    let spare = 0;
+    const Tabbed = () => {
+      const card = useRef<HTMLDivElement>(null);
+      const giver = useMemo(
+        () => ({
+          card: () => document.getElementById("above"),
+          spare: () => spare,
+          list: ".list",
+        }),
+        [],
+      );
+      useGrowToWindowBottom(card, true, giver);
+      return (
+        <div>
+          <div id="above">
+            <div className="pane" />
+          </div>
+          <div ref={card}>
+            <div className="ant-card-body">
+              <List hidden={250} />
+            </div>
+          </div>
+        </div>
+      );
+    };
+    render(<Tabbed />);
+    expect(above()).not.toHaveClass("gives-room");
+    spare = 300;
+    document.querySelector(".pane")!.classList.add("active");
+    await Promise.resolve();
+    expect(above().style.getPropertyValue("--give-height")).toBe("151px");
+  });
+
+  it("gives it all back once off", () => {
+    rects = layOutBelow();
+    const { rerender } = render(<Below spare={300} hidden={250} />);
+    rerender(<Below spare={300} hidden={250} on={false} />);
+    expect(above()).not.toHaveClass("gives-room");
+    expect(above().style.getPropertyValue("--give-height")).toBe("");
+  });
+
+  it("takes nothing, and keeps its own height, on a page laid out as on a phone", () => {
+    rects = layOutBelow();
+    const shown = vi
+      .spyOn(HTMLElement.prototype, "getClientRects")
+      .mockImplementation(() => [{}] as unknown as DOMRectList);
+    render(
+      <div>
+        <div className="sticky-player-card-container" />
+        <Below spare={300} hidden={250} />
+      </div>,
+    );
+    expect(above()).not.toHaveClass("gives-room");
+    expect(body()).not.toHaveClass("grow-to-bottom");
+    expect(body().style.getPropertyValue("--grow-room")).toBe("");
+    shown.mockRestore();
   });
 });
