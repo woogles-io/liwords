@@ -531,11 +531,12 @@ export const Table = React.memo((props: Props) => {
   const gameDone =
     gameContext.playState === PlayState.GAME_OVER && !!gameContext.gameID;
 
-  // When each move of a finished game was made, replayed from its clocks.
+  // When each move was made, replayed from its clocks: shown while examining,
+  // a game still in play too (an observer's, or a player's own
+  // correspondence game).
   const eventTimes = useMemo(() => {
     const req = gameInfo.gameRequest;
     if (
-      !gameDone ||
       props.annotated ||
       gameInfo.type === GameType.ANNOTATED ||
       !req ||
@@ -551,7 +552,6 @@ export const Table = React.memo((props: Props) => {
       maxOvertimeMs: req.maxOvertimeMinutes * 60000,
     });
   }, [
-    gameDone,
     props.annotated,
     gameInfo.type,
     gameInfo.gameRequest,
@@ -567,7 +567,6 @@ export const Table = React.memo((props: Props) => {
   useEffect(() => {
     if (
       !isExamining ||
-      !gameDone ||
       props.annotated ||
       gameInfo.type === GameType.ANNOTATED ||
       gameInfo.gameId !== gameID ||
@@ -592,7 +591,6 @@ export const Table = React.memo((props: Props) => {
     );
   }, [
     isExamining,
-    gameDone,
     props.annotated,
     gameInfo.type,
     gameInfo.gameId,
