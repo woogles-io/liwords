@@ -1088,6 +1088,34 @@ func RefreshOrganizationTitles(ctx context.Context, q *models.Queries, orgCode o
 	return nil
 }
 
+// RepickProfileTitles picks again the title shown by the username of every
+// user linked to an organization, from their stored titles, with nothing
+// fetched. The title is picked only when one is linked or refreshed, so this
+// is how a change to the ranks, the tie order, or a title's name reaches the
+// players it affects without anyone pressing refresh. It is for a scheduled
+// job.
+func RepickProfileTitles(ctx context.Context, q *models.Queries) error {
+	userUUIDs, err := q.GetUsersWithOrganizations(ctx, organizations.SupportedOrganizationCodes())
+	if err != nil {
+		return err
+	}
+
+	s := &OrganizationService{queries: q}
+	failed := 0
+	for _, userUUID := range userUUIDs {
+		if err := s.updateProfileTitle(ctx, userUUID); err != nil {
+			failed++
+			log.Error().Err(err).Str("user_uuid", userUUID).Msg("failed to update profile title")
+		}
+	}
+
+	log.Info().Int("users", len(userUUIDs)).Int("failed", failed).Msg("profile titles picked again")
+	if failed > 0 {
+		return fmt.Errorf("%d of %d profile titles were not picked again", failed, len(userUUIDs))
+	}
+	return nil
+}
+
 // GetCachedRealName returns the cached real name from the integrations table
 func (s *OrganizationService) GetCachedRealName(ctx context.Context, userUUID string, orgCode string) (string, error) {
 	integrationData, err := s.queries.GetIntegrationData(ctx, models.GetIntegrationDataParams{
