@@ -1,7 +1,16 @@
-import React from "react";
+import React, { useCallback, useState } from "react";
+import { create } from "@bufbuild/protobuf";
+import {
+  GetPublicOrganizationsRequestSchema,
+  OrganizationService,
+  OrganizationTitle,
+} from "../gen/api/proto/user_service/user_service_pb";
 import { useBriefProfile } from "../utils/brief_profiles";
+import { useClient } from "../utils/hooks/connect";
 import { titleStyle } from "./title_styles";
 import { Tooltip } from "antd";
+
+import "./display_title.scss";
 
 interface DisplayUserTitleProps {
   uuid?: string;
@@ -15,8 +24,58 @@ const organizationNames: Record<string, string> = {
   sg: "Singapore Scrabble Association",
 };
 
+const organizationName = (code: string) => organizationNames[code] || code;
+
+// Every verified title of a player, by username, fetched once, as the
+// circle's tooltip first opens; a failed fetch is tried again the next time.
+const titlesByUsername = new Map<string, Promise<Array<OrganizationTitle>>>();
+
+// The tooltip's lines: the title the circle shows first, then the player's
+// other titles in the order the server lists them. Only verified titles, as
+// the circle's: an admin is sent the unverified links too.
+export const titleLines = (
+  titles: Array<OrganizationTitle>,
+  shownOrganization: string,
+): Array<string> => {
+  const held = titles.filter((t) => t.verified && t.rawTitle);
+  return [
+    ...held.filter((t) => t.organizationCode === shownOrganization),
+    ...held.filter((t) => t.organizationCode !== shownOrganization),
+  ].map(
+    (t) =>
+      `${t.titleFullName || t.rawTitle} (${organizationName(t.organizationCode)})`,
+  );
+};
+
 export const DisplayUserTitle: React.FC<DisplayUserTitleProps> = ({ uuid }) => {
   const briefProfile = useBriefProfile(uuid);
+  const orgClient = useClient(OrganizationService);
+  const [lines, setLines] = useState<Array<string> | null>(null);
+  const username = briefProfile?.username;
+  const shownOrganization = briefProfile?.titleOrganizationCode ?? "";
+
+  const listTitles = useCallback(
+    (open: boolean) => {
+      if (!open || lines || !username) {
+        return;
+      }
+      let titles = titlesByUsername.get(username);
+      if (!titles) {
+        titles = orgClient
+          .getPublicOrganizations(
+            create(GetPublicOrganizationsRequestSchema, { username }),
+          )
+          .then((response) => response.titles);
+        titlesByUsername.set(username, titles);
+        titles.catch(() => titlesByUsername.delete(username));
+      }
+      titles.then(
+        (held) => setLines(titleLines(held, shownOrganization)),
+        () => {},
+      );
+    },
+    [lines, username, orgClient, shownOrganization],
+  );
 
   if (!briefProfile || !briefProfile.titleAbbreviation) {
     return null;
@@ -26,15 +85,23 @@ export const DisplayUserTitle: React.FC<DisplayUserTitleProps> = ({ uuid }) => {
   const styles = titleStyle(abbreviation);
 
   const orgName = briefProfile.titleOrganizationCode
-    ? organizationNames[briefProfile.titleOrganizationCode] ||
-      briefProfile.titleOrganizationCode
+    ? organizationName(briefProfile.titleOrganizationCode)
     : "";
   const tooltipText = orgName
     ? `${briefProfile.title} (${orgName})`
     : briefProfile.title;
 
   return (
-    <Tooltip title={tooltipText} mouseEnterDelay={0.3}>
+    <Tooltip
+      title={(lines?.length ? lines : [tooltipText]).map((line) => (
+        <div className="title-line" key={line}>
+          {line}
+        </div>
+      ))}
+      rootClassName="title-tooltip"
+      mouseEnterDelay={0.3}
+      onOpenChange={listTitles}
+    >
       <span
         style={{
           display: "inline-flex",

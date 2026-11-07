@@ -1,0 +1,9 @@
+// the circle's tooltip: each title on a line of its own, the tooltip as wide
+// as the longest
+.ant-tooltip.title-tooltip {
+  max-width: none;
+
+  .title-line {
+    white-space: nowrap;
+  }
+}
