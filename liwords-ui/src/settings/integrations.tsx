@@ -11,6 +11,7 @@ import {
   RefreshTitlesRequestSchema,
   OrganizationTitle,
 } from "../gen/api/proto/user_service/user_service_pb";
+import { TitleTag } from "../shared/title_tag";
 import { useLoginStateStoreContext } from "../store/store";
 import { useClient, flashError } from "../utils/hooks/connect";
 import {
@@ -587,7 +588,11 @@ export const Integrations = () => {
                 dataIndex: "normalizedTitle",
                 key: "normalizedTitle",
                 render: (title: string) =>
-                  title ? <Tag color="blue">{title}</Tag> : "-",
+                  title ? (
+                    <TitleTag abbreviation={title}>{title}</TitleTag>
+                  ) : (
+                    "-"
+                  ),
               },
               {
                 title: "Status",

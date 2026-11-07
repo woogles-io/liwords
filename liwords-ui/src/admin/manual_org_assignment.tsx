@@ -21,6 +21,7 @@ import {
   QuestionCircleOutlined,
   ReloadOutlined,
 } from "@ant-design/icons";
+import { TitleTag } from "../shared/title_tag";
 import { useClient, flashError } from "../utils/hooks/connect";
 import {
   OrganizationService,
@@ -296,7 +297,7 @@ export const ManualOrgAssignment = () => {
       dataIndex: "normalizedTitle",
       key: "normalizedTitle",
       render: (title: string) =>
-        title ? <Tag color="blue">{title}</Tag> : "-",
+        title ? <TitleTag abbreviation={title}>{title}</TitleTag> : "-",
     },
     {
       title: "Status",
