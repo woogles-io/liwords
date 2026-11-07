@@ -34,13 +34,9 @@ import {
 import { create } from "@bufbuild/protobuf";
 import { useDebounce } from "../utils/debounce";
 
+// Listed in the tie order: TiePriority in
+// pkg/integrations/organizations/types.go
 const organizationInfo = {
-  naspa: {
-    name: "NASPA",
-    fullName: "North American SCRABBLE Players Association",
-    help: "Enter the NASPA member ID (e.g., AA000083)",
-    helpTooltip: "NASPA member IDs are in the format AA000083",
-  },
   wespa: {
     name: "WESPA",
     fullName: "World English-Language Scrabble Players Association",
@@ -62,25 +58,11 @@ const organizationInfo = {
       </span>
     ),
   },
-  absp: {
-    name: "ABSP",
-    fullName: "Association of British Scrabble Players",
-    help: "Enter the ABSP member number",
-    helpTooltip: (
-      <span>
-        Visit{" "}
-        <a
-          href="https://absp-database.org/ratings"
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{ color: "#1890ff" }}
-        >
-          absp-database.org/ratings
-        </a>
-        , find the name in the table. The member ID is in the{" "}
-        <strong>MemNo</strong> column, immediately to the right of the rating.
-      </span>
-    ),
+  naspa: {
+    name: "NASPA",
+    fullName: "North American SCRABBLE Players Association",
+    help: "Enter the NASPA member ID (e.g., AA000083)",
+    helpTooltip: "NASPA member IDs are in the format AA000083",
   },
   sg: {
     name: "Singapore Scrabble Association",
@@ -102,6 +84,26 @@ const organizationInfo = {
         with or without the leading zeros: it is saved without them (e.g.,{" "}
         <strong>1234</strong> from 01234M). Only members listed there hold a
         title.
+      </span>
+    ),
+  },
+  absp: {
+    name: "ABSP",
+    fullName: "Association of British Scrabble Players",
+    help: "Enter the ABSP member number",
+    helpTooltip: (
+      <span>
+        Visit{" "}
+        <a
+          href="https://absp-database.org/ratings"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ color: "#1890ff" }}
+        >
+          absp-database.org/ratings
+        </a>
+        , find the name in the table. The member ID is in the{" "}
+        <strong>MemNo</strong> column, immediately to the right of the rating.
       </span>
     ),
   },
