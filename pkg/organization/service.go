@@ -247,7 +247,7 @@ func (s *OrganizationService) GetMyOrganizations(
 		return nil, err
 	}
 
-	integrations, err := s.queries.GetOrganizationIntegrations(ctx, user.UUID)
+	integrations, err := s.organizationIntegrations(ctx, user.UUID)
 	if err != nil {
 		return nil, apiserver.InternalErr(err)
 	}
@@ -313,7 +313,7 @@ func (s *OrganizationService) GetPublicOrganizations(
 		return nil, apiserver.InvalidArg("user not found")
 	}
 
-	integrations, err := s.queries.GetOrganizationIntegrations(ctx, user.UUID)
+	integrations, err := s.organizationIntegrations(ctx, user.UUID)
 	if err != nil {
 		return nil, apiserver.InternalErr(err)
 	}
@@ -858,7 +858,7 @@ func (s *OrganizationService) AdminRefreshUserTitles(
 // refreshTitlesForUser refreshes all organization titles for a specific user
 func (s *OrganizationService) refreshTitlesForUser(ctx context.Context, userUUID string) ([]*pb.OrganizationTitle, []string, error) {
 	// Get all organization integrations for the user
-	integrations, err := s.queries.GetOrganizationIntegrations(ctx, userUUID)
+	integrations, err := s.organizationIntegrations(ctx, userUUID)
 	if err != nil {
 		return nil, nil, apiserver.InternalErr(err)
 	}
@@ -969,6 +969,16 @@ func (s *OrganizationService) refreshTitlesForUser(ctx context.Context, userUUID
 	return titles, errors, nil
 }
 
+// organizationIntegrations returns a user's links to the organizations in
+// organizations.OrganizationRegistry, leaving out the other integrations
+// kept in the same table
+func (s *OrganizationService) organizationIntegrations(ctx context.Context, userUUID string) ([]models.GetOrganizationIntegrationsRow, error) {
+	return s.queries.GetOrganizationIntegrations(ctx, models.GetOrganizationIntegrationsParams{
+		UserUuid:          userUUID,
+		OrganizationCodes: organizations.SupportedOrganizationCodes(),
+	})
+}
+
 // GetCachedRealName returns the cached real name from the integrations table
 func (s *OrganizationService) GetCachedRealName(ctx context.Context, userUUID string, orgCode string) (string, error) {
 	integrationData, err := s.queries.GetIntegrationData(ctx, models.GetIntegrationDataParams{
@@ -993,7 +1003,7 @@ func (s *OrganizationService) GetCachedRealName(ctx context.Context, userUUID st
 
 func (s *OrganizationService) updateProfileTitle(ctx context.Context, userUUID string) error {
 	// Get all organization integrations
-	integrations, err := s.queries.GetOrganizationIntegrations(ctx, userUUID)
+	integrations, err := s.organizationIntegrations(ctx, userUUID)
 	if err != nil {
 		return err
 	}

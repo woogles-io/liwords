@@ -3,6 +3,7 @@ package organizations
 import (
 	"fmt"
 	"os"
+	"sort"
 )
 
 // GetIntegration returns the appropriate integration for the given organization code
@@ -42,4 +43,16 @@ func ListSupportedOrganizations() []OrganizationCode {
 		orgs = append(orgs, code)
 	}
 	return orgs
+}
+
+// SupportedOrganizationCodes returns the codes of OrganizationRegistry as
+// strings, sorted, for the queries that must leave out other integrations
+// kept in the same table (such as patreon and twitch)
+func SupportedOrganizationCodes() []string {
+	codes := make([]string, 0, len(OrganizationRegistry))
+	for code := range OrganizationRegistry {
+		codes = append(codes, string(code))
+	}
+	sort.Strings(codes)
+	return codes
 }
