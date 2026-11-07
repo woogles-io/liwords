@@ -37,8 +37,8 @@ const titleStyles: Record<
   },
   EX: {
     // NASPA
-    background: "#FFFDC9", // Red/Light
-    border: "#F4B000", // Red/Dark
+    background: "#FFFDC9", // Yellow/Light
+    border: "#F4B000", // Yellow/Dark
     color: "#F4B000",
   },
   EXP: {
