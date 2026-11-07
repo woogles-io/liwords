@@ -54,6 +54,12 @@ func winsTitleTie(a, b OrganizationCode) bool {
 	return a < b
 }
 
+// InTieOrder reports whether organization a comes before organization b in
+// the tie order, which is also the order the membership lists show them in
+func InTieOrder(a, b OrganizationCode) bool {
+	return winsTitleTie(a, b)
+}
+
 // GetHighestTitleDisplay returns the TitleDisplay for the highest ranked title
 // Returns nil if no titles have display info
 func GetHighestTitleDisplay(infos []TitleInfo) *TitleDisplay {

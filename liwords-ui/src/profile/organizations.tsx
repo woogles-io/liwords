@@ -10,6 +10,9 @@ import { create } from "@bufbuild/protobuf";
 
 interface DisplayUserOrganizationsProps {
   username: string;
+  // the organization of the title in the circle by the username, listed
+  // first; the rest come in the tie order the server sends them in
+  firstOrganizationCode?: string;
 }
 
 const organizationNames: Record<string, string> = {
@@ -37,7 +40,7 @@ const getTitleColor = (abbreviation: string): string => {
 
 export const DisplayUserOrganizations: React.FC<
   DisplayUserOrganizationsProps
-> = ({ username }) => {
+> = ({ username, firstOrganizationCode }) => {
   const [organizations, setOrganizations] = useState<OrganizationTitle[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -66,8 +69,13 @@ export const DisplayUserOrganizations: React.FC<
     return <Spin size="small" />;
   }
 
-  // Filter to only show organizations with titles
-  const orgsWithTitles = organizations.filter((org) => org.rawTitle);
+  // Filter to only show organizations with titles: the circle's first, then
+  // the rest as they came
+  const titled = organizations.filter((org) => org.rawTitle);
+  const orgsWithTitles = [
+    ...titled.filter((org) => org.organizationCode === firstOrganizationCode),
+    ...titled.filter((org) => org.organizationCode !== firstOrganizationCode),
+  ];
 
   if (orgsWithTitles.length === 0) {
     return null;

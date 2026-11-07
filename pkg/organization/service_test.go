@@ -279,3 +279,24 @@ func TestRepickProfileTitles(t *testing.T) {
 	is.NoErr(RepickProfileTitles(ctx, q))
 	is.Equal([]string{rowVersion("stays"), rowVersion("other")}, before)
 }
+
+func TestOrganizationIntegrationsInTieOrder(t *testing.T) {
+	is := is.New(t)
+	ctx := context.Background()
+	_, q := recreateDB(t)
+
+	for _, org := range []organizations.OrganizationCode{
+		organizations.OrgABSP, organizations.OrgSG, organizations.OrgNASPA, organizations.OrgWESPA,
+	} {
+		link(t, q, "stays", org, organizations.OrganizationIntegrationData{MemberID: "1", Verified: true})
+	}
+
+	s := &OrganizationService{queries: q}
+	integs, err := s.organizationIntegrations(ctx, "stays")
+	is.NoErr(err)
+	var names []string
+	for _, integ := range integs {
+		names = append(names, integ.IntegrationName)
+	}
+	is.Equal(names, []string{"wespa", "naspa", "sg", "absp"})
+}

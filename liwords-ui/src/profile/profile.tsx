@@ -699,7 +699,12 @@ export const PlayerProfile = React.memo(() => {
                   <span style={{ marginLeft: 8 }}>{BADGE_DESCRIPTIONS[b]}</span>
                 </div>
               ))}
-              {username && <DisplayUserOrganizations username={username} />}
+              {username && (
+                <DisplayUserOrganizations
+                  username={username}
+                  firstOrganizationCode={briefProfile?.titleOrganizationCode}
+                />
+              )}
               {missingBirthdate && viewer === username && (
                 <div className="bio">
                   <Link to={"/settings/personal"}>

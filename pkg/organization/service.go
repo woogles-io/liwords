@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"sort"
 	"time"
 
 	"connectrpc.com/connect"
@@ -1003,12 +1004,21 @@ func (s *OrganizationService) refreshTitlesForUser(ctx context.Context, userUUID
 
 // organizationIntegrations returns a user's links to the organizations in
 // organizations.OrganizationRegistry, leaving out the other integrations
-// kept in the same table
+// kept in the same table, in the tie order
 func (s *OrganizationService) organizationIntegrations(ctx context.Context, userUUID string) ([]models.GetOrganizationIntegrationsRow, error) {
-	return s.queries.GetOrganizationIntegrations(ctx, models.GetOrganizationIntegrationsParams{
+	integrations, err := s.queries.GetOrganizationIntegrations(ctx, models.GetOrganizationIntegrationsParams{
 		UserUuid:          userUUID,
 		OrganizationCodes: organizations.SupportedOrganizationCodes(),
 	})
+	if err != nil {
+		return nil, err
+	}
+	sort.SliceStable(integrations, func(i, j int) bool {
+		return organizations.InTieOrder(
+			organizations.OrganizationCode(integrations[i].IntegrationName),
+			organizations.OrganizationCode(integrations[j].IntegrationName))
+	})
+	return integrations, nil
 }
 
 // RefreshOrganizationTitles refreshes one organization's title for every
