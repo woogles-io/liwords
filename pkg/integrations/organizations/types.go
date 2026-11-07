@@ -13,6 +13,7 @@ const (
 	OrgNASPA OrganizationCode = "naspa"
 	OrgWESPA OrganizationCode = "wespa"
 	OrgABSP  OrganizationCode = "absp"
+	OrgSG    OrganizationCode = "sg"
 )
 
 // TitleDisplay contains display information for a title
@@ -39,6 +40,12 @@ var TitleRegistry = map[OrganizationCode]map[string]TitleDisplay{
 	OrgABSP: {
 		"GM":  {Abbreviation: "GM", FullName: "Grandmaster", Color: "gold", Rank: 4},
 		"EXP": {Abbreviation: "EXP", FullName: "Expert", Color: "green", Rank: 1},
+	},
+	OrgSG: {
+		"GM": {Abbreviation: "GM", FullName: "Grandmaster", Color: "gold", Rank: 4},
+		"NM": {Abbreviation: "NM", FullName: "National Master", Color: "purple", Rank: 3},
+		"SM": {Abbreviation: "SM", FullName: "Senior Master", Color: "blue", Rank: 2},
+		"M":  {Abbreviation: "M", FullName: "Master", Color: "blue", Rank: 1},
 	},
 }
 
@@ -104,6 +111,13 @@ var OrganizationRegistry = map[OrganizationCode]OrganizationMetadata{
 		HasAPI:               true,
 		RequiresAuth:         true, // Uses login to absp-database.org
 		RequiresVerification: false,
+	},
+	OrgSG: {
+		Code:                 OrgSG,
+		Name:                 "Singapore Scrabble Association",
+		HasAPI:               true, // Its public titles list gives name + title (no auth required)
+		RequiresAuth:         false,
+		RequiresVerification: true,
 	},
 }
 

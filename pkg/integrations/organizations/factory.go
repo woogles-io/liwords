@@ -22,6 +22,13 @@ func GetIntegration(orgCode OrganizationCode) (OrganizationIntegration, error) {
 	case OrgABSP:
 		return NewABSPIntegration(), nil
 
+	case OrgSG:
+		sg := NewSGIntegration()
+		if titlesURL := os.Getenv("SG_TITLES_URL"); titlesURL != "" {
+			sg.TitlesURL = titlesURL
+		}
+		return sg, nil
+
 	default:
 		return nil, fmt.Errorf("unsupported organization: %s", orgCode)
 	}

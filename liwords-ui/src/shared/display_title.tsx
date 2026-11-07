@@ -11,6 +11,7 @@ const organizationNames: Record<string, string> = {
   naspa: "NASPA",
   wespa: "WESPA",
   absp: "ABSP",
+  sg: "Singapore Scrabble Association",
 };
 
 // Map abbreviations to their display colors
@@ -30,14 +31,20 @@ const titleStyles: Record<
     border: "#8E24AA", // Purple/Dark
     color: "#8E24AA",
   },
+  NM: {
+    // SG
+    background: "#E1BEE7", // Purple/Light
+    border: "#8E24AA", // Purple/Dark
+    color: "#8E24AA",
+  },
   SM: {
-    // NASPA
+    // NASPA & SG
     background: "#FFC9C9",
     border: "#A92E2D",
     color: "#A92E2D",
   },
   M: {
-    // WESPA
+    // WESPA & SG
     background: "#FFFDC9", // Yellow/Light
     border: "#F4B000", // Yellow/Dark
     color: "#F4B000",

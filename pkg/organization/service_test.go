@@ -2,16 +2,23 @@ package organization
 
 import (
 	"context"
+	"net/http"
+	"net/http/httptest"
 	"testing"
+	"time"
 
+	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/matryer/is"
 
+	"github.com/woogles-io/liwords/pkg/apiserver"
+	"github.com/woogles-io/liwords/pkg/auth/rbac"
 	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/integrations/organizations"
 	commondb "github.com/woogles-io/liwords/pkg/stores/common"
 	"github.com/woogles-io/liwords/pkg/stores/models"
 	"github.com/woogles-io/liwords/pkg/stores/user"
+	pb "github.com/woogles-io/liwords/rpc/api/proto/user_service"
 )
 
 var pkg = "organization"
@@ -78,4 +85,58 @@ func TestOrganizationIntegrations(t *testing.T) {
 	integs, err = s.organizationIntegrations(ctx, "other")
 	is.NoErr(err)
 	is.Equal(len(integs), 0)
+}
+
+func stored(t *testing.T, q *models.Queries, userUUID string, orgCode organizations.OrganizationCode) organizations.OrganizationIntegrationData {
+	row, err := q.GetIntegrationData(context.Background(), models.GetIntegrationDataParams{
+		UserUuid:        userUUID,
+		IntegrationName: string(orgCode),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var data organizations.OrganizationIntegrationData
+	if err := data.FromJSON(row.Data); err != nil {
+		t.Fatal(err)
+	}
+	return data
+}
+
+func TestManuallySetOrgMembershipSG(t *testing.T) {
+	is := is.New(t)
+	ctx := context.Background()
+	pool, q := recreateDB(t)
+	us, err := user.NewDBStore(pool)
+	is.NoErr(err)
+	is.NoErr(us.New(ctx, &entity.User{Username: "admin", Email: "admin@woogles.io", UUID: "admin"}))
+	is.NoErr(q.AssignRole(ctx, models.AssignRoleParams{Username: "admin", RoleName: string(rbac.Admin)}))
+	ctx = apiserver.PlaceInContext(ctx, &entity.Session{
+		ID: "admin-session", Username: "admin", UserUUID: "admin", Expiry: time.Now().Add(time.Minute)})
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"players": [{"id": "5", "name": "Promoted, Tony", "title": "GM"}]}`))
+	}))
+	defer server.Close()
+	t.Setenv("SG_TITLES_URL", server.URL)
+
+	s := NewOrganizationService(us, q, nil)
+	assign := func(memberID string) error {
+		_, err := s.ManuallySetOrgMembership(ctx, connect.NewRequest(&pb.ManuallySetOrgMembershipRequest{
+			Username:         "stays",
+			OrganizationCode: string(organizations.OrgSG),
+			MemberId:         memberID,
+		}))
+		return err
+	}
+
+	// stored as the list has it, however it was typed
+	is.NoErr(assign("0005"))
+	data := stored(t, q, "stays", organizations.OrgSG)
+	is.Equal(data.MemberID, "5")
+	is.Equal(data.FullName, "Promoted, Tony")
+	is.Equal(data.RawTitle, "GM")
+
+	// a member the list does not have, and a number with its type, are refused
+	is.True(assign("6") != nil)
+	is.True(assign("0005M") != nil)
 }

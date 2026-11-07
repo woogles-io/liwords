@@ -82,6 +82,29 @@ const organizationInfo = {
       </span>
     ),
   },
+  sg: {
+    name: "Singapore Scrabble Association",
+    fullName: "Singapore Scrabble Association",
+    help: "Enter the digits of the membership number",
+    helpTooltip: (
+      <span>
+        Visit{" "}
+        <a
+          href="https://www.toucanet.com/archives/p/bytitle.html"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ color: "#1890ff" }}
+        >
+          toucanet.com/archives/p/bytitle.html
+        </a>
+        , find the name, and click through to their page. Enter the digits of
+        the membership number shown there, without the letters after them and
+        with or without the leading zeros: it is saved without them (e.g.,{" "}
+        <strong>1234</strong> from 01234M). Only members listed there hold a
+        title.
+      </span>
+    ),
+  },
 };
 
 type UserSearchResult = {
@@ -402,7 +425,9 @@ export const ManualOrgAssignment = () => {
                     )
                     .map(([code, info]) => (
                       <Select.Option key={code} value={code}>
-                        {info.name} - {info.fullName}
+                        {info.name === info.fullName
+                          ? info.name
+                          : `${info.name} - ${info.fullName}`}
                       </Select.Option>
                     ))}
                 </Select>
@@ -449,7 +474,9 @@ export const ManualOrgAssignment = () => {
                               ? "AA000083"
                               : selectedOrg === "wespa"
                                 ? "2145"
-                                : "745"
+                                : selectedOrg === "sg"
+                                  ? "1234"
+                                  : "745"
                           }
                         />
                       </Form.Item>
