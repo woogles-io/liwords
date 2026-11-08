@@ -1,4 +1,11 @@
-import { Button } from "@mantine/core";
+import {
+  Button,
+  Card,
+  Input,
+  InputWrapper,
+  Modal,
+  NumberInput,
+} from "@mantine/core";
 import classes from "./mantine_components.module.css";
 
 /**
@@ -82,5 +89,48 @@ export const components = {
         },
       };
     },
+  }),
+
+  Card: Card.extend({
+    classNames: { root: classes.card },
+    // Radius is a prop, not an author-settable variable. antd leaves Card at
+    // its default 8px, and theme.defaultRadius is 0 for buttons' sake, so Card
+    // has to opt back in explicitly.
+    defaultProps: { radius: 8 },
+  }),
+
+  Modal: Modal.extend({
+    classNames: {
+      content: classes.modalContent,
+      header: classes.modalHeader,
+      title: classes.modalTitle,
+      inner: classes.modalInner,
+      overlay: classes.modalOverlay,
+    },
+    vars: () => ({
+      root: {
+        "--modal-radius": "8px",
+      },
+    }),
+  }),
+
+  /*
+   * Theming Input covers TextInput, PasswordInput, Textarea, NumberInput and
+   * Select, since all of them render Input underneath.
+   */
+  Input: Input.extend({
+    // Colours go through the CSS module rather than `vars`: Mantine types
+    // --input-bg and --input-bd as variant-resolved, not author-supplied. The
+    // #b9b9b9 border is the antd Input token from themes.tsx -- not a
+    // --woogles-* token, and deliberately identical in both colour modes.
+    classNames: { input: classes.input },
+  }),
+
+  InputWrapper: InputWrapper.extend({
+    classNames: { label: classes.inputLabel },
+  }),
+
+  NumberInput: NumberInput.extend({
+    classNames: { input: classes.numberInput },
   }),
 };
