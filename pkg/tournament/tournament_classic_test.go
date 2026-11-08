@@ -1776,6 +1776,67 @@ func TestClassicDivisionRoundRobin(t *testing.T) {
 
 }
 
+// roundRobinLayouts are divisions' rounds: R for a round robin round, x for
+// one paired another way. The round robin starts in round 1, or after three
+// other rounds, or has another round in the middle, between a pair's two
+// rounds.
+var roundRobinLayouts = []string{"RRRRRRRRRR", "xxxRRRRRRRRRR", "RRRxRRRRRRR"}
+
+// roundRobinDivision is a division of six, seeded A to F, whose rounds are
+// laid out as layout says, the round robin rounds playing each opponent two
+// rounds in a row. It also returns the round robin's rounds.
+func roundRobinDivision(is *is.I, layout string) (*ClassicDivision, []int) {
+	players := makeTournamentPersons(map[string]int32{"A": 2000, "B": 1900, "C": 1800, "D": 1700, "E": 1600, "F": 1500})
+	roundControls := defaultRoundControls(len(layout))
+	rrRounds := []int{}
+	for round, kind := range layout {
+		if kind == 'R' {
+			roundControls[round].PairingMethod = pb.PairingMethod_ROUND_ROBIN
+			roundControls[round].GamesPerRound = 2
+			rrRounds = append(rrRounds, round)
+		}
+	}
+	tc, err := compactNewClassicDivision(players, roundControls, false)
+	is.NoErr(err)
+	return tc, rrRounds
+}
+
+// TestClassicDivisionRoundRobinRoundsPerOpponent checks a round robin that
+// plays each opponent two rounds in a row, however its rounds are laid out
+// (roundRobinLayouts): each pair meets in two of its rounds in a row, going
+// first once each.
+func TestClassicDivisionRoundRobinRoundsPerOpponent(t *testing.T) {
+	is := is.New(t)
+	for _, layout := range roundRobinLayouts {
+		tc, rrRounds := roundRobinDivision(is, layout)
+
+		// Each pair, the round robin rounds they meet in, counting only the
+		// round robin's, and who goes first in each.
+		meetings := map[[2]int32][]int{}
+		firsts := map[[2]int32][]int32{}
+		for i, round := range rrRounds {
+			for p := range tc.Players.Persons {
+				pairing := tc.PairingMap[tc.Matrix[round][p]]
+				is.True(pairing != nil)
+				if pairing.Players[0] != int32(p) {
+					continue
+				}
+				pair := [2]int32{min(pairing.Players[0], pairing.Players[1]), max(pairing.Players[0], pairing.Players[1])}
+				is.True(pair[0] != pair[1])
+				meetings[pair] = append(meetings[pair], i)
+				firsts[pair] = append(firsts[pair], pairing.Players[0])
+			}
+		}
+		is.Equal(len(meetings), 15)
+		for pair, m := range meetings {
+			is.Equal(len(m), 2)
+			is.Equal(m[1], m[0]+1)
+			is.Equal(m[0]%2, 0)
+			is.True(firsts[pair][0] != firsts[pair][1])
+		}
+	}
+}
+
 func TestClassicDivisionSnakedRoundRobin(t *testing.T) {
 	is := is.New(t)
 	for _, playWithinTeam := range []bool{false, true} {

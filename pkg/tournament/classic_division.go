@@ -858,6 +858,21 @@ func isRoundDependent(pm pb.PairingMethod) bool {
 		pm == pb.PairingMethod_INITIAL_FONTES
 }
 
+// roundRobinRound returns round's place among the rounds before it paired
+// the same way as it (by its pairing method and games per round), from 0: its
+// place in its round robin, whatever rounds come between the round robin's
+// own.
+func (t *ClassicDivision) roundRobinRound(round int) int {
+	rc := t.RoundControls[round]
+	index := 0
+	for _, prev := range t.RoundControls[:round] {
+		if prev.PairingMethod == rc.PairingMethod && prev.GamesPerRound == rc.GamesPerRound {
+			index++
+		}
+	}
+	return index
+}
+
 func (t *ClassicDivision) canCatch(records []*pb.PlayerStanding, round int, i int, j int) (bool, error) {
 	numberOfPlayers := len(records)
 	if i >= numberOfPlayers || j >= numberOfPlayers {
@@ -1115,9 +1130,10 @@ func (t *ClassicDivision) pairRound(round int, preserveByes bool) (*pb.DivisionP
 	}
 
 	upm := &entity.UnpairedPoolMembers{RoundControls: t.RoundControls[round],
-		PoolMembers: poolMembers,
-		Repeats:     repeats,
-		Seed:        t.Seed}
+		PoolMembers:     poolMembers,
+		Repeats:         repeats,
+		Seed:            t.Seed,
+		RoundRobinRound: t.roundRobinRound(round)}
 
 	// The Australian Draw and Win Groups need to know which round each prior
 	// meeting occurred in (to honor reset_round and to relax the repeat rule
@@ -2379,13 +2395,18 @@ func newClassicPairing(t *ClassicDivision,
 	firstMethod := t.RoundControls[round].FirstMethod
 	numPlayers := len(t.Players.Persons)
 
-	if t.RoundControls[round].PairingMethod == pb.PairingMethod_ROUND_ROBIN {
+	if rc := t.RoundControls[round]; rc.PairingMethod == pb.PairingMethod_ROUND_ROBIN {
 		// The schedule that paired the round also says who goes first.
 		// Players are paired in player order, so player indexes are the
-		// schedule's indexes.
-		goesFirst, err := pair.RoundRobinGoesFirst(numPlayers, round, int(playerOne), t.Seed)
+		// schedule's indexes. Two players who meet in rounds in a row swap
+		// who goes first each time.
+		rrRound, game := pair.RoundRobinRound(round, t.roundRobinRound(round), int(rc.GamesPerRound))
+		goesFirst, err := pair.RoundRobinGoesFirst(numPlayers, rrRound, int(playerOne), t.Seed)
 		if err != nil {
 			log.Err(err).Str("division", t.DivisionName).Int("round", round).Msg("round-robin-firsts")
+		}
+		if game%2 == 1 {
+			goesFirst = !goesFirst
 		}
 		switchFirst = !goesFirst
 	} else if t.RoundControls[round].PairingMethod == pb.PairingMethod_INITIAL_FONTES {
