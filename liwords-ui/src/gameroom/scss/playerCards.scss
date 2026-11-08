@@ -1,5 +1,6 @@
 @use "../../base.scss" as *;
 @use "../../color_modes" as *;
+@use "../../shared/title_ring" as *;
 
 .board-embed .player-cards.vertical {
   display: flex;
@@ -134,7 +135,10 @@
         max-width: calc(100% - 48px);
         overflow: hidden;
         text-align: left;
-        margin: 0;
+        // room above and below for a title circle's ring, which the ellipsis
+        // would clip; the margin keeps the line where it was
+        margin: (-$title-ring-reach) 0;
+        padding: $title-ring-reach 0;
         white-space: nowrap;
         text-overflow: ellipsis;
       }
