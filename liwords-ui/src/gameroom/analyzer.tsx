@@ -29,6 +29,7 @@ import { GameType } from "../gen/api/proto/ipc/omgwords_pb";
 import { ComputerAnalysis } from "./computer_analysis";
 import { ANALYZER_LAB_KEY } from "./analyzer_lab";
 import {
+  EndgamePanel,
   LabButtons,
   LabView,
   SimPanel,
@@ -141,7 +142,7 @@ export type AnalyzerMove = {
   isExchange: boolean;
 };
 
-const wolgesLetterToLiwordsLetter = (i: number) => {
+export const wolgesLetterToLiwordsLetter = (i: number) => {
   if (i < 0) {
     // wolges-wasm encodes blanks as negative numbers. Convert to our internal
     // format.
@@ -1233,12 +1234,16 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
   const labPanel =
     labOpen && labView && labPosition ? (
       <div className="suggestions" style={props.style}>
-        <SimPanel
-          lab={labPosition}
-          moves={moves}
-          sim={labSim}
-          onClose={() => setLabView(null)}
-        />
+        {labView === "endgame" ? (
+          <EndgamePanel lab={labPosition} onClose={() => setLabView(null)} />
+        ) : (
+          <SimPanel
+            lab={labPosition}
+            moves={moves}
+            sim={labSim}
+            onClose={() => setLabView(null)}
+          />
+        )}
       </div>
     ) : null;
   const analyzerContainer = (

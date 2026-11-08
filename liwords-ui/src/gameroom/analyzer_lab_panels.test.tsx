@@ -14,6 +14,7 @@ import { Store } from "../store/store";
 import { LabEvent } from "../wasm/lab";
 import { AnalyzerMove } from "./analyzer";
 import {
+  EndgamePanel,
   LabPosition,
   SimPanel,
   useLabRoom,
@@ -32,6 +33,7 @@ vi.mock("../wasm/lab", () => ({
   labCall: async (request: { op: string; args?: { plays?: string } }) => {
     lab.calls.push(request);
     if (request.op === "analyze") return lab.top;
+    if (request.op === "endgame") return 1;
     if (request.op === "sim") {
       const plays = JSON.parse(request.args!.plays!) as Array<object>;
       return { job: 1, added: plays.map((play) => ({ play, was: "absent" })) };
@@ -148,12 +150,27 @@ const position = (
   },
   leave: "CSW24",
   challengeable: false,
+  names: ["andy", "wolges"],
   key: JSON.stringify(unseen),
   ...more,
 });
 
 // a position with tiles still in the bag
 const midgame = () => position([A, B, E, E, I, I, I, I, A, A]);
+
+const across = (row: number, col: number, word: Array<number>) => ({
+  action: "play",
+  down: false,
+  lane: row,
+  idx: col,
+  word,
+  score: 10,
+});
+
+const step = async (answer: object) => {
+  await waitFor(() => expect(lab.calls.some((c) => c.op === "run")).toBe(true));
+  emit({ job: 1, answer, done: false });
+};
 
 const bodyRows = () =>
   [...document.querySelectorAll("tbody tr")].map((r) => r.textContent);
@@ -198,6 +215,195 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+});
+
+describe("the endgame panel", () => {
+  it("solves an empty bag and lists the line, each ply by whom and from what", async () => {
+    render(
+      <Store>
+        <EndgamePanel
+          lab={position([A, B, E, I, I, I, I])}
+          onClose={() => {}}
+        />
+      </Store>,
+    );
+    await step({
+      bag: 0,
+      steps: 2,
+      exact: false,
+      play: across(7, 7, [B, A]),
+      value: 12,
+      spread: 22,
+      depth: 3,
+      line: [
+        { play: across(7, 7, [B, A]), value: 12 },
+        { play: { action: "exchange", tiles: [] }, value: -5 },
+      ],
+    });
+    expect(screen.getByText("Endgame")).toBeInTheDocument();
+    expect(
+      screen.getByText("Value +12, spread +22, depth 3 after 0 s, solving"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("andy to move: AABEEII")).toBeInTheDocument();
+    expect(screen.getByText("wolges: ABEIIII")).toBeInTheDocument();
+    expect(headRow()).toBe("ScoreLeaveValue");
+    expect(bodyRows()).toEqual(["andy8HBA10AEEII+12", "wolgesPass0ABEIIII-5"]);
+    // the endgame reads the lexicon's word graph and no leaves
+    const prepare = lab.calls.find((c) => c.op === "prepare");
+    expect(prepare?.args).toEqual({
+      files: [
+        { cacheKey: "kwg/CSW24", path: expect.stringMatching(/\/CSW24\.kwg$/) },
+      ],
+    });
+    const made = lab.calls.find((c) => c.op === "endgame");
+    const request = JSON.parse((made?.args as { request: string }).request);
+    expect(request.max_memory_mb).toBe(256);
+    expect(request.scores).toEqual([300, 290]);
+  });
+
+  it("weighs a tile in the bag by each tile it may be", async () => {
+    render(
+      <Store>
+        <EndgamePanel
+          lab={position([A, B, E, E, I, I, I, I])}
+          onClose={() => {}}
+        />
+      </Store>,
+    );
+    await step({
+      bag: 1,
+      steps: 3,
+      exact: false,
+      play: across(7, 7, [B, A]),
+      value: 4.875,
+      spread: 14.875,
+      depth: 2,
+      win: 0.75,
+      tiles: [
+        { tile: E, count: 2, value: 6 },
+        { tile: I, count: 4, value: -3 },
+      ],
+    });
+    expect(
+      screen.getByText("Endgame, one tile in the bag"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Expected value +4.88, wins 75.0%, depth 2 after 0 s, solving",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Unseen: ABEEIIII")).toBeInTheDocument();
+    expect(bodyRows()).toEqual([
+      "andy8HBA10AEEII+4.88",
+      "E in the bag (2)+6",
+      "I in the bag (4)-3",
+    ]);
+  });
+
+  it("shows no value before its first depth, nor any move", async () => {
+    render(
+      <Store>
+        <EndgamePanel
+          lab={position([A, B, E, E, I, I, I, I])}
+          onClose={() => {}}
+        />
+      </Store>,
+    );
+    // a tile in the bag, at depth 0: no value or win yet
+    await step({
+      bag: 1,
+      steps: 1,
+      exact: false,
+      play: across(7, 7, [B, A]),
+      spread: 10,
+      depth: 0,
+      tiles: [],
+    });
+    expect(screen.getByText("Solving...")).toBeInTheDocument();
+    expect(bodyRows()).toEqual([]);
+    expect(screen.queryByText(/NaN|undefined/)).not.toBeInTheDocument();
+  });
+
+  it("shows how long it has solved, the time going on between its steps", async () => {
+    const endgame = position([A, B, E, I, I, I, I]);
+    // made anew each time, so that a rerender renders the panel again
+    const panel = () => (
+      <Store>
+        <EndgamePanel lab={endgame} onClose={() => {}} />
+      </Store>
+    );
+    const { rerender } = render(panel());
+    // solving from the page's clock at 0
+    await screen.findByRole("button", { name: "Stop" });
+    const answer = {
+      bag: 0,
+      steps: 2,
+      exact: false,
+      play: across(7, 7, [B, A]),
+      value: 12,
+      spread: 22,
+      depth: 3,
+      line: [{ play: across(7, 7, [B, A]), value: 12 }],
+    };
+    clock.now = 999;
+    emit({ job: 1, answer, done: false });
+    expect(
+      screen.getByText("Value +12, spread +22, depth 3 after 0 s, solving"),
+    ).toBeInTheDocument();
+    // a step can take more than a second, and the second shows as it passes
+    clock.now = 1000;
+    expect(
+      await screen.findByText(
+        "Value +12, spread +22, depth 3 after 1 s, solving",
+      ),
+    ).toBeInTheDocument();
+    // solved, the time stops
+    clock.now = 2500;
+    emit({ job: 1, answer: { ...answer, depth: 4, exact: true }, done: true });
+    clock.now = 9000;
+    rerender(panel());
+    expect(
+      screen.getByText("Value +12, spread +22, depth 4 after 2 s, exact"),
+    ).toBeInTheDocument();
+  });
+
+  it("solves nothing once the other player has gone out, or with two in the bag", async () => {
+    const { unmount } = render(
+      <Store>
+        <EndgamePanel lab={position([])} onClose={() => {}} />
+      </Store>,
+    );
+    expect(
+      screen.getByText("The other player has gone out: the game is over."),
+    ).toBeInTheDocument();
+    unmount();
+    // the play that went out can still come off
+    const { unmount: unmountChallengeable } = render(
+      <Store>
+        <EndgamePanel
+          lab={position([], { challengeable: true })}
+          onClose={() => {}}
+        />
+      </Store>,
+    );
+    expect(
+      screen.getByText(
+        "The other player has gone out, but the play can still be challenged.",
+      ),
+    ).toBeInTheDocument();
+    unmountChallengeable();
+    render(
+      <Store>
+        <EndgamePanel
+          lab={position([A, B, E, E, I, I, I, I, I])}
+          onClose={() => {}}
+        />
+      </Store>,
+    );
+    expect(screen.getByText("The bag holds 2 tiles.")).toBeInTheDocument();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(lab.calls).toEqual([]);
+  });
 });
 
 // A move as the analyzer lists it.

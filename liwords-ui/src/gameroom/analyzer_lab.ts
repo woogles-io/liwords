@@ -70,6 +70,26 @@ export const unseenBy = (pool: TileDistribution, rack: MachineWord) => {
   return unseen.sort((a, b) => a - b);
 };
 
+// How many tiles the bag holds, the other player having a full rack of the
+// rest; or null when the position cannot say: no rack, or a rack short of
+// full with tiles still in the bag (a partial rack in an annotated game).
+export const endgameBag = (unseenCount: number, rackLength: number) => {
+  if (rackLength === 0) return null;
+  const bag = Math.max(0, unseenCount - 7);
+  if (bag > 0 && rackLength < 7) return null;
+  return bag;
+};
+
+// The most memory an endgame may use, in MiB, by what the device says it has;
+// a browser that says nothing gets the least of them.
+export const endgameMemoryMb = () => {
+  const gb = (navigator as Navigator & { deviceMemory?: number }).deviceMemory;
+  if (gb === undefined) return 256;
+  if (gb >= 8) return 1024;
+  if (gb >= 4) return 512;
+  return 256;
+};
+
 export type SimStat = { mean: number; variance: number };
 
 export type SimCandidate = {
