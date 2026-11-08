@@ -19,8 +19,8 @@ type plannerScheme struct {
 	method pb.PairingMethod
 	within bool
 	name   string
-	// For the Team Round Robin: how many rounds in a row each pair plays,
-	// its round controls' games per round. 0 means 1.
+	// For the Round Robin and the Team Round Robin: how many rounds in a row
+	// each pair plays, their round controls' games per round. 0 means 1.
 	perOpponent int
 }
 
@@ -95,8 +95,8 @@ func previewDivision(players []*tpb.PreviewPlayer, seed uint64, rounds int, inte
 	return previewDivisionPer(players, seed, rounds, intent, 1)
 }
 
-// previewDivisionPer is previewDivision with the Team Round Robin pairing
-// each pair roundsPerOpponent rounds in a row.
+// previewDivisionPer is previewDivision with the Round Robin and the Team
+// Round Robin pairing each pair roundsPerOpponent rounds in a row.
 func previewDivisionPer(players []*tpb.PreviewPlayer, seed uint64, rounds int, intent tpb.PlannerIntent,
 	roundsPerOpponent int) (*tpb.PreviewPairingsResponse, error) {
 	n := len(players)
@@ -116,7 +116,7 @@ func previewDivisionPer(players []*tpb.PreviewPlayer, seed uint64, rounds int, i
 	}
 
 	for _, s := range plannerSchemes {
-		if s.method == pb.PairingMethod_ASSIGNED_TEAM_ROUND_ROBIN {
+		if s.method == pb.PairingMethod_ASSIGNED_TEAM_ROUND_ROBIN || s.method == pb.PairingMethod_ROUND_ROBIN {
 			s.perOpponent = roundsPerOpponent
 		}
 		resp.Schemes = append(resp.Schemes, previewScheme(s, players, teams, hasTeams, seed, rounds, topSeeds))
@@ -167,6 +167,9 @@ func pairSchedule(s plannerScheme, players []*tpb.PreviewPlayer, seed uint64, ro
 			AllowOverMaxRepeats:         true,
 			RepeatRelativeWeight:        1,
 			WinDifferenceRelativeWeight: 1,
+			// A round robin is planned in seed order, as the round controls
+			// editor sets it up.
+			SeedOrder: s.method == pb.PairingMethod_ROUND_ROBIN,
 		})
 	}
 	if _, _, err := d.SetRoundControls(rcs); err != nil {

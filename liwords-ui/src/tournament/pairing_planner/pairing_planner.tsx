@@ -136,7 +136,8 @@ export const PairingPlanner = (props: Props) => {
     }
   }, [intent, total]);
   const [expected, setExpected] = useState<number | "">("");
-  // For the Team Round Robin: how many rounds in a row each pair plays.
+  // For the Round Robin and the Team Round Robin: how many rounds in a row
+  // each pair plays.
   const [perOpponent, setPerOpponent] = useState(1);
   // What pairs the rounds after the pre-paired ones. Teammates can only be
   // paired by the Team Round Robin or by hand.
@@ -151,8 +152,7 @@ export const PairingPlanner = (props: Props) => {
       intent,
       rounds,
       expected,
-      // Only set, and shown, when planning two teams.
-      perOpponent: intent === PlannerIntent.PLANNER_TWO_TEAMS ? perOpponent : 1,
+      perOpponent,
     }),
     [division, intent, rounds, expected, perOpponent],
   );
@@ -282,17 +282,15 @@ export const PairingPlanner = (props: Props) => {
                 onChange={(v) => setExpected(typeof v === "number" ? v : "")}
                 w={180}
               />
-              {intent === PlannerIntent.PLANNER_TWO_TEAMS && (
-                <NumberInput
-                  label="Rounds per opponent"
-                  description="Team Round Robin only"
-                  min={1}
-                  max={10}
-                  value={perOpponent}
-                  onChange={(v) => typeof v === "number" && setPerOpponent(v)}
-                  w={200}
-                />
-              )}
+              <NumberInput
+                label="Rounds per opponent"
+                description="Round Robin and Team Round Robin"
+                min={1}
+                max={10}
+                value={perOpponent}
+                onChange={(v) => typeof v === "number" && setPerOpponent(v)}
+                w={260}
+              />
             </Group>
             <Radio.Group
               label="What should the pre-paired rounds do?"

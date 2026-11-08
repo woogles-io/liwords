@@ -1381,8 +1381,8 @@ export type PreviewPairingsRequest = Message<"tournament_service.PreviewPairings
   intent: PlannerIntent;
 
   /**
-   * For the Team Round Robin: how many rounds in a row each pair plays (its
-   * round controls' games_per_round). 0 means 1.
+   * For the Round Robin and the Team Round Robin: how many rounds in a row
+   * each pair plays (their round controls' games_per_round). 0 means 1.
    *
    * @generated from field: int32 rounds_per_opponent = 6;
    */
