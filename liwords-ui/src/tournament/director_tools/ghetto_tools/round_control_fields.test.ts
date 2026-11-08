@@ -16,6 +16,7 @@ import {
   pairingLagAppliesTo,
   pairingLagDisabledReason,
   rdCtrlFromSetting,
+  settingFromRdCtrl,
 } from "./round_control_fields";
 
 const setting = (fields: {
@@ -81,6 +82,21 @@ describe("play within team", () => {
         rdCtrlFromSetting(setting({ pairingMethod }), 7, 1).playWithinTeam,
       ).toBe(false);
     }
+  });
+
+  it("is shown as saved when the round controls are edited again", () => {
+    const saved = rdCtrlFromSetting(
+      setting({
+        pairingMethod: PairingMethod.SNAKED_ROUND_ROBIN,
+        playWithinTeam: true,
+      }),
+      7,
+      1,
+    );
+    expect(settingFromRdCtrl(saved).playWithinTeam).toBe(true);
+    expect(
+      rdCtrlFromSetting(settingFromRdCtrl(saved), 7, 1).playWithinTeam,
+    ).toBe(true);
   });
 });
 

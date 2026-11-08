@@ -548,6 +548,36 @@ export const RoundControlFields = (props: RdCtrlFieldsProps) => {
   );
 };
 
+// The editor's setting for a saved round control: rdCtrlFromSetting the other
+// way round.
+export const settingFromRdCtrl = (rdCtrl: RoundControl): RoundControl =>
+  create(RoundControlSchema, {
+    pairingMethod: rdCtrl.pairingMethod,
+    gamesPerRound: rdCtrl.gamesPerRound,
+    factor: rdCtrl.factor,
+    maxRepeats: rdCtrl.maxRepeats,
+    allowOverMaxRepeats: rdCtrl.allowOverMaxRepeats,
+    repeatRelativeWeight: rdCtrl.repeatRelativeWeight,
+    winDifferenceRelativeWeight: rdCtrl.winDifferenceRelativeWeight,
+    // Australian Draw-specific field. The proto stores reset_round
+    // 0-based; the editor's Reset Round field is a 1-based round number,
+    // so convert proto -> editor with +1 (rdCtrlFromSetting does the -1
+    // on the way back).
+    resetRound: rdCtrl.resetRound + 1,
+    // Pairing lag applies to every method, so it is part of what makes
+    // two rounds' settings equal.
+    pairingLag: rdCtrl.pairingLag,
+    playWithinTeam: rdCtrl.playWithinTeam,
+    // COP-specific fields
+    gibsonSpreads: rdCtrl.gibsonSpreads,
+    hopefulnessThresholds: rdCtrl.hopefulnessThresholds,
+    placePrizes: rdCtrl.placePrizes,
+    controlLossActivationRound: rdCtrl.controlLossActivationRound,
+    divisionSims: rdCtrl.divisionSims,
+    controlLossSims: rdCtrl.controlLossSims,
+    controlLossThreshold: rdCtrl.controlLossThreshold,
+  });
+
 // round is the 1-based round this control is for, when known. It is only used
 // to validate the pairing lag.
 export const rdCtrlFromSetting = (
