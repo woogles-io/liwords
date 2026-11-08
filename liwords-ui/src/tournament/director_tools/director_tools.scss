@@ -31,3 +31,9 @@
   max-height: calc(50vh - 20px);
   overflow-y: auto;
 }
+
+// The link color, which reads on both modes' backgrounds.
+.helptip-icon {
+  color: m($primary-dark);
+  margin-left: 5px;
+}
