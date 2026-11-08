@@ -607,19 +607,25 @@ export const Integrations = () => {
               {
                 title: "Action",
                 key: "action",
-                render: (_: unknown, record: OrganizationTitle) => (
-                  <Popconfirm
-                    title="Disconnect from this organization?"
-                    description={`Are you sure you want to disconnect from ${organizationInfo[record.organizationCode as keyof typeof organizationInfo]?.name || record.organizationCode}?`}
-                    okText="Yes"
-                    cancelText="No"
-                    onConfirm={() => handleDisconnect(record.organizationCode)}
-                  >
-                    <Button danger size="small" icon={<DeleteOutlined />}>
-                      Disconnect
-                    </Button>
-                  </Popconfirm>
-                ),
+                // Every connection is verified when it is made, so a row
+                // that is not is an application still waiting for an admin,
+                // with nothing to disconnect yet.
+                render: (_: unknown, record: OrganizationTitle) =>
+                  record.verified ? (
+                    <Popconfirm
+                      title="Disconnect from this organization?"
+                      description={`Are you sure you want to disconnect from ${organizationInfo[record.organizationCode as keyof typeof organizationInfo]?.name || record.organizationCode}?`}
+                      okText="Yes"
+                      cancelText="No"
+                      onConfirm={() =>
+                        handleDisconnect(record.organizationCode)
+                      }
+                    >
+                      <Button danger size="small" icon={<DeleteOutlined />}>
+                        Disconnect
+                      </Button>
+                    </Popconfirm>
+                  ) : null,
               },
             ]}
             pagination={false}
