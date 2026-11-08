@@ -9,6 +9,7 @@ import {
   assignedTeamsProblem,
   fieldsForMethod,
   isPrePaired,
+  seedOrderWhenPicked,
   settingsEqual,
   teamNames,
 } from "../pairing_methods";
@@ -112,6 +113,26 @@ describe("seed order", () => {
         ),
       ),
     ).toBe(false);
+  });
+
+  it("turns on when Round Robin is picked, and stays as saved otherwise", () => {
+    const manual = setting({ pairingMethod: PairingMethod.MANUAL });
+    const picked = setting({ pairingMethod: PairingMethod.ROUND_ROBIN });
+    expect(seedOrderWhenPicked(manual, picked).seedOrder).toBe(true);
+    // A round robin saved without seed order keeps it off when edited.
+    const saved = setting({ pairingMethod: PairingMethod.ROUND_ROBIN });
+    const edited = setting({
+      pairingMethod: PairingMethod.ROUND_ROBIN,
+      gamesPerRound: 2,
+    });
+    expect(seedOrderWhenPicked(saved, edited).seedOrder).toBe(false);
+    // The director can still turn it off.
+    const on = setting({
+      pairingMethod: PairingMethod.ROUND_ROBIN,
+      seedOrder: true,
+    });
+    const off = setting({ pairingMethod: PairingMethod.ROUND_ROBIN });
+    expect(seedOrderWhenPicked(on, off).seedOrder).toBe(false);
   });
 });
 

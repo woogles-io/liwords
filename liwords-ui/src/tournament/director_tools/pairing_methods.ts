@@ -1,8 +1,10 @@
 // Different pairing methods should show different options to the director.
 
+import { create } from "@bufbuild/protobuf";
 import {
   PairingMethod,
   RoundControl,
+  RoundControlSchema,
   TournamentPerson,
 } from "../../gen/api/proto/ipc/tournament_pb";
 
@@ -57,6 +59,18 @@ export type PairingMethodField = [
   string,
   number?,
 ];
+
+// A round control edited from before to after, with seed order turned on if
+// the edit picks Round Robin: a round robin is in seed order unless the
+// director turns it off, while one saved without it keeps that.
+export const seedOrderWhenPicked = (
+  before: RoundControl,
+  after: RoundControl,
+): RoundControl =>
+  after.pairingMethod === PairingMethod.ROUND_ROBIN &&
+  before.pairingMethod !== PairingMethod.ROUND_ROBIN
+    ? create(RoundControlSchema, { ...after, seedOrder: true })
+    : after;
 
 const roundsPerOpponentField: PairingMethodField = [
   "number",

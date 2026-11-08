@@ -33,7 +33,11 @@ import {
 } from "../../../utils/hooks/connect";
 import { DisplayedGameSetting, SettingsForm } from "../game_settings_form";
 import { HelptipLabel } from "../helptip_label";
-import { RoundSetting, settingsEqual } from "../pairing_methods";
+import {
+  RoundSetting,
+  seedOrderWhenPicked,
+  settingsEqual,
+} from "../pairing_methods";
 import { DivisionSelector, showError } from "./shared";
 import {
   RoundControlFields,
@@ -516,7 +520,12 @@ const SetSingleRoundControls = (props: { tournamentID: string }) => {
               | string[],
           ) => {
             const val = { ...roundSetting, [fieldName]: value };
-            setRoundSetting(create(RoundControlSchema, val));
+            setRoundSetting(
+              seedOrderWhenPicked(
+                roundSetting,
+                create(RoundControlSchema, val),
+              ),
+            );
           }}
           totalRounds={
             division
@@ -740,10 +749,13 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
               } else {
                 newRdArray[idx] = {
                   ...newRdArray[idx],
-                  setting: create(RoundControlSchema, {
-                    ...newRdArray[idx].setting,
-                    [fieldName]: value,
-                  }),
+                  setting: seedOrderWhenPicked(
+                    newRdArray[idx].setting,
+                    create(RoundControlSchema, {
+                      ...newRdArray[idx].setting,
+                      [fieldName]: value,
+                    }),
+                  ),
                 };
               }
               setRoundArray(newRdArray);
