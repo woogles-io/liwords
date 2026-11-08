@@ -6,6 +6,7 @@ import (
 	"sort"
 
 	"github.com/woogles-io/liwords/pkg/entity"
+	"github.com/woogles-io/liwords/pkg/matching"
 )
 
 // The Australian Draw is a transparent, hand-playable, deterministic
@@ -98,6 +99,99 @@ func withoutInto(dst, r []int, a, b int) []int {
 	return dst[:m]
 }
 
+// searchSteps is how many steps a plain backtracking search may take before
+// it is run again guided (see searchBudget). Ordinary fields take far fewer.
+// Blocks can make a field take longer than anyone would wait: when no draw
+// exists, the plain search tries every order before it can say so.
+const searchSteps = 1 << 14
+
+// searchBudget counts the steps of a plain backtracking search. When they run
+// out the search gives up and is run again guided: an opponent is then taken
+// only when the players left can still all be paired (canPairAll), so the
+// guided search never backs up, fails at once when no draw exists, and
+// otherwise finds the same draw, the first one in the search's order.
+type searchBudget struct {
+	steps  int // steps left; negative for no limit
+	guided bool
+	gaveUp bool
+}
+
+// newSearchBudget allows a plain search steps steps: negative for no limit, 0
+// to guide the search from the start.
+func newSearchBudget(steps int) *searchBudget {
+	return &searchBudget{steps: steps, guided: steps == 0}
+}
+
+// step reports whether the search may take another step, and records that it
+// gave up when it may not. A guided search always may.
+func (s *searchBudget) step() bool {
+	if s.guided || s.steps < 0 {
+		return true
+	}
+	if s.steps == 0 {
+		s.gaveUp = true
+		return false
+	}
+	s.steps--
+	return true
+}
+
+// run resets pairings and runs search, and runs it again guided if the plain
+// search gave up. It returns what the last run returned.
+func (s *searchBudget) run(pairings []int, search func() bool) bool {
+	for {
+		for i := range pairings {
+			pairings[i] = -1
+		}
+		ok := search()
+		if !s.gaveUp {
+			return ok
+		}
+		s.guided, s.gaveUp = true, false
+	}
+}
+
+// canPairAll reports whether the positions in r can all be paired off among
+// themselves using only the pairs allowed accepts. It asks the blossom matcher
+// the weighted pairing methods use for a largest set of allowed pairs and
+// checks that it leaves no one out.
+func canPairAll(r []int, allowed func(a, b int) bool) bool {
+	k := len(r)
+	if k%2 == 1 {
+		return false
+	}
+	if k == 0 {
+		return true
+	}
+	edges := []*matching.Edge{}
+	for x := 0; x < k; x++ {
+		partners := 0
+		for y := 0; y < k; y++ {
+			if x == y || !allowed(r[x], r[y]) {
+				continue
+			}
+			partners++
+			if x < y {
+				edges = append(edges, matching.NewEdge(x, y, 1))
+			}
+		}
+		if partners == 0 {
+			return false
+		}
+	}
+	mates, _, err := matching.MinWeightMatching(edges, true)
+	if err != nil || len(mates) != k {
+		// The matcher could not answer, so it rules nothing out.
+		return true
+	}
+	for _, m := range mates {
+		if m < 0 {
+			return false
+		}
+	}
+	return true
+}
+
 // australianMatch pairs the even field of n positions in standings order by
 // recursive backtracking, the later-round Australian rule. It pairs the top
 // remaining player with the highest-standing opponent that leads to a complete
@@ -109,12 +203,16 @@ func withoutInto(dst, r []int, a, b int) []int {
 // Unlike round 1's halves it has no top-vs-top concept -- later rounds avoid
 // only repeats, not strong-vs-strong pairings. The caller pads an odd field with
 // a phantom bye, so n is even and each step removes a pair, keeping every
-// recursive r even too.
+// recursive r even too. A field that needs more than searchSteps steps is
+// searched again guided (see searchBudget), which finds the same draw.
 func australianMatch(n int, blocked [][]bool) ([]int, bool) {
+	return australianMatchSteps(n, blocked, searchSteps)
+}
+
+// australianMatchSteps is australianMatch with the plain search allowed steps
+// steps: negative for no limit, 0 to guide the search from the start.
+func australianMatchSteps(n int, blocked [][]bool, steps int) ([]int, bool) {
 	pairings := make([]int, n)
-	for i := range pairings {
-		pairings[i] = -1
-	}
 
 	// Per-depth scratch buffers for the remaining-positions list, so the
 	// backtracking allocates nothing per node. Each level removes a pair, so
@@ -124,23 +222,36 @@ func australianMatch(n int, blocked [][]bool) ([]int, bool) {
 		scratch[i] = make([]int, n)
 	}
 
+	allowed := func(a, b int) bool { return !blocked[a][b] }
+	budget := newSearchBudget(steps)
+
 	var match func(r []int, depth int) bool
 	match = func(r []int, depth int) bool {
 		if len(r) == 0 {
 			return true
+		}
+		if !budget.step() {
+			return false
 		}
 		p := r[0]
 		for _, q := range r[1:] {
 			if blocked[p][q] {
 				continue
 			}
+			rest := withoutInto(scratch[depth], r, p, q)
+			if budget.guided && !canPairAll(rest, allowed) {
+				continue
+			}
 			pairings[p] = q
 			pairings[q] = p
-			if match(withoutInto(scratch[depth], r, p, q), depth+1) {
+			if match(rest, depth+1) {
 				return true
 			}
 			pairings[p] = -1
 			pairings[q] = -1
+			if budget.gaveUp {
+				return false
+			}
 		}
 		return false
 	}
@@ -149,7 +260,9 @@ func australianMatch(n int, blocked [][]bool) ([]int, bool) {
 	for i := range all {
 		all[i] = i
 	}
-	if !match(all, 0) {
+	if !budget.run(pairings, func() bool {
+		return (!budget.guided || canPairAll(all, allowed)) && match(all, 0)
+	}) {
 		return nil, false
 	}
 	return pairings, true

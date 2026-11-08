@@ -181,7 +181,16 @@ func pairWinGroups(members *entity.UnpairedPoolMembers) ([]int, error) {
 // 1 vs n/2+1, and so on (with any phantom bye landing on the lone middle): the
 // proper opponent across the halves is always nearest-first and unblocked, so
 // the boundary fallback is never taken until forced.
+//
+// A pass that needs more than searchSteps steps is searched again guided (see
+// searchBudget), which finds the same draw.
 func pairHalves(n int, blocked [][]bool) ([]int, bool) {
+	return pairHalvesSteps(n, blocked, searchSteps)
+}
+
+// pairHalvesSteps is pairHalves with each pass's plain search allowed steps
+// steps: negative for no limit, 0 to guide the search from the start.
+func pairHalvesSteps(n int, blocked [][]bool, steps int) ([]int, bool) {
 	pairings := make([]int, n)
 
 	// topCount is the size of the top half. A pair (a, b) is top-vs-top (a
@@ -205,10 +214,18 @@ func pairHalves(n int, blocked [][]bool) ([]int, bool) {
 		scratch[i] = make([]int, n)
 	}
 
+	// allowed holds the pairs the running pass may make, and budget counts
+	// its steps.
+	var allowed func(a, b int) bool
+	var budget *searchBudget
+
 	var halves func(r []int, allowFlip bool, depth int) bool
 	halves = func(r []int, allowFlip bool, depth int) bool {
 		if len(r) == 0 {
 			return true
+		}
+		if !budget.step() {
+			return false
 		}
 
 		// p is the top remaining position; half = len(r)/2 marks p's ideal
@@ -217,6 +234,24 @@ func pairHalves(n int, blocked [][]bool) ([]int, bool) {
 		p := r[0]
 		half := len(r) / 2
 
+		// pairWith pairs p with b and recurses on the rest, undoing the pair
+		// if the rest cannot be paired. A guided search skips a b that leaves
+		// the rest unpairable.
+		pairWith := func(b int) bool {
+			rest := withoutInto(scratch[depth], r, p, b)
+			if budget.guided && !canPairAll(rest, allowed) {
+				return false
+			}
+			pairings[p] = b
+			pairings[b] = p
+			if halves(rest, allowFlip, depth+1) {
+				return true
+			}
+			pairings[p] = -1
+			pairings[b] = -1
+			return false
+		}
+
 		// Phase 1a: proper bottoms r[half:], nearest to p's ideal
 		// opponent first (r is ascending, so ascending over r[half:] is
 		// nearest-first). None of these are top-vs-top.
@@ -224,13 +259,12 @@ func pairHalves(n int, blocked [][]bool) ([]int, bool) {
 			if blocked[p][b] {
 				continue
 			}
-			pairings[p] = b
-			pairings[b] = p
-			if halves(withoutInto(scratch[depth], r, p, b), allowFlip, depth+1) {
+			if pairWith(b) {
 				return true
 			}
-			pairings[p] = -1
-			pairings[b] = -1
+			if budget.gaveUp {
+				return false
+			}
 		}
 
 		// Phase 1b: the non-top-vs-top positions among r[1:half] -- bottoms that
@@ -241,13 +275,12 @@ func pairHalves(n int, blocked [][]bool) ([]int, bool) {
 			if topVsTop(p, b) || blocked[p][b] {
 				continue
 			}
-			pairings[p] = b
-			pairings[b] = p
-			if halves(withoutInto(scratch[depth], r, p, b), allowFlip, depth+1) {
+			if pairWith(b) {
 				return true
 			}
-			pairings[p] = -1
-			pairings[b] = -1
+			if budget.gaveUp {
+				return false
+			}
 		}
 
 		// Phase 2: the top-vs-top positions among r[1:half], nearest to p first
@@ -258,13 +291,12 @@ func pairHalves(n int, blocked [][]bool) ([]int, bool) {
 				if !topVsTop(p, b) || blocked[p][b] {
 					continue
 				}
-				pairings[p] = b
-				pairings[b] = p
-				if halves(withoutInto(scratch[depth], r, p, b), allowFlip, depth+1) {
+				if pairWith(b) {
 					return true
 				}
-				pairings[p] = -1
-				pairings[b] = -1
+				if budget.gaveUp {
+					return false
+				}
 			}
 		}
 
@@ -276,21 +308,29 @@ func pairHalves(n int, blocked [][]bool) ([]int, bool) {
 		all[i] = i
 	}
 
+	// pass runs halves over the whole field with its own step budget. The
+	// pairs it may make are those the search tries: none blocked, and none
+	// top-vs-top unless flips are permitted.
+	pass := func(allowFlip bool) bool {
+		allowed = func(a, b int) bool {
+			return !blocked[a][b] && (allowFlip || !topVsTop(a, b))
+		}
+		budget = newSearchBudget(steps)
+		return budget.run(pairings, func() bool {
+			return (!budget.guided || canPairAll(all, allowed)) &&
+				halves(all, allowFlip, 0)
+		})
+	}
+
 	// Pass 1 first: a complete draw with flips disallowed is guaranteed to have
 	// zero top-vs-top, and it exists whenever any zero-top-vs-top draw does.
-	for i := range pairings {
-		pairings[i] = -1
-	}
-	if halves(all, false, 0) {
+	if pass(false) {
 		return pairings, true
 	}
 
 	// Pass 2: no zero-top-vs-top draw exists, so permit the forced top-vs-top
 	// pairings.
-	for i := range pairings {
-		pairings[i] = -1
-	}
-	if halves(all, true, 0) {
+	if pass(true) {
 		return pairings, true
 	}
 
