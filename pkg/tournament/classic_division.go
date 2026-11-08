@@ -859,14 +859,15 @@ func isRoundDependent(pm pb.PairingMethod) bool {
 }
 
 // roundRobinRound returns round's place among the rounds before it paired
-// the same way as it (by its pairing method and games per round), from 0: its
-// place in its round robin, whatever rounds come between the round robin's
-// own.
+// the same way as it (by its pairing method, games per round, and seed
+// order), from 0: its place in its round robin, whatever rounds come between
+// the round robin's own.
 func (t *ClassicDivision) roundRobinRound(round int) int {
 	rc := t.RoundControls[round]
 	index := 0
 	for _, prev := range t.RoundControls[:round] {
-		if prev.PairingMethod == rc.PairingMethod && prev.GamesPerRound == rc.GamesPerRound {
+		if prev.PairingMethod == rc.PairingMethod && prev.GamesPerRound == rc.GamesPerRound &&
+			prev.SeedOrder == rc.SeedOrder {
 			index++
 		}
 	}
@@ -2400,13 +2401,10 @@ func newClassicPairing(t *ClassicDivision,
 		// Players are paired in player order, so player indexes are the
 		// schedule's indexes. Two players who meet in rounds in a row swap
 		// who goes first each time.
-		rrRound, game := pair.RoundRobinRound(round, t.roundRobinRound(round), int(rc.GamesPerRound))
-		goesFirst, err := pair.RoundRobinGoesFirst(numPlayers, rrRound, int(playerOne), t.Seed)
+		goesFirst, err := pair.PlainRoundRobinGoesFirst(rc, t.roundRobinRound(round), numPlayers, round,
+			int(playerOne), t.Seed)
 		if err != nil {
 			log.Err(err).Str("division", t.DivisionName).Int("round", round).Msg("round-robin-firsts")
-		}
-		if game%2 == 1 {
-			goesFirst = !goesFirst
 		}
 		switchFirst = !goesFirst
 	} else if t.RoundControls[round].PairingMethod == pb.PairingMethod_INITIAL_FONTES {
