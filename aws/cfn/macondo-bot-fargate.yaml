@@ -1,0 +1,304 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >-
+  macondo-bot on Fargate. Replaces the EC2-launch-type macondo-bot service, which ran
+  wolges-awsm as a bridge-networked sidecar. wolges-awsm is gone: macondo generates WordSmog
+  natively in-process as of PR #512, and leaving MACONDO_WOLGES_AWSM_URL unset is the whole
+  opt-out. The bot takes no inbound traffic -- it is a NATS queue-group subscriber -- so there
+  is no load balancer, no service discovery, and no exposed port.
+
+Parameters:
+  ClusterName:
+    Type: String
+    Description: ECS cluster to run in
+    Default: woogles-prod
+
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: VPC for the task ENIs
+    Default: vpc-0fe61cd12246e6ee0
+
+  SubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: >-
+      Subnets for the task ENIs. Both must have an EFS mount target for fs-d4db50ac, or task
+      placement silently fails in the AZ that does not.
+    Default: subnet-0957a537f7ee06915,subnet-00ade167c2786f245
+
+  TaskExecutionRoleArn:
+    Type: String
+    Description: ARN of the ECS task execution role (pulls images, writes logs)
+    Default: arn:aws:iam::509130939211:role/ecsTaskExecutionRole
+
+  EfsFilesystemId:
+    Type: String
+    Description: EFS filesystem holding the lexicon data (liwords-config-files)
+    Default: fs-d4db50ac
+
+  MacondoImage:
+    Type: String
+    Description: >-
+      macondo-bot image to run. Built by domino14/macondo CI, which tags each master build
+      ghcr.io/domino14/macondo-bot:master-gh<run-number>. Either form works here, but prefer
+      the @sha256: digest a tag resolves to: tags are mutable, so a redeploy of a tag can
+      quietly pick up a different image, and a rollback to one is not guaranteed to be a
+      rollback. Deploying is a commit that changes this default, so the repo says what is
+      running; overriding it at deploy time works but breaks that.
+    Default: ghcr.io/domino14/macondo-bot@sha256:be63363d879cd8cf2a86ace1f0fcb6ab33283213154d49fb61b47e43fdc41690
+
+  NatsUrl:
+    Type: String
+    Description: NATS server the bot subscribes to (queue group "bot_queue")
+    Default: nats://10.0.0.251:4222
+
+  LambdaFunctionName:
+    Type: String
+    Description: Lambda the bot invokes for simming bot requests
+    Default: MacondoLambdaFunction
+
+  TaskCpu:
+    Type: String
+    Description: >-
+      Task-level CPU units. Unlike EC2 bridge mode, where container cpu is a relative share
+      and can burst to the whole host, this is a hard ceiling. Bump to 512 if bot move
+      latency regresses.
+    Default: '256'
+    AllowedValues: ['256', '512', '1024', '2048']
+
+  TaskMemory:
+    Type: String
+    Description: >-
+      Task-level memory in MiB. Must be a valid pairing with TaskCpu -- at 256 CPU that is
+      512, 1024, or 2048 only.
+    Default: '1024'
+
+  DesiredCount:
+    Type: Number
+    Description: Number of bot tasks. NATS queue-group semantics make >1 safe.
+    Default: 1
+    MinValue: 0
+
+Resources:
+  # No ingress: the bot listens on nothing. Egress covers ghcr.io, CloudWatch Logs, the
+  # Lambda and SSM APIs, EFS (2049) and NATS (4222).
+  #
+  # Specifying any SecurityGroupEgress replaces CloudFormation's implicit allow-all, so the
+  # catch-all rule below has to be written out.
+  MacondoTaskSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: macondo-bot Fargate tasks
+      VpcId: !Ref VpcId
+      SecurityGroupEgress:
+        - IpProtocol: '-1'
+          CidrIp: 0.0.0.0/0
+          Description: ghcr.io, CloudWatch Logs, Lambda API, SSM, EFS, NATS
+      Tags:
+        - Key: Name
+          Value: macondo-bot-fargate
+        - Key: Application
+          Value: liwords
+        - Key: Component
+          Value: macondo-bot
+
+  # On EC2 the bot got its Lambda credentials from the ecsInstanceRole instance profile
+  # (inline policy macondo-lambda-execute). Fargate has no instance profile, so the same
+  # permission has to arrive as a task role. The AWS SDK's default credential chain picks it
+  # up from AWS_CONTAINER_CREDENTIALS_RELATIVE_URI with no code change.
+  MacondoBotTaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: macondoBotTaskRole
+      Description: Task role for macondo-bot on Fargate - invokes the Macondo simming Lambda
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            # Deliberately unconditioned, matching liwordsMaintenanceTaskRole, which is a
+            # working task role in this account. An aws:SourceAccount/aws:SourceArn
+            # confused-deputy condition is the usual hardening here, but it is the one part
+            # of this role that cannot be verified before deploying -- if ECS does not
+            # populate those keys as expected the condition never matches, assume-role
+            # fails, and the task will not start. The permission below is proven by
+            # simulate-custom-policy; the trust half is proven by being the same shape as a
+            # role already running. What the condition would buy is small next to that: it
+            # guards against a third party inducing ECS to assume a role whose only power is
+            # invoking our own Lambda.
+            Action: sts:AssumeRole
+      Policies:
+        # Narrower than the instance-profile policy this replaces, which granted lambda:*
+        # on the same function. asyncLambdaCall only ever calls Invoke.
+        - PolicyName: InvokeMacondoLambda
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource:
+                  - !Sub arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:${LambdaFunctionName}
+                  - !Sub arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:${LambdaFunctionName}:*
+        - PolicyName: EcsExecuteCommand
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ssmmessages:CreateControlChannel
+                  - ssmmessages:CreateDataChannel
+                  - ssmmessages:OpenControlChannel
+                  - ssmmessages:OpenDataChannel
+                Resource: '*'
+      Tags:
+        - Key: Application
+          Value: liwords
+        - Key: Component
+          Value: macondo-bot
+
+  # Family is macondo-bot-fargate, not macondo-bot: the EC2 service still references the
+  # macondo-bot family, and a stack-owned revision 70 of it would make
+  # "describe-task-definition macondo-bot" resolve to the Fargate one mid-migration.
+  MacondoBotTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: macondo-bot-fargate
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      Cpu: !Ref TaskCpu
+      Memory: !Ref TaskMemory
+      RuntimePlatform:
+        OperatingSystemFamily: LINUX
+        # The image is a single-arch linux/amd64 manifest; being explicit means a future
+        # default flip to ARM cannot silently break the pull.
+        CpuArchitecture: X86_64
+      ExecutionRoleArn: !Ref TaskExecutionRoleArn
+      TaskRoleArn: !GetAtt MacondoBotTaskRole.Arn
+      Volumes:
+        - Name: datavol
+          EFSVolumeConfiguration:
+            FilesystemId: !Ref EfsFilesystemId
+            RootDirectory: /
+            # Required for Fargate EFS mounts. Still talks to the mount target on 2049, so
+            # the existing sg-04ed7a1d68f824f8d rule (2049 from 10.0.0.0/16) covers it.
+            TransitEncryption: ENABLED
+      ContainerDefinitions:
+        - Name: macondo-bot
+          Image: !Ref MacondoImage
+          Essential: true
+          # No container-level Cpu/Memory. On Fargate the task-level values are
+          # authoritative, and a container-level Memory is a hard cap -- that is how
+          # wolges-awsm ended up pinned at 717 MiB. Omitting it lets the bot use the
+          # whole task allocation.
+          Environment:
+            - Name: AWS_REGION
+              Value: !Ref AWS::Region
+            - Name: MACONDO_KWG_PATH_PREFIX
+              Value: '2024'
+            - Name: MACONDO_DATA_PATH
+              Value: /data/data
+            - Name: NO_COLOR
+              Value: 'true'
+            - Name: MACONDO_NATS_URL
+              Value: !Ref NatsUrl
+            - Name: MACONDO_LAMBDA_FUNCTION_NAME
+              Value: !Ref LambdaFunctionName
+            # MACONDO_WOLGES_AWSM_URL is deliberately absent. Setting it is the entire
+            # opt-in to routing WordSmog back through a wolges-awsm server; unset means
+            # macondo's native generator. See bot/bot.go bestMove().
+          MountPoints:
+            - SourceVolume: datavol
+              ContainerPath: /data
+              ReadOnly: true
+          StopTimeout: 30
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              # Pre-existing group, shared with the EC2 service during the dual-run. Not
+              # created here -- CloudFormation would fail with "already exists", and
+              # AmazonECSTaskExecutionRolePolicy grants no logs:CreateLogGroup anyway.
+              awslogs-group: /ecs/macondo-bot
+              awslogs-region: !Ref AWS::Region
+              # "fargate" rather than the EC2 service's "ecs", so the two are separable by
+              # log stream name while both are serving.
+              awslogs-stream-prefix: fargate
+      Tags:
+        - Key: Application
+          Value: liwords
+        - Key: Component
+          Value: macondo-bot
+
+  MacondoBotService:
+    Type: AWS::ECS::Service
+    Properties:
+      ServiceName: macondo-bot-fargate
+      Cluster: !Ref ClusterName
+      TaskDefinition: !Ref MacondoBotTaskDefinition
+      DesiredCount: !Ref DesiredCount
+      # LaunchType rather than a capacity provider strategy: woogles-prod has no capacity
+      # providers registered, and this needs no prerequisite on the cluster.
+      LaunchType: FARGATE
+      # EFS volumes and ECS Exec both require >= 1.4.0. Pinned rather than LATEST so the
+      # platform cannot move under the service.
+      PlatformVersion: '1.4.0'
+      SchedulingStrategy: REPLICA
+      EnableExecuteCommand: true
+      EnableECSManagedTags: true
+      PropagateTags: SERVICE
+      # No PlacementStrategy or PlacementConstraints -- both are rejected for FARGATE. ECS
+      # spreads across the given subnets' AZs on its own.
+      DeploymentConfiguration:
+        MaximumPercent: 200
+        MinimumHealthyPercent: 100
+        # The EC2 service has this disabled. With no load balancer to fail a health check,
+        # this is what turns an image-pull or EFS-mount failure into a rollback instead of
+        # a crash loop.
+        DeploymentCircuitBreaker:
+          Enable: true
+          Rollback: true
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          # Mandatory, not a preference: the VPC has no NAT gateway and both subnets route
+          # to an IGW, so without a public IP the task cannot reach ghcr.io and dies at
+          # CannotPullContainerError. The security group has no ingress rules, so the ENI
+          # is not reachable from outside regardless.
+          AssignPublicIp: ENABLED
+          Subnets: !Ref SubnetIds
+          SecurityGroups:
+            - !Ref MacondoTaskSecurityGroup
+      Tags:
+        - Key: Application
+          Value: liwords
+        - Key: Component
+          Value: macondo-bot
+
+Outputs:
+  ServiceName:
+    Description: Name of the Fargate bot service
+    Value: !GetAtt MacondoBotService.Name
+    Export:
+      Name: !Sub '${AWS::StackName}-ServiceName'
+
+  TaskDefinitionArn:
+    Description: ARN of the Fargate bot task definition
+    Value: !Ref MacondoBotTaskDefinition
+    Export:
+      Name: !Sub '${AWS::StackName}-TaskDefinitionArn'
+
+  TaskDefinitionFamily:
+    Description: Family name of the task definition
+    Value: macondo-bot-fargate
+    Export:
+      Name: !Sub '${AWS::StackName}-TaskDefinitionFamily'
+
+  TaskRoleArn:
+    Description: ARN of the task role granting Lambda invoke
+    Value: !GetAtt MacondoBotTaskRole.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-TaskRoleArn'
+
+  TaskSecurityGroupId:
+    Description: Security group attached to the task ENIs
+    Value: !Ref MacondoTaskSecurityGroup
+    Export:
+      Name: !Sub '${AWS::StackName}-TaskSecurityGroupId'
