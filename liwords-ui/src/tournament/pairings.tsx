@@ -14,6 +14,7 @@ import { create } from "@bufbuild/protobuf";
 import { useTournamentCompetitorState } from "../hooks/use_tournament_competitor_state";
 import { TourneyStatus } from "../store/selectors/tournament_selectors";
 import { ScoreEditPopover } from "./score_edit_popover";
+import { tableNumbers } from "./tables";
 import {
   isLaggedRound,
   openRounds,
@@ -144,10 +145,13 @@ type Props = {
   isDirector: boolean;
   isFullDirector?: boolean;
   showFirst?: boolean;
+  // Number the tables, for games played over the board.
+  showTables?: boolean;
   tentative: boolean;
 };
 
 type PairingTableData = {
+  table?: number;
   players: ReactNode;
   // ratings: ReactNode;
   wl: ReactNode;
@@ -189,6 +193,14 @@ export const Pairings = React.memo((props: Props) => {
     props.selectedRound,
     divisions[props.selectedDivision],
   );
+  const tables =
+    props.showTables && divisions[props.selectedDivision]
+      ? tableNumbers(
+          divisions[props.selectedDivision],
+          props.selectedRound,
+          pairings,
+        )
+      : undefined;
 
   const formatPairingsData = (
     division: Division,
@@ -237,6 +249,12 @@ export const Pairings = React.memo((props: Props) => {
               getPerformance(playerNames[1], round, division).sortKey;
         if (isMyGame) {
           sortPriority = 2;
+        }
+        // Numbered tables list in their order instead, and whatever takes no
+        // table after the last one.
+        const table = tables?.get(pairing);
+        if (tables) {
+          sortPriority = -(table ?? tables.size + 1);
         }
         const isRemoved = (playerID: string) =>
           division.players[division.playerIndexMap[playerID]]?.suspended;
@@ -508,6 +526,7 @@ export const Pairings = React.memo((props: Props) => {
         }
 
         return {
+          table,
           players,
           key: playerNames.join(":"),
           sort: sortPriority || 0,
@@ -537,6 +556,14 @@ export const Pairings = React.memo((props: Props) => {
     },
   ];
 
+  if (tables) {
+    columns.unshift({
+      title: "Table",
+      dataIndex: "table",
+      key: "table",
+      className: "table-number",
+    });
+  }
   if (!(props.selectedRound > currentRound)) {
     columns.push({
       title: "Score",
