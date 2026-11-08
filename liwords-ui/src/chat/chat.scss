@@ -496,6 +496,12 @@ p {
   }
 }
 
+// the chat giving up height to the analyzer's card below it
+// (grow_to_window_bottom.ts), keeping --give-height
+#chat.gives-room:not(.collapsed) {
+  height: var(--give-height);
+}
+
 // the chat collapsed to its tabs and its latest line (Chat's collapsible), in
 // the colors the chat gives a notice
 #chat.collapsed {

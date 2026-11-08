@@ -9,7 +9,8 @@ import React, {
 import { App, Button, Card, Switch, Tooltip } from "antd";
 import { BulbOutlined, RobotOutlined } from "@ant-design/icons";
 import { useQuery, useMutation } from "@connectrpc/connect-query";
-import { useGrowToWindowBottom } from "../utils/grow_to_window_bottom";
+import { roomToGive } from "../chat/chat";
+import { Giver, useGrowToWindowBottom } from "../utils/grow_to_window_bottom";
 import { flashError } from "../utils/hooks/connect";
 import { useLocalStorageBool } from "../utils/use_local_storage";
 import {
@@ -692,6 +693,15 @@ export const rackNote = (
   return `Analyzing ${rackLength} known tile${rackLength === 1 ? "" : "s"}.${hint}`;
 };
 
+// The chat above the analyzer's card, which gives up height for the moves the
+// card lists, as far as it can spare (chat.tsx).
+const CHAT_ABOVE: Giver = {
+  card: (growing) =>
+    growing.closest(".chat-area")?.querySelector<HTMLElement>("#chat") ?? null,
+  spare: roomToGive,
+  list: ".suggestions",
+};
+
 export const Analyzer = React.memo((props: AnalyzerProps) => {
   const {
     autoMode,
@@ -1112,12 +1122,15 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
   );
 
   // The card takes the room the chat above it leaves when collapsed
-  // (chat.tsx).
+  // (chat.tsx); while the chat is expanded, on wider pages than a phone's,
+  // the room below it in the window and what the chat gives up for what the
+  // card lists (CHAT_ABOVE).
   const [chatHidden] = useLocalStorageBool("chatCollapsed");
   const card = useRef<HTMLDivElement>(null);
   useGrowToWindowBottom(
     card,
-    !!props.includeCard && chatHidden && !(showComputerAnalysis && gameDone),
+    !!props.includeCard && !(showComputerAnalysis && gameDone),
+    chatHidden ? undefined : CHAT_ABOVE,
   );
 
   if (showComputerAnalysis && gameDone) {
