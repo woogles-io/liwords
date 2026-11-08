@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { Tag, Spin } from "antd";
+import { Spin } from "antd";
+import { TitleTag } from "../shared/title_tag";
 import { useClient, flashError } from "../utils/hooks/connect";
 import {
   OrganizationService,
@@ -20,22 +21,6 @@ const organizationNames: Record<string, string> = {
   wespa: "WESPA",
   absp: "ABSP",
   sg: "Singapore Scrabble Association",
-};
-
-// Title colors based on abbreviation
-// Colors: gold (grandmaster), purple (international master), blue (master), green (expert)
-// National master (SG) is purple too
-const getTitleColor = (abbreviation: string): string => {
-  const colors: Record<string, string> = {
-    GM: "gold",
-    IM: "purple",
-    NM: "purple",
-    SM: "blue",
-    M: "blue",
-    EX: "green",
-    EXP: "green",
-  };
-  return colors[abbreviation] || "default";
 };
 
 export const DisplayUserOrganizations: React.FC<
@@ -88,7 +73,6 @@ export const DisplayUserOrganizations: React.FC<
         {orgsWithTitles.map((org) => {
           const abbreviation = org.rawTitle; // e.g., "GM", "SM"
           const fullName = org.titleFullName || abbreviation; // e.g., "Grandmaster"
-          const color = getTitleColor(abbreviation);
 
           return (
             <div key={org.organizationCode} style={{ marginBottom: 8 }}>
@@ -97,9 +81,12 @@ export const DisplayUserOrganizations: React.FC<
                   org.organizationCode}
                 :
               </strong>{" "}
-              <Tag color={color} style={{ fontWeight: "bold" }}>
+              <TitleTag
+                abbreviation={abbreviation}
+                style={{ fontWeight: "bold" }}
+              >
                 {fullName}
-              </Tag>
+              </TitleTag>
               <span style={{ color: "#666", fontSize: "0.9em" }}>
                 ({abbreviation})
               </span>
