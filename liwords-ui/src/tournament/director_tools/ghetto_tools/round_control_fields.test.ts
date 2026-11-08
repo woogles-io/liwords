@@ -23,11 +23,46 @@ const setting = (fields: {
   pairingLag?: number;
   resetRound?: number;
   playWithinTeam?: boolean;
+  gamesPerRound?: number;
 }) =>
   create(RoundControlSchema, {
     pairingMethod: PairingMethod.KING_OF_THE_HILL,
     ...fields,
   });
+
+describe("rounds per opponent", () => {
+  it("is offered and kept for the round robins that repeat opponents", () => {
+    for (const pairingMethod of [
+      PairingMethod.ROUND_ROBIN,
+      PairingMethod.TEAM_ROUND_ROBIN,
+      PairingMethod.ASSIGNED_TEAM_ROUND_ROBIN,
+    ]) {
+      expect(fieldsForMethod(pairingMethod).map((f) => f[1])).toEqual([
+        "gamesPerRound",
+      ]);
+      expect(
+        rdCtrlFromSetting(setting({ pairingMethod, gamesPerRound: 2 }), 10, 1)
+          .gamesPerRound,
+      ).toBe(2);
+      expect(
+        rdCtrlFromSetting(setting({ pairingMethod }), 10, 1).gamesPerRound,
+      ).toBe(1);
+    }
+  });
+
+  it("is 1 for the other methods", () => {
+    expect(
+      rdCtrlFromSetting(
+        setting({
+          pairingMethod: PairingMethod.KING_OF_THE_HILL,
+          gamesPerRound: 2,
+        }),
+        10,
+        1,
+      ).gamesPerRound,
+    ).toBe(1);
+  });
+});
 
 describe("play within team", () => {
   it("is kept for the team-splitting round robins", () => {

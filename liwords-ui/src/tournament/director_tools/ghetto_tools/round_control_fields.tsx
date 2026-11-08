@@ -627,6 +627,7 @@ export const rdCtrlFromSetting = (
 
       break;
 
+    case PairingMethod.ROUND_ROBIN:
     case PairingMethod.TEAM_ROUND_ROBIN:
     case PairingMethod.ASSIGNED_TEAM_ROUND_ROBIN:
       rdCtrl.gamesPerRound = rdSetting.gamesPerRound || 1;

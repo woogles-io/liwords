@@ -63,7 +63,6 @@ export const fieldsForMethod = (
   const fields = new Array<PairingMethodField>();
   switch (m) {
     case PairingMethod.RANDOM:
-    case PairingMethod.ROUND_ROBIN:
     case PairingMethod.KING_OF_THE_HILL:
     case PairingMethod.MANUAL:
     case PairingMethod.INITIAL_FONTES:
@@ -100,6 +99,7 @@ export const fieldsForMethod = (
       );
       break;
 
+    case PairingMethod.ROUND_ROBIN:
     case PairingMethod.TEAM_ROUND_ROBIN:
     case PairingMethod.ASSIGNED_TEAM_ROUND_ROBIN:
       fields.push([
