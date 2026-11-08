@@ -7,9 +7,10 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { Card, Input, Tabs, App } from "antd";
-import { LeftOutlined } from "@ant-design/icons";
+import { Button, Card, Input, Tabs, App, Tooltip } from "antd";
+import { DownOutlined, LeftOutlined, UpOutlined } from "@ant-design/icons";
 import { singularCount } from "../utils/plural";
+import { useLocalStorageBool } from "../utils/use_local_storage";
 import { ChatEntity } from "./chat_entity";
 import { useApplyChatPrefs, useChatFontScaleControl } from "./chat_prefs";
 import {
@@ -63,6 +64,9 @@ export type Props = {
   // The game's first player: in the game's own channel, their initial is
   // tilted, as on the scorecard and the player cards.
   firstPlayerID?: string;
+  // Whether the chat may collapse to its tabs and its latest line, as while
+  // the analyzer is open below it, to give the analyzer its room.
+  collapsible?: boolean;
 };
 
 // userid -> channel -> string
@@ -190,6 +194,10 @@ export const Chat = React.memo((props: Props) => {
     ),
   );
   const chatTab = selectedChatTab === "CHAT" ? tabContainerElement : null;
+  // Collapsed where it may be, as the user last left it.
+  const [collapsePreferred, setCollapsePreferred] =
+    useLocalStorageBool("chatCollapsed");
+  const collapsed = !!props.collapsible && collapsePreferred;
   const socializeClient = useClient(SocializeService);
   // Chat auto-scrolls when the last entity is visible.
   const [hasUnreadChat, setHasUnreadChat] = useState(false);
@@ -670,7 +678,9 @@ export const Chat = React.memo((props: Props) => {
   ]);
 
   useEffect(() => {
-    if (selectedChatTab === "PLAYERS") {
+    // new messages count on the Chat tab while its messages are out of
+    // sight: on the Players tab, or with the chat collapsed
+    if (selectedChatTab === "PLAYERS" || collapsed) {
       const lastMessage = chatEntities.reduce(
         (acc: ChatEntityObj | undefined, ch) =>
           ch.timestamp &&
@@ -694,6 +704,7 @@ export const Chat = React.memo((props: Props) => {
   }, [
     chatEntities,
     selectedChatTab,
+    collapsed,
     lastNotificationTimestamp,
     setNotificationCount,
   ]);
@@ -965,11 +976,35 @@ export const Chat = React.memo((props: Props) => {
     ],
   );
 
-  const handleTabClick = useCallback((key: string) => {
-    setSelectedChatTab(key);
-    setNotificationCount(0);
-    setLastNotificationTimestamp(Date.now());
-  }, []);
+  // A tab clicked expands the chat again, if it was collapsed.
+  const handleTabClick = useCallback(
+    (key: string) => {
+      setSelectedChatTab(key);
+      setNotificationCount(0);
+      setLastNotificationTimestamp(Date.now());
+      if (collapsed) {
+        setCollapsePreferred(false);
+      }
+    },
+    [collapsed, setCollapsePreferred],
+  );
+  const toggleCollapsed = useCallback(() => {
+    if (collapsed) {
+      setNotificationCount(0);
+      setLastNotificationTimestamp(Date.now());
+    }
+    setCollapsePreferred(!collapsed);
+  }, [collapsed, setCollapsePreferred]);
+  // the latest of what the chat shows (the channel's messages and every
+  // notice, such as a challenge's result), kept in sight while collapsed
+  const latest = useMemo(
+    () =>
+      chatEntities.findLast(
+        (ent) =>
+          ent.entityType !== ChatEntityType.UserChat || ent.channel === channel,
+      ),
+    [chatEntities, channel],
+  );
   const handleHideList = useCallback(() => {
     setPresenceVisible(false);
   }, []);
@@ -1283,7 +1318,7 @@ export const Chat = React.memo((props: Props) => {
     : availableKeys[0] || "CHAT";
 
   return (
-    <Card className="chat" id="chat">
+    <Card className={collapsed ? "chat collapsed" : "chat"} id="chat">
       <Tabs
         activeKey={validatedSelectedTab}
         centered
@@ -1291,7 +1326,38 @@ export const Chat = React.memo((props: Props) => {
         animated={false}
         items={tabItemsWithChildren}
         destroyOnHidden={false} // Keep all tab content rendered
+        tabBarExtraContent={
+          props.collapsible ? (
+            <Tooltip
+              title={collapsed ? "Expand the chat" : "Collapse the chat"}
+            >
+              <Button
+                className="chat-collapse-toggle"
+                type="text"
+                size="small"
+                icon={collapsed ? <DownOutlined /> : <UpOutlined />}
+                aria-label={collapsed ? "Expand the chat" : "Collapse the chat"}
+                onClick={toggleCollapsed}
+              />
+            </Tooltip>
+          ) : undefined
+        }
       />
+      {collapsed && latest && (
+        <div
+          className={`chat-latest${
+            latest.entityType === ChatEntityType.ErrorMsg
+              ? " error"
+              : latest.entityType === ChatEntityType.ServerMsg
+                ? " notice"
+                : ""
+          }`}
+          onClick={toggleCollapsed}
+        >
+          {latest.sender ? `${latest.sender}: ` : ""}
+          {latest.message}
+        </div>
+      )}
     </Card>
   );
 });

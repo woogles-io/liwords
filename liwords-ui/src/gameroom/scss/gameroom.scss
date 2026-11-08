@@ -229,6 +229,22 @@ p.streak-loss {
         }
       }
     }
+
+    // while the chat above it is collapsed (grow_to_window_bottom.ts), no
+    // shorter than its own height and as tall as what it lists needs, up to
+    // its room in the window, what it lists starting at its top
+    .ant-card-body.grow-to-bottom {
+      height: auto;
+      min-height: var(--grow-own);
+
+      .analyzer-container {
+        height: auto;
+
+        .suggestions {
+          max-height: var(--grow-room);
+        }
+      }
+    }
   }
 
   .auto-label {

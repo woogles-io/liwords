@@ -1420,6 +1420,7 @@ export const Table = React.memo((props: Props) => {
                 )}
                 tournamentID={gameInfo.tournamentId}
                 firstPlayerID={gameInfo.players.find((p) => p.first)?.userId}
+                collapsible={isExamining && !examiningOwnGameInPlay}
               />
             ) : null}
           </ChatIfVisible>
