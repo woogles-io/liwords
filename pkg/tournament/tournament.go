@@ -730,6 +730,11 @@ func AddPlayers(ctx context.Context, ts TournamentStore, us user.Store, id strin
 		var fullID string
 		var err error
 		if t.ExtraMeta.IRLMode {
+			// The ID is a token, a colon, and the name, which exports
+			// split apart at the colon.
+			if strings.Contains(player.Id, ":") {
+				return errors.New("name must not contain a colon: " + player.Id)
+			}
 			if existing, dname, ok := findIRLPlayerID(t, "", player.Id); ok {
 				if dname != division {
 					return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_PLAYER_ALREADY_EXISTS, t.Name, dname, existing)
