@@ -2,6 +2,7 @@ package tournament
 
 import (
 	"fmt"
+	"math"
 	"math/rand"
 	"os"
 	"sort"
@@ -1624,6 +1625,33 @@ func TestClassicDivisionVoidResult(t *testing.T) {
 		{PlayerId: player4, Wins: 0, Losses: 1, Draws: 0, Spread: -50},
 	}}
 	is.NoErr(equalStandings(expectedstandings, standings))
+}
+
+// A round robin's games_per_round is how many rounds in a row each pair
+// plays, so however large a director sets it, each pairing holds one game.
+func TestClassicDivisionRoundRobinPairingHoldsOneGame(t *testing.T) {
+	for _, c := range []struct {
+		name              string
+		roundsPerOpponent int32
+	}{{"two", 2}, {"largest", math.MaxInt32}} {
+		t.Run(c.name, func(t *testing.T) {
+			is := is.New(t)
+			roundControls := []*pb.RoundControl{}
+			for i := 0; i < 6; i++ {
+				roundControls = append(roundControls, &pb.RoundControl{FirstMethod: pb.FirstMethod_MANUAL_FIRST,
+					PairingMethod: pb.PairingMethod_ROUND_ROBIN,
+					GamesPerRound: c.roundsPerOpponent,
+					Round:         int32(i)})
+			}
+			tc, err := compactNewClassicDivision(makeTournamentPersons(map[string]int32{"a": 4, "b": 3, "c": 2, "d": 1}), roundControls, false)
+			is.NoErr(err)
+			for round := range tc.Matrix {
+				for _, key := range tc.Matrix[round] {
+					is.Equal(len(tc.PairingMap[key].Games), 1)
+				}
+			}
+		})
+	}
 }
 
 func TestClassicDivisionRoundRobin(t *testing.T) {
