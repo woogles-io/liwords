@@ -1040,6 +1040,121 @@ func TestClassicDivisionGibson(t *testing.T) {
 	is.True(tc.isGibsonized("g", 1))
 }
 
+// pairAndPlayWithBye pairs the players two by two, the first of each two
+// beating the second by the margin given for that game, and pairs bye with
+// themself for byeResult.
+func pairAndPlayWithBye(tc *ClassicDivision, pairings []string, margins []int, bye string, byeResult pb.TournamentGameResult, round int) error {
+	err := tc.DeletePairings(round)
+	if err != nil {
+		return err
+	}
+	for i := 0; i < len(pairings); i += 2 {
+		_, err = tc.SetPairing(pairings[i], pairings[i+1], round, pb.TournamentGameResult_NO_RESULT)
+		if err != nil {
+			return err
+		}
+	}
+	_, err = tc.SetPairing(bye, bye, round, byeResult)
+	if err != nil {
+		return err
+	}
+	err = tc.StartRound(true)
+	if err != nil {
+		return err
+	}
+	for i := 0; i < len(pairings); i += 2 {
+		_, err = tc.SubmitResult(round, pairings[i], pairings[i+1], 300+margins[i/2], 300,
+			pb.TournamentGameResult_WIN,
+			pb.TournamentGameResult_LOSS,
+			pb.GameEndReason_STANDARD, false, 0, "")
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// newGibsonByeDivision makes a three round division of nine players, a to i
+// by seed, that gibsonizes with a gibson spread of 100.
+func newGibsonByeDivision(method pb.PairingMethod, minimumPlacement int32) (*ClassicDivision, error) {
+	roundControls := []*pb.RoundControl{}
+	for i := 0; i < 3; i++ {
+		roundControls = append(roundControls, &pb.RoundControl{FirstMethod: pb.FirstMethod_AUTOMATIC_FIRST,
+			PairingMethod: method,
+			GamesPerRound: defaultGamesPerRound,
+			Round:         int32(i)})
+	}
+	// The Australian Draw then forgives every earlier meeting, so it pairs
+	// the last round like King of the Hill.
+	roundControls[2].ResetRound = 2
+	players := makeTournamentPersons(map[string]int32{"a": 2000, "b": 1900, "c": 1800, "d": 1700, "e": 1600, "f": 1500, "g": 1400, "h": 1300, "i": 1200})
+	tc, err := compactNewClassicDivision(players, roundControls, false)
+	if err != nil {
+		return nil, err
+	}
+	divisionControls := newDivisionControls()
+	divisionControls.GibsonSpread = 100
+	divisionControls.MinimumPlacement = minimumPlacement
+	_, _, err = tc.SetDivisionControls(divisionControls)
+	if err != nil {
+		return nil, err
+	}
+	return tc, nil
+}
+
+func TestClassicDivisionGibsonPreservedBye(t *testing.T) {
+	is := is.New(t)
+
+	for _, method := range []pb.PairingMethod{pb.PairingMethod_KING_OF_THE_HILL, pb.PairingMethod_AUSTRALIAN_DRAW} {
+		// Prizes for first and second.
+		tc, err := newGibsonByeDivision(method, 1)
+		is.NoErr(err)
+
+		err = pairAndPlayWithBye(tc, []string{"a", "b", "c", "d", "e", "f", "g", "h"}, []int{300, 150, 120, 100}, "i", pb.TournamentGameResult_BYE, 0)
+		is.NoErr(err)
+		err = pairAndPlayWithBye(tc, []string{"a", "c", "b", "e", "d", "g", "f", "i"}, []int{300, 50, 20, 10}, "h", pb.TournamentGameResult_BYE, 1)
+		is.NoErr(err)
+		// a is 2-0 and 520 ahead of g with a round to go. Everyone else
+		// is 1-1: g, e, i, h, f, d, c, b.
+		is.True(tc.countGibsonizedPlayers(1) == 1)
+		is.True(tc.isGibsonized("a", 1))
+
+		// The director gives a the bye and pairs the rest, who are then
+		// paired as if a were not there.
+		err = tc.DeletePairings(2)
+		is.NoErr(err)
+		_, err = tc.SetPairing("a", "a", 2, pb.TournamentGameResult_BYE)
+		is.NoErr(err)
+		_, err = tc.PairRound(2, true)
+		is.NoErr(err)
+		is.NoErr(equalPairingStrings(tc.getPlayerPairings(2), [][]string{{"a"}, {"b", "c"}, {"d", "f"}, {"e", "g"}, {"h", "i"}}))
+	}
+
+	// A player on a bye still has their place in the standings when a
+	// gibsonized player is paired with someone who cannot cash.
+	tc, err := newGibsonByeDivision(pb.PairingMethod_KING_OF_THE_HILL, 6)
+	is.NoErr(err)
+
+	err = pairAndPlayWithBye(tc, []string{"a", "b", "c", "d", "e", "f", "g", "h"}, []int{300, 100, 100, 300}, "i", pb.TournamentGameResult_FORFEIT_LOSS, 0)
+	is.NoErr(err)
+	err = pairAndPlayWithBye(tc, []string{"a", "c", "b", "e", "d", "g", "f", "i"}, []int{300, 100, 50, 300}, "h", pb.TournamentGameResult_FORFEIT_LOSS, 1)
+	is.NoErr(err)
+	// a is 2-0 and gibsonized. g, f, e, d, b, and c are 1-1, and h and i
+	// are 0-2 and more than 100 behind every 1-1 player.
+	is.True(tc.countGibsonizedPlayers(1) == 1)
+	is.True(tc.isGibsonized("a", 1))
+
+	// The prizes go down to seventh place, which is c. With g on a bye,
+	// h is the first player who cannot reach it.
+	err = tc.DeletePairings(2)
+	is.NoErr(err)
+	_, err = tc.SetPairing("g", "g", 2, pb.TournamentGameResult_BYE)
+	is.NoErr(err)
+	_, err = tc.PairRound(2, true)
+	is.NoErr(err)
+	is.NoErr(equalPairingStrings(tc.getPlayerPairings(2), [][]string{{"a", "h"}, {"b", "d"}, {"c", "i"}, {"e", "f"}, {"g"}}))
+}
+
 func TestClassicDivisionFactor(t *testing.T) {
 	// This test is used to ensure that factor
 	// pairings work correctly

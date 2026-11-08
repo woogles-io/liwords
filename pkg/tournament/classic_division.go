@@ -1072,11 +1072,29 @@ func (t *ClassicDivision) pairRound(round int, preserveByes bool) (*pb.DivisionP
 	}
 
 	gibsonPairedPlayers := make(map[string]bool)
+	// The standings rank everyone, but playerOrder leaves out the players
+	// with byes. The gibsonized players are the top of the standings, so
+	// the ones left are the top of playerOrder, and whether a player can
+	// still cash is a question about the standings.
+	catchRecords := playerOrder
+	catchIndex := func(j int) int { return j }
+	if gibsonRank >= 0 && !isRoundDependent(pairingMethod) {
+		catchRecords = standings.Standings
+		ranks := make(map[string]int, len(catchRecords))
+		for rank, standing := range catchRecords {
+			ranks[standing.PlayerId] = rank
+		}
+		catchIndex = func(j int) int { return ranks[playerOrder[j].PlayerId] }
+		gibsonRank = -1
+		for i := 0; i < len(playerOrder) && playerOrder[i].Gibsonized; i++ {
+			gibsonRank = i
+		}
+	}
 	// Determine Gibsonizations
 	if gibsonRank >= 0 {
 		minimumPlacement := int(t.DivisionControls.MinimumPlacement)
-		if minimumPlacement >= len(playerOrder) {
-			minimumPlacement = len(playerOrder) - 1
+		if minimumPlacement >= len(catchRecords) {
+			minimumPlacement = len(catchRecords) - 1
 		}
 		isOdd := len(playerOrder) % 2
 		for i := 0; i <= gibsonRank; i++ {
@@ -1094,7 +1112,7 @@ func (t *ClassicDivision) pairRound(round int, preserveByes bool) (*pb.DivisionP
 				// Pair with someone who cannot cash
 				// If everyone can still cash, pair them with the player in last
 				for j := i + 1; j < len(playerOrder); j++ {
-					cc, err := t.canCatch(playerOrder, basisRound+1, minimumPlacement, j)
+					cc, err := t.canCatch(catchRecords, basisRound+1, minimumPlacement, catchIndex(j))
 					if err != nil {
 						return nil, err
 					}
