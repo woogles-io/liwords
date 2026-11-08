@@ -35,6 +35,7 @@ import {
   SimPanel,
   useLabPosition,
   useLabSim,
+  usePublishLabHooks,
 } from "./analyzer_lab_panels";
 import { defaultLetterDistribution } from "../lobby/sought_game_interactions";
 import {
@@ -1065,11 +1066,13 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
   }, [showMoves, cachedMoves, currentEvaluatedMove]);
 
   const [analyzerLab] = useLocalStorageBool(ANALYZER_LAB_KEY);
+  const [labHooks, setLabHooks] = useLocalStorageBool("analyzerLabHooks");
   const [labView, setLabView] = useState<LabView | null>(null);
   // The lab opens wherever the analyzer does, which a player's own game in
   // play never shows.
   const labOpen = analyzerLab && !showComputerAnalysis;
   const labPosition = useLabPosition(lexicon, variant, challengeRule);
+  usePublishLabHooks(labPosition, labOpen && labHooks);
   // A sim takes the analyzer's moves, at each position it is shown. Each copy
   // of the analyzer on the page (the score card holds another) hides the moves
   // again when the position changes, so this asks again whenever they are
@@ -1131,7 +1134,14 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
   );
   const analyzerControls = (
     <div className="analyzer-controls">
-      {labOpen && <LabButtons view={labView} setView={setLabView} />}
+      {labOpen && (
+        <LabButtons
+          view={labView}
+          setView={setLabView}
+          hooks={labHooks}
+          setHooks={setLabHooks}
+        />
+      )}
       <Button
         className="analyze-trigger"
         shape="circle"

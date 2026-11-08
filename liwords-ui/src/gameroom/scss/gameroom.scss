@@ -1149,7 +1149,8 @@ p.streak-loss {
 
   // Text that is read rather than played turns back upright, in place.
   &.board-flipped .bonus-label,
-  &.board-flipped .tentative-score {
+  &.board-flipped .tentative-score,
+  &.board-flipped .lab-hook {
     transform: rotate(180deg);
   }
 
@@ -1218,6 +1219,42 @@ p.streak-loss {
 
   @include userboard() {
     background: ub($board-fill);
+  }
+}
+
+// The analyzer lab's hooks, over the squares, sized by the container.
+.lab-hooks {
+  display: grid;
+  gap: 1px;
+  grid-template-columns: repeat(var(--dim, 15), 1fr);
+  grid-template-rows: repeat(var(--dim, 15), 1fr);
+  height: 100%;
+  left: 0;
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+  width: 100%;
+
+  // One color, ringed with the page's background, reads on every square's
+  // color; across sits on top and down below.
+  .lab-hook {
+    color: m($gray-extreme);
+    display: flex;
+    flex-direction: column;
+    font-size: 8px;
+    font-weight: 600;
+    line-height: 1.1;
+    overflow: hidden;
+    padding: 1px;
+    text-shadow:
+      0 0 2px m($background),
+      0 0 2px m($background),
+      0 0 2px m($background);
+    white-space: nowrap;
+
+    .lab-hook-down {
+      margin-top: auto;
+    }
   }
 }
 
