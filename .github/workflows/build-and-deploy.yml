@@ -70,6 +70,9 @@ jobs:
               - "go.mod"
               - "go.sum"
               - "scripts/**"
+              # what the Go tests read
+              - "data/**"
+              - "liwords-ui/wasm-files.json"
             frontend:
               - "liwords-ui/**"
             migrations:
@@ -138,6 +141,34 @@ jobs:
 
       - name: Build API
         run: cd cmd/liwords-api && go build
+
+      # The tests read the analyzer's word graphs through data/lexica/gaddag,
+      # and git does not keep them. The cache gives back the files as last
+      # kept, under this list of them (liwords-ui/wasm-files.json) or an
+      # earlier one, and fetch-wasm.mjs fetches only those missing or changed;
+      # they are kept again at once, not at the job's end, so a branch whose
+      # tests fail keeps them too.
+      - name: Name the analyzer's files' directory
+        id: wasm
+        run: echo "dir=liwords-ui/public/wasm/$(jq -r .dir liwords-ui/wasm-files.json)" >> "${GITHUB_OUTPUT}"
+
+      - name: Restore the analyzer's word graphs
+        id: wasm-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ steps.wasm.outputs.dir }}
+          key: wasm-${{ hashFiles('liwords-ui/wasm-files.json') }}
+          restore-keys: wasm-
+
+      - name: Fetch the analyzer's word graphs
+        run: node liwords-ui/scripts/fetch-wasm.mjs --strict
+
+      - name: Keep the analyzer's word graphs
+        if: steps.wasm-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ steps.wasm.outputs.dir }}
+          key: wasm-${{ hashFiles('liwords-ui/wasm-files.json') }}
 
       - name: Test API
         run: go test -race ./...
@@ -375,6 +406,13 @@ jobs:
       - name: Test Frontend
         run: cd liwords-ui && npm run test
 
+      # The page asks woogles.io for the analyzer's files, which
+      # liwords-ui/scripts/upload-wasm.mjs uploads to the bucket: no page naming
+      # them is built, or deployed, before each one is served there with its
+      # size and sha256.
+      - name: Check the analyzer's files are served
+        run: cd liwords-ui && node scripts/fetch-wasm.mjs --check
+
       - name: Build Frontend
         run: cd liwords-ui && npm run build
 
@@ -485,8 +523,12 @@ jobs:
           awk '{print $1}' /tmp/s3-files-with-dates.txt | sort > /tmp/s3-files.txt
           echo "S3 bucket has $(wc -l < /tmp/s3-files.txt) total files"
 
-          # Find files in S3 that are NOT in current deployment
-          comm -23 /tmp/s3-files.txt /tmp/deployed-files.txt > /tmp/files-to-delete.txt
+          # Find files in S3 that are NOT in current deployment. The
+          # analyzer's word graphs and leave tables in wasm/<dir>/ (the dir
+          # liwords-ui/wasm-files.json names) are not built, so they are never
+          # old files.
+          KEPT="wasm/$(jq -r .dir "${GITHUB_WORKSPACE}/liwords-ui/wasm-files.json")/"
+          comm -23 /tmp/s3-files.txt /tmp/deployed-files.txt | { grep -v "^${KEPT}" || true; } > /tmp/files-to-delete.txt
           DELETE_COUNT=$(wc -l < /tmp/files-to-delete.txt)
 
           if [ "$DELETE_COUNT" -gt 0 ]; then

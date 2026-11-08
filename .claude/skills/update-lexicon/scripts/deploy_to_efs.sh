@@ -18,7 +18,7 @@ OLD=${2:?usage: deploy_to_efs.sh NEW OLD [--apply]}
 APPLY=${3:-}
 HOST=woogles-wg
 DATA=/mnt/efs/data
-WASM="$(git rev-parse --show-toplevel)/liwords-ui/public/wasm/2024"
+WASM="$(git rev-parse --show-toplevel)/liwords-ui/public/wasm/2026"
 
 files=("$NEW.kwg" "$NEW.kad" "$NEW.klv2")
 [[ -f "$WASM/super-$NEW.klv2" ]] && files+=("super-$NEW.klv2")
