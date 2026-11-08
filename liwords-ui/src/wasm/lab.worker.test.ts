@@ -8,12 +8,16 @@ const wasm = vi.hoisted(() => ({
   precache_klv: vi.fn(),
   evict_kwg: vi.fn(() => true),
   evict_klv: vi.fn(() => true),
+  analyze: vi.fn(),
   sim_new: vi.fn(() => 9),
   sim_add: vi.fn(() =>
     JSON.stringify([
       { play: { action: "exchange", tiles: [] }, was: "absent" },
     ]),
   ),
+  sim_remove: vi.fn(),
+  sim_pause: vi.fn(() => "[]"),
+  sim_resume: vi.fn(() => "[]"),
   sim_step: vi.fn(),
   sim_free: vi.fn(),
 }));
@@ -156,6 +160,108 @@ describe("the lab's worker", () => {
       "plays[0]: no such play",
     );
     expect(wasm.sim_free).toHaveBeenCalledWith(9);
+  });
+
+  it("adds plays to a sim and removes them, and reads it as it stands", async () => {
+    const job = (
+      (await send(1, "sim", { request: "{}", plays: "[]" })).result as {
+        job: number;
+      }
+    ).job;
+    const play = { action: "play", down: false, lane: 7, idx: 7, word: [1] };
+    wasm.sim_add.mockReturnValueOnce(JSON.stringify([{ play, was: "absent" }]));
+    const added = await send(2, "add", { job, plays: JSON.stringify([play]) });
+    expect(wasm.sim_add).toHaveBeenLastCalledWith(9, JSON.stringify([play]));
+    expect(added.result).toEqual([{ play, was: "absent" }]);
+
+    wasm.sim_remove.mockReturnValueOnce(
+      JSON.stringify([{ play, was: "running" }]),
+    );
+    const removed = await send(3, "remove", {
+      job,
+      plays: JSON.stringify([play]),
+    });
+    expect(removed.result).toEqual([{ play, was: "running" }]);
+
+    // a read steps nothing and answers as a step does, saying how the sim
+    // prunes as a step does
+    wasm.sim_step.mockReturnValueOnce(JSON.stringify({ candidates: [] }));
+    await send(4, "read", { job });
+    expect(wasm.sim_step).toHaveBeenCalledWith(
+      9,
+      JSON.stringify({ iterations: 0, ...pruned }),
+    );
+    expect(events()).toEqual([{ job, answer: { candidates: [] }, done: true }]);
+
+    expect((await send(5, "add", { job: job + 1, plays: "[]" })).error).toBe(
+      "no such sim",
+    );
+  });
+
+  it("pauses a sim's candidates and resumes them", async () => {
+    const { job } = (await send(1, "sim", { request: "{}", plays: "[]" }))
+      .result as { job: number };
+    const plays = JSON.stringify([{ action: "exchange", tiles: [] }]);
+    await send(2, "pause", { job, plays });
+    expect(wasm.sim_pause).toHaveBeenCalledWith(9, plays);
+    await send(3, "resume", { job, plays });
+    expect(wasm.sim_resume).toHaveBeenCalledWith(9, plays);
+  });
+
+  it("rolls one candidate out while the others are paused, and is done once none runs", async () => {
+    wasm.sim_step
+      .mockReturnValueOnce(simAnswer("running", "paused", "pruned"))
+      .mockReturnValueOnce(simAnswer("paused", "paused", "pruned"));
+    const { job } = (await send(1, "sim", { request: "{}", plays: "[]" }))
+      .result as { job: number };
+    await send(2, "run", { job, ms: 10 });
+    await vi.waitFor(() => expect(events().some((e) => e.done)).toBe(true));
+    expect(events().map((e) => e.done)).toEqual([false, true]);
+  });
+
+  it("prunes none when told, rolling out while any candidate runs", async () => {
+    wasm.sim_step
+      .mockReturnValueOnce(simAnswer("running", "pruned", "pruned"))
+      .mockReturnValueOnce(simAnswer("paused", "pruned", "pruned"));
+    const { job } = (await send(1, "sim", { request: "{}", plays: "[]" }))
+      .result as { job: number };
+    await send(2, "run", { job, ms: 10, prune: false });
+    await vi.waitFor(() => expect(events().some((e) => e.done)).toBe(true));
+    expect(events().map((e) => e.done)).toEqual([false, true]);
+    expect(wasm.sim_step).toHaveBeenCalledWith(
+      9,
+      JSON.stringify({ ms: 10, prune: false }),
+    );
+    // and a read of it says so too
+    wasm.sim_step.mockReturnValueOnce(JSON.stringify({ candidates: [] }));
+    await send(3, "read", { job });
+    expect(wasm.sim_step).toHaveBeenLastCalledWith(
+      9,
+      JSON.stringify({ iterations: 0, prune: false }),
+    );
+  });
+
+  it("analyzes a position, keeping the job held while its tables stay", async () => {
+    const files = [
+      { cacheKey: "kwg/CSW24", path: "/wasm/2024/CSW24.kwg" },
+      { cacheKey: "klv/CSW24", path: "/wasm/2024/CSW24.klv2" },
+    ];
+    await send(1, "prepare", { files });
+    const { job } = (await send(2, "sim", { request: "{}", plays: "[]" }))
+      .result as { job: number };
+    await send(3, "prepare", { files });
+    expect(wasm.sim_free).not.toHaveBeenCalled();
+
+    const plays = [{ action: "exchange", tiles: [], equity: 1 }];
+    wasm.analyze.mockReturnValueOnce(JSON.stringify(plays));
+    const top = await send(4, "analyze", { request: '{"count":1}' });
+    expect(wasm.analyze).toHaveBeenCalledWith('{"count":1}');
+    expect(top.result).toEqual(plays);
+
+    // tables dropped take the job with them
+    await send(5, "prepare", { files: files.slice(0, 1) });
+    expect(wasm.sim_free).toHaveBeenCalledWith(9);
+    expect(events()).toEqual([{ job, freed: true }]);
   });
 
   it("stops stepping when told", async () => {

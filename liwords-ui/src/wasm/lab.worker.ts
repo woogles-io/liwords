@@ -17,12 +17,28 @@ type Wolges = Awaited<typeof wolgesPromise>;
 type LabFile = { cacheKey: string; path: string };
 export type LabRequest =
   | { op: "prepare"; args: { files: Array<LabFile> } }
+  // the position's plays, best first, as many as the request's count asks
+  | { op: "analyze"; args: { request: string } }
   | { op: "sim"; args: { request: string; plays: string } }
-  // the job stepped ms at a time until it is done or stopped
-  | { op: "run"; args: { job: number; ms: number } }
+  // plays joining a sim, or leaving it; each answers as the sim holds it
+  | { op: "add"; args: { job: number; plays: string } }
+  | { op: "remove"; args: { job: number; plays: string } }
+  // candidates held out of a sim's rollouts, keeping theirs, or let back in
+  | { op: "pause"; args: { job: number; plays: string } }
+  | { op: "resume"; args: { job: number; plays: string } }
+  // the job's answer as it stands, sent as a step's is, without stepping
+  | { op: "read"; args: { job: number } }
+  // the job stepped ms at a time until it is done or stopped; a sim told
+  // prune false prunes none of its candidates
+  | { op: "run"; args: { job: number; ms: number; prune?: boolean } }
   | { op: "stop" }
   | { op: "free"; args: { job: number } };
-type Job = { id: number; handle: number };
+type Job = {
+  id: number;
+  handle: number;
+  // false when the sim's last run said to prune none of its candidates
+  prune?: boolean;
+};
 type Answer = { candidates?: Array<{ state: string }> };
 
 // How a sim prunes its candidates, told to it at every step: wolges's own
@@ -33,12 +49,15 @@ type Answer = { candidates?: Array<{ state: string }> };
 const PRUNE_EVERY = 16;
 const PRUNE_Z = 3.153563157004781;
 const PRUNE_DECIDED = 0.001;
-const pruning = {
-  prune: true,
-  prune_every: PRUNE_EVERY,
-  prune_z: PRUNE_Z,
-  prune_decided: PRUNE_DECIDED,
-};
+const pruning = (prune: boolean) =>
+  prune
+    ? {
+        prune,
+        prune_every: PRUNE_EVERY,
+        prune_z: PRUNE_Z,
+        prune_decided: PRUNE_DECIDED,
+      }
+    : { prune };
 
 const post = (message: unknown) =>
   (self as unknown as Worker).postMessage(message);
@@ -73,18 +92,24 @@ const freeJob = (wolges: Wolges) => {
   job = null;
 };
 
-// Nothing left to do: a sim with fewer than two candidates it has not pruned,
+// Nothing left to do: a sim with no candidate running, or, unless it prunes
+// none, with fewer than two candidates it has not pruned (running or paused),
 // nothing left to tell apart.
-const isDone = (answer: Answer) =>
-  (answer.candidates ?? []).filter((c) => c.state !== "pruned").length < 2;
+const isDone = (j: Job, answer: Answer) => {
+  const states = (answer.candidates ?? []).map((c) => c.state);
+  return (
+    !states.includes("running") ||
+    (j.prune !== false && states.filter((s) => s !== "pruned").length < 2)
+  );
+};
 
 const step = async (j: Job, chain: number, ms: number) => {
   if (!running || job !== j || chain !== chainId) return;
   const wolges = await wolgesPromise;
   try {
-    const request = JSON.stringify({ ms, ...pruning });
+    const request = JSON.stringify({ ms, ...pruning(j.prune !== false) });
     const answer: Answer = JSON.parse(wolges.sim_step(j.handle, request));
-    const done = isDone(answer);
+    const done = isDone(j, answer);
     if (done) running = false;
     post({ event: { job: j.id, answer, done } });
     if (done) return;
@@ -97,12 +122,13 @@ const step = async (j: Job, chain: number, ms: number) => {
 };
 
 // Load the files a job needs, after dropping the ones it does not: one
-// lexicon's tables at a time, as on the page.
+// lexicon's tables at a time, as on the page. The job held goes first when
+// any are dropped, and stays when none are.
 const prepare = async (wolges: Wolges, files: Array<LabFile>) => {
-  freeJob(wolges);
   const wanted = new Set(files.map((f) => f.cacheKey));
-  for (const cacheKey of [...loaded]) {
-    if (wanted.has(cacheKey)) continue;
+  const unwanted = [...loaded].filter((cacheKey) => !wanted.has(cacheKey));
+  if (unwanted.length) freeJob(wolges);
+  for (const cacheKey of unwanted) {
     if (cacheKey.startsWith("klv/")) wolges.evict_klv(nameOf(cacheKey));
     else wolges.evict_kwg(nameOf(cacheKey));
     loaded.delete(cacheKey);
@@ -130,6 +156,8 @@ const handle = async (req: LabRequest): Promise<unknown> => {
     case "prepare":
       await prepare(wolges, req.args.files);
       return undefined;
+    case "analyze":
+      return JSON.parse(wolges.analyze(req.args.request));
     case "sim": {
       freeJob(wolges);
       const handle = wolges.sim_new(req.args.request);
@@ -144,10 +172,35 @@ const handle = async (req: LabRequest): Promise<unknown> => {
       job = { id: ++lastJobId, handle };
       return { job: job.id, added };
     }
+    case "add":
+    case "remove":
+    case "pause":
+    case "resume": {
+      if (!job || job.id !== req.args.job) throw new Error("no such sim");
+      const change = {
+        add: wolges.sim_add,
+        remove: wolges.sim_remove,
+        pause: wolges.sim_pause,
+        resume: wolges.sim_resume,
+      }[req.op];
+      return JSON.parse(change(job.handle, req.args.plays));
+    }
+    case "read": {
+      if (!job || job.id !== req.args.job) throw new Error("no such job");
+      const answer: Answer = JSON.parse(
+        wolges.sim_step(
+          job.handle,
+          JSON.stringify({ iterations: 0, ...pruning(job.prune !== false) }),
+        ),
+      );
+      post({ event: { job: job.id, answer, done: isDone(job, answer) } });
+      return undefined;
+    }
     case "run": {
       if (!job || job.id !== req.args.job) throw new Error("no such job");
       running = true;
       const j = job;
+      j.prune = req.args.prune;
       const chain = ++chainId;
       const { ms } = req.args;
       later(() => step(j, chain, ms));
