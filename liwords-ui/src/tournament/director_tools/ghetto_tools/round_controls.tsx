@@ -33,9 +33,17 @@ import {
 } from "../../../utils/hooks/connect";
 import { DisplayedGameSetting, SettingsForm } from "../game_settings_form";
 import { HelptipLabel } from "../helptip_label";
-import { RoundSetting, settingsEqual } from "../pairing_methods";
+import {
+  RoundSetting,
+  seedOrderWhenPicked,
+  settingsEqual,
+} from "../pairing_methods";
 import { DivisionSelector, showError } from "./shared";
-import { RoundControlFields, rdCtrlFromSetting } from "./round_control_fields";
+import {
+  RoundControlFields,
+  rdCtrlFromSetting,
+  settingFromRdCtrl,
+} from "./round_control_fields";
 import { SingleRoundControlFields } from "./round_control_fields";
 import { Modal } from "../../../utils/focus_modal";
 import {
@@ -512,7 +520,12 @@ const SetSingleRoundControls = (props: { tournamentID: string }) => {
               | string[],
           ) => {
             const val = { ...roundSetting, [fieldName]: value };
-            setRoundSetting(create(RoundControlSchema, val));
+            setRoundSetting(
+              seedOrderWhenPicked(
+                roundSetting,
+                create(RoundControlSchema, val),
+              ),
+            );
           }}
           totalRounds={
             division
@@ -548,31 +561,7 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
       let min = 1;
       let max = 1;
       roundControls.forEach((v: RoundControl, rd: number) => {
-        const thisSetting = create(RoundControlSchema, {
-          pairingMethod: v.pairingMethod,
-          gamesPerRound: v.gamesPerRound,
-          factor: v.factor,
-          maxRepeats: v.maxRepeats,
-          allowOverMaxRepeats: v.allowOverMaxRepeats,
-          repeatRelativeWeight: v.repeatRelativeWeight,
-          winDifferenceRelativeWeight: v.winDifferenceRelativeWeight,
-          // Australian Draw-specific field. The proto stores reset_round
-          // 0-based; the editor's Reset Round field is a 1-based round number,
-          // so convert proto -> editor with +1 (rdCtrlFromSetting does the -1
-          // on the way back).
-          resetRound: v.resetRound + 1,
-          // Pairing lag applies to every method, so it is part of what makes
-          // two rounds' settings equal.
-          pairingLag: v.pairingLag,
-          // COP-specific fields
-          gibsonSpreads: v.gibsonSpreads,
-          hopefulnessThresholds: v.hopefulnessThresholds,
-          placePrizes: v.placePrizes,
-          controlLossActivationRound: v.controlLossActivationRound,
-          divisionSims: v.divisionSims,
-          controlLossSims: v.controlLossSims,
-          controlLossThreshold: v.controlLossThreshold,
-        });
+        const thisSetting = settingFromRdCtrl(v);
         if (lastSetting !== null) {
           if (settingsEqual(lastSetting, thisSetting)) {
             max = rd + 1;
@@ -760,10 +749,13 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
               } else {
                 newRdArray[idx] = {
                   ...newRdArray[idx],
-                  setting: create(RoundControlSchema, {
-                    ...newRdArray[idx].setting,
-                    [fieldName]: value,
-                  }),
+                  setting: seedOrderWhenPicked(
+                    newRdArray[idx].setting,
+                    create(RoundControlSchema, {
+                      ...newRdArray[idx].setting,
+                      [fieldName]: value,
+                    }),
+                  ),
                 };
               }
               setRoundArray(newRdArray);

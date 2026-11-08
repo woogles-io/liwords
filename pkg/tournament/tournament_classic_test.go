@@ -1784,8 +1784,9 @@ var roundRobinLayouts = []string{"RRRRRRRRRR", "xxxRRRRRRRRRR", "RRRxRRRRRRR"}
 
 // roundRobinDivision is a division of six, seeded A to F, whose rounds are
 // laid out as layout says, the round robin rounds playing each opponent two
-// rounds in a row. It also returns the round robin's rounds.
-func roundRobinDivision(is *is.I, layout string) (*ClassicDivision, []int) {
+// rounds in a row, in seed order or not. It also returns the round robin's
+// rounds.
+func roundRobinDivision(is *is.I, layout string, seedOrder bool) (*ClassicDivision, []int) {
 	players := makeTournamentPersons(map[string]int32{"A": 2000, "B": 1900, "C": 1800, "D": 1700, "E": 1600, "F": 1500})
 	roundControls := defaultRoundControls(len(layout))
 	rrRounds := []int{}
@@ -1793,6 +1794,7 @@ func roundRobinDivision(is *is.I, layout string) (*ClassicDivision, []int) {
 		if kind == 'R' {
 			roundControls[round].PairingMethod = pb.PairingMethod_ROUND_ROBIN
 			roundControls[round].GamesPerRound = 2
+			roundControls[round].SeedOrder = seedOrder
 			rrRounds = append(rrRounds, round)
 		}
 	}
@@ -1808,7 +1810,7 @@ func roundRobinDivision(is *is.I, layout string) (*ClassicDivision, []int) {
 func TestClassicDivisionRoundRobinRoundsPerOpponent(t *testing.T) {
 	is := is.New(t)
 	for _, layout := range roundRobinLayouts {
-		tc, rrRounds := roundRobinDivision(is, layout)
+		tc, rrRounds := roundRobinDivision(is, layout, false)
 
 		// Each pair, the round robin rounds they meet in, counting only the
 		// round robin's, and who goes first in each.
@@ -1833,6 +1835,55 @@ func TestClassicDivisionRoundRobinRoundsPerOpponent(t *testing.T) {
 			is.Equal(m[1], m[0]+1)
 			is.Equal(m[0]%2, 0)
 			is.True(firsts[pair][0] != firsts[pair][1])
+		}
+	}
+}
+
+// TestClassicDivisionRoundRobinSeedOrder checks a round robin in seed order
+// that plays each opponent two rounds in a row, however its rounds are laid
+// out (roundRobinLayouts): everyone plays the seed order's opponents twice
+// each, ending with seeds 1 and 2, 3 and 4, and 5 and 6, going first once
+// each.
+func TestClassicDivisionRoundRobinSeedOrder(t *testing.T) {
+	is := is.New(t)
+	// Each seed's opponents in a single round robin.
+	order := [][]int32{
+		{5, 4, 6, 3, 2},
+		{3, 5, 4, 6, 1},
+		{2, 6, 5, 1, 4},
+		{6, 1, 2, 5, 3},
+		{1, 2, 3, 4, 6},
+		{4, 3, 1, 2, 5},
+	}
+	for _, layout := range roundRobinLayouts {
+		tc, rrRounds := roundRobinDivision(is, layout, true)
+		firsts := map[[2]int32]int{}
+		for i, round := range rrRounds {
+			for p := range tc.Players.Persons {
+				pairing := tc.PairingMap[tc.Matrix[round][p]]
+				is.True(pairing != nil)
+				opponent := pairing.Players[0]
+				if opponent == int32(p) {
+					opponent = pairing.Players[1]
+				}
+				is.Equal(opponent+1, order[p][i/2])
+				if pairing.Players[0] == int32(p) {
+					firsts[[2]int32{min(int32(p), opponent), max(int32(p), opponent)}]++
+				}
+			}
+		}
+		is.Equal(len(firsts), 15)
+		for _, n := range firsts {
+			is.Equal(n, 2)
+		}
+		for p := range tc.Players.Persons {
+			n := 0
+			for _, round := range rrRounds {
+				if tc.PairingMap[tc.Matrix[round][p]].Players[0] == int32(p) {
+					n++
+				}
+			}
+			is.Equal(n, 5)
 		}
 	}
 }
