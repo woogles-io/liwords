@@ -1315,6 +1315,11 @@ func (s *DBStore) Set(ctx context.Context, g *entity.Game) error {
 
 	g.LastUpdatedAt = time.UnixMilli(g.TimerModule().Now())
 
+	writeOngoing := false
+	if cfg, cfgErr := config.Ctx(ctx); cfgErr == nil && cfg.WriteOngoingGames {
+		writeOngoing = true
+	}
+
 	pending := g.PendingTurns()
 	params := models.UpdateGameParams{
 		UpdatedAt:        pgtype.Timestamptz{Time: g.LastUpdatedAt, Valid: true},
@@ -1375,7 +1380,16 @@ func (s *DBStore) Set(ctx context.Context, g *entity.Game) error {
 				return fmt.Errorf("appending %d turns from %d: %w", len(raw), pending[0].Idx, err)
 			}
 		}
-		return q.UpdateGame(ctx, params)
+		if err := q.UpdateGame(ctx, params); err != nil {
+			return err
+		}
+		// In the same transaction, so the listings can never name a game whose
+		// row says something else. Nothing reads ongoing_games yet -- this
+		// populates it so it can be checked before anything does.
+		if writeOngoing {
+			return syncOngoingGame(ctx, q, g)
+		}
+		return nil
 	}); err != nil {
 		return err
 	}
@@ -1580,7 +1594,7 @@ func (s *DBStore) Create(ctx context.Context, g *entity.Game) error {
 		leagueDivisionID = pgtype.UUID{Bytes: *g.LeagueDivisionID, Valid: true}
 	}
 
-	return s.queries.CreateGame(ctx, models.CreateGameParams{
+	params := models.CreateGameParams{
 		CreatedAt:        pgtype.Timestamptz{Time: g.CreatedAt, Valid: true},
 		UpdatedAt:        pgtype.Timestamptz{Time: g.CreatedAt, Valid: true},
 		Uuid:             common.ToPGTypeText(g.GameID()),
@@ -1605,6 +1619,21 @@ func (s *DBStore) Create(ctx context.Context, g *entity.Game) error {
 		SeasonID:         seasonID,
 		LeagueDivisionID: leagueDivisionID,
 		LastKnownRacks:   g.History().LastKnownRacks,
+	}
+
+	if cfg, cfgErr := config.Ctx(ctx); cfgErr != nil || !cfg.WriteOngoingGames {
+		return s.queries.CreateGame(ctx, params)
+	}
+	// A game is ongoing from the moment it exists, not from its first save:
+	// that is StartGame, after both players have readied, so a game waiting
+	// for its players -- or one that never starts and is aborted -- would
+	// otherwise be missing from the listings for its whole life. Same
+	// transaction as the games row, for the same reason as in Set.
+	return withGameTx(ctx, s.dbPool, func(ctx context.Context, q *models.Queries) error {
+		if err := q.CreateGame(ctx, params); err != nil {
+			return err
+		}
+		return syncOngoingGame(ctx, q, g)
 	})
 }
 
@@ -1896,6 +1925,9 @@ func (s *DBStore) ListAllIDs(ctx context.Context) ([]string, error) {
 }
 
 func (s *DBStore) SetReady(ctx context.Context, gid string, pidx int) (int, error) {
+	if cfg, cfgErr := config.Ctx(ctx); cfgErr == nil && cfg.WriteOngoingGames {
+		return s.setReadyWithOngoing(ctx, gid, pidx)
+	}
 	readyFlag, err := s.queries.SetReady(ctx, models.SetReadyParams{
 		PlayerIdx: int32(pidx),
 		Uuid:      common.ToPGTypeText(gid),
@@ -1913,6 +1945,33 @@ func (s *DBStore) SetReady(ctx context.Context, gid string, pidx int) (int, erro
 
 	log.Debug().Int("playerIdx", pidx).Str("gid", gid).Int("readyFlag", int(readyFlag.Int64)).Msg("player-set-ready")
 	return int(readyFlag.Int64), nil
+}
+
+// setReadyWithOngoing is SetReady with the ongoing row kept in step, in one
+// transaction. The caller holds the game's lock (readyForGame does), and so
+// does every save, so the row cannot be created between the two updates and
+// miss the bit.
+func (s *DBStore) setReadyWithOngoing(ctx context.Context, gid string, pidx int) (int, error) {
+	var flag int
+	err := withGameTx(ctx, s.dbPool, func(ctx context.Context, q *models.Queries) error {
+		readyFlag, err := q.SetReady(ctx, models.SetReadyParams{
+			PlayerIdx: int32(pidx),
+			Uuid:      common.ToPGTypeText(gid),
+		})
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil // no such game, or this player was already ready
+		}
+		if err != nil {
+			return err
+		}
+		flag = int(readyFlag.Int64)
+		return setOngoingReady(ctx, q, gid, pidx)
+	})
+	if err != nil {
+		log.Err(err).Int("playerIdx", pidx).Str("gid", gid).Msg("setting-ready")
+		return 0, err
+	}
+	return flag, nil
 }
 
 func (s *DBStore) Disconnect() {
