@@ -70,6 +70,7 @@ func ValidateLetterDistribution(lexicon, letterDistribution string) error {
 var superLetterDistributions = map[string]string{
 	"english": "english_super",
 	"catalan": "catalan_super",
+	"german":  "german_super",
 }
 
 // SuperLetterDistribution returns the set the super variants play with in
