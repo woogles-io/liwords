@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/matryer/is"
 
@@ -219,4 +220,83 @@ func TestRefreshOrganizationTitles(t *testing.T) {
 		is.Equal(title, "Grandmaster")
 		is.Equal(org, "sg")
 	}
+}
+
+func setProfileTitle(t *testing.T, q *models.Queries, userUUID, title, org string) {
+	err := q.UpdateProfileTitle(context.Background(), models.UpdateProfileTitleParams{
+		UserUuid:          userUUID,
+		Title:             pgtype.Text{String: title, Valid: true},
+		TitleOrganization: pgtype.Text{String: org, Valid: true},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestRepickProfileTitles(t *testing.T) {
+	is := is.New(t)
+	ctx := context.Background()
+	pool, q := recreateDB(t)
+
+	// a NASPA SM and a WESPA M tie, and the old pick showed NASPA's
+	link(t, q, "stays", organizations.OrgNASPA, organizations.OrganizationIntegrationData{
+		MemberID: "AA000083", FullName: "Sarah Stays", RawTitle: "SM", Verified: true})
+	link(t, q, "stays", organizations.OrgWESPA, organizations.OrganizationIntegrationData{
+		MemberID: "123", FullName: "Sarah Stays", RawTitle: "M", Verified: true})
+	setProfileTitle(t, q, "stays", "NASPA Master", "naspa")
+	// one organization, with a stale pick: picked again too
+	link(t, q, "other", organizations.OrgWESPA, organizations.OrganizationIntegrationData{
+		MemberID: "456", FullName: "Otto Other", RawTitle: "M", Verified: true})
+	setProfileTitle(t, q, "other", "Expert", "naspa")
+	// patreon only, which is not an organization: left alone
+	link(t, q, "promoted", "patreon", organizations.OrganizationIntegrationData{RawTitle: "GM", Verified: true})
+	setProfileTitle(t, q, "promoted", "Expert", "naspa")
+
+	is.NoErr(RepickProfileTitles(ctx, q))
+
+	title, org := profileTitle(t, pool, "stays")
+	is.Equal(title, "Master")
+	is.Equal(org, "wespa")
+	title, org = profileTitle(t, pool, "other")
+	is.Equal(title, "Master")
+	is.Equal(org, "wespa")
+	title, org = profileTitle(t, pool, "promoted")
+	is.Equal(title, "Expert")
+	is.Equal(org, "naspa")
+
+	// picked again with nothing changed: no row is written (same xmin)
+	rowVersion := func(userUUID string) string {
+		var xmin string
+		err := pool.QueryRow(ctx,
+			`SELECT xmin::text FROM profiles WHERE user_id = (SELECT id FROM users WHERE uuid = $1)`,
+			userUUID).Scan(&xmin)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return xmin
+	}
+	before := []string{rowVersion("stays"), rowVersion("other")}
+	is.NoErr(RepickProfileTitles(ctx, q))
+	is.Equal([]string{rowVersion("stays"), rowVersion("other")}, before)
+}
+
+func TestOrganizationIntegrationsInTieOrder(t *testing.T) {
+	is := is.New(t)
+	ctx := context.Background()
+	_, q := recreateDB(t)
+
+	for _, org := range []organizations.OrganizationCode{
+		organizations.OrgABSP, organizations.OrgSG, organizations.OrgNASPA, organizations.OrgWESPA,
+	} {
+		link(t, q, "stays", org, organizations.OrganizationIntegrationData{MemberID: "1", Verified: true})
+	}
+
+	s := &OrganizationService{queries: q}
+	integs, err := s.organizationIntegrations(ctx, "stays")
+	is.NoErr(err)
+	var names []string
+	for _, integ := range integs {
+		names = append(names, integ.IntegrationName)
+	}
+	is.Equal(names, []string{"wespa", "naspa", "sg", "absp"})
 }

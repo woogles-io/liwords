@@ -149,11 +149,40 @@ func (q *Queries) GetUsersWithExpiredTitles(ctx context.Context, organizationCod
 	return items, nil
 }
 
+const getUsersWithOrganizations = `-- name: GetUsersWithOrganizations :many
+SELECT DISTINCT users.uuid as user_uuid
+FROM integrations
+JOIN users ON users.id = integrations.user_id
+WHERE integration_name = ANY($1::text[])
+`
+
+func (q *Queries) GetUsersWithOrganizations(ctx context.Context, organizationCodes []string) ([]string, error) {
+	rows, err := q.db.Query(ctx, getUsersWithOrganizations, organizationCodes)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var user_uuid string
+		if err := rows.Scan(&user_uuid); err != nil {
+			return nil, err
+		}
+		items = append(items, user_uuid)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateProfileTitle = `-- name: UpdateProfileTitle :exec
 UPDATE profiles
 SET title = $1,
     title_organization = $2
 WHERE user_id = (SELECT id FROM users WHERE uuid = $3)
+AND (title IS DISTINCT FROM $1
+     OR title_organization IS DISTINCT FROM $2)
 `
 
 type UpdateProfileTitleParams struct {
@@ -162,6 +191,7 @@ type UpdateProfileTitleParams struct {
 	UserUuid          string
 }
 
+// A title that is already the one picked is not written again.
 func (q *Queries) UpdateProfileTitle(ctx context.Context, arg UpdateProfileTitleParams) error {
 	_, err := q.db.Exec(ctx, updateProfileTitle, arg.Title, arg.TitleOrganization, arg.UserUuid)
 	return err

@@ -87,6 +87,10 @@ type OrganizationMetadata struct {
 	HasAPI               bool
 	RequiresAuth         bool
 	RequiresVerification bool
+	// TiePriority decides between equal title ranks from different
+	// organizations: the higher one shows. Each organization needs its own
+	// nonzero value.
+	TiePriority int
 }
 
 // OrganizationRegistry contains metadata for all supported organizations
@@ -97,6 +101,7 @@ var OrganizationRegistry = map[OrganizationCode]OrganizationMetadata{
 		HasAPI:               true,
 		RequiresAuth:         true,
 		RequiresVerification: false,
+		TiePriority:          3,
 	},
 	OrgWESPA: {
 		Code:                 OrgWESPA,
@@ -104,6 +109,7 @@ var OrganizationRegistry = map[OrganizationCode]OrganizationMetadata{
 		HasAPI:               true, // Uses the WESPA player API for name + title (no auth required)
 		RequiresAuth:         false,
 		RequiresVerification: true,
+		TiePriority:          4,
 	},
 	OrgABSP: {
 		Code:                 OrgABSP,
@@ -111,6 +117,7 @@ var OrganizationRegistry = map[OrganizationCode]OrganizationMetadata{
 		HasAPI:               true,
 		RequiresAuth:         true, // Uses login to absp-database.org
 		RequiresVerification: false,
+		TiePriority:          1,
 	},
 	OrgSG: {
 		Code:                 OrgSG,
@@ -118,6 +125,7 @@ var OrganizationRegistry = map[OrganizationCode]OrganizationMetadata{
 		HasAPI:               true, // Its public titles list gives name + title (no auth required)
 		RequiresAuth:         false,
 		RequiresVerification: true,
+		TiePriority:          2,
 	},
 }
 

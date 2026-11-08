@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"sort"
 	"time"
 
 	"connectrpc.com/connect"
@@ -1003,12 +1004,21 @@ func (s *OrganizationService) refreshTitlesForUser(ctx context.Context, userUUID
 
 // organizationIntegrations returns a user's links to the organizations in
 // organizations.OrganizationRegistry, leaving out the other integrations
-// kept in the same table
+// kept in the same table, in the tie order
 func (s *OrganizationService) organizationIntegrations(ctx context.Context, userUUID string) ([]models.GetOrganizationIntegrationsRow, error) {
-	return s.queries.GetOrganizationIntegrations(ctx, models.GetOrganizationIntegrationsParams{
+	integrations, err := s.queries.GetOrganizationIntegrations(ctx, models.GetOrganizationIntegrationsParams{
 		UserUuid:          userUUID,
 		OrganizationCodes: organizations.SupportedOrganizationCodes(),
 	})
+	if err != nil {
+		return nil, err
+	}
+	sort.SliceStable(integrations, func(i, j int) bool {
+		return organizations.InTieOrder(
+			organizations.OrganizationCode(integrations[i].IntegrationName),
+			organizations.OrganizationCode(integrations[j].IntegrationName))
+	})
+	return integrations, nil
 }
 
 // RefreshOrganizationTitles refreshes one organization's title for every
@@ -1084,6 +1094,34 @@ func RefreshOrganizationTitles(ctx context.Context, q *models.Queries, orgCode o
 	log.Info().Str("org", string(orgCode)).Int("links", len(links)).Int("failed", failed).Msg("organization titles refreshed")
 	if failed > 0 {
 		return fmt.Errorf("%d of %d %s titles were not refreshed", failed, len(links), meta.Name)
+	}
+	return nil
+}
+
+// RepickProfileTitles picks again the title shown by the username of every
+// user linked to an organization, from their stored titles, with nothing
+// fetched. The title is picked only when one is linked or refreshed, so this
+// is how a change to the ranks, the tie order, or a title's name reaches the
+// players it affects without anyone pressing refresh. It is for a scheduled
+// job.
+func RepickProfileTitles(ctx context.Context, q *models.Queries) error {
+	userUUIDs, err := q.GetUsersWithOrganizations(ctx, organizations.SupportedOrganizationCodes())
+	if err != nil {
+		return err
+	}
+
+	s := &OrganizationService{queries: q}
+	failed := 0
+	for _, userUUID := range userUUIDs {
+		if err := s.updateProfileTitle(ctx, userUUID); err != nil {
+			failed++
+			log.Error().Err(err).Str("user_uuid", userUUID).Msg("failed to update profile title")
+		}
+	}
+
+	log.Info().Int("users", len(userUUIDs)).Int("failed", failed).Msg("profile titles picked again")
+	if failed > 0 {
+		return fmt.Errorf("%d of %d profile titles were not picked again", failed, len(userUUIDs))
 	}
 	return nil
 }
