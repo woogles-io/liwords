@@ -568,6 +568,7 @@ export const settingFromRdCtrl = (rdCtrl: RoundControl): RoundControl =>
     // two rounds' settings equal.
     pairingLag: rdCtrl.pairingLag,
     playWithinTeam: rdCtrl.playWithinTeam,
+    seedOrder: rdCtrl.seedOrder,
     // COP-specific fields
     gibsonSpreads: rdCtrl.gibsonSpreads,
     hopefulnessThresholds: rdCtrl.hopefulnessThresholds,
@@ -658,6 +659,10 @@ export const rdCtrlFromSetting = (
       break;
 
     case PairingMethod.ROUND_ROBIN:
+      rdCtrl.gamesPerRound = rdSetting.gamesPerRound || 1;
+      rdCtrl.seedOrder = rdSetting.seedOrder;
+      break;
+
     case PairingMethod.TEAM_ROUND_ROBIN:
     case PairingMethod.ASSIGNED_TEAM_ROUND_ROBIN:
       rdCtrl.gamesPerRound = rdSetting.gamesPerRound || 1;

@@ -25,6 +25,7 @@ const setting = (fields: {
   resetRound?: number;
   playWithinTeam?: boolean;
   gamesPerRound?: number;
+  seedOrder?: boolean;
 }) =>
   create(RoundControlSchema, {
     pairingMethod: PairingMethod.KING_OF_THE_HILL,
@@ -38,9 +39,9 @@ describe("rounds per opponent", () => {
       PairingMethod.TEAM_ROUND_ROBIN,
       PairingMethod.ASSIGNED_TEAM_ROUND_ROBIN,
     ]) {
-      expect(fieldsForMethod(pairingMethod).map((f) => f[1])).toEqual([
+      expect(fieldsForMethod(pairingMethod).map((f) => f[1])).toContain(
         "gamesPerRound",
-      ]);
+      );
       expect(
         rdCtrlFromSetting(setting({ pairingMethod, gamesPerRound: 2 }), 10, 1)
           .gamesPerRound,
@@ -62,6 +63,55 @@ describe("rounds per opponent", () => {
         1,
       ).gamesPerRound,
     ).toBe(1);
+  });
+});
+
+describe("seed order", () => {
+  it("is offered and kept for the round robin only", () => {
+    expect(fieldsForMethod(PairingMethod.ROUND_ROBIN).map((f) => f[1])).toEqual(
+      ["gamesPerRound", "seedOrder"],
+    );
+    expect(
+      rdCtrlFromSetting(
+        setting({ pairingMethod: PairingMethod.ROUND_ROBIN, seedOrder: true }),
+        10,
+        1,
+      ).seedOrder,
+    ).toBe(true);
+    for (const pairingMethod of [
+      PairingMethod.TEAM_ROUND_ROBIN,
+      PairingMethod.ASSIGNED_TEAM_ROUND_ROBIN,
+      PairingMethod.KING_OF_THE_HILL,
+    ]) {
+      expect(fieldsForMethod(pairingMethod).map((f) => f[1])).not.toContain(
+        "seedOrder",
+      );
+      expect(
+        rdCtrlFromSetting(setting({ pairingMethod, seedOrder: true }), 10, 1)
+          .seedOrder,
+      ).toBe(false);
+    }
+  });
+
+  it("is shown as saved, and keeps round ranges apart", () => {
+    const saved = rdCtrlFromSetting(
+      setting({ pairingMethod: PairingMethod.ROUND_ROBIN, seedOrder: true }),
+      10,
+      1,
+    );
+    expect(settingFromRdCtrl(saved).seedOrder).toBe(true);
+    expect(
+      settingsEqual(
+        settingFromRdCtrl(saved),
+        settingFromRdCtrl(
+          rdCtrlFromSetting(
+            setting({ pairingMethod: PairingMethod.ROUND_ROBIN }),
+            10,
+            1,
+          ),
+        ),
+      ),
+    ).toBe(false);
   });
 });
 

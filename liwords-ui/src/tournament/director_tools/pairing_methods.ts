@@ -35,7 +35,8 @@ export const settingsEqual = (s1: RoundControl, s2: RoundControl): boolean => {
     s1.winDifferenceRelativeWeight === s2.winDifferenceRelativeWeight &&
     s1.resetRound === s2.resetRound &&
     s1.pairingLag === s2.pairingLag &&
-    s1.playWithinTeam === s2.playWithinTeam //&&
+    s1.playWithinTeam === s2.playWithinTeam &&
+    s1.seedOrder === s2.seedOrder //&&
     //    s1.controlLossActivationRound === s2.controlLossActivationRound &&
     //    s1.controlLossSims === s2.controlLossSims &&
     //    s1.controlLossThreshold === s2.controlLossThreshold &&
@@ -55,6 +56,14 @@ export type PairingMethodField = [
   string,
   string,
   number?,
+];
+
+const roundsPerOpponentField: PairingMethodField = [
+  "number",
+  "gamesPerRound",
+  "Rounds per opponent",
+  "How many rounds in a row each player plays the same opponent. With 2, everyone plays each opponent twice, back to back, going first once each.",
+  1,
 ];
 
 export const fieldsForMethod = (
@@ -100,14 +109,17 @@ export const fieldsForMethod = (
       break;
 
     case PairingMethod.ROUND_ROBIN:
+      fields.push(roundsPerOpponentField, [
+        "boolean",
+        "seedOrder",
+        "Seed order",
+        "Keep the players in seed order instead of shuffling them, so that the last round of each round robin pairs seeds 1 and 2, 3 and 4, and so on.",
+      ]);
+      break;
+
     case PairingMethod.TEAM_ROUND_ROBIN:
     case PairingMethod.ASSIGNED_TEAM_ROUND_ROBIN:
-      fields.push([
-        "number",
-        "gamesPerRound",
-        "Rounds per opponent",
-        "How many rounds in a row each player plays the same opponent. With 2, everyone plays each opponent twice, back to back, going first once each.",
-      ]);
+      fields.push(roundsPerOpponentField);
       break;
 
     case PairingMethod.INTERLEAVED_ROUND_ROBIN:
