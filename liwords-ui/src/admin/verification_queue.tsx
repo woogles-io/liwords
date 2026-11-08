@@ -30,6 +30,7 @@ const organizationNames: Record<string, string> = {
   naspa: "NASPA",
   wespa: "WESPA",
   absp: "ABSP",
+  sg: "Singapore Scrabble Association",
 };
 
 export const VerificationQueue = () => {

@@ -227,6 +227,14 @@ const organizationInfo = {
     requiresCredentials: true,
     requiresVerification: false,
   },
+  sg: {
+    name: "Singapore Scrabble Association",
+    fullName: "Singapore Scrabble Association",
+    description:
+      "The Singapore Scrabble Association lists the titles of its current members. Connection requires identity verification with a photo ID.",
+    requiresCredentials: false,
+    requiresVerification: true,
+  },
 };
 
 export const Integrations = () => {
@@ -622,6 +630,11 @@ export const Integrations = () => {
           // Hide ABSP from user-facing connection options (potential deprecation)
           // Admins can still assign ABSP memberships via the admin panel
           if (code === "absp") {
+            return null;
+          }
+
+          // Admins assign SG memberships, via the admin panel, for now
+          if (code === "sg") {
             return null;
           }
 

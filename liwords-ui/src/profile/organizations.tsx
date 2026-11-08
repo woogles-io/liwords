@@ -16,14 +16,17 @@ const organizationNames: Record<string, string> = {
   naspa: "NASPA",
   wespa: "WESPA",
   absp: "ABSP",
+  sg: "Singapore Scrabble Association",
 };
 
 // Title colors based on abbreviation
 // Colors: gold (grandmaster), purple (international master), blue (master), green (expert)
+// National master (SG) is purple too
 const getTitleColor = (abbreviation: string): string => {
   const colors: Record<string, string> = {
     GM: "gold",
     IM: "purple",
+    NM: "purple",
     SM: "blue",
     M: "blue",
     EX: "green",

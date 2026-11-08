@@ -13,13 +13,14 @@ import (
 )
 
 const getAllUsersWithOrganization = `-- name: GetAllUsersWithOrganization :many
-SELECT users.uuid as user_uuid, users.username, integrations.integration_name, integrations.data
+SELECT integrations.uuid, users.uuid as user_uuid, users.username, integrations.integration_name, integrations.data
 FROM integrations
 JOIN users ON users.id = integrations.user_id
 WHERE integration_name = $1
 `
 
 type GetAllUsersWithOrganizationRow struct {
+	Uuid            uuid.UUID
 	UserUuid        string
 	Username        string
 	IntegrationName string
@@ -36,6 +37,7 @@ func (q *Queries) GetAllUsersWithOrganization(ctx context.Context, integrationNa
 	for rows.Next() {
 		var i GetAllUsersWithOrganizationRow
 		if err := rows.Scan(
+			&i.Uuid,
 			&i.UserUuid,
 			&i.Username,
 			&i.IntegrationName,
@@ -55,8 +57,13 @@ const getOrganizationIntegrations = `-- name: GetOrganizationIntegrations :many
 SELECT integrations.uuid, integration_name, data, last_updated
 FROM integrations
 WHERE user_id = (SELECT id FROM users WHERE users.uuid = $1)
-AND integration_name IN ('naspa', 'wespa', 'absp')
+AND integration_name = ANY($2::text[])
 `
+
+type GetOrganizationIntegrationsParams struct {
+	UserUuid          string
+	OrganizationCodes []string
+}
 
 type GetOrganizationIntegrationsRow struct {
 	Uuid            uuid.UUID
@@ -65,8 +72,8 @@ type GetOrganizationIntegrationsRow struct {
 	LastUpdated     pgtype.Timestamptz
 }
 
-func (q *Queries) GetOrganizationIntegrations(ctx context.Context, userUuid string) ([]GetOrganizationIntegrationsRow, error) {
-	rows, err := q.db.Query(ctx, getOrganizationIntegrations, userUuid)
+func (q *Queries) GetOrganizationIntegrations(ctx context.Context, arg GetOrganizationIntegrationsParams) ([]GetOrganizationIntegrationsRow, error) {
+	rows, err := q.db.Query(ctx, getOrganizationIntegrations, arg.UserUuid, arg.OrganizationCodes)
 	if err != nil {
 		return nil, err
 	}
@@ -106,7 +113,7 @@ const getUsersWithExpiredTitles = `-- name: GetUsersWithExpiredTitles :many
 SELECT users.uuid as user_uuid, users.username, integrations.integration_name, integrations.data
 FROM integrations
 JOIN users ON users.id = integrations.user_id
-WHERE integration_name IN ('naspa', 'wespa', 'absp')
+WHERE integration_name = ANY($1::text[])
 AND (integrations.data->>'last_fetched')::timestamptz < CURRENT_TIMESTAMP - INTERVAL '30 days'
 `
 
@@ -117,8 +124,8 @@ type GetUsersWithExpiredTitlesRow struct {
 	Data            []byte
 }
 
-func (q *Queries) GetUsersWithExpiredTitles(ctx context.Context) ([]GetUsersWithExpiredTitlesRow, error) {
-	rows, err := q.db.Query(ctx, getUsersWithExpiredTitles)
+func (q *Queries) GetUsersWithExpiredTitles(ctx context.Context, organizationCodes []string) ([]GetUsersWithExpiredTitlesRow, error) {
+	rows, err := q.db.Query(ctx, getUsersWithExpiredTitles, organizationCodes)
 	if err != nil {
 		return nil, err
 	}
