@@ -69,27 +69,47 @@ func TestCanPairAllMatchesTryingEveryPairing(t *testing.T) {
 				r = append(r, p)
 			}
 		}
-		is.Equal(canPairAll(r, allowed), canPairAllByHand(r, allowed))
+		ok, err := canPairAll(r, allowed)
+		is.NoErr(err)
+		is.Equal(ok, canPairAllByHand(r, allowed))
 	}
 }
 
 // TestGuidedSearchFindsTheSameDraw checks that guiding the search changes no
-// draw: guided from the start, after a few plain steps, or never.
+// draw: guided from the start, guided after the first dead end, or never.
 func TestGuidedSearchFindsTheSameDraw(t *testing.T) {
 	is := is.New(t)
 	rng := rand.New(rand.NewPCG(3, 4))
 	for trial := 0; trial < 3000; trial++ {
 		n := 2 * (1 + rng.IntN(8))
 		blocked := randomBlocks(rng, n, 0.7*rng.Float64())
-		wantHalves, okHalves := pairHalvesSteps(n, blocked, -1)
-		wantMatch, okMatch := australianMatchSteps(n, blocked, -1)
-		for _, steps := range []int{0, 1, 3} {
-			got, ok := pairHalvesSteps(n, blocked, steps)
+		wantHalves, okHalves, err := pairHalvesMode(n, blocked, plainOnly)
+		is.NoErr(err)
+		wantMatch, okMatch, err := australianMatchMode(n, blocked, plainOnly)
+		is.NoErr(err)
+		for _, mode := range []searchMode{guidedOnly, plainUntilStuck} {
+			got, ok, err := pairHalvesMode(n, blocked, mode)
+			is.NoErr(err)
 			is.Equal(ok, okHalves)
 			is.Equal(got, wantHalves)
-			got, ok = australianMatchSteps(n, blocked, steps)
+			got, ok, err = australianMatchMode(n, blocked, mode)
+			is.NoErr(err)
 			is.Equal(ok, okMatch)
 			is.Equal(got, wantMatch)
+		}
+	}
+	// Win groups with several groups, so that groups fail and the check on
+	// the players below them runs.
+	rng = rand.New(rand.NewPCG(5, 6))
+	for trial := 0; trial < 3000; trial++ {
+		n, score, blocked := randomField(rng)
+		want, wantOK, err := winGroupsMatchMode(n, score, blocked, plainOnly)
+		is.NoErr(err)
+		for _, mode := range []searchMode{guidedOnly, plainUntilStuck} {
+			got, ok, err := winGroupsMatchMode(n, score, blocked, mode)
+			is.NoErr(err)
+			is.Equal(ok, wantOK)
+			is.Equal(got, want)
 		}
 	}
 }
@@ -104,11 +124,28 @@ func TestBlockedClubsFailAtOnce(t *testing.T) {
 		clubOf[p] = 1
 	}
 	blocked := blockedClubs(clubOf)
-	_, ok := pairHalves(38, blocked)
+	_, ok, err := pairHalves(38, blocked)
+	is.NoErr(err)
 	is.True(!ok)
-	_, ok = australianMatch(38, blocked)
+	_, ok, err = australianMatch(38, blocked)
+	is.NoErr(err)
 	is.True(!ok)
-	_, ok = winGroupsMatch(38, make([]int, 38), blocked)
+	_, ok, err = winGroupsMatch(38, make([]int, 38), blocked)
+	is.NoErr(err)
+	is.True(!ok)
+
+	// The same clubs shuffled down standings split into win groups as after
+	// a few rounds, so that group after group cannot be paired.
+	rng := rand.New(rand.NewPCG(7, 8))
+	rng.Shuffle(len(clubOf), func(a, b int) { clubOf[a], clubOf[b] = clubOf[b], clubOf[a] })
+	score := []int{}
+	for wins, size := range []int{1, 6, 12, 12, 6, 1} {
+		for k := 0; k < size; k++ {
+			score = append(score, 2*(5-wins))
+		}
+	}
+	_, ok, err = winGroupsMatch(38, score, blockedClubs(clubOf))
+	is.NoErr(err)
 	is.True(!ok)
 }
 
@@ -128,7 +165,8 @@ func TestBlockedClubsWithOneWayOut(t *testing.T) {
 	for p := 20; p < 39; p++ {
 		clubOf[p] = 1
 	}
-	got, ok := pairHalves(n, blockedClubs(clubOf))
+	got, ok, err := pairHalves(n, blockedClubs(clubOf))
+	is.NoErr(err)
 	is.True(ok)
 	want := make([]int, n)
 	want[0], want[39] = 39, 0
@@ -144,7 +182,8 @@ func TestBlockedClubsWithOneWayOut(t *testing.T) {
 	for p := 1; p < 20; p++ {
 		clubOf[p] = 1
 	}
-	got, ok = australianMatch(n, blockedClubs(clubOf))
+	got, ok, err = australianMatch(n, blockedClubs(clubOf))
+	is.NoErr(err)
 	is.True(ok)
 	want = make([]int, n)
 	want[0], want[20] = 20, 0

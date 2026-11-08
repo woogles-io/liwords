@@ -99,69 +99,136 @@ func withoutInto(dst, r []int, a, b int) []int {
 	return dst[:m]
 }
 
-// searchSteps is how many steps a plain backtracking search may take before
-// it is run again guided (see searchBudget). Ordinary fields take far fewer.
-// Blocks can make a field take longer than anyone would wait: when no draw
-// exists, the plain search tries every order before it can say so.
-const searchSteps = 1 << 14
+// searchMode says how a backtracking search runs.
+type searchMode int
 
-// searchBudget counts the steps of a plain backtracking search. When they run
-// out the search gives up and is run again guided: an opponent is then taken
-// only when the players left can still all be paired (canPairAll), so the
-// guided search never backs up, fails at once when no draw exists, and
+const (
+	// plainUntilStuck searches plainly until its first dead end and guided
+	// from there on. Draws use it: most never meet a dead end, and blocks
+	// can make one that does take longer than anyone would wait, as a plain
+	// search tries every order before it can say that no draw exists.
+	plainUntilStuck searchMode = iota
+	// guidedOnly guides the search from the start.
+	guidedOnly
+	// plainOnly backs up from every dead end, however long that takes. Only
+	// the tests use it, to check the other two against it.
+	plainOnly
+)
+
+// searchRun tracks one backtracking search. A plain search takes the first
+// allowed opponent in its order and backs up from dead ends. A guided search
+// takes an opponent only when the players left can still all be paired
+// (canPairAll), so it never backs up, fails at once when no draw exists, and
 // otherwise finds the same draw, the first one in the search's order.
-type searchBudget struct {
-	steps  int // steps left; negative for no limit
+//
+// A plainUntilStuck search turns guided where it meets its first dead end,
+// and backs up to the deepest choice whose players can all be paired, going
+// on from there. Each choice made plainly above that one is the first
+// opponent its player may meet, and the players left after it can all be
+// paired, so it is the choice a guided search makes too, and the draw is the
+// same.
+type searchRun struct {
+	mode   searchMode
 	guided bool
-	gaveUp bool
+	// resume is the depth a plainUntilStuck search goes on from once it has
+	// met its first dead end, or -1 when the field has no draw at all.
+	resume int
+	err    error // the matcher failed, or a guided choice could not be completed
 }
 
-// newSearchBudget allows a plain search steps steps: negative for no limit, 0
-// to guide the search from the start.
-func newSearchBudget(steps int) *searchBudget {
-	return &searchBudget{steps: steps, guided: steps == 0}
+func newSearchRun(mode searchMode) *searchRun {
+	return &searchRun{mode: mode, guided: mode == guidedOnly}
 }
 
-// step reports whether the search may take another step, and records that it
-// gave up when it may not. A guided search always may.
-func (s *searchBudget) step() bool {
-	if s.guided || s.steps < 0 {
+// stop reports whether the search must end now.
+func (s *searchRun) stop() bool {
+	return s.err != nil
+}
+
+// backUp is called when the players left after the choice at depth could not
+// be paired; checked says whether the choice was made guided, and level(k)
+// holds the players the choice at depth k was made among, k up to depth. It
+// reports whether the search may try the next opponent at depth. A plain
+// search always may. A plainUntilStuck search turns guided at its first dead
+// end, and may then go on only at the depth it resumes from. A guided choice
+// always completes, so failing one is an error.
+func (s *searchRun) backUp(checked bool, depth int, level func(k int) []int, allowed func(a, b int) bool) bool {
+	switch {
+	case checked:
+		if s.err == nil {
+			s.err = errors.New("a guided pairing search had to back up")
+		}
+		return false
+	case s.mode == plainOnly:
 		return true
 	}
-	if s.steps == 0 {
-		s.gaveUp = true
-		return false
+	if !s.guided {
+		s.guided = true
+		s.resume = s.deepestPairable(depth, level, allowed)
 	}
-	s.steps--
-	return true
+	return depth == s.resume
 }
 
-// run resets pairings and runs search, and runs it again guided if the plain
-// search gave up. It returns what the last run returned.
-func (s *searchBudget) run(pairings []int, search func() bool) bool {
-	for {
-		for i := range pairings {
-			pairings[i] = -1
-		}
-		ok := search()
-		if !s.gaveUp {
-			return ok
-		}
-		s.guided, s.gaveUp = true, false
+// deepestPairable returns the deepest k up to depth whose players level(k)
+// can all be paired, or -1 when not even the whole field can. The players
+// after the choice at depth cannot all be paired. When level(k) can be, so
+// can each level above it, as each choice above it is an allowed pair, so
+// the search asks about the whole field first and then halves the rest.
+func (s *searchRun) deepestPairable(depth int, level func(k int) []int, allowed func(a, b int) bool) int {
+	if !s.pairable(level(0), allowed) {
+		return -1
 	}
+	// level(lo) can all be paired; the players after the choice at hi - 1
+	// cannot.
+	lo, hi := 0, depth+1
+	for hi-lo > 1 {
+		mid := (lo + hi) / 2
+		if s.pairable(level(mid), allowed) {
+			lo = mid
+		} else if s.err != nil {
+			return -1
+		} else {
+			hi = mid
+		}
+	}
+	return lo
+}
+
+// pairable reports whether the positions in r can all be paired off among
+// themselves under allowed, recording the matcher's error if it fails.
+func (s *searchRun) pairable(r []int, allowed func(a, b int) bool) bool {
+	ok, err := canPairAll(r, allowed)
+	if err != nil {
+		s.err = err
+		return false
+	}
+	return ok
+}
+
+// run resets pairings and runs search. It returns what search returned, or
+// the error that ended it.
+func (s *searchRun) run(pairings []int, search func() bool) (bool, error) {
+	for i := range pairings {
+		pairings[i] = -1
+	}
+	ok := search()
+	if s.err != nil {
+		return false, s.err
+	}
+	return ok, nil
 }
 
 // canPairAll reports whether the positions in r can all be paired off among
 // themselves using only the pairs allowed accepts. It asks the blossom matcher
 // the weighted pairing methods use for a largest set of allowed pairs and
 // checks that it leaves no one out.
-func canPairAll(r []int, allowed func(a, b int) bool) bool {
+func canPairAll(r []int, allowed func(a, b int) bool) (bool, error) {
 	k := len(r)
 	if k%2 == 1 {
-		return false
+		return false, nil
 	}
 	if k == 0 {
-		return true
+		return true, nil
 	}
 	edges := []*matching.Edge{}
 	for x := 0; x < k; x++ {
@@ -176,20 +243,22 @@ func canPairAll(r []int, allowed func(a, b int) bool) bool {
 			}
 		}
 		if partners == 0 {
-			return false
+			return false, nil
 		}
 	}
 	mates, _, err := matching.MinWeightMatching(edges, true)
-	if err != nil || len(mates) != k {
-		// The matcher could not answer, so it rules nothing out.
-		return true
+	if err != nil {
+		return false, fmt.Errorf("matching %d players: %w", k, err)
+	}
+	if len(mates) != k {
+		return false, fmt.Errorf("matching %d players gave %d mates", k, len(mates))
 	}
 	for _, m := range mates {
 		if m < 0 {
-			return false
+			return false, nil
 		}
 	}
-	return true
+	return true, nil
 }
 
 // australianMatch pairs the even field of n positions in standings order by
@@ -203,15 +272,16 @@ func canPairAll(r []int, allowed func(a, b int) bool) bool {
 // Unlike round 1's halves it has no top-vs-top concept -- later rounds avoid
 // only repeats, not strong-vs-strong pairings. The caller pads an odd field with
 // a phantom bye, so n is even and each step removes a pair, keeping every
-// recursive r even too. A field that needs more than searchSteps steps is
-// searched again guided (see searchBudget), which finds the same draw.
-func australianMatch(n int, blocked [][]bool) ([]int, bool) {
-	return australianMatchSteps(n, blocked, searchSteps)
+// recursive r even too. A search that meets a dead end goes on guided (see
+// searchRun), which finds the same draw. It returns an error only when the
+// matcher behind the guided search fails.
+func australianMatch(n int, blocked [][]bool) ([]int, bool, error) {
+	return australianMatchMode(n, blocked, plainUntilStuck)
 }
 
-// australianMatchSteps is australianMatch with the plain search allowed steps
-// steps: negative for no limit, 0 to guide the search from the start.
-func australianMatchSteps(n int, blocked [][]bool, steps int) ([]int, bool) {
+// australianMatchMode is australianMatch searching in the given mode.
+func australianMatchMode(n int, blocked [][]bool, mode searchMode) ([]int, bool, error) {
+	search := newSearchRun(mode)
 	pairings := make([]int, n)
 
 	// Per-depth scratch buffers for the remaining-positions list, so the
@@ -223,15 +293,23 @@ func australianMatchSteps(n int, blocked [][]bool, steps int) ([]int, bool) {
 	}
 
 	allowed := func(a, b int) bool { return !blocked[a][b] }
-	budget := newSearchBudget(steps)
+	all := make([]int, n)
+	for i := range all {
+		all[i] = i
+	}
+	// level(k) is the players the choice at depth k is made among, while the
+	// search is that deep.
+	level := func(k int) []int {
+		if k == 0 {
+			return all
+		}
+		return scratch[k-1][:n-2*k]
+	}
 
 	var match func(r []int, depth int) bool
 	match = func(r []int, depth int) bool {
 		if len(r) == 0 {
 			return true
-		}
-		if !budget.step() {
-			return false
 		}
 		p := r[0]
 		for _, q := range r[1:] {
@@ -239,7 +317,11 @@ func australianMatchSteps(n int, blocked [][]bool, steps int) ([]int, bool) {
 				continue
 			}
 			rest := withoutInto(scratch[depth], r, p, q)
-			if budget.guided && !canPairAll(rest, allowed) {
+			checked := search.guided
+			if checked && !search.pairable(rest, allowed) {
+				if search.stop() {
+					return false
+				}
 				continue
 			}
 			pairings[p] = q
@@ -249,23 +331,20 @@ func australianMatchSteps(n int, blocked [][]bool, steps int) ([]int, bool) {
 			}
 			pairings[p] = -1
 			pairings[q] = -1
-			if budget.gaveUp {
+			if !search.backUp(checked, depth, level, allowed) {
 				return false
 			}
 		}
 		return false
 	}
 
-	all := make([]int, n)
-	for i := range all {
-		all[i] = i
+	ok, err := search.run(pairings, func() bool {
+		return (!search.guided || search.pairable(all, allowed)) && match(all, 0)
+	})
+	if err != nil || !ok {
+		return nil, false, err
 	}
-	if !budget.run(pairings, func() bool {
-		return (!budget.guided || canPairAll(all, allowed)) && match(all, 0)
-	}) {
-		return nil, false
-	}
-	return pairings, true
+	return pairings, true, nil
 }
 
 // australianMatchWithReset runs the later-round backtracking matcher with the
@@ -293,8 +372,8 @@ func australianMatchWithReset(
 // matchWithReset is the reset-relaxation retry loop behind
 // australianMatchWithReset, with the matcher passed in so another method can
 // run its own matcher under the same repeat rule. match pairs the even field
-// of n positions given the blocked matrix and reports whether it could; name
-// opens the error message.
+// of n positions given the blocked matrix and reports whether it could, or
+// the error that stopped it; name opens the error message.
 func matchWithReset(
 	name string,
 	n int,
@@ -302,7 +381,7 @@ func matchWithReset(
 	currentRound int,
 	hasPlayedSince func(a, b, reset int) bool,
 	blockedPair func(a, b int) bool,
-	match func(n int, blocked [][]bool) ([]int, bool),
+	match func(n int, blocked [][]bool) ([]int, bool, error),
 ) ([]int, error) {
 	// The director-block half of the block matrix is constant across reset
 	// passes (blockedPair does not depend on reset), so compute it once. Only
@@ -333,7 +412,10 @@ func matchWithReset(
 			}
 		}
 
-		pairings, ok := match(n, blocked)
+		pairings, ok, err := match(n, blocked)
+		if err != nil {
+			return nil, fmt.Errorf("%s could not pair %d players: %w", name, n, err)
+		}
 		if ok {
 			return pairings, nil
 		}
@@ -505,7 +587,11 @@ func pairAustralianDraw(members *entity.UnpairedPoolMembers) ([]int, error) {
 		// nearest legal partners. Repeats never apply in round 1, so the blocked
 		// matrix carries director blocks alone.
 		var ok bool
-		positionPairings, ok = pairHalves(f.m, f.blockMatrix())
+		var err error
+		positionPairings, ok, err = pairHalves(f.m, f.blockMatrix())
+		if err != nil {
+			return nil, fmt.Errorf("australian draw could not pair %d players in the first round: %w", f.m, err)
+		}
 		if !ok {
 			return nil, fmt.Errorf(
 				"australian draw could not pair %d players in the first round under the"+
