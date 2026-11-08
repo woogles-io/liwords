@@ -43,4 +43,9 @@ type UnpairedPoolMembers struct {
 	// It is populated by the caller solely for that method and may be nil.
 	RepeatRounds map[string][]int
 	Seed         uint64
+	// RoundRobinRound is this round's place in its round robin, from 0,
+	// counting only the rounds paired the same way as this one, so that
+	// rounds paired another way in between neither restart the round robin
+	// nor use up its rounds.
+	RoundRobinRound int
 }

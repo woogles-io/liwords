@@ -96,7 +96,9 @@ func pairRandom(members *entity.UnpairedPoolMembers) ([]int, error) {
 }
 
 func pairRoundRobin(members *entity.UnpairedPoolMembers) ([]int, error) {
-	return GetRoundRobinPairings(len(members.PoolMembers), int(members.RoundControls.Round), members.Seed)
+	round, _ := RoundRobinRound(int(members.RoundControls.Round), members.RoundRobinRound,
+		int(members.RoundControls.GamesPerRound))
+	return GetRoundRobinPairings(len(members.PoolMembers), round, members.Seed)
 }
 
 func pairTeamRoundRobin(members *entity.UnpairedPoolMembers) ([]int, error) {
@@ -698,6 +700,20 @@ func getShirtsVsSkinsPairings(groupSize int, round int) []int {
 		pairings[b] = a
 	}
 	return pairings
+}
+
+// RoundRobinRound returns the round of GetRoundRobinPairings (and
+// RoundRobinGoesFirst) that pairs round of a round robin playing each
+// opponent roundsPerOpponent rounds in a row, and which of those rounds in a
+// row it is, from 0. index is the round's place in the round robin, counting
+// only its own rounds, so that rounds paired another way in between neither
+// restart it nor use up its rounds. With one round per opponent, every round
+// is its own, as it always has been.
+func RoundRobinRound(round, index, roundsPerOpponent int) (int, int) {
+	if roundsPerOpponent <= 1 {
+		return round, 0
+	}
+	return index / roundsPerOpponent, index % roundsPerOpponent
 }
 
 // GetRoundRobinPairings generates round-robin pairings for a given number of players and round
