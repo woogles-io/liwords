@@ -531,11 +531,12 @@ export const Table = React.memo((props: Props) => {
   const gameDone =
     gameContext.playState === PlayState.GAME_OVER && !!gameContext.gameID;
 
-  // When each move of a finished game was made, replayed from its clocks.
+  // When each move was made, replayed from its clocks: shown while examining,
+  // a game still in play too (an observer's, or a player's own
+  // correspondence game).
   const eventTimes = useMemo(() => {
     const req = gameInfo.gameRequest;
     if (
-      !gameDone ||
       props.annotated ||
       gameInfo.type === GameType.ANNOTATED ||
       !req ||
@@ -551,12 +552,51 @@ export const Table = React.memo((props: Props) => {
       maxOvertimeMs: req.maxOvertimeMinutes * 60000,
     });
   }, [
-    gameDone,
     props.annotated,
     gameInfo.type,
     gameInfo.gameRequest,
     gameInfo.timeStarted,
     gameContext.turns,
+  ]);
+
+  // A player's page has the game's metadata from before the game started: it
+  // says ready only once the metadata is in, and the clocks start when both
+  // players are ready. So time_started is still 0 there, and the move times
+  // fetch it again, once, when they are first wanted.
+  const refetchedStartRef = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    if (
+      !isExamining ||
+      props.annotated ||
+      gameInfo.type === GameType.ANNOTATED ||
+      gameInfo.gameId !== gameID ||
+      gameInfo.timeStarted ||
+      refetchedStartRef.current === gameID
+    ) {
+      return;
+    }
+    refetchedStartRef.current = gameID;
+    gmClient.getMetadata({ gameId: gameID }).then(
+      (resp) => {
+        if (resp.timeStarted) {
+          setGameInfo((gi) =>
+            gi.gameId === resp.gameId
+              ? { ...gi, timeStarted: resp.timeStarted }
+              : gi,
+          );
+        }
+      },
+      // The times stay hidden.
+      () => {},
+    );
+  }, [
+    isExamining,
+    props.annotated,
+    gameInfo.type,
+    gameInfo.gameId,
+    gameInfo.timeStarted,
+    gameID,
+    gmClient,
   ]);
 
   // Can add time if: unrated casual real-time game only (not tournament, league, correspondence, rated, or vs bot)
