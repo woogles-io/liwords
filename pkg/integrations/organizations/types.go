@@ -87,6 +87,12 @@ type OrganizationMetadata struct {
 	HasAPI               bool
 	RequiresAuth         bool
 	RequiresVerification bool
+	// PublicTitles is for an organization whose titles are looked up in a
+	// public list, with no credentials: FetchTitle with nil credentials
+	// does that, so a login asked for when connecting only proves who the
+	// member is, and is not kept, and a scheduled job can refresh every
+	// linked member's title.
+	PublicTitles bool
 	// TiePriority decides between equal title ranks from different
 	// organizations: the higher one shows. Each organization needs its own
 	// nonzero value.
@@ -109,14 +115,16 @@ var OrganizationRegistry = map[OrganizationCode]OrganizationMetadata{
 		HasAPI:               true, // Uses the WESPA player API for name + title (no auth required)
 		RequiresAuth:         false,
 		RequiresVerification: true,
+		PublicTitles:         true,
 		TiePriority:          4,
 	},
 	OrgABSP: {
 		Code:                 OrgABSP,
 		Name:                 "ABSP",
 		HasAPI:               true,
-		RequiresAuth:         true, // Uses login to absp-database.org
+		RequiresAuth:         true, // Members log in to absp-database.org to connect
 		RequiresVerification: false,
+		PublicTitles:         true, // Its public ratings list gives name + title
 		TiePriority:          1,
 	},
 	OrgSG: {
@@ -125,6 +133,7 @@ var OrganizationRegistry = map[OrganizationCode]OrganizationMetadata{
 		HasAPI:               true, // Its public titles list gives name + title (no auth required)
 		RequiresAuth:         false,
 		RequiresVerification: true,
+		PublicTitles:         true,
 		TiePriority:          2,
 	},
 }

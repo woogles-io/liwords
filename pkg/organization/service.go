@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/rs/zerolog/log"
 	"github.com/woogles-io/liwords/pkg/apiserver"
@@ -68,6 +69,12 @@ func (s *OrganizationService) ConnectOrganization(
 		)
 	}
 
+	// The login proves who the member is: without it, an integration that
+	// looks titles up in a public list would link anyone to any member
+	if meta.RequiresAuth && len(req.Msg.Credentials) == 0 {
+		return nil, apiserver.InvalidArg(fmt.Sprintf("%s requires your login to connect", meta.Name))
+	}
+
 	// Get the integration to fetch title and name
 	integration, err := organizations.GetIntegration(orgCode)
 	if err != nil {
@@ -99,8 +106,8 @@ func (s *OrganizationService) ConnectOrganization(
 		LastFetched:        &now,
 	}
 
-	// Encrypt credentials if provided
-	if meta.RequiresAuth && len(req.Msg.Credentials) > 0 {
+	// Encrypt credentials if provided, and needed for refreshing the title
+	if meta.RequiresAuth && !meta.PublicTitles && len(req.Msg.Credentials) > 0 {
 		encryptedCreds, err := organizations.EncryptCredentials(req.Msg.Credentials)
 		if err != nil {
 			return nil, apiserver.InternalErr(fmt.Errorf("failed to encrypt credentials: %w", err))
@@ -757,9 +764,14 @@ func (s *OrganizationService) ManuallySetOrgMembership(
 		}
 		fullName = titleInfo.FullName
 		rawTitle = titleInfo.RawTitle
+		// ABSP gives the membership number from the member's profile
+		if titleInfo.MemberID != "" {
+			memberID = titleInfo.MemberID
+		}
 
-		// Encrypt credentials for storage (for future title refreshes)
-		if meta.RequiresAuth {
+		// Encrypt credentials for storage (for future title refreshes),
+		// unless the title is refreshed from a public list
+		if meta.RequiresAuth && !meta.PublicTitles {
 			encryptedCredentials, err = organizations.EncryptCredentials(req.Msg.Credentials)
 			if err != nil {
 				return nil, apiserver.InternalErr(fmt.Errorf("failed to encrypt credentials: %w", err))
@@ -778,16 +790,6 @@ func (s *OrganizationService) ManuallySetOrgMembership(
 			fullName = titleInfo.FullName
 			rawTitle = titleInfo.RawTitle
 
-		case organizations.OrgABSP:
-			// ABSP has a public database that can be used without authentication
-			abspIntegration := integration.(*organizations.ABSPIntegration)
-			titleInfo, err := abspIntegration.FetchTitleWithoutAuth(req.Msg.MemberId)
-			if err != nil {
-				return nil, apiserver.InvalidArg(fmt.Sprintf("failed to fetch data from ABSP: %v", err))
-			}
-			fullName = titleInfo.FullName
-			rawTitle = titleInfo.RawTitle
-
 		case organizations.OrgWESPA:
 			// WESPA uses its public player API for name + title (no auth required)
 			titleInfo, err := integration.FetchTitle(req.Msg.MemberId, nil)
@@ -797,9 +799,10 @@ func (s *OrganizationService) ManuallySetOrgMembership(
 			fullName = titleInfo.FullName
 			rawTitle = titleInfo.RawTitle
 
-		case organizations.OrgSG:
-			// SG's public titles list gives name + title (no auth required);
-			// GetRealName fails for a member it does not list
+		case organizations.OrgSG, organizations.OrgABSP:
+			// SG's public titles list, and ABSP's ratings list, give name +
+			// title (no auth required); GetRealName fails for a member they
+			// do not list
 			fullName, err = integration.GetRealName(req.Msg.MemberId, nil)
 			if err != nil {
 				return nil, apiserver.InvalidArg(fmt.Sprintf("failed to fetch data from %s: %v", meta.Name, err))
@@ -957,9 +960,15 @@ func (s *OrganizationService) refreshTitlesForUser(ctx context.Context, userUUID
 			continue
 		}
 
-		// Decrypt credentials if available
+		// Decrypt credentials if available. An organization whose titles are
+		// in a public list needs none, and any kept from before are dropped.
 		var credentials map[string]string
 		hasCredentials := integData.EncryptedCredentials != ""
+		dropCredentials := meta.PublicTitles && hasCredentials
+		if meta.PublicTitles {
+			hasCredentials = false
+			integData.EncryptedCredentials = ""
+		}
 		if hasCredentials {
 			credentials, err = organizations.DecryptCredentials(integData.EncryptedCredentials)
 			if err != nil {
@@ -984,15 +993,13 @@ func (s *OrganizationService) refreshTitlesForUser(ctx context.Context, userUUID
 			case organizations.OrgNASPA:
 				naspaIntegration := integration.(*organizations.NASPAIntegration)
 				titleInfo, err = naspaIntegration.FetchTitleWithoutAuth(integData.MemberID)
-			case organizations.OrgABSP:
-				abspIntegration := integration.(*organizations.ABSPIntegration)
-				titleInfo, err = abspIntegration.FetchTitleWithoutAuth(integData.MemberID)
 			case organizations.OrgWESPA:
 				// WESPA uses its public player API for name + title (no auth required)
 				titleInfo, err = integration.FetchTitle(integData.MemberID, nil)
-			case organizations.OrgSG:
-				// SG uses its public titles list; a member it no longer lists
-				// comes back with no title, which clears the stored one
+			case organizations.OrgSG, organizations.OrgABSP:
+				// SG uses its public titles list, and ABSP its ratings list; a
+				// member they no longer list comes back with no title, which
+				// clears the stored one
 				titleInfo, err = integration.FetchTitle(integData.MemberID, nil)
 			default:
 				// Other orgs with APIs but no public access - skip
@@ -1022,10 +1029,7 @@ func (s *OrganizationService) refreshTitlesForUser(ctx context.Context, userUUID
 		}
 
 		// Update in database
-		err = s.queries.UpdateIntegrationData(ctx, models.UpdateIntegrationDataParams{
-			Uuid: integ.Uuid,
-			Data: dataJSON,
-		})
+		err = saveIntegrationData(ctx, s.queries, integ.Uuid, userUUID, integ.IntegrationName, dataJSON, dropCredentials)
 		if err != nil {
 			log.Error().Err(err).Str("org", string(orgCode)).Msg("failed to update integration data")
 			continue
@@ -1040,6 +1044,25 @@ func (s *OrganizationService) refreshTitlesForUser(ctx context.Context, userUUID
 	}
 
 	return titles, errors, nil
+}
+
+// saveIntegrationData stores refreshed integration data. UpdateIntegrationData
+// merges into the stored data, which keeps a key that the new data leaves
+// out, such as an encrypted login no longer needed; dropping that needs the
+// stored data replaced whole.
+func saveIntegrationData(ctx context.Context, q *models.Queries, integUUID uuid.UUID, userUUID, orgCode string, dataJSON []byte, replace bool) error {
+	if replace {
+		_, err := q.AddOrUpdateIntegration(ctx, models.AddOrUpdateIntegrationParams{
+			UserUuid:        userUUID,
+			IntegrationName: orgCode,
+			Data:            dataJSON,
+		})
+		return err
+	}
+	return q.UpdateIntegrationData(ctx, models.UpdateIntegrationDataParams{
+		Uuid: integUUID,
+		Data: dataJSON,
+	})
 }
 
 // organizationIntegrations returns a user's links to the organizations in
@@ -1063,16 +1086,15 @@ func (s *OrganizationService) organizationIntegrations(ctx context.Context, user
 
 // RefreshOrganizationTitles refreshes one organization's title for every
 // user linked to it, so that a title gained or lost shows without anyone
-// pressing refresh. It is for a scheduled job, and for an organization whose
-// list needs no credentials: one integration instance serves every user, so
-// a whole-file list is downloaded once, and a failed download changes no
-// one's title.
+// pressing refresh. It is for a scheduled job, and for an organization with
+// PublicTitles: one integration instance serves every user, so a whole-file
+// list is downloaded once, and a failed download changes no one's title.
 func RefreshOrganizationTitles(ctx context.Context, q *models.Queries, orgCode organizations.OrganizationCode) error {
 	meta, err := organizations.GetOrganizationMetadata(orgCode)
 	if err != nil {
 		return err
 	}
-	if meta.RequiresAuth {
+	if !meta.PublicTitles {
 		return fmt.Errorf("%s requires credentials for refresh", meta.Name)
 	}
 	integration, err := organizations.GetIntegration(orgCode)
@@ -1094,6 +1116,7 @@ func RefreshOrganizationTitles(ctx context.Context, q *models.Queries, orgCode o
 			continue
 		}
 
+		dropCredentials := integData.EncryptedCredentials != ""
 		titleInfo, err := integration.FetchTitle(integData.MemberID, nil)
 		if err != nil {
 			failed++
@@ -1109,16 +1132,15 @@ func RefreshOrganizationTitles(ctx context.Context, q *models.Queries, orgCode o
 		}
 		now := time.Now()
 		integData.LastFetched = &now
+		// A login kept from before is not needed for a public list
+		integData.EncryptedCredentials = ""
 
 		dataJSON, err := integData.ToJSON()
 		if err != nil {
 			failed++
 			continue
 		}
-		err = q.UpdateIntegrationData(ctx, models.UpdateIntegrationDataParams{
-			Uuid: link.Uuid,
-			Data: dataJSON,
-		})
+		err = saveIntegrationData(ctx, q, link.Uuid, link.UserUuid, link.IntegrationName, dataJSON, dropCredentials)
 		if err != nil {
 			failed++
 			log.Error().Err(err).Str("org", string(orgCode)).Str("user_uuid", link.UserUuid).Msg("failed to update integration data")

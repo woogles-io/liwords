@@ -20,7 +20,11 @@ func GetIntegration(orgCode OrganizationCode) (OrganizationIntegration, error) {
 		return NewWESPAIntegration(), nil
 
 	case OrgABSP:
-		return NewABSPIntegration(), nil
+		absp := NewABSPIntegration()
+		if baseURL := os.Getenv("ABSP_BASE_URL"); baseURL != "" {
+			absp.BaseURL = baseURL
+		}
+		return absp, nil
 
 	case OrgSG:
 		sg := NewSGIntegration()

@@ -201,15 +201,16 @@ func IntegrationsRefresher() error {
 
 	refreshPatreonIntegrationTokens(ctx, q, oauthIntegrationService)
 
-	// SG's titles list needs no login, so its linked players' titles are
-	// refreshed here, daily: a title gained or lost shows without anyone
-	// pressing refresh
+	// SG's titles list and ABSP's ratings list need no login, so their
+	// linked players' titles are refreshed here, daily: a title gained or
+	// lost shows without anyone pressing refresh
 	sgErr := organization.RefreshOrganizationTitles(ctx, q, organizations.OrgSG)
+	abspErr := organization.RefreshOrganizationTitles(ctx, q, organizations.OrgABSP)
 
 	// Every linked player's title by their username is picked again from the
 	// stored titles, with nothing fetched, so that a change to the ranks or
 	// the tie order reaches them without anyone pressing refresh
-	return errors.Join(sgErr, organization.RepickProfileTitles(ctx, q))
+	return errors.Join(sgErr, abspErr, organization.RepickProfileTitles(ctx, q))
 }
 
 func SubBadgeUpdater() error {
