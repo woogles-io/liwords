@@ -83,10 +83,25 @@ type Config struct {
 	ShadowTurnsLoad bool
 
 	// WriteOngoingGames maintains the ongoing_games row for every live game,
-	// inside the same transaction that saves the game. Nothing reads the table
-	// yet; this exists so it can be populated and checked before the active-game
-	// listings are moved onto it. Off until the migration has been applied.
+	// inside the same transaction that saves the game. Off until the migration
+	// has been applied.
 	WriteOngoingGames bool
+
+	// ReadOngoingGames serves the active-game listings from ongoing_games
+	// instead of filtering games by game_end_reason. Honored only while
+	// WriteOngoingGames is on: without the writer the table goes stale, so
+	// turning the writer off turns the reads off with it. See ReadsOngoing.
+	ReadOngoingGames bool
+}
+
+// ReadsOngoing reports whether the active-game listings should come from
+// ongoing_games: both flags on, in the config carried by ctx.
+func ReadsOngoing(ctx context.Context) bool {
+	cfg, err := Ctx(ctx)
+	if err != nil {
+		return false
+	}
+	return cfg.WriteOngoingGames && cfg.ReadOngoingGames
 }
 
 type ctxKey string
@@ -109,7 +124,8 @@ func (c *Config) Load(args []string) error {
 	fs.BoolVar(&c.RunMigrations, "run-migrations", false, "run database migrations on startup")
 	fs.BoolVar(&c.QuitAfterMigration, "quit-after-migration", false, "quit after running migrations (for dedicated migration tasks)")
 	fs.BoolVar(&c.DualWriteTurns, "dual-write-turns", false, "dual-write game events to game_turns alongside history bytea (migration phase 2)")
-	fs.BoolVar(&c.WriteOngoingGames, "write-ongoing-games", false, "maintain the ongoing_games row for each live game, in the same transaction as the save; nothing reads it yet")
+	fs.BoolVar(&c.WriteOngoingGames, "write-ongoing-games", false, "maintain the ongoing_games row for each live game, in the same transaction as the save")
+	fs.BoolVar(&c.ReadOngoingGames, "read-ongoing-games", false, "serve the active-game listings from ongoing_games; ignored unless write-ongoing-games is on")
 	fs.BoolVar(&c.ShadowTurnsLoad, "shadow-turns-load", false, "on every live-game load, also rebuild from game_turns and compare; never served (migration phase 3)")
 	fs.BoolVar(&c.ShadowTurns, "shadow-turns", false, "shadow-compare turns-based reconstruction against history bytea on every Get (migration phase 2)")
 

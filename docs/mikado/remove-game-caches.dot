@@ -48,7 +48,8 @@ digraph RedoGameModel {
     CheapGameLoad [label = "Per-move load is cheap enough ✅\n(no cache, every load replays through macondo:\ngame.Get p50 1.4 ms, p99 55 ms on production,\n2026-11-01; lock held p50 8.3 ms)";];
     AdjudicateFromRows [label = "Adjudicator decides from rows ✅\n(no full game load per active game\nevery 10 s; re-checks under the lock. #2159)";];
     ChallengeGuard [label = "Refuse challenges unless the last\nevent is a tile placement ✅\n(server side; was UI only. Removes the\nshadow noise from macondo's replay. #2163,\ndeployed 2026-11-02)";];
-    OngoingGamesWriter [label = "ongoing_games table, writer\nand backfill ✅ (row kept in the save tx;\nflag WRITE_ONGOING_GAMES, off. Split step 7)";];
+    OngoingGamesWriter [label = "ongoing_games table, writer\nand backfill ✅ (row kept in the save tx;\nWRITE_ONGOING_GAMES on 2026-11-09. Split step 7)";];
+    OngoingPopulated [label = "ongoing_games populated and checked ✅\n(backfill 2026-11-09, all checks 0;\nrecheck after a few days before\nREAD_ONGOING_GAMES; xwordgame_remaining.md)";];
     TournamentCacheSpan [label = "Trace tournament cache lookups ✅\n(tournament-cache span, cache.hit attr. #2161)";];
     TournamentUuidIndex [label = "Tournament uuid unique index,\none-pass division decode ✅ (#2166)";];
 
@@ -87,8 +88,7 @@ digraph RedoGameModel {
     CacheWrapperCleanup [label = "Delete the Cache wrapper\n(cache.go is a pass-through now,\nplus the per-server activeGames TTL)";];
 
     // ── MakeDBFaster prerequisites ────────────────────────────────────────
-    OngoingPopulated [label = "ongoing_games populated and checked\n(WRITE_ONGOING_GAMES on, then the\nbackfill-ongoing-games run;\nrows agree with games for live games;\nxwordgame_remaining.md)";];
-    ListingsOnOngoingGames [label = "Move active-game listings onto ongoing_games\n(ends the idx_games_game_end_reason bloat:\n~114 ms per active-games query today)";];
+    ListingsOnOngoingGames [label = "Move active-game listings onto ongoing_games\n(behind READ_ONGOING_GAMES; real-time\nlisting ~122 ms -> ~3 ms)";];
     TurnsBinaryProto [label = "game_turns.event jsonb → bytea proto\n(no backfill: rows are deleted at archival)";];
     DropUnusedGamesIndexes [label = "Drop unused indexes on games\n(~2.4 GB with near-zero scans;\nxwordgame_remaining.md)";];
     MetaEventsTable [label = "Meta events into an append-only\ngame_meta_events table";];

@@ -70,7 +70,9 @@ func (ec *evtConsumer) consumeEventChan(ctx context.Context,
 func makeGame(cfg *config.Config, stores *stores.Stores, initialTime int, ratingMode pb.RatingMode) (
 	*entity.Game, context.CancelFunc, chan bool, *evtConsumer) {
 
-	ctx := context.Background()
+	// The config rides on the context, as it does in the API, so the store
+	// sees the same flags the test does.
+	ctx := cfg.WithContext(context.Background())
 	cesar, err := stores.UserStore.Get(ctx, "cesar")
 	if err != nil {
 		panic(err)

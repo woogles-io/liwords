@@ -20,6 +20,7 @@ import (
 	entityutils "github.com/woogles-io/liwords/pkg/entity/utilities"
 	"github.com/woogles-io/liwords/pkg/mod"
 	"github.com/woogles-io/liwords/pkg/omgwords/stores"
+	gamestore "github.com/woogles-io/liwords/pkg/stores/game"
 	"github.com/woogles-io/liwords/pkg/stores/models"
 	"github.com/woogles-io/liwords/pkg/user"
 	"github.com/woogles-io/liwords/pkg/utilities"
@@ -456,7 +457,7 @@ func (gs *GameService) UnfreezeBot(ctx context.Context, req *connect.Request[pb.
 
 	switch req.Msg.Mode {
 	case pb.UnfreezeBotMode_UNFREEZE_BOT_MODE_ALL_CORRESPONDENCE:
-		rows, err := gs.queries.ListActiveCorrespondenceGamesWithBotOnTurn(ctx)
+		rows, err := gamestore.ActiveCorrespondenceGamesWithBotOnTurn(ctx, gs.queries)
 		if err != nil {
 			return nil, apiserver.InternalErr(err)
 		}
@@ -467,7 +468,7 @@ func (gs *GameService) UnfreezeBot(ctx context.Context, req *connect.Request[pb.
 		log.Info().Int("count", len(gameIDs)).Msg("found active correspondence games with bot on turn")
 
 	case pb.UnfreezeBotMode_UNFREEZE_BOT_MODE_ALL_REALTIME:
-		rows, err := gs.queries.ListActiveRealtimeGamesWithBotOnTurn(ctx)
+		rows, err := gamestore.ActiveRealtimeGamesWithBotOnTurn(ctx, gs.queries)
 		if err != nil {
 			return nil, apiserver.InternalErr(err)
 		}
