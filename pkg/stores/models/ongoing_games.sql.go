@@ -474,7 +474,6 @@ UPDATE ongoing_games
 SET ready_flag = ready_flag | (1 << $1::integer),
     updated_at = now()
 WHERE game_uuid = $2
-    AND ready_flag & (1 << $1::integer) = 0
 RETURNING ready_flag
 `
 
@@ -483,6 +482,9 @@ type SetOngoingGameReadyParams struct {
 	GameUuid  string
 }
 
+// Mirrors games.SetReady: a re-ready is a no-op on the bits, not a miss, so
+// the row stays in step with games.ready_flag. No rows means the game has no
+// ongoing row (yet), which the caller ignores.
 func (q *Queries) SetOngoingGameReady(ctx context.Context, arg SetOngoingGameReadyParams) (int64, error) {
 	row := q.db.QueryRow(ctx, setOngoingGameReady, arg.PlayerIdx, arg.GameUuid)
 	var ready_flag int64
