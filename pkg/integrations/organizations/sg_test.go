@@ -48,11 +48,20 @@ func TestParseSGTitles(t *testing.T) {
 	is.NoErr(err)
 	is.Equal(players["42"].ID, "42")
 
+	// a member listed with an empty title holds none
+	players, err = parseSGTitles([]byte(`{"players": [{"id": "4", "name": "A", "title": ""}]}`))
+	is.NoErr(err)
+	is.Equal(players["4"], sgPlayer{ID: "4", Name: "A", Title: ""})
+
+	// an empty list is valid: nobody holds a title
+	players, err = parseSGTitles([]byte(`{"players": []}`))
+	is.NoErr(err)
+	is.Equal(len(players), 0)
+
 	for _, body := range []string{
 		``,
 		`{"players": [`,
 		`{"players": [{"id": "4", "name": "A", "title": "M"}`,
-		`{"players": []}`,
 		`{"players": null}`,
 		`{}`,
 		`[]`,
@@ -64,6 +73,7 @@ func TestParseSGTitles(t *testing.T) {
 		`{"players": [{"id": "4", "name": "A", "title": "IM"}]}`,
 		`{"players": [{"id": "4", "name": "A", "title": "gm"}]}`,
 		`{"players": [{"id": "4", "name": "A", "title": null}]}`,
+		`{"players": [{"id": "4", "name": "A"}]}`,
 		`{"players": [{"id": "4", "name": "", "title": "M"}]}`,
 		`{"players": [{"id": "4", "title": "M"}]}`,
 	} {
@@ -115,6 +125,41 @@ func TestSGFetchTitle(t *testing.T) {
 	is.Equal(requests, 1) // one download per instance
 }
 
+func TestSGFetchTitleUntitledAndEmpty(t *testing.T) {
+	is := is.New(t)
+	serve := func(body string) *httptest.Server {
+		return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			w.Write([]byte(body))
+		}))
+	}
+
+	// a member listed with no title holds none, and can be linked
+	server := serve(`{"players": [{"id": "4", "name": "Law, Sarah", "title": ""}]}`)
+	sg := NewSGIntegration()
+	sg.TitlesURL = server.URL
+	info, err := sg.FetchTitle("4", nil)
+	is.NoErr(err)
+	is.Equal(info.RawTitle, "")
+	is.Equal(info.FullName, "Law, Sarah")
+	name, err := sg.GetRealName("4", nil)
+	is.NoErr(err)
+	is.Equal(name, "Law, Sarah")
+	server.Close()
+
+	// an empty list takes every title away, and links no one
+	server = serve(`{"players": []}`)
+	sg = NewSGIntegration()
+	sg.TitlesURL = server.URL
+	info, err = sg.FetchTitle("5", nil)
+	is.NoErr(err)
+	is.Equal(info.RawTitle, "")
+	is.Equal(info.FullName, "")
+	_, err = sg.GetRealName("5", nil)
+	is.True(err != nil)
+	server.Close()
+}
+
 func TestSGFetchTitleFailures(t *testing.T) {
 	is := is.New(t)
 	for _, tc := range []struct {
@@ -122,7 +167,7 @@ func TestSGFetchTitleFailures(t *testing.T) {
 		body   string
 	}{
 		{http.StatusNotFound, sgTitlesFixture},
-		{http.StatusOK, `{"players": []}`},
+		{http.StatusOK, `{"players": null}`},
 		{http.StatusOK, `{"players": [`},
 	} {
 		requests := 0

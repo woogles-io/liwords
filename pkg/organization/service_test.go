@@ -115,7 +115,7 @@ func TestManuallySetOrgMembershipSG(t *testing.T) {
 		ID: "admin-session", Username: "admin", UserUUID: "admin", Expiry: time.Now().Add(time.Minute)})
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`{"players": [{"id": "5", "name": "Promoted, Tony", "title": "GM"}]}`))
+		w.Write([]byte(`{"players": [{"id": "5", "name": "Promoted, Tony", "title": "GM"}, {"id": "7", "name": "Untitled, Uma", "title": ""}]}`))
 	}))
 	defer server.Close()
 	t.Setenv("SG_TITLES_URL", server.URL)
@@ -140,6 +140,13 @@ func TestManuallySetOrgMembershipSG(t *testing.T) {
 	// a member the list does not have, and a number with its type, are refused
 	is.True(assign("6") != nil)
 	is.True(assign("0005M") != nil)
+
+	// a member listed with no title is linked, holding none
+	is.NoErr(assign("7"))
+	data = stored(t, q, "stays", organizations.OrgSG)
+	is.Equal(data.MemberID, "7")
+	is.Equal(data.FullName, "Untitled, Uma")
+	is.Equal(data.RawTitle, "")
 }
 
 func profileTitle(t *testing.T, pool *pgxpool.Pool, userUUID string) (string, string) {
@@ -209,7 +216,7 @@ func TestRefreshOrganizationTitles(t *testing.T) {
 		list   string
 	}{
 		{http.StatusInternalServerError, list},
-		{http.StatusOK, `{"players": [` + "\n]}\n"},
+		{http.StatusOK, `{"players": null}` + "\n"},
 		{http.StatusOK, `{"players": [{"id": "5", "name": "Promoted, Tony", "title": "GM"}`},
 	} {
 		status, list = broken.status, broken.list
@@ -220,6 +227,18 @@ func TestRefreshOrganizationTitles(t *testing.T) {
 		is.Equal(title, "Grandmaster")
 		is.Equal(org, "sg")
 	}
+
+	// an empty list is still a list: it takes every SG title away
+	status, list = http.StatusOK, `{"players": [`+"\n]}\n"
+	is.NoErr(RefreshOrganizationTitles(ctx, q, organizations.OrgSG))
+	is.Equal(stored(t, q, "stays", organizations.OrgSG).RawTitle, "")
+	is.Equal(stored(t, q, "promoted", organizations.OrgSG).RawTitle, "")
+	title, org = profileTitle(t, pool, "promoted")
+	is.Equal(title, "")
+	is.Equal(org, "")
+	title, org = profileTitle(t, pool, "lapsed")
+	is.Equal(title, "Master")
+	is.Equal(org, "wespa")
 }
 
 func setProfileTitle(t *testing.T, q *models.Queries, userUUID, title, org string) {
