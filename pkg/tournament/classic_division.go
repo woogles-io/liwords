@@ -2382,8 +2382,15 @@ func newClassicPairing(t *ClassicDivision,
 	playerTwo int32,
 	round int) *pb.Pairing {
 
+	// Only an elimination round plays several games between the same two
+	// players. In a round robin games_per_round counts the rounds in a row
+	// each pair plays, and a pairing holds just its round's one game.
+	numberOfGames := 1
+	if t.RoundControls[round].PairingMethod == pb.PairingMethod_ELIMINATION {
+		numberOfGames = int(t.RoundControls[round].GamesPerRound)
+	}
 	games := []*pb.TournamentGame{}
-	for i := 0; i < int(t.RoundControls[round].GamesPerRound); i++ {
+	for i := 0; i < numberOfGames; i++ {
 		games = append(games, &pb.TournamentGame{Scores: []int32{0, 0},
 			Results: []pb.TournamentGameResult{pb.TournamentGameResult_NO_RESULT,
 				pb.TournamentGameResult_NO_RESULT},
