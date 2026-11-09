@@ -35,20 +35,28 @@ const (
 	ModActionType_RESET_STATS_AND_RATINGS ModActionType = 6
 	ModActionType_REMOVE_CHAT             ModActionType = 7
 	ModActionType_DELETE_ACCOUNT          ModActionType = 8
+	ModActionType_REMOVE_FIRST_NAME       ModActionType = 9
+	ModActionType_REMOVE_LAST_NAME        ModActionType = 10
+	ModActionType_REMOVE_ABOUT            ModActionType = 11
+	ModActionType_REMOVE_AVATAR           ModActionType = 12
 )
 
 // Enum value maps for ModActionType.
 var (
 	ModActionType_name = map[int32]string{
-		0: "MUTE",
-		1: "SUSPEND_ACCOUNT",
-		2: "SUSPEND_RATED_GAMES",
-		3: "SUSPEND_GAMES",
-		4: "RESET_RATINGS",
-		5: "RESET_STATS",
-		6: "RESET_STATS_AND_RATINGS",
-		7: "REMOVE_CHAT",
-		8: "DELETE_ACCOUNT",
+		0:  "MUTE",
+		1:  "SUSPEND_ACCOUNT",
+		2:  "SUSPEND_RATED_GAMES",
+		3:  "SUSPEND_GAMES",
+		4:  "RESET_RATINGS",
+		5:  "RESET_STATS",
+		6:  "RESET_STATS_AND_RATINGS",
+		7:  "REMOVE_CHAT",
+		8:  "DELETE_ACCOUNT",
+		9:  "REMOVE_FIRST_NAME",
+		10: "REMOVE_LAST_NAME",
+		11: "REMOVE_ABOUT",
+		12: "REMOVE_AVATAR",
 	}
 	ModActionType_value = map[string]int32{
 		"MUTE":                    0,
@@ -60,6 +68,10 @@ var (
 		"RESET_STATS_AND_RATINGS": 6,
 		"REMOVE_CHAT":             7,
 		"DELETE_ACCOUNT":          8,
+		"REMOVE_FIRST_NAME":       9,
+		"REMOVE_LAST_NAME":        10,
+		"REMOVE_ABOUT":            11,
+		"REMOVE_AVATAR":           12,
 	}
 )
 
@@ -209,7 +221,10 @@ type ModAction struct {
 	MessageId     string                 `protobuf:"bytes,8,opt,name=message_id,json=messageId,proto3" json:"message_id,omitempty"`
 	ApplierUserId string                 `protobuf:"bytes,9,opt,name=applier_user_id,json=applierUserId,proto3" json:"applier_user_id,omitempty"`
 	RemoverUserId string                 `protobuf:"bytes,10,opt,name=remover_user_id,json=removerUserId,proto3" json:"remover_user_id,omitempty"`
-	ChatText      string                 `protobuf:"bytes,11,opt,name=chat_text,json=chatText,proto3" json:"chat_text,omitempty"`
+	// ChatText: the removed text, kept for the record: the chat message for
+	// REMOVE_CHAT, or the cleared field's old value for REMOVE_FIRST_NAME,
+	// REMOVE_LAST_NAME, REMOVE_ABOUT, and REMOVE_AVATAR (the avatar's URL).
+	ChatText string `protobuf:"bytes,11,opt,name=chat_text,json=chatText,proto3" json:"chat_text,omitempty"`
 	// Note: an optional note from the moderator.
 	Note          string    `protobuf:"bytes,12,opt,name=note,proto3" json:"note,omitempty"`
 	EmailType     EmailType `protobuf:"varint,13,opt,name=email_type,json=emailType,proto3,enum=mod_service.EmailType" json:"email_type,omitempty"`
@@ -1250,7 +1265,7 @@ const file_proto_mod_service_mod_service_proto_rawDesc = "" +
 	"\vnext_cursor\x18\x02 \x01(\tR\n" +
 	"nextCursor\"2\n" +
 	"\x16GetChannelChatsRequest\x12\x18\n" +
-	"\achannel\x18\x01 \x01(\tR\achannel*\xc0\x01\n" +
+	"\achannel\x18\x01 \x01(\tR\achannel*\x92\x02\n" +
 	"\rModActionType\x12\b\n" +
 	"\x04MUTE\x10\x00\x12\x13\n" +
 	"\x0fSUSPEND_ACCOUNT\x10\x01\x12\x17\n" +
@@ -1260,7 +1275,12 @@ const file_proto_mod_service_mod_service_proto_rawDesc = "" +
 	"\vRESET_STATS\x10\x05\x12\x1b\n" +
 	"\x17RESET_STATS_AND_RATINGS\x10\x06\x12\x0f\n" +
 	"\vREMOVE_CHAT\x10\a\x12\x12\n" +
-	"\x0eDELETE_ACCOUNT\x10\b*4\n" +
+	"\x0eDELETE_ACCOUNT\x10\b\x12\x15\n" +
+	"\x11REMOVE_FIRST_NAME\x10\t\x12\x14\n" +
+	"\x10REMOVE_LAST_NAME\x10\n" +
+	"\x12\x10\n" +
+	"\fREMOVE_ABOUT\x10\v\x12\x11\n" +
+	"\rREMOVE_AVATAR\x10\f*4\n" +
 	"\tEmailType\x12\v\n" +
 	"\aDEFAULT\x10\x00\x12\f\n" +
 	"\bCHEATING\x10\x01\x12\f\n" +

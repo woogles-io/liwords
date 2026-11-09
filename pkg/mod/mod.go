@@ -35,6 +35,10 @@ var ModActionDispatching = map[ms.ModActionType]func(context.Context, user.Store
 	ms.ModActionType_RESET_STATS_AND_RATINGS: resetStatsAndRatings,
 	ms.ModActionType_REMOVE_CHAT:             removeChat,
 	ms.ModActionType_DELETE_ACCOUNT:          deleteAccount,
+	ms.ModActionType_REMOVE_FIRST_NAME:       removeFirstName,
+	ms.ModActionType_REMOVE_LAST_NAME:        removeLastName,
+	ms.ModActionType_REMOVE_ABOUT:            removeAbout,
+	ms.ModActionType_REMOVE_AVATAR:           removeAvatar,
 }
 
 var ModActionTextMap = map[ms.ModActionType]string{
@@ -360,4 +364,49 @@ func removeChat(ctx context.Context, us user.Store, cs user.ChatStore, action *m
 
 func deleteAccount(ctx context.Context, us user.Store, cs user.ChatStore, action *ms.ModAction) error {
 	return us.ResetProfile(ctx, action.UserId)
+}
+
+func removeFirstName(ctx context.Context, us user.Store, cs user.ChatStore, action *ms.ModAction) error {
+	return removePersonalInfoField(ctx, us, action, func(p *entity.Profile) *string { return &p.FirstName })
+}
+
+func removeLastName(ctx context.Context, us user.Store, cs user.ChatStore, action *ms.ModAction) error {
+	return removePersonalInfoField(ctx, us, action, func(p *entity.Profile) *string { return &p.LastName })
+}
+
+func removeAbout(ctx context.Context, us user.Store, cs user.ChatStore, action *ms.ModAction) error {
+	return removePersonalInfoField(ctx, us, action, func(p *entity.Profile) *string { return &p.About })
+}
+
+// removePersonalInfoField empties one of a user's first name, last name, and
+// about, and keeps its old value in the action. Every other field is written
+// back as it was.
+func removePersonalInfoField(ctx context.Context, us user.Store, action *ms.ModAction,
+	field func(*entity.Profile) *string) error {
+	u, err := us.GetByUUID(ctx, action.UserId)
+	if err != nil {
+		return err
+	}
+	if u.Profile == nil {
+		return fmt.Errorf("user %s has no profile", action.UserId)
+	}
+	p := *u.Profile
+	f := field(&p)
+	action.ChatText = *f
+	*f = ""
+	return us.SetPersonalInfo(ctx, u.UUID, u.Email, p.FirstName, p.LastName, p.BirthDate, p.CountryCode, p.About)
+}
+
+// removeAvatar unsets a user's avatar and keeps its URL in the action. The
+// image file itself stays where it is.
+func removeAvatar(ctx context.Context, us user.Store, cs user.ChatStore, action *ms.ModAction) error {
+	u, err := us.GetByUUID(ctx, action.UserId)
+	if err != nil {
+		return err
+	}
+	if u.Profile == nil {
+		return fmt.Errorf("user %s has no profile", action.UserId)
+	}
+	action.ChatText = u.Profile.AvatarUrl
+	return us.SetAvatarUrl(ctx, u.UUID, "")
 }
