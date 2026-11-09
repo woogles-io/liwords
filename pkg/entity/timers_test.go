@@ -88,4 +88,3 @@ func TestTimersIncrement(t *testing.T) {
 		t.Errorf(`a zero increment must be written as "inc":0, got %s`, b)
 	}
 }
-
