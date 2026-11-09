@@ -518,6 +518,90 @@ func (q *Queries) ListActiveTournamentGamesFromOngoing(ctx context.Context, tour
 	return items, nil
 }
 
+const listCorrespondenceTimeoutCandidatesFromOngoing = `-- name: ListCorrespondenceTimeoutCandidatesFromOngoing :many
+SELECT g.quickdata, g.uuid, g.started, g.tournament_data, g.game_request, g.player_on_turn, g.timers, g.type, g.updated_at, g.league_id, g.season_id, g.league_division_id,
+    COALESCE(l.slug, '')::text AS league_slug
+FROM ongoing_games o
+JOIN games g ON g.uuid = o.game_uuid
+LEFT JOIN leagues l ON l.uuid = g.league_id
+WHERE o.game_mode = 1 -- Only CORRESPONDENCE games
+    AND o.started
+    AND o.on_turn IS NOT NULL
+    AND (
+        o.timers->'inc' IS NULL
+        OR NOT COALESCE((o.timers->>'rtiat')::boolean, false)
+        -- now - lu - inc*1000 > bank, rearranged so the parameter stands alone
+        OR (o.timers->>'lu')::bigint + (o.timers->>'inc')::bigint * 1000
+            + COALESCE((o.timers->'tb'->>(o.on_turn::int))::bigint, 0)
+            < $1::bigint
+    )
+ORDER BY g.id
+`
+
+type ListCorrespondenceTimeoutCandidatesFromOngoingRow struct {
+	Quickdata        entity.Quickdata
+	Uuid             pgtype.Text
+	Started          pgtype.Bool
+	TournamentData   entity.TournamentData
+	GameRequest      entity.GameRequest
+	PlayerOnTurn     pgtype.Int4
+	Timers           entity.Timers
+	Type             pgtype.Int4
+	UpdatedAt        pgtype.Timestamptz
+	LeagueID         pgtype.UUID
+	SeasonID         pgtype.UUID
+	LeagueDivisionID pgtype.UUID
+	LeagueSlug       string
+}
+
+// The correspondence games whose player on turn may have run out of time at
+// now_ms, decided from ongoing_games alone; games is read only for the rows
+// that pass. Same columns as ListActiveCorrespondenceGames.
+//
+// This must never miss a game that Timers.RanOut would time out; an extra
+// candidate only costs the adjudicator a RanOut call (and TimedOut checks
+// again on the loaded game). So anything it cannot judge is a candidate:
+//   - timers without "inc" (written before the field, until the next save);
+//   - timers not reset-to-increment (none in production; the other RanOut
+//     branch, left to Go).
+//
+// Otherwise RanOut times the player out when the turn has exceeded the
+// increment by more than their bank: deficit > bank, a missing bank counting
+// as 0 (then any positive deficit). That is RanOut exactly, boundary included.
+func (q *Queries) ListCorrespondenceTimeoutCandidatesFromOngoing(ctx context.Context, nowMs int64) ([]ListCorrespondenceTimeoutCandidatesFromOngoingRow, error) {
+	rows, err := q.db.Query(ctx, listCorrespondenceTimeoutCandidatesFromOngoing, nowMs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListCorrespondenceTimeoutCandidatesFromOngoingRow
+	for rows.Next() {
+		var i ListCorrespondenceTimeoutCandidatesFromOngoingRow
+		if err := rows.Scan(
+			&i.Quickdata,
+			&i.Uuid,
+			&i.Started,
+			&i.TournamentData,
+			&i.GameRequest,
+			&i.PlayerOnTurn,
+			&i.Timers,
+			&i.Type,
+			&i.UpdatedAt,
+			&i.LeagueID,
+			&i.SeasonID,
+			&i.LeagueDivisionID,
+			&i.LeagueSlug,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listLiveGamesWithoutOngoingRow = `-- name: ListLiveGamesWithoutOngoingRow :many
 SELECT g.uuid::text AS uuid
 FROM games g

@@ -1896,6 +1896,12 @@ func (s *DBStore) ListActiveRealTimeRaw(ctx context.Context) ([]models.ListActiv
 	return ActiveRealTimeGamesForAdjudication(ctx, s.queries)
 }
 
+// ListCorrespondenceTimeoutCandidates returns the correspondence games the
+// adjudicator should check at nowMs; see CorrespondenceTimeoutCandidates.
+func (s *DBStore) ListCorrespondenceTimeoutCandidates(ctx context.Context, nowMs int64) ([]models.ListActiveCorrespondenceGamesRow, error) {
+	return CorrespondenceTimeoutCandidates(ctx, s.queries, nowMs)
+}
+
 // ListActiveCorrespondenceRaw returns raw DB rows with timer data.
 // This is used internally by ListActiveCorrespondence and the adjudication process.
 func (s *DBStore) ListActiveCorrespondenceRaw(ctx context.Context) ([]models.ListActiveCorrespondenceGamesRow, error) {

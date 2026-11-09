@@ -2,6 +2,7 @@ package game
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 	"testing"
 
@@ -222,4 +223,88 @@ func uuidsOf(rows any) []string {
 		out = append(out, e.FieldByName("Uuid").Interface().(pgtype.Text).String)
 	}
 	return out
+}
+
+// The correspondence timeout pre-filter must never drop a game that
+// Timers.RanOut would time out, and should drop the ones it would not. Each
+// case is a correspondence clone with hand-set timers, on both tables.
+func TestCorrespondenceTimeoutCandidates(t *testing.T) {
+	is := is.New(t)
+	ustore, gstore := recreateDB()
+	defer gstore.Disconnect()
+	defer ustore.(*user.DBStore).Disconnect()
+	wctx := writeOngoingCtx()
+
+	ids, err := gstore.ListLiveGamesWithoutOngoingRow(wctx)
+	is.NoErr(err)
+	for _, id := range ids {
+		g, err := gstore.Get(wctx, id)
+		is.NoErr(err)
+		is.NoErr(gstore.Set(wctx, g))
+	}
+
+	const now = int64(10_000_000_000)
+	timers := func(sinceUpdate, bank int64, rtiat bool, withInc bool) string {
+		inc := ""
+		if withInc {
+			inc = `, "inc": 60`
+		}
+		return fmt.Sprintf(`{"lu": %d, "ts": 1, "tr": [60000, 60000], "mo": 0, "tb": [%d, %d], "rtiat": %v%s}`,
+			now-sinceUpdate, bank, bank, rtiat, inc)
+	}
+	noBank := func(sinceUpdate int64) string {
+		return fmt.Sprintf(`{"lu": %d, "ts": 1, "tr": [60000, 60000], "mo": 0, "rtiat": true, "inc": 60}`, now-sinceUpdate)
+	}
+	cases := []struct {
+		id        string
+		timers    string
+		candidate bool
+	}{
+		{"tcInTime00000000000000", timers(30_000, 0, true, true), false},
+		{"tcOverNoBank0000000000", timers(120_000, 0, true, true), true},
+		{"tcBankCovers0000000000", timers(120_000, 100_000, true, true), false},
+		{"tcBankExactly000000000", timers(160_000, 100_000, true, true), false}, // deficit == bank: RanOut says no
+		{"tcBankOneMsShort000000", timers(160_001, 100_000, true, true), true},
+		{"tcBankExhausted0000000", timers(240_000, 100_000, true, true), true},
+		{"tcNoIncKey000000000000", timers(30_000, 0, true, false), true}, // cannot judge: check it
+		{"tcNotReset00000000000a", timers(30_000, 0, false, true), true}, // other RanOut branch: check it
+		{"tcNoBankAtLimit0000000", noBank(60_000), false},
+		{"tcNoBankOver000000000a", noBank(60_001), true},
+	}
+	// The request agrees with "inc", so a row without the key is filled with
+	// the same 60 seconds on load.
+	const corres = `game_request = jsonb_set(jsonb_set(game_request, '{game_mode}', '1'), '{increment_seconds}', '60')`
+	for _, c := range cases {
+		cloneLiveGame(t, gstore, c.id,
+			corres+`, started = true, timers = '`+c.timers+`'`,
+			`game_mode = 1, started = true, timers = '`+c.timers+`'`)
+	}
+
+	all, err := CorrespondenceTimeoutCandidates(readGamesCtx(), gstore.queries, now)
+	is.NoErr(err)
+	got, err := CorrespondenceTimeoutCandidates(readOngoingCtx(), gstore.queries, now)
+	is.NoErr(err)
+	in := map[string]bool{}
+	for _, r := range got {
+		in[r.Uuid.String] = true
+	}
+
+	for _, c := range cases {
+		if in[c.id] != c.candidate {
+			t.Errorf("%s: candidate = %v, want %v", c.id, in[c.id], c.candidate)
+		}
+	}
+	// Whatever RanOut times out from the full list is among the candidates.
+	timedOut := 0
+	for _, r := range all {
+		tm := r.Timers
+		tm.FillIncrement(r.GameRequest.GameRequest)
+		if r.PlayerOnTurn.Valid && tm.RanOut(int(r.PlayerOnTurn.Int32), now) {
+			timedOut++
+			if !in[r.Uuid.String] {
+				t.Errorf("%s runs out of time but is not a candidate", r.Uuid.String)
+			}
+		}
+	}
+	is.Equal(timedOut, 4) // over-no-bank, one-ms-short, exhausted, no-bank-over
 }

@@ -141,3 +141,22 @@ func ActiveRealtimeGamesWithBotOnTurn(ctx context.Context, q *models.Queries) ([
 	}
 	return q.ListActiveRealtimeGamesWithBotOnTurnFromOngoing(ctx)
 }
+
+// CorrespondenceTimeoutCandidates lists the correspondence games the
+// adjudicator should check at nowMs. From games that is every live
+// correspondence game; from ongoing_games it is only those whose timers say
+// the player on turn may have run out (see the query), which is normally
+// none. The adjudicator decides each with Timers.RanOut either way, so the
+// two paths time out exactly the same games.
+func CorrespondenceTimeoutCandidates(ctx context.Context, q *models.Queries, nowMs int64) ([]models.ListActiveCorrespondenceGamesRow, error) {
+	if !config.ReadsOngoing(ctx) {
+		return q.ListActiveCorrespondenceGames(ctx)
+	}
+	rows, err := q.ListCorrespondenceTimeoutCandidatesFromOngoing(ctx, nowMs)
+	if err != nil {
+		return nil, err
+	}
+	return convertRows(rows, func(r models.ListCorrespondenceTimeoutCandidatesFromOngoingRow) models.ListActiveCorrespondenceGamesRow {
+		return models.ListActiveCorrespondenceGamesRow(r)
+	}), nil
+}

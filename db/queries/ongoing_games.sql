@@ -259,3 +259,35 @@ WHERE o.game_mode != 1 -- Exclude CORRESPONDENCE games
             AND u.internal_bot = true AND lower(u.username) != 'bestbot'
     )
 ORDER BY g.id;
+
+-- name: ListCorrespondenceTimeoutCandidatesFromOngoing :many
+-- The correspondence games whose player on turn may have run out of time at
+-- now_ms, decided from ongoing_games alone; games is read only for the rows
+-- that pass. Same columns as ListActiveCorrespondenceGames.
+--
+-- This must never miss a game that Timers.RanOut would time out; an extra
+-- candidate only costs the adjudicator a RanOut call (and TimedOut checks
+-- again on the loaded game). So anything it cannot judge is a candidate:
+--   * timers without "inc" (written before the field, until the next save);
+--   * timers not reset-to-increment (none in production; the other RanOut
+--     branch, left to Go).
+-- Otherwise RanOut times the player out when the turn has exceeded the
+-- increment by more than their bank: deficit > bank, a missing bank counting
+-- as 0 (then any positive deficit). That is RanOut exactly, boundary included.
+SELECT g.quickdata, g.uuid, g.started, g.tournament_data, g.game_request, g.player_on_turn, g.timers, g.type, g.updated_at, g.league_id, g.season_id, g.league_division_id,
+    COALESCE(l.slug, '')::text AS league_slug
+FROM ongoing_games o
+JOIN games g ON g.uuid = o.game_uuid
+LEFT JOIN leagues l ON l.uuid = g.league_id
+WHERE o.game_mode = 1 -- Only CORRESPONDENCE games
+    AND o.started
+    AND o.on_turn IS NOT NULL
+    AND (
+        o.timers->'inc' IS NULL
+        OR NOT COALESCE((o.timers->>'rtiat')::boolean, false)
+        -- now - lu - inc*1000 > bank, rearranged so the parameter stands alone
+        OR (o.timers->>'lu')::bigint + (o.timers->>'inc')::bigint * 1000
+            + COALESCE((o.timers->'tb'->>(o.on_turn::int))::bigint, 0)
+            < sqlc.arg(now_ms)::bigint
+    )
+ORDER BY g.id;

@@ -124,8 +124,16 @@ on get theirs from the backfill.
    them to the same rows. On 2026-11-09 the old and new queries returned
    identical sets on production (68 real-time, 2,392 correspondence, 2
    tournament, 1 bot on turn). The real-time listing goes from ~122 ms to
-   ~3 ms; correspondence from ~122 ms to ~47 ms, the rest being the 2,400
-   `games` rows it still reads.
+   ~3 ms; the full correspondence listing from ~122 ms to ~47 ms, the rest
+   being the 2,400 `games` rows it still reads.
+   The correspondence adjudicator no longer reads that listing: it asks
+   `ListCorrespondenceTimeoutCandidatesFromOngoing` for the games whose
+   `ongoing_games` timers say the player on turn may have run out -- RanOut's
+   test in SQL, using the increment the timers now carry (#2235) -- and reads
+   `games` only for those. On 2026-11-09 that was 0 of 2,389. A row whose
+   timers lack `"inc"` is always a candidate, so the filter is exact once
+   #2235's migration has run and merely unhelpful before it.
+   `TestCorrespondenceTimeoutCandidates` pins it to `RanOut` at the boundary.
    The read flag is ignored unless `WRITE_ONGOING_GAMES` is also on, so
    turning the writer off can never leave listings reading a stale table.
    *Rollback:* unset `READ_ONGOING_GAMES` and redeploy; nothing is written
@@ -392,13 +400,13 @@ Evidence-gathering, behind flags, serving nothing:
       `idx_games_game_end_reason` if nothing else uses it.
       The older `ListOngoing*` queries in `ongoing_games.sql` still have no
       callers; delete them then too.
-- [ ] **Correspondence adjudication without reading `games`.** The
-      adjudicator reads every live correspondence game's `games` row each
-      minute, only to get the increment and the player on turn's id. With an
-      `increment_seconds` column on `ongoing_games` the whole timeout test is
-      SQL over the small table, and `games` is read only for the games that
-      actually ran out. Without it the timers alone are no filter: 1,324 of
-      2,396 games could have run out with a zero increment.
+- [x] **Correspondence adjudication without reading `games`** -- the
+      increment is in the timers (#2235) and the adjudicator pre-filters in
+      SQL behind `READ_ONGOING_GAMES` (rollout step 6).
+- [ ] **Time-bank updates take no game lock.** `AddTimeBank*` (league admin)
+      update the timers in SQL; a move saved at the same moment writes the
+      timers it loaded and drops the added time. Rare and admin-only; route
+      them through the lock (or retry) if it ever matters.
 - [ ] **Delete the `Cache` wrapper.** `pkg/stores/game/cache.go` is a
       pass-through to `DBStore` now, apart from the per-server `activeGames`
       listing TTL.
