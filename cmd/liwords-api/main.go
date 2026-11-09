@@ -65,6 +65,7 @@ import (
 	"github.com/woogles-io/liwords/pkg/organization"
 	"github.com/woogles-io/liwords/pkg/pair"
 	pkgprofile "github.com/woogles-io/liwords/pkg/profile"
+	"github.com/woogles-io/liwords/pkg/push"
 	"github.com/woogles-io/liwords/pkg/puzzles"
 	"github.com/woogles-io/liwords/pkg/registration"
 	"github.com/woogles-io/liwords/pkg/sessions"
@@ -188,6 +189,13 @@ func main() {
 	// but not for migrations, so we check after migrations complete
 	if cfg.SecretKey == "" {
 		panic("secret key must be non blank")
+	}
+
+	pushSettings, pushProblems := push.NewSettings(cfg)
+	if pushSettings == nil {
+		log.Info().Strs("problems", pushProblems).Msg("web-push-off")
+	} else {
+		log.Info().Msg("web-push-on")
 	}
 
 	ctx, pubsubCancel := context.WithCancel(context.Background())
