@@ -1959,7 +1959,7 @@ func (s *DBStore) setReadyWithOngoing(ctx context.Context, gid string, pidx int)
 			Uuid:      common.ToPGTypeText(gid),
 		})
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil // no such game, or this player was already ready
+			return nil // no such game
 		}
 		if err != nil {
 			return err

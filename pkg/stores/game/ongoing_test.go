@@ -283,10 +283,14 @@ func TestOngoingReadinessFollowsTheGame(t *testing.T) {
 	is.NoErr(err)
 	is.Equal(row.ReadyFlag, int64(3))
 
-	// Readying again changes nothing and is not an error.
+	// Readying again changes no bits and reports the whole flag, so a start
+	// that failed after both readied can be retried.
 	flag, err = gstore.SetReady(ctx, ongoingGID, 1)
 	is.NoErr(err)
-	is.Equal(flag, 0)
+	is.Equal(flag, 3)
+	row, err = gstore.queries.GetOngoingGame(ctx, ongoingGID)
+	is.NoErr(err)
+	is.Equal(row.ReadyFlag, int64(3))
 }
 
 // A game is ongoing from the moment it is created, not from its first save:

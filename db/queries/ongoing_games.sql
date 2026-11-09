@@ -69,11 +69,13 @@ SET started = true, timers = @timers, updated_at = now()
 WHERE game_uuid = @game_uuid;
 
 -- name: SetOngoingGameReady :one
+-- Mirrors games.SetReady: a re-ready is a no-op on the bits, not a miss, so
+-- the row stays in step with games.ready_flag. No rows means the game has no
+-- ongoing row (yet), which the caller ignores.
 UPDATE ongoing_games
 SET ready_flag = ready_flag | (1 << @player_idx::integer),
     updated_at = now()
 WHERE game_uuid = @game_uuid
-    AND ready_flag & (1 << @player_idx::integer) = 0
 RETURNING ready_flag;
 
 -- Removing the row is how a game stops being ongoing. Called in the same
