@@ -146,6 +146,9 @@ type TileProps = {
   tentativeScore?: number;
   tentativeScoreIsHorizontal?: boolean | undefined;
   grabbable: boolean;
+  // a tile that is not dragged but clicked, as in the exchange modal, takes
+  // the hand cursor
+  clickable?: boolean;
   rackIndex?: number | undefined;
   selected?: boolean;
   onDragEnd?: (didDrop: boolean, dropResult: unknown) => void;
@@ -261,7 +264,7 @@ const Tile = React.memo((props: TileProps) => {
         data-length={rune.length}
         data-bnjy={bnjyable ? "1" : "0"}
         style={{
-          cursor: canDrag ? "grab" : "default",
+          cursor: canDrag ? "grab" : props.clickable ? "pointer" : "default",
           ...(props.letter === EmptyRackSpaceMachineLetter
             ? { visibility: "hidden" }
             : null),

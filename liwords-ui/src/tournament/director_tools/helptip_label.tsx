@@ -15,10 +15,7 @@ export const HelptipLabel = (props: Props) => (
       color="black" /* otherwise it's not opaque */
       classNames={{ body: "helptip-body" }}
     >
-      <QuestionCircleOutlined
-        className="readable-text-color"
-        style={{ marginLeft: 5, color: "cyan" }}
-      />
+      <QuestionCircleOutlined className="helptip-icon" />
     </Tooltip>
   </>
 );

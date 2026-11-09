@@ -96,7 +96,12 @@ func pairRandom(members *entity.UnpairedPoolMembers) ([]int, error) {
 }
 
 func pairRoundRobin(members *entity.UnpairedPoolMembers) ([]int, error) {
-	return GetRoundRobinPairings(len(members.PoolMembers), int(members.RoundControls.Round), members.Seed)
+	rc := members.RoundControls
+	round, _ := plainRoundRobinRound(rc, int(rc.Round), members.RoundRobinRound)
+	if rc.SeedOrder {
+		return GetSeedOrderRoundRobinPairings(len(members.PoolMembers), round)
+	}
+	return GetRoundRobinPairings(len(members.PoolMembers), round, members.Seed)
 }
 
 func pairTeamRoundRobin(members *entity.UnpairedPoolMembers) ([]int, error) {
@@ -700,8 +705,67 @@ func getShirtsVsSkinsPairings(groupSize int, round int) []int {
 	return pairings
 }
 
+// RoundRobinRound returns the round of GetRoundRobinPairings (and
+// RoundRobinGoesFirst) that pairs round of a round robin playing each
+// opponent roundsPerOpponent rounds in a row, and which of those rounds in a
+// row it is, from 0. index is the round's place in the round robin, counting
+// only its own rounds, so that rounds paired another way in between neither
+// restart it nor use up its rounds. With one round per opponent, every round
+// is its own, as it always has been.
+func RoundRobinRound(round, index, roundsPerOpponent int) (int, int) {
+	if roundsPerOpponent <= 1 {
+		return round, 0
+	}
+	return index / roundsPerOpponent, index % roundsPerOpponent
+}
+
+// plainRoundRobinRound returns the round of GetRoundRobinPairings, or of
+// GetSeedOrderRoundRobinPairings in seed order, that plays round of the round
+// robin rc describes, and which of a pair's rounds in a row it is. index is
+// the round's place in the round robin, counting only its own rounds; in seed
+// order every round counts that way, so that each cycle ends where it should.
+func plainRoundRobinRound(rc *pb.RoundControl, round, index int) (int, int) {
+	if rc.SeedOrder {
+		round = index
+	}
+	return RoundRobinRound(round, index, int(rc.GamesPerRound))
+}
+
+// PlainRoundRobinGoesFirst says whether player goes first in round of the
+// round robin rc describes, the round robin's round index (see
+// plainRoundRobinRound): as its schedule says, with two players who meet in
+// rounds in a row swapping each time.
+func PlainRoundRobinGoesFirst(rc *pb.RoundControl, index, numberOfPlayers, round, player int, seed uint64) (bool, error) {
+	round, game := plainRoundRobinRound(rc, round, index)
+	var goesFirst bool
+	var err error
+	if rc.SeedOrder {
+		goesFirst, err = SeedOrderRoundRobinGoesFirst(numberOfPlayers, round, player)
+	} else {
+		goesFirst, err = RoundRobinGoesFirst(numberOfPlayers, round, player, seed)
+	}
+	return goesFirst != (game%2 == 1), err
+}
+
 // GetRoundRobinPairings generates round-robin pairings for a given number of players and round
 func GetRoundRobinPairings(numberOfPlayers int, round int, seed uint64) ([]int, error) {
+	return roundRobinPairings(roundRobinSeats(numberOfPlayers, seed), numberOfPlayers, round)
+}
+
+// GetSeedOrderRoundRobinPairings is GetRoundRobinPairings with the players
+// in seed order instead of shuffled (see seedOrderSeats) and its rounds in
+// seedOrderRotation's order, so that each cycle ends with seeds 1 and 2, 3
+// and 4, and so on, playing each other. round counts from the round robin's
+// first round.
+func GetSeedOrderRoundRobinPairings(numberOfPlayers int, round int) ([]int, error) {
+	return roundRobinPairings(seedOrderSeats(numberOfPlayers), numberOfPlayers,
+		seedOrderRotation(numberOfPlayers, round))
+}
+
+// roundRobinPairings pairs round of the round robin with its players, and
+// the bye (numberOfPlayers) if there are an odd number of them, seated as
+// players says.
+func roundRobinPairings(players []int, numberOfPlayers int, round int) ([]int, error) {
 
 	/* Round Robin pairing algorithm:
 
@@ -735,7 +799,6 @@ func GetRoundRobinPairings(numberOfPlayers int, round int, seed uint64) ([]int, 
 
 	*/
 
-	players := roundRobinSeats(numberOfPlayers, seed)
 	bye := numberOfPlayers%2 == 1
 
 	rotatedPlayers := players[1:]
@@ -807,6 +870,39 @@ func roundRobinSeats(numberOfPlayers int, seed uint64) []int {
 	return players
 }
 
+// seedOrderSeats seats the players of a round robin in seed order (player i
+// is seed i+1), with the bye, if there are an odd number of players, as the
+// seed after the last. With n seeds, the bye counted, seed n-1 takes the
+// fixed seat, and the circle runs n, 2, n-3, 4, n-5, 6, and so on down to
+// seed 1. The rotation's second round then pairs seeds 1 and 2, 3 and 4, and
+// so on.
+func seedOrderSeats(numberOfPlayers int) []int {
+	n := numberOfPlayers + numberOfPlayers%2
+	seats := []int{n - 2, n - 1}
+	for i := 1; i < n-1; i++ {
+		if i%2 == 1 {
+			seats = append(seats, i)
+		} else {
+			seats = append(seats, n-2-i)
+		}
+	}
+	return seats
+}
+
+// seedOrderRotation returns the round of the rotation that plays round of a
+// round robin in seed order: the rotation's own order, but with its second
+// round, which pairs seeds 1 and 2, 3 and 4, and so on, last in each cycle.
+func seedOrderRotation(numberOfPlayers, round int) int {
+	l := numberOfPlayers + numberOfPlayers%2 - 1
+	cycle, r := round/l, round%l
+	if r == l-1 && l > 1 {
+		r = 1
+	} else if r > 0 {
+		r++
+	}
+	return cycle*l + r
+}
+
 // RoundRobinGoesFirst says whether player goes first in round of the round
 // robin GetRoundRobinPairings pairs with the same seed.
 //
@@ -828,10 +924,107 @@ func roundRobinSeats(numberOfPlayers int, seed uint64) []int {
 // The pairings repeat in the same order every cycle, so every other cycle is
 // flipped: each pair splits their games.
 func RoundRobinGoesFirst(numberOfPlayers, round, player int, seed uint64) (bool, error) {
+	return roundRobinGoesFirst(roundRobinSeats(numberOfPlayers, seed), numberOfPlayers, round, player)
+}
+
+// SeedOrderRoundRobinGoesFirst says whether player goes first in round of
+// the round robin GetSeedOrderRoundRobinPairings pairs.
+//
+// As in RoundRobinGoesFirst, the two players k seats either side of the
+// circle's center play each other, and the one ahead goes first when k is
+// odd, so that as the center moves on a seat each round, everyone on the
+// circle alternates. In seed order the center moves on two seats into the
+// cycle's second round and into its last, which would keep everyone's side
+// for a round, so the rounds between are flipped.
+//
+// The game against the fixed seat is left. It goes to whichever side evens
+// up the center player's other games, and when those are even, it keeps the
+// fixed seat alternating, with one double halfway through the cycle.
+//
+// Every other cycle is flipped, so each pair splits their games.
+func SeedOrderRoundRobinGoesFirst(numberOfPlayers, round, player int) (bool, error) {
 	if player < 0 || player >= numberOfPlayers {
 		return false, fmt.Errorf("player %d out of range for %d players", player, numberOfPlayers)
 	}
-	players := roundRobinSeats(numberOfPlayers, seed)
+	seats := seedOrderSeats(numberOfPlayers)
+	circle := seats[1:]
+	l := len(circle) // always odd
+	cycle, r := round/l, round%l
+	flip := cycle%2 == 1
+	// The center's seat in each round, which follows seedOrderRotation.
+	center := func(r int) int {
+		if r == 0 {
+			return l - 1
+		}
+		if r == l-1 {
+			return 0
+		}
+		return r
+	}
+	// The bye's seat, if there is one.
+	byeSeat := slices.Index(circle, numberOfPlayers)
+	ahead := func(seat, r int) bool {
+		d := (seat - center(r) + l) % l
+		if r > 0 && r < l-1 {
+			d++
+		}
+		return d%2 == 1
+	}
+	c := center(r)
+	// The center player's other games, firsts less seconds.
+	evenUp := 0
+	for o := 0; o < l; o++ {
+		if o == r || center(o) == c {
+			continue
+		}
+		if (2*center(o)-c+2*l)%l == byeSeat {
+			continue
+		}
+		if ahead(c, o) {
+			evenUp++
+		} else {
+			evenUp--
+		}
+	}
+	var centerFirst bool
+	switch {
+	case evenUp < 0:
+		centerFirst = true
+	case evenUp > 0:
+		centerFirst = false
+	default:
+		centerFirst = (r%2 == 1) == (r >= (l+1)/2)
+	}
+	var first bool
+	seat := slices.Index(circle, player)
+	switch {
+	case seat < 0:
+		// The fixed seat.
+		first = !centerFirst
+	case seat == c:
+		first = centerFirst
+	default:
+		first = ahead(seat, r)
+	}
+	// With one more than a multiple of four players, the bye leaves seed 1
+	// (the circle's last seat) two firsts short and the fixed seat two over.
+	// Swapping firsts in the fixed seat's game against the seat two before
+	// seed 1, and in that seat's next game, which is against seed 1, evens
+	// them up.
+	if byeSeat >= 0 && numberOfPlayers%4 == 1 && l >= 5 {
+		if (r == l-3 && (seat < 0 || seat == l-3)) || (r == l-2 && (seat == l-1 || seat == l-3)) {
+			first = !first
+		}
+	}
+	return first != flip, nil
+}
+
+// roundRobinGoesFirst is RoundRobinGoesFirst for the round robin with its
+// players, and the bye if there is one, seated as players says.
+func roundRobinGoesFirst(players []int, numberOfPlayers, round, player int) (bool, error) {
+	if player < 0 || player >= numberOfPlayers {
+		return false, fmt.Errorf("player %d out of range for %d players", player, numberOfPlayers)
+	}
 	circle := players[1:]
 	l := len(circle) // always odd
 	rotation := round % l

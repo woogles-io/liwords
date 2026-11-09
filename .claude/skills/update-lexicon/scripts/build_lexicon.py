@@ -10,7 +10,7 @@ Nothing here touches the liwords repo; everything is written to --out.
 
 Example:
     build_lexicon.py --input ~/Downloads/nsf2026.txt --name NSF26 \
-        --alphabet norwegian --prev liwords-ui/public/wasm/2024/NSF25.kwg \
+        --alphabet norwegian --prev liwords-ui/public/wasm/2026/NSF25.kwg \
         --out /tmp/nsf26
 """
 

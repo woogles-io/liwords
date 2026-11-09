@@ -329,7 +329,8 @@ func TestHalvesEachStartsWhereTheHalvesSearchStops(t *testing.T) {
 			first = p
 			return true
 		})
-		got, ok := pairHalves(n, blocked)
+		got, ok, err := pairHalves(n, blocked)
+		is.NoErr(err)
 		if first == nil {
 			is.True(!ok)
 			continue
@@ -345,7 +346,8 @@ func TestWinGroupsMatchesTheRuleAsWritten(t *testing.T) {
 	rng := rand.New(rand.NewPCG(1, 2))
 	for trial := 0; trial < 3000; trial++ {
 		n, score, blocked := randomField(rng)
-		got, gotOK := winGroupsMatch(n, score, blocked)
+		got, gotOK, err := winGroupsMatch(n, score, blocked)
+		is.NoErr(err)
 		want, wantOK := winGroupsAsWritten(n, score, blocked)
 		is.Equal(gotOK, wantOK)
 		is.Equal(got, want)

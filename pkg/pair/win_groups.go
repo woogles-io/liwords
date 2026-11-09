@@ -33,8 +33,15 @@ import (
 // group by group from the top. score[p] is position p's wins (2*wins +
 // draws); blocked is the symmetric matrix of disallowed pairings (a director
 // block, or a repeat at the active reset round). It returns the pairings, in
-// positions, and whether the whole field could be paired.
-func winGroupsMatch(n int, score []int, blocked [][]bool) ([]int, bool) {
+// positions, and whether the whole field could be paired, or the error that
+// stopped it.
+func winGroupsMatch(n int, score []int, blocked [][]bool) ([]int, bool, error) {
+	return winGroupsMatchMode(n, score, blocked, plainUntilStuck)
+}
+
+// winGroupsMatchMode is winGroupsMatch with each group's search run in the
+// given mode. Only a plainOnly search skips the check below on [i, n).
+func winGroupsMatchMode(n int, score []int, blocked [][]bool, mode searchMode) ([]int, bool, error) {
 	pairings := make([]int, n)
 	for i := range pairings {
 		pairings[i] = -1
@@ -42,6 +49,8 @@ func winGroupsMatch(n int, score []int, blocked [][]bool) ([]int, bool) {
 	// failed[i] records that positions [i, n) cannot be paired among
 	// themselves, so the search never asks that twice. It changes no result.
 	failed := make([]bool, n)
+	allowed := func(a, b int) bool { return !blocked[a][b] }
+	var err error
 
 	var pairFrom func(i int) bool
 	pairFrom = func(i int) bool {
@@ -61,15 +70,44 @@ func winGroupsMatch(n int, score []int, blocked [][]bool) ([]int, bool) {
 		if (j-i)%2 == 1 {
 			j++
 		}
+		checked := false
 		for {
-			if winGroupPair(i, j, blocked, pairings) {
+			ok, groupErr := winGroupPair(i, j, blocked, pairings, mode)
+			if groupErr != nil {
+				err = groupErr
+				return false
+			}
+			if ok {
 				if pairFrom(j) {
 					return true
+				}
+				if err != nil {
+					return false
 				}
 				// The players below the group pair only among themselves, so no
 				// other pairing of this group can help them: take in two more.
 				for p := i; p < j; p++ {
 					pairings[p] = -1
+				}
+			}
+			// The last try, the whole rest as one group, pairs it whenever it
+			// can be paired at all, since that group's search may then make
+			// any pair not blocked. So at the first failure ask whether it
+			// can: when it cannot, no group from i will do.
+			if !checked && mode != plainOnly {
+				checked = true
+				rest := make([]int, 0, n-i)
+				for p := i; p < n; p++ {
+					rest = append(rest, p)
+				}
+				pairable, checkErr := canPairAll(rest, allowed)
+				if checkErr != nil {
+					err = checkErr
+					return false
+				}
+				if !pairable {
+					failed[i] = true
+					return false
 				}
 			}
 			if j == n {
@@ -81,28 +119,28 @@ func winGroupsMatch(n int, score []int, blocked [][]bool) ([]int, bool) {
 	}
 
 	if !pairFrom(0) {
-		return nil, false
+		return nil, false, err
 	}
-	return pairings, true
+	return pairings, true, nil
 }
 
 // winGroupPair pairs the group of positions [i, j) top half against bottom
 // half, writing the pairings, in positions, into pairings. It reports whether
-// the group could be paired.
-func winGroupPair(i, j int, blocked [][]bool, pairings []int) bool {
+// the group could be paired, or the error that stopped its search.
+func winGroupPair(i, j int, blocked [][]bool, pairings []int, mode searchMode) (bool, error) {
 	g := j - i
 	sub := make([][]bool, g)
 	for a := range sub {
 		sub[a] = blocked[i+a][i : i+g]
 	}
-	groupPairings, ok := pairHalves(g, sub)
-	if !ok {
-		return false
+	groupPairings, ok, err := pairHalvesMode(g, sub, mode)
+	if err != nil || !ok {
+		return false, err
 	}
 	for a, b := range groupPairings {
 		pairings[i+a] = i + b
 	}
-	return true
+	return true, nil
 }
 
 // pairWinGroups is the dispatcher entry point. Like pairAustralianDraw it
@@ -136,7 +174,7 @@ func pairWinGroups(members *entity.UnpairedPoolMembers) ([]int, error) {
 	positionPairings, err := matchWithReset("win groups", f.m,
 		f.earliestReset(currentRound), currentRound, f.hasPlayedSince,
 		f.blockedPair,
-		func(n int, blocked [][]bool) ([]int, bool) {
+		func(n int, blocked [][]bool) ([]int, bool, error) {
 			return winGroupsMatch(n, score, blocked)
 		})
 	if err != nil {
@@ -181,7 +219,16 @@ func pairWinGroups(members *entity.UnpairedPoolMembers) ([]int, error) {
 // 1 vs n/2+1, and so on (with any phantom bye landing on the lone middle): the
 // proper opponent across the halves is always nearest-first and unblocked, so
 // the boundary fallback is never taken until forced.
-func pairHalves(n int, blocked [][]bool) ([]int, bool) {
+//
+// A pass whose search meets a dead end goes on guided (see searchRun), which
+// finds the same draw. It returns an error only when the matcher behind the
+// guided search fails.
+func pairHalves(n int, blocked [][]bool) ([]int, bool, error) {
+	return pairHalvesMode(n, blocked, plainUntilStuck)
+}
+
+// pairHalvesMode is pairHalves with each pass searched in the given mode.
+func pairHalvesMode(n int, blocked [][]bool, mode searchMode) ([]int, bool, error) {
 	pairings := make([]int, n)
 
 	// topCount is the size of the top half. A pair (a, b) is top-vs-top (a
@@ -204,6 +251,23 @@ func pairHalves(n int, blocked [][]bool) ([]int, bool) {
 	for i := range scratch {
 		scratch[i] = make([]int, n)
 	}
+	all := make([]int, n)
+	for i := range all {
+		all[i] = i
+	}
+	// level(k) is the players the choice at depth k is made among, while the
+	// search is that deep.
+	level := func(k int) []int {
+		if k == 0 {
+			return all
+		}
+		return scratch[k-1][:n-2*k]
+	}
+
+	// allowed holds the pairs the running pass may make, and search tracks
+	// how it runs.
+	var allowed func(a, b int) bool
+	var search *searchRun
 
 	var halves func(r []int, allowFlip bool, depth int) bool
 	halves = func(r []int, allowFlip bool, depth int) bool {
@@ -217,6 +281,26 @@ func pairHalves(n int, blocked [][]bool) ([]int, bool) {
 		p := r[0]
 		half := len(r) / 2
 
+		// pairWith pairs p with b and recurses on the rest, undoing the pair
+		// if the rest cannot be paired. A guided search skips a b that leaves
+		// the rest unpairable. It reports whether the rest was paired, and
+		// otherwise whether p may try its next opponent (see backUp).
+		pairWith := func(b int) (bool, bool) {
+			rest := withoutInto(scratch[depth], r, p, b)
+			checked := search.guided
+			if checked && !search.pairable(rest, allowed) {
+				return false, !search.stop()
+			}
+			pairings[p] = b
+			pairings[b] = p
+			if halves(rest, allowFlip, depth+1) {
+				return true, false
+			}
+			pairings[p] = -1
+			pairings[b] = -1
+			return false, search.backUp(checked, depth, level, allowed)
+		}
+
 		// Phase 1a: proper bottoms r[half:], nearest to p's ideal
 		// opponent first (r is ascending, so ascending over r[half:] is
 		// nearest-first). None of these are top-vs-top.
@@ -224,13 +308,9 @@ func pairHalves(n int, blocked [][]bool) ([]int, bool) {
 			if blocked[p][b] {
 				continue
 			}
-			pairings[p] = b
-			pairings[b] = p
-			if halves(withoutInto(scratch[depth], r, p, b), allowFlip, depth+1) {
-				return true
+			if paired, more := pairWith(b); paired || !more {
+				return paired
 			}
-			pairings[p] = -1
-			pairings[b] = -1
 		}
 
 		// Phase 1b: the non-top-vs-top positions among r[1:half] -- bottoms that
@@ -241,13 +321,9 @@ func pairHalves(n int, blocked [][]bool) ([]int, bool) {
 			if topVsTop(p, b) || blocked[p][b] {
 				continue
 			}
-			pairings[p] = b
-			pairings[b] = p
-			if halves(withoutInto(scratch[depth], r, p, b), allowFlip, depth+1) {
-				return true
+			if paired, more := pairWith(b); paired || !more {
+				return paired
 			}
-			pairings[p] = -1
-			pairings[b] = -1
 		}
 
 		// Phase 2: the top-vs-top positions among r[1:half], nearest to p first
@@ -258,41 +334,48 @@ func pairHalves(n int, blocked [][]bool) ([]int, bool) {
 				if !topVsTop(p, b) || blocked[p][b] {
 					continue
 				}
-				pairings[p] = b
-				pairings[b] = p
-				if halves(withoutInto(scratch[depth], r, p, b), allowFlip, depth+1) {
-					return true
+				if paired, more := pairWith(b); paired || !more {
+					return paired
 				}
-				pairings[p] = -1
-				pairings[b] = -1
 			}
 		}
 
 		return false
 	}
 
-	all := make([]int, n)
-	for i := range all {
-		all[i] = i
+	// pass runs halves over the whole field. The pairs it may make are those
+	// the search tries: none blocked, and none top-vs-top unless flips are
+	// permitted.
+	pass := func(allowFlip bool) (bool, error) {
+		allowed = func(a, b int) bool {
+			return !blocked[a][b] && (allowFlip || !topVsTop(a, b))
+		}
+		search = newSearchRun(mode)
+		return search.run(pairings, func() bool {
+			return (!search.guided || search.pairable(all, allowed)) &&
+				halves(all, allowFlip, 0)
+		})
 	}
 
 	// Pass 1 first: a complete draw with flips disallowed is guaranteed to have
 	// zero top-vs-top, and it exists whenever any zero-top-vs-top draw does.
-	for i := range pairings {
-		pairings[i] = -1
+	ok, err := pass(false)
+	if err != nil {
+		return nil, false, err
 	}
-	if halves(all, false, 0) {
-		return pairings, true
+	if ok {
+		return pairings, true, nil
 	}
 
 	// Pass 2: no zero-top-vs-top draw exists, so permit the forced top-vs-top
 	// pairings.
-	for i := range pairings {
-		pairings[i] = -1
+	ok, err = pass(true)
+	if err != nil {
+		return nil, false, err
 	}
-	if halves(all, true, 0) {
-		return pairings, true
+	if ok {
+		return pairings, true, nil
 	}
 
-	return nil, false
+	return nil, false, nil
 }

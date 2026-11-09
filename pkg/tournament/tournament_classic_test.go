@@ -2,6 +2,7 @@ package tournament
 
 import (
 	"fmt"
+	"math"
 	"math/rand"
 	"os"
 	"sort"
@@ -1040,6 +1041,121 @@ func TestClassicDivisionGibson(t *testing.T) {
 	is.True(tc.isGibsonized("g", 1))
 }
 
+// pairAndPlayWithBye pairs the players two by two, the first of each two
+// beating the second by the margin given for that game, and pairs bye with
+// themself for byeResult.
+func pairAndPlayWithBye(tc *ClassicDivision, pairings []string, margins []int, bye string, byeResult pb.TournamentGameResult, round int) error {
+	err := tc.DeletePairings(round)
+	if err != nil {
+		return err
+	}
+	for i := 0; i < len(pairings); i += 2 {
+		_, err = tc.SetPairing(pairings[i], pairings[i+1], round, pb.TournamentGameResult_NO_RESULT)
+		if err != nil {
+			return err
+		}
+	}
+	_, err = tc.SetPairing(bye, bye, round, byeResult)
+	if err != nil {
+		return err
+	}
+	err = tc.StartRound(true)
+	if err != nil {
+		return err
+	}
+	for i := 0; i < len(pairings); i += 2 {
+		_, err = tc.SubmitResult(round, pairings[i], pairings[i+1], 300+margins[i/2], 300,
+			pb.TournamentGameResult_WIN,
+			pb.TournamentGameResult_LOSS,
+			pb.GameEndReason_STANDARD, false, 0, "")
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// newGibsonByeDivision makes a three round division of nine players, a to i
+// by seed, that gibsonizes with a gibson spread of 100.
+func newGibsonByeDivision(method pb.PairingMethod, minimumPlacement int32) (*ClassicDivision, error) {
+	roundControls := []*pb.RoundControl{}
+	for i := 0; i < 3; i++ {
+		roundControls = append(roundControls, &pb.RoundControl{FirstMethod: pb.FirstMethod_AUTOMATIC_FIRST,
+			PairingMethod: method,
+			GamesPerRound: defaultGamesPerRound,
+			Round:         int32(i)})
+	}
+	// The Australian Draw then forgives every earlier meeting, so it pairs
+	// the last round like King of the Hill.
+	roundControls[2].ResetRound = 2
+	players := makeTournamentPersons(map[string]int32{"a": 2000, "b": 1900, "c": 1800, "d": 1700, "e": 1600, "f": 1500, "g": 1400, "h": 1300, "i": 1200})
+	tc, err := compactNewClassicDivision(players, roundControls, false)
+	if err != nil {
+		return nil, err
+	}
+	divisionControls := newDivisionControls()
+	divisionControls.GibsonSpread = 100
+	divisionControls.MinimumPlacement = minimumPlacement
+	_, _, err = tc.SetDivisionControls(divisionControls)
+	if err != nil {
+		return nil, err
+	}
+	return tc, nil
+}
+
+func TestClassicDivisionGibsonPreservedBye(t *testing.T) {
+	is := is.New(t)
+
+	for _, method := range []pb.PairingMethod{pb.PairingMethod_KING_OF_THE_HILL, pb.PairingMethod_AUSTRALIAN_DRAW} {
+		// Prizes for first and second.
+		tc, err := newGibsonByeDivision(method, 1)
+		is.NoErr(err)
+
+		err = pairAndPlayWithBye(tc, []string{"a", "b", "c", "d", "e", "f", "g", "h"}, []int{300, 150, 120, 100}, "i", pb.TournamentGameResult_BYE, 0)
+		is.NoErr(err)
+		err = pairAndPlayWithBye(tc, []string{"a", "c", "b", "e", "d", "g", "f", "i"}, []int{300, 50, 20, 10}, "h", pb.TournamentGameResult_BYE, 1)
+		is.NoErr(err)
+		// a is 2-0 and 520 ahead of g with a round to go. Everyone else
+		// is 1-1: g, e, i, h, f, d, c, b.
+		is.True(tc.countGibsonizedPlayers(1) == 1)
+		is.True(tc.isGibsonized("a", 1))
+
+		// The director gives a the bye and pairs the rest, who are then
+		// paired as if a were not there.
+		err = tc.DeletePairings(2)
+		is.NoErr(err)
+		_, err = tc.SetPairing("a", "a", 2, pb.TournamentGameResult_BYE)
+		is.NoErr(err)
+		_, err = tc.PairRound(2, true)
+		is.NoErr(err)
+		is.NoErr(equalPairingStrings(tc.getPlayerPairings(2), [][]string{{"a"}, {"b", "c"}, {"d", "f"}, {"e", "g"}, {"h", "i"}}))
+	}
+
+	// A player on a bye still has their place in the standings when a
+	// gibsonized player is paired with someone who cannot cash.
+	tc, err := newGibsonByeDivision(pb.PairingMethod_KING_OF_THE_HILL, 6)
+	is.NoErr(err)
+
+	err = pairAndPlayWithBye(tc, []string{"a", "b", "c", "d", "e", "f", "g", "h"}, []int{300, 100, 100, 300}, "i", pb.TournamentGameResult_FORFEIT_LOSS, 0)
+	is.NoErr(err)
+	err = pairAndPlayWithBye(tc, []string{"a", "c", "b", "e", "d", "g", "f", "i"}, []int{300, 100, 50, 300}, "h", pb.TournamentGameResult_FORFEIT_LOSS, 1)
+	is.NoErr(err)
+	// a is 2-0 and gibsonized. g, f, e, d, b, and c are 1-1, and h and i
+	// are 0-2 and more than 100 behind every 1-1 player.
+	is.True(tc.countGibsonizedPlayers(1) == 1)
+	is.True(tc.isGibsonized("a", 1))
+
+	// The prizes go down to seventh place, which is c. With g on a bye,
+	// h is the first player who cannot reach it.
+	err = tc.DeletePairings(2)
+	is.NoErr(err)
+	_, err = tc.SetPairing("g", "g", 2, pb.TournamentGameResult_BYE)
+	is.NoErr(err)
+	_, err = tc.PairRound(2, true)
+	is.NoErr(err)
+	is.NoErr(equalPairingStrings(tc.getPlayerPairings(2), [][]string{{"a", "h"}, {"b", "d"}, {"c", "i"}, {"e", "f"}, {"g"}}))
+}
+
 func TestClassicDivisionFactor(t *testing.T) {
 	// This test is used to ensure that factor
 	// pairings work correctly
@@ -1626,6 +1742,33 @@ func TestClassicDivisionVoidResult(t *testing.T) {
 	is.NoErr(equalStandings(expectedstandings, standings))
 }
 
+// A round robin's games_per_round is how many rounds in a row each pair
+// plays, so however large a director sets it, each pairing holds one game.
+func TestClassicDivisionRoundRobinPairingHoldsOneGame(t *testing.T) {
+	for _, c := range []struct {
+		name              string
+		roundsPerOpponent int32
+	}{{"two", 2}, {"largest", math.MaxInt32}} {
+		t.Run(c.name, func(t *testing.T) {
+			is := is.New(t)
+			roundControls := []*pb.RoundControl{}
+			for i := 0; i < 6; i++ {
+				roundControls = append(roundControls, &pb.RoundControl{FirstMethod: pb.FirstMethod_MANUAL_FIRST,
+					PairingMethod: pb.PairingMethod_ROUND_ROBIN,
+					GamesPerRound: c.roundsPerOpponent,
+					Round:         int32(i)})
+			}
+			tc, err := compactNewClassicDivision(makeTournamentPersons(map[string]int32{"a": 4, "b": 3, "c": 2, "d": 1}), roundControls, false)
+			is.NoErr(err)
+			for round := range tc.Matrix {
+				for _, key := range tc.Matrix[round] {
+					is.Equal(len(tc.PairingMap[key].Games), 1)
+				}
+			}
+		})
+	}
+}
+
 func TestClassicDivisionRoundRobin(t *testing.T) {
 	// This test is used to ensure that round robin
 	// pairings work correctly
@@ -1774,6 +1917,118 @@ func TestClassicDivisionRoundRobin(t *testing.T) {
 
 	}
 
+}
+
+// roundRobinLayouts are divisions' rounds: R for a round robin round, x for
+// one paired another way. The round robin starts in round 1, or after three
+// other rounds, or has another round in the middle, between a pair's two
+// rounds.
+var roundRobinLayouts = []string{"RRRRRRRRRR", "xxxRRRRRRRRRR", "RRRxRRRRRRR"}
+
+// roundRobinDivision is a division of six, seeded A to F, whose rounds are
+// laid out as layout says, the round robin rounds playing each opponent two
+// rounds in a row, in seed order or not. It also returns the round robin's
+// rounds.
+func roundRobinDivision(is *is.I, layout string, seedOrder bool) (*ClassicDivision, []int) {
+	players := makeTournamentPersons(map[string]int32{"A": 2000, "B": 1900, "C": 1800, "D": 1700, "E": 1600, "F": 1500})
+	roundControls := defaultRoundControls(len(layout))
+	rrRounds := []int{}
+	for round, kind := range layout {
+		if kind == 'R' {
+			roundControls[round].PairingMethod = pb.PairingMethod_ROUND_ROBIN
+			roundControls[round].GamesPerRound = 2
+			roundControls[round].SeedOrder = seedOrder
+			rrRounds = append(rrRounds, round)
+		}
+	}
+	tc, err := compactNewClassicDivision(players, roundControls, false)
+	is.NoErr(err)
+	return tc, rrRounds
+}
+
+// TestClassicDivisionRoundRobinRoundsPerOpponent checks a round robin that
+// plays each opponent two rounds in a row, however its rounds are laid out
+// (roundRobinLayouts): each pair meets in two of its rounds in a row, going
+// first once each.
+func TestClassicDivisionRoundRobinRoundsPerOpponent(t *testing.T) {
+	is := is.New(t)
+	for _, layout := range roundRobinLayouts {
+		tc, rrRounds := roundRobinDivision(is, layout, false)
+
+		// Each pair, the round robin rounds they meet in, counting only the
+		// round robin's, and who goes first in each.
+		meetings := map[[2]int32][]int{}
+		firsts := map[[2]int32][]int32{}
+		for i, round := range rrRounds {
+			for p := range tc.Players.Persons {
+				pairing := tc.PairingMap[tc.Matrix[round][p]]
+				is.True(pairing != nil)
+				if pairing.Players[0] != int32(p) {
+					continue
+				}
+				pair := [2]int32{min(pairing.Players[0], pairing.Players[1]), max(pairing.Players[0], pairing.Players[1])}
+				is.True(pair[0] != pair[1])
+				meetings[pair] = append(meetings[pair], i)
+				firsts[pair] = append(firsts[pair], pairing.Players[0])
+			}
+		}
+		is.Equal(len(meetings), 15)
+		for pair, m := range meetings {
+			is.Equal(len(m), 2)
+			is.Equal(m[1], m[0]+1)
+			is.Equal(m[0]%2, 0)
+			is.True(firsts[pair][0] != firsts[pair][1])
+		}
+	}
+}
+
+// TestClassicDivisionRoundRobinSeedOrder checks a round robin in seed order
+// that plays each opponent two rounds in a row, however its rounds are laid
+// out (roundRobinLayouts): everyone plays the seed order's opponents twice
+// each, ending with seeds 1 and 2, 3 and 4, and 5 and 6, going first once
+// each.
+func TestClassicDivisionRoundRobinSeedOrder(t *testing.T) {
+	is := is.New(t)
+	// Each seed's opponents in a single round robin.
+	order := [][]int32{
+		{5, 4, 6, 3, 2},
+		{3, 5, 4, 6, 1},
+		{2, 6, 5, 1, 4},
+		{6, 1, 2, 5, 3},
+		{1, 2, 3, 4, 6},
+		{4, 3, 1, 2, 5},
+	}
+	for _, layout := range roundRobinLayouts {
+		tc, rrRounds := roundRobinDivision(is, layout, true)
+		firsts := map[[2]int32]int{}
+		for i, round := range rrRounds {
+			for p := range tc.Players.Persons {
+				pairing := tc.PairingMap[tc.Matrix[round][p]]
+				is.True(pairing != nil)
+				opponent := pairing.Players[0]
+				if opponent == int32(p) {
+					opponent = pairing.Players[1]
+				}
+				is.Equal(opponent+1, order[p][i/2])
+				if pairing.Players[0] == int32(p) {
+					firsts[[2]int32{min(int32(p), opponent), max(int32(p), opponent)}]++
+				}
+			}
+		}
+		is.Equal(len(firsts), 15)
+		for _, n := range firsts {
+			is.Equal(n, 2)
+		}
+		for p := range tc.Players.Persons {
+			n := 0
+			for _, round := range rrRounds {
+				if tc.PairingMap[tc.Matrix[round][p]].Players[0] == int32(p) {
+					n++
+				}
+			}
+			is.Equal(n, 5)
+		}
+	}
 }
 
 func TestClassicDivisionSnakedRoundRobin(t *testing.T) {

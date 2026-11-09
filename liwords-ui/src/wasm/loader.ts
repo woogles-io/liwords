@@ -174,7 +174,7 @@ const loadableByCacheKey: { [cacheKey: string]: Loadable } = {};
               : null;
       if (cacheKey) {
         lexicons[lexicon] = true;
-        loadables[filename] = new Loadable(cacheKey, `/wasm/2024/${filename}`);
+        loadables[filename] = new Loadable(cacheKey, `/wasm/2026/${filename}`);
         loadableByCacheKey[cacheKey] = loadables[filename];
         continue;
       }
@@ -231,6 +231,15 @@ export const getLexiconKey = (loadableKey: string) =>
 export const getLeaveKey = (loadableKey: string) =>
   loadablesByKey[loadableKey]?.[1]?.cacheKey?.replace(/^klv\//, "");
 
+// The files an analysis under this key reads, each with its cache key and where
+// it is served, for a wasm instance that loads them for itself: the analyzer
+// lab's worker.
+export const getLoadableFiles = (loadableKey: string) =>
+  (loadablesByKey[loadableKey] ?? []).map((loadable) => ({
+    cacheKey: loadable.cacheKey,
+    path: loadable.path,
+  }));
+
 // Forget everything the wasm is holding that this request does not want. A tab
 // that opens several games otherwise accumulates every lexicon it has ever
 // touched, and none of them are small. A wasm built before wolges-wasm had
@@ -244,6 +253,9 @@ export const getLeaveKey = (loadableKey: string) =>
 // panic there is not recoverable -- nothing unwinds, so the instance is spent.
 // Dropping a name without making its file fetchable again would therefore trade
 // a little memory for a dead module.
+//
+// A wasm with sims refuses to drop a lexicon while a live sim made with it holds
+// it, and throws to say so. That lexicon is still loaded, so it stays cached.
 const dropUnneeded = (
   wolges: typeof import("wolges-wasm"),
   cachedStuffs: { [cacheKey: string]: boolean },
@@ -260,12 +272,17 @@ const dropUnneeded = (
     const splitAt = cacheKey.indexOf("/");
     const type = cacheKey.substring(0, splitAt);
     const name = cacheKey.substring(splitAt + 1);
-    if (type === "klv") {
-      evict_klv(name);
-    } else if (type === "kwg") {
-      evict_kwg(name);
-    } else {
+    if (type !== "klv" && type !== "kwg") {
       continue; // not ours to drop, and not something we put there
+    }
+    try {
+      if (type === "klv") {
+        evict_klv(name);
+      } else {
+        evict_kwg(name);
+      }
+    } catch {
+      continue;
     }
     loadableByCacheKey[cacheKey]?.reset();
     delete cachedStuffs[cacheKey];
@@ -285,6 +302,8 @@ export const getWolges = async (loadableKey: string) =>
     let cachedStuffs = wolgesCache.get(wolges);
     if (!cachedStuffs) {
       wolgesCache.set(wolges, (cachedStuffs = {}));
+      // Once a page, so the build in use can be read from the console.
+      console.log(wolges.version());
     }
 
     // Before loading rather than after, so the outgoing tables are gone by the

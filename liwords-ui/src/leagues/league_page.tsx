@@ -54,6 +54,7 @@ import {
 } from "./follow_player";
 import {
   PromotionFormula,
+  SeasonStatus,
   StandingResult,
 } from "../gen/api/proto/ipc/league_pb";
 import { getDefaultDivisionId } from "./division_selector";
@@ -215,6 +216,22 @@ export const LeaguePage = (props: Props) => {
   const currentSeason = useMemo(() => {
     return allSeasons.find((s) => s.status === 1) || null;
   }, [allSeasons]);
+
+  // The seasons not completed yet, upcoming or current, whose ranks the roster
+  // takes as no finish yet. A cancelled season stays as it was.
+  const seasonsInProgress = useMemo(
+    () =>
+      allSeasons
+        .filter((s) =>
+          [
+            SeasonStatus.SEASON_SCHEDULED,
+            SeasonStatus.SEASON_ACTIVE,
+            SeasonStatus.SEASON_REGISTRATION_OPEN,
+          ].includes(s.status),
+        )
+        .map((s) => s.seasonNumber),
+    [allSeasons],
+  );
 
   // The season that closed last (status = COMPLETED = 2; allSeasons is newest
   // first), whose results decided at closing My League Games still lists.
@@ -868,6 +885,8 @@ export const LeaguePage = (props: Props) => {
                   shown={showRoster}
                   currentUserId={userID}
                   activeSeasonNumber={currentSeason?.seasonNumber}
+                  activeSeasonId={currentSeason?.uuid}
+                  seasonsInProgress={seasonsInProgress}
                   defaultSortSeason={displayedSeason?.seasonNumber}
                   onJumpToSeason={(seasonNum, divNum, player) => {
                     setFollowing(followPlayer(player));

@@ -10,6 +10,7 @@ import (
 	"github.com/matryer/is"
 	"github.com/rs/zerolog"
 
+	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/utilities"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
@@ -847,6 +848,280 @@ func TestRoundRobinFirsts(t *testing.T) {
 					if diff := firstsMinusSeconds(g[:i+1]); diff < -2 || diff > 2 {
 						t.Fatalf("%s: player %d is %d firsts up after game %d", name, player, diff, i+1)
 					}
+				}
+			}
+		}
+	}
+}
+
+// TestRoundRobinRoundsPerOpponent checks that a round robin with one round
+// per opponent pairs exactly as GetRoundRobinPairings does, wherever it
+// starts, and that one with more pairs everyone with each opponent that many
+// rounds in a row, counted from the round it starts in.
+func TestRoundRobinRoundsPerOpponent(t *testing.T) {
+	members := func(numberOfPlayers, round, first, perOpponent int, seed uint64) *entity.UnpairedPoolMembers {
+		m := &entity.UnpairedPoolMembers{
+			RoundControls: &pb.RoundControl{PairingMethod: pb.PairingMethod_ROUND_ROBIN,
+				GamesPerRound: int32(perOpponent), Round: int32(round)},
+			Seed:            seed,
+			RoundRobinRound: round - first,
+		}
+		for i := 0; i < numberOfPlayers; i++ {
+			m.PoolMembers = append(m.PoolMembers, &entity.PoolMember{Id: fmt.Sprint(i)})
+		}
+		return m
+	}
+	for numberOfPlayers := 2; numberOfPlayers <= 13; numberOfPlayers++ {
+		cycleLength := numberOfPlayers + numberOfPlayers%2 - 1
+		for seed := uint64(1); seed < 6; seed++ {
+			for _, first := range []int{0, 3} {
+				name := fmt.Sprintf("players=%d seed=%d first=%d", numberOfPlayers, seed, first)
+				for round := first; round < first+2*cycleLength; round++ {
+					got, err := pairRoundRobin(members(numberOfPlayers, round, first, 1, seed))
+					if err != nil {
+						t.Fatalf("%s: %v", name, err)
+					}
+					want, err := GetRoundRobinPairings(numberOfPlayers, round, seed)
+					if err != nil {
+						t.Fatalf("%s: %v", name, err)
+					}
+					if !slices.Equal(got, want) {
+						t.Fatalf("%s round %d: one round per opponent pairs %v, not %v", name, round, got, want)
+					}
+				}
+				for _, perOpponent := range []int{2, 3} {
+					name := fmt.Sprintf("%s per=%d", name, perOpponent)
+					// Each pair, the rounds they meet in; a bye is a pair
+					// with oneself.
+					met := map[[2]int][]int{}
+					var prev []int
+					for round := first; round < first+perOpponent*cycleLength; round++ {
+						pairings, err := pairRoundRobin(members(numberOfPlayers, round, first, perOpponent, seed))
+						if err != nil {
+							t.Fatalf("%s: %v", name, err)
+						}
+						if (round-first)%perOpponent != 0 && !slices.Equal(pairings, prev) {
+							t.Fatalf("%s round %d: pairs %v, not %v as the round before", name, round, pairings, prev)
+						}
+						prev = pairings
+						for player, opponent := range pairings {
+							if opponent < 0 {
+								opponent = player
+							}
+							if player <= opponent {
+								met[[2]int{player, opponent}] = append(met[[2]int{player, opponent}], round)
+							}
+						}
+					}
+					n := numberOfPlayers + numberOfPlayers%2
+					pairs := n * (n - 1) / 2
+					if numberOfPlayers%2 == 1 {
+						// The bye is a pair with oneself, not with the bye.
+						pairs = numberOfPlayers*(numberOfPlayers-1)/2 + numberOfPlayers
+					}
+					if len(met) != pairs {
+						t.Fatalf("%s: %d pairs met, not %d", name, len(met), pairs)
+					}
+					for pair, rounds := range met {
+						if len(rounds) != perOpponent || rounds[perOpponent-1]-rounds[0] != perOpponent-1 ||
+							(rounds[0]-first)%perOpponent != 0 {
+							t.Fatalf("%s: %v met in rounds %v", name, pair, rounds)
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+// TestSeedOrderRoundRobin checks that a round robin in seed order pairs
+// everyone once a cycle, in this order for 6 and 8 players, ending each cycle
+// with seeds 1 and 2, 3 and 4, and so on (with an odd number of players, the
+// last seed sits out), and that its firsts are as even as they can be.
+func TestSeedOrderRoundRobin(t *testing.T) {
+	// Each seed's opponents, round by round.
+	orders := map[int][][]int{
+		6: {
+			{5, 4, 6, 3, 2},
+			{3, 5, 4, 6, 1},
+			{2, 6, 5, 1, 4},
+			{6, 1, 2, 5, 3},
+			{1, 2, 3, 4, 6},
+			{4, 3, 1, 2, 5},
+		},
+		8: {
+			{7, 4, 6, 8, 5, 3, 2},
+			{3, 7, 4, 6, 8, 5, 1},
+			{2, 6, 8, 5, 7, 1, 4},
+			{5, 1, 2, 7, 6, 8, 3},
+			{4, 8, 7, 3, 1, 2, 6},
+			{8, 3, 1, 2, 4, 7, 5},
+			{1, 2, 5, 4, 3, 6, 8},
+			{6, 5, 3, 1, 2, 4, 7},
+		},
+	}
+	for numberOfPlayers, order := range orders {
+		for seed, opponents := range order {
+			for round, opponent := range opponents {
+				pairings, err := GetSeedOrderRoundRobinPairings(numberOfPlayers, round)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if pairings[seed] != opponent-1 {
+					t.Fatalf("players=%d round %d: seed %d plays seed %d, not %d",
+						numberOfPlayers, round+1, seed+1, pairings[seed]+1, opponent)
+				}
+			}
+		}
+	}
+
+	for numberOfPlayers := 2; numberOfPlayers <= 41; numberOfPlayers++ {
+		cycleLength := numberOfPlayers + numberOfPlayers%2 - 1
+		name := fmt.Sprintf("players=%d", numberOfPlayers)
+		games := make([][]bool, numberOfPlayers)
+		firsts := map[[2]int]int{}
+		met := map[[2]int]bool{}
+		for round := 0; round < 2*cycleLength; round++ {
+			pairings, err := GetSeedOrderRoundRobinPairings(numberOfPlayers, round)
+			if err != nil {
+				t.Fatalf("%s: %v", name, err)
+			}
+			if round%cycleLength == cycleLength-1 {
+				for player, opponent := range pairings {
+					want := player ^ 1
+					if want == numberOfPlayers {
+						want = -1
+					}
+					if opponent != want {
+						t.Fatalf("%s round %d: seed %d plays %d, not %d", name, round+1, player+1, opponent+1, want+1)
+					}
+				}
+			}
+			for player, opponent := range pairings {
+				if opponent < 0 {
+					opponent = player
+				}
+				if player <= opponent {
+					key := [2]int{player, opponent}
+					if met[key] {
+						t.Fatalf("%s round %d: %v met twice in a cycle", name, round+1, key)
+					}
+					met[key] = true
+				}
+				if opponent == player {
+					continue
+				}
+				first, err := SeedOrderRoundRobinGoesFirst(numberOfPlayers, round, player)
+				if err != nil {
+					t.Fatalf("%s: %v", name, err)
+				}
+				opponentFirst, err := SeedOrderRoundRobinGoesFirst(numberOfPlayers, round, opponent)
+				if err != nil {
+					t.Fatalf("%s: %v", name, err)
+				}
+				if first == opponentFirst {
+					t.Fatalf("%s round %d: %d and %d both go first or both second", name, round+1, player, opponent)
+				}
+				games[player] = append(games[player], first)
+				if player < opponent && first {
+					firsts[[2]int{player, opponent}]++
+				}
+			}
+			if (round+1)%cycleLength == 0 {
+				pairs := numberOfPlayers * (numberOfPlayers - 1) / 2
+				if numberOfPlayers%2 == 1 {
+					pairs += numberOfPlayers
+				}
+				if len(met) != pairs {
+					t.Fatalf("%s: %d pairs met in a cycle, not %d", name, len(met), pairs)
+				}
+				met = map[[2]int]bool{}
+				// Even at the end of every cycle, or one off when they've
+				// played an odd number of games.
+				for player := range games {
+					if diff := firstsMinusSeconds(games[player]); diff < -1 || diff > 1 ||
+						(numberOfPlayers%2 == 1 && diff != 0) {
+						t.Fatalf("%s: player %d is %d firsts up after round %d", name, player, diff, round+1)
+					}
+				}
+			}
+		}
+		for pair, n := range firsts {
+			if n != 1 {
+				t.Fatalf("%s: %d went first against %d in %d of their two games", name, pair[0], pair[1], n)
+			}
+		}
+		// Never three in a row within a cycle. Across cycles, the second is
+		// the first flipped, which can make three, or four with five
+		// players.
+		maxStreak := 3
+		if numberOfPlayers == 5 {
+			maxStreak = 4
+		}
+		for player, g := range games {
+			run := 0
+			for i := range g {
+				if i > 0 && g[i] == g[i-1] {
+					run++
+				} else {
+					run = 1
+				}
+				limit := maxStreak
+				if i < len(g)/2 {
+					limit = 2
+				}
+				if run > limit {
+					t.Fatalf("%s: player %d has %d firsts or seconds in a row by game %d", name, player, run, i+1)
+				}
+				if diff := firstsMinusSeconds(g[:i+1]); diff < -2 || diff > 2 {
+					t.Fatalf("%s: player %d is %d firsts up after game %d", name, player, diff, i+1)
+				}
+			}
+		}
+	}
+}
+
+// TestPlainRoundRobinGoesFirst checks that in a round robin in seed order
+// that plays each opponent two rounds in a row, the two go first once each,
+// and nobody goes first or second three times in a row.
+func TestPlainRoundRobinGoesFirst(t *testing.T) {
+	for numberOfPlayers := 2; numberOfPlayers <= 41; numberOfPlayers++ {
+		cycleLength := numberOfPlayers + numberOfPlayers%2 - 1
+		name := fmt.Sprintf("players=%d", numberOfPlayers)
+		games := make([][]bool, numberOfPlayers)
+		for round := 0; round < 2*cycleLength; round++ {
+			rc := &pb.RoundControl{PairingMethod: pb.PairingMethod_ROUND_ROBIN, GamesPerRound: 2,
+				SeedOrder: true, Round: int32(round)}
+			pairings, err := pairRoundRobin(&entity.UnpairedPoolMembers{RoundControls: rc,
+				PoolMembers: make([]*entity.PoolMember, numberOfPlayers), RoundRobinRound: round})
+			if err != nil {
+				t.Fatalf("%s: %v", name, err)
+			}
+			for player, opponent := range pairings {
+				if opponent < 0 {
+					continue
+				}
+				first, err := PlainRoundRobinGoesFirst(rc, round, numberOfPlayers, round, player, 0)
+				if err != nil {
+					t.Fatalf("%s: %v", name, err)
+				}
+				opponentFirst, err := PlainRoundRobinGoesFirst(rc, round, numberOfPlayers, round, opponent, 0)
+				if err != nil {
+					t.Fatalf("%s: %v", name, err)
+				}
+				if first == opponentFirst {
+					t.Fatalf("%s round %d: %d and %d both go first or both second", name, round+1, player, opponent)
+				}
+				games[player] = append(games[player], first)
+			}
+		}
+		for player, g := range games {
+			if diff := firstsMinusSeconds(g); diff != 0 {
+				t.Fatalf("%s: player %d is %d firsts up", name, player, diff)
+			}
+			for i := 2; i < len(g); i++ {
+				if g[i] == g[i-1] && g[i] == g[i-2] {
+					t.Fatalf("%s: player %d has three in a row ending in game %d", name, player, i+1)
 				}
 			}
 		}

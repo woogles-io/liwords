@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"sort"
 	"time"
 
 	"connectrpc.com/connect"
@@ -237,7 +238,9 @@ func (s *OrganizationService) RefreshTitles(
 	}), nil
 }
 
-// GetMyOrganizations returns all organizations the user is connected to
+// GetMyOrganizations returns all organizations the user is connected to, and
+// those they have asked to be verified for and are still waiting on, which
+// come back not verified.
 func (s *OrganizationService) GetMyOrganizations(
 	ctx context.Context,
 	req *connect.Request[pb.GetMyOrganizationsRequest],
@@ -247,12 +250,13 @@ func (s *OrganizationService) GetMyOrganizations(
 		return nil, err
 	}
 
-	integrations, err := s.queries.GetOrganizationIntegrations(ctx, user.UUID)
+	integrations, err := s.organizationIntegrations(ctx, user.UUID)
 	if err != nil {
 		return nil, apiserver.InternalErr(err)
 	}
 
 	var titles []*pb.OrganizationTitle
+	connected := map[string]bool{}
 
 	for _, integ := range integrations {
 		orgCode := organizations.OrganizationCode(integ.IntegrationName)
@@ -262,6 +266,7 @@ func (s *OrganizationService) GetMyOrganizations(
 		if err := integData.FromJSON(integ.Data); err != nil {
 			continue
 		}
+		connected[integ.IntegrationName] = true
 
 		// Get display info for the title
 		display := organizations.GetTitleDisplay(orgCode, integData.RawTitle)
@@ -290,6 +295,42 @@ func (s *OrganizationService) GetMyOrganizations(
 		titles = append(titles, title)
 	}
 
+	// A verification request still waiting for an admin is listed as well,
+	// so the user sees it whatever else changes on their profile. Every
+	// integration is verified when it is made, so not verified marks a
+	// request.
+	requests, err := s.queries.GetUserVerificationRequests(ctx, user.UUID)
+	if err != nil {
+		return nil, apiserver.InternalErr(err)
+	}
+	for _, vr := range requests {
+		if vr.Status != "pending" || connected[vr.IntegrationName] {
+			continue
+		}
+		orgCode := organizations.OrganizationCode(vr.IntegrationName)
+		meta, err := organizations.GetOrganizationMetadata(orgCode)
+		if err != nil {
+			continue
+		}
+		abbreviation := ""
+		titleFullName := ""
+		if display := organizations.GetTitleDisplay(orgCode, vr.Title.String); display != nil {
+			abbreviation = display.Abbreviation
+			titleFullName = display.FullName
+		}
+		titles = append(titles, &pb.OrganizationTitle{
+			OrganizationCode: vr.IntegrationName,
+			OrganizationName: meta.Name,
+			MemberId:         vr.MemberID,
+			FullName:         vr.FullName,
+			RawTitle:         vr.Title.String,
+			NormalizedTitle:  abbreviation, // Deprecated: use raw_title instead
+			TitleFullName:    titleFullName,
+			Verified:         false,
+		})
+		connected[vr.IntegrationName] = true
+	}
+
 	return connect.NewResponse(&pb.GetMyOrganizationsResponse{
 		Titles: titles,
 	}), nil
@@ -313,7 +354,7 @@ func (s *OrganizationService) GetPublicOrganizations(
 		return nil, apiserver.InvalidArg("user not found")
 	}
 
-	integrations, err := s.queries.GetOrganizationIntegrations(ctx, user.UUID)
+	integrations, err := s.organizationIntegrations(ctx, user.UUID)
 	if err != nil {
 		return nil, apiserver.InternalErr(err)
 	}
@@ -539,14 +580,22 @@ func (s *OrganizationService) ApproveVerification(
 	// Fetch name and title from organization if possible
 	fullName := verReq.FullName // Default to submitted name
 	rawTitle := ""
+	memberID := verReq.MemberID // Default to submitted member ID
 	orgCode := organizations.OrganizationCode(verReq.IntegrationName)
 	integration, err := organizations.GetIntegration(orgCode)
 	if err == nil {
 		// For WESPA, use FetchTitle to get both name and title from the player API
-		if orgCode == organizations.OrgWESPA {
+		// (and for SG, from its titles list, which names only the members it lists)
+		if orgCode == organizations.OrgWESPA || orgCode == organizations.OrgSG {
 			if titleInfo, err := integration.FetchTitle(verReq.MemberID, nil); err == nil {
-				fullName = titleInfo.FullName
+				if titleInfo.FullName != "" {
+					fullName = titleInfo.FullName
+				}
 				rawTitle = titleInfo.RawTitle
+				// SG gives the membership number in one form (01234 as 1234)
+				if titleInfo.MemberID != "" {
+					memberID = titleInfo.MemberID
+				}
 				log.Info().
 					Str("submitted_name", verReq.FullName).
 					Str("fetched_name", fullName).
@@ -574,7 +623,7 @@ func (s *OrganizationService) ApproveVerification(
 	// Create the integration for the user
 	now := time.Now()
 	integrationData := organizations.OrganizationIntegrationData{
-		MemberID:           verReq.MemberID,
+		MemberID:           memberID,
 		FullName:           fullName,
 		RawTitle:           rawTitle,
 		Verified:           true,
@@ -694,6 +743,7 @@ func (s *OrganizationService) ManuallySetOrgMembership(
 	var fullName string
 	var rawTitle string
 	var encryptedCredentials string
+	memberID := req.Msg.MemberId
 
 	// Check if credentials were provided
 	hasCredentials := len(req.Msg.Credentials) > 0
@@ -747,6 +797,22 @@ func (s *OrganizationService) ManuallySetOrgMembership(
 			fullName = titleInfo.FullName
 			rawTitle = titleInfo.RawTitle
 
+		case organizations.OrgSG:
+			// SG's public titles list gives name + title (no auth required);
+			// GetRealName fails for a member it does not list
+			fullName, err = integration.GetRealName(req.Msg.MemberId, nil)
+			if err != nil {
+				return nil, apiserver.InvalidArg(fmt.Sprintf("failed to fetch data from %s: %v", meta.Name, err))
+			}
+			titleInfo, err := integration.FetchTitle(req.Msg.MemberId, nil)
+			if err != nil {
+				return nil, apiserver.InvalidArg(fmt.Sprintf("failed to fetch data from %s: %v", meta.Name, err))
+			}
+			rawTitle = titleInfo.RawTitle
+			// Stored as the list has it, so each member has one form however
+			// it was typed (01234 as 1234)
+			memberID = titleInfo.MemberID
+
 		default:
 			// For other orgs, use GetRealName
 			fullName, err = integration.GetRealName(req.Msg.MemberId, nil)
@@ -759,7 +825,7 @@ func (s *OrganizationService) ManuallySetOrgMembership(
 	// Create the integration with verified status
 	now := time.Now()
 	integrationData := organizations.OrganizationIntegrationData{
-		MemberID:             req.Msg.MemberId,
+		MemberID:             memberID,
 		FullName:             fullName,
 		RawTitle:             rawTitle,
 		EncryptedCredentials: encryptedCredentials,
@@ -794,7 +860,7 @@ func (s *OrganizationService) ManuallySetOrgMembership(
 		Str("username", req.Msg.Username).
 		Str("user_uuid", targetUser.UUID).
 		Str("org", req.Msg.OrganizationCode).
-		Str("member_id", req.Msg.MemberId).
+		Str("member_id", memberID).
 		Str("full_name", fullName).
 		Str("title", rawTitle).
 		Msg("organization membership manually set")
@@ -858,7 +924,7 @@ func (s *OrganizationService) AdminRefreshUserTitles(
 // refreshTitlesForUser refreshes all organization titles for a specific user
 func (s *OrganizationService) refreshTitlesForUser(ctx context.Context, userUUID string) ([]*pb.OrganizationTitle, []string, error) {
 	// Get all organization integrations for the user
-	integrations, err := s.queries.GetOrganizationIntegrations(ctx, userUUID)
+	integrations, err := s.organizationIntegrations(ctx, userUUID)
 	if err != nil {
 		return nil, nil, apiserver.InternalErr(err)
 	}
@@ -924,6 +990,10 @@ func (s *OrganizationService) refreshTitlesForUser(ctx context.Context, userUUID
 			case organizations.OrgWESPA:
 				// WESPA uses its public player API for name + title (no auth required)
 				titleInfo, err = integration.FetchTitle(integData.MemberID, nil)
+			case organizations.OrgSG:
+				// SG uses its public titles list; a member it no longer lists
+				// comes back with no title, which clears the stored one
+				titleInfo, err = integration.FetchTitle(integData.MemberID, nil)
 			default:
 				// Other orgs with APIs but no public access - skip
 				log.Warn().Str("org", string(orgCode)).Msg("organization requires credentials for refresh but none stored")
@@ -939,7 +1009,10 @@ func (s *OrganizationService) refreshTitlesForUser(ctx context.Context, userUUID
 
 		// Update integration data with latest from API
 		integData.RawTitle = titleInfo.RawTitle
-		integData.FullName = titleInfo.FullName // Update full name in case it changed
+		if titleInfo.FullName != "" {
+			// A list that drops a member gives no name; keep the stored one
+			integData.FullName = titleInfo.FullName // Update full name in case it changed
+		}
 		now := time.Now()
 		integData.LastFetched = &now
 
@@ -969,6 +1042,130 @@ func (s *OrganizationService) refreshTitlesForUser(ctx context.Context, userUUID
 	return titles, errors, nil
 }
 
+// organizationIntegrations returns a user's links to the organizations in
+// organizations.OrganizationRegistry, leaving out the other integrations
+// kept in the same table, in the tie order
+func (s *OrganizationService) organizationIntegrations(ctx context.Context, userUUID string) ([]models.GetOrganizationIntegrationsRow, error) {
+	integrations, err := s.queries.GetOrganizationIntegrations(ctx, models.GetOrganizationIntegrationsParams{
+		UserUuid:          userUUID,
+		OrganizationCodes: organizations.SupportedOrganizationCodes(),
+	})
+	if err != nil {
+		return nil, err
+	}
+	sort.SliceStable(integrations, func(i, j int) bool {
+		return organizations.InTieOrder(
+			organizations.OrganizationCode(integrations[i].IntegrationName),
+			organizations.OrganizationCode(integrations[j].IntegrationName))
+	})
+	return integrations, nil
+}
+
+// RefreshOrganizationTitles refreshes one organization's title for every
+// user linked to it, so that a title gained or lost shows without anyone
+// pressing refresh. It is for a scheduled job, and for an organization whose
+// list needs no credentials: one integration instance serves every user, so
+// a whole-file list is downloaded once, and a failed download changes no
+// one's title.
+func RefreshOrganizationTitles(ctx context.Context, q *models.Queries, orgCode organizations.OrganizationCode) error {
+	meta, err := organizations.GetOrganizationMetadata(orgCode)
+	if err != nil {
+		return err
+	}
+	if meta.RequiresAuth {
+		return fmt.Errorf("%s requires credentials for refresh", meta.Name)
+	}
+	integration, err := organizations.GetIntegration(orgCode)
+	if err != nil {
+		return err
+	}
+	links, err := q.GetAllUsersWithOrganization(ctx, string(orgCode))
+	if err != nil {
+		return err
+	}
+
+	s := &OrganizationService{queries: q}
+	failed := 0
+	for _, link := range links {
+		var integData organizations.OrganizationIntegrationData
+		if err := integData.FromJSON(link.Data); err != nil {
+			failed++
+			log.Error().Err(err).Str("org", string(orgCode)).Str("user_uuid", link.UserUuid).Msg("failed to parse integration data")
+			continue
+		}
+
+		titleInfo, err := integration.FetchTitle(integData.MemberID, nil)
+		if err != nil {
+			failed++
+			log.Error().Err(err).Str("org", string(orgCode)).Str("user_uuid", link.UserUuid).Msg("failed to fetch title from public API")
+			continue
+		}
+
+		// Update integration data with latest from API
+		integData.RawTitle = titleInfo.RawTitle
+		if titleInfo.FullName != "" {
+			// A list that drops a member gives no name; keep the stored one
+			integData.FullName = titleInfo.FullName
+		}
+		now := time.Now()
+		integData.LastFetched = &now
+
+		dataJSON, err := integData.ToJSON()
+		if err != nil {
+			failed++
+			continue
+		}
+		err = q.UpdateIntegrationData(ctx, models.UpdateIntegrationDataParams{
+			Uuid: link.Uuid,
+			Data: dataJSON,
+		})
+		if err != nil {
+			failed++
+			log.Error().Err(err).Str("org", string(orgCode)).Str("user_uuid", link.UserUuid).Msg("failed to update integration data")
+			continue
+		}
+
+		// Update profile title with highest title
+		if err := s.updateProfileTitle(ctx, link.UserUuid); err != nil {
+			log.Error().Err(err).Str("user_uuid", link.UserUuid).Msg("failed to update profile title")
+		}
+	}
+
+	log.Info().Str("org", string(orgCode)).Int("links", len(links)).Int("failed", failed).Msg("organization titles refreshed")
+	if failed > 0 {
+		return fmt.Errorf("%d of %d %s titles were not refreshed", failed, len(links), meta.Name)
+	}
+	return nil
+}
+
+// RepickProfileTitles picks again the title shown by the username of every
+// user linked to an organization, from their stored titles, with nothing
+// fetched. The title is picked only when one is linked or refreshed, so this
+// is how a change to the ranks, the tie order, or a title's name reaches the
+// players it affects without anyone pressing refresh. It is for a scheduled
+// job.
+func RepickProfileTitles(ctx context.Context, q *models.Queries) error {
+	userUUIDs, err := q.GetUsersWithOrganizations(ctx, organizations.SupportedOrganizationCodes())
+	if err != nil {
+		return err
+	}
+
+	s := &OrganizationService{queries: q}
+	failed := 0
+	for _, userUUID := range userUUIDs {
+		if err := s.updateProfileTitle(ctx, userUUID); err != nil {
+			failed++
+			log.Error().Err(err).Str("user_uuid", userUUID).Msg("failed to update profile title")
+		}
+	}
+
+	log.Info().Int("users", len(userUUIDs)).Int("failed", failed).Msg("profile titles picked again")
+	if failed > 0 {
+		return fmt.Errorf("%d of %d profile titles were not picked again", failed, len(userUUIDs))
+	}
+	return nil
+}
+
 // GetCachedRealName returns the cached real name from the integrations table
 func (s *OrganizationService) GetCachedRealName(ctx context.Context, userUUID string, orgCode string) (string, error) {
 	integrationData, err := s.queries.GetIntegrationData(ctx, models.GetIntegrationDataParams{
@@ -993,7 +1190,7 @@ func (s *OrganizationService) GetCachedRealName(ctx context.Context, userUUID st
 
 func (s *OrganizationService) updateProfileTitle(ctx context.Context, userUUID string) error {
 	// Get all organization integrations
-	integrations, err := s.queries.GetOrganizationIntegrations(ctx, userUUID)
+	integrations, err := s.organizationIntegrations(ctx, userUUID)
 	if err != nil {
 		return err
 	}

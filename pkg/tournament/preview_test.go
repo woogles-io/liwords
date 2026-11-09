@@ -216,6 +216,25 @@ func TestPreviewSentences(t *testing.T) {
 	}
 }
 
+// TestPreviewRoundRobinSeedOrder checks that the planner's Round Robin is in
+// seed order, playing each pair two rounds in a row when asked to, so that
+// its last two rounds pair seeds 1 and 2, 3 and 4, and 5 and 6.
+func TestPreviewRoundRobinSeedOrder(t *testing.T) {
+	is := is.New(t)
+	resp, err := previewDivisionPer(previewPlayers(6), 7, 10, tpb.PlannerIntent_PLANNER_WHOLE_EVENT, 2)
+	is.NoErr(err)
+	rr := findScheme(resp, pb.PairingMethod_ROUND_ROBIN, false)
+	is.Equal(rr.CycleLength, int32(10))
+	is.True(slices.Contains(rr.Notes, "Each pair plays 2 rounds in a row, going first once each."))
+	for _, round := range []int{8, 9} {
+		pairs := map[[2]int32]bool{}
+		for _, g := range rr.Rounds[round].Games {
+			pairs[[2]int32{min(g.First, g.Second), max(g.First, g.Second)}] = true
+		}
+		is.Equal(pairs, map[[2]int32]bool{{0, 1}: true, {2, 3}: true, {4, 5}: true})
+	}
+}
+
 // TestPreviewRoundsPerOpponent checks a Team Round Robin that plays each pair
 // two rounds in a row against the division itself.
 func TestPreviewRoundsPerOpponent(t *testing.T) {

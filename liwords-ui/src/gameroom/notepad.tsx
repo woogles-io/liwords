@@ -195,6 +195,11 @@ export const Notepad = React.memo((props: NotepadProps) => {
   ]);
   const clearNotepad = useCallback(() => {
     setCurNotepad("");
+    // Focus the emptied notepad on all but mobile, so it can be written in at
+    // once
+    if (!isMobile()) {
+      notepadEl.current?.focus();
+    }
   }, [setCurNotepad]);
   useEffect(() => {
     if (notepadEl.current && !(notepadEl.current === document.activeElement)) {
@@ -212,7 +217,7 @@ export const Notepad = React.memo((props: NotepadProps) => {
     [curNotepad],
   );
   const notepadIsNotEmpty = curNotepad.length > 0;
-  const controls = useCallback(
+  const controls = useMemo(
     () => (
       <React.Fragment>
         {easterEggEnabled && <EasterEgg />}
@@ -244,12 +249,12 @@ export const Notepad = React.memo((props: NotepadProps) => {
         style={props.style}
         onChange={handleNotepadChange}
       />
-      <div className="controls">{controls()}</div>
+      <div className="controls">{controls}</div>
     </div>
   );
   if (props.includeCard) {
     return (
-      <Card title="Notepad" className="notepad-card " extra={controls()}>
+      <Card title="Notepad" className="notepad-card " extra={controls}>
         {notepadContainer}
       </Card>
     );

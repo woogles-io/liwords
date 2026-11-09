@@ -1,4 +1,5 @@
 import React, { useRef, useEffect } from "react";
+import { Tooltip } from "antd";
 import { useDrop } from "react-dnd";
 import { TILE_TYPE } from "./tile";
 import { BonusType } from "../constants/board_layout";
@@ -40,6 +41,8 @@ type Props = {
   arrow: boolean;
   arrowHoriz: boolean;
   clicked: () => void;
+  // the analyzer lab's hooks for the square, a line each way, shown on hover
+  hookLines?: Array<string>;
 };
 
 const BoardSpace = React.memo((props: Props) => {
@@ -81,7 +84,7 @@ const BoardSpace = React.memo((props: Props) => {
     drop(spaceRef);
   }, [drop]);
 
-  return (
+  const square = (
     <div
       ref={spaceRef}
       className={`board-space droppable ${
@@ -93,6 +96,17 @@ const BoardSpace = React.memo((props: Props) => {
       {startingSquare}
       {arrow}
     </div>
+  );
+  return props.hookLines ? (
+    <Tooltip
+      title={props.hookLines.map((line) => (
+        <div key={line}>{line}</div>
+      ))}
+    >
+      {square}
+    </Tooltip>
+  ) : (
+    square
   );
 });
 

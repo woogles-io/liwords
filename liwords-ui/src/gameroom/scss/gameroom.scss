@@ -205,11 +205,13 @@ p.streak-loss {
     .ant-card-body {
       padding: 0;
 
+      // what the analyzer lists starts at the card's top, however short;
+      // only its spinner, while it works, sits in the middle
       .analyzer-container {
         display: flex;
         width: 100%;
         height: 100%;
-        align-items: center;
+        align-items: flex-start;
         justify-content: center;
 
         .analyze-trigger,
@@ -220,6 +222,27 @@ p.streak-loss {
         .suggestions {
           max-height: 244px;
           overflow-y: auto;
+
+          &.suggestions-loading {
+            align-self: center;
+          }
+        }
+      }
+    }
+
+    // while it grows (grow_to_window_bottom.ts), no shorter than its own
+    // height and as tall as what it lists needs, up to its room in the
+    // window and what the chat above it gives up, what it lists starting at
+    // its top
+    .ant-card-body.grow-to-bottom {
+      height: auto;
+      min-height: var(--grow-own);
+
+      .analyzer-container {
+        height: auto;
+
+        .suggestions {
+          max-height: var(--grow-room);
         }
       }
     }
@@ -317,6 +340,266 @@ p.streak-loss {
         width: 60px;
         text-align: right;
       }
+    }
+  }
+}
+
+// The analyzer lab, for whoever has turned it on (analyzer_lab.ts).
+.analyzer-controls .lab-controls {
+  align-items: center;
+  display: inline-flex;
+  gap: 4px;
+  margin-right: 8px;
+
+  // Small circles, on or off: the page's own button rules make every circle
+  // 32px tall and give a filled button margins of its own.
+  button.ant-btn-circle.ant-btn-sm {
+    height: 24px;
+    margin: 0;
+  }
+}
+
+// The card colors its header's icon buttons for a filled button; these are
+// outlined until on.
+.game-container
+  .analyzer-card
+  .ant-card-extra
+  .lab-controls
+  button.ant-btn-icon-only.ant-btn-default {
+  border-color: m($gray-subtle);
+  color: m($gray-medium);
+}
+
+// While a panel is open, the card is no shorter than its own height and as
+// tall as what it shows needs, up to the room the panel gives it (useLabRoom,
+// analyzer_lab_panels.tsx), past which the panel scrolls.
+.game-container .analyzer-card .ant-card-body.lab-room {
+  height: auto;
+  min-height: var(--lab-own);
+
+  .analyzer-container .suggestions {
+    max-height: var(--lab-room);
+  }
+
+  // grown to the window's bottom as well (grow_to_window_bottom.ts), the
+  // larger room of the two
+  &.grow-to-bottom .analyzer-container .suggestions {
+    max-height: max(var(--lab-room), var(--grow-room));
+  }
+}
+
+.analyzer-container .suggestions .lab-panel {
+  // at the top of what holds it, and as wide, where the score card, turned to
+  // the analyzer, centers what it holds: a panel taller than that scrolls
+  // from its head
+  align-self: flex-start;
+  width: 100%;
+
+  .lab-head {
+    align-items: center;
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 12px;
+  }
+
+  .lab-buttons button.ant-btn-circle.ant-btn-sm {
+    height: 24px;
+    margin: 0 0 0 6px;
+  }
+
+  .lab-status {
+    overflow-wrap: anywhere;
+    padding: 0 12px 6px;
+    text-align: left;
+  }
+
+  // what each player holds, over an endgame's line
+  .lab-racks {
+    color: m($gray-medium);
+    padding: 0 12px 6px;
+    text-align: left;
+  }
+
+  // The lab's rows hold more columns than the analyzer's, so they sit closer.
+  th,
+  td {
+    padding-left: 2px;
+    padding-right: 2px;
+
+    &:first-child {
+      padding-left: 12px;
+    }
+
+    &:last-child {
+      padding-right: 12px;
+    }
+  }
+
+  // the columns' names, which are no move to click
+  thead tr {
+    cursor: default;
+
+    &:hover {
+      background-color: transparent;
+    }
+  }
+
+  th {
+    color: m($gray-medium);
+    font-weight: normal;
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  th.move-leave {
+    text-align: left;
+  }
+
+  td.move,
+  td.move-leave {
+    min-width: 0;
+  }
+
+  td.move-equity {
+    width: auto;
+  }
+
+  tr.lab-other td,
+  tr.lab-pruned td {
+    color: m($gray-medium);
+  }
+
+  tr.lab-tile {
+    cursor: default;
+  }
+
+  td.lab-bingo,
+  td.lab-n {
+    text-align: right;
+  }
+
+  // a candidate's pause or resume, and its way out of the sim
+  td.lab-hold,
+  td.lab-remove {
+    color: m($gray-medium);
+    cursor: pointer;
+    font-size: 11px;
+
+    &:hover {
+      color: m($gray-extreme);
+    }
+  }
+}
+
+// the exchange picker: the rack's tiles, then its two ways to add
+.lab-exchange {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  .lab-exchange-tiles,
+  .lab-exchange-actions {
+    display: flex;
+    gap: 4px;
+  }
+
+  // The site gives a primary button other margins and no border, so a tile
+  // picked would move and shrink: it keeps the box of a tile not picked.
+  .lab-exchange-tiles button.ant-btn-primary {
+    border: 1px solid transparent;
+    margin: 0 6px;
+  }
+}
+
+// how many top moves to add, named over its field, then the button adding them
+.lab-top {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  label {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+}
+
+// The analyzer's card sits in the chat area, whose gear icons are larger and
+// gray; the sim's gear is drawn as the icons beside it are.
+.analyzer-container .suggestions .lab-panel .lab-buttons .anticon-setting {
+  color: inherit;
+  cursor: inherit;
+  font-size: inherit;
+}
+
+// a sim's settings, each named over its field, then the button applying them
+.lab-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  label {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  // a checkbox beside its name, with a note under the name
+  .ant-checkbox-wrapper {
+    align-items: flex-start;
+    flex-direction: row;
+
+    .lab-settings-note {
+      color: m($gray-medium);
+      display: block;
+      font-size: 12px;
+    }
+  }
+}
+
+// a sim's numbers in full: the candidates, then each ply of their rollouts
+.lab-details {
+  h4 {
+    margin: 16px 0 4px;
+  }
+
+  table {
+    @include type-monospace;
+    width: 100%;
+  }
+
+  th,
+  td {
+    padding: 2px 6px;
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  th {
+    color: m($gray-medium);
+    font-weight: normal;
+  }
+
+  td.lab-details-move {
+    font-weight: bold;
+    text-align: left;
+  }
+
+  // the view, by ply or by move; a table's row shows its move's block
+  .lab-details-view {
+    margin-bottom: 8px;
+  }
+
+  tbody tr {
+    cursor: pointer;
+  }
+
+  .lab-details-block {
+    @include type-monospace;
+
+    ul {
+      margin: 0;
+      padding-left: 16px;
     }
   }
 }
@@ -866,7 +1149,8 @@ p.streak-loss {
 
   // Text that is read rather than played turns back upright, in place.
   &.board-flipped .bonus-label,
-  &.board-flipped .tentative-score {
+  &.board-flipped .tentative-score,
+  &.board-flipped .lab-hook {
     transform: rotate(180deg);
   }
 
@@ -935,6 +1219,42 @@ p.streak-loss {
 
   @include userboard() {
     background: ub($board-fill);
+  }
+}
+
+// The analyzer lab's hooks, over the squares, sized by the container.
+.lab-hooks {
+  display: grid;
+  gap: 1px;
+  grid-template-columns: repeat(var(--dim, 15), 1fr);
+  grid-template-rows: repeat(var(--dim, 15), 1fr);
+  height: 100%;
+  left: 0;
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+  width: 100%;
+
+  // One color, ringed with the page's background, reads on every square's
+  // color; across sits on top and down below.
+  .lab-hook {
+    color: m($gray-extreme);
+    display: flex;
+    flex-direction: column;
+    font-size: 8px;
+    font-weight: 600;
+    line-height: 1.1;
+    overflow: hidden;
+    padding: 1px;
+    text-shadow:
+      0 0 2px m($background),
+      0 0 2px m($background),
+      0 0 2px m($background);
+    white-space: nowrap;
+
+    .lab-hook-down {
+      margin-top: auto;
+    }
   }
 }
 
@@ -1659,12 +1979,6 @@ p.rune {
   width: $tile-size-laptop;
   height: $tile-size-laptop;
 
-  &.selected {
-    position: relative;
-    top: -30px;
-    box-shadow: $card-shadow;
-  }
-
   p.rune {
     font-size: $tile-font-size-laptop;
     line-height: 35px;
@@ -1805,6 +2119,42 @@ p.rune {
 .exchange {
   .rack {
     width: 100%;
+  }
+
+  // the tiles to exchange, then the tiles kept, each row under its name,
+  // centered as the rack is, and each tile at its place in the rack in either
+  // row; a row is as wide as its tiles, and its name starts where they do
+  .exchange-row {
+    margin: 0 auto;
+    max-width: 100%;
+    width: fit-content;
+
+    // in by a tile's margin
+    .label {
+      margin: 0 2px;
+    }
+
+    .rack {
+      margin: 4px 0 12px;
+    }
+
+    // the place a tile in the other row leaves, as large as that tile
+    .exchange-place {
+      flex-shrink: 0;
+      height: $tile-size-laptop;
+      margin: 2px;
+      width: $tile-size-laptop;
+    }
+  }
+
+  // the tiles kept, level with the button beside them; every other modal's
+  // footer keeps its items at the bottom
+  .ant-modal-footer {
+    align-items: center;
+
+    .label {
+      margin: 0;
+    }
   }
 
   .pool {

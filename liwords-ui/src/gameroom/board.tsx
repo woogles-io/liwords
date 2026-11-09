@@ -16,6 +16,7 @@ import {
 import { Alphabet } from "../constants/alphabets";
 import { LearnOverlay } from "../learn/learn_overlay";
 import { SuperCrosswordGameGridLayout } from "../constants/board_layout";
+import { LabHooksOverlay } from "./lab_hooks_overlay";
 
 type Props = {
   tileColorId: number;
@@ -324,6 +325,7 @@ const Board = React.memo((props: Props) => {
           squareClicked={props.squareClicked}
         />
         {!isExamining && <LearnOverlay gridDim={props.gridSize} />}
+        <LabHooksOverlay gridDim={props.gridSize} />
         <Tiles
           tileColorId={props.tileColorId}
           gridDim={props.gridSize}

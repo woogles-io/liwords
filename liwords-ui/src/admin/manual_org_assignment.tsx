@@ -21,6 +21,7 @@ import {
   QuestionCircleOutlined,
   ReloadOutlined,
 } from "@ant-design/icons";
+import { TitleTag } from "../shared/title_tag";
 import { useClient, flashError } from "../utils/hooks/connect";
 import {
   OrganizationService,
@@ -34,13 +35,9 @@ import {
 import { create } from "@bufbuild/protobuf";
 import { useDebounce } from "../utils/debounce";
 
+// Listed in the tie order: TiePriority in
+// pkg/integrations/organizations/types.go
 const organizationInfo = {
-  naspa: {
-    name: "NASPA",
-    fullName: "North American SCRABBLE Players Association",
-    help: "Enter the NASPA member ID (e.g., AA000083)",
-    helpTooltip: "NASPA member IDs are in the format AA000083",
-  },
   wespa: {
     name: "WESPA",
     fullName: "World English-Language Scrabble Players Association",
@@ -59,6 +56,35 @@ const organizationInfo = {
         , type the name in the search box, and click through to their profile.
         The WESPA ID is the number at the end of the URL (e.g.,{" "}
         <strong>215</strong> from wespa.xerafin.net/player.html?id=215).
+      </span>
+    ),
+  },
+  naspa: {
+    name: "NASPA",
+    fullName: "North American SCRABBLE Players Association",
+    help: "Enter the NASPA member ID (e.g., AA000083)",
+    helpTooltip: "NASPA member IDs are in the format AA000083",
+  },
+  sg: {
+    name: "Singapore Scrabble Association",
+    fullName: "Singapore Scrabble Association",
+    help: "Enter the digits of the membership number",
+    helpTooltip: (
+      <span>
+        Visit{" "}
+        <a
+          href="https://www.toucanet.com/archives/p/bytitle.html"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ color: "#1890ff" }}
+        >
+          toucanet.com/archives/p/bytitle.html
+        </a>
+        , find the name, and click through to their page. Enter the digits of
+        the membership number shown there, without the letters after them and
+        with or without the leading zeros: it is saved without them (e.g.,{" "}
+        <strong>1234</strong> from 01234M). Only members listed there hold a
+        title.
       </span>
     ),
   },
@@ -273,7 +299,7 @@ export const ManualOrgAssignment = () => {
       dataIndex: "normalizedTitle",
       key: "normalizedTitle",
       render: (title: string) =>
-        title ? <Tag color="blue">{title}</Tag> : "-",
+        title ? <TitleTag abbreviation={title}>{title}</TitleTag> : "-",
     },
     {
       title: "Status",
@@ -402,7 +428,9 @@ export const ManualOrgAssignment = () => {
                     )
                     .map(([code, info]) => (
                       <Select.Option key={code} value={code}>
-                        {info.name} - {info.fullName}
+                        {info.name === info.fullName
+                          ? info.name
+                          : `${info.name} - ${info.fullName}`}
                       </Select.Option>
                     ))}
                 </Select>
@@ -449,7 +477,9 @@ export const ManualOrgAssignment = () => {
                               ? "AA000083"
                               : selectedOrg === "wespa"
                                 ? "2145"
-                                : "745"
+                                : selectedOrg === "sg"
+                                  ? "1234"
+                                  : "745"
                           }
                         />
                       </Form.Item>

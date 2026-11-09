@@ -9,6 +9,8 @@ import React, {
 import { App, Button, Card, Switch, Tooltip } from "antd";
 import { BulbOutlined, RobotOutlined } from "@ant-design/icons";
 import { useQuery, useMutation } from "@connectrpc/connect-query";
+import { roomToGive } from "../chat/chat";
+import { Giver, useGrowToWindowBottom } from "../utils/grow_to_window_bottom";
 import { flashError } from "../utils/hooks/connect";
 import { useLocalStorageBool } from "../utils/use_local_storage";
 import {
@@ -19,9 +21,22 @@ import {
   getAnalysisStatus,
   requestAnalysis as requestBestBotAnalysis,
 } from "../gen/api/proto/analysis_service/analysis_service-AnalysisService_connectquery";
-import { PlayState } from "../gen/api/proto/vendored/macondo/macondo_pb";
+import {
+  ChallengeRule,
+  PlayState,
+} from "../gen/api/proto/vendored/macondo/macondo_pb";
 import { GameType } from "../gen/api/proto/ipc/omgwords_pb";
 import { ComputerAnalysis } from "./computer_analysis";
+import { ANALYZER_LAB_KEY } from "./analyzer_lab";
+import {
+  EndgamePanel,
+  LabButtons,
+  LabView,
+  SimPanel,
+  useLabPosition,
+  useLabSim,
+  usePublishLabHooks,
+} from "./analyzer_lab_panels";
 import { defaultLetterDistribution } from "../lobby/sought_game_interactions";
 import {
   useExaminableGameContextStoreContext,
@@ -60,7 +75,7 @@ type AnalyzerProps = {
   style?: React.CSSProperties;
 };
 
-type JsonMove =
+export type JsonMove =
   | {
       equity: number;
       action: "exchange";
@@ -128,7 +143,7 @@ export type AnalyzerMove = {
   isExchange: boolean;
 };
 
-const wolgesLetterToLiwordsLetter = (i: number) => {
+export const wolgesLetterToLiwordsLetter = (i: number) => {
   if (i < 0) {
     // wolges-wasm encodes blanks as negative numbers. Convert to our internal
     // format.
@@ -289,7 +304,7 @@ export const analyzerMoveFromJsonMove = (
   }
 };
 
-const parseExaminableGameContext = (
+export const parseExaminableGameContext = (
   examinableGameContext: GameState,
   lexicon: string,
   variant?: string,
@@ -314,7 +329,7 @@ const parseExaminableGameContext = (
     loadableKey += ".WordSmog";
   }
   if (variant === "classic_super" || variant === "wordsmog_super") {
-    // only english and catalan supported.
+    // only english, catalan, and german supported.
     rules += "Super";
     loadableKey = `super-${loadableKey}`;
   }
@@ -364,6 +379,7 @@ const AnalyzerContext = React.createContext<{
   setShowMovesForTurn: (a: number) => void;
   lexicon: string;
   variant?: string;
+  challengeRule?: ChallengeRule;
   showComputerAnalysis: boolean;
   setShowComputerAnalysis: React.Dispatch<React.SetStateAction<boolean>>;
 }>({
@@ -377,6 +393,7 @@ const AnalyzerContext = React.createContext<{
   setAutoMode: () => {},
   lexicon: "",
   variant: undefined,
+  challengeRule: undefined,
   showComputerAnalysis: false,
   setShowComputerAnalysis: () => {},
 });
@@ -387,6 +404,8 @@ type AnalyzerContextProviderProps = {
   children: React.ReactNode;
   lexicon: string;
   variant?: string;
+  // the game's challenge rule, where the page knows it
+  challengeRule?: ChallengeRule;
   // Bumping this shows the computer analysis, as its button does.
   openComputerAnalysisSignal?: number;
 };
@@ -394,7 +413,13 @@ type AnalyzerContextProviderProps = {
 export const AnalyzerContextProvider = (
   props: AnalyzerContextProviderProps,
 ) => {
-  const { children, lexicon, variant, openComputerAnalysisSignal = 0 } = props;
+  const {
+    children,
+    lexicon,
+    variant,
+    challengeRule,
+    openComputerAnalysisSignal = 0,
+  } = props;
   const [, setMovesCacheId] = useState(0);
   const rerenderMoves = useCallback(
     () => setMovesCacheId((n) => (n + 1) | 0),
@@ -538,6 +563,7 @@ export const AnalyzerContextProvider = (
       setShowMovesForTurn,
       lexicon,
       variant,
+      challengeRule,
       showComputerAnalysis,
       setShowComputerAnalysis,
     }),
@@ -552,6 +578,7 @@ export const AnalyzerContextProvider = (
       setShowMovesForTurn,
       lexicon,
       variant,
+      challengeRule,
       showComputerAnalysis,
       setShowComputerAnalysis,
     ],
@@ -691,6 +718,15 @@ export const rackNote = (
   return `Analyzing ${rackLength} known tile${rackLength === 1 ? "" : "s"}.${hint}`;
 };
 
+// The chat above the analyzer's card, which gives up height for the moves the
+// card lists, as far as it can spare (chat.tsx).
+const CHAT_ABOVE: Giver = {
+  card: (growing) =>
+    growing.closest(".chat-area")?.querySelector<HTMLElement>("#chat") ?? null,
+  spare: roomToGive,
+  list: ".suggestions",
+};
+
 export const Analyzer = React.memo((props: AnalyzerProps) => {
   const {
     autoMode,
@@ -703,6 +739,7 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
     setShowMovesForTurn,
     lexicon,
     variant,
+    challengeRule,
     showComputerAnalysis,
     setShowComputerAnalysis,
   } = useContext(AnalyzerContext);
@@ -1028,6 +1065,29 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
     return cachedMoves;
   }, [showMoves, cachedMoves, currentEvaluatedMove]);
 
+  const [analyzerLab] = useLocalStorageBool(ANALYZER_LAB_KEY);
+  const [labHooks, setLabHooks] = useLocalStorageBool("analyzerLabHooks");
+  const [labView, setLabView] = useState<LabView | null>(null);
+  // The lab opens wherever the analyzer does, which a player's own game in
+  // play never shows.
+  const labOpen = analyzerLab && !showComputerAnalysis;
+  const labPosition = useLabPosition(lexicon, variant, challengeRule);
+  usePublishLabHooks(labPosition, labOpen && labHooks);
+  // A sim takes the analyzer's moves, at each position it is shown. Each copy
+  // of the analyzer on the page (the score card holds another) hides the moves
+  // again when the position changes, so this asks again whenever they are
+  // hidden, as Auto does.
+  useEffect(() => {
+    if (labOpen && labView === "sim") {
+      handleExaminer();
+    }
+  }, [labOpen, labView, handleExaminer, showMovesForTurn]);
+  const labSim = useLabSim(
+    labOpen ? labPosition : null,
+    moves,
+    labOpen && labView === "sim",
+  );
+
   const [showEquityLoss] = useLocalStorageBool("enableShowEquityLoss");
   const equityBase = React.useMemo(
     () =>
@@ -1074,6 +1134,14 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
   );
   const analyzerControls = (
     <div className="analyzer-controls">
+      {labOpen && (
+        <LabButtons
+          view={labView}
+          setView={setLabView}
+          hooks={labHooks}
+          setHooks={setLabHooks}
+        />
+      )}
       <Button
         className="analyze-trigger"
         shape="circle"
@@ -1108,6 +1176,18 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
         </Tooltip>
       )}
     </div>
+  );
+
+  // The card takes the room the chat above it leaves when collapsed
+  // (chat.tsx); while the chat is expanded, on wider pages than a phone's,
+  // the room below it in the window and what the chat gives up for what the
+  // card lists (CHAT_ABOVE).
+  const [chatHidden] = useLocalStorageBool("chatCollapsed");
+  const card = useRef<HTMLDivElement>(null);
+  useGrowToWindowBottom(
+    card,
+    !!props.includeCard && !(showComputerAnalysis && gameDone),
+    chatHidden ? undefined : CHAT_ABOVE,
   );
 
   if (showComputerAnalysis && gameDone) {
@@ -1161,9 +1241,26 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
             : null,
         )
       : null;
+  const labPanel =
+    labOpen && labView && labPosition ? (
+      <div className="suggestions" style={props.style}>
+        {labView === "endgame" ? (
+          <EndgamePanel lab={labPosition} onClose={() => setLabView(null)} />
+        ) : (
+          <SimPanel
+            lab={labPosition}
+            moves={moves}
+            sim={labSim}
+            onClose={() => setLabView(null)}
+          />
+        )}
+      </div>
+    ) : null;
   const analyzerContainer = (
     <div className="analyzer-container">
-      {!examinerLoading ? (
+      {labPanel ? (
+        labPanel
+      ) : !examinerLoading ? (
         <div className="suggestions" style={props.style}>
           {note && <p className="rack-note">{note}</p>}
           {analyzerError && (
@@ -1178,7 +1275,7 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
           ) : null}
         </div>
       ) : (
-        <div className="suggestions" style={props.style}>
+        <div className="suggestions suggestions-loading" style={props.style}>
           <RedoOutlined spin />
         </div>
       )}
@@ -1188,6 +1285,7 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
   if (props.includeCard) {
     return (
       <Card
+        ref={card}
         title="Analyzer"
         className="analyzer-card"
         extra={analyzerControls}

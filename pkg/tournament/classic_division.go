@@ -858,6 +858,22 @@ func isRoundDependent(pm pb.PairingMethod) bool {
 		pm == pb.PairingMethod_INITIAL_FONTES
 }
 
+// roundRobinRound returns round's place among the rounds before it paired
+// the same way as it (by its pairing method, games per round, and seed
+// order), from 0: its place in its round robin, whatever rounds come between
+// the round robin's own.
+func (t *ClassicDivision) roundRobinRound(round int) int {
+	rc := t.RoundControls[round]
+	index := 0
+	for _, prev := range t.RoundControls[:round] {
+		if prev.PairingMethod == rc.PairingMethod && prev.GamesPerRound == rc.GamesPerRound &&
+			prev.SeedOrder == rc.SeedOrder {
+			index++
+		}
+	}
+	return index
+}
+
 func (t *ClassicDivision) canCatch(records []*pb.PlayerStanding, round int, i int, j int) (bool, error) {
 	numberOfPlayers := len(records)
 	if i >= numberOfPlayers || j >= numberOfPlayers {
@@ -1056,11 +1072,29 @@ func (t *ClassicDivision) pairRound(round int, preserveByes bool) (*pb.DivisionP
 	}
 
 	gibsonPairedPlayers := make(map[string]bool)
+	// The standings rank everyone, but playerOrder leaves out the players
+	// with byes. The gibsonized players are the top of the standings, so
+	// the ones left are the top of playerOrder, and whether a player can
+	// still cash is a question about the standings.
+	catchRecords := playerOrder
+	catchIndex := func(j int) int { return j }
+	if gibsonRank >= 0 && !isRoundDependent(pairingMethod) {
+		catchRecords = standings.Standings
+		ranks := make(map[string]int, len(catchRecords))
+		for rank, standing := range catchRecords {
+			ranks[standing.PlayerId] = rank
+		}
+		catchIndex = func(j int) int { return ranks[playerOrder[j].PlayerId] }
+		gibsonRank = -1
+		for i := 0; i < len(playerOrder) && playerOrder[i].Gibsonized; i++ {
+			gibsonRank = i
+		}
+	}
 	// Determine Gibsonizations
 	if gibsonRank >= 0 {
 		minimumPlacement := int(t.DivisionControls.MinimumPlacement)
-		if minimumPlacement >= len(playerOrder) {
-			minimumPlacement = len(playerOrder) - 1
+		if minimumPlacement >= len(catchRecords) {
+			minimumPlacement = len(catchRecords) - 1
 		}
 		isOdd := len(playerOrder) % 2
 		for i := 0; i <= gibsonRank; i++ {
@@ -1078,7 +1112,7 @@ func (t *ClassicDivision) pairRound(round int, preserveByes bool) (*pb.DivisionP
 				// Pair with someone who cannot cash
 				// If everyone can still cash, pair them with the player in last
 				for j := i + 1; j < len(playerOrder); j++ {
-					cc, err := t.canCatch(playerOrder, basisRound+1, minimumPlacement, j)
+					cc, err := t.canCatch(catchRecords, basisRound+1, minimumPlacement, catchIndex(j))
 					if err != nil {
 						return nil, err
 					}
@@ -1115,9 +1149,10 @@ func (t *ClassicDivision) pairRound(round int, preserveByes bool) (*pb.DivisionP
 	}
 
 	upm := &entity.UnpairedPoolMembers{RoundControls: t.RoundControls[round],
-		PoolMembers: poolMembers,
-		Repeats:     repeats,
-		Seed:        t.Seed}
+		PoolMembers:     poolMembers,
+		Repeats:         repeats,
+		Seed:            t.Seed,
+		RoundRobinRound: t.roundRobinRound(round)}
 
 	// The Australian Draw and Win Groups need to know which round each prior
 	// meeting occurred in (to honor reset_round and to relax the repeat rule
@@ -2365,8 +2400,15 @@ func newClassicPairing(t *ClassicDivision,
 	playerTwo int32,
 	round int) *pb.Pairing {
 
+	// Only an elimination round plays several games between the same two
+	// players. In a round robin games_per_round counts the rounds in a row
+	// each pair plays, and a pairing holds just its round's one game.
+	numberOfGames := 1
+	if t.RoundControls[round].PairingMethod == pb.PairingMethod_ELIMINATION {
+		numberOfGames = int(t.RoundControls[round].GamesPerRound)
+	}
 	games := []*pb.TournamentGame{}
-	for i := 0; i < int(t.RoundControls[round].GamesPerRound); i++ {
+	for i := 0; i < numberOfGames; i++ {
 		games = append(games, &pb.TournamentGame{Scores: []int32{0, 0},
 			Results: []pb.TournamentGameResult{pb.TournamentGameResult_NO_RESULT,
 				pb.TournamentGameResult_NO_RESULT},
@@ -2379,11 +2421,13 @@ func newClassicPairing(t *ClassicDivision,
 	firstMethod := t.RoundControls[round].FirstMethod
 	numPlayers := len(t.Players.Persons)
 
-	if t.RoundControls[round].PairingMethod == pb.PairingMethod_ROUND_ROBIN {
+	if rc := t.RoundControls[round]; rc.PairingMethod == pb.PairingMethod_ROUND_ROBIN {
 		// The schedule that paired the round also says who goes first.
 		// Players are paired in player order, so player indexes are the
-		// schedule's indexes.
-		goesFirst, err := pair.RoundRobinGoesFirst(numPlayers, round, int(playerOne), t.Seed)
+		// schedule's indexes. Two players who meet in rounds in a row swap
+		// who goes first each time.
+		goesFirst, err := pair.PlainRoundRobinGoesFirst(rc, t.roundRobinRound(round), numPlayers, round,
+			int(playerOne), t.Seed)
 		if err != nil {
 			log.Err(err).Str("division", t.DivisionName).Int("round", round).Msg("round-robin-firsts")
 		}

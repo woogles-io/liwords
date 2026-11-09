@@ -94,7 +94,7 @@ services:
   #     context: ../wolges-awsm
   #     dockerfile: Dockerfile
   #   volumes:
-  #     - ./liwords-ui/public/wasm/2024:/app/data
+  #     - ./liwords-ui/public/wasm/2026:/app/data
   #   ports:
   #     - "4500:4500"
   #   networks:

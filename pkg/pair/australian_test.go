@@ -362,7 +362,10 @@ func halvesBlockedField(n int, blocked [][]bool, canBye func(pos int) bool) ([]i
 			}
 		}
 	}
-	got, ok := pairHalves(m, bl)
+	got, ok, err := pairHalves(m, bl)
+	if err != nil {
+		return nil, err
+	}
 	if !ok {
 		return nil, errors.New("no complete legal pairing")
 	}
@@ -625,7 +628,8 @@ func existsMatching(n int, blocked [][]bool, zeroTopVsTopOnly bool) bool {
 // oracle: it succeeds exactly when a legal draw exists, never emits a blocked
 // pair, and emits zero top-vs-top exactly when a zero-top-vs-top draw exists.
 func checkBlockedAgainstOracle(is *is.I, n int, blocked [][]bool) {
-	got, ok := pairHalves(n, blocked)
+	got, ok, err := pairHalves(n, blocked)
+	is.NoErr(err)
 	is.Equal(ok, existsMatching(n, blocked, false)) // succeeds iff legal draw exists
 	if !ok {
 		return
@@ -1240,7 +1244,8 @@ func TestAustralianMatchMatchesOracle(t *testing.T) {
 	// spread of the larger field where a naive first-fit walk would be most
 	// prone to stranding a player.
 	check := func(n int, blocked [][]bool) {
-		got, ok := australianMatch(n, blocked)
+		got, ok, err := australianMatch(n, blocked)
+		is.NoErr(err)
 		is.Equal(ok, existsMatching(n, blocked, false)) // succeeds iff a draw exists
 		if !ok {
 			return

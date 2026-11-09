@@ -9,6 +9,7 @@ import {
   assignedTeamsProblem,
   fieldsForMethod,
   isPrePaired,
+  seedOrderWhenPicked,
   settingsEqual,
   teamNames,
 } from "../pairing_methods";
@@ -16,6 +17,7 @@ import {
   pairingLagAppliesTo,
   pairingLagDisabledReason,
   rdCtrlFromSetting,
+  settingFromRdCtrl,
 } from "./round_control_fields";
 
 const setting = (fields: {
@@ -23,11 +25,116 @@ const setting = (fields: {
   pairingLag?: number;
   resetRound?: number;
   playWithinTeam?: boolean;
+  gamesPerRound?: number;
+  seedOrder?: boolean;
 }) =>
   create(RoundControlSchema, {
     pairingMethod: PairingMethod.KING_OF_THE_HILL,
     ...fields,
   });
+
+describe("rounds per opponent", () => {
+  it("is offered and kept for the round robins that repeat opponents", () => {
+    for (const pairingMethod of [
+      PairingMethod.ROUND_ROBIN,
+      PairingMethod.TEAM_ROUND_ROBIN,
+      PairingMethod.ASSIGNED_TEAM_ROUND_ROBIN,
+    ]) {
+      expect(fieldsForMethod(pairingMethod).map((f) => f[1])).toContain(
+        "gamesPerRound",
+      );
+      expect(
+        rdCtrlFromSetting(setting({ pairingMethod, gamesPerRound: 2 }), 10, 1)
+          .gamesPerRound,
+      ).toBe(2);
+      expect(
+        rdCtrlFromSetting(setting({ pairingMethod }), 10, 1).gamesPerRound,
+      ).toBe(1);
+    }
+  });
+
+  it("is 1 for the other methods", () => {
+    expect(
+      rdCtrlFromSetting(
+        setting({
+          pairingMethod: PairingMethod.KING_OF_THE_HILL,
+          gamesPerRound: 2,
+        }),
+        10,
+        1,
+      ).gamesPerRound,
+    ).toBe(1);
+  });
+});
+
+describe("seed order", () => {
+  it("is offered and kept for the round robin only", () => {
+    expect(fieldsForMethod(PairingMethod.ROUND_ROBIN).map((f) => f[1])).toEqual(
+      ["gamesPerRound", "seedOrder"],
+    );
+    expect(
+      rdCtrlFromSetting(
+        setting({ pairingMethod: PairingMethod.ROUND_ROBIN, seedOrder: true }),
+        10,
+        1,
+      ).seedOrder,
+    ).toBe(true);
+    for (const pairingMethod of [
+      PairingMethod.TEAM_ROUND_ROBIN,
+      PairingMethod.ASSIGNED_TEAM_ROUND_ROBIN,
+      PairingMethod.KING_OF_THE_HILL,
+    ]) {
+      expect(fieldsForMethod(pairingMethod).map((f) => f[1])).not.toContain(
+        "seedOrder",
+      );
+      expect(
+        rdCtrlFromSetting(setting({ pairingMethod, seedOrder: true }), 10, 1)
+          .seedOrder,
+      ).toBe(false);
+    }
+  });
+
+  it("is shown as saved, and keeps round ranges apart", () => {
+    const saved = rdCtrlFromSetting(
+      setting({ pairingMethod: PairingMethod.ROUND_ROBIN, seedOrder: true }),
+      10,
+      1,
+    );
+    expect(settingFromRdCtrl(saved).seedOrder).toBe(true);
+    expect(
+      settingsEqual(
+        settingFromRdCtrl(saved),
+        settingFromRdCtrl(
+          rdCtrlFromSetting(
+            setting({ pairingMethod: PairingMethod.ROUND_ROBIN }),
+            10,
+            1,
+          ),
+        ),
+      ),
+    ).toBe(false);
+  });
+
+  it("turns on when Round Robin is picked, and stays as saved otherwise", () => {
+    const manual = setting({ pairingMethod: PairingMethod.MANUAL });
+    const picked = setting({ pairingMethod: PairingMethod.ROUND_ROBIN });
+    expect(seedOrderWhenPicked(manual, picked).seedOrder).toBe(true);
+    // A round robin saved without seed order keeps it off when edited.
+    const saved = setting({ pairingMethod: PairingMethod.ROUND_ROBIN });
+    const edited = setting({
+      pairingMethod: PairingMethod.ROUND_ROBIN,
+      gamesPerRound: 2,
+    });
+    expect(seedOrderWhenPicked(saved, edited).seedOrder).toBe(false);
+    // The director can still turn it off.
+    const on = setting({
+      pairingMethod: PairingMethod.ROUND_ROBIN,
+      seedOrder: true,
+    });
+    const off = setting({ pairingMethod: PairingMethod.ROUND_ROBIN });
+    expect(seedOrderWhenPicked(on, off).seedOrder).toBe(false);
+  });
+});
 
 describe("play within team", () => {
   it("is kept for the team-splitting round robins", () => {
@@ -46,6 +153,21 @@ describe("play within team", () => {
         rdCtrlFromSetting(setting({ pairingMethod }), 7, 1).playWithinTeam,
       ).toBe(false);
     }
+  });
+
+  it("is shown as saved when the round controls are edited again", () => {
+    const saved = rdCtrlFromSetting(
+      setting({
+        pairingMethod: PairingMethod.SNAKED_ROUND_ROBIN,
+        playWithinTeam: true,
+      }),
+      7,
+      1,
+    );
+    expect(settingFromRdCtrl(saved).playWithinTeam).toBe(true);
+    expect(
+      rdCtrlFromSetting(settingFromRdCtrl(saved), 7, 1).playWithinTeam,
+    ).toBe(true);
   });
 });
 

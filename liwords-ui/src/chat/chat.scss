@@ -496,6 +496,42 @@ p {
   }
 }
 
+// the chat giving up height to the analyzer's card below it
+// (grow_to_window_bottom.ts), keeping --give-height
+#chat.gives-room:not(.collapsed) {
+  height: var(--give-height);
+}
+
+// the chat collapsed to its tabs and its latest line (Chat's collapsible), in
+// the colors the chat gives a notice
+#chat.collapsed {
+  height: auto;
+
+  .ant-card-body {
+    padding: 0;
+  }
+
+  .ant-tabs-content-holder {
+    display: none;
+  }
+
+  .chat-latest {
+    cursor: pointer;
+    overflow: hidden;
+    padding: 0 12px 8px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    &.error {
+      color: m($timer-out-dark);
+    }
+
+    &.notice {
+      color: m($timer-dark);
+    }
+  }
+}
+
 @media (min-width: $screen-laptop-min) {
   .chat-area {
     order: initial;

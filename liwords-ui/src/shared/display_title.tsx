@@ -1,6 +1,16 @@
-import React from "react";
+import React, { useCallback, useState } from "react";
+import { create } from "@bufbuild/protobuf";
+import {
+  GetPublicOrganizationsRequestSchema,
+  OrganizationService,
+  OrganizationTitle,
+} from "../gen/api/proto/user_service/user_service_pb";
 import { useBriefProfile } from "../utils/brief_profiles";
+import { useClient } from "../utils/hooks/connect";
+import { titleStyle } from "./title_styles";
 import { Tooltip } from "antd";
+
+import "./display_title.scss";
 
 interface DisplayUserTitleProps {
   uuid?: string;
@@ -11,76 +21,97 @@ const organizationNames: Record<string, string> = {
   naspa: "NASPA",
   wespa: "WESPA",
   absp: "ABSP",
+  sg: "Singapore Scrabble Association",
 };
 
-// Map abbreviations to their display colors
-const titleStyles: Record<
-  string,
-  { background: string; border: string; color: string }
-> = {
-  GM: {
-    // NASPA & WESPA
-    background: "#C9FFCB", // Green/Light
-    border: "#449E2D", // Green/Dark
-    color: "#449E2D",
-  },
-  IM: {
-    // WESPA
-    background: "#E1BEE7", // Purple/Light
-    border: "#8E24AA", // Purple/Dark
-    color: "#8E24AA",
-  },
-  SM: {
-    // NASPA
-    background: "#FFC9C9",
-    border: "#A92E2D",
-    color: "#A92E2D",
-  },
-  M: {
-    // WESPA
-    background: "#FFFDC9", // Yellow/Light
-    border: "#F4B000", // Yellow/Dark
-    color: "#F4B000",
-  },
-  EX: {
-    // NASPA
-    background: "#FFFDC9", // Red/Light
-    border: "#F4B000", // Red/Dark
-    color: "#F4B000",
-  },
-  EXP: {
-    // ABSP
-    background: "#FFC9C9", // Red/Light
-    border: "#A92E2D", // Red/Dark
-    color: "#A92E2D",
-  },
+const organizationName = (code: string) => organizationNames[code] || code;
+
+// WESPA, the world body: the circle of one of its titles is ringed
+// (display_title.scss)
+const worldOrganization = "wespa";
+
+// Every verified title of a player, by username, fetched once, as the
+// circle's tooltip first opens; a failed fetch is tried again the next time.
+const titlesByUsername = new Map<string, Promise<Array<OrganizationTitle>>>();
+
+// The tooltip's lines: the title the circle shows first, then the player's
+// other titles in the order the server lists them. Only verified titles, as
+// the circle's: an admin is sent the unverified links too.
+export const titleLines = (
+  titles: Array<OrganizationTitle>,
+  shownOrganization: string,
+): Array<string> => {
+  const held = titles.filter((t) => t.verified && t.rawTitle);
+  return [
+    ...held.filter((t) => t.organizationCode === shownOrganization),
+    ...held.filter((t) => t.organizationCode !== shownOrganization),
+  ].map(
+    (t) =>
+      `${t.titleFullName || t.rawTitle} (${organizationName(t.organizationCode)})`,
+  );
 };
 
 export const DisplayUserTitle: React.FC<DisplayUserTitleProps> = ({ uuid }) => {
   const briefProfile = useBriefProfile(uuid);
+  const orgClient = useClient(OrganizationService);
+  const [lines, setLines] = useState<Array<string> | null>(null);
+  const username = briefProfile?.username;
+  const shownOrganization = briefProfile?.titleOrganizationCode ?? "";
+
+  const listTitles = useCallback(
+    (open: boolean) => {
+      if (!open || lines || !username) {
+        return;
+      }
+      let titles = titlesByUsername.get(username);
+      if (!titles) {
+        titles = orgClient
+          .getPublicOrganizations(
+            create(GetPublicOrganizationsRequestSchema, { username }),
+          )
+          .then((response) => response.titles);
+        titlesByUsername.set(username, titles);
+        titles.catch(() => titlesByUsername.delete(username));
+      }
+      titles.then(
+        (held) => setLines(titleLines(held, shownOrganization)),
+        () => {},
+      );
+    },
+    [lines, username, orgClient, shownOrganization],
+  );
 
   if (!briefProfile || !briefProfile.titleAbbreviation) {
     return null;
   }
 
   const abbreviation = briefProfile.titleAbbreviation;
-  const styles = titleStyles[abbreviation] || {
-    background: "#e6f7ff",
-    border: "#1890ff",
-    color: "#1890ff",
-  };
+  const styles = titleStyle(abbreviation);
 
   const orgName = briefProfile.titleOrganizationCode
-    ? organizationNames[briefProfile.titleOrganizationCode] ||
-      briefProfile.titleOrganizationCode
+    ? organizationName(briefProfile.titleOrganizationCode)
     : "";
   const tooltipText = orgName
     ? `${briefProfile.title} (${orgName})`
     : briefProfile.title;
 
   return (
-    <Tooltip title={tooltipText} mouseEnterDelay={0.3}>
+    <Tooltip
+      title={(lines?.length ? lines : [tooltipText]).map((line) => (
+        <div className="title-line" key={line}>
+          {line}
+        </div>
+      ))}
+      rootClassName="title-tooltip"
+      mouseEnterDelay={0.3}
+      onOpenChange={listTitles}
+    >
       <span
+        className={
+          briefProfile.titleOrganizationCode === worldOrganization
+            ? "title-circle world"
+            : "title-circle"
+        }
         style={{
           display: "inline-flex",
           alignItems: "center",
@@ -93,7 +124,6 @@ export const DisplayUserTitle: React.FC<DisplayUserTitleProps> = ({ uuid }) => {
           color: styles.color,
           fontSize: "9px",
           fontWeight: "bold",
-          marginLeft: "8px",
           cursor: "default",
           verticalAlign: "middle",
         }}

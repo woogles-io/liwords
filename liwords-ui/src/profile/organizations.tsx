@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { Tag, Spin } from "antd";
+import { Spin } from "antd";
+import { TitleTag } from "../shared/title_tag";
 import { useClient, flashError } from "../utils/hooks/connect";
 import {
   OrganizationService,
@@ -10,31 +11,21 @@ import { create } from "@bufbuild/protobuf";
 
 interface DisplayUserOrganizationsProps {
   username: string;
+  // the organization of the title in the circle by the username, listed
+  // first; the rest come in the tie order the server sends them in
+  firstOrganizationCode?: string;
 }
 
 const organizationNames: Record<string, string> = {
   naspa: "NASPA",
   wespa: "WESPA",
   absp: "ABSP",
-};
-
-// Title colors based on abbreviation
-// Colors: gold (grandmaster), purple (international master), blue (master), green (expert)
-const getTitleColor = (abbreviation: string): string => {
-  const colors: Record<string, string> = {
-    GM: "gold",
-    IM: "purple",
-    SM: "blue",
-    M: "blue",
-    EX: "green",
-    EXP: "green",
-  };
-  return colors[abbreviation] || "default";
+  sg: "Singapore Scrabble Association",
 };
 
 export const DisplayUserOrganizations: React.FC<
   DisplayUserOrganizationsProps
-> = ({ username }) => {
+> = ({ username, firstOrganizationCode }) => {
   const [organizations, setOrganizations] = useState<OrganizationTitle[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -63,8 +54,13 @@ export const DisplayUserOrganizations: React.FC<
     return <Spin size="small" />;
   }
 
-  // Filter to only show organizations with titles
-  const orgsWithTitles = organizations.filter((org) => org.rawTitle);
+  // Filter to only show organizations with titles: the circle's first, then
+  // the rest as they came
+  const titled = organizations.filter((org) => org.rawTitle);
+  const orgsWithTitles = [
+    ...titled.filter((org) => org.organizationCode === firstOrganizationCode),
+    ...titled.filter((org) => org.organizationCode !== firstOrganizationCode),
+  ];
 
   if (orgsWithTitles.length === 0) {
     return null;
@@ -77,7 +73,6 @@ export const DisplayUserOrganizations: React.FC<
         {orgsWithTitles.map((org) => {
           const abbreviation = org.rawTitle; // e.g., "GM", "SM"
           const fullName = org.titleFullName || abbreviation; // e.g., "Grandmaster"
-          const color = getTitleColor(abbreviation);
 
           return (
             <div key={org.organizationCode} style={{ marginBottom: 8 }}>
@@ -86,9 +81,12 @@ export const DisplayUserOrganizations: React.FC<
                   org.organizationCode}
                 :
               </strong>{" "}
-              <Tag color={color} style={{ fontWeight: "bold" }}>
+              <TitleTag
+                abbreviation={abbreviation}
+                style={{ fontWeight: "bold" }}
+              >
                 {fullName}
-              </Tag>
+              </TitleTag>
               <span style={{ color: "#666", fontSize: "0.9em" }}>
                 ({abbreviation})
               </span>

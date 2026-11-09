@@ -269,7 +269,9 @@ export const Settings = React.memo(() => {
             ) : null}
             {category === Category.ChangePassword ? <ChangePassword /> : null}
             {category === Category.Preferences ? <Preferences /> : null}
-            {category === Category.Integrations ? <Integrations /> : null}
+            {category === Category.Integrations ? (
+              <Integrations countryCode={personalInfo?.countryCode} />
+            ) : null}
             {category === Category.Secret ? <Secret /> : null}
             {category === Category.BlockedPlayers ? <BlockedPlayers /> : null}
             {category === Category.API ? <API /> : null}

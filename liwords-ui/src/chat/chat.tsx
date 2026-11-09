@@ -7,9 +7,10 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { Card, Input, Tabs, App } from "antd";
-import { LeftOutlined } from "@ant-design/icons";
+import { Button, Card, Input, Tabs, App, Tooltip } from "antd";
+import { DownOutlined, LeftOutlined, UpOutlined } from "@ant-design/icons";
 import { singularCount } from "../utils/plural";
+import { useLocalStorageBool } from "../utils/use_local_storage";
 import { ChatEntity } from "./chat_entity";
 import { useApplyChatPrefs, useChatFontScaleControl } from "./chat_prefs";
 import {
@@ -63,6 +64,9 @@ export type Props = {
   // The game's first player: in the game's own channel, their initial is
   // tilted, as on the scorecard and the player cards.
   firstPlayerID?: string;
+  // Whether the chat may collapse to its tabs and its latest line, as while
+  // the analyzer is open below it, to give the analyzer its room.
+  collapsible?: boolean;
 };
 
 // userid -> channel -> string
@@ -136,6 +140,45 @@ export const inputMaxHeight = (list: HTMLElement, input: HTMLElement): number =>
     ),
   );
 
+// The message list's cap that the chat's layout sets (setHeight): the chat's
+// height less its context panel's, at least 106 px, less 100 px.
+export const layoutListCap = (chatHeight: number, contextHeight: number) =>
+  chatHeight - (contextHeight > 106 ? contextHeight : 106) - 100;
+
+// What each chat could last give up while its messages were shown.
+const lastRoomToGive = new WeakMap<HTMLElement, number>();
+
+// How much of its height the chat can give up to a card below it (the
+// analyzer's, grow_to_window_bottom.ts): none while collapsed, else down to
+// where its message list keeps the height it keeps in view above the input,
+// under both that room and the layout's cap. While its messages are not
+// shown, as on its Players tab, what it could last give up then, or what the
+// layout's cap alone allows, so that it is as tall on either tab.
+export const roomToGive = (chat: HTMLElement): number => {
+  if (chat.classList.contains("collapsed")) {
+    return 0;
+  }
+  const shown = (el: Element) => el.getClientRects().length > 0;
+  const list = [...chat.querySelectorAll<HTMLElement>(".entities")].find(shown);
+  const input = [
+    ...chat.querySelectorAll<HTMLElement>('textarea[name="chat-input"]'),
+  ].find(shown);
+  if (!list || !input) {
+    return (
+      lastRoomToGive.get(chat) ??
+      Math.max(0, layoutListCap(chat.clientHeight, 0) - MIN_CHAT_LIST_PX)
+    );
+  }
+  const context = chat.querySelector<HTMLElement>("#chat-context");
+  const room = roomAboveInput(list, input);
+  const cap = context?.clientHeight
+    ? layoutListCap(chat.clientHeight, context.clientHeight)
+    : room;
+  const give = Math.max(0, Math.min(room, cap) - MIN_CHAT_LIST_PX);
+  lastRoomToGive.set(chat, give);
+  return give;
+};
+
 // How many rows (1 to 6) of input fit in a height, given the input's line
 // height and its vertical padding and border.
 export const rowsThatFit = (
@@ -190,6 +233,10 @@ export const Chat = React.memo((props: Props) => {
     ),
   );
   const chatTab = selectedChatTab === "CHAT" ? tabContainerElement : null;
+  // Collapsed where it may be, as the user last left it.
+  const [collapsePreferred, setCollapsePreferred] =
+    useLocalStorageBool("chatCollapsed");
+  const collapsed = !!props.collapsible && collapsePreferred;
   const socializeClient = useClient(SocializeService);
   // Chat auto-scrolls when the last entity is visible.
   const [hasUnreadChat, setHasUnreadChat] = useState(false);
@@ -377,9 +424,7 @@ export const Chat = React.memo((props: Props) => {
       document.getElementById("chat-context")?.clientHeight;
     const calculatedEntitiesHeight =
       contextPanelHeight && tabPaneHeight
-        ? tabPaneHeight -
-          (contextPanelHeight > 106 ? contextPanelHeight : 106) -
-          100
+        ? layoutListCap(tabPaneHeight, contextPanelHeight)
         : undefined;
     if (maxEntitiesHeight !== calculatedEntitiesHeight) {
       setMaxEntitiesHeight(calculatedEntitiesHeight);
@@ -670,7 +715,9 @@ export const Chat = React.memo((props: Props) => {
   ]);
 
   useEffect(() => {
-    if (selectedChatTab === "PLAYERS") {
+    // new messages count on the Chat tab while its messages are out of
+    // sight: on the Players tab, or with the chat collapsed
+    if (selectedChatTab === "PLAYERS" || collapsed) {
       const lastMessage = chatEntities.reduce(
         (acc: ChatEntityObj | undefined, ch) =>
           ch.timestamp &&
@@ -694,6 +741,7 @@ export const Chat = React.memo((props: Props) => {
   }, [
     chatEntities,
     selectedChatTab,
+    collapsed,
     lastNotificationTimestamp,
     setNotificationCount,
   ]);
@@ -965,11 +1013,35 @@ export const Chat = React.memo((props: Props) => {
     ],
   );
 
-  const handleTabClick = useCallback((key: string) => {
-    setSelectedChatTab(key);
-    setNotificationCount(0);
-    setLastNotificationTimestamp(Date.now());
-  }, []);
+  // A tab clicked expands the chat again, if it was collapsed.
+  const handleTabClick = useCallback(
+    (key: string) => {
+      setSelectedChatTab(key);
+      setNotificationCount(0);
+      setLastNotificationTimestamp(Date.now());
+      if (collapsed) {
+        setCollapsePreferred(false);
+      }
+    },
+    [collapsed, setCollapsePreferred],
+  );
+  const toggleCollapsed = useCallback(() => {
+    if (collapsed) {
+      setNotificationCount(0);
+      setLastNotificationTimestamp(Date.now());
+    }
+    setCollapsePreferred(!collapsed);
+  }, [collapsed, setCollapsePreferred]);
+  // the latest of what the chat shows (the channel's messages and every
+  // notice, such as a challenge's result), kept in sight while collapsed
+  const latest = useMemo(
+    () =>
+      chatEntities.findLast(
+        (ent) =>
+          ent.entityType !== ChatEntityType.UserChat || ent.channel === channel,
+      ),
+    [chatEntities, channel],
+  );
   const handleHideList = useCallback(() => {
     setPresenceVisible(false);
   }, []);
@@ -1283,7 +1355,7 @@ export const Chat = React.memo((props: Props) => {
     : availableKeys[0] || "CHAT";
 
   return (
-    <Card className="chat" id="chat">
+    <Card className={collapsed ? "chat collapsed" : "chat"} id="chat">
       <Tabs
         activeKey={validatedSelectedTab}
         centered
@@ -1291,7 +1363,38 @@ export const Chat = React.memo((props: Props) => {
         animated={false}
         items={tabItemsWithChildren}
         destroyOnHidden={false} // Keep all tab content rendered
+        tabBarExtraContent={
+          props.collapsible ? (
+            <Tooltip
+              title={collapsed ? "Expand the chat" : "Collapse the chat"}
+            >
+              <Button
+                className="chat-collapse-toggle"
+                type="text"
+                size="small"
+                icon={collapsed ? <DownOutlined /> : <UpOutlined />}
+                aria-label={collapsed ? "Expand the chat" : "Collapse the chat"}
+                onClick={toggleCollapsed}
+              />
+            </Tooltip>
+          ) : undefined
+        }
       />
+      {collapsed && latest && (
+        <div
+          className={`chat-latest${
+            latest.entityType === ChatEntityType.ErrorMsg
+              ? " error"
+              : latest.entityType === ChatEntityType.ServerMsg
+                ? " notice"
+                : ""
+          }`}
+          onClick={toggleCollapsed}
+        >
+          {latest.sender ? `${latest.sender}: ` : ""}
+          {latest.message}
+        </div>
+      )}
     </Card>
   );
 });

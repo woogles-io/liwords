@@ -20,6 +20,8 @@ You have two options for developing locally.
 
 2. The other option is to use Docker for the long-running services (postgres, Redis, NATS), and run your program executables locally. It is a bit more complex to set up initially, but may work better if you are developing on Mac OS (or Windows?).
 
+Either way, the analyzer's word graphs and leave tables in `liwords-ui/public/wasm/2026/` are not kept in git. `npm start` fetches them first, from where woogles.io serves them (about 450 MB, the first time only), and `npm run fetch-wasm` in `liwords-ui` fetches them alone. `liwords-ui/wasm-files.json` lists them, each with its size and sha256. The API server and the bot read them too, through `data/lexica/gaddag`, once they are there.
+
 <details>
 <summary>Using the full stack on Docker</summary>
 

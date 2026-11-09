@@ -10,6 +10,7 @@ import {
 } from "@ant-design/icons";
 import { useQuery } from "@connectrpc/connect-query";
 import {
+  getAllDivisionStandings,
   getLeagueRoster,
   getPlayerLeagueH2H,
 } from "../gen/api/proto/league_service/league_service-LeagueService_connectquery";
@@ -29,6 +30,12 @@ type Props = {
   leagueId: string;
   currentUserId?: string;
   activeSeasonNumber?: number;
+  // The same season's id, for the worst place each of its players can still
+  // finish.
+  activeSeasonId?: string;
+  // The seasons the league has not completed, by number: their ranks are no
+  // finish yet.
+  seasonsInProgress?: Array<number>;
   defaultSortSeason?: number;
   // Whether the roster is on screen: only then does a game's end reload it.
   shown?: boolean;
@@ -88,6 +95,10 @@ const formatSeason = (
   h2hTooltip?: string,
   // The Peak column is about the finish, so it leaves the timeouts out.
   hideTimeouts?: boolean,
+  // A season in progress, shown at the worst place it can still finish.
+  provisional?: boolean,
+  // A rank shared with another player, marked "=" as the standings mark it.
+  shared?: boolean,
 ) => {
   if (!season) return <span className="roster-empty">{"\u2014"}</span>;
   if (season.divisionNumber === 0) {
@@ -104,7 +115,13 @@ const formatSeason = (
   const seasonLine = label
     ? `${record} (${spread}) \u00b7 ${label}${timeouts}`
     : `${record} (${spread})${timeouts}`;
-  const tooltip = h2hTooltip ? (
+  const tooltip = provisional ? (
+    <>
+      {seasonLine}
+      <br />
+      In progress: finishes no lower than #{displayRank}
+    </>
+  ) : h2hTooltip ? (
     <>
       {seasonLine}
       <br />
@@ -127,7 +144,15 @@ const formatSeason = (
         >
           D{season.divisionNumber}
         </Tag>
-        {displayRank > 0 && <span className="roster-rank">#{displayRank}</span>}
+        {displayRank > 0 && (
+          <span
+            className="roster-rank"
+            style={provisional ? { fontStyle: "italic" } : undefined}
+          >
+            #{displayRank}
+            {shared && "="}
+          </span>
+        )}
         {!hideResult && resultIcon(season.result)}
         {!hideTimeouts && (season.timeouts ?? 0) > 0 && (
           <TimeoutMark count={season.timeouts ?? 0} />
@@ -157,23 +182,37 @@ const formatH2H = (record: H2HRecord | undefined) => {
   );
 };
 
+// A season not finished yet: placed, in a season the league has not completed
+// (inProgressSeasons, by number, from the seasons' own status). Until then its
+// rank is a standing, and before its first game an alphabetical one, not a
+// finish.
+export const inProgress = (
+  season: LeagueRosterSeason,
+  inProgressSeasons: Set<number>,
+): boolean =>
+  season.divisionNumber > 0 && inProgressSeasons.has(season.seasonNumber);
+
 // A player's best-ever achievement, used by the Peak column.
 //   season: the LeagueRosterSeason it was achieved in.
 //   displayRank: the rank shown in the cell (competition/tie-aware rank for
-//     placed seasons, 0 for an unplaced/registered-only season).
+//     placed seasons, 0 for an unplaced/registered-only season, the worst
+//     place it can still finish for a season in progress).
 //   tied: whether that finish was shared with another player (sole otherwise).
+//   provisional: whether it is a season in progress.
 type PeakCandidate = {
   season: LeagueRosterSeason;
   displayRank: number;
   tied: boolean;
+  provisional: boolean;
 };
 
 // Compare two peak candidates, ordered best -> worst. Returns negative when
 // `a` is the better peak. Key (best first):
 //   1. higher division (lower divisionNumber; 0 = unplaced = worst)
 //   2. higher finish (lower displayRank)
-//   3. a sole finish beats a tied one
-//   4. earlier season (lower seasonNumber)
+//   3. a finish beats a season in progress that can finish no lower
+//   4. a sole finish beats a tied one
+//   5. earlier season (lower seasonNumber)
 const peakSeasonBetter = (a: PeakCandidate, b: PeakCandidate): number => {
   // Division: unplaced (0) is worse than any placed division.
   const da = a.season.divisionNumber === 0 ? Infinity : a.season.divisionNumber;
@@ -183,6 +222,8 @@ const peakSeasonBetter = (a: PeakCandidate, b: PeakCandidate): number => {
   if (!bothUnplaced) {
     // Higher finish (lower rank) is better.
     if (a.displayRank !== b.displayRank) return a.displayRank - b.displayRank;
+    // A finish beats a season still in progress.
+    if (a.provisional !== b.provisional) return a.provisional ? 1 : -1;
     // A sole finish beats a tied one.
     if (a.tied !== b.tied) return a.tied ? 1 : -1;
   }
@@ -191,23 +232,104 @@ const peakSeasonBetter = (a: PeakCandidate, b: PeakCandidate): number => {
 };
 
 // The seasons in which a player reached their peak finish (same division and
-// shown rank), ascending. An unplaced peak counts once.
+// shown rank), ascending. An unplaced peak counts once, and so does a season in
+// progress, which is never a repeat of a finish.
 export const peakRepeats = (
   player: LeagueRosterPlayer,
-  peak: { season: LeagueRosterSeason; displayRank: number },
+  peak: {
+    season: LeagueRosterSeason;
+    displayRank: number;
+    provisional?: boolean;
+  },
   compRankMap: Map<string, number>,
+  inProgressSeasons: Set<number>,
 ): number[] =>
-  peak.season.divisionNumber === 0
+  peak.season.divisionNumber === 0 || peak.provisional
     ? [peak.season.seasonNumber]
     : player.seasons
         .filter(
           (s) =>
+            !inProgress(s, inProgressSeasons) &&
             s.divisionNumber === peak.season.divisionNumber &&
             (compRankMap.get(`${s.seasonNumber}:${player.userId}`) ??
               s.rank) === peak.displayRank,
         )
         .map((s) => s.seasonNumber)
         .sort((x, y) => x - y);
+
+// The worst place each player of a season in progress can still finish, by
+// "seasonNumber:userId": last, in a division nobody has played in yet; after
+// that, what the server works out from the remaining pairings (worstRanks, by
+// userId, for the active season only; 0 or missing when it has not).
+export const seasonFloors = (
+  players: Array<LeagueRosterPlayer>,
+  inProgressSeasons: Set<number>,
+  activeSeasonNumber: number | undefined,
+  worstRanks: Map<string, number>,
+): Map<string, number> => {
+  const groups = new Map<
+    string,
+    Array<{ userId: string; season: LeagueRosterSeason }>
+  >();
+  for (const player of players) {
+    for (const season of player.seasons) {
+      if (!inProgress(season, inProgressSeasons)) continue;
+      const key = `${season.seasonNumber}:${season.divisionNumber}`;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key)!.push({ userId: player.userId, season });
+    }
+  }
+  const floors = new Map<string, number>();
+  for (const entries of groups.values()) {
+    const unplayed = entries.every(
+      ({ season }) => season.wins + season.losses + season.draws === 0,
+    );
+    for (const { userId, season } of entries) {
+      const worst = unplayed
+        ? entries.length
+        : season.seasonNumber === activeSeasonNumber
+          ? (worstRanks.get(userId) ?? 0)
+          : 0;
+      if (worst > 0) floors.set(`${season.seasonNumber}:${userId}`, worst);
+    }
+  }
+  return floors;
+};
+
+// A player's peak: their best finish, or a season in progress at its floor
+// (seasonFloors) when that is better still. A season in progress with no floor
+// is left out.
+export const peakOf = (
+  player: LeagueRosterPlayer,
+  compRankMap: Map<string, number>,
+  tied: Set<string>,
+  floors: Map<string, number>,
+  inProgressSeasons: Set<number>,
+): (PeakCandidate & { repeats: number[] }) | undefined => {
+  let best: PeakCandidate | undefined;
+  for (const season of player.seasons) {
+    const key = `${season.seasonNumber}:${player.userId}`;
+    let cand: PeakCandidate;
+    if (inProgress(season, inProgressSeasons)) {
+      const floor = floors.get(key);
+      if (floor === undefined) continue;
+      cand = { season, displayRank: floor, tied: false, provisional: true };
+    } else {
+      const displayRank =
+        season.divisionNumber === 0 ? 0 : (compRankMap.get(key) ?? season.rank);
+      cand = { season, displayRank, tied: tied.has(key), provisional: false };
+    }
+    if (!best || peakSeasonBetter(cand, best) < 0) {
+      best = cand;
+    }
+  }
+  return (
+    best && {
+      ...best,
+      repeats: peakRepeats(player, best, compRankMap, inProgressSeasons),
+    }
+  );
+};
 
 // Compare two players by their status in a given season.
 // Order: placed (by division ASC, rank ASC) -> registered -> absent.
@@ -236,6 +358,8 @@ export const LeagueRoster: React.FC<Props> = ({
   leagueId,
   currentUserId,
   activeSeasonNumber,
+  activeSeasonId,
+  seasonsInProgress,
   defaultSortSeason,
   shown,
   onJumpToSeason,
@@ -260,6 +384,19 @@ export const LeagueRoster: React.FC<Props> = ({
   const { data, isLoading } = useQuery(getLeagueRoster, {
     leagueId,
   });
+  // The active season's standings, for the worst place each player can still
+  // finish: the page's own request while that season is on screen, so read
+  // from it rather than fetched again (staleTime), and kept fresh by a game's
+  // end (live_updates), only while the roster is on screen.
+  const { data: activeStandings } = useQuery(
+    getAllDivisionStandings,
+    { seasonId: activeSeasonId ?? "" },
+    { enabled: !!activeSeasonId && !!shown, staleTime: Infinity },
+  );
+  const inProgressSeasons = useMemo(
+    () => new Set(seasonsInProgress),
+    [seasonsInProgress],
+  );
 
   // Auto-show logged-in user's H2H if they're a participant
   useEffect(() => {
@@ -341,10 +478,13 @@ export const LeagueRoster: React.FC<Props> = ({
   //         with another player in the same (season, division) group, i.e.
   //         a tied finish rather than a sole one. Players in a group with no
   //         games played are treated as tied (no sole finish to claim yet).
+  //   unplayed: set of "seasonNumber:divisionNumber" groups with no games
+  //         played, whose server order is alphabetical, not a standing.
   const compRankInfo = useMemo(() => {
     const map = new Map<string, number>();
     const tied = new Set<string>();
-    if (!data?.players) return { rank: map, tied };
+    const unplayed = new Set<string>();
+    if (!data?.players) return { rank: map, tied, unplayed };
 
     // Group entries by (season, division)
     const groups = new Map<
@@ -371,6 +511,7 @@ export const LeagueRoster: React.FC<Props> = ({
       // No games played yet: nobody holds a sole finish.
       if (entries.every((e) => e.points === 0 && e.spread === 0)) {
         for (const e of entries) tied.add(`${seasonNumber}:${e.userId}`);
+        unplayed.add(groupKey);
         continue;
       }
       entries.sort((a, b) => a.rank - b.rank);
@@ -396,13 +537,35 @@ export const LeagueRoster: React.FC<Props> = ({
       }
     }
 
-    return { rank: map, tied };
+    return { rank: map, tied, unplayed };
   }, [data?.players]);
   const compRankMap = compRankInfo.rank;
 
+  // The worst place each player of a season in progress can still finish.
+  const floors = useMemo(() => {
+    const worstRanks = new Map<string, number>();
+    for (const division of activeStandings?.divisions ?? []) {
+      for (const standing of division.standings) {
+        worstRanks.set(standing.userId, standing.worstRank);
+      }
+    }
+    return seasonFloors(
+      data?.players ?? [],
+      inProgressSeasons,
+      activeSeasonNumber,
+      worstRanks,
+    );
+  }, [
+    data?.players,
+    inProgressSeasons,
+    activeSeasonNumber,
+    activeStandings?.divisions,
+  ]);
+
   // Compute each player's peak (best-ever) season across all their seasons.
-  // Key: userId -> { season, displayRank, tied }. Players with no seasons are
-  // absent from the map (treated as worst for sorting / shown as em-dash).
+  // Key: userId -> { season, displayRank, tied, provisional }. Players with no
+  // seasons are absent from the map (treated as worst for sorting / shown as
+  // em-dash).
   const peakMap = useMemo(() => {
     const map = new Map<
       string,
@@ -410,6 +573,7 @@ export const LeagueRoster: React.FC<Props> = ({
         season: LeagueRosterSeason;
         displayRank: number;
         tied: boolean;
+        provisional: boolean;
         // Every season with the same finish (division and rank), ascending:
         // a three-time champion has three.
         repeats: number[];
@@ -417,30 +581,25 @@ export const LeagueRoster: React.FC<Props> = ({
     >();
     if (!data?.players) return map;
     for (const player of data.players) {
-      let best:
-        | { season: LeagueRosterSeason; displayRank: number; tied: boolean }
-        | undefined;
-      for (const season of player.seasons) {
-        const key = `${season.seasonNumber}:${player.userId}`;
-        const displayRank =
-          season.divisionNumber === 0
-            ? 0
-            : (compRankMap.get(key) ?? season.rank);
-        const tied = compRankInfo.tied.has(key);
-        const cand = { season, displayRank, tied };
-        if (!best || peakSeasonBetter(cand, best) < 0) {
-          best = cand;
-        }
-      }
-      if (best) {
-        map.set(player.userId, {
-          ...best,
-          repeats: peakRepeats(player, best, compRankMap),
-        });
+      const peak = peakOf(
+        player,
+        compRankMap,
+        compRankInfo.tied,
+        floors,
+        inProgressSeasons,
+      );
+      if (peak) {
+        map.set(player.userId, peak);
       }
     }
     return map;
-  }, [data?.players, compRankMap, compRankInfo.tied]);
+  }, [
+    data?.players,
+    compRankMap,
+    compRankInfo.tied,
+    floors,
+    inProgressSeasons,
+  ]);
 
   const filteredPlayers = useMemo(() => {
     if (!data?.players) return [];
@@ -577,7 +736,7 @@ export const LeagueRoster: React.FC<Props> = ({
       : []),
     {
       title: (
-        <Tooltip title="Best-ever finish across all seasons (highest division, then best rank; a sole rank beats a tied one)">
+        <Tooltip title="Best-ever finish across all seasons (highest division, then best rank; a sole rank beats a tied one). A season in progress counts at the worst place it can still finish, in italics, when that beats every finish.">
           Peak
         </Tooltip>
       ),
@@ -590,10 +749,12 @@ export const LeagueRoster: React.FC<Props> = ({
           <span className="roster-peak">
             {formatSeason(
               peak.season,
-              compRankMap.get(`${peak.season.seasonNumber}:${record.userId}`),
+              peak.displayRank,
               undefined,
               undefined,
               true,
+              peak.provisional,
+              peak.tied,
             )}
             <span style={{ fontSize: 11, opacity: 0.65, marginLeft: 2 }}>
               {"\u00b7"}S{peak.season.seasonNumber}
@@ -685,9 +846,17 @@ export const LeagueRoster: React.FC<Props> = ({
             {h2hDot}
             {formatSeason(
               season,
-              compRankMap.get(`${sn}:${record.userId}`),
+              // A season in progress shows no rank before anybody in its
+              // division has played: the order would be alphabetical.
+              inProgress(season, inProgressSeasons) &&
+                compRankInfo.unplayed.has(`${sn}:${season.divisionNumber}`)
+                ? 0
+                : compRankMap.get(`${sn}:${record.userId}`),
               sn === activeSeasonNumber,
               gameTooltip,
+              false,
+              false,
+              compRankInfo.tied.has(`${sn}:${record.userId}`),
             )}
           </span>
         );

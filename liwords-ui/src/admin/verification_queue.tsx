@@ -8,11 +8,11 @@ import {
   Input,
   message,
   Image,
-  Tag,
   Card,
   Spin,
 } from "antd";
 import { CheckOutlined, CloseOutlined, EyeOutlined } from "@ant-design/icons";
+import { TitleTag } from "../shared/title_tag";
 import { useClient, flashError } from "../utils/hooks/connect";
 import {
   OrganizationService,
@@ -30,6 +30,7 @@ const organizationNames: Record<string, string> = {
   naspa: "NASPA",
   wespa: "WESPA",
   absp: "ABSP",
+  sg: "Singapore Scrabble Association",
 };
 
 export const VerificationQueue = () => {
@@ -174,7 +175,7 @@ export const VerificationQueue = () => {
       dataIndex: "title",
       key: "title",
       render: (title: string) =>
-        title ? <Tag color="blue">{title}</Tag> : "-",
+        title ? <TitleTag abbreviation={title}>{title}</TitleTag> : "-",
       width: 100,
     },
     {
@@ -291,7 +292,9 @@ export const VerificationQueue = () => {
             {selectedRequest.title && (
               <p>
                 <strong>Title:</strong>{" "}
-                <Tag color="blue">{selectedRequest.title}</Tag>
+                <TitleTag abbreviation={selectedRequest.title}>
+                  {selectedRequest.title}
+                </TitleTag>
               </p>
             )}
             <div style={{ marginTop: 16 }}>

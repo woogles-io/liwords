@@ -26,7 +26,8 @@ type Props = {
   rounds: number;
   // What pairs the rounds after them, to start with.
   then: PairingMethod;
-  // For the Team Round Robin: how many rounds in a row each pair plays.
+  // For the Round Robin and the Team Round Robin: how many rounds in a row
+  // each pair plays.
   perOpponent: number;
   // The division's rounds now; 0 if it has no round controls yet.
   numRounds: number;
@@ -81,9 +82,12 @@ export const ApplyModal = (props: Props) => {
                 playWithinTeam: scheme.playWithinTeam,
                 gamesPerRound:
                   scheme.pairingMethod ===
-                  PairingMethod.ASSIGNED_TEAM_ROUND_ROBIN
+                    PairingMethod.ASSIGNED_TEAM_ROUND_ROBIN ||
+                  scheme.pairingMethod === PairingMethod.ROUND_ROBIN
                     ? props.perOpponent
                     : 1,
+                // The planner shows the Round Robin in seed order.
+                seedOrder: scheme.pairingMethod === PairingMethod.ROUND_ROBIN,
               })
             : create(RoundControlSchema, { pairingMethod: then });
         controls.push(rdCtrlFromSetting(setting, total, r));

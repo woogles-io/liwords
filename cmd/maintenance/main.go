@@ -16,6 +16,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/woogles-io/liwords/pkg/config"
 	"github.com/woogles-io/liwords/pkg/integrations"
+	"github.com/woogles-io/liwords/pkg/integrations/organizations"
+	"github.com/woogles-io/liwords/pkg/organization"
 	"github.com/woogles-io/liwords/pkg/stores/models"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/config_service"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -199,7 +201,15 @@ func IntegrationsRefresher() error {
 
 	refreshPatreonIntegrationTokens(ctx, q, oauthIntegrationService)
 
-	return nil
+	// SG's titles list needs no login, so its linked players' titles are
+	// refreshed here, daily: a title gained or lost shows without anyone
+	// pressing refresh
+	sgErr := organization.RefreshOrganizationTitles(ctx, q, organizations.OrgSG)
+
+	// Every linked player's title by their username is picked again from the
+	// stored titles, with nothing fetched, so that a change to the ranks or
+	// the tie order reaches them without anyone pressing refresh
+	return errors.Join(sgErr, organization.RepickProfileTitles(ctx, q))
 }
 
 func SubBadgeUpdater() error {
