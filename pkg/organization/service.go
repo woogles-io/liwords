@@ -238,7 +238,9 @@ func (s *OrganizationService) RefreshTitles(
 	}), nil
 }
 
-// GetMyOrganizations returns all organizations the user is connected to
+// GetMyOrganizations returns all organizations the user is connected to, and
+// those they have asked to be verified for and are still waiting on, which
+// come back not verified.
 func (s *OrganizationService) GetMyOrganizations(
 	ctx context.Context,
 	req *connect.Request[pb.GetMyOrganizationsRequest],
@@ -254,6 +256,7 @@ func (s *OrganizationService) GetMyOrganizations(
 	}
 
 	var titles []*pb.OrganizationTitle
+	connected := map[string]bool{}
 
 	for _, integ := range integrations {
 		orgCode := organizations.OrganizationCode(integ.IntegrationName)
@@ -263,6 +266,7 @@ func (s *OrganizationService) GetMyOrganizations(
 		if err := integData.FromJSON(integ.Data); err != nil {
 			continue
 		}
+		connected[integ.IntegrationName] = true
 
 		// Get display info for the title
 		display := organizations.GetTitleDisplay(orgCode, integData.RawTitle)
@@ -289,6 +293,42 @@ func (s *OrganizationService) GetMyOrganizations(
 		}
 
 		titles = append(titles, title)
+	}
+
+	// A verification request still waiting for an admin is listed as well,
+	// so the user sees it whatever else changes on their profile. Every
+	// integration is verified when it is made, so not verified marks a
+	// request.
+	requests, err := s.queries.GetUserVerificationRequests(ctx, user.UUID)
+	if err != nil {
+		return nil, apiserver.InternalErr(err)
+	}
+	for _, vr := range requests {
+		if vr.Status != "pending" || connected[vr.IntegrationName] {
+			continue
+		}
+		orgCode := organizations.OrganizationCode(vr.IntegrationName)
+		meta, err := organizations.GetOrganizationMetadata(orgCode)
+		if err != nil {
+			continue
+		}
+		abbreviation := ""
+		titleFullName := ""
+		if display := organizations.GetTitleDisplay(orgCode, vr.Title.String); display != nil {
+			abbreviation = display.Abbreviation
+			titleFullName = display.FullName
+		}
+		titles = append(titles, &pb.OrganizationTitle{
+			OrganizationCode: vr.IntegrationName,
+			OrganizationName: meta.Name,
+			MemberId:         vr.MemberID,
+			FullName:         vr.FullName,
+			RawTitle:         vr.Title.String,
+			NormalizedTitle:  abbreviation, // Deprecated: use raw_title instead
+			TitleFullName:    titleFullName,
+			Verified:         false,
+		})
+		connected[vr.IntegrationName] = true
 	}
 
 	return connect.NewResponse(&pb.GetMyOrganizationsResponse{

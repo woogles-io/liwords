@@ -319,3 +319,62 @@ func TestOrganizationIntegrationsInTieOrder(t *testing.T) {
 	}
 	is.Equal(names, []string{"wespa", "naspa", "sg", "absp"})
 }
+
+func TestGetMyOrganizationsListsPendingRequests(t *testing.T) {
+	is := is.New(t)
+	ctx := context.Background()
+	pool, q := recreateDB(t)
+	us, err := user.NewDBStore(pool)
+	is.NoErr(err)
+	s := NewOrganizationService(us, q, nil)
+
+	request := func(userUUID string, orgCode organizations.OrganizationCode, memberID, name, title string) int64 {
+		vr, err := q.CreateVerificationRequest(ctx, models.CreateVerificationRequestParams{
+			UserUuid:        userUUID,
+			IntegrationName: string(orgCode),
+			MemberID:        memberID,
+			FullName:        name,
+			ImageUrl:        "verification/" + userUUID,
+			Title:           pgtype.Text{String: title, Valid: title != ""},
+		})
+		is.NoErr(err)
+		return vr.ID
+	}
+	mine := func(userUUID string) []*pb.OrganizationTitle {
+		ctx := apiserver.PlaceInContext(ctx, &entity.Session{
+			ID: userUUID + "-session", Username: userUUID, UserUUID: userUUID, Expiry: time.Now().Add(time.Minute)})
+		resp, err := s.GetMyOrganizations(ctx, connect.NewRequest(&pb.GetMyOrganizationsRequest{}))
+		is.NoErr(err)
+		return resp.Msg.Titles
+	}
+
+	// a connection is listed as before, and a request still waiting for an
+	// admin is listed beside it, not verified
+	link(t, q, "stays", organizations.OrgWESPA, organizations.OrganizationIntegrationData{
+		MemberID: "123", FullName: "Sarah Stays", RawTitle: "M", Verified: true})
+	request("stays", organizations.OrgSG, "5", "Promoted, Tony", "GM")
+	titles := mine("stays")
+	is.Equal(len(titles), 2)
+	is.Equal(titles[0].OrganizationCode, "wespa")
+	is.True(titles[0].Verified)
+	is.Equal(titles[1].OrganizationCode, "sg")
+	is.Equal(titles[1].MemberId, "5")
+	is.Equal(titles[1].FullName, "Promoted, Tony")
+	is.Equal(titles[1].RawTitle, "GM")
+	is.Equal(titles[1].NormalizedTitle, "GM")
+	is.True(!titles[1].Verified)
+
+	// a request no longer pending is not listed
+	rejected := request("other", organizations.OrgSG, "6", "Other, One", "")
+	_, err = pool.Exec(ctx, `UPDATE verification_requests SET status = 'rejected' WHERE id = $1`, rejected)
+	is.NoErr(err)
+	is.Equal(len(mine("other")), 0)
+
+	// nor is one for an organization already connected
+	link(t, q, "lapsed", organizations.OrgSG, organizations.OrganizationIntegrationData{
+		MemberID: "7", FullName: "Lapsed, Lee", Verified: true})
+	request("lapsed", organizations.OrgSG, "7", "Lapsed, Lee", "")
+	titles = mine("lapsed")
+	is.Equal(len(titles), 1)
+	is.True(titles[0].Verified)
+}
