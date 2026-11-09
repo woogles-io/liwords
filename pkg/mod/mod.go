@@ -358,6 +358,8 @@ func removeChat(ctx context.Context, us user.Store, cs user.ChatStore, action *m
 	return nil
 }
 
+// deleteAccount erases the personal info but keeps the ratings and stats, so
+// removing the suspension that comes with it restores the account.
 func deleteAccount(ctx context.Context, us user.Store, cs user.ChatStore, action *ms.ModAction) error {
-	return us.ResetProfile(ctx, action.UserId)
+	return us.ResetPersonalInfo(ctx, action.UserId)
 }
