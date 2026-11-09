@@ -432,6 +432,15 @@ type Profile struct {
 	TitleOrganization pgtype.Text
 }
 
+type PushSubscription struct {
+	Endpoint  string
+	UserID    int32
+	P256dh    string
+	Auth      string
+	CreatedAt pgtype.Timestamptz
+	UpdatedAt pgtype.Timestamptz
+}
+
 type Puzzle struct {
 	ID           int64
 	Uuid         string
