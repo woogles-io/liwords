@@ -179,6 +179,29 @@ func TestNewTournamentIRLMode(t *testing.T) {
 	is.Equal(online.ExtraMeta.IRLMode, false)
 }
 
+// An IRL player's ID is a token, a colon, and the name, so a name with a
+// colon in it can't be added.
+func TestAddIRLPlayerWithColon(t *testing.T) {
+	is := is.New(t)
+	ctx := context.Background()
+	stores, _ := recreateDB()
+	defer stores.Disconnect()
+	tstore, us := stores.TournamentStore, stores.UserStore
+
+	directors := makeTournamentPersons(map[string]int32{"Kieran:Kieran": 0})
+	ty, err := tournament.NewTournament(ctx, tstore, "irlColon", "", directors,
+		entity.TypeStandard, "", "/tournament/irl-colon", nil, nil, 0, true)
+	is.NoErr(err)
+	is.NoErr(tournament.AddDivision(ctx, tstore, ty.UUID, divOneName))
+
+	err = tournament.AddPlayers(ctx, tstore, us, ty.UUID, divOneName,
+		makeTournamentPersons(map[string]int32{"Alice": 1500, "Bob: Smith": 1500}))
+	is.True(err != nil)
+	ty, err = tstore.Get(ctx, ty.UUID)
+	is.NoErr(err)
+	is.Equal(len(ty.Divisions[divOneName].DivisionManager.GetPlayers().Persons), 0)
+}
+
 // PrivateAnalysis reads the setting straight from the database, so it has to
 // see a director's change as soon as it is saved.
 func TestPrivateAnalysis(t *testing.T) {
