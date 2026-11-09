@@ -52,6 +52,33 @@ func TestTimersRanOut(t *testing.T) {
 	}
 }
 
+// Deadline is the last moment RanOut is false: it is false there and true one
+// millisecond later.
+func TestTimersDeadline(t *testing.T) {
+	cases := []struct {
+		name   string
+		timers Timers
+	}{
+		{"real-time", Timers{TimeOfLastUpdate: 1_000, TimeRemaining: []int{60_000, 5}}},
+		{"real-time with overtime", Timers{TimeOfLastUpdate: 1_000, TimeRemaining: []int{60_000, 5}, MaxOvertime: 2}},
+		{"correspondence, no bank", Timers{TimeOfLastUpdate: 1_000, TimeRemaining: []int{0, 0},
+			ResetToIncrementAfterTurn: true, IncrementSeconds: 36_000}},
+		{"correspondence with a bank", Timers{TimeOfLastUpdate: 1_000, TimeRemaining: []int{0, 0},
+			TimeBank: []int64{345_600_000, 0}, ResetToIncrementAfterTurn: true, IncrementSeconds: 36_000}},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			d := c.timers.Deadline(0)
+			if c.timers.RanOut(0, d) {
+				t.Errorf("RanOut at the deadline %d", d)
+			}
+			if !c.timers.RanOut(0, d+1) {
+				t.Errorf("not RanOut just after the deadline %d", d)
+			}
+		})
+	}
+}
+
 // Timers written before the increment was stored have no "inc" key. Loading
 // them fills it from the request; loading new ones leaves it alone; and it is
 // always written, even when zero, so SQL can tell the two kinds apart.

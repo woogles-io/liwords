@@ -232,6 +232,11 @@ func main() {
 	// Wire up the league standings updater to avoid circular dependencies
 	stores.SetLeagueStandingsUpdater(league.NewStandingsUpdaterImpl(stores.LeagueStore))
 
+	// Left nil, and so off, unless every web push setting is set.
+	if pushSettings != nil {
+		stores.PushSender = push.NewSender(pushSettings, stores.Queries)
+	}
+
 	middlewares := alice.New(
 		WithTiming("hlog", hlog.NewHandler(log.With().Str("service", "liwords").Logger())),
 		WithTiming("exposeRW", apiserver.ExposeResponseWriterMiddleware),

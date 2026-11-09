@@ -51,6 +51,9 @@ type Stores struct {
 	// LeagueStandingsUpdater is injected to avoid circular dependencies between
 	// pkg/gameplay and pkg/league. It's set during initialization.
 	LeagueStandingsUpdater LeagueStandingsUpdater
+
+	// PushSender is set by main when web push is on, and nil otherwise.
+	PushSender PushSender
 }
 
 func NewInitializedStores(dbPool *pgxpool.Pool, redisPool *redigoredis.Pool, cfg *cfg.Config) (*Stores, error) {

@@ -16,3 +16,11 @@ type LeagueStandingsUpdater interface {
 	// Returns nil if the game is not a league game.
 	UpdateGameStandings(ctx context.Context, g *entity.Game) error
 }
+
+// PushSender sends web push notifications to the browsers a user subscribed.
+// The implementation lives in pkg/push; main sets it only when web push is
+// on, so it is nil otherwise.
+type PushSender interface {
+	// Notify returns at once and sends in the background.
+	Notify(userUUID string, payload []byte)
+}

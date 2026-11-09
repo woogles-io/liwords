@@ -30,6 +30,7 @@ import (
 	"github.com/woogles-io/liwords/pkg/config"
 	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/mod"
+	"github.com/woogles-io/liwords/pkg/push"
 	"github.com/woogles-io/liwords/pkg/stats"
 	"github.com/woogles-io/liwords/pkg/stores"
 	"github.com/woogles-io/liwords/pkg/user"
@@ -259,6 +260,11 @@ func StartGame(ctx context.Context, stores *stores.Stores, eventChan chan<- *ent
 		return err
 	}
 	log.Debug().Interface("history", entGame.Game.History()).Msg("game history")
+	// A correspondence game starts as soon as its seek is accepted, so the
+	// player on the first turn may not be there to see it.
+	if entGame.IsCorrespondence() {
+		pushTurn(entGame, stores, "")
+	}
 
 	evt := entGame.HistoryRefresherEvent()
 	evt.History = proto.Clone(mod.CensorHistory(ctx, stores.UserStore, evt.History)).(*macondopb.GameHistory)
@@ -308,6 +314,27 @@ func players(entGame *entity.Game) []string {
 		ps = append(ps, p.UserId)
 	}
 	return ps
+}
+
+// pushTurn sends a web push to the player now on turn in a correspondence
+// game, unless that is who just acted, as after a challenge that leaves the
+// turn with the challenger.
+func pushTurn(entGame *entity.Game, stores *stores.Stores, actedBy string) {
+	if stores.PushSender == nil {
+		return
+	}
+	onTurn := entGame.Game.PlayerIDOnTurn()
+	if onTurn == actedBy {
+		return
+	}
+	opponent := ""
+	for _, p := range entGame.History().Players {
+		if p.UserId != onTurn {
+			opponent = p.Nickname
+		}
+	}
+	stores.PushSender.Notify(onTurn, push.TurnMessage(entGame.GameID(),
+		opponent, entGame.Timers.Deadline(entGame.Game.PlayerOnTurn())))
 }
 
 // sorts MLs in place.
@@ -875,6 +902,7 @@ func handleEventAfterLockingGame(ctx context.Context, stores *stores.Stores, use
 			}
 			// A league game's page shows its live score and whose turn it is.
 			sendLeagueGameUpdated(entGame, false)
+			pushTurn(entGame, stores, userID)
 		}
 
 	}
