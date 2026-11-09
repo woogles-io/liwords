@@ -4,6 +4,7 @@ import (
 	"errors"
 	"testing"
 
+	"connectrpc.com/connect"
 	"github.com/matryer/is"
 )
 
@@ -48,4 +49,20 @@ func TestHasherBusy(t *testing.T) {
 	ok, err := ComparePassword("correct horse", hash)
 	is.NoErr(err)
 	is.True(ok)
+}
+
+// CheckPassword answers a wrong password with an invalid argument, and a busy
+// hasher with unavailable.
+func TestCheckPassword(t *testing.T) {
+	is := is.New(t)
+	hash, err := GeneratePassword(testConfig, "correct horse")
+	is.NoErr(err)
+
+	is.NoErr(CheckPassword("correct horse", hash))
+	is.Equal(connect.CodeOf(CheckPassword("wrong horse", hash)), connect.CodeInvalidArgument)
+
+	hasher <- struct{}{}
+	err = CheckPassword("correct horse", hash)
+	<-hasher
+	is.Equal(connect.CodeOf(err), connect.CodeUnavailable)
 }
