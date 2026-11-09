@@ -30,6 +30,7 @@ import {
   usePlaceMoveCallback,
 } from "./analyzer";
 import { useExaminableGameContextStoreContext } from "../store/store";
+import { lineEndsGame } from "./endgame_line";
 import { RedoOutlined } from "@ant-design/icons";
 import {
   LineChart,
@@ -783,6 +784,29 @@ const parseEndgameVariation = (
 };
 
 // Explanation shown on hover wherever we flag past-the-horizon output.
+const CUT_SHORT_TOOLTIP =
+  "The solver returned this line without its last moves, so it stops before " +
+  "the game ends. The spread is still for the whole endgame; adding up the " +
+  "moves shown will not reach it.";
+
+// The tiles each side holds as an endgame line starts, for telling whether
+// the line plays the game out. Undefined when they aren't known.
+type RackCounts = { mover: number; opp: number };
+
+// endgameRackCounts is undefined unless the turn is a solved endgame, where
+// the bag is empty and the opponent holds every tile the mover doesn't.
+const endgameRackCounts = (
+  turn: GameAnalysisResult["turns"][0],
+  ctx: BoardContext,
+  tilesOffBoard: number,
+): RackCounts | undefined => {
+  if (turn.phase !== GamePhase.PHASE_ENDGAME || !turn.rack) return undefined;
+  const mover = runesToMachineWord(turn.rack, ctx.alphabet).length;
+  const opp = tilesOffBoard - mover;
+  if (mover === 0 || opp <= 0) return undefined;
+  return { mover, opp };
+};
+
 const ESTIMATED_PLAYOUT_TOOLTIP =
   "Past this point the endgame solver ran out of search depth and played the " +
   "position out greedily. These moves — and the resulting spread — are a " +
@@ -793,13 +817,18 @@ const ESTIMATED_PLAYOUT_TOOLTIP =
 const EndgameVariationMoves: React.FC<{
   moves: EndgameMove[];
   boardCtx: BoardContext;
+  rackCounts?: RackCounts;
   onClickPlay: (move: AnalyzerMove, earlierMoves: AnalyzerMove[]) => void;
-}> = ({ moves, boardCtx, onClickPlay }) => {
+}> = ({ moves, boardCtx, rackCounts, onClickPlay }) => {
   const parsedMoves = useMemo(
     () => parseEndgameVariation(moves, boardCtx),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [moves, boardCtx.dim, boardCtx.boardLetters, boardCtx.alphabet],
   );
+  const cutShort =
+    rackCounts !== undefined &&
+    parsedMoves.length > 0 &&
+    !lineEndsGame(parsedMoves, rackCounts.mover, rackCounts.opp);
   // Moves past the search horizon are always a contiguous tail, so a single
   // divider before the first of them marks the boundary. When the whole line
   // came from the playout (nothing was searched) the divider lands at the top
@@ -838,6 +867,11 @@ const EndgameVariationMoves: React.FC<{
           </React.Fragment>
         );
       })}
+      {cutShort && (
+        <li className="ca-endgame-horizon" title={CUT_SHORT_TOOLTIP}>
+          <span>line cut short</span>
+        </li>
+      )}
     </ul>
   );
 };
@@ -846,8 +880,15 @@ const EndgameSequence: React.FC<{
   principalVariation?: EndgameVariation;
   otherVariations: EndgameVariation[];
   boardCtx: BoardContext;
+  rackCounts?: RackCounts;
   onClickPlay: (move: AnalyzerMove, earlierMoves: AnalyzerMove[]) => void;
-}> = ({ principalVariation, otherVariations, boardCtx, onClickPlay }) => {
+}> = ({
+  principalVariation,
+  otherVariations,
+  boardCtx,
+  rackCounts,
+  onClickPlay,
+}) => {
   const [showOthers, setShowOthers] = useState(false);
   if (!principalVariation) return null;
 
@@ -883,6 +924,7 @@ const EndgameSequence: React.FC<{
       <EndgameVariationMoves
         moves={principalVariation.moves}
         boardCtx={boardCtx}
+        rackCounts={rackCounts}
         onClickPlay={onClickPlay}
       />
       {dedupedVariations.length > 0 && (
@@ -903,6 +945,7 @@ const EndgameSequence: React.FC<{
                 <EndgameVariationMoves
                   moves={v.moves}
                   boardCtx={boardCtx}
+                  rackCounts={rackCounts}
                   onClickPlay={onClickPlay}
                 />
               </div>
@@ -1028,6 +1071,13 @@ export const ComputerAnalysis: React.FC<ComputerAnalysisProps> = ({
       examinableGameContext.board.letters,
       examinableGameContext.alphabet,
     ],
+  );
+
+  // With the bag empty, every tile off the board is on one of the two racks.
+  const pool = examinableGameContext.pool;
+  const tilesOffBoard = useMemo(
+    () => Object.values(pool).reduce((sum, n) => sum + n, 0),
+    [pool],
   );
 
   const { data, isLoading } = useQuery(
@@ -1172,13 +1222,14 @@ export const ComputerAnalysis: React.FC<ComputerAnalysisProps> = ({
               principalVariation={turn.principalVariation}
               otherVariations={turn.otherVariations}
               boardCtx={ctx}
+              rackCounts={endgameRackCounts(turn, ctx, tilesOffBoard)}
               onClickPlay={placeMove}
             />
           )}
         </div>
       );
     },
-    [isV2, placeMove],
+    [isV2, placeMove, tilesOffBoard],
   );
 
   const toolbar = (
