@@ -38,6 +38,23 @@ type Timers struct {
 	// ResetToIncrementAfterTurn resets the timer to increment_seconds after each turn.
 	// Used for correspondence games where each player has a fixed time per turn.
 	ResetToIncrementAfterTurn bool `json:"rtiat,omitempty"`
+	// IncrementSeconds is added to the mover's clock after each turn, or for a
+	// correspondence game is the whole time allowed per turn. Copied from the
+	// game request when the game is created, as MaxOvertime is.
+	//
+	// Never omitted, so that SQL can tell a zero increment from timers written
+	// before the field existed: those have no "inc" key. FillIncrement covers
+	// them on every load, so code reading a loaded game can rely on it.
+	IncrementSeconds int32 `json:"inc"`
+}
+
+// FillIncrement sets IncrementSeconds from the game request when the stored
+// timers predate the field. A no-op once it is set, or when the request's
+// increment is zero (then the zero value is already right).
+func (t *Timers) FillIncrement(req *pb.GameRequest) {
+	if t.IncrementSeconds == 0 && req != nil {
+		t.IncrementSeconds = req.IncrementSeconds
+	}
 }
 
 func (t *Timers) Value() (driver.Value, error) {
@@ -332,15 +349,18 @@ func (g GameTimer) Now() int64 {
 func NewGame(mcg *game.Game, req *pb.GameRequest) *Game {
 	ms := 0
 	mom := 0
+	var inc int32
 	if req != nil {
 		ms = int(req.InitialTimeSeconds * 1000)
 		mom = int(req.MaxOvertimeMinutes)
+		inc = req.IncrementSeconds
 	}
 	return &Game{
 		Game: *mcg,
 		Timers: Timers{
-			TimeRemaining: []int{ms, ms},
-			MaxOvertime:   mom,
+			TimeRemaining:    []int{ms, ms},
+			MaxOvertime:      mom,
+			IncrementSeconds: inc,
 		},
 		GameReq:   &GameRequest{req},
 		nower:     &GameTimer{},
@@ -419,21 +439,18 @@ func (g *Game) TimeRanOut(idx int) bool {
 	if g.Game.PlayerOnTurn() != idx {
 		return false
 	}
-	var incrementSeconds int32
-	if g.GameReq != nil && g.GameReq.GameRequest != nil {
-		incrementSeconds = g.GameReq.IncrementSeconds
-	}
-	return g.Timers.RanOut(idx, incrementSeconds, g.nower.Now())
+	return g.Timers.RanOut(idx, g.nower.Now())
 }
 
 // RanOut reports whether player idx, who must be on turn, is out of time at
 // now (unix ms). Game.TimeRanOut decides with it, and so do the adjudicators,
-// from a games row without loading the game.
-func (t *Timers) RanOut(idx int, incrementSeconds int32, now int64) bool {
+// from a games row without loading the game; a row's timers may predate
+// IncrementSeconds, so they call FillIncrement with the row's request first.
+func (t *Timers) RanOut(idx int, now int64) bool {
 	// For correspondence games with reset-to-increment, check time bank
 	if t.ResetToIncrementAfterTurn {
 		turnTime := now - t.TimeOfLastUpdate
-		allowedTime := int64(incrementSeconds) * 1000
+		allowedTime := int64(t.IncrementSeconds) * 1000
 
 		if turnTime <= allowedTime {
 			return false // within allowed time
@@ -490,7 +507,7 @@ func (g *Game) calculateAndSetTimeRemaining(pidx int, now int64, accountForIncre
 		if accountForIncrement && g.Timers.ResetToIncrementAfterTurn {
 			// Check if player went over their allowed turn time
 			turnTime := now - g.Timers.TimeOfLastUpdate
-			allowedTime := int64(g.GameReq.IncrementSeconds) * 1000
+			allowedTime := int64(g.Timers.IncrementSeconds) * 1000
 
 			if turnTime > allowedTime {
 				// Player took too long, deduct from time bank
@@ -506,7 +523,7 @@ func (g *Game) calculateAndSetTimeRemaining(pidx int, now int64, accountForIncre
 			}
 
 			// Reset time to full increment for next turn
-			g.Timers.TimeRemaining[pidx] = int(g.GameReq.IncrementSeconds) * 1000
+			g.Timers.TimeRemaining[pidx] = int(g.Timers.IncrementSeconds) * 1000
 			g.Timers.TimeOfLastUpdate = now
 			return
 		}
@@ -514,7 +531,7 @@ func (g *Game) calculateAndSetTimeRemaining(pidx int, now int64, accountForIncre
 		// Time has passed since this was calculated.
 		g.Timers.TimeRemaining[pidx] -= int(now - g.Timers.TimeOfLastUpdate)
 		if accountForIncrement {
-			g.Timers.TimeRemaining[pidx] += (int(g.GameReq.IncrementSeconds) * 1000)
+			g.Timers.TimeRemaining[pidx] += (int(g.Timers.IncrementSeconds) * 1000)
 		}
 
 		// Handle time bank deduction if time went negative

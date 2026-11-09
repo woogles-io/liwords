@@ -568,11 +568,8 @@ func (b *Bus) adjudicateGames(ctx context.Context, correspondenceOnly bool) erro
 				continue
 			}
 			onTurn := int(g.PlayerOnTurn.Int32)
-			var incrementSeconds int32
-			if g.GameRequest.GameRequest != nil {
-				incrementSeconds = g.GameRequest.IncrementSeconds
-			}
-			if !g.Timers.RanOut(onTurn, incrementSeconds, now.UnixMilli()) {
+			g.Timers.FillIncrement(g.GameRequest.GameRequest)
+			if !g.Timers.RanOut(onTurn, now.UnixMilli()) {
 				continue
 			}
 			if onTurn < 0 || onTurn >= len(g.Quickdata.PlayerInfo) {
@@ -672,11 +669,8 @@ func (b *Bus) adjudicateCorrespondenceGames(ctx context.Context) error {
 			continue
 		}
 
-		var incrementSeconds int32
-		if g.GameRequest.GameRequest != nil {
-			incrementSeconds = g.GameRequest.IncrementSeconds
-		}
-		if !g.Timers.RanOut(playerOnTurn, incrementSeconds, now) {
+		g.Timers.FillIncrement(g.GameRequest.GameRequest)
+		if !g.Timers.RanOut(playerOnTurn, now) {
 			continue
 		}
 
