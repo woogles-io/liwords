@@ -89,7 +89,9 @@ export const showTurnNotification = (
       body,
       icon: "/logo192.png",
       badge: "/favicon.ico",
-      tag: "woogles-turn", // Replaces previous notification
+      // Replaces previous notification. A game's tag is the one its pushed
+      // turn uses (public/sw.js), so the two never show side by side.
+      tag: options.gameId ? `woogles-turn-${options.gameId}` : "woogles-turn",
       requireInteraction: false, // Auto-dismiss after a few seconds
       silent: false,
     });
