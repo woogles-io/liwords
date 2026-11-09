@@ -232,13 +232,34 @@ const organizationInfo = {
     name: "Singapore Scrabble Association",
     fullName: "Singapore Scrabble Association",
     description:
-      "The Singapore Scrabble Association lists the titles of its current members. Connection requires identity verification with a photo ID.",
+      "The Singapore Scrabble Association lists its members' titles. Connection requires identity verification with a photo ID.",
     requiresCredentials: false,
     requiresVerification: true,
   },
 };
 
-export const Integrations = () => {
+// Whether an organization's Connect card shows. Not for one the player is
+// connected to or still waiting on, and the Singapore Scrabble Association's
+// only when the player's flag is Singapore's: the flag lets a player apply,
+// while a connection or an application already made is listed whatever the
+// flag is now.
+export const offersConnection = (
+  code: string,
+  countryCode: string | undefined,
+  organizations: Array<OrganizationTitle>,
+) => {
+  // Hide ABSP from user-facing connection options (potential deprecation)
+  // Admins can still assign ABSP memberships via the admin panel
+  if (code === "absp") {
+    return false;
+  }
+  if (code === "sg" && countryCode?.toLowerCase() !== "sg") {
+    return false;
+  }
+  return !organizations.some((org) => org.organizationCode === code);
+};
+
+export const Integrations = (props: { countryCode?: string }) => {
   const { loginState } = useLoginStateStoreContext();
   const [integrations, setIntegrations] = useState<Integration[]>([]);
   const [organizations, setOrganizations] = useState<OrganizationTitle[]>([]);
@@ -281,7 +302,7 @@ export const Integrations = () => {
 
   // Update the verification form when connectingOrg changes
   useEffect(() => {
-    if (connectingOrg === "wespa") {
+    if (connectingOrg === "wespa" || connectingOrg === "sg") {
       verificationForm.setFieldsValue({ organizationCode: connectingOrg });
     }
   }, [connectingOrg, verificationForm]);
@@ -638,18 +659,7 @@ export const Integrations = () => {
 
       <Flex gap="middle" wrap="wrap" style={{ marginBottom: "2rem" }}>
         {Object.entries(organizationInfo).map(([code, info]) => {
-          // Hide ABSP from user-facing connection options (potential deprecation)
-          // Admins can still assign ABSP memberships via the admin panel
-          if (code === "absp") {
-            return null;
-          }
-
-          // Admins assign SG memberships, via the admin panel, for now
-          if (code === "sg") {
-            return null;
-          }
-
-          if (organizations.some((org) => org.organizationCode === code)) {
+          if (!offersConnection(code, props.countryCode, organizations)) {
             return null;
           }
 
@@ -658,6 +668,9 @@ export const Integrations = () => {
               key={code}
               title={info.name}
               style={{ width: 350 }}
+              // A long name (the Singapore Scrabble Association's) wraps
+              // rather than being cut off.
+              styles={{ title: { whiteSpace: "normal" } }}
               extra={
                 <Button
                   type="primary"
@@ -788,10 +801,12 @@ export const Integrations = () => {
           </Card>
         )}
 
-        {connectingOrg === "wespa" && (
+        {(connectingOrg === "wespa" || connectingOrg === "sg") && (
           <Card
-            title="Connect to WESPA"
+            title={`Connect to ${organizationInfo[connectingOrg].name}`}
             style={{ marginTop: "2rem", maxWidth: 500 }}
+            // A long name wraps, so it does not widen the card past the page.
+            styles={{ title: { whiteSpace: "normal" } }}
             extra={
               <Button size="small" onClick={() => setConnectingOrg(null)}>
                 Cancel
@@ -809,49 +824,69 @@ export const Integrations = () => {
               form={verificationForm}
               onFinish={handleSubmitVerification}
               layout="vertical"
-              initialValues={{ organizationCode: "wespa" }}
+              initialValues={{ organizationCode: connectingOrg }}
             >
               <Form.Item name="organizationCode" hidden>
                 <Input />
               </Form.Item>
-              <Form.Item
-                label={
-                  <span>
-                    Member ID{" "}
-                    <Tooltip
-                      title={
-                        <span>
-                          Visit{" "}
-                          <a
-                            href="https://wespa.xerafin.net"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            style={{ color: "#1890ff" }}
-                          >
-                            wespa.xerafin.net
-                          </a>
-                          , type your name in the search box, and click through
-                          to your profile. Your WESPA ID is the number at the
-                          end of the URL (e.g., <strong>215</strong> from
-                          wespa.xerafin.net/player.html?id=215).
-                        </span>
-                      }
-                      overlayStyle={{ maxWidth: 400 }}
-                    >
-                      <QuestionCircleOutlined style={{ cursor: "help" }} />
-                    </Tooltip>
-                  </span>
-                }
-                name="memberId"
-                rules={[
-                  {
-                    required: true,
-                    message: "Please enter your WESPA member ID",
-                  },
-                ]}
-              >
-                <Input placeholder="e.g., 2145" />
-              </Form.Item>
+              {connectingOrg === "sg" ? (
+                <Form.Item
+                  label="Membership number"
+                  name="memberId"
+                  extra="The digits only, without the letters after them (1234 from 01234M)"
+                  rules={[
+                    {
+                      required: true,
+                      message: "Please enter your membership number",
+                    },
+                    {
+                      pattern: /^\d+$/,
+                      message: "A membership number is digits only",
+                    },
+                  ]}
+                >
+                  <Input placeholder="e.g., 1234" />
+                </Form.Item>
+              ) : (
+                <Form.Item
+                  label={
+                    <span>
+                      Member ID{" "}
+                      <Tooltip
+                        title={
+                          <span>
+                            Visit{" "}
+                            <a
+                              href="https://wespa.xerafin.net"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{ color: "#1890ff" }}
+                            >
+                              wespa.xerafin.net
+                            </a>
+                            , type your name in the search box, and click
+                            through to your profile. Your WESPA ID is the number
+                            at the end of the URL (e.g., <strong>215</strong>{" "}
+                            from wespa.xerafin.net/player.html?id=215).
+                          </span>
+                        }
+                        overlayStyle={{ maxWidth: 400 }}
+                      >
+                        <QuestionCircleOutlined style={{ cursor: "help" }} />
+                      </Tooltip>
+                    </span>
+                  }
+                  name="memberId"
+                  rules={[
+                    {
+                      required: true,
+                      message: "Please enter your WESPA member ID",
+                    },
+                  ]}
+                >
+                  <Input placeholder="e.g., 2145" />
+                </Form.Item>
+              )}
               <Form.Item
                 label="ID Photo"
                 required
