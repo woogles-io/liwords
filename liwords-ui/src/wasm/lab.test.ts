@@ -305,3 +305,46 @@ describe("how many workers a sim runs on", () => {
     expect(partsFor(undefined, undefined)).toBe(1);
   });
 });
+
+describe("a stuck worker", () => {
+  it("is ended once a stop goes unanswered, its job failing and what waits on it sent to a new one", async () => {
+    vi.useFakeTimers();
+    try {
+      setLabPartsForTest(1);
+      const job = await labCall<number>({
+        op: "endgame",
+        args: { request: "{}" },
+      });
+      // the worker answers nothing more: inside a call that keeps no time
+      const stuck = made[0];
+      stuck.postMessage = (m: Sent) => {
+        stuck.sent.push(m);
+      };
+      const stopped = labCall({ op: "stop" });
+      const prepared = labCall({ op: "prepare", args: { files: [] } });
+      await vi.advanceTimersByTimeAsync(3000);
+      await stopped;
+      await prepared;
+      expect(made).toHaveLength(2);
+      expect(made[1].sent.map((m) => m.op)).toEqual(["prepare"]);
+      expect(events).toContainEqual({
+        job,
+        error: "The solve did not stop in time, so it was dropped.",
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("is left alone while it answers the stop in time", async () => {
+    vi.useFakeTimers();
+    try {
+      setLabPartsForTest(1);
+      await labCall({ op: "stop" });
+      await vi.advanceTimersByTimeAsync(5000);
+      expect(made).toHaveLength(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});

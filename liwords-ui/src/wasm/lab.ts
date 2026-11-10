@@ -29,9 +29,12 @@ export type LabEvent = {
   freed?: boolean;
 };
 
+// A request a worker has not answered yet: to whom, what, and when sent.
 type Pending = {
   resolve: (result: unknown) => void;
   reject: (e: Error) => void;
+  worker: number;
+  request: LabRequest;
 };
 
 type WorkerEvent = LabEvent;
@@ -63,14 +66,17 @@ export const labParts = () => {
 // For tests: the parts a sim runs in from now on, the workers made anew.
 export const setLabPartsForTest = (n: number) => {
   parts = n;
-  workers.forEach((w) => w.terminate());
+  workers.forEach((w) => w?.terminate());
   workers = [];
+  current.clear();
   pending.clear();
   sims.clear();
   jobs.clear();
 };
 
-let workers: Array<Worker> = [];
+let workers: Array<Worker | undefined> = [];
+// The job each worker last made, as the worker numbers it.
+const current = new Map<number, number>();
 let lastId = 0;
 const pending = new Map<number, Pending>();
 const listeners = new Set<(e: LabEvent) => void>();
@@ -104,10 +110,10 @@ const sims = new Map<number, Sim>();
 
 const emit = (e: LabEvent) => listeners.forEach((listener) => listener(e));
 
-const getWorker = (i: number) => {
-  while (workers.length <= i) {
-    const w = workers.length;
-    const worker = new Worker(new URL("./lab.worker.ts", import.meta.url));
+const getWorker = (w: number) => {
+  let worker = workers[w];
+  if (!worker) {
+    worker = new Worker(new URL("./lab.worker.ts", import.meta.url));
     worker.onmessage = (e: MessageEvent) => {
       const { id, result, error, event } = e.data;
       if (event) {
@@ -117,20 +123,87 @@ const getWorker = (i: number) => {
       const p = pending.get(id);
       if (!p) return;
       pending.delete(id);
-      if (error !== undefined) p.reject(new Error(error));
-      else p.resolve(result);
+      if (error !== undefined) {
+        p.reject(new Error(error));
+        return;
+      }
+      // a job made is the one the worker now holds
+      if (p.request.op === "endgame") current.set(w, result as number);
+      if (p.request.op === "sim") {
+        current.set(w, (result as { job: number }).job);
+      }
+      p.resolve(result);
     };
-    workers.push(worker);
+    workers[w] = worker;
   }
-  return workers[i];
+  return worker;
+};
+
+// How long a worker may leave a stop or a free unanswered before it is taken
+// as stuck: one step of a job runs about a frame, so a worker that has not
+// got to the stop in this long is inside a call that does not keep to its
+// time.
+const STUCK_MS = 3000;
+
+const send = (id: number, p: Pending) => {
+  pending.set(id, p);
+  getWorker(p.worker).postMessage({ id, ...p.request });
+  if (p.request.op === "stop" || p.request.op === "free") {
+    setTimeout(() => {
+      if (pending.has(id)) unstick(p.worker);
+    }, STUCK_MS);
+  }
 };
 
 const call = <T>(worker: number, request: LabRequest): Promise<T> =>
   new Promise<T>((resolve, reject) => {
-    const id = ++lastId;
-    pending.set(id, { resolve: resolve as (result: unknown) => void, reject });
-    getWorker(worker).postMessage({ id, ...request });
+    send(++lastId, {
+      resolve: resolve as (result: unknown) => void,
+      reject,
+      worker,
+      request,
+    });
   });
+
+// A stuck worker ended, and another made in its place, which holds no tables
+// and no job: the job it held fails, saying so; the requests waiting on it
+// that make something new go to the new worker; a stop or a free is done;
+// any other, for a job that is gone, fails.
+const unstick = (w: number) => {
+  workers[w]?.terminate();
+  workers[w] = undefined;
+  const gone = current.get(w);
+  current.delete(w);
+  const waiting = [...pending].filter(([, p]) => p.worker === w);
+  waiting.forEach(([id]) => pending.delete(id));
+  const lost = "The solve did not stop in time, so it was dropped.";
+  if (labParts() === 1) {
+    if (gone !== undefined) emit({ job: gone, error: lost });
+  } else {
+    for (const [page, held] of [...jobs]) {
+      if (held.some((h) => h.worker === w)) {
+        if (sims.has(page)) freeParts(page, w);
+        else jobs.delete(page);
+        emit({ job: page, error: lost });
+      }
+    }
+  }
+  for (const [id, p] of waiting) {
+    const { op } = p.request;
+    if (
+      op === "prepare" ||
+      op === "analyze" ||
+      op === "sim" ||
+      op === "endgame"
+    ) {
+      send(id, p);
+    } else if (op === "stop" || op === "free") {
+      p.resolve(undefined);
+    } else {
+      p.reject(new Error(lost));
+    }
+  }
+};
 
 // The page's job a worker's job is part of.
 const pageJob = (worker: number, job: number) => {
@@ -434,7 +507,9 @@ const multi = async (request: LabRequest): Promise<unknown> => {
       sims.forEach((sim) => {
         sim.running = false;
       });
-      await Promise.all(workers.map((_, w) => call(w, request)));
+      await Promise.all(
+        workers.flatMap((worker, w) => (worker ? [call(w, request)] : [])),
+      );
       return undefined;
     case "free": {
       const { job } = request.args;
