@@ -888,6 +888,19 @@ func (q *Queries) ListRecentAndUpcomingTournaments(ctx context.Context, arg List
 	return items, nil
 }
 
+const lockTournament = `-- name: LockTournament :exec
+SELECT pg_advisory_xact_lock(hashtextextended('tournament:' || $1::text, 0))
+`
+
+// Holds the tournament until the transaction ends. See pkg/stores/tournament/lock.go.
+// NOT STANDARD SQL: hashtextextended() maps the key onto the int8 that
+// pg_advisory_xact_lock takes. The prefix keeps tournament keys apart from
+// game locks, which hash the bare game ID.
+func (q *Queries) LockTournament(ctx context.Context, tournamentID string) error {
+	_, err := q.db.Exec(ctx, lockTournament, tournamentID)
+	return err
+}
+
 const removeRegistrants = `-- name: RemoveRegistrants :exec
 DELETE FROM registrants
 WHERE user_id = ANY($1::text[])

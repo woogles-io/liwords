@@ -61,8 +61,10 @@ func TestReadyForGame(t *testing.T) {
 	want := []string{"", ""}
 	want[playerIdx("Will:Will")] = "ready"
 	is.Equal(readyStates("Will:Will"), want)
-	// The cached tournament isn't changed by the page load.
-	p, err := dm.GetPairing("Will:Will", 0)
+	// The stored tournament holds no ready states.
+	stored, err := tstore.Get(ctx, ty.UUID)
+	is.NoErr(err)
+	p, err := stored.Divisions[divOneName].DivisionManager.GetPairing("Will:Will", 0)
 	is.NoErr(err)
 	is.Equal(p.ReadyStates, []string{"", ""})
 

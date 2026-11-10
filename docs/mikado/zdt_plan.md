@@ -92,6 +92,14 @@ reload when it moved, with writes still under the advisory lock.
 The listing paths already avoid decoding full divisions (`listingColumns`), so
 they are unaffected.
 
+**Status (2026-11-10): done**, as step 1d of `tournament_store_rewrite.md`.
+The cache and the entity mutex are gone. Every change goes through
+`GetForUpdate` (`pkg/stores/tournament/lock.go`): an in-process lock on the
+tournament, then a transaction holding `pg_advisory_xact_lock` on it, the
+load, the change, the save and the commit. Socket messages go out after the
+commit. Reads load from the database each time. Measured before: full loads
+2-15 ms, saves 8-33 ms, on the ten largest production tournaments.
+
 ## 3. Event-stream API subscriptions
 
 `pkg/bus/bus.go` subscribes to `user.>` and `game.>` with a NATS queue group

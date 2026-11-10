@@ -204,3 +204,10 @@ SELECT tournament_id, user_id, stream_type, stream_key
 FROM monitoring_streams
 WHERE status = 2
 ORDER BY tournament_id, user_id, stream_type;
+
+-- name: LockTournament :exec
+-- Holds the tournament until the transaction ends. See pkg/stores/tournament/lock.go.
+-- NOT STANDARD SQL: hashtextextended() maps the key onto the int8 that
+-- pg_advisory_xact_lock takes. The prefix keeps tournament keys apart from
+-- game locks, which hash the bare game ID.
+SELECT pg_advisory_xact_lock(hashtextextended('tournament:' || @tournament_id::text, 0));

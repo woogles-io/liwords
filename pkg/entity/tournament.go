@@ -2,7 +2,6 @@ package entity
 
 import (
 	"encoding/json"
-	"sync"
 	"time"
 
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
@@ -95,7 +94,6 @@ type TournamentMeta struct {
 }
 
 type Tournament struct {
-	sync.RWMutex
 	UUID        string `json:"uuid"`
 	Name        string `json:"name"`
 	Description string `json:"desc"`

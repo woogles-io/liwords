@@ -53,8 +53,6 @@ func PreviewPairings(ctx context.Context, ts TournamentStore, id, division strin
 	if err != nil {
 		return nil, err
 	}
-	t.RLock()
-	defer t.RUnlock()
 	divisionObject, ok := t.Divisions[division]
 	if !ok {
 		return nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, division)

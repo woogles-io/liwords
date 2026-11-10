@@ -1046,10 +1046,11 @@ func (ts *TournamentService) UnstartTournament(ctx context.Context, req *connect
 		return nil, err
 	}
 
-	t, err := ts.tournamentStore.Get(ctx, req.Msg.Id)
+	t, lk, err := ts.tournamentStore.GetForUpdate(ctx, req.Msg.Id)
 	if err != nil {
 		return nil, err
 	}
+	defer lk.Release()
 
 	for division := range t.Divisions {
 		dm := t.Divisions[division].DivisionManager
@@ -1066,7 +1067,7 @@ func (ts *TournamentService) UnstartTournament(ctx context.Context, req *connect
 	t.ExtraMeta.CheckinsOpen = false
 	t.ExtraMeta.RegistrationOpen = false
 
-	err = ts.tournamentStore.Set(ctx, t)
+	err = lk.Save(ctx)
 	if err != nil {
 		return nil, err
 	}

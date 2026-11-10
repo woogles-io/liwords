@@ -206,6 +206,12 @@ player, written in the same transaction as the result that changes it.
    transaction-scoped advisory lock on the tournament, loads, changes and
    saves in one transaction. The cache and the entity mutex go. The per-
    division tables below then come after ZDT, where measurements say so.
+   Writes wait for an in-process lock on the tournament before the advisory
+   lock, so that results queued at the end of a round wait without holding
+   connections, and nothing between the load and the save queries the pool:
+   results run under their game's lock, which holds a connection already
+   (`pkg/stores/tournament/lock.go`). Measure in Jaeger as
+   `tournament.GetForUpdate` (lock wait and load) and `tournament.Save`.
 2. **Lift the socket limit**: #2167, then #2168 a week after its frontend
    deploys. Independent of everything below.
 3. **New tables, dual-written.** Every save of the current entity also writes
