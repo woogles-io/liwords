@@ -25,6 +25,7 @@ const wasm = vi.hoisted(() => ({
   sim_resume: vi.fn(() => "[]"),
   sim_step: vi.fn(),
   sim_free: vi.fn(),
+  stitched_z: vi.fn((iterations: number, alpha: number) => iterations + alpha),
 }));
 vi.mock("wolges-wasm", () => wasm);
 
@@ -55,11 +56,13 @@ const events = () => posted.filter((m) => m.event).map((m) => m.event!);
 const simAnswer = (...states: Array<string>) =>
   JSON.stringify({ candidates: states.map((state) => ({ state })) });
 
-// how a sim prunes, told with every step: wolges's own numbers
+// how a sim prunes, told with every step: wolges's own numbers, the z the
+// stitched boundary's at the sim's iterations so far (1 before any), at an
+// alpha of 0.05
 const pruned = {
   prune: true,
   prune_every: 16,
-  prune_z: 3.153563157004781,
+  prune_z: 1.05,
   prune_decided: 0.001,
 };
 
@@ -174,6 +177,28 @@ describe("the lab's worker", () => {
       expect(events().filter((e) => e.done)).toHaveLength(2),
     );
     expect(stepsMs()).toEqual([8, 8, 8]);
+  });
+
+  it("prunes at the stitched boundary's z for the iterations the sim has run", async () => {
+    wasm.sim_step
+      .mockReturnValueOnce(
+        JSON.stringify({
+          iterations: 40,
+          candidates: [{ state: "running" }, { state: "running" }],
+        }),
+      )
+      .mockReturnValueOnce(simAnswer("running", "pruned"));
+    const made = await send(1, "sim", { request: "{}", plays: "[]" });
+    const { job } = made.result as { job: number };
+    await send(2, "run", { job, ms: 10 });
+    await vi.waitFor(() => expect(events().some((e) => e.done)).toBe(true));
+    expect(wasm.stitched_z.mock.calls).toEqual([
+      [1, 0.05],
+      [40, 0.05],
+    ]);
+    expect(JSON.parse(wasm.sim_step.mock.calls[1][1] as string).prune_z).toBe(
+      40.05,
+    );
   });
 
   it("frees the last job when it makes the next, and says so", async () => {

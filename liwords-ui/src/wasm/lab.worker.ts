@@ -42,29 +42,35 @@ type Job = {
   handle: number;
   // false when a sim's last run said to prune none of its candidates
   prune?: boolean;
+  // a sim's iterations, as its last answer had them
+  iterations?: number;
 };
 type Answer = {
   exact?: boolean;
+  iterations?: number;
   candidates?: Array<{ state: string }>;
 };
 
 // How a sim prunes its candidates, told to it at every step: wolges's own
 // numbers (https://github.com/andy-k/wolges/blob/main/src/move_picker.rs: a
-// look every PRUNE_CADENCE iterations, the z of paired_z(1000), and a win
-// chance within 1/1000 of 0 or 1 taken as decided), which the wasm once
-// used by itself.
+// look every PRUNE_CADENCE iterations, and a win chance within 1/1000 of 0 or
+// 1 taken as decided). A sim here has no iteration budget, so its z is the
+// stitched boundary's at its iterations so far (stitched_z), which keeps the
+// chance it ever prunes its best candidate behind another to PRUNE_ALPHA
+// however long it runs: the one in twenty that paired_z splits over a
+// budget's looks.
 const PRUNE_EVERY = 16;
-const PRUNE_Z = 3.153563157004781;
+const PRUNE_ALPHA = 0.05;
 const PRUNE_DECIDED = 0.001;
-const pruning = (prune: boolean) =>
-  prune
+const pruning = (wolges: Wolges, j: Job) =>
+  j.prune !== false
     ? {
-        prune,
+        prune: true,
         prune_every: PRUNE_EVERY,
-        prune_z: PRUNE_Z,
+        prune_z: wolges.stitched_z(Math.max(1, j.iterations ?? 0), PRUNE_ALPHA),
         prune_decided: PRUNE_DECIDED,
       }
-    : { prune };
+    : { prune: false };
 
 const post = (message: unknown) =>
   (self as unknown as Worker).postMessage(message);
@@ -119,13 +125,14 @@ const step = async (j: Job, chain: number, ms: number) => {
     // each step, a sim's or an endgame's, goes on where the last one stopped,
     // so every step runs the same frame
     const request = JSON.stringify(
-      j.kind === "sim" ? { ms, ...pruning(j.prune !== false) } : { ms },
+      j.kind === "sim" ? { ms, ...pruning(wolges, j) } : { ms },
     );
     const answer: Answer = JSON.parse(
       j.kind === "sim"
         ? wolges.sim_step(j.handle, request)
         : wolges.endgame_step(j.handle, request),
     );
+    j.iterations = answer.iterations;
     const done = isDone(j, answer);
     if (done) running = false;
     post({ event: { job: j.id, answer, done } });
@@ -220,7 +227,7 @@ const handle = async (req: LabRequest): Promise<unknown> => {
               job.handle,
               JSON.stringify({
                 iterations: 0,
-                ...pruning(job.prune !== false),
+                ...pruning(wolges, job),
               }),
             )
           : wolges.endgame_step(job.handle, JSON.stringify({ ms: 0 })),
