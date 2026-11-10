@@ -336,6 +336,38 @@ describe("a stuck worker", () => {
     }
   });
 
+  it("lets a new solve start once the stuck one is freed, as a change of model does", async () => {
+    vi.useFakeTimers();
+    try {
+      setLabPartsForTest(1);
+      const job = await labCall<number>({
+        op: "endgame",
+        args: { request: "{}" },
+      });
+      const stuck = made[0];
+      stuck.postMessage = (m: Sent) => {
+        stuck.sent.push(m);
+      };
+      // the panel frees the old solve and makes the new one at once
+      const freed = labCall({ op: "free", args: { job } });
+      const prepared = labCall({ op: "prepare", args: { files: [] } });
+      const next = labCall<number>({
+        op: "endgame",
+        args: { request: '{"model":"random_draws"}' },
+      });
+      await vi.advanceTimersByTimeAsync(3000);
+      await freed;
+      await prepared;
+      expect(await next).toBe(12);
+      expect(made[1].sent.map((m) => m.op)).toEqual(["prepare", "endgame"]);
+      expect(made[1].sent[1].args).toEqual({
+        request: '{"model":"random_draws"}',
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("is left alone while it answers the stop in time", async () => {
     vi.useFakeTimers();
     try {
