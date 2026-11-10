@@ -71,6 +71,14 @@ root span), `game.lock.wait` / `game.lock.held`, `game.Get`, `cache.Get`,
 `pool.acquire`, `middleware.*` (one per HTTP request each; `middleware.hlog`
 roughly counts HTTP requests).
 
+Tournament store (`otel.scope.name=tournament-store`): `tournament.Get`,
+`tournament.GetBySlug` and `tournament.Set` (full loads and saves),
+`tournament.GetHeader` (no divisions), `tournament.GetSummary` /
+`tournament.GetSummaryBySlug` (divisions without pairings or standings) and
+`tournament.GetUUIDBySlug`. Tags: `tournament.key` (the ID or slug asked for)
+and, on loads that decode divisions, `tournament.divisions_bytes`. For full
+loads per tournament: `jaeger_es.py tag tournament.Get tournament.key`.
+
 ## Raw queries
 
 ```bash

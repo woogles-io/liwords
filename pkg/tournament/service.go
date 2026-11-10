@@ -114,14 +114,12 @@ func (ts *TournamentService) SetTournamentMetadata(ctx context.Context, req *con
 	return connect.NewResponse(&pb.TournamentResponse{}), nil
 }
 
-// nameAndSlug reads a tournament's name and slug under its lock.
+// nameAndSlug reads a tournament's name and slug.
 func (ts *TournamentService) nameAndSlug(ctx context.Context, id string) (string, string, error) {
-	t, err := ts.tournamentStore.Get(ctx, id)
+	t, err := ts.tournamentStore.GetHeader(ctx, id)
 	if err != nil {
 		return "", "", err
 	}
-	t.RLock()
-	defer t.RUnlock()
 	return t.Name, t.Slug, nil
 }
 
@@ -331,12 +329,12 @@ func (ts *TournamentService) GetTournamentMetadata(ctx context.Context, req *con
 	var err error
 
 	if req.Msg.Id != "" {
-		t, err = ts.tournamentStore.Get(ctx, req.Msg.Id)
+		t, err = ts.tournamentStore.GetSummary(ctx, req.Msg.Id)
 		if err != nil {
 			return nil, apiserver.InvalidArg(err.Error())
 		}
 	} else if req.Msg.Slug != "" {
-		t, err = ts.tournamentStore.GetBySlug(ctx, req.Msg.Slug)
+		t, err = ts.tournamentStore.GetSummaryBySlug(ctx, req.Msg.Slug)
 		if err != nil {
 			return nil, apiserver.InvalidArg(err.Error())
 		}
@@ -550,7 +548,7 @@ func (ts *TournamentService) SetResult(ctx context.Context, req *connect.Request
 
 	err := authenticateDirector(ctx, ts, req.Msg.Id, req.Msg, true)
 	if err != nil {
-		t, err := ts.tournamentStore.Get(ctx, req.Msg.Id)
+		t, err := ts.tournamentStore.GetHeader(ctx, req.Msg.Id)
 		if err != nil {
 			return nil, apiserver.InternalErr(err)
 		}
@@ -668,7 +666,7 @@ func (ts *TournamentService) CreateClubSession(ctx context.Context, req *connect
 		return nil, err
 	}
 	// Fetch the club
-	club, err := ts.tournamentStore.Get(ctx, req.Msg.ClubId)
+	club, err := ts.tournamentStore.GetHeader(ctx, req.Msg.ClubId)
 	if err != nil {
 		return nil, err
 	}
@@ -857,7 +855,7 @@ func authenticateDirector(ctx context.Context, ts *TournamentService, id string,
 	if errors.Is(err, pgx.ErrNoRows) {
 		// Junction table row missing: fall back to JSON directors for the transition
 		// period between migration and full data sync. Remove once JSON column is dropped.
-		t, err := ts.tournamentStore.Get(ctx, id)
+		t, err := ts.tournamentStore.GetHeader(ctx, id)
 		if err != nil {
 			return apiserver.InternalErr(err)
 		}
@@ -1182,7 +1180,7 @@ func (ts *TournamentService) InitializeMonitoringKeys(ctx context.Context, req *
 	}
 
 	// Check if user is registered in this tournament
-	t, err := ts.tournamentStore.Get(ctx, req.Msg.TournamentId)
+	t, err := ts.tournamentStore.GetSummary(ctx, req.Msg.TournamentId)
 	if err != nil {
 		return nil, apiserver.InvalidArg(err.Error())
 	}
@@ -1226,7 +1224,7 @@ func (ts *TournamentService) RequestMonitoringStream(ctx context.Context, req *c
 	}
 
 	// Check if user is registered in this tournament
-	t, err := ts.tournamentStore.Get(ctx, req.Msg.TournamentId)
+	t, err := ts.tournamentStore.GetSummary(ctx, req.Msg.TournamentId)
 	if err != nil {
 		return nil, apiserver.InvalidArg(err.Error())
 	}

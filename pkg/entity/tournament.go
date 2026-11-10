@@ -114,3 +114,21 @@ type Tournament struct {
 	ScheduledEndTime   *time.Time                     `json:"scheduledEndTime"`
 	CreatedBy          uint
 }
+
+// TournamentHeader is a tournament without its divisions: what callers need
+// that only want the name, directors, type or settings. Loading it reads one
+// small row instead of decoding every division.
+type TournamentHeader struct {
+	UUID               string
+	Name               string
+	Description        string
+	Slug               string
+	ParentID           string
+	Type               CompetitionType
+	Directors          *pb.TournamentPersons
+	ExtraMeta          *TournamentMeta
+	IsStarted          bool
+	IsFinished         bool
+	ScheduledStartTime *time.Time
+	ScheduledEndTime   *time.Time
+}

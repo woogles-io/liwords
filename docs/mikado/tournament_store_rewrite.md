@@ -187,8 +187,12 @@ player, written in the same transaction as the result that changes it.
    is stored. Step 3 writes the new tables in the same transaction as the
    divisions column, which needs one pgx connection for both.
 1b. **Targeted reads** for the callers in section 4 that need only the
-   tournament row or division summaries, moved one or two at a time and
-   measured in Jaeger as each lands.
+   tournament row or division summaries, measured in Jaeger once deployed
+   (`tournament.*` spans, scope `tournament-store`). Moved together to save
+   deploys: chat, chat channels, seeks, metadata, the socket realm lookup by
+   slug, club sessions, monitoring and the IRL-mode check. What still loads
+   the whole tournament: `GetTournament`, exports, pairing previews, the
+   ready-state handler, and every write.
 2. **Lift the socket limit**: #2167, then #2168 a week after its frontend
    deploys. Independent of everything below.
 3. **New tables, dual-written.** Every save of the current entity also writes

@@ -444,14 +444,21 @@ func redoCancelledGamePairings(ctx context.Context, tstore tournament.Tournament
 	log := zerolog.Ctx(ctx)
 
 	tid := g.TournamentData.Id
-	t, err := tstore.Get(ctx, tid)
+	// Check the type first, so a cancelled club game doesn't load the club's
+	// divisions.
+	header, err := tstore.GetHeader(ctx, tid)
 	if err != nil {
 		return err
 	}
 
-	if t.Type == entity.TypeClub || t.Type == entity.TypeLegacy {
+	if header.Type == entity.TypeClub || header.Type == entity.TypeLegacy {
 		log.Info().Str("tid", tid).Msg("no pairings to redo for club or legacy type")
 		return nil
+	}
+
+	t, err := tstore.Get(ctx, tid)
+	if err != nil {
+		return err
 	}
 	div := g.TournamentData.Division
 	round := g.TournamentData.Round

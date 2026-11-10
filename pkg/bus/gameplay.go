@@ -92,7 +92,7 @@ func (b *Bus) instantiateAndStartGame(ctx context.Context, accUser *entity.User,
 			}
 		}
 		if sg.SeekRequest.TournamentId != "" {
-			t, err := b.stores.TournamentStore.Get(ctx, sg.SeekRequest.TournamentId)
+			t, err := b.stores.TournamentStore.GetHeader(ctx, sg.SeekRequest.TournamentId)
 			if err != nil {
 				return errors.New("tournament not found")
 			}
