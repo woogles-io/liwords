@@ -42,23 +42,17 @@ type Job = {
   handle: number;
   // false when a sim's last run said to prune none of its candidates
   prune?: boolean;
-  // an endgame's: the depth its last step reached, and how long its next step
-  // runs where that is longer than the run's frame
-  depth?: number;
-  stepMs?: number;
 };
 type Answer = {
   exact?: boolean;
-  bag?: number;
-  depth?: number;
   candidates?: Array<{ state: string }>;
 };
 
 // How a sim prunes its candidates, told to it at every step: wolges's own
 // numbers (https://github.com/andy-k/wolges/blob/main/src/move_picker.rs: a
 // look every PRUNE_CADENCE iterations, the z of paired_z(1000), and a win
-// chance within 1/1000 of 0 or 1 taken as decided), which the wasm in use
-// keeps as its own.
+// chance within 1/1000 of 0 or 1 taken as decided), which the wasm once
+// used by itself.
 const PRUNE_EVERY = 16;
 const PRUNE_Z = 3.153563157004781;
 const PRUNE_DECIDED = 0.001;
@@ -122,28 +116,16 @@ const step = async (j: Job, chain: number, ms: number) => {
   if (!running || job !== j || chain !== chainId) return;
   const wolges = await wolgesPromise;
   try {
+    // each step, a sim's or an endgame's, goes on where the last one stopped,
+    // so every step runs the same frame
     const request = JSON.stringify(
-      j.kind === "sim"
-        ? { ms, ...pruning(j.prune !== false) }
-        : { ms: j.stepMs ?? ms },
+      j.kind === "sim" ? { ms, ...pruning(j.prune !== false) } : { ms },
     );
     const answer: Answer = JSON.parse(
       j.kind === "sim"
         ? wolges.sim_step(j.handle, request)
         : wolges.endgame_step(j.handle, request),
     );
-    // An empty bag's solve starts again from the top at each step, on the
-    // table it keeps, so a step too short to get past the depth reached gets
-    // no deeper: while the depth stays, each step runs twice as long as the
-    // last, and a frame again once it rises. A sim, or a solve with a tile in
-    // the bag, goes on where its last step stopped.
-    if (j.kind === "endgame") {
-      j.stepMs =
-        answer.bag === 0 && answer.depth === j.depth
-          ? (j.stepMs ?? ms) * 2
-          : undefined;
-      j.depth = answer.depth;
-    }
     const done = isDone(j, answer);
     if (done) running = false;
     post({ event: { job: j.id, answer, done } });
@@ -251,8 +233,6 @@ const handle = async (req: LabRequest): Promise<unknown> => {
       running = true;
       const j = job;
       j.prune = req.args.prune;
-      // a run's steps start at its frame again
-      j.stepMs = undefined;
       const chain = ++chainId;
       const { ms } = req.args;
       later(() => step(j, chain, ms));

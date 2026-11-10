@@ -146,7 +146,7 @@ describe("the lab's worker", () => {
     expect((await send(5, "run", { job, ms: 50 })).error).toBe("no such job");
   });
 
-  it("doubles an empty bag's step while its depth stays, and steps a frame once it rises or with a tile in the bag", async () => {
+  it("steps an endgame the same frame every step, whatever its bag and depth", async () => {
     const stepsMs = () =>
       wasm.endgame_step.mock.calls.map(([, r]) => JSON.parse(r as string).ms);
     const answer = (bag: number, depth: number, exact = false) =>
@@ -160,30 +160,16 @@ describe("the lab's worker", () => {
     const job = (await send(1, "endgame", { request: "{}" })).result as number;
     await send(2, "run", { job, ms: 8 });
     await vi.waitFor(() => expect(events().some((e) => e.done)).toBe(true));
-    expect(stepsMs()).toEqual([8, 8, 16, 32, 8]);
+    expect(stepsMs()).toEqual([8, 8, 8, 8, 8]);
 
-    // a run after a stop starts at its frame again
-    wasm.endgame_step.mockClear();
-    wasm.endgame_step.mockReturnValue(answer(0, 3));
-    const again = (await send(3, "endgame", { request: "{}" }))
-      .result as number;
-    await send(4, "run", { job: again, ms: 8 });
-    await vi.waitFor(() => expect(stepsMs().length).toBeGreaterThan(3));
-    await send(5, "stop");
-    const before = stepsMs().length;
-    await send(6, "run", { job: again, ms: 8 });
-    await vi.waitFor(() => expect(stepsMs().length).toBeGreaterThan(before));
-    expect(stepsMs()[before]).toBe(8);
-    await send(7, "stop");
-
-    // a tile in the bag: each step goes on where the last stopped
+    // tiles in the bag: the same
     wasm.endgame_step.mockReset();
     wasm.endgame_step
-      .mockReturnValueOnce(answer(1, 0))
-      .mockReturnValueOnce(answer(1, 0))
-      .mockReturnValueOnce(answer(1, 1, true));
-    const last = (await send(8, "endgame", { request: "{}" })).result as number;
-    await send(9, "run", { job: last, ms: 8 });
+      .mockReturnValueOnce(answer(2, 0))
+      .mockReturnValueOnce(answer(2, 0))
+      .mockReturnValueOnce(answer(2, 127, true));
+    const last = (await send(3, "endgame", { request: "{}" })).result as number;
+    await send(4, "run", { job: last, ms: 8 });
     await vi.waitFor(() =>
       expect(events().filter((e) => e.done)).toHaveLength(2),
     );
