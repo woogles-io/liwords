@@ -855,7 +855,7 @@ func authenticateDirector(ctx context.Context, ts *TournamentService, id string,
 	if errors.Is(err, pgx.ErrNoRows) {
 		// Junction table row missing: fall back to JSON directors for the transition
 		// period between migration and full data sync. Remove once JSON column is dropped.
-		t, err := ts.tournamentStore.Get(ctx, id)
+		t, err := ts.tournamentStore.GetHeader(ctx, id)
 		if err != nil {
 			return apiserver.InternalErr(err)
 		}
