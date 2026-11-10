@@ -9,6 +9,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/woogles-io/liwords/pkg/apiserver"
+	"github.com/woogles-io/liwords/pkg/auth"
 	"github.com/woogles-io/liwords/pkg/auth/rbac"
 	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/mod"
@@ -226,6 +227,14 @@ func (ps *ProfileService) UpdatePersonalInfo(ctx context.Context, r *connect.Req
 		// The username should maybe not be in the session? We can't change
 		// usernames easily.
 		return nil, apiserver.InternalErr(err)
+	}
+
+	// Password resets go to the email on file, so changing it takes the
+	// current password, as changing the password does.
+	if r.Msg.Email != user.Email {
+		if err := auth.CheckPassword(r.Msg.Password, user.Password); err != nil {
+			return nil, err
+		}
 	}
 
 	updateErr := ps.userStore.SetPersonalInfo(ctx, user.UUID, r.Msg.Email, r.Msg.FirstName,
