@@ -14,7 +14,7 @@ const wasm = vi.hoisted(() => ({
   endgame_new: vi.fn(() => 7),
   endgame_step: vi.fn(),
   endgame_free: vi.fn(),
-  sim_new: vi.fn(() => 9),
+  sim_new: vi.fn((_request: string) => 9),
   sim_add: vi.fn(() =>
     JSON.stringify([
       { play: { action: "exchange", tiles: [] }, was: "absent" },
@@ -26,6 +26,14 @@ const wasm = vi.hoisted(() => ({
   sim_step: vi.fn(),
   sim_free: vi.fn(),
   sim_set: vi.fn(),
+  infer: vi.fn(() =>
+    JSON.stringify({
+      handle: 4,
+      count: 3,
+      leaves: [{ tiles: [1], weight: 1 }],
+    }),
+  ),
+  infer_free: vi.fn(),
   stitched_z: vi.fn((iterations: number, alpha: number) => iterations + alpha),
 }));
 vi.mock("wolges-wasm", () => wasm);
@@ -242,6 +250,47 @@ describe("the lab's worker", () => {
     await send(7, "read", { job });
     expect(requests()[requests().length - 1].against).toBeUndefined();
     wasm.sim_step.mockReset();
+  });
+
+  it("infers the opponent's leave for a sim, giving the sim its handle and letting it go", async () => {
+    const made = await send(1, "sim", {
+      request: JSON.stringify({ plies: 2, known: [] }),
+      plays: "[]",
+      infer: "the inference",
+    });
+    expect(wasm.infer).toHaveBeenCalledWith("the inference");
+    expect(JSON.parse(wasm.sim_new.mock.calls[0][0] as string)).toEqual({
+      plies: 2,
+      inferred: 4,
+    });
+    expect(wasm.infer_free).toHaveBeenCalledWith(4);
+    expect(made.result).toMatchObject({
+      inferred: { count: 3, leaves: [{ tiles: [1], weight: 1 }] },
+    });
+    // for a sim made, through sim_set
+    wasm.sim_set.mockReturnValueOnce(simAnswer("running", "running"));
+    const { job } = made.result as { job: number };
+    const set = await send(2, "set", {
+      job,
+      request: JSON.stringify({ plies: 2, known: [] }),
+      infer: "again",
+    });
+    expect(JSON.parse(wasm.sim_set.mock.calls[0][1] as string)).toEqual({
+      plies: 2,
+      inferred: 4,
+    });
+    expect(wasm.infer_free).toHaveBeenCalledTimes(2);
+    expect(set.result).toMatchObject({ inferred: { count: 3 } });
+  });
+
+  it("gives a sim no inference of no leaves, letting it go all the same", async () => {
+    wasm.infer.mockReturnValueOnce(
+      JSON.stringify({ handle: 5, count: 0, leaves: [] }),
+    );
+    const request = JSON.stringify({ plies: 2, known: [] });
+    await send(1, "sim", { request, plays: "[]", infer: "{}" });
+    expect(wasm.sim_new).toHaveBeenCalledWith(request);
+    expect(wasm.infer_free).toHaveBeenCalledWith(5);
   });
 
   it("frees the last job when it makes the next, and says so", async () => {

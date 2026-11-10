@@ -39,6 +39,8 @@ import {
 } from "../constants/alphabets";
 import {
   ChallengeRule,
+  GameEvent,
+  GameEvent_Direction,
   GameEvent_Type,
 } from "../gen/api/proto/vendored/macondo/macondo_pb";
 import {
@@ -195,10 +197,66 @@ export type LabPosition = {
   challengeBonus: number;
   // each seat's exchanges so far
   exchanges: Array<number>;
+  // the opponent's last move, as infer takes it, with the board before it;
+  // null when their last turn is no play or exchange
+  lastMove: { board: Array<Array<number>>; play: WasmPlay } | null;
   // each player's name, by seat
   names: Array<string>;
   // the position, as a string, to tell one from another
   key: string;
+};
+
+// The board as the wasm takes one: each square's tile, a blank's letter
+// below 0.
+const wasmBoard = (letters: Array<MachineLetter>, dim: number) =>
+  Array.from({ length: dim }, (_, row) =>
+    letters
+      .slice(row * dim, row * dim + dim)
+      .map((l) => liwordsLetterToWolgesLetter(l)),
+  );
+
+// The opponent's last move, from which their leave is inferred: a play, its
+// tiles taken off the board to give the board before it, or an exchange, of
+// as many tiles as it exchanged. Null when the last turn is not theirs or is
+// no play or exchange (a pass, or a play challenged off).
+export const lastMoveOf = (
+  turns: Array<GameEvent>,
+  onturn: number,
+  letters: Array<MachineLetter>,
+  dim: number,
+): LabPosition["lastMove"] => {
+  const last = turns[turns.length - 1];
+  if (!last || last.playerIndex === onturn) return null;
+  if (last.type === GameEvent_Type.EXCHANGE) {
+    const count = last.exchanged
+      ? [...last.exchanged].length
+      : last.numTilesFromRack;
+    if (!count) return null;
+    return {
+      board: wasmBoard(letters, dim),
+      play: { action: "exchange", tiles: new Array(count).fill(0) },
+    };
+  }
+  if (last.type !== GameEvent_Type.TILE_PLACEMENT_MOVE) return null;
+  const down = last.direction === GameEvent_Direction.VERTICAL;
+  const before = [...letters];
+  const word = [...last.playedTiles].map((t, i) => {
+    const at = (last.row + (down ? i : 0)) * dim + last.column + (down ? 0 : i);
+    if (t === ".") return 0;
+    before[at] = 0 as MachineLetter;
+    return liwordsLetterToWolgesLetter(letters[at]);
+  });
+  return {
+    board: wasmBoard(before, dim),
+    play: {
+      action: "play",
+      down,
+      lane: down ? last.column : last.row,
+      idx: down ? last.row : last.column,
+      word,
+      score: last.score,
+    },
+  };
 };
 
 export const useLabPosition = (
@@ -252,6 +310,7 @@ export const useLabPosition = (
             ? 5
             : 0,
       exchanges: exchangesBySeat(turns),
+      lastMove: lastMoveOf(turns, gameContext.onturn, letters, dim),
       names,
       key: JSON.stringify([position, boardObj.leave]),
     };
@@ -922,7 +981,40 @@ type MadeSim = {
   done: boolean;
   // the move its candidates are compared with, by its jsonKey
   against?: string;
+  // the opponent's leave as inferred: how many leaves, and the likeliest
+  inferred?: Inferred;
 };
+
+// An inference of the opponent's leave: how many leaves it holds, and the
+// likeliest, each with its weight, the weights of them all summing to 1.
+type Inferred = {
+  count: number;
+  leaves: Array<{ tiles: Array<number>; weight: number }>;
+};
+
+// How far a move inferred from may fall short of a rack's best, in points:
+// wolges's own infer::FUZZ. And how many of the likeliest leaves are listed.
+const INFER_FUZZ = 3.105;
+const INFER_LIST = 10;
+
+// The request that infers the opponent's leave from their last move, as the
+// player to move sees it.
+const inferRequest = (lab: LabPosition) =>
+  lab.lastMove
+    ? JSON.stringify({
+        rack: lab.rack,
+        board: lab.lastMove.board,
+        lexicon: lab.position.lexicon,
+        leave: lab.leave,
+        rules: lab.position.rules,
+        play: lab.lastMove.play,
+        fuzz: INFER_FUZZ,
+        list: INFER_LIST,
+      })
+    : undefined;
+
+const NOTHING_TO_INFER =
+  "the opponent's last turn is no play or exchange to infer their leave from";
 
 // The plies a sim's rollouts play until the user sets others: liwords's own
 // count, sent with every sim made.
@@ -932,12 +1024,15 @@ const DEFAULT_SIM_PLIES = 4;
 // null for every ply to the game's end, and the tiles known to be on the
 // opponent's rack, written as tiles are, a blank as ?; whether it prunes none
 // of its candidates, rolling each out until stopped; and whether the opponent
-// passes every turn of each rollout.
+// passes every turn of each rollout; and whether, in place of the tiles
+// known, the opponent's leave is inferred from their last move, each
+// iteration dealing them one leave by its weight.
 export type SimSettings = {
   plies: number | null;
   known: string;
   unpruned: boolean;
   opponentsPass: boolean;
+  infer: boolean;
 };
 
 const defaultSimSettings: SimSettings = {
@@ -945,6 +1040,7 @@ const defaultSimSettings: SimSettings = {
   known: "",
   unpruned: false,
   opponentsPass: false,
+  infer: false,
 };
 
 // The tiles written as known on the opponent's rack, or why they cannot be
@@ -1114,7 +1210,9 @@ export const useLabSim = (
   const changeSettings = async (next: SimSettings) => {
     setNote(undefined);
     const rolled =
-      next.plies !== settings.plies || next.known !== settings.known;
+      next.plies !== settings.plies ||
+      next.known !== settings.known ||
+      next.infer !== settings.infer;
     if (next.opponentsPass !== settings.opponentsPass) {
       setSettings(next);
       setSim(null);
@@ -1122,19 +1220,27 @@ export const useLabSim = (
     }
     if (rolled && made && lab) {
       const at = lab.key;
-      const known = knownTiles(next.known, lab);
+      const known = next.infer ? { tiles: [] } : knownTiles(next.known, lab);
       if ("error" in known) {
         setNote({ key: at, text: `Not applied: ${known.error}.` });
         return;
       }
+      const infer = next.infer ? inferRequest(lab) : undefined;
+      if (next.infer && !infer) {
+        setNote({ key: at, text: `Not applied: ${NOTHING_TO_INFER}.` });
+        return;
+      }
       try {
-        await labCall({
+        const { inferred } = await labCall<{ inferred?: Inferred }>({
           op: "set",
           args: {
             job: made.job,
             request: JSON.stringify({ plies: next.plies, known: known.tiles }),
+            ...(infer ? { infer } : {}),
           },
         });
+        const { job } = made;
+        setSim((s) => (s?.job === job ? { ...s, inferred } : s));
       } catch (e) {
         setNote({ key: at, text: `Not applied: ${errorText(e)}` });
         return;
@@ -1159,9 +1265,16 @@ export const useLabSim = (
     }
     if (startingRef.current) return;
     const at = lab.key;
-    const known = knownTiles(settings.known, lab);
+    const known = settings.infer
+      ? { tiles: [] }
+      : knownTiles(settings.known, lab);
     if ("error" in known) {
       setNote({ key: at, text: `Not started: ${known.error}.` });
+      return;
+    }
+    const infer = settings.infer ? inferRequest(lab) : undefined;
+    if (settings.infer && !infer) {
+      setNote({ key: at, text: `Not started: ${NOTHING_TO_INFER}.` });
       return;
     }
     startingRef.current = true;
@@ -1176,9 +1289,10 @@ export const useLabSim = (
           args: { files: getLoadableFiles(lab.loadableKey) },
         }),
       ]);
-      const { job, added } = await labCall<{
+      const { job, added, inferred } = await labCall<{
         job: number;
         added: Array<{ play: WasmPlay; challenged_off?: boolean }>;
+        inferred?: Inferred;
       }>({
         op: "sim",
         args: {
@@ -1190,6 +1304,7 @@ export const useLabSim = (
             opponents_pass: settings.opponentsPass,
           }),
           plays: JSON.stringify(plays.map((m) => JSON.parse(m.jsonKey))),
+          ...(infer ? { infer } : {}),
         },
       });
       // A play is held as the sim writes it, which can differ from how it was
@@ -1203,6 +1318,7 @@ export const useLabSim = (
         ),
         running: true,
         done: false,
+        inferred,
       });
       await labCall({
         op: "run",
@@ -1709,7 +1825,7 @@ export const SimPanel = (props: SimPanelProps) => {
     const running = made.answer.candidates.filter(
       (c) => c.state === "running",
     ).length;
-    status = `${made.answer.iterations} iterations after ${ranText(sim.ranMs)}, ${running} running${made.running ? "" : made.done || running === 0 ? ", done" : ", stopped"}${settingsText(sim.settings, made.answer.candidates[0]?.plies?.length)}`;
+    status = `${made.answer.iterations} iterations after ${ranText(sim.ranMs)}, ${running} running${made.running ? "" : made.done || running === 0 ? ", done" : ", stopped"}${settingsText(sim.settings, made.answer.candidates[0]?.plies?.length, made.inferred)}`;
   } else if (made || sim.starting) {
     status = "Starting...";
   } else if (moves == null) {
@@ -1768,6 +1884,7 @@ export const SimPanel = (props: SimPanelProps) => {
           />
           <SimSettingsButton
             settings={sim.settings}
+            inferable={!!lab.lastMove}
             disabled={fixed}
             onChange={sim.changeSettings}
           />
@@ -1794,6 +1911,7 @@ export const SimPanel = (props: SimPanelProps) => {
           rows={sim.rows}
           against={made.against}
           onCompare={sim.compare}
+          inferred={made.inferred}
         />
       )}
       <table
@@ -1960,6 +2078,8 @@ type SimDetailsProps = {
   // the move each candidate is compared with, by its jsonKey
   against?: string;
   onCompare: (move: AnalyzerMove | null) => void;
+  // the opponent's leave as inferred, if it was
+  inferred?: Inferred;
 };
 
 // A sim's numbers in full: each candidate's chance to win and equity with
@@ -1969,8 +2089,17 @@ type SimDetailsProps = {
 // error; then each ply's score, its standard deviation, and how often it is a
 // bingo. They can be saved to a file, as the wasm gives them.
 const SimDetails = (props: SimDetailsProps) => {
-  const { open, onClose, lab, iterations, settings, rows, against, onCompare } =
-    props;
+  const {
+    open,
+    onClose,
+    lab,
+    iterations,
+    settings,
+    rows,
+    against,
+    onCompare,
+    inferred,
+  } = props;
   const stats = rows.flatMap(({ move, stat }) =>
     stat ? [{ move, stat }] : [],
   );
@@ -2023,6 +2152,17 @@ const SimDetails = (props: SimDetailsProps) => {
         plies: stat.plies,
       })),
       ...(compared ? { compared_with: name(compared) } : {}),
+      ...(inferred
+        ? {
+            inferred: {
+              count: inferred.count,
+              likeliest: inferred.leaves.map((l) => ({
+                tiles: machineWordToRunes(l.tiles, lab.alphabet, false, true),
+                weight: l.weight,
+              })),
+            },
+          }
+        : {}),
     };
     const url = URL.createObjectURL(
       new Blob([JSON.stringify(saved, null, 2)], {
@@ -2081,6 +2221,17 @@ const SimDetails = (props: SimDetailsProps) => {
           />
         </label>
       </div>
+      {inferred && (
+        <div className="lab-details-inferred">
+          {`Their leave, inferred from ${inferred.count} ${inferred.count === 1 ? "leave" : "leaves"}${inferred.leaves.length ? ", the likeliest: " : ""}`}
+          {inferred.leaves
+            .map(
+              (l) =>
+                `${machineWordToRunes(l.tiles, lab.alphabet, false, true) || "(none)"} ${percent(l.weight)}`,
+            )
+            .join(", ")}
+        </div>
+      )}
       {view === "move" ? (
         stats.map(({ move: m, stat }) => (
           <div
@@ -2242,18 +2393,29 @@ const SimDetails = (props: SimDetailsProps) => {
 
 // What a sim was made with: the plies its rollouts play, as its answer has
 // them, or to the game's end; then the other settings the user set.
-const settingsText = (settings: SimSettings, plies: number | undefined) => {
+const settingsText = (
+  settings: SimSettings,
+  plies: number | undefined,
+  inferred?: Inferred,
+) => {
   const played =
     settings.plies === null
       ? "; to the game's end"
       : plies !== undefined
         ? `; ${plies} ${plies === 1 ? "ply" : "plies"}`
         : "";
-  return `${played}${settings.known.trim() ? `; the opponent holds ${settings.known.trim().toUpperCase()}` : ""}${settings.opponentsPass ? "; the opponent passes" : ""}${settings.unpruned ? "; unpruned" : ""}`;
+  const held = inferred
+    ? `; their leave inferred, ${inferred.count} ${inferred.count === 1 ? "leave" : "leaves"}`
+    : !settings.infer && settings.known.trim()
+      ? `; the opponent holds ${settings.known.trim().toUpperCase()}`
+      : "";
+  return `${played}${held}${settings.opponentsPass ? "; the opponent passes" : ""}${settings.unpruned ? "; unpruned" : ""}`;
 };
 
 type SimSettingsButtonProps = {
   settings: SimSettings;
+  // whether the opponent's last move is one to infer their leave from
+  inferable: boolean;
   disabled: boolean;
   onChange: (settings: SimSettings) => void;
 };
@@ -2263,8 +2425,9 @@ type SimSettingsButtonProps = {
 // made from its next iteration on; whether it prunes, from its next step on;
 // and whether the opponent passes, which makes a new sim.
 const SimSettingsButton = (props: SimSettingsButtonProps) => {
-  const { settings, disabled, onChange } = props;
+  const { settings, inferable, disabled, onChange } = props;
   const [open, setOpen] = useState(false);
+  const [infer, setInfer] = useState(settings.infer);
   const [plies, setPlies] = useState<number | null>(
     settings.plies ?? DEFAULT_SIM_PLIES,
   );
@@ -2281,12 +2444,14 @@ const SimSettingsButton = (props: SimSettingsButtonProps) => {
       known,
       unpruned,
       opponentsPass,
+      infer,
     };
     if (
       next.plies !== settings.plies ||
       known !== settings.known ||
       unpruned !== settings.unpruned ||
-      opponentsPass !== settings.opponentsPass
+      opponentsPass !== settings.opponentsPass ||
+      infer !== settings.infer
     ) {
       onChange(next);
     }
@@ -2302,6 +2467,7 @@ const SimSettingsButton = (props: SimSettingsButtonProps) => {
           setKnown(settings.known);
           setUnpruned(settings.unpruned);
           setOpponentsPass(settings.opponentsPass);
+          setInfer(settings.infer);
         }
       }}
       trigger="click"
@@ -2334,11 +2500,24 @@ const SimSettingsButton = (props: SimSettingsButtonProps) => {
             <Input
               size="small"
               value={known}
+              disabled={infer}
               placeholder="tiles, ? a blank"
               onChange={(e) => setKnown(e.target.value)}
               onPressEnter={apply}
             />
           </label>
+          <Checkbox
+            checked={infer}
+            disabled={!inferable && !infer}
+            onChange={(e) => setInfer(e.target.checked)}
+          >
+            Infer their leave
+            <span className="lab-settings-note">
+              {inferable
+                ? "From the opponent's last move: each iteration deals them a leave they likely kept, by its weight."
+                : "Their last turn is no play or exchange to infer from."}
+            </span>
+          </Checkbox>
           <Checkbox
             checked={unpruned}
             onChange={(e) => setUnpruned(e.target.checked)}

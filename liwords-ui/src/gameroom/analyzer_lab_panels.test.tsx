@@ -9,7 +9,13 @@ import {
 } from "@testing-library/react";
 import { useRef } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { create } from "@bufbuild/protobuf";
 import { StandardEnglishAlphabet } from "../constants/alphabets";
+import {
+  GameEventSchema,
+  GameEvent_Direction,
+  GameEvent_Type,
+} from "../gen/api/proto/vendored/macondo/macondo_pb";
 import { Store } from "../store/store";
 import { LabEvent } from "../wasm/lab";
 import { AnalyzerMove } from "./analyzer";
@@ -17,6 +23,7 @@ import {
   EndgamePanel,
   LabPosition,
   SimPanel,
+  lastMoveOf,
   useLabRoom,
   useLabSim,
 } from "./analyzer_lab_panels";
@@ -28,6 +35,14 @@ const lab = vi.hoisted(() => ({
   calls: [] as Array<{ op: string; args?: object }>,
   listeners: new Set<(e: LabEvent) => void>(),
   top: [] as Array<object>,
+  // what an inference of the opponent's leave finds
+  inferred: {
+    count: 120,
+    leaves: [
+      { tiles: [1, 5], weight: 0.25 },
+      { tiles: [], weight: 0.125 },
+    ],
+  },
 }));
 vi.mock("../wasm/lab", () => ({
   labCall: async (request: { op: string; args?: { plays?: string } }) => {
@@ -35,8 +50,17 @@ vi.mock("../wasm/lab", () => ({
     if (request.op === "analyze") return lab.top;
     if (request.op === "endgame") return 1;
     if (request.op === "sim") {
-      const plays = JSON.parse(request.args!.plays!) as Array<object>;
-      return { job: 1, added: plays.map((play) => ({ play, was: "absent" })) };
+      const args = request.args as { plays: string; infer?: string };
+      const plays = JSON.parse(args.plays) as Array<object>;
+      return {
+        job: 1,
+        added: plays.map((play) => ({ play, was: "absent" })),
+        ...(args.infer ? { inferred: lab.inferred } : {}),
+      };
+    }
+    if (request.op === "set") {
+      const args = request.args as { infer?: string };
+      return args.infer ? { inferred: lab.inferred } : {};
     }
     if (["add", "remove", "pause", "resume"].includes(request.op)) {
       const plays = JSON.parse(request.args!.plays!) as Array<object>;
@@ -152,6 +176,17 @@ const position = (
   challengeable: false,
   challengeBonus: 5,
   exchanges: [1, 2],
+  lastMove: {
+    board: [[0]],
+    play: {
+      action: "play",
+      down: false,
+      lane: 7,
+      idx: 7,
+      word: [B, E],
+      score: 8,
+    },
+  },
   names: ["andy", "wolges"],
   key: JSON.stringify(unseen),
   ...more,
@@ -2057,6 +2092,102 @@ describe("the sim panel", () => {
     });
   });
 
+  it("infers the opponent's leave from their last move, in place of the tiles known", async () => {
+    render(
+      <Store>
+        <Sim lab={midgame()} moves={[listed(ba), listed(ab)]} />
+      </Store>,
+    );
+    act(() => screen.getByRole("button", { name: "Sim settings" }).click());
+    fireEvent.change(screen.getByPlaceholderText("tiles, ? a blank"), {
+      target: { value: "ie" },
+    });
+    fireEvent.click(screen.getByText("Infer their leave"));
+    expect(screen.getByPlaceholderText("tiles, ? a blank")).toBeDisabled();
+    act(() => screen.getByRole("button", { name: "Apply" }).click());
+    await start();
+    const sim = lab.calls.find((c) => c.op === "sim");
+    const { request, infer } = sim?.args as { request: string; infer: string };
+    expect(JSON.parse(request).known).toEqual([]);
+    expect(JSON.parse(infer)).toEqual({
+      rack: [A, A, B, E, E, I, I],
+      board: [[0]],
+      lexicon: "CSW24",
+      leave: "CSW24",
+      rules: "CrosswordGame",
+      play: midgame().lastMove!.play,
+      fuzz: 3.105,
+      list: 10,
+    });
+    emit({
+      job: 1,
+      answer: {
+        iterations: 32,
+        candidates: [candidate(ba, 0.5), candidate(ab, 0.4)],
+      },
+      done: false,
+    });
+    expect(
+      screen.getByText(
+        "32 iterations after 0 s, 2 running; 1 ply; their leave inferred, 120 leaves",
+      ),
+    ).toBeInTheDocument();
+    act(() => screen.getByRole("button", { name: "Details" }).click());
+    expect(
+      screen.getByText(
+        "Their leave, inferred from 120 leaves, the likeliest: AE 25.0%, (none) 12.5%",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("infers nothing with no play or exchange of the opponent's last, and changes the sim made in place", async () => {
+    const { unmount } = render(
+      <Store>
+        <Sim
+          lab={position([A, B, E, E, I, I, I, I, A, A], { lastMove: null })}
+          moves={[listed(ba), listed(ab)]}
+        />
+      </Store>,
+    );
+    act(() => screen.getByRole("button", { name: "Sim settings" }).click());
+    expect(
+      screen.getByRole("checkbox", { name: /Infer their leave/ }),
+    ).toBeDisabled();
+    expect(
+      screen.getByText("Their last turn is no play or exchange to infer from."),
+    ).toBeInTheDocument();
+    unmount();
+    // a sim made, then told to infer: sim_set, its rollouts kept
+    render(
+      <Store>
+        <Sim lab={midgame()} moves={[listed(ba), listed(ab)]} />
+      </Store>,
+    );
+    await start();
+    emit({
+      job: 1,
+      answer: {
+        iterations: 32,
+        candidates: [candidate(ba, 0.5), candidate(ab, 0.4)],
+      },
+      done: false,
+    });
+    act(() => screen.getByRole("button", { name: "Sim settings" }).click());
+    fireEvent.click(screen.getByText("Infer their leave"));
+    act(() => screen.getByRole("button", { name: "Apply" }).click());
+    await waitFor(() =>
+      expect(lab.calls.some((c) => c.op === "set")).toBe(true),
+    );
+    const set = lab.calls.find((c) => c.op === "set");
+    expect((set?.args as { infer?: string }).infer).toBeDefined();
+    expect(lab.calls.some((c) => c.op === "free")).toBe(false);
+    expect(
+      await screen.findByText(
+        "32 iterations after 0 s, 2 running; 1 ply; their leave inferred, 120 leaves",
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("shows a sim's details by move, a block a candidate, a row's when clicked", async () => {
     const scroll = vi.fn();
     Element.prototype.scrollIntoView = scroll;
@@ -2355,5 +2486,91 @@ describe("a panel's card", () => {
     render(inCard("score-card"));
     expect(body()).not.toHaveClass("lab-room");
     expect(body().style.getPropertyValue("--lab-room")).toBe("");
+  });
+});
+
+describe("the opponent's last move, to infer their leave from", () => {
+  // CAB across row 8 from H, its A through a tile already there and its B a
+  // blank; the board's letters as liwords keeps them
+  const letters = () => {
+    const l = new Array(225).fill(0);
+    l[7 * 15 + 7] = 3;
+    l[7 * 15 + 8] = A;
+    l[7 * 15 + 9] = B | 0x80;
+    return l;
+  };
+  const event = (more: object) =>
+    create(GameEventSchema, { playerIndex: 1, score: 9, ...more });
+
+  it("takes a play's tiles off the board, the tiles already there left as 0 in its word", () => {
+    const last = lastMoveOf(
+      [
+        event({
+          type: GameEvent_Type.TILE_PLACEMENT_MOVE,
+          row: 7,
+          column: 7,
+          direction: GameEvent_Direction.HORIZONTAL,
+          playedTiles: "C.b",
+        }),
+      ],
+      0,
+      letters(),
+      15,
+    );
+    expect(last?.play).toEqual({
+      action: "play",
+      down: false,
+      lane: 7,
+      idx: 7,
+      word: [3, 0, -B],
+      score: 9,
+    });
+    expect(last?.board[7].slice(7, 10)).toEqual([0, A, 0]);
+    expect(last?.board).toHaveLength(15);
+  });
+
+  it("writes a play down by its column, and an exchange by how many tiles it took", () => {
+    const down = lastMoveOf(
+      [
+        event({
+          type: GameEvent_Type.TILE_PLACEMENT_MOVE,
+          row: 3,
+          column: 7,
+          direction: GameEvent_Direction.VERTICAL,
+          playedTiles: "AB",
+        }),
+      ],
+      0,
+      new Array(225).fill(1),
+      15,
+    );
+    expect(down?.play).toMatchObject({ down: true, lane: 7, idx: 3 });
+    expect(down?.board[3][7]).toBe(0);
+    expect(down?.board[4][7]).toBe(0);
+    expect(down?.board[5][7]).toBe(1);
+    const exchange = lastMoveOf(
+      [event({ type: GameEvent_Type.EXCHANGE, exchanged: "AEI" })],
+      0,
+      letters(),
+      15,
+    );
+    expect(exchange?.play).toEqual({ action: "exchange", tiles: [0, 0, 0] });
+    // hidden, the count from the rack
+    const hidden = lastMoveOf(
+      [event({ type: GameEvent_Type.EXCHANGE, numTilesFromRack: 2 })],
+      0,
+      letters(),
+      15,
+    );
+    expect(hidden?.play).toEqual({ action: "exchange", tiles: [0, 0] });
+  });
+
+  it("is none after a pass, a play challenged off, or the player to move's own turn", () => {
+    const at = (type: GameEvent_Type, playerIndex = 1) =>
+      lastMoveOf([event({ type, playerIndex })], 0, letters(), 15);
+    expect(at(GameEvent_Type.PASS)).toBeNull();
+    expect(at(GameEvent_Type.PHONY_TILES_RETURNED)).toBeNull();
+    expect(at(GameEvent_Type.TILE_PLACEMENT_MOVE, 0)).toBeNull();
+    expect(lastMoveOf([], 0, letters(), 15)).toBeNull();
   });
 });

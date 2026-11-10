@@ -603,6 +603,11 @@ p.streak-loss {
     margin-bottom: 8px;
   }
 
+  .lab-details-inferred {
+    @include type-monospace;
+    margin-bottom: 8px;
+  }
+
   .lab-details-against {
     align-items: center;
     display: flex;

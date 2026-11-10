@@ -22,7 +22,9 @@ export type LabRequest =
   // the position's plays, best first, as many as the request's count asks
   | { op: "analyze"; args: { request: string } }
   | { op: "endgame"; args: { request: string } }
-  | { op: "sim"; args: { request: string; plays: string } }
+  // a sim of the plays given; with an inference's request, the opponent's
+  // leave inferred, as infer takes one, and dealt in each iteration
+  | { op: "sim"; args: { request: string; plays: string; infer?: string } }
   // plays joining a sim, or leaving it; each answers as the sim holds it
   | { op: "add"; args: { job: number; plays: string } }
   | { op: "remove"; args: { job: number; plays: string } }
@@ -31,7 +33,7 @@ export type LabRequest =
   | { op: "resume"; args: { job: number; plays: string } }
   // a sim's plies or the opponent's tiles changed in place, its rollouts kept,
   // answering as a step does
-  | { op: "set"; args: { job: number; request: string } }
+  | { op: "set"; args: { job: number; request: string; infer?: string } }
   // the play each of a sim's candidates is compared with in its answers, on
   // the iterations both ran, or none
   | { op: "against"; args: { job: number; play: string | null } }
@@ -105,6 +107,39 @@ stepPort.port1.onmessage = () => nextSteps.shift()?.();
 const later = (next: () => void) => {
   nextSteps.push(next);
   stepPort.port2.postMessage(null);
+};
+
+// A sim's request, with the opponent's leave inferred when asked: the
+// inference made, its handle given in place of the known tiles, and let go
+// once the sim has its leaves, which the sim keeps. An inference of no leaves
+// (as when the bag is empty) leaves the request as it was. The inference's
+// count and likeliest leaves come back with the call's own result.
+const inferring = <T>(
+  wolges: Wolges,
+  request: string,
+  infer: string | undefined,
+  call: (request: string) => T,
+): { result: T; inferred?: { count: number; leaves: unknown } } => {
+  if (infer === undefined) return { result: call(request) };
+  const { handle, count, leaves } = JSON.parse(wolges.infer(infer)) as {
+    handle: number;
+    count: number;
+    leaves: unknown;
+  };
+  try {
+    const result = call(
+      count > 0
+        ? JSON.stringify({
+            ...JSON.parse(request),
+            known: undefined,
+            inferred: handle,
+          })
+        : request,
+    );
+    return { result, inferred: { count, leaves } };
+  } finally {
+    wolges.infer_free(handle);
+  }
 };
 
 const freeJob = (wolges: Wolges) => {
@@ -202,7 +237,12 @@ const handle = async (req: LabRequest): Promise<unknown> => {
       return job.id;
     case "sim": {
       freeJob(wolges);
-      const handle = wolges.sim_new(req.args.request);
+      const { result: handle, inferred } = inferring(
+        wolges,
+        req.args.request,
+        req.args.infer,
+        wolges.sim_new,
+      );
       let added: unknown;
       try {
         // each play given, as the sim holds it
@@ -212,7 +252,7 @@ const handle = async (req: LabRequest): Promise<unknown> => {
         throw e;
       }
       job = { id: ++lastJobId, kind: "sim", handle };
-      return { job: job.id, added };
+      return { job: job.id, added, ...(inferred ? { inferred } : {}) };
     }
     case "add":
     case "remove":
@@ -233,11 +273,16 @@ const handle = async (req: LabRequest): Promise<unknown> => {
       if (!job || job.id !== req.args.job || job.kind !== "sim") {
         throw new Error("no such sim");
       }
-      const answer: Answer = JSON.parse(
-        wolges.sim_set(job.handle, req.args.request),
+      const { handle } = job;
+      const { result, inferred } = inferring(
+        wolges,
+        req.args.request,
+        req.args.infer,
+        (request) => wolges.sim_set(handle, request),
       );
+      const answer: Answer = JSON.parse(result);
       post({ event: { job: job.id, answer, done: isDone(job, answer) } });
-      return undefined;
+      return inferred ? { inferred } : {};
     }
     case "against": {
       if (!job || job.id !== req.args.job || job.kind !== "sim") {
