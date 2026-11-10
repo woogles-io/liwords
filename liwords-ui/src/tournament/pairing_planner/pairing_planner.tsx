@@ -161,8 +161,20 @@ export const PairingPlanner = (props: Props) => {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // The server rejects these, so don't ask until the inputs make sense.
+  // NumberInput clamps to its min and max only on blur, so while someone is
+  // typing, the values can be out of range.
+  const inRange =
+    request.rounds >= 1 &&
+    request.rounds <= 50 &&
+    request.perOpponent >= 1 &&
+    request.perOpponent <= 10 &&
+    (request.expected === "" || request.expected <= 200);
+  // The planner needs two players, registered or expected.
+  const enoughPlayers = Math.max(registered, request.expected || 0) >= 2;
+
   useEffect(() => {
-    if (!request.division || !request.rounds) {
+    if (!request.division || !inRange || !enoughPlayers) {
       return;
     }
     let cancelled = false;
@@ -196,7 +208,7 @@ export const PairingPlanner = (props: Props) => {
     return () => {
       cancelled = true;
     };
-  }, [request, props.tournamentID, tClient]);
+  }, [request, inRange, enoughPlayers, props.tournamentID, tClient]);
 
   const available = response?.schemes.filter((s) => s.available) ?? [];
   const suggested = available.find((s) => s.suggested);
@@ -383,21 +395,22 @@ export const PairingPlanner = (props: Props) => {
             </Anchor>
           </Alert>
         )}
-        {error && (
+        {!enoughPlayers && (
+          <Text c="dimmed">
+            Add players, or enter how many you expect, to see a preview.
+          </Text>
+        )}
+        {enoughPlayers && error && (
           <Alert color="red" title="Couldn't preview this division">
             {error}
           </Alert>
         )}
-        {loading && !response && <Loader mx="auto" />}
+        {enoughPlayers && loading && !response && <Loader mx="auto" />}
 
-        {response && (
+        {enoughPlayers && response && (
           <Box className={loading ? classes.stale : undefined}>
             <Stack gap="lg">
-              {response.players.length < 2 ? (
-                <Text c="dimmed">
-                  Add players, or enter how many you expect, to see a preview.
-                </Text>
-              ) : suggested ? (
+              {suggested ? (
                 <SchemeCard
                   scheme={suggested}
                   response={response}
