@@ -137,6 +137,11 @@ type EndgameAnswer = {
 // The depth a pre-endgame's answer gives once searched to the end.
 const END_DEPTH = 127;
 
+// The most tiles in the bag a pre-endgame is solved with: with 7 an exchange
+// is open, which the wasm's search does not keep to its time with, holding
+// the lab's worker past any step.
+const MAX_PEG_BAG = 6;
+
 // What each player knows in a pre-endgame of two or more tiles in the bag
 // once the first move is made: nothing more, each choosing blind over every
 // split of the tiles they cannot see until the bag empties; or both racks.
@@ -659,7 +664,7 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
   // Nothing unseen: the other player has gone out.
   const over = lab.unseen.length === 0;
   const bag = endgameBag(lab.unseen.length, lab.rack.length);
-  const solvable = !over && bag !== null;
+  const solvable = !over && bag !== null && bag <= MAX_PEG_BAG;
   // with two or more tiles in the bag, what each player knows, which makes
   // another search
   const [model, setModel] = useState<EndgameModel>("info_sets");
@@ -736,12 +741,21 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
   );
   const runes = (tiles: MachineWord) =>
     machineWordToRunes(tiles, lab.alphabet, false, true);
+  // how the game ends for the player to move with a gain of this much: the
+  // lead now is the answer's spread less its value
+  const lead = solved ? solved.spread - solved.value : 0;
+  const endText = (value: number) => {
+    const end = lead + value;
+    return end > 0 ? "wins" : end < 0 ? "loses" : "ties";
+  };
 
   let status: React.ReactNode;
   if (over) {
     status = goneOutText(lab);
-  } else if (!solvable) {
+  } else if (bag === null) {
     status = "Needs the full rack of the player to move.";
+  } else if (!solvable) {
+    status = `The bag holds ${bag} tiles: a pre-endgame is solved with ${MAX_PEG_BAG} or fewer.`;
   } else if (job.error) {
     status = <span className="analyzer-error">{job.error}</span>;
   } else if (!solved || !solved.play) {
@@ -842,14 +856,23 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
               <td className="move-equity">{signed(m.equity, 2)}</td>
             </tr>
           ))}
+          {plays[0] && (solved?.tiles?.length || solved?.draws?.length) ? (
+            <tr className="lab-tile lab-draws-head">
+              <td className="lab-who" />
+              <td className="move" colSpan={6}>
+                {`${moveName(plays[0].move)}, with the bag holding:`}
+              </td>
+            </tr>
+          ) : null}
           {solved?.tiles?.map((t) => (
             <tr key={t.tile} className="lab-tile">
               <td className="lab-who" />
               <td className="move-coords" />
-              <td className="move" colSpan={4}>
-                {machineLetterToRune(t.tile, lab.alphabet)} in the bag
+              <td className="move" colSpan={3}>
+                {machineLetterToRune(t.tile, lab.alphabet)}
                 {t.count > 1 ? ` (${t.count})` : ""}
               </td>
+              <td className="lab-win">{endText(t.value)}</td>
               <td className="move-equity">{signed(t.value)}</td>
             </tr>
           ))}
@@ -857,10 +880,11 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
             <tr key={d.tiles.join(",")} className="lab-tile">
               <td className="lab-who" />
               <td className="move-coords" />
-              <td className="move" colSpan={4}>
-                {runes(d.tiles)} in the bag
+              <td className="move" colSpan={3}>
+                {runes(d.tiles)}
                 {` (${d.count} ${d.count === 1 ? "deal" : "deals"})`}
               </td>
+              <td className="lab-win">{endText(d.value)}</td>
               <td className="move-equity">{signed(d.value, 2)}</td>
             </tr>
           ))}

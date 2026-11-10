@@ -344,8 +344,10 @@ describe("the endgame panel", () => {
     expect(request.exchanges).toBeUndefined();
     expect(bodyRows()).toEqual([
       "andy8HBA10AEEII75.0%+4.88",
-      "E in the bag (2)+6",
-      "I in the bag (4)-3",
+      // the lead now 10: the game won with either tile
+      "8H BA, with the bag holding:",
+      "E (2)wins+6",
+      "I (4)wins-3",
     ]);
   });
 
@@ -429,7 +431,7 @@ describe("the endgame panel", () => {
       moves: [9, 9],
       draws: [
         { tiles: [E, I], count: 10, value: 5 },
-        { tiles: [I, I], count: 1, value: -2 },
+        { tiles: [I, I], count: 1, value: -12 },
       ],
       candidates: [
         { play: across(7, 7, [B, A]), win: 0.6, value: 3.5 },
@@ -448,8 +450,10 @@ describe("the endgame panel", () => {
     expect(bodyRows()).toEqual([
       "andy8HBA10AEEII60.0%+3.50",
       "Pass0AABEEII25.0%-8.00",
-      "EI in the bag (10 deals)+5.00",
-      "II in the bag (1 deal)-2.00",
+      // the lead now 10: won with EI in the bag, lost with II
+      "8H BA, with the bag holding:",
+      "EI (10 deals)wins+5.00",
+      "II (1 deal)loses-12.00",
     ]);
     // blind by default, with each seat's exchanges
     const requests = () =>
@@ -543,6 +547,21 @@ describe("the endgame panel", () => {
     );
     expect(
       screen.getByText("Needs the full rack of the player to move."),
+    ).toBeInTheDocument();
+    cleanup();
+    // seven in the bag: an exchange is open
+    render(
+      <Store>
+        <EndgamePanel
+          lab={position([A, B, E, E, I, I, I, I, I, A, A, B, B, E])}
+          onClose={() => {}}
+        />
+      </Store>,
+    );
+    expect(
+      screen.getByText(
+        "The bag holds 7 tiles: a pre-endgame is solved with 6 or fewer.",
+      ),
     ).toBeInTheDocument();
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(lab.calls).toEqual([]);

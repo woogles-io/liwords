@@ -413,9 +413,11 @@ p.streak-loss {
     text-align: left;
   }
 
-  // what each player holds, over an endgame's line
+  // what each player holds, over an endgame's line, a long run of tiles
+  // wrapped
   .lab-racks {
     color: m($gray-medium);
+    overflow-wrap: anywhere;
     padding: 0 12px 6px;
     text-align: left;
   }
