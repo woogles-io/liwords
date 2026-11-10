@@ -685,14 +685,6 @@ func (s *DBStore) ResetPersonalInfo(ctx context.Context, uuid string) error {
 	return s.queries.ResetProfilePersonalInfo(ctx, uuid)
 }
 
-func (s *DBStore) ResetProfile(ctx context.Context, uid string) error {
-	err := s.ResetStatsAndRatings(ctx, uid)
-	if err != nil {
-		return err
-	}
-	return s.ResetPersonalInfo(ctx, uid)
-}
-
 func (s *DBStore) Count(ctx context.Context) (int64, error) {
 	return s.queries.CountUsers(ctx)
 }
