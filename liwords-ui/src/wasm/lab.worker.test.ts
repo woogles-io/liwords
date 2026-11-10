@@ -4,6 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 // and what it posts is caught. The wasm is a fake, each test saying what its
 // calls answer.
 const wasm = vi.hoisted(() => ({
+  // the web build's instantiation, nothing to fetch here
+  default: async () => {},
   precache_kwg: vi.fn(),
   precache_klv: vi.fn(),
   evict_kwg: vi.fn(() => true),

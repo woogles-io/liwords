@@ -7,11 +7,13 @@
 // done}}, done once the job has nothing left to do, and a failed step as
 // {event: {job, error}}. A job freed, by a request or by the next job made,
 // says so as {event: {job, freed: true}}.
-//
+
+import { importWolges } from "./wolges";
+
 // The wasm is imported, not loaded statically: a static import would make this
 // an async module whose body, the message handler with it, runs only once the
 // wasm is instantiated, and a message sent before then would be lost.
-const wolgesPromise = import("wolges-wasm");
+const wolgesPromise = importWolges();
 
 type Wolges = Awaited<typeof wolgesPromise>;
 type LabFile = { cacheKey: string; path: string };
