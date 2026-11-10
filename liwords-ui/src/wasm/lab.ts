@@ -36,11 +36,17 @@ type Pending = {
 
 type WorkerEvent = LabEvent;
 
-// How many parts a sim runs in: a worker a core but one, four at most, and one
-// on a device that says it has under 4 GB, as each part holds its own tables.
-const partsFor = (cores: number | undefined, gb: number | undefined) => {
-  if (gb !== undefined && gb < 4) return 1;
-  return Math.max(1, Math.min(4, (cores ?? 2) - 1));
+// How many parts a sim runs in. Each part is its own wasm, holding its own
+// lexicon, leave table and, inferring, its own inference tables (some 43 MB
+// in English), so the page's memory grows with each: a worker a core but one,
+// four at most, only on a device that says it has 8 GB or more; two at most
+// on one that says nothing; one, as before, on any other (a phone's browser
+// kills a tab that holds too much).
+export const partsFor = (cores: number | undefined, gb: number | undefined) => {
+  const spare = Math.max(1, (cores ?? 2) - 1);
+  if (gb === undefined) return Math.min(2, spare);
+  if (gb >= 8) return Math.min(4, spare);
+  return 1;
 };
 
 let parts: number | undefined;
