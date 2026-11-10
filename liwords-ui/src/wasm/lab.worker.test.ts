@@ -224,6 +224,26 @@ describe("the lab's worker", () => {
     );
   });
 
+  it("compares a sim's candidates with a play on every step and read, until told none", async () => {
+    wasm.sim_step.mockReturnValue(simAnswer("running", "running"));
+    const made = await send(1, "sim", { request: "{}", plays: "[]" });
+    const { job } = made.result as { job: number };
+    const play = { action: "exchange", tiles: [] };
+    await send(2, "against", { job, play: JSON.stringify(play) });
+    await send(3, "read", { job });
+    const requests = () =>
+      wasm.sim_step.mock.calls.map(([, r]) => JSON.parse(r as string));
+    expect(requests()[0].against).toEqual(play);
+    await send(4, "run", { job, ms: 10 });
+    await vi.waitFor(() => expect(requests().length).toBeGreaterThan(1));
+    await send(5, "stop");
+    expect(requests()[1].against).toEqual(play);
+    await send(6, "against", { job, play: null });
+    await send(7, "read", { job });
+    expect(requests()[requests().length - 1].against).toBeUndefined();
+    wasm.sim_step.mockReset();
+  });
+
   it("frees the last job when it makes the next, and says so", async () => {
     const sim = (
       (await send(1, "sim", { request: "{}", plays: "[]" })).result as {

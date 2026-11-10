@@ -104,12 +104,29 @@ export const endgameMemoryMb = () => {
 
 export type SimStat = { mean: number; variance: number };
 
+// A statistic over fewer iterations than the candidate's rollouts, its own
+// n with it.
+export type SimCountedStat = SimStat & { n: number };
+
+// A sim's candidate: where it stands, its rollouts, their chance to win and
+// equity (the change in spread, the leaves left counted), that equity's two
+// parts (spread, in points alone; leaves, the mover's left less the
+// opponent's), and the objective the sim prunes on; with a play to compare
+// against, each less that play's on the iterations both ran.
 export type SimCandidate = {
   play: unknown;
   state: "running" | "paused" | "pruned";
   n: number;
   win: SimStat;
   equity: SimStat;
+  spread?: SimStat;
+  leaves?: SimStat;
+  objective?: SimStat;
+  against?: {
+    win: SimCountedStat;
+    equity: SimCountedStat;
+    objective: SimCountedStat;
+  };
 };
 
 // The order a sim's candidates are shown in: by the chance to win, then by

@@ -1946,6 +1946,117 @@ describe("the sim panel", () => {
     expect(rowsOf(tables[4])[0]).toBe(`${JSON.stringify(ba)}33.04.025.0%32`);
   });
 
+  it("shows each equity's two parts, and each candidate less a move compared with", async () => {
+    render(
+      <Store>
+        <Sim
+          lab={midgame()}
+          moves={[listed(ba, { equity: 3 }), listed(ab, { equity: 2 })]}
+        />
+      </Store>,
+    );
+    await start();
+    const parts = (spread: number, leaves: number) => ({
+      spread: { mean: spread, variance: 4 },
+      leaves: { mean: leaves, variance: 1 },
+      objective: { mean: spread + leaves, variance: 5 },
+    });
+    emit({
+      job: 1,
+      answer: {
+        iterations: 32,
+        candidates: [
+          { ...candidate(ba, 0.5, { equity: 9 }), ...parts(7, 2) },
+          { ...candidate(ab, 0.4, { equity: 3 }), ...parts(4, -1) },
+        ],
+      },
+      done: false,
+    });
+    act(() => screen.getByRole("button", { name: "Details" }).click());
+    const details = document.querySelector(".lab-details")!;
+    const rows = () =>
+      [
+        ...details.querySelectorAll("table")[0].querySelectorAll("tbody tr"),
+      ].map((r) => r.textContent);
+    expect(rows()).toEqual([
+      `${JSON.stringify(ba)}50.0%0.0%+9.000.0+7.00+2.0010+3.0032`,
+      `${JSON.stringify(ab)}40.0%0.0%+3.000.0+4.00-1.0010+2.0032`,
+    ]);
+
+    // compared with BA: the sim is told, and read at once
+    const select = within(details as HTMLElement).getByRole("combobox", {
+      name: "Compare with",
+    });
+    fireEvent.mouseDown(select);
+    act(() =>
+      (
+        [...document.querySelectorAll(".ant-select-item-option")].find(
+          (o) => o.textContent === JSON.stringify(ba),
+        ) as HTMLElement
+      ).click(),
+    );
+    await waitFor(() =>
+      expect(lab.calls.some((c) => c.op === "read")).toBe(true),
+    );
+    expect(lab.calls.find((c) => c.op === "against")?.args).toEqual({
+      job: 1,
+      play: JSON.stringify(ba),
+    });
+    const less = (n: number, win: number, equity: number) => ({
+      win: { n, mean: win, variance: 0.04 * n },
+      equity: { n, mean: equity, variance: 25 * n },
+      objective: { n, mean: equity, variance: 25 * n },
+    });
+    emit({
+      job: 1,
+      answer: {
+        iterations: 32,
+        candidates: [
+          {
+            ...candidate(ba, 0.5, { equity: 9 }),
+            ...parts(7, 2),
+            against: less(32, 0, 0),
+          },
+          {
+            ...candidate(ab, 0.4, { equity: 3 }),
+            ...parts(4, -1),
+            against: less(25, -0.1, -6),
+          },
+        ],
+      },
+      done: false,
+    });
+    expect(rows()[1]).toBe(
+      `${JSON.stringify(ab)}40.0%0.0%+3.000.0+4.00-1.0010+2.0032-10.0%-6.005.00`,
+    );
+    act(() => screen.getByRole("radio", { name: "By move" }).click());
+    expect(
+      [
+        ...details
+          .querySelectorAll(".lab-details-block")[1]
+          .querySelectorAll("li"),
+      ].map((li) => li.textContent),
+    ).toContain(
+      `Less ${JSON.stringify(ba)}, over 25: win -10.0% (SE 20.0%), equity -6.00 (SE 5.00)`,
+    );
+    // and with none
+    fireEvent.mouseDown(select);
+    act(() =>
+      (
+        [...document.querySelectorAll(".ant-select-item-option")].find(
+          (o) => o.textContent === "None",
+        ) as HTMLElement
+      ).click(),
+    );
+    await waitFor(() =>
+      expect(lab.calls.filter((c) => c.op === "against")).toHaveLength(2),
+    );
+    expect(lab.calls.filter((c) => c.op === "against")[1].args).toEqual({
+      job: 1,
+      play: null,
+    });
+  });
+
   it("shows a sim's details by move, a block a candidate, a row's when clicked", async () => {
     const scroll = vi.fn();
     Element.prototype.scrollIntoView = scroll;

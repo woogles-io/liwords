@@ -14,6 +14,7 @@ import {
   Popconfirm,
   Popover,
   Radio,
+  Select,
   Tooltip,
 } from "antd";
 import {
@@ -71,6 +72,7 @@ import {
 } from "./analyzer";
 import {
   SimCandidate,
+  SimCountedStat,
   SimStat,
   endgameBag,
   endgameMemoryMb,
@@ -918,6 +920,8 @@ type MadeSim = {
   error?: string;
   running: boolean;
   done: boolean;
+  // the move its candidates are compared with, by its jsonKey
+  against?: string;
 };
 
 // The plies a sim's rollouts play until the user sets others: liwords's own
@@ -1233,6 +1237,26 @@ export const useLabSim = (
       );
   };
 
+  // Compare each candidate with a move's, or with none, from the sim's next
+  // answer on: read at once, as the sim's numbers so far have it.
+  const compare = (move: AnalyzerMove | null) => {
+    if (!lab || !made) return;
+    const at = lab.key;
+    const { job } = made;
+    setNote(undefined);
+    setSim((s) =>
+      s?.job === job ? { ...s, against: move?.jsonKey ?? undefined } : s,
+    );
+    labCall({
+      op: "against",
+      args: { job, play: move ? move.jsonKey : null },
+    })
+      .then(() => labCall({ op: "read", args: { job } }))
+      .catch((e) =>
+        setNote({ key: at, text: `Not compared: ${errorText(e)}` }),
+      );
+  };
+
   // Pause a candidate, keeping its rollouts, or roll a paused or pruned one out
   // again from the sim's next iteration on.
   const hold = (play: WasmPlay, paused: boolean) => {
@@ -1443,6 +1467,7 @@ export const useLabSim = (
     remove,
     hold,
     addTop,
+    compare,
     settings,
     changeSettings,
   };
@@ -1767,6 +1792,8 @@ export const SimPanel = (props: SimPanelProps) => {
           iterations={made.answer.iterations}
           settings={sim.settings}
           rows={sim.rows}
+          against={made.against}
+          onCompare={sim.compare}
         />
       )}
       <table
@@ -1919,6 +1946,10 @@ const plyName = (ply: number) => {
 
 const sd = (stat: SimStat) => Math.sqrt(stat.variance);
 
+// a mean's standard error, over the n it was made of
+const se = (stat: SimCountedStat) =>
+  stat.n > 0 ? Math.sqrt(stat.variance / stat.n) : 0;
+
 type SimDetailsProps = {
   open: boolean;
   onClose: () => void;
@@ -1926,14 +1957,20 @@ type SimDetailsProps = {
   iterations: number;
   settings: SimSettings;
   rows: LabSim["rows"];
+  // the move each candidate is compared with, by its jsonKey
+  against?: string;
+  onCompare: (move: AnalyzerMove | null) => void;
 };
 
 // A sim's numbers in full: each candidate's chance to win and equity with
-// their standard deviations, its score, and its static equity; then each
-// ply's score, its standard deviation, and how often it is a bingo. They can
-// be saved to a file, as the wasm gives them.
+// their standard deviations, the equity's two parts (the points of spread,
+// and the leaves left), its score, and its static equity; compared with a
+// move, each one less that move on the iterations both ran, with its standard
+// error; then each ply's score, its standard deviation, and how often it is a
+// bingo. They can be saved to a file, as the wasm gives them.
 const SimDetails = (props: SimDetailsProps) => {
-  const { open, onClose, lab, iterations, settings, rows } = props;
+  const { open, onClose, lab, iterations, settings, rows, against, onCompare } =
+    props;
   const stats = rows.flatMap(({ move, stat }) =>
     stat ? [{ move, stat }] : [],
   );
@@ -1957,6 +1994,10 @@ const SimDetails = (props: SimDetailsProps) => {
     setView("move");
   };
   const rack = machineWordToRunes(lab.rack, lab.alphabet, false, true);
+  const compared = stats.find(({ move }) => move.jsonKey === against)?.move;
+  // a candidate less the move compared with
+  const vs = (stat: SimCandidate) =>
+    compared && stat.against?.win.n ? stat.against : undefined;
   const save = () => {
     const saved = {
       rack,
@@ -1975,8 +2016,13 @@ const SimDetails = (props: SimDetailsProps) => {
         n: stat.n,
         win: stat.win,
         equity: stat.equity,
+        spread: stat.spread,
+        leaves: stat.leaves,
+        objective: stat.objective,
+        ...(stat.against ? { against: stat.against } : {}),
         plies: stat.plies,
       })),
+      ...(compared ? { compared_with: name(compared) } : {}),
     };
     const url = URL.createObjectURL(
       new Blob([JSON.stringify(saved, null, 2)], {
@@ -1998,20 +2044,43 @@ const SimDetails = (props: SimDetailsProps) => {
       title={`${iterations} iterations of ${rack}`}
       width={640}
     >
-      <Radio.Group
-        className="lab-details-view"
-        optionType="button"
-        size="small"
-        value={view}
-        onChange={(e) => {
-          setShown(null);
-          setView(e.target.value);
-        }}
-        options={[
-          { label: "By ply", value: "ply" },
-          { label: "By move", value: "move" },
-        ]}
-      />
+      <div className="lab-details-controls">
+        <Radio.Group
+          className="lab-details-view"
+          optionType="button"
+          size="small"
+          value={view}
+          onChange={(e) => {
+            setShown(null);
+            setView(e.target.value);
+          }}
+          options={[
+            { label: "By ply", value: "ply" },
+            { label: "By move", value: "move" },
+          ]}
+        />
+        <label className="lab-details-against">
+          Compare with
+          <Select
+            size="small"
+            aria-label="Compare with"
+            value={compared?.jsonKey ?? ""}
+            popupMatchSelectWidth={false}
+            onChange={(key: string) =>
+              onCompare(
+                stats.find(({ move }) => move.jsonKey === key)?.move ?? null,
+              )
+            }
+            options={[
+              { label: "None", value: "" },
+              ...stats.map(({ move }) => ({
+                label: name(move),
+                value: move.jsonKey,
+              })),
+            ]}
+          />
+        </label>
+      </div>
       {view === "move" ? (
         stats.map(({ move: m, stat }) => (
           <div
@@ -2031,6 +2100,12 @@ const SimDetails = (props: SimDetailsProps) => {
                 <React.Fragment>
                   <li>{`Win: ${percent(stat.win.mean)} (SD ${percent(sd(stat.win))})`}</li>
                   <li>{`Equity: ${signed(stat.equity.mean, 2)} (SD ${sd(stat.equity).toFixed(1)})`}</li>
+                  {stat.spread && stat.leaves && (
+                    <li>{`Points ${signed(stat.spread.mean, 2)} (SD ${sd(stat.spread).toFixed(1)}), leaves ${signed(stat.leaves.mean, 2)} (SD ${sd(stat.leaves).toFixed(1)})`}</li>
+                  )}
+                  {vs(stat) && compared && (
+                    <li>{`Less ${name(compared)}, over ${vs(stat)!.win.n}: win ${signed(vs(stat)!.win.mean * 100, 1)}% (SE ${(se(vs(stat)!.win) * 100).toFixed(1)}%), equity ${signed(vs(stat)!.equity.mean, 2)} (SE ${se(vs(stat)!.equity).toFixed(2)})`}</li>
+                  )}
                 </React.Fragment>
               ) : (
                 <li>No rollouts</li>
@@ -2061,9 +2136,38 @@ const SimDetails = (props: SimDetailsProps) => {
                 <th>SD</th>
                 <th>Equity</th>
                 <th>SD</th>
+                <th>
+                  <ColumnName
+                    name="Points"
+                    tip="The equity's change in spread, in points alone"
+                  />
+                </th>
+                <th>
+                  <ColumnName
+                    name="Leaves"
+                    tip="The equity's leaves left: the mover's less the opponent's"
+                  />
+                </th>
                 <th>Score</th>
                 <th>Static</th>
                 <th>N</th>
+                {compared && (
+                  <React.Fragment>
+                    <th>
+                      <ColumnName
+                        name="Win less"
+                        tip={`Its chance to win less that of ${name(compared)}, on the iterations both ran`}
+                      />
+                    </th>
+                    <th>
+                      <ColumnName
+                        name="Equity less"
+                        tip={`Its equity less that of ${name(compared)}, on the iterations both ran`}
+                      />
+                    </th>
+                    <th>SE</th>
+                  </React.Fragment>
+                )}
               </tr>
             </thead>
             <tbody>
@@ -2074,9 +2178,28 @@ const SimDetails = (props: SimDetailsProps) => {
                   <td>{stat.n ? percent(sd(stat.win)) : ""}</td>
                   <td>{stat.n ? signed(stat.equity.mean, 2) : ""}</td>
                   <td>{stat.n ? sd(stat.equity).toFixed(1) : ""}</td>
+                  <td>
+                    {stat.n && stat.spread ? signed(stat.spread.mean, 2) : ""}
+                  </td>
+                  <td>
+                    {stat.n && stat.leaves ? signed(stat.leaves.mean, 2) : ""}
+                  </td>
                   <td>{m.score}</td>
                   <td>{signed(m.equity, 2)}</td>
                   <td>{stat.n}</td>
+                  {compared && (
+                    <React.Fragment>
+                      <td>
+                        {vs(stat)
+                          ? `${signed(vs(stat)!.win.mean * 100, 1)}%`
+                          : ""}
+                      </td>
+                      <td>
+                        {vs(stat) ? signed(vs(stat)!.equity.mean, 2) : ""}
+                      </td>
+                      <td>{vs(stat) ? se(vs(stat)!.equity).toFixed(2) : ""}</td>
+                    </React.Fragment>
+                  )}
                 </tr>
               ))}
             </tbody>

@@ -593,9 +593,24 @@ p.streak-loss {
     text-align: left;
   }
 
-  // the view, by ply or by move; a table's row shows its move's block
-  .lab-details-view {
+  // the view, by ply or by move, and the move each is compared with; a
+  // table's row shows its move's block
+  .lab-details-controls {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 16px;
     margin-bottom: 8px;
+  }
+
+  .lab-details-against {
+    align-items: center;
+    display: flex;
+    gap: 6px;
+
+    .ant-select {
+      min-width: 120px;
+    }
   }
 
   tbody tr {

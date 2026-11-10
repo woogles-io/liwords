@@ -32,6 +32,9 @@ export type LabRequest =
   // a sim's plies or the opponent's tiles changed in place, its rollouts kept,
   // answering as a step does
   | { op: "set"; args: { job: number; request: string } }
+  // the play each of a sim's candidates is compared with in its answers, on
+  // the iterations both ran, or none
+  | { op: "against"; args: { job: number; play: string | null } }
   // the job's answer as it stands, sent as a step's is, without stepping
   | { op: "read"; args: { job: number } }
   // the job stepped ms at a time until it is done or stopped; a sim told
@@ -47,6 +50,8 @@ type Job = {
   prune?: boolean;
   // a sim's iterations, as its last answer had them
   iterations?: number;
+  // the play a sim's candidates are compared with, as the sim takes one
+  against?: unknown;
 };
 type Answer = {
   exact?: boolean;
@@ -65,15 +70,17 @@ type Answer = {
 const PRUNE_EVERY = 16;
 const PRUNE_ALPHA = 0.05;
 const PRUNE_DECIDED = 0.001;
-const pruning = (wolges: Wolges, j: Job) =>
-  j.prune !== false
+const pruning = (wolges: Wolges, j: Job) => ({
+  ...(j.prune !== false
     ? {
         prune: true,
         prune_every: PRUNE_EVERY,
         prune_z: wolges.stitched_z(Math.max(1, j.iterations ?? 0), PRUNE_ALPHA),
         prune_decided: PRUNE_DECIDED,
       }
-    : { prune: false };
+    : { prune: false }),
+  ...(j.against !== undefined ? { against: j.against } : {}),
+});
 
 const post = (message: unknown) =>
   (self as unknown as Worker).postMessage(message);
@@ -230,6 +237,14 @@ const handle = async (req: LabRequest): Promise<unknown> => {
         wolges.sim_set(job.handle, req.args.request),
       );
       post({ event: { job: job.id, answer, done: isDone(job, answer) } });
+      return undefined;
+    }
+    case "against": {
+      if (!job || job.id !== req.args.job || job.kind !== "sim") {
+        throw new Error("no such sim");
+      }
+      job.against =
+        req.args.play === null ? undefined : JSON.parse(req.args.play);
       return undefined;
     }
     case "read": {
