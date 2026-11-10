@@ -26,6 +26,7 @@ import {
   TournamentGameSchema,
   PairingSchema,
   ReadyForTournamentGameSchema,
+  DivisionPairingsResponseSchema,
 } from "../../gen/api/proto/ipc/tournament_pb";
 import { create, fromBinary } from "@bufbuild/protobuf";
 import {
@@ -360,6 +361,58 @@ it("accepts a ready for the current round", () => {
   const state = nwlRound2State(0);
   const newState = TournamentReducer(state, readyForRound(joshID, 1));
   expect(readyStateOf(newState, joshID, 1)).toBe("ready");
+});
+
+// A pairings message for josh's round 2 pairing, with the ready states empty
+// as the server sends them, and no result.
+const joshPairingUpdate = (state: TournamentState) => {
+  const nwl = state.divisions["NWL"];
+  const pairing = nwl.pairings[1].roundPairings[nwl.playerIndexMap[joshID]];
+  return {
+    actionType: ActionType.SetDivisionPairings,
+    payload: {
+      dpr: create(DivisionPairingsResponseSchema, {
+        division: "NWL",
+        divisionPairings: [
+          create(PairingSchema, {
+            players: pairing.players.map((p) => nwl.playerIndexMap[p.id]),
+            round: 1,
+            games: [
+              create(TournamentGameSchema, { scores: [0, 0], results: [0, 0] }),
+            ],
+            outcomes: [
+              TournamentGameResult.NO_RESULT,
+              TournamentGameResult.NO_RESULT,
+            ],
+            readyStates: ["", ""],
+          }),
+        ],
+      }),
+      loginState: cesarLoginState(),
+    },
+  };
+};
+
+it("keeps a waiting player's ready state through a pairings update", () => {
+  const state = TournamentReducer(nwlRound2State(0), readyForRound(joshID, 1));
+  const newState = TournamentReducer(state, joshPairingUpdate(state));
+  expect(readyStateOf(newState, joshID, 1)).toBe("ready");
+});
+
+it("clears both ready states when a pairings update resets them", () => {
+  const directorID = (() => {
+    const nwl = nwlRound2State(0).divisions["NWL"];
+    const pairing = nwl.pairings[1].roundPairings[nwl.playerIndexMap[joshID]];
+    return pairing.players.find((p) => p.id !== joshID)!.id;
+  })();
+  let state = TournamentReducer(nwlRound2State(0), readyForRound(joshID, 1));
+  state = TournamentReducer(state, readyForRound(directorID, 1));
+  expect(readyStateOf(state, directorID, 1)).toBe("ready");
+  // Both were ready, so the game was created; empty states now mean it was
+  // cancelled.
+  const newState = TournamentReducer(state, joshPairingUpdate(state));
+  expect(readyStateOf(newState, joshID, 1)).toBe("");
+  expect(readyStateOf(newState, directorID, 1)).toBe("");
 });
 
 // it('tests my pairings', () => {

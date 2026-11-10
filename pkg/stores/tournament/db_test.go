@@ -25,6 +25,12 @@ func decodeDivisionsTwoPass(t *testing.T, raw []byte) map[string]*entity.Tournam
 		if err := json.Unmarshal(division.DivisionRawMessage, &classic); err != nil {
 			t.Fatal(err)
 		}
+		// Loading drops the ready states older saves hold (see dbObjToEntity).
+		for _, p := range classic.PairingMap {
+			if len(p.ReadyStates) == 2 {
+				p.ReadyStates = []string{"", ""}
+			}
+		}
 		division.DivisionManager = &classic
 		division.DivisionRawMessage = nil
 	}

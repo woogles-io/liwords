@@ -90,6 +90,14 @@ func (s *DBStore) dbObjToEntity(tm *models.Tournament) (*entity.Tournament, erro
 		if division.Classic == nil {
 			division.Classic = &tl.ClassicDivision{}
 		}
+		// Ready states moved to the tournament_ready table. Older saves still
+		// hold them, as connection IDs; drop them so they're never sent, and
+		// the next save stops storing them.
+		for _, p := range division.Classic.PairingMap {
+			if p != nil && len(p.ReadyStates) == 2 && (p.ReadyStates[0] != "" || p.ReadyStates[1] != "") {
+				p.ReadyStates = []string{"", ""}
+			}
+		}
 		divisions[name] = &entity.TournamentDivision{
 			ManagerType:     division.ManagerType,
 			DivisionManager: division.Classic,
@@ -659,4 +667,110 @@ func (s *DBStore) GetActiveMonitoringStreams(ctx context.Context) ([]tl.ActiveMo
 		streams[i] = tl.ActiveMonitoringStream(r)
 	}
 	return streams, nil
+}
+
+// Ready states live in the tournament_ready table, not in the divisions: a
+// ready click would otherwise rewrite the whole tournament.
+
+func readyConns(c0, c1 pgtype.Text) [2]string {
+	return [2]string{c0.String, c1.String}
+}
+
+// SetReady marks the player at idx in the pairing ready, from connID. It
+// returns the pairing's ready flag (3 once both players are ready) and each
+// player's connection. already is true if the player was ready, in which case
+// nothing changed.
+func (s *DBStore) SetReady(ctx context.Context, k entity.TournamentPairingKey, idx int, connID string) (flag int, conns [2]string, already bool, err error) {
+	row, err := s.queries.SetTournamentReady(ctx, models.SetTournamentReadyParams{
+		TournamentID: k.TournamentID,
+		Division:     k.Division,
+		Round:        int32(k.Round),
+		Player0:      k.Players[0],
+		Player1:      k.Players[1],
+		PlayerIdx:    int32(idx),
+		ConnID:       connID,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return 0, conns, true, nil
+	}
+	if err != nil {
+		return 0, conns, false, err
+	}
+	return int(row.ReadyFlag), readyConns(row.Conn0, row.Conn1), false, nil
+}
+
+// Unready clears the ready state of the player at idx. changed is false if
+// the player wasn't ready, or if both were and the game has started.
+func (s *DBStore) Unready(ctx context.Context, k entity.TournamentPairingKey, idx int) (changed bool, conns [2]string, err error) {
+	row, err := s.queries.UnsetTournamentReady(ctx, models.UnsetTournamentReadyParams{
+		TournamentID: k.TournamentID,
+		Division:     k.Division,
+		Round:        int32(k.Round),
+		Player0:      k.Players[0],
+		Player1:      k.Players[1],
+		PlayerIdx:    int32(idx),
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, conns, nil
+	}
+	if err != nil {
+		return false, conns, err
+	}
+	return true, readyConns(row.Conn0, row.Conn1), nil
+}
+
+// ClearReady forgets the ready state of the player's pairing in the round, so
+// both players can ready again after their game was cancelled.
+func (s *DBStore) ClearReady(ctx context.Context, tid, division string, round int, playerID string) error {
+	return s.queries.DeleteTournamentReadyForPlayer(ctx, models.DeleteTournamentReadyForPlayerParams{
+		TournamentID: tid,
+		Division:     division,
+		Round:        int32(round),
+		PlayerID:     playerID,
+	})
+}
+
+// UnreadyConnection unreadies the players who readied from connID and are
+// still waiting for their opponent. Each result's Flag holds the bits of the
+// players it unreadied.
+func (s *DBStore) UnreadyConnection(ctx context.Context, connID string) ([]entity.TournamentReady, error) {
+	rows, err := s.queries.UnreadyTournamentConnection(ctx, connID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]entity.TournamentReady, len(rows))
+	for i, r := range rows {
+		out[i] = entity.TournamentReady{
+			TournamentPairingKey: entity.TournamentPairingKey{
+				TournamentID: r.TournamentID,
+				Division:     r.Division,
+				Round:        int(r.Round),
+				Players:      [2]string{r.Player0, r.Player1},
+			},
+			Flag: int(r.Bits),
+		}
+	}
+	return out, nil
+}
+
+// WaitingReady returns the tournament's pairings where one player is ready
+// and the other isn't yet.
+func (s *DBStore) WaitingReady(ctx context.Context, tid string) ([]entity.TournamentReady, error) {
+	rows, err := s.queries.GetWaitingTournamentReady(ctx, tid)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]entity.TournamentReady, len(rows))
+	for i, r := range rows {
+		out[i] = entity.TournamentReady{
+			TournamentPairingKey: entity.TournamentPairingKey{
+				TournamentID: tid,
+				Division:     r.Division,
+				Round:        int(r.Round),
+				Players:      [2]string{r.Player0, r.Player1},
+			},
+			Flag: int(r.ReadyFlag),
+		}
+	}
+	return out, nil
 }

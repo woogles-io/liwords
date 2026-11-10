@@ -5,7 +5,6 @@ package bus
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"runtime/debug"
@@ -1062,28 +1061,31 @@ func (b *Bus) leaveTab(ctx context.Context, userID, connID string) error {
 }
 
 func (b *Bus) deleteTournamentReadyMsgs(ctx context.Context, userID, connID string) error {
-	// When a user leaves the site, we want to make sure to clear any of their
-	// "tournament ready" messages in the actual tournament.
-	conn := b.redisPool.Get()
-	defer conn.Close()
-	bts, err := redis.Bytes(conn.Do("GET", "tready:"+connID))
-	if err != nil {
-		// There are probably no such messages for this connection.
-		return nil
-	}
-	readyEvt := pb.ReadyForTournamentGame{}
-	err = json.Unmarshal(bts, &readyEvt)
+	// When a tab closes, unready whoever readied from it and is still waiting
+	// for their opponent, and tell both players.
+	unreadied, err := b.stores.TournamentStore.UnreadyConnection(ctx, connID)
 	if err != nil {
 		return err
 	}
-	readyEvt.Unready = true
-	err = b.readyForTournamentGame(ctx, &readyEvt, userID, connID)
-	if err != nil {
-		return err
+	for _, r := range unreadied {
+		for i, playerID := range r.Players {
+			if r.Flag&(1<<i) == 0 {
+				continue
+			}
+			evt := entity.WrapEvent(&pb.ReadyForTournamentGame{
+				TournamentId: r.TournamentID,
+				Division:     r.Division,
+				Round:        int32(r.Round),
+				PlayerId:     playerID,
+				Unready:      true,
+			}, pb.MessageType_READY_FOR_TOURNAMENT_GAME)
+			for _, p := range r.Players {
+				uuid, _, _ := strings.Cut(p, ":")
+				b.pubToUser(uuid, evt, "")
+			}
+		}
 	}
-	// and delete the ready event from redis
-	_, err = conn.Do("DEL", "tready:"+connID)
-	return err
+	return nil
 }
 
 func (b *Bus) leaveSite(ctx context.Context, userID string) error {

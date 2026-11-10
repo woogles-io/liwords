@@ -193,6 +193,19 @@ player, written in the same transaction as the result that changes it.
    slug, club sessions, monitoring and the IRL-mode check. What still loads
    the whole tournament: `GetTournament`, exports, pairing previews, the
    ready-state handler, and every write.
+1c. **Ready states in their own table** (`tournament_ready`). After 1b, 50
+   of the first 70 saves in prod were ready clicks and tab closes, each
+   rewriting the whole tournament to change one pairing's ready state. One
+   row per pairing now holds a bit per player, like `games.ready_flag`; the
+   upsert makes simultaneous readies queue on the row, so exactly one click
+   starts the game on any server. Ready clicks, tab closes and cancelled
+   games no longer save the tournament. Loading drops the ready states older
+   saves hold, and page loads fill in the waiting ones from the table.
+1d. **Tournaments without the cache, under a lock** (ahead of steps 3-6,
+   since full loads measured 2-15 ms and saves 8-33 ms): every write takes a
+   transaction-scoped advisory lock on the tournament, loads, changes and
+   saves in one transaction. The cache and the entity mutex go. The per-
+   division tables below then come after ZDT, where measurements say so.
 2. **Lift the socket limit**: #2167, then #2168 a week after its frontend
    deploys. Independent of everything below.
 3. **New tables, dual-written.** Every save of the current entity also writes

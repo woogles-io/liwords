@@ -547,6 +547,18 @@ type TournamentDirector struct {
 	CreatedAt    pgtype.Timestamptz
 }
 
+type TournamentReady struct {
+	TournamentID string
+	Division     string
+	Round        int32
+	Player0      string
+	Player1      string
+	ReadyFlag    int32
+	Conn0        pgtype.Text
+	Conn1        pgtype.Text
+	UpdatedAt    pgtype.Timestamptz
+}
+
 type User struct {
 	ID                    int32
 	CreatedAt             pgtype.Timestamptz

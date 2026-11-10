@@ -273,22 +273,22 @@ func TestLaggedPairingsReadyGate(t *testing.T) {
 	is.NoErr(tc.StartRound(true))
 
 	// Will has not finished his round 2 game yet.
-	_, _, err = tc.SetReadyForGame(will, "conn1", 2, 0, false)
+	_, _, err = tc.ReadyPairing(will, 2, false)
 	is.True(isWooglesError(err, pb.WooglesError_TOURNAMENT_PREVIOUS_GAME_UNFINISHED))
 
 	// Round 2 is still open, so its games can still be started.
-	_, _, err = tc.SetReadyForGame(josh, "conn2", 1, 0, false)
+	_, _, err = tc.ReadyPairing(josh, 1, false)
 	is.NoErr(err)
-	_, _, err = tc.SetReadyForGame(will, "conn1", 0, 0, false)
+	_, _, err = tc.ReadyPairing(will, 0, false)
 	is.True(isWooglesError(err, pb.WooglesError_TOURNAMENT_SET_GAME_ROUND_NUMBER))
 
 	is.NoErr(submitScore(tc, 1, conrad, will, 400, 500))
-	_, bothReady, err := tc.SetReadyForGame(will, "conn1", 2, 0, false)
+	players, idx, err := tc.ReadyPairing(will, 2, false)
 	is.NoErr(err)
-	is.True(!bothReady)
+	is.Equal(players[idx], will)
 
 	// Getting unready is always allowed.
-	_, _, err = tc.SetReadyForGame(jesse, "conn3", 2, 0, true)
+	_, _, err = tc.ReadyPairing(jesse, 2, true)
 	is.NoErr(err)
 }
 

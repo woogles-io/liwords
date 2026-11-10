@@ -23,6 +23,13 @@ type backingStore interface {
 	GetUUIDBySlug(ctx context.Context, slug string) (string, error)
 	GetSummary(ctx context.Context, id string) (*entity.Tournament, error)
 	GetSummaryBySlug(ctx context.Context, slug string) (*entity.Tournament, error)
+
+	// Ready states of pairings, kept out of the divisions. See DBStore.SetReady.
+	SetReady(ctx context.Context, k entity.TournamentPairingKey, idx int, connID string) (flag int, conns [2]string, already bool, err error)
+	Unready(ctx context.Context, k entity.TournamentPairingKey, idx int) (changed bool, conns [2]string, err error)
+	ClearReady(ctx context.Context, tid, division string, round int, playerID string) error
+	UnreadyConnection(ctx context.Context, connID string) ([]entity.TournamentReady, error)
+	WaitingReady(ctx context.Context, tid string) ([]entity.TournamentReady, error)
 	Set(context.Context, *entity.Tournament) error
 	Create(context.Context, *entity.Tournament) error
 	GetRecentGames(ctx context.Context, tourneyID string, numGames int, offset int) (*pb.RecentGamesResponse, error)
@@ -260,4 +267,27 @@ func (c *Cache) DeleteMonitoringStreamsForTournament(ctx context.Context, tourna
 
 func (c *Cache) GetActiveMonitoringStreams(ctx context.Context) ([]tl.ActiveMonitoringStream, error) {
 	return c.backing.GetActiveMonitoringStreams(ctx)
+}
+
+// The ready-state methods go straight to the database: the cache never holds
+// ready states.
+
+func (c *Cache) SetReady(ctx context.Context, k entity.TournamentPairingKey, idx int, connID string) (int, [2]string, bool, error) {
+	return c.backing.SetReady(ctx, k, idx, connID)
+}
+
+func (c *Cache) Unready(ctx context.Context, k entity.TournamentPairingKey, idx int) (bool, [2]string, error) {
+	return c.backing.Unready(ctx, k, idx)
+}
+
+func (c *Cache) ClearReady(ctx context.Context, tid, division string, round int, playerID string) error {
+	return c.backing.ClearReady(ctx, tid, division, round, playerID)
+}
+
+func (c *Cache) UnreadyConnection(ctx context.Context, connID string) ([]entity.TournamentReady, error) {
+	return c.backing.UnreadyConnection(ctx, connID)
+}
+
+func (c *Cache) WaitingReady(ctx context.Context, tid string) ([]entity.TournamentReady, error) {
+	return c.backing.WaitingReady(ctx, tid)
 }

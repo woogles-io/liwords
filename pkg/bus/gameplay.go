@@ -2,7 +2,6 @@ package bus
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -28,10 +27,6 @@ import (
 
 var (
 	errGamesDisabled = errors.New("new games are temporarily disabled while we update Woogles; please try again in a few minutes")
-)
-
-const (
-	TournamentReadyExpire = 3600
 )
 
 func (b *Bus) errIfGamesDisabled(ctx context.Context) error {
@@ -365,23 +360,8 @@ func (b *Bus) readyForTournamentGame(ctx context.Context, evt *pb.ReadyForTourna
 	}
 
 	if !bothReady {
-		if !evt.Unready {
-			// Store temporary ready state in Redis.
-			conn := b.redisPool.Get()
-			defer conn.Close()
-			bts, err := json.Marshal(evt)
-			if err != nil {
-				return err
-			}
-			_, err = conn.Do("SET", "tready:"+connID, bts, "EX", TournamentReadyExpire)
-			if err != nil {
-				return err
-			}
-		}
 		return nil
 	}
-	redisConn := b.redisPool.Get()
-	defer redisConn.Close()
 
 	// Both players are ready! Instantiate and start a new game.
 	log.Ctx(ctx).Info().
@@ -413,11 +393,6 @@ func (b *Bus) readyForTournamentGame(ctx context.Context, evt *pb.ReadyForTourna
 			otherUserIdx = idx
 		}
 		connIDs[idx] = splitid[2]
-		// Delete the ready state if it existed in Redis.
-		_, err = redisConn.Do("DEL", "tready:"+connIDs[idx])
-		if err != nil {
-			return err
-		}
 	}
 	if !foundUs {
 		return errors.New("unexpected behavior; did not find us")
