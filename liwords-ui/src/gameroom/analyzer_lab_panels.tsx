@@ -1346,7 +1346,19 @@ export const useLabSim = (
     }));
     if (!made) return;
     const { job } = made;
-    labCall({ op: "remove", args: { job, plays: JSON.stringify([play]) } })
+    // the move compared with, taken out, is compared with no longer: a step
+    // against a play not in the sim fails
+    const compared = made.against === removed;
+    if (compared) {
+      setSim((s) => (s?.job === job ? { ...s, against: undefined } : s));
+    }
+    (compared
+      ? labCall({ op: "against", args: { job, play: null } })
+      : Promise.resolve()
+    )
+      .then(() =>
+        labCall({ op: "remove", args: { job, plays: JSON.stringify([play]) } }),
+      )
       .then(() => labCall({ op: "read", args: { job } }))
       .catch((e) =>
         setNote({ key: at, text: `Not taken out: ${errorText(e)}` }),

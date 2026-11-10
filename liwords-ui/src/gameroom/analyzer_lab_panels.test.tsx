@@ -2119,6 +2119,47 @@ describe("the sim panel", () => {
     });
   });
 
+  it("compares with no move once the move compared with is taken out", async () => {
+    render(
+      <Store>
+        <Sim lab={midgame()} moves={[listed(ba), listed(ab)]} />
+      </Store>,
+    );
+    await start();
+    emit({
+      job: 1,
+      answer: {
+        iterations: 32,
+        candidates: [candidate(ba, 0.5), candidate(ab, 0.4)],
+      },
+      done: false,
+    });
+    act(() => screen.getByRole("button", { name: "Details" }).click());
+    const details = document.querySelector(".lab-details") as HTMLElement;
+    fireEvent.mouseDown(
+      within(details).getByRole("combobox", { name: "Compare with" }),
+    );
+    act(() =>
+      (
+        [...document.querySelectorAll(".ant-select-item-option")].find(
+          (o) => o.textContent === JSON.stringify(ab),
+        ) as HTMLElement
+      ).click(),
+    );
+    await waitFor(() =>
+      expect(lab.calls.some((c) => c.op === "against")).toBe(true),
+    );
+    // AB, second by the chance to win, taken out
+    act(() => screen.getAllByRole("button", { name: "Take out" })[1].click());
+    await waitFor(() =>
+      expect(lab.calls.some((c) => c.op === "remove")).toBe(true),
+    );
+    const ops = lab.calls.map((c) => c.op);
+    const cleared = ops.lastIndexOf("against");
+    expect(lab.calls[cleared].args).toEqual({ job: 1, play: null });
+    expect(cleared).toBeLessThan(ops.indexOf("remove"));
+  });
+
   it("infers the opponent's leave from their last move, in place of the tiles known", async () => {
     render(
       <Store>
