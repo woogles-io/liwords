@@ -42,7 +42,7 @@ func main() {
 
 	ctx := context.Background()
 
-	tournamentStore, err := tournament.NewDBStore(cfg, gameStore)
+	tournamentStore, err := tournament.NewDBStore(pool, gameStore)
 	if err != nil {
 		panic(err)
 	}

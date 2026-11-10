@@ -101,6 +101,22 @@ tournament weekend, record here:
 - for each of the top read paths, what it actually needs (metadata, one
   division's players, one round's pairings, standings, everything).
 
+First sample, 2026-11-10, 00:00-02:30 UTC (a quiet Monday evening; the
+weekend's spans had already been deleted): 643 lookups, 89% hits. Misses
+took 2 ms at the median and 28 ms at worst.
+
+| Caller | Share | What it uses |
+|---|---|---|
+| `GetTournamentMetadata` | 36% | the tournament row, each division's controls and player count |
+| `GetActiveChatChannels` (`redis_chat.go`) | 27% | name |
+| `GetTournament` | 19% | everything |
+| `CHAT_MESSAGE` (`bus/chat.go`) | 9% | name, directors |
+| `SOUGHT_GAME_PROCESS_EVENT` | 5% | that it exists |
+| `set-result` | 4% | the division (a write) |
+
+About three quarters of reads need no pairings or standings. `GetBySlug`
+skips the cache, so every lookup by slug is already a full load.
+
 ## 5. Design
 
 ### Tables instead of one blob
@@ -167,6 +183,12 @@ player, written in the same transaction as the result that changes it.
 
 1. **Measure.** Deploy #2161 (read spans) and #2166 (index, single-pass
    decode). Fill in section 4 after a busy weekend.
+1a. **Gorm to sqlc** (`db/queries/tournaments.sql`), with no change to what
+   is stored. Step 3 writes the new tables in the same transaction as the
+   divisions column, which needs one pgx connection for both.
+1b. **Targeted reads** for the callers in section 4 that need only the
+   tournament row or division summaries, moved one or two at a time and
+   measured in Jaeger as each lands.
 2. **Lift the socket limit**: #2167, then #2168 a week after its frontend
    deploys. Independent of everything below.
 3. **New tables, dual-written.** Every save of the current entity also writes

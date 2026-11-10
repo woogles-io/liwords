@@ -73,7 +73,7 @@ func NewInitializedStores(dbPool *pgxpool.Pool, redisPool *redigoredis.Pool, cfg
 
 	stores.GameStore = game.NewCache(tmpGameStore)
 
-	tmpTournamentStore, err := tournament.NewDBStore(cfg, stores.GameStore)
+	tmpTournamentStore, err := tournament.NewDBStore(dbPool, stores.GameStore)
 	if err != nil {
 		return nil, err
 	}

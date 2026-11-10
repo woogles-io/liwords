@@ -8,6 +8,7 @@ import (
 	"github.com/matryer/is"
 
 	"github.com/woogles-io/liwords/pkg/entity"
+	"github.com/woogles-io/liwords/pkg/stores/models"
 	tl "github.com/woogles-io/liwords/pkg/tournament"
 )
 
@@ -58,7 +59,7 @@ func TestDivisionsSinglePassMatchesTwoPass(t *testing.T) {
 	is.NoErr(err)
 	s := &DBStore{}
 	decode := func() map[string]*entity.TournamentDivision {
-		tm, err := s.dbObjToEntity(&tournament{Divisions: raw, Directors: []byte("{}")})
+		tm, err := s.dbObjToEntity(&models.Tournament{Divisions: raw, Directors: []byte("{}")})
 		is.NoErr(err)
 		return tm.Divisions
 	}
@@ -84,7 +85,7 @@ func TestEncodeLeavesNoRawJSONOnEntity(t *testing.T) {
 	raw, err := os.ReadFile("../../tournament/testdata/wtf5.json")
 	is.NoErr(err)
 	s := &DBStore{}
-	tm, err := s.dbObjToEntity(&tournament{Divisions: raw, Directors: []byte("{}")})
+	tm, err := s.dbObjToEntity(&models.Tournament{Divisions: raw, Directors: []byte("{}")})
 	is.NoErr(err)
 	_, err = s.toDBObj(tm)
 	is.NoErr(err)
@@ -96,7 +97,7 @@ func TestEncodeLeavesNoRawJSONOnEntity(t *testing.T) {
 func TestDecodeRejectsUnknownManagerType(t *testing.T) {
 	is := is.New(t)
 	s := &DBStore{}
-	_, err := s.dbObjToEntity(&tournament{
+	_, err := s.dbObjToEntity(&models.Tournament{
 		Divisions: []byte(`{"A": {"mgrType": 7, "json": {}}}`),
 		Directors: []byte("{}"),
 	})
