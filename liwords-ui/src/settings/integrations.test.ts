@@ -25,6 +25,8 @@ describe("offersConnection", () => {
   it("leaves the other organizations as they were", () => {
     expect(offersConnection("wespa", "my", [])).toBe(true);
     expect(offersConnection("naspa", undefined, [])).toBe(true);
-    expect(offersConnection("absp", "sg", [])).toBe(false);
+    expect(offersConnection("absp", "sg", [])).toBe(true);
+    expect(offersConnection("absp", undefined, [])).toBe(true);
+    expect(offersConnection("absp", "gb", [title("absp", true)])).toBe(false);
   });
 });

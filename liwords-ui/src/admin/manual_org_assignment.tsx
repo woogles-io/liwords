@@ -488,7 +488,11 @@ export const ManualOrgAssignment = () => {
                         <>
                           <Alert
                             message="Optional: User Credentials"
-                            description="If you have the user's login credentials, you can enter them below. This allows automatic title refreshes in the future. If left blank, the public database will be used."
+                            description={
+                              selectedOrg === "naspa"
+                                ? "If you have the user's login credentials, you can enter them below. This allows automatic title refreshes in the future. If left blank, the public database will be used."
+                                : "If you have the user's absp-database.org login, you can enter it below to take the member number from their profile; it is not stored. If left blank, the member ID above is looked up in the public ratings list."
+                            }
                             type="info"
                             showIcon
                             style={{ marginBottom: 16 }}

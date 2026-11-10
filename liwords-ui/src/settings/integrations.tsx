@@ -224,7 +224,7 @@ const organizationInfo = {
     name: "ABSP",
     fullName: "Association of British Scrabble Players",
     description:
-      "ABSP is the UK Scrabble organization. You can connect using your absp-database.org login credentials.",
+      "ABSP is the UK Scrabble organization. You can connect using your absp-database.org login, which is used only to confirm your membership and is not stored. Your title comes from the ABSP ratings list.",
     requiresCredentials: true,
     requiresVerification: false,
   },
@@ -248,11 +248,6 @@ export const offersConnection = (
   countryCode: string | undefined,
   organizations: Array<OrganizationTitle>,
 ) => {
-  // Hide ABSP from user-facing connection options (potential deprecation)
-  // Admins can still assign ABSP memberships via the admin panel
-  if (code === "absp") {
-    return false;
-  }
   if (code === "sg" && countryCode?.toLowerCase() !== "sg") {
     return false;
   }

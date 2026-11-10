@@ -2,54 +2,68 @@ package organizations
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"io"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
 	"regexp"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
+	"unicode"
 )
 
-// ABSPPlayer represents a player in the ABSP database
-type ABSPPlayer struct {
-	LastName  string
-	FirstName string
-	Title     string // GM or EXP (extracted from last name if present)
-	Rating    int
-	MemberID  string // Normalized (leading zeros stripped)
-}
+// ABSPBaseURL is absp-database.org, which has both the members' login and
+// the ratings list, current.txt: one player per line, the columns separated
+// by spaces, as
+//
+//	LAST(TITLE) FIRST RATING POSITION MEMNO GAMES
+//
+// The title, GM or EXP, is joined to the last name in parentheses, and only
+// a titled player has one. MEMNO is the 5-digit ABSP membership number,
+// blank for nonmembers and lapsed members; GAMES is the number of games
+// available to be rated, blank for the full quota. A name has underscores for
+// its spaces, and a first name may end in a {PLACE} that tells two players of
+// the same name apart.
+const ABSPBaseURL = "https://absp-database.org"
 
-// ABSPIntegration handles ABSP authentication and data fetching
+// abspLineRegex matches a line of current.txt. A blank column leaves its two
+// spaces, so MEMNO and GAMES are told apart by position, not by splitting on
+// runs of spaces; the names and the numbers before them may be padded.
+var abspLineRegex = regexp.MustCompile(`^(\S+)\s+(\S+)\s+(\d+)\s+(\d+) (\d{5}|) ?(\d*)\s*$`)
+
+// abspTitleRegex splits a title off a last name.
+var abspTitleRegex = regexp.MustCompile(`^(.+)\(([A-Z]+)\)$`)
+
+// abspPlaceRegex is the {PLACE} that may end a first name.
+var abspPlaceRegex = regexp.MustCompile(`\{[^}]*\}$`)
+
+// abspMemberIDRegex matches a membership number. The capture, the number
+// without its leading zeros ("0" stays "0"), is the member ID, so that 00745
+// and 745 are the same member.
+var abspMemberIDRegex = regexp.MustCompile(`^0*(\d+)$`)
+
+// ABSPIntegration connects ABSP members. A member logs in to
+// absp-database.org once, to prove who they are; their title, and the
+// title of a member an admin links, comes from the public ratings list, so
+// that no login is kept for refreshing it. A member missing from the list,
+// or listed without a title, holds no title.
 type ABSPIntegration struct {
 	BaseURL    string
 	HTTPClient *http.Client
-	cache      *abspCache
+
+	mu      sync.Mutex
+	players map[string]abspPlayer // Key: member ID; loaded once per instance
+	loadErr error                 // a failed load, not retried by this instance
 }
 
-// abspCache holds the in-memory database with TTL
-type abspCache struct {
-	mu        sync.RWMutex
-	players   map[string]*ABSPPlayer // Key: normalized member ID
-	lastFetch time.Time
-	cacheTTL  time.Duration
-}
-
-// NewABSPIntegration creates a new ABSP integration instance
-func NewABSPIntegration() *ABSPIntegration {
-	return &ABSPIntegration{
-		BaseURL: "https://absp-database.org",
-		HTTPClient: &http.Client{
-			Timeout: 30 * time.Second,
-		},
-		cache: &abspCache{
-			players:  make(map[string]*ABSPPlayer),
-			cacheTTL: 24 * time.Hour,
-		},
-	}
+// abspPlayer is one ABSP member of the ratings list.
+type abspPlayer struct {
+	MemberID string
+	Name     string
+	Title    string
 }
 
 // ABSPMemberInfo holds the parsed member information from the profile page
@@ -59,60 +73,209 @@ type ABSPMemberInfo struct {
 	LastName  string
 }
 
-// FetchTitle fetches title from ABSP using authentication to verify identity,
-// then looks up the title in the cached database
+// NewABSPIntegration creates a new ABSP integration instance
+func NewABSPIntegration() *ABSPIntegration {
+	return &ABSPIntegration{
+		BaseURL: ABSPBaseURL,
+		HTTPClient: &http.Client{
+			Timeout: 30 * time.Second,
+		},
+	}
+}
+
+// abspMemberID returns the member ID for a membership number, or false when
+// s is not one.
+func abspMemberID(s string) (string, bool) {
+	m := abspMemberIDRegex.FindStringSubmatch(strings.TrimSpace(s))
+	if m == nil {
+		return "", false
+	}
+	return m[1], true
+}
+
+// abspName turns the ratings list's form of a name, in capitals with
+// underscores for spaces, into the usual one: O'ROURKE to O'Rourke,
+// DE_POITIERS to De Poitiers.
+func abspName(s string) string {
+	s = strings.ReplaceAll(s, "_", " ")
+	out := []rune(strings.ToLower(s))
+	for i, r := range out {
+		if i == 0 || out[i-1] == ' ' || out[i-1] == '-' || out[i-1] == '\'' {
+			out[i] = unicode.ToUpper(r)
+		}
+	}
+	return string(out)
+}
+
+// parseABSPRatings reads current.txt and returns its members, keyed by
+// member ID. Anything wrong in it (a line it cannot read, an unknown title,
+// a repeated membership number, or no members at all) refuses the whole
+// list, so that a broken list changes no one's title.
+func parseABSPRatings(body []byte) (map[string]abspPlayer, error) {
+	players := make(map[string]abspPlayer)
+	scanner := bufio.NewScanner(bytes.NewReader(body))
+	for n := 1; scanner.Scan(); n++ {
+		line := scanner.Text()
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+		m := abspLineRegex.FindStringSubmatch(line)
+		if m == nil {
+			return nil, fmt.Errorf("ABSP ratings list has a line it cannot read (line %d)", n)
+		}
+		lastName, firstName, memNo := m[1], m[2], m[5]
+		title := ""
+		if t := abspTitleRegex.FindStringSubmatch(lastName); t != nil {
+			lastName, title = t[1], t[2]
+			if _, known := TitleRegistry[OrgABSP][title]; !known {
+				return nil, fmt.Errorf("ABSP ratings list has an unknown title %q (line %d)", title, n)
+			}
+		}
+		if memNo == "" {
+			continue // a nonmember or a lapsed member
+		}
+		id, _ := abspMemberID(memNo)
+		if _, repeated := players[id]; repeated {
+			return nil, fmt.Errorf("ABSP ratings list repeats membership number %s", memNo)
+		}
+		firstName = abspPlaceRegex.ReplaceAllString(firstName, "")
+		players[id] = abspPlayer{
+			MemberID: id,
+			Name:     abspName(firstName) + " " + abspName(lastName),
+			Title:    title,
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("failed to read ABSP ratings list: %w", err)
+	}
+	if len(players) == 0 {
+		return nil, fmt.Errorf("ABSP ratings list has no members")
+	}
+	return players, nil
+}
+
+// load downloads and parses the ratings list, once per instance: a failure
+// is kept too, so that a scheduled refresh of every linked user does not
+// download a broken list again for each of them.
+func (a *ABSPIntegration) load() (map[string]abspPlayer, error) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.players == nil && a.loadErr == nil {
+		a.players, a.loadErr = a.download()
+	}
+	return a.players, a.loadErr
+}
+
+// download fetches and parses the ratings list.
+func (a *ABSPIntegration) download() (map[string]abspPlayer, error) {
+	req, err := http.NewRequest("GET", a.BaseURL+"/current.txt", nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header.Set("User-Agent", "woogles.io")
+
+	resp, err := a.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to download ABSP ratings list: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("ABSP ratings list returned status %d", resp.StatusCode)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read ABSP ratings list: %w", err)
+	}
+
+	return parseABSPRatings(body)
+}
+
+// lookUp looks a member up in the ratings list. A member missing from it
+// comes back with an empty RawTitle and FullName, not an error, so that a
+// refresh takes away a title that is no longer listed.
+func (a *ABSPIntegration) lookUp(memberID string) (*TitleInfo, error) {
+	id, ok := abspMemberID(memberID)
+	if !ok {
+		return nil, fmt.Errorf("%q is not an ABSP membership number", memberID)
+	}
+	players, err := a.load()
+	if err != nil {
+		return nil, err
+	}
+
+	now := time.Now()
+	info := &TitleInfo{
+		Organization:     OrgABSP,
+		OrganizationName: OrganizationRegistry[OrgABSP].Name,
+		MemberID:         id,
+		LastFetched:      &now,
+	}
+	if p, ok := players[id]; ok {
+		info.RawTitle = p.Title
+		info.FullName = p.Name
+	}
+	return info, nil
+}
+
+// FetchTitle returns a member's title from the ratings list. With
+// credentials, the member logs in first, and it is the membership number on
+// their profile that is looked up, whatever memberID is; their name is the
+// profile's, and a member missing from the list is linked holding no title.
+// Without, memberID is looked up as it is, for an admin's link or a refresh.
 func (a *ABSPIntegration) FetchTitle(memberID string, credentials map[string]string) (*TitleInfo, error) {
+	if len(credentials) == 0 {
+		return a.lookUp(memberID)
+	}
+
+	memberInfo, err := a.authenticate(credentials)
+	if err != nil {
+		return nil, err
+	}
+	info, err := a.lookUp(memberInfo.MemberID)
+	if err != nil {
+		return nil, err
+	}
+	info.FullName = strings.TrimSpace(memberInfo.FirstName + " " + memberInfo.LastName)
+	return info, nil
+}
+
+// GetOrganizationCode returns the organization code
+func (a *ABSPIntegration) GetOrganizationCode() OrganizationCode {
+	return OrgABSP
+}
+
+// GetRealName returns the member's name: from their profile, with
+// credentials, and otherwise from the ratings list, where a member missing
+// from it has none, which is an error, so that an admin links only a listed
+// member.
+func (a *ABSPIntegration) GetRealName(memberID string, credentials map[string]string) (string, error) {
+	info, err := a.FetchTitle(memberID, credentials)
+	if err != nil {
+		return "", err
+	}
+	if info.FullName == "" {
+		return "", fmt.Errorf("membership number %s is not in the ABSP ratings list", info.MemberID)
+	}
+	return info.FullName, nil
+}
+
+// authenticate logs in to absp-database.org and reads the member's profile.
+func (a *ABSPIntegration) authenticate(credentials map[string]string) (*ABSPMemberInfo, error) {
 	username, ok := credentials["username"]
 	if !ok {
 		return nil, fmt.Errorf("username not provided")
 	}
-
 	password, ok := credentials["password"]
 	if !ok {
 		return nil, fmt.Errorf("password not provided")
 	}
-
-	// Step 1: Authenticate with ABSP and get member info from profile
 	memberInfo, err := a.authenticateAndFetchProfile(username, password)
 	if err != nil {
 		return nil, fmt.Errorf("authentication failed: %w", err)
 	}
-
-	// Step 2: Ensure cache is up to date
-	if err := a.ensureCacheValid(); err != nil {
-		return nil, fmt.Errorf("failed to load ABSP database: %w", err)
-	}
-
-	// Step 3: Look up title in the cached database using the member ID from profile
-	player, err := a.getPlayer(memberInfo.MemberID)
-	if err != nil {
-		// Player might not be in the ratings database yet, but auth succeeded
-		// Use info from profile page
-		now := time.Now()
-		fullName := memberInfo.FirstName + " " + memberInfo.LastName
-
-		return &TitleInfo{
-			Organization:     OrgABSP,
-			OrganizationName: "ABSP",
-			RawTitle:         "",
-			MemberID:         memberInfo.MemberID,
-			FullName:         fullName,
-			LastFetched:      &now,
-		}, nil
-	}
-
-	now := time.Now()
-	// Prefer name from profile page (more authoritative)
-	fullName := memberInfo.FirstName + " " + memberInfo.LastName
-
-	return &TitleInfo{
-		Organization:     OrgABSP,
-		OrganizationName: "ABSP",
-		RawTitle:         player.Title,
-		MemberID:         memberInfo.MemberID,
-		FullName:         fullName,
-		LastFetched:      &now,
-	}, nil
+	return memberInfo, nil
 }
 
 // authenticateAndFetchProfile authenticates with ABSP and fetches the member's profile
@@ -148,8 +311,7 @@ func (a *ABSPIntegration) authenticateAndFetchProfile(username, password string)
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("authentication failed with status %d: %s", resp.StatusCode, string(body))
+		return nil, fmt.Errorf("authentication failed with status %d", resp.StatusCode)
 	}
 
 	// Read the response body to check for successful login
@@ -158,10 +320,8 @@ func (a *ABSPIntegration) authenticateAndFetchProfile(username, password string)
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
-	bodyStr := string(body)
-
 	// Check for successful login indicator
-	if !strings.Contains(bodyStr, "<p style='color:green'>ABSP Member</p>") {
+	if !strings.Contains(string(body), "<p style='color:green'>ABSP Member</p>") {
 		return nil, fmt.Errorf("invalid username or password")
 	}
 
@@ -182,7 +342,7 @@ func (a *ABSPIntegration) authenticateAndFetchProfile(username, password string)
 	}
 
 	// Parse the member info from the HTML
-	memberInfo, err := a.parseProfilePage(string(profileBody))
+	memberInfo, err := parseABSPProfilePage(string(profileBody))
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse profile page: %w", err)
 	}
@@ -190,14 +350,13 @@ func (a *ABSPIntegration) authenticateAndFetchProfile(username, password string)
 	return memberInfo, nil
 }
 
-// parseProfilePage extracts member information from the ABSP profile page HTML
-func (a *ABSPIntegration) parseProfilePage(html string) (*ABSPMemberInfo, error) {
+// parseABSPProfilePage extracts member information from the ABSP profile page HTML
+func parseABSPProfilePage(html string) (*ABSPMemberInfo, error) {
 	info := &ABSPMemberInfo{}
 
 	// Pattern to match table cells with label and value
 	// Format: <td>label:</td>\n<td>\nvalue</td>
 	extractValue := func(label string) string {
-		// Look for pattern: <td>label:</td> followed by <td> with the value
 		pattern := regexp.MustCompile(`(?s)<td>` + regexp.QuoteMeta(label) + `:</td>\s*<td>\s*([^<]+?)\s*</td>`)
 		matches := pattern.FindStringSubmatch(html)
 		if len(matches) >= 2 {
@@ -215,188 +374,4 @@ func (a *ABSPIntegration) parseProfilePage(html string) (*ABSPMemberInfo, error)
 	}
 
 	return info, nil
-}
-
-// GetOrganizationCode returns the organization code
-func (a *ABSPIntegration) GetOrganizationCode() OrganizationCode {
-	return OrgABSP
-}
-
-// FetchTitleWithoutAuth fetches title information from the public ABSP database without authentication
-// This is used for admin purposes where we don't need to verify account ownership
-func (a *ABSPIntegration) FetchTitleWithoutAuth(memberID string) (*TitleInfo, error) {
-	// Ensure cache is up to date (downloads from public database)
-	if err := a.ensureCacheValid(); err != nil {
-		return nil, fmt.Errorf("failed to load ABSP database: %w", err)
-	}
-
-	// Look up player in the cached database
-	player, err := a.getPlayer(memberID)
-	if err != nil {
-		return nil, fmt.Errorf("player not found in ABSP database: %w", err)
-	}
-
-	now := time.Now()
-	fullName := player.FirstName + " " + player.LastName
-
-	return &TitleInfo{
-		Organization:     OrgABSP,
-		OrganizationName: "ABSP",
-		RawTitle:         player.Title,
-		MemberID:         player.MemberID,
-		FullName:         fullName,
-		LastFetched:      &now,
-	}, nil
-}
-
-// GetRealName fetches the user's real name from ABSP using their credentials
-func (a *ABSPIntegration) GetRealName(memberID string, credentials map[string]string) (string, error) {
-	username, ok := credentials["username"]
-	if !ok {
-		return "", fmt.Errorf("username not provided")
-	}
-
-	password, ok := credentials["password"]
-	if !ok {
-		return "", fmt.Errorf("password not provided")
-	}
-
-	// Authenticate and fetch profile
-	memberInfo, err := a.authenticateAndFetchProfile(username, password)
-	if err != nil {
-		return "", fmt.Errorf("authentication failed: %w", err)
-	}
-
-	fullName := memberInfo.FirstName + " " + memberInfo.LastName
-	return fullName, nil
-}
-
-// ensureCacheValid checks if cache needs refresh and updates if necessary
-func (a *ABSPIntegration) ensureCacheValid() error {
-	a.cache.mu.RLock()
-	needsRefresh := time.Since(a.cache.lastFetch) > a.cache.cacheTTL || len(a.cache.players) == 0
-	a.cache.mu.RUnlock()
-
-	if !needsRefresh {
-		return nil
-	}
-
-	// Need to refresh - acquire write lock
-	return a.refreshCache()
-}
-
-// refreshCache downloads and parses the ABSP database
-func (a *ABSPIntegration) refreshCache() error {
-	// Download the database file
-	resp, err := a.HTTPClient.Get(a.BaseURL + "/current.txt")
-	if err != nil {
-		return fmt.Errorf("failed to download ABSP database: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("ABSP database returned status %d", resp.StatusCode)
-	}
-
-	// Parse the file
-	players, err := a.parseDatabase(resp.Body)
-	if err != nil {
-		return fmt.Errorf("failed to parse ABSP database: %w", err)
-	}
-
-	// Update cache with write lock
-	a.cache.mu.Lock()
-	a.cache.players = players
-	a.cache.lastFetch = time.Now()
-	a.cache.mu.Unlock()
-
-	return nil
-}
-
-// parseDatabase parses the ABSP database text file
-func (a *ABSPIntegration) parseDatabase(r io.Reader) (map[string]*ABSPPlayer, error) {
-	players := make(map[string]*ABSPPlayer)
-	scanner := bufio.NewScanner(r)
-	titleRegex := regexp.MustCompile(`^([A-Z]+)\((GM|EXP)\)$`)
-
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
-
-		// Split by whitespace
-		fields := strings.Fields(line)
-		if len(fields) < 3 {
-			continue // Skip malformed lines
-		}
-
-		lastName := fields[0]
-		firstName := fields[1]
-		var title string
-
-		// Check if last name contains title in parentheses
-		if matches := titleRegex.FindStringSubmatch(lastName); matches != nil {
-			lastName = matches[1]
-			title = matches[2]
-		}
-
-		// Parse rating (optional)
-		rating := 0
-		if len(fields) >= 3 {
-			if r, err := strconv.Atoi(fields[2]); err == nil {
-				rating = r
-			}
-		}
-
-		// Parse member ID (5th column = index 4, optional)
-		// Note: There may be additional columns after this, but we always use the 5th column
-		var memberID string
-		if len(fields) >= 5 {
-			memberID = strings.TrimSpace(fields[4])
-			// Normalize member ID by converting to int and back to string (strips leading zeros)
-			// This allows "00745" and "745" to both match as "745"
-			if memberID != "" {
-				if id, err := strconv.Atoi(memberID); err == nil {
-					memberID = strconv.Itoa(id)
-				}
-			}
-		}
-
-		// Only add players with member IDs
-		if memberID != "" {
-			players[memberID] = &ABSPPlayer{
-				LastName:  lastName,
-				FirstName: firstName,
-				Title:     title,
-				Rating:    rating,
-				MemberID:  memberID,
-			}
-		}
-	}
-
-	if err := scanner.Err(); err != nil {
-		return nil, fmt.Errorf("error reading database: %w", err)
-	}
-
-	return players, nil
-}
-
-// getPlayer looks up a player by member ID (normalized)
-func (a *ABSPIntegration) getPlayer(memberID string) (*ABSPPlayer, error) {
-	// Normalize the input member ID
-	normalizedID := memberID
-	if id, err := strconv.Atoi(memberID); err == nil {
-		normalizedID = strconv.Itoa(id) // Strip leading zeros
-	}
-
-	a.cache.mu.RLock()
-	defer a.cache.mu.RUnlock()
-
-	player, ok := a.cache.players[normalizedID]
-	if !ok {
-		return nil, fmt.Errorf("player not found in ABSP database")
-	}
-
-	return player, nil
 }
