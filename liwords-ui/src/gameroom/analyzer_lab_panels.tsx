@@ -137,9 +137,9 @@ type EndgameAnswer = {
 // The depth a pre-endgame's answer gives once searched to the end.
 const END_DEPTH = 127;
 
-// The most tiles in the bag a pre-endgame is solved with: with 7 an exchange
-// is open, which the wasm's search does not keep to its time with, holding
-// the lab's worker past any step.
+// The most tiles in the bag a pre-endgame is solved with: with 7 or more, the
+// wasm's first step runs far past its time, holding the lab's worker; with 6
+// or fewer, its steps keep to it. A pre-endgame of 7 or more is a legal one.
 const MAX_PEG_BAG = 6;
 
 // What each player knows in a pre-endgame of two or more tiles in the bag
