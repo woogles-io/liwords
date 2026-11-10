@@ -192,7 +192,7 @@ func PostgresConnUri(host, port, name, user, password, sslmode string) string {
 		user, password, host, port, name, sslmode)
 }
 
-// PostgresConnDSN is obsolete and only for Gorm. Remove once we get rid of gorm.
+// PostgresConnDSN builds a key=value connection string, which pgxpool.New accepts.
 func PostgresConnDSN(host, port, name, user, password, sslmode string) string {
 	return fmt.Sprintf("host=%s port=%s dbname=%s user=%s password=%s sslmode=%s",
 		host, port, name, user, password, sslmode)

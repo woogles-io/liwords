@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"github.com/woogles-io/liwords/pkg/config"
+	"github.com/woogles-io/liwords/pkg/stores/common"
 	"github.com/woogles-io/liwords/pkg/stores/tournament"
 	tl "github.com/woogles-io/liwords/pkg/tournament"
 )
@@ -42,7 +43,11 @@ func main() {
 
 	// Initialize tournament store
 	// We pass nil for game store since we don't need it for this operation
-	tournamentStore, err := tournament.NewDBStore(cfg, nil)
+	pool, err := common.OpenDB(cfg.DBHost, cfg.DBPort, cfg.DBName, cfg.DBUser, cfg.DBPassword, cfg.DBSSLMode)
+	if err != nil {
+		log.Fatalf("Failed to open database: %v", err)
+	}
+	tournamentStore, err := tournament.NewDBStore(pool, nil)
 	if err != nil {
 		log.Fatalf("Failed to initialize tournament store: %v", err)
 	}
