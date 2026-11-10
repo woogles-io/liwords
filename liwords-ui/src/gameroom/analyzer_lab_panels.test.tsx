@@ -150,6 +150,7 @@ const position = (
   },
   leave: "CSW24",
   challengeable: false,
+  challengeBonus: 5,
   exchanges: [1, 2],
   names: ["andy", "wolges"],
   key: JSON.stringify(unseen),
@@ -610,11 +611,12 @@ describe("the sim panel", () => {
         />
       </Store>,
     );
-    // the one played among them, but no phony
+    // the one played among them, a phony too
     expect(
       screen.getByText("Static equity until the sim starts."),
     ).toBeInTheDocument();
     expect(bodyRows()).toEqual([
+      `${JSON.stringify(down)}+20.00`,
       `${JSON.stringify(ab)}+8.00`,
       `${JSON.stringify(ba)}+3.00`,
     ]);
@@ -624,7 +626,7 @@ describe("the sim panel", () => {
     await start();
     const sim = lab.calls.find((c) => c.op === "sim");
     const { plays, request } = sim?.args as { plays: string; request: string };
-    expect(JSON.parse(plays)).toEqual([ba, ab]);
+    expect(JSON.parse(plays)).toEqual([ba, ab, down]);
     expect(JSON.parse(request).leave).toBe("CSW24");
     // the plies the lab's own, always sent
     expect(JSON.parse(request).plies).toBe(4);
@@ -912,7 +914,7 @@ describe("the sim panel", () => {
     expect(board.placed.map((m) => m.jsonKey)).toEqual([JSON.stringify(ba)]);
   });
 
-  it("leaves out the phony listed, naming the words the lexicon lacks", async () => {
+  it("sims the phony listed unchallenged, naming the words the lexicon lacks", async () => {
     const phony = { action: "play", down: true, lane: 7, idx: 7, word: [A, B] };
     render(
       <Store>
@@ -931,14 +933,17 @@ describe("the sim panel", () => {
       </Store>,
     );
     expect(
-      screen.getByText("SARKIER is not simmed: CONDS is not in CSW24."),
+      screen.getByText(
+        "SARKIER is a phony, simmed unchallenged: CONDS is not in CSW24.",
+      ),
     ).toBeInTheDocument();
-    expect(bodyRows()).toHaveLength(2);
+    expect(bodyRows()).toHaveLength(3);
     await start();
     const sim = lab.calls.find((c) => c.op === "sim");
     expect(JSON.parse((sim?.args as { plays: string }).plays)).toEqual([
       ba,
       ab,
+      phony,
     ]);
   });
 
@@ -1144,7 +1149,7 @@ describe("the sim panel", () => {
     expect(bodyRows()[3]).toBe("8HAI+4.000");
   });
 
-  it("turns down a phony, naming its words, and a move listed already", async () => {
+  it("adds a phony, naming its words, and turns down a move listed already", async () => {
     placeBE();
     page.answer = {
       ...be,
@@ -1160,19 +1165,86 @@ describe("the sim panel", () => {
     };
     render(
       <Store>
-        <Sim lab={midgame()} moves={[listed(ba), listed(be)]} />
+        <Sim lab={midgame()} moves={[listed(ba)]} />
       </Store>,
     );
     act(() => screen.getByRole("button", { name: "Add" }).click());
     expect(
-      await screen.findByText("Not added: BAZQPE and UB are not in CSW24."),
+      await screen.findByText(
+        "BE is a phony, simmed unchallenged: BAZQPE and UB are not in CSW24.",
+      ),
     ).toBeInTheDocument();
+    expect(bodyRows()).toHaveLength(2);
     page.answer = undefined;
     act(() => screen.getByRole("button", { name: "Add" }).click());
     expect(
       await screen.findByText("That move is listed already."),
     ).toBeInTheDocument();
     expect(bodyRows()).toHaveLength(2);
+  });
+
+  it("adds the move placed on the board with a challenge's bonus, and challenged off, each a candidate of its own", async () => {
+    placeBE();
+    render(
+      <Store>
+        <Sim lab={midgame()} moves={[listed(ba)]} />
+      </Store>,
+    );
+    const challenged = () =>
+      act(() => screen.getByRole("button", { name: "Challenged" }).click());
+    challenged();
+    // the game's own bonus to begin with
+    expect(screen.getByRole("spinbutton", { name: "Bonus" })).toHaveValue("5");
+    act(() =>
+      screen.getByRole("button", { name: "Add with the bonus" }).click(),
+    );
+    await waitFor(() => expect(bodyRows()).toHaveLength(2));
+    expect(bodyRows()).toContain("8HBE +5+9.00");
+    challenged();
+    act(() =>
+      screen.getByRole("button", { name: "Add challenged off" }).click(),
+    );
+    await waitFor(() => expect(bodyRows()).toHaveLength(3));
+    // challenged off: a pass's static equity
+    expect(page.scored).toContainEqual({ action: "exchange", tiles: [] });
+    expect(bodyRows()).toContain("8HBE (challenged off)+4.00");
+
+    await start();
+    const sim = lab.calls.find((c) => c.op === "sim");
+    const plays = JSON.parse((sim?.args as { plays: string }).plays);
+    expect(plays).toEqual([
+      ba,
+      { ...be, bonus: 5 },
+      { ...be, challenged_off: true },
+    ]);
+    // the sim answers with each as it holds it: the bonus in the score, and
+    // the play challenged off flagged, scoring nothing
+    emit({
+      job: 1,
+      answer: {
+        iterations: 32,
+        candidates: [
+          candidate(ba, 0.5),
+          candidate({ ...be, score: 15 }, 0.4),
+          { ...candidate({ ...be, score: 0 }, 0.3), challenged_off: true },
+        ],
+      },
+      done: false,
+    });
+    expect(bodyRows()).toEqual([
+      `${JSON.stringify(ba)}50.0%0.000.0%32`,
+      "8HBE +540.0%0.000.0%32",
+      "8HBE (challenged off)30.0%0.000.0%32",
+    ]);
+    // taken out as it was given
+    act(() => screen.getAllByRole("button", { name: "Take out" })[1].click());
+    await waitFor(() =>
+      expect(lab.calls.some((c) => c.op === "remove")).toBe(true),
+    );
+    const removed = lab.calls.find((c) => c.op === "remove");
+    expect(JSON.parse((removed?.args as { plays: string }).plays)).toEqual([
+      { ...be, bonus: 5 },
+    ]);
   });
 
   it("keeps the rows' order while a row's button has the keyboard", async () => {

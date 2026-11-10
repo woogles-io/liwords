@@ -26,6 +26,7 @@ import {
   PauseOutlined,
   PlusOutlined,
   ProfileOutlined,
+  QuestionOutlined,
   SettingOutlined,
   SwapOutlined,
 } from "@ant-design/icons";
@@ -84,7 +85,9 @@ import { LabHooks, publishLabHooks } from "./lab_hooks";
 
 export type LabView = "sim" | "endgame";
 
-// A play as the wasm writes one, with no equity.
+// A play as the wasm writes one, with no equity. A play given to a sim may
+// add a challenge's bonus to its score, or be challenged off the board: it
+// scores nothing, its tiles stay on the rack, and its turn counts scoreless.
 type WasmPlay =
   | {
       action: "play";
@@ -93,8 +96,13 @@ type WasmPlay =
       idx: number;
       word: Array<number>;
       score: number;
+      bonus?: number;
+      challenged_off?: boolean;
     }
   | { action: "exchange"; tiles: Array<number> };
+
+// What a play given to a sim is besides the play: a bonus, or challenged off.
+type PlayVariant = { bonus: number } | { challenged_off: true };
 
 // An endgame's answer: the tiles in the bag, the steps that solved and the
 // nodes they searched, the play to make and its value (none before the first
@@ -138,7 +146,13 @@ type SimPly = { n: number; score: SimStat; bingo: number };
 // plies, the first of them the opponent's reply.
 type SimAnswer = {
   iterations: number;
-  candidates: Array<SimCandidate & { play: WasmPlay; plies?: Array<SimPly> }>;
+  candidates: Array<
+    SimCandidate & {
+      play: WasmPlay;
+      challenged_off?: boolean;
+      plies?: Array<SimPly>;
+    }
+  >;
 };
 
 // A play as the wasm's play_score answers for it: checked, its score
@@ -175,6 +189,8 @@ export type LabPosition = {
   // whether the other player has gone out with the play just made, which the
   // game's rules still let the player to move challenge off
   challengeable: boolean;
+  // the points a play challenged and found good gets, by the game's rules
+  challengeBonus: number;
   // each seat's exchanges so far
   exchanges: Array<number>;
   // each player's name, by seat
@@ -227,6 +243,12 @@ export const useLabPosition = (
         turns[turns.length - 1]?.type === GameEvent_Type.TILE_PLACEMENT_MOVE &&
         challengeRule !== undefined &&
         challengeRule !== ChallengeRule.VOID,
+      challengeBonus:
+        challengeRule === ChallengeRule.TEN_POINT
+          ? 10
+          : challengeRule === ChallengeRule.FIVE_POINT
+            ? 5
+            : 0,
       exchanges: exchangesBySeat(turns),
       names,
       key: JSON.stringify([position, boardObj.leave]),
@@ -787,7 +809,8 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
   );
 };
 
-// A play's identity, written as the analyzer keys its moves.
+// A play's identity, written as the analyzer keys its moves, with its bonus
+// or its being challenged off, when it has either.
 const playKey = (play: WasmPlay) =>
   JSON.stringify(
     play.action === "play"
@@ -797,9 +820,61 @@ const playKey = (play: WasmPlay) =>
           lane: play.lane,
           idx: play.idx,
           word: play.word,
+          ...(play.bonus ? { bonus: play.bonus } : {}),
+          ...(play.challenged_off ? { challenged_off: true } : {}),
         }
       : { action: play.action, tiles: play.tiles },
   );
+
+// A candidate as a sim holds it and answers with it: the play, with its
+// score as the sim counted it (a bonus added, none challenged off), and
+// whether it was challenged off.
+type Held = { play: WasmPlay; challenged_off?: boolean };
+
+// The moves a sim holds, by the play and whether it was challenged off: a
+// play and the same play with a bonus are told apart by their scores.
+type HeldMoves = Map<string, Array<{ score?: number; move: AnalyzerMove }>>;
+
+// A play written back by a sim is the play alone, a flag beside it; one as it
+// was given carries its bonus and its flag. Either names the same candidate.
+const heldKey = (held: Held) => {
+  const { play } = held;
+  const off =
+    !!held.challenged_off || (play.action === "play" && !!play.challenged_off);
+  const plain: WasmPlay =
+    play.action === "play"
+      ? { ...play, bonus: undefined, challenged_off: undefined }
+      : play;
+  return JSON.stringify([playKey(plain), off]);
+};
+
+const heldScore = (held: Held) =>
+  held.play.action === "play" ? held.play.score : undefined;
+
+// The moves held, with this one too.
+const holding = (moves: HeldMoves, held: Held, move: AnalyzerMove) => {
+  const key = heldKey(held);
+  const next: HeldMoves = new Map(moves);
+  next.set(key, [
+    ...(moves.get(key) ?? []).filter((h) => h.move.jsonKey !== move.jsonKey),
+    { score: heldScore(held), move },
+  ]);
+  return next;
+};
+
+// The move a sim's candidate is.
+const heldMove = (moves: HeldMoves, held: Held) => {
+  const alike = moves.get(heldKey(held)) ?? [];
+  return alike.length === 1
+    ? alike[0].move
+    : alike.find((h) => h.score === heldScore(held))?.move;
+};
+
+// A move as a sim takes it, a bonus or a challenge named.
+const variantName = (m: AnalyzerMove, variant: PlayVariant) =>
+  "bonus" in variant
+    ? `${m.displayMove} +${variant.bonus}`
+    : `${m.displayMove} (challenged off)`;
 
 // The move placed on the board, as the wasm writes a play (its score 0, which
 // play_score counts again), or null if the tiles placed make none.
@@ -838,7 +913,7 @@ const noEdits: SimEdits = { added: [], removed: [] };
 type MadeSim = {
   key: string;
   job: number;
-  held: Map<string, AnalyzerMove>;
+  held: HeldMoves;
   answer?: SimAnswer;
   error?: string;
   running: boolean;
@@ -901,13 +976,13 @@ const listWords = (words: Array<string>) =>
     ? words.join(" and ")
     : `${words.slice(0, -1).join(", ")}, and ${words[words.length - 1]}`;
 
-// What the sim says of a phony among the moves listed, which it leaves out, as
-// the wasm turns down a sim with one: the words the lexicon lacks.
-const leftOutText = (m: AnalyzerMove, lexicon: string | undefined) => {
+// What the sim says of a phony among its moves, which it plays as it
+// stands, unchallenged: the words the lexicon lacks.
+const phonyText = (m: AnalyzerMove, lexicon: string | undefined) => {
   const words = m.invalid_words ?? [];
   return words.length
-    ? `${m.displayMove} is not simmed: ${listWords(words)} ${words.length > 1 ? "are" : "is"} not in ${lexicon ?? "the lexicon"}.`
-    : `${m.displayMove} is not simmed: it is a phony.`;
+    ? `${m.displayMove} is a phony, simmed unchallenged: ${listWords(words)} ${words.length > 1 ? "are" : "is"} not in ${lexicon ?? "the lexicon"}.`
+    : `${m.displayMove} is a phony, simmed unchallenged.`;
 };
 
 // A play checked and scored on the page's own wasm, as the analyzer checks and
@@ -948,12 +1023,9 @@ export const useLabSim = (
   const edits = (key !== undefined && allEdits.get(key)) || noEdits;
   const changeEdits = (at: string, change: (e: SimEdits) => SimEdits) =>
     setAllEdits((all) => new Map(all).set(at, change(all.get(at) ?? noEdits)));
-  // The moves listed, the one played among them; a phony is no candidate, as
-  // the wasm turns down a call with one.
-  const listed = useMemo(
-    () => (moves ?? []).filter((m) => m.valid ?? true),
-    [moves],
-  );
+  // The moves listed, the one played among them, a phony too: a sim plays it
+  // as it stands, unchallenged.
+  const listed = useMemo(() => moves ?? [], [moves]);
   // what a sim made now holds: the moves listed, with the user's changes
   const candidates = useMemo(
     () => [
@@ -1102,7 +1174,7 @@ export const useLabSim = (
       ]);
       const { job, added } = await labCall<{
         job: number;
-        added: Array<{ play: WasmPlay }>;
+        added: Array<{ play: WasmPlay; challenged_off?: boolean }>;
       }>({
         op: "sim",
         args: {
@@ -1121,7 +1193,10 @@ export const useLabSim = (
       setSim({
         key: at,
         job,
-        held: new Map(added.map((a, i) => [playKey(a.play), plays[i]])),
+        held: added.reduce(
+          (held: HeldMoves, a, i) => holding(held, a, plays[i]),
+          new Map(),
+        ),
         running: true,
         done: false,
       });
@@ -1179,9 +1254,11 @@ export const useLabSim = (
   };
 
   // Add a move, checked and scored as the analyzer checks and scores the move
-  // played, so that it shows at once with its static equity; a sim made of the
-  // position rolls it out from its next iteration on.
-  const add = async (play: WasmPlay) => {
+  // played, so that it shows at once with its static equity, a phony too; a
+  // sim made of the position rolls it out from its next iteration on. Given a
+  // bonus, it scores that much more; challenged off, it scores nothing and
+  // keeps the rack whole, a pass's static equity.
+  const add = async (play: WasmPlay, variant?: PlayVariant) => {
     if (!lab) return;
     const at = lab.key;
     const refuse = (text: string) =>
@@ -1198,27 +1275,50 @@ export const useLabSim = (
       refuse(scored.error);
       return;
     }
-    if (!scored.valid) {
-      const words = scored.invalid_words.map((w) =>
-        machineWordToRunes(w, lab.alphabet, false, true),
-      );
-      refuse(
-        `${listWords(words)} ${words.length > 1 ? "are" : "is"} not in ${lab.position.lexicon ?? "the lexicon"}.`,
-      );
-      return;
+    let equity = scored.equity;
+    if (variant && "challenged_off" in variant) {
+      let pass: ScoredPlay;
+      try {
+        pass = await scorePlay(lab, { action: "exchange", tiles: [] });
+      } catch (e) {
+        refuse(errorText(e));
+        return;
+      }
+      if (pass.result === "error") {
+        refuse(pass.error);
+        return;
+      }
+      equity = pass.equity;
+    } else if (variant) {
+      equity += variant.bonus;
     }
-    const added = playKey(scored);
-    if (candidates.some((m) => playKey(JSON.parse(m.jsonKey)) === added)) {
+    const base = toAnalyzerMove(scored, equity, lab.letters, lab.rack, lab);
+    const given: WasmPlay = variant
+      ? { ...(JSON.parse(base.jsonKey) as WasmPlay), ...variant }
+      : JSON.parse(base.jsonKey);
+    const added = playKey(given);
+    if (candidates.some((m) => m.jsonKey === added)) {
       setNote({ key: at, text: "That move is listed already." });
       return;
     }
-    const move = toAnalyzerMove(
-      scored,
-      scored.equity,
-      lab.letters,
-      lab.rack,
-      lab,
-    );
+    const move: AnalyzerMove = {
+      ...base,
+      jsonKey: added,
+      ...(variant
+        ? {
+            displayMove: variantName(base, variant),
+            score: "bonus" in variant ? base.score + variant.bonus : 0,
+          }
+        : {}),
+      ...(scored.valid
+        ? {}
+        : {
+            valid: false,
+            invalid_words: scored.invalid_words.map((w) =>
+              machineWordToRunes(w, lab.alphabet, false, true),
+            ),
+          }),
+    };
     changeEdits(at, (e) => ({
       added: [...e.added, move],
       removed: e.removed.filter((r) => r !== added),
@@ -1226,14 +1326,14 @@ export const useLabSim = (
     if (!made) return;
     const { job } = made;
     try {
-      const [joined] = await labCall<Array<{ play: WasmPlay }>>({
+      const [joined] = await labCall<
+        Array<{ play: WasmPlay; challenged_off?: boolean }>
+      >({
         op: "add",
-        args: { job, plays: JSON.stringify([JSON.parse(added)]) },
+        args: { job, plays: JSON.stringify([given]) },
       });
       setSim((s) =>
-        s?.job === job
-          ? { ...s, held: new Map(s.held).set(playKey(joined.play), move) }
-          : s,
+        s?.job === job ? { ...s, held: holding(s.held, joined, move) } : s,
       );
       await labCall({ op: "read", args: { job } });
     } catch (e) {
@@ -1289,8 +1389,10 @@ export const useLabSim = (
       });
       setSim((s) => {
         if (s?.job !== job) return s;
-        const held = new Map(s.held);
-        joined.forEach((j, i) => held.set(playKey(j.play), moves[i]));
+        const held = joined.reduce(
+          (held: HeldMoves, j, i) => holding(held, j, moves[i]),
+          s.held,
+        );
         return { ...s, held };
       });
       await labCall({ op: "read", args: { job } });
@@ -1305,11 +1407,12 @@ export const useLabSim = (
   const rows = useMemo(() => {
     if (made?.answer) {
       return made.answer.candidates
-        .filter((c) => !edits.removed.includes(playKey(c.play)))
         .sort((a, b) => Number(a.n === 0) - Number(b.n === 0) || simOrder(a, b))
         .flatMap((c) => {
-          const move = made.held.get(playKey(c.play));
-          return move ? [{ move, play: c.play, stat: c }] : [];
+          const move = heldMove(made.held, c);
+          return move && !edits.removed.includes(move.jsonKey)
+            ? [{ move, play: JSON.parse(move.jsonKey) as WasmPlay, stat: c }]
+            : [];
         });
     }
     return [...candidates]
@@ -1567,8 +1670,8 @@ export const SimPanel = (props: SimPanelProps) => {
       (row) => (row.stat?.state === "running" ? "Pause" : "Resume"),
       (row) => sim.hold(row.play, row.stat?.state === "running"),
     );
-  // The phony among the moves listed, which the sim leaves out.
-  const phonies = over ? [] : (moves ?? []).filter((m) => !(m.valid ?? true));
+  // The phonies among the sim's moves, which it plays unchallenged.
+  const phonies = over ? [] : sim.candidates.filter((m) => !(m.valid ?? true));
 
   let status: React.ReactNode;
   if (over) {
@@ -1601,7 +1704,7 @@ export const SimPanel = (props: SimPanelProps) => {
         <React.Fragment>
           {status}
           {phonies.map((m) => (
-            <div key={m.jsonKey}>{leftOutText(m, lab.position.lexicon)}</div>
+            <div key={m.jsonKey}>{phonyText(m, lab.position.lexicon)}</div>
           ))}
         </React.Fragment>
       }
@@ -1623,6 +1726,11 @@ export const SimPanel = (props: SimPanelProps) => {
               onClick={() => placed && sim.add(placed)}
             />
           </Tooltip>
+          <ChallengeButton
+            bonus={lab.challengeBonus}
+            disabled={!placed || over || fixed}
+            onAdd={(variant) => placed && sim.add(placed, variant)}
+          />
           <ExchangeButton
             rack={lab.rack}
             alphabet={lab.alphabet}
@@ -2139,6 +2247,72 @@ const SimSettingsButton = (props: SimSettingsButtonProps) => {
           size="small"
           icon={<SettingOutlined />}
           aria-label="Sim settings"
+          disabled={disabled}
+        />
+      </Tooltip>
+    </Popover>
+  );
+};
+
+type ChallengeButtonProps = {
+  // the bonus the game's rules give a play challenged and found good
+  bonus: number;
+  disabled: boolean;
+  onAdd: (variant: PlayVariant) => void;
+};
+
+// The move placed on the board as a challenge leaves it: with a bonus added
+// to its score, or challenged off.
+const ChallengeButton = (props: ChallengeButtonProps) => {
+  const { bonus: ruled, disabled, onAdd } = props;
+  const [open, setOpen] = useState(false);
+  const [bonus, setBonus] = useState<number | null>(null);
+  const add = (variant: PlayVariant) => {
+    setOpen(false);
+    onAdd(variant);
+  };
+  return (
+    <Popover
+      open={open}
+      onOpenChange={(o) => {
+        setOpen(o);
+        if (o) setBonus(ruled || 5);
+      }}
+      trigger="click"
+      content={
+        <div className="lab-top">
+          <label>
+            Bonus
+            <InputNumber
+              size="small"
+              aria-label="Bonus"
+              min={1}
+              precision={0}
+              value={bonus}
+              onChange={(v) => setBonus(v)}
+            />
+          </label>
+          <div className="lab-exchange-actions">
+            <Button
+              size="small"
+              disabled={bonus === null || bonus < 1}
+              onClick={() => bonus && add({ bonus })}
+            >
+              Add with the bonus
+            </Button>
+            <Button size="small" onClick={() => add({ challenged_off: true })}>
+              Add challenged off
+            </Button>
+          </div>
+        </div>
+      }
+    >
+      <Tooltip title="Add the move placed on the board, challenged">
+        <Button
+          shape="circle"
+          size="small"
+          icon={<QuestionOutlined />}
+          aria-label="Challenged"
           disabled={disabled}
         />
       </Tooltip>
