@@ -1666,18 +1666,19 @@ describe("the sim panel", () => {
     act(() => screen.getByRole("button", { name: "Apply" }).click());
   };
 
-  it("makes a sim with the plies and the opponent's tiles set, dropping the one made", async () => {
+  it("changes the plies and the opponent's tiles of the sim made in place, its rollouts kept", async () => {
     render(
       <Store>
         <Sim lab={midgame()} moves={[listed(ba), listed(ab)]} />
       </Store>,
     );
     await start();
-    // plies never set are liwords's own 4, sent with the sim
+    // plies never set are liwords's own 4, sent with the sim, as whether the
+    // opponent passes
     const first = lab.calls.find((c) => c.op === "sim");
-    expect(JSON.parse((first?.args as { request: string }).request).plies).toBe(
-      4,
-    );
+    const made = JSON.parse((first?.args as { request: string }).request);
+    expect(made.plies).toBe(4);
+    expect(made.opponents_pass).toBe(false);
     emit({
       job: 1,
       answer: {
@@ -1687,18 +1688,15 @@ describe("the sim panel", () => {
       done: false,
     });
     setSettings("2", "ie");
-    expect(
-      screen.getByText("Static equity until the sim starts."),
-    ).toBeInTheDocument();
     await waitFor(() =>
-      expect(lab.calls.some((c) => c.op === "free")).toBe(true),
+      expect(lab.calls.some((c) => c.op === "set")).toBe(true),
     );
-    lab.calls.length = 0;
-    await start();
-    const sim = lab.calls.find((c) => c.op === "sim");
-    const request = JSON.parse((sim?.args as { request: string }).request);
-    expect(request.plies).toBe(2);
-    expect(request.known).toEqual([I, E]);
+    const set = lab.calls.find((c) => c.op === "set");
+    expect(set?.args).toEqual({
+      job: 1,
+      request: JSON.stringify({ plies: 2, known: [I, E] }),
+    });
+    expect(lab.calls.some((c) => c.op === "free")).toBe(false);
     // the sim's answer has each candidate's two plies
     const twoPlies = (c: ReturnType<typeof candidate>) => ({
       ...c,
@@ -1707,7 +1705,7 @@ describe("the sim panel", () => {
     emit({
       job: 1,
       answer: {
-        iterations: 32,
+        iterations: 48,
         candidates: [
           twoPlies(candidate(ba, 0.5)),
           twoPlies(candidate(ab, 0.4)),
@@ -1716,8 +1714,64 @@ describe("the sim panel", () => {
       done: false,
     });
     expect(
+      await screen.findByText(
+        "48 iterations after 0 s, 2 running; 2 plies; the opponent holds IE",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("changes nothing of the sim made with tiles the opponent cannot hold", async () => {
+    render(
+      <Store>
+        <Sim lab={midgame()} moves={[listed(ba), listed(ab)]} />
+      </Store>,
+    );
+    await start();
+    setSettings("4", "zz");
+    expect(
+      await screen.findByText(
+        "Not applied: ZZ are not all among the tiles unseen.",
+      ),
+    ).toBeInTheDocument();
+    expect(lab.calls.some((c) => c.op === "set")).toBe(false);
+  });
+
+  it("rolls out to the game's end, and with the opponent passing, which makes a new sim", async () => {
+    render(
+      <Store>
+        <Sim lab={midgame()} moves={[listed(ba), listed(ab)]} />
+      </Store>,
+    );
+    await start();
+    act(() => screen.getByRole("button", { name: "Sim settings" }).click());
+    fireEvent.click(screen.getByText("To the game's end"));
+    expect(screen.getByRole("spinbutton", { name: "Plies" })).toBeDisabled();
+    fireEvent.click(screen.getByText("The opponent passes"));
+    act(() => screen.getByRole("button", { name: "Apply" }).click());
+    expect(
+      screen.getByText("Static equity until the sim starts."),
+    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(lab.calls.some((c) => c.op === "free")).toBe(true),
+    );
+    expect(lab.calls.some((c) => c.op === "set")).toBe(false);
+    lab.calls.length = 0;
+    await start();
+    const sim = lab.calls.find((c) => c.op === "sim");
+    const request = JSON.parse((sim?.args as { request: string }).request);
+    expect(request.plies).toBeNull();
+    expect(request.opponents_pass).toBe(true);
+    emit({
+      job: 1,
+      answer: {
+        iterations: 16,
+        candidates: [candidate(ba, 0.5), candidate(ab, 0.4)],
+      },
+      done: false,
+    });
+    expect(
       screen.getByText(
-        "32 iterations after 0 s, 2 running; 2 plies; the opponent holds IE",
+        "16 iterations after 0 s, 2 running; to the game's end; the opponent passes",
       ),
     ).toBeInTheDocument();
   });

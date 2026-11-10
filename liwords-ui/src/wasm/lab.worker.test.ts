@@ -25,6 +25,7 @@ const wasm = vi.hoisted(() => ({
   sim_resume: vi.fn(() => "[]"),
   sim_step: vi.fn(),
   sim_free: vi.fn(),
+  sim_set: vi.fn(),
   stitched_z: vi.fn((iterations: number, alpha: number) => iterations + alpha),
 }));
 vi.mock("wolges-wasm", () => wasm);
@@ -198,6 +199,28 @@ describe("the lab's worker", () => {
     ]);
     expect(JSON.parse(wasm.sim_step.mock.calls[1][1] as string).prune_z).toBe(
       40.05,
+    );
+  });
+
+  it("changes a sim's plies or the opponent's tiles in place, answering as a step does", async () => {
+    wasm.sim_set.mockReturnValueOnce(simAnswer("running", "running"));
+    const made = await send(1, "sim", { request: "{}", plays: "[]" });
+    const { job } = made.result as { job: number };
+    const request = JSON.stringify({ plies: null });
+    await send(2, "set", { job, request });
+    expect(wasm.sim_set).toHaveBeenCalledWith(9, request);
+    expect(events()).toEqual([
+      {
+        job,
+        answer: { candidates: [{ state: "running" }, { state: "running" }] },
+        done: false,
+      },
+    ]);
+    // an endgame has no plies
+    const endgame = (await send(3, "endgame", { request: "{}" }))
+      .result as number;
+    expect((await send(4, "set", { job: endgame, request })).error).toBe(
+      "no such sim",
     );
   });
 

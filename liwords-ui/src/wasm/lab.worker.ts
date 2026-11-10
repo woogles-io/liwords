@@ -29,6 +29,9 @@ export type LabRequest =
   // candidates held out of a sim's rollouts, keeping theirs, or let back in
   | { op: "pause"; args: { job: number; plays: string } }
   | { op: "resume"; args: { job: number; plays: string } }
+  // a sim's plies or the opponent's tiles changed in place, its rollouts kept,
+  // answering as a step does
+  | { op: "set"; args: { job: number; request: string } }
   // the job's answer as it stands, sent as a step's is, without stepping
   | { op: "read"; args: { job: number } }
   // the job stepped ms at a time until it is done or stopped; a sim told
@@ -218,6 +221,16 @@ const handle = async (req: LabRequest): Promise<unknown> => {
         resume: wolges.sim_resume,
       }[req.op];
       return JSON.parse(change(job.handle, req.args.plays));
+    }
+    case "set": {
+      if (!job || job.id !== req.args.job || job.kind !== "sim") {
+        throw new Error("no such sim");
+      }
+      const answer: Answer = JSON.parse(
+        wolges.sim_set(job.handle, req.args.request),
+      );
+      post({ event: { job: job.id, answer, done: isDone(job, answer) } });
+      return undefined;
     }
     case "read": {
       if (!job || job.id !== req.args.job) throw new Error("no such job");

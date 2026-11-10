@@ -850,15 +850,22 @@ type MadeSim = {
 const DEFAULT_SIM_PLIES = 4;
 
 // What a sim is made with, as the user sets it: the plies each rollout plays,
-// and the tiles known to be on the opponent's rack, written as tiles are, a
-// blank as ?; and whether it prunes none of its candidates, rolling each out
-// until stopped.
-export type SimSettings = { plies: number; known: string; unpruned: boolean };
+// null for every ply to the game's end, and the tiles known to be on the
+// opponent's rack, written as tiles are, a blank as ?; whether it prunes none
+// of its candidates, rolling each out until stopped; and whether the opponent
+// passes every turn of each rollout.
+export type SimSettings = {
+  plies: number | null;
+  known: string;
+  unpruned: boolean;
+  opponentsPass: boolean;
+};
 
 const defaultSimSettings: SimSettings = {
   plies: DEFAULT_SIM_PLIES,
   known: "",
   unpruned: false,
+  opponentsPass: false,
 };
 
 // The tiles written as known on the opponent's rack, or why they cannot be
@@ -1024,15 +1031,43 @@ export const useLabSim = (
     );
   };
 
-  // New plies or tiles are for the next sim made; the sim made goes, as its
-  // rollouts were made with the old ones. Whether it prunes applies to the
-  // sim made from its next step on.
-  const changeSettings = (next: SimSettings) => {
-    setSettings(next);
+  // New plies or tiles apply to the sim made of this position from its next
+  // iteration on, its rollouts so far kept; a sim of another position goes,
+  // as the next is made with them. Whether the opponent passes makes a new
+  // sim. Whether it prunes applies to the sim made from its next step on.
+  const changeSettings = async (next: SimSettings) => {
     setNote(undefined);
-    if (next.plies !== settings.plies || next.known !== settings.known) {
+    const rolled =
+      next.plies !== settings.plies || next.known !== settings.known;
+    if (next.opponentsPass !== settings.opponentsPass) {
+      setSettings(next);
       setSim(null);
-    } else if (made && next.unpruned !== settings.unpruned) {
+      return;
+    }
+    if (rolled && made && lab) {
+      const at = lab.key;
+      const known = knownTiles(next.known, lab);
+      if ("error" in known) {
+        setNote({ key: at, text: `Not applied: ${known.error}.` });
+        return;
+      }
+      try {
+        await labCall({
+          op: "set",
+          args: {
+            job: made.job,
+            request: JSON.stringify({ plies: next.plies, known: known.tiles }),
+          },
+        });
+      } catch (e) {
+        setNote({ key: at, text: `Not applied: ${errorText(e)}` });
+        return;
+      }
+    } else if (rolled) {
+      setSim(null);
+    }
+    setSettings(next);
+    if (made && next.unpruned !== settings.unpruned) {
       if (made.running) runOn(made.job, next.unpruned);
       // done as it was pruning, it may have more to do now
       else setSim((s) => (s?.job === made.job ? { ...s, done: false } : s));
@@ -1076,6 +1111,7 @@ export const useLabSim = (
             leave: lab.leave,
             plies: settings.plies,
             known: known.tiles,
+            opponents_pass: settings.opponentsPass,
           }),
           plays: JSON.stringify(plays.map((m) => JSON.parse(m.jsonKey))),
         },
@@ -1821,6 +1857,8 @@ const SimDetails = (props: SimDetailsProps) => {
       iterations,
       plies,
       known: settings.known.trim().toUpperCase(),
+      to_the_end: settings.plies === null,
+      opponents_pass: settings.opponentsPass,
       candidates: stats.map(({ move: m, stat }) => ({
         move: name(m),
         score: m.score,
@@ -1972,9 +2010,16 @@ const SimDetails = (props: SimDetailsProps) => {
 };
 
 // What a sim was made with: the plies its rollouts play, as its answer has
-// them; then the other settings the user set.
-const settingsText = (settings: SimSettings, plies: number | undefined) =>
-  `${plies !== undefined ? `; ${plies} ${plies === 1 ? "ply" : "plies"}` : ""}${settings.known.trim() ? `; the opponent holds ${settings.known.trim().toUpperCase()}` : ""}${settings.unpruned ? "; unpruned" : ""}`;
+// them, or to the game's end; then the other settings the user set.
+const settingsText = (settings: SimSettings, plies: number | undefined) => {
+  const played =
+    settings.plies === null
+      ? "; to the game's end"
+      : plies !== undefined
+        ? `; ${plies} ${plies === 1 ? "ply" : "plies"}`
+        : "";
+  return `${played}${settings.known.trim() ? `; the opponent holds ${settings.known.trim().toUpperCase()}` : ""}${settings.opponentsPass ? "; the opponent passes" : ""}${settings.unpruned ? "; unpruned" : ""}`;
+};
 
 type SimSettingsButtonProps = {
   settings: SimSettings;
@@ -1982,24 +2027,37 @@ type SimSettingsButtonProps = {
   onChange: (settings: SimSettings) => void;
 };
 
-// The plies a sim's rollouts play, never left unset, and the tiles known to
-// be on the opponent's rack, applied to the next sim made; and whether it
-// prunes, applied to the sim made as well.
+// The plies a sim's rollouts play, never left unset unless to the game's
+// end, and the tiles known to be on the opponent's rack, applied to the sim
+// made from its next iteration on; whether it prunes, from its next step on;
+// and whether the opponent passes, which makes a new sim.
 const SimSettingsButton = (props: SimSettingsButtonProps) => {
   const { settings, disabled, onChange } = props;
   const [open, setOpen] = useState(false);
-  const [plies, setPlies] = useState<number | null>(settings.plies);
+  const [plies, setPlies] = useState<number | null>(
+    settings.plies ?? DEFAULT_SIM_PLIES,
+  );
+  const [toEnd, setToEnd] = useState(settings.plies === null);
   const [known, setKnown] = useState(settings.known);
   const [unpruned, setUnpruned] = useState(settings.unpruned);
+  const [opponentsPass, setOpponentsPass] = useState(settings.opponentsPass);
+  const unset = !toEnd && plies === null;
   const apply = () => {
-    if (plies === null) return;
+    if (unset) return;
     setOpen(false);
+    const next = {
+      plies: toEnd ? null : plies,
+      known,
+      unpruned,
+      opponentsPass,
+    };
     if (
-      plies !== settings.plies ||
+      next.plies !== settings.plies ||
       known !== settings.known ||
-      unpruned !== settings.unpruned
+      unpruned !== settings.unpruned ||
+      opponentsPass !== settings.opponentsPass
     ) {
-      onChange({ plies, known, unpruned });
+      onChange(next);
     }
   };
   return (
@@ -2008,9 +2066,11 @@ const SimSettingsButton = (props: SimSettingsButtonProps) => {
       onOpenChange={(o) => {
         setOpen(o);
         if (o) {
-          setPlies(settings.plies);
+          setPlies(settings.plies ?? DEFAULT_SIM_PLIES);
+          setToEnd(settings.plies === null);
           setKnown(settings.known);
           setUnpruned(settings.unpruned);
+          setOpponentsPass(settings.opponentsPass);
         }
       }}
       trigger="click"
@@ -2023,11 +2083,21 @@ const SimSettingsButton = (props: SimSettingsButtonProps) => {
               aria-label="Plies"
               min={1}
               precision={0}
-              status={plies === null ? "error" : undefined}
+              disabled={toEnd}
+              status={unset ? "error" : undefined}
               value={plies}
               onChange={(v) => setPlies(v)}
             />
           </label>
+          <Checkbox
+            checked={toEnd}
+            onChange={(e) => setToEnd(e.target.checked)}
+          >
+            To the game's end
+            <span className="lab-settings-note">
+              Each rollout plays every ply until the game ends.
+            </span>
+          </Checkbox>
           <label>
             The opponent holds
             <Input
@@ -2047,12 +2117,17 @@ const SimSettingsButton = (props: SimSettingsButtonProps) => {
               Each candidate rolls out until the sim is stopped.
             </span>
           </Checkbox>
-          <Button
-            size="small"
-            type="primary"
-            disabled={plies === null}
-            onClick={apply}
+          <Checkbox
+            checked={opponentsPass}
+            onChange={(e) => setOpponentsPass(e.target.checked)}
           >
+            The opponent passes
+            <span className="lab-settings-note">
+              In each rollout the opponent passes every turn. Changing this
+              starts the sim again.
+            </span>
+          </Checkbox>
+          <Button size="small" type="primary" disabled={unset} onClick={apply}>
             Apply
           </Button>
         </div>
