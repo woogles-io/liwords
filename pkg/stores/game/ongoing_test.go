@@ -7,7 +7,9 @@ import (
 	"context"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/matryer/is"
 
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
@@ -326,4 +328,90 @@ func TestOngoingRowFromCreation(t *testing.T) {
 		is.Equal(row.ReadyFlag, int64(0))
 		is.Equal(row.Player0ID, int32(entGame.PlayerDBIDs[0]))
 	}
+}
+
+// The fixture's stored timers predate the increment. A load fills it from the
+// request, and the next save writes it to both games and ongoing_games, so
+// the adjudicator's SQL can read it.
+func TestTimersIncrementFilledOnLoadAndSaved(t *testing.T) {
+	is := is.New(t)
+	ustore, gstore := recreateDB()
+	defer gstore.Disconnect()
+	defer ustore.(*user.DBStore).Disconnect()
+	ctx := writeOngoingCtx()
+
+	// Strip the key, as every pre-existing row is.
+	_, err := gstore.dbPool.Exec(ctx, `UPDATE games SET timers = timers - 'inc',
+		game_request = jsonb_set(game_request, '{increment_seconds}', '7') WHERE uuid = $1`, ongoingGID)
+	is.NoErr(err)
+
+	g, err := gstore.Get(ctx, ongoingGID)
+	is.NoErr(err)
+	is.Equal(g.Timers.IncrementSeconds, int32(7))
+	is.NoErr(gstore.Set(ctx, g))
+
+	var gi, oi int
+	is.NoErr(gstore.dbPool.QueryRow(ctx, `SELECT (timers->>'inc')::int FROM games WHERE uuid = $1`, ongoingGID).Scan(&gi))
+	is.NoErr(gstore.dbPool.QueryRow(ctx, `SELECT (timers->>'inc')::int FROM ongoing_games WHERE game_uuid = $1`, ongoingGID).Scan(&oi))
+	is.Equal(gi, 7)
+	is.Equal(oi, 7)
+}
+
+// Adding time bank is a direct SQL update of games.timers. It must move the
+// ongoing_games row with it, or the two disagree until the next move.
+func TestAddTimeBankKeepsOngoingTimers(t *testing.T) {
+	is := is.New(t)
+	ustore, gstore := recreateDB()
+	defer gstore.Disconnect()
+	defer ustore.(*user.DBStore).Disconnect()
+	ctx := writeOngoingCtx()
+
+	season := uuid.New()
+	_, err := gstore.dbPool.Exec(ctx, `UPDATE games SET season_id = $2,
+		timers = jsonb_set(timers, '{tb}', '[1000, 2000]') WHERE uuid = $1`, ongoingGID, season)
+	is.NoErr(err)
+	g, err := gstore.Get(ctx, ongoingGID)
+	is.NoErr(err)
+	is.NoErr(gstore.Set(ctx, g)) // creates the row with these timers
+
+	var p0 int32
+	is.NoErr(gstore.dbPool.QueryRow(ctx, `SELECT player0_id FROM games WHERE uuid = $1`, ongoingGID).Scan(&p0))
+	sid := pgtype.UUID{Bytes: season, Valid: true}
+
+	tbs := func() (string, string) {
+		var a, b string
+		is.NoErr(gstore.dbPool.QueryRow(ctx, `SELECT g.timers->>'tb', o.timers->>'tb'
+			FROM games g JOIN ongoing_games o ON o.game_uuid = g.uuid WHERE g.uuid = $1`, ongoingGID).Scan(&a, &b))
+		return a, b
+	}
+
+	n, err := gstore.queries.AddTimeBankAllPlayers(ctx, models.AddTimeBankAllPlayersParams{AdditionalMs: 5, SeasonID: sid})
+	is.NoErr(err)
+	is.Equal(n, int64(1))
+	a, b := tbs()
+	is.Equal(a, "[1005, 2005]")
+	is.Equal(b, a)
+
+	n, err = gstore.queries.AddTimeBankSinglePlayer(ctx, models.AddTimeBankSinglePlayerParams{
+		PlayerID: pgtype.Int4{Int32: p0, Valid: true}, AdditionalMs: 10, SeasonID: sid})
+	is.NoErr(err)
+	is.Equal(n, int64(1))
+	a, b = tbs()
+	is.Equal(a, "[1015, 2005]")
+	is.Equal(b, a)
+
+	n, err = gstore.queries.AddTimeBankPlayerAndOpponent(ctx, models.AddTimeBankPlayerAndOpponentParams{
+		PlayerID: pgtype.Int4{Int32: p0, Valid: true}, AdditionalMs: 1, SeasonID: sid})
+	is.NoErr(err)
+	is.Equal(n, int64(1))
+	a, b = tbs()
+	is.Equal(a, "[1016, 2006]")
+	is.Equal(b, a)
+
+	// With no ongoing row (writer off), the count is still the games updated.
+	_, err = gstore.dbPool.Exec(ctx, `DELETE FROM ongoing_games`)
+	is.NoErr(err)
+	n, err = gstore.queries.AddTimeBankAllPlayers(ctx, models.AddTimeBankAllPlayersParams{AdditionalMs: 1, SeasonID: sid})
+	is.NoErr(err)
+	is.Equal(n, int64(1))
 }

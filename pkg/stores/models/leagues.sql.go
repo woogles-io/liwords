@@ -13,18 +13,27 @@ import (
 	"github.com/woogles-io/liwords/pkg/entity"
 )
 
-const addTimeBankAllPlayers = `-- name: AddTimeBankAllPlayers :execrows
-UPDATE games
-SET timers = jsonb_set(
-    jsonb_set(timers, '{tb,0}', to_jsonb((timers->'tb'->0)::bigint + $1::bigint)),
-    '{tb,1}',
-    to_jsonb((timers->'tb'->1)::bigint + $1::bigint)
-),
-updated_at = NOW()
-WHERE season_id = $2
-  AND game_end_reason = 0
-  AND timers->'tb' IS NOT NULL
-  AND jsonb_array_length(timers->'tb') = 2
+const addTimeBankAllPlayers = `-- name: AddTimeBankAllPlayers :one
+WITH updated AS (
+    UPDATE games g
+    SET timers = jsonb_set(
+        jsonb_set(g.timers, '{tb,0}', to_jsonb((g.timers->'tb'->0)::bigint + $1::bigint)),
+        '{tb,1}',
+        to_jsonb((g.timers->'tb'->1)::bigint + $1::bigint)
+    ),
+    updated_at = NOW()
+    WHERE g.season_id = $2
+      AND g.game_end_reason = 0
+      AND g.timers->'tb' IS NOT NULL
+      AND jsonb_array_length(g.timers->'tb') = 2
+    RETURNING g.uuid, g.timers
+), ongoing AS (
+    UPDATE ongoing_games o
+    SET timers = updated.timers
+    FROM updated
+    WHERE o.game_uuid = updated.uuid
+)
+SELECT COUNT(*)::bigint FROM updated
 `
 
 type AddTimeBankAllPlayersParams struct {
@@ -33,27 +42,38 @@ type AddTimeBankAllPlayersParams struct {
 }
 
 // Add time bank to all in-progress games in a season
+// The ongoing_games row gets the same timers in the same statement: it must
+// not disagree with games, and the correspondence adjudicator reads its timers.
+// Returns the number of games updated, as :execrows did.
 func (q *Queries) AddTimeBankAllPlayers(ctx context.Context, arg AddTimeBankAllPlayersParams) (int64, error) {
-	result, err := q.db.Exec(ctx, addTimeBankAllPlayers, arg.AdditionalMs, arg.SeasonID)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
+	row := q.db.QueryRow(ctx, addTimeBankAllPlayers, arg.AdditionalMs, arg.SeasonID)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
 }
 
-const addTimeBankPlayerAndOpponent = `-- name: AddTimeBankPlayerAndOpponent :execrows
-UPDATE games
-SET timers = jsonb_set(
-    jsonb_set(timers, '{tb,0}', to_jsonb((timers->'tb'->0)::bigint + $1::bigint)),
-    '{tb,1}',
-    to_jsonb((timers->'tb'->1)::bigint + $1::bigint)
-),
-updated_at = NOW()
-WHERE season_id = $2
-  AND game_end_reason = 0
-  AND (player0_id = $3 OR player1_id = $3)
-  AND timers->'tb' IS NOT NULL
-  AND jsonb_array_length(timers->'tb') = 2
+const addTimeBankPlayerAndOpponent = `-- name: AddTimeBankPlayerAndOpponent :one
+WITH updated AS (
+    UPDATE games g
+    SET timers = jsonb_set(
+        jsonb_set(g.timers, '{tb,0}', to_jsonb((g.timers->'tb'->0)::bigint + $1::bigint)),
+        '{tb,1}',
+        to_jsonb((g.timers->'tb'->1)::bigint + $1::bigint)
+    ),
+    updated_at = NOW()
+    WHERE g.season_id = $2
+      AND g.game_end_reason = 0
+      AND (g.player0_id = $3 OR g.player1_id = $3)
+      AND g.timers->'tb' IS NOT NULL
+      AND jsonb_array_length(g.timers->'tb') = 2
+    RETURNING g.uuid, g.timers
+), ongoing AS (
+    UPDATE ongoing_games o
+    SET timers = updated.timers
+    FROM updated
+    WHERE o.game_uuid = updated.uuid
+)
+SELECT COUNT(*)::bigint FROM updated
 `
 
 type AddTimeBankPlayerAndOpponentParams struct {
@@ -63,27 +83,40 @@ type AddTimeBankPlayerAndOpponentParams struct {
 }
 
 // Add time bank to both sides of a player's in-progress games
+// The ongoing_games row gets the same timers in the same statement: it must
+// not disagree with games, and the correspondence adjudicator reads its timers.
+// Returns the number of games updated, as :execrows did.
 func (q *Queries) AddTimeBankPlayerAndOpponent(ctx context.Context, arg AddTimeBankPlayerAndOpponentParams) (int64, error) {
-	result, err := q.db.Exec(ctx, addTimeBankPlayerAndOpponent, arg.AdditionalMs, arg.SeasonID, arg.PlayerID)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
+	row := q.db.QueryRow(ctx, addTimeBankPlayerAndOpponent, arg.AdditionalMs, arg.SeasonID, arg.PlayerID)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
 }
 
-const addTimeBankSinglePlayer = `-- name: AddTimeBankSinglePlayer :execrows
-UPDATE games
-SET timers = jsonb_set(
-    timers,
-    CASE WHEN player0_id = $1 THEN '{tb,0}' ELSE '{tb,1}' END,
-    to_jsonb((timers->'tb'->(CASE WHEN player0_id = $1 THEN 0 ELSE 1 END))::bigint + $2::bigint)
-),
-updated_at = NOW()
-WHERE season_id = $3
-  AND game_end_reason = 0
-  AND (player0_id = $1 OR player1_id = $1)
-  AND timers->'tb' IS NOT NULL
-  AND jsonb_array_length(timers->'tb') = 2
+const addTimeBankSinglePlayer = `-- name: AddTimeBankSinglePlayer :one
+WITH updated AS (
+    UPDATE games g
+    SET timers = jsonb_set(
+        g.timers,
+        -- text[]: jsonb_set takes a path array, and a CASE of bare literals is
+        -- text, which made this query fail every time before the cast.
+        (CASE WHEN g.player0_id = $1 THEN '{tb,0}' ELSE '{tb,1}' END)::text[],
+        to_jsonb((g.timers->'tb'->(CASE WHEN g.player0_id = $1 THEN 0 ELSE 1 END))::bigint + $2::bigint)
+    ),
+    updated_at = NOW()
+    WHERE g.season_id = $3
+      AND g.game_end_reason = 0
+      AND (g.player0_id = $1 OR g.player1_id = $1)
+      AND g.timers->'tb' IS NOT NULL
+      AND jsonb_array_length(g.timers->'tb') = 2
+    RETURNING g.uuid, g.timers
+), ongoing AS (
+    UPDATE ongoing_games o
+    SET timers = updated.timers
+    FROM updated
+    WHERE o.game_uuid = updated.uuid
+)
+SELECT COUNT(*)::bigint FROM updated
 `
 
 type AddTimeBankSinglePlayerParams struct {
@@ -93,12 +126,14 @@ type AddTimeBankSinglePlayerParams struct {
 }
 
 // Add time bank to only the specified player's side in their in-progress games
+// The ongoing_games row gets the same timers in the same statement: it must
+// not disagree with games, and the correspondence adjudicator reads its timers.
+// Returns the number of games updated, as :execrows did.
 func (q *Queries) AddTimeBankSinglePlayer(ctx context.Context, arg AddTimeBankSinglePlayerParams) (int64, error) {
-	result, err := q.db.Exec(ctx, addTimeBankSinglePlayer, arg.PlayerID, arg.AdditionalMs, arg.SeasonID)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
+	row := q.db.QueryRow(ctx, addTimeBankSinglePlayer, arg.PlayerID, arg.AdditionalMs, arg.SeasonID)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
 }
 
 const countDivisionGamesComplete = `-- name: CountDivisionGamesComplete :one

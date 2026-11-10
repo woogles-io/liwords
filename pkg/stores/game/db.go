@@ -157,6 +157,11 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Game, error) {
 	// Convert to an entity.Game
 	gamereq := &g.GameRequest
 
+	// Timers written before they carried the increment get it from the request,
+	// so everything below can read g.Timers.IncrementSeconds; the next save
+	// stores it.
+	g.Timers.FillIncrement(gamereq.GameRequest)
+
 	entGame := &entity.Game{
 		Started:        g.Started.Bool,
 		Timers:         g.Timers,

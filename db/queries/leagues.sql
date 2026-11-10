@@ -797,49 +797,87 @@ WHERE g.league_division_id = @division_id
   ) < sqlc.arg(threshold_ms)::bigint
 GROUP BY u.id, u.uuid, u.username;
 
--- name: AddTimeBankSinglePlayer :execrows
+-- name: AddTimeBankSinglePlayer :one
 -- Add time bank to only the specified player's side in their in-progress games
-UPDATE games
-SET timers = jsonb_set(
-    timers,
-    CASE WHEN player0_id = @player_id THEN '{tb,0}' ELSE '{tb,1}' END,
-    to_jsonb((timers->'tb'->(CASE WHEN player0_id = @player_id THEN 0 ELSE 1 END))::bigint + @additional_ms::bigint)
-),
-updated_at = NOW()
-WHERE season_id = @season_id
-  AND game_end_reason = 0
-  AND (player0_id = @player_id OR player1_id = @player_id)
-  AND timers->'tb' IS NOT NULL
-  AND jsonb_array_length(timers->'tb') = 2;
+-- The ongoing_games row gets the same timers in the same statement: it must
+-- not disagree with games, and the correspondence adjudicator reads its timers.
+-- Returns the number of games updated, as :execrows did.
+WITH updated AS (
+    UPDATE games g
+    SET timers = jsonb_set(
+        g.timers,
+        -- text[]: jsonb_set takes a path array, and a CASE of bare literals is
+        -- text, which made this query fail every time before the cast.
+        (CASE WHEN g.player0_id = @player_id THEN '{tb,0}' ELSE '{tb,1}' END)::text[],
+        to_jsonb((g.timers->'tb'->(CASE WHEN g.player0_id = @player_id THEN 0 ELSE 1 END))::bigint + @additional_ms::bigint)
+    ),
+    updated_at = NOW()
+    WHERE g.season_id = @season_id
+      AND g.game_end_reason = 0
+      AND (g.player0_id = @player_id OR g.player1_id = @player_id)
+      AND g.timers->'tb' IS NOT NULL
+      AND jsonb_array_length(g.timers->'tb') = 2
+    RETURNING g.uuid, g.timers
+), ongoing AS (
+    UPDATE ongoing_games o
+    SET timers = updated.timers
+    FROM updated
+    WHERE o.game_uuid = updated.uuid
+)
+SELECT COUNT(*)::bigint FROM updated;
 
--- name: AddTimeBankPlayerAndOpponent :execrows
+-- name: AddTimeBankPlayerAndOpponent :one
 -- Add time bank to both sides of a player's in-progress games
-UPDATE games
-SET timers = jsonb_set(
-    jsonb_set(timers, '{tb,0}', to_jsonb((timers->'tb'->0)::bigint + @additional_ms::bigint)),
-    '{tb,1}',
-    to_jsonb((timers->'tb'->1)::bigint + @additional_ms::bigint)
-),
-updated_at = NOW()
-WHERE season_id = @season_id
-  AND game_end_reason = 0
-  AND (player0_id = @player_id OR player1_id = @player_id)
-  AND timers->'tb' IS NOT NULL
-  AND jsonb_array_length(timers->'tb') = 2;
+-- The ongoing_games row gets the same timers in the same statement: it must
+-- not disagree with games, and the correspondence adjudicator reads its timers.
+-- Returns the number of games updated, as :execrows did.
+WITH updated AS (
+    UPDATE games g
+    SET timers = jsonb_set(
+        jsonb_set(g.timers, '{tb,0}', to_jsonb((g.timers->'tb'->0)::bigint + @additional_ms::bigint)),
+        '{tb,1}',
+        to_jsonb((g.timers->'tb'->1)::bigint + @additional_ms::bigint)
+    ),
+    updated_at = NOW()
+    WHERE g.season_id = @season_id
+      AND g.game_end_reason = 0
+      AND (g.player0_id = @player_id OR g.player1_id = @player_id)
+      AND g.timers->'tb' IS NOT NULL
+      AND jsonb_array_length(g.timers->'tb') = 2
+    RETURNING g.uuid, g.timers
+), ongoing AS (
+    UPDATE ongoing_games o
+    SET timers = updated.timers
+    FROM updated
+    WHERE o.game_uuid = updated.uuid
+)
+SELECT COUNT(*)::bigint FROM updated;
 
--- name: AddTimeBankAllPlayers :execrows
+-- name: AddTimeBankAllPlayers :one
 -- Add time bank to all in-progress games in a season
-UPDATE games
-SET timers = jsonb_set(
-    jsonb_set(timers, '{tb,0}', to_jsonb((timers->'tb'->0)::bigint + @additional_ms::bigint)),
-    '{tb,1}',
-    to_jsonb((timers->'tb'->1)::bigint + @additional_ms::bigint)
-),
-updated_at = NOW()
-WHERE season_id = @season_id
-  AND game_end_reason = 0
-  AND timers->'tb' IS NOT NULL
-  AND jsonb_array_length(timers->'tb') = 2;
+-- The ongoing_games row gets the same timers in the same statement: it must
+-- not disagree with games, and the correspondence adjudicator reads its timers.
+-- Returns the number of games updated, as :execrows did.
+WITH updated AS (
+    UPDATE games g
+    SET timers = jsonb_set(
+        jsonb_set(g.timers, '{tb,0}', to_jsonb((g.timers->'tb'->0)::bigint + @additional_ms::bigint)),
+        '{tb,1}',
+        to_jsonb((g.timers->'tb'->1)::bigint + @additional_ms::bigint)
+    ),
+    updated_at = NOW()
+    WHERE g.season_id = @season_id
+      AND g.game_end_reason = 0
+      AND g.timers->'tb' IS NOT NULL
+      AND jsonb_array_length(g.timers->'tb') = 2
+    RETURNING g.uuid, g.timers
+), ongoing AS (
+    UPDATE ongoing_games o
+    SET timers = updated.timers
+    FROM updated
+    WHERE o.game_uuid = updated.uuid
+)
+SELECT COUNT(*)::bigint FROM updated;
 
 -- name: GetPlayerUnfinishedSeasonGames :many
 -- Get all unfinished (ongoing) games for a specific player in a season.
