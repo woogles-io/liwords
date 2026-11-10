@@ -35,6 +35,8 @@ const lab = vi.hoisted(() => ({
   calls: [] as Array<{ op: string; args?: object }>,
   listeners: new Set<(e: LabEvent) => void>(),
   top: [] as Array<object>,
+  // the workers a sim runs on
+  parts: 1,
   // what an inference of the opponent's leave finds
   inferred: {
     count: 120,
@@ -68,6 +70,7 @@ vi.mock("../wasm/lab", () => ({
     }
     return undefined;
   },
+  labParts: () => lab.parts,
   onLabEvent: (listener: (e: LabEvent) => void) => {
     lab.listeners.add(listener);
     return () => {
@@ -224,6 +227,7 @@ let dueAtNextFrame = new Map<number, FrameRequestCallback>();
 beforeEach(() => {
   lab.calls.length = 0;
   lab.listeners.clear();
+  lab.parts = 1;
   board.placed.length = 0;
   clock.now = 0;
   lab.top = [];
@@ -980,6 +984,29 @@ describe("the sim panel", () => {
       ab,
       phony,
     ]);
+  });
+
+  it("says how many workers the sim runs on, when more than one", async () => {
+    lab.parts = 3;
+    render(
+      <Store>
+        <Sim lab={midgame()} moves={[listed(ba), listed(ab)]} />
+      </Store>,
+    );
+    await start();
+    emit({
+      job: 1,
+      answer: {
+        iterations: 96,
+        candidates: [candidate(ba, 0.5), candidate(ab, 0.4)],
+      },
+      done: false,
+    });
+    expect(
+      screen.getByText(
+        "96 iterations after 0 s, 2 running; 1 ply; on 3 workers",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("is done once fewer than two candidates are left unpruned, and runs on no further", async () => {

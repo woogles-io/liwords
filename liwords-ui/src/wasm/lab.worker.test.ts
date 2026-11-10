@@ -293,6 +293,26 @@ describe("the lab's worker", () => {
     expect(wasm.infer_free).toHaveBeenCalledWith(5);
   });
 
+  it("answers a sim's numbers against a play without stepping or sending them", async () => {
+    wasm.sim_step.mockReturnValueOnce(simAnswer("running", "running"));
+    const made = await send(1, "sim", { request: "{}", plays: "[]" });
+    const { job } = made.result as { job: number };
+    const play = { action: "exchange", tiles: [] };
+    const peeked = await send(2, "peek", {
+      job,
+      against: JSON.stringify(play),
+    });
+    expect(JSON.parse(wasm.sim_step.mock.calls[0][1] as string)).toEqual({
+      iterations: 0,
+      prune: false,
+      against: play,
+    });
+    expect(peeked.result).toEqual({
+      candidates: [{ state: "running" }, { state: "running" }],
+    });
+    expect(events()).toEqual([]);
+  });
+
   it("frees the last job when it makes the next, and says so", async () => {
     const sim = (
       (await send(1, "sim", { request: "{}", plays: "[]" })).result as {

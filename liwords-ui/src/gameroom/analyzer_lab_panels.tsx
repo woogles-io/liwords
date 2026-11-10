@@ -61,7 +61,7 @@ import {
   roomClass,
   roomInWindow,
 } from "../utils/window_room";
-import { labCall, onLabEvent } from "../wasm/lab";
+import { labCall, labParts, onLabEvent } from "../wasm/lab";
 import { getLoadableFiles, getWolges } from "../wasm/loader";
 import {
   AnalyzerMove,
@@ -2409,7 +2409,8 @@ const settingsText = (
     : !settings.infer && settings.known.trim()
       ? `; the opponent holds ${settings.known.trim().toUpperCase()}`
       : "";
-  return `${played}${held}${settings.opponentsPass ? "; the opponent passes" : ""}${settings.unpruned ? "; unpruned" : ""}`;
+  const parts = labParts();
+  return `${played}${held}${settings.opponentsPass ? "; the opponent passes" : ""}${settings.unpruned ? "; unpruned" : ""}${parts > 1 ? `; on ${parts} workers` : ""}`;
 };
 
 type SimSettingsButtonProps = {

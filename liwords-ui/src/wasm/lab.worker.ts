@@ -39,6 +39,9 @@ export type LabRequest =
   | { op: "against"; args: { job: number; play: string | null } }
   // the job's answer as it stands, sent as a step's is, without stepping
   | { op: "read"; args: { job: number } }
+  // a sim's answer as it stands, compared with the play given in place of the
+  // one it is compared with, answered and not sent
+  | { op: "peek"; args: { job: number; against: string } }
   // the job stepped ms at a time until it is done or stopped; a sim told
   // prune false prunes none of its candidates
   | { op: "run"; args: { job: number; ms: number; prune?: boolean } }
@@ -291,6 +294,21 @@ const handle = async (req: LabRequest): Promise<unknown> => {
       job.against =
         req.args.play === null ? undefined : JSON.parse(req.args.play);
       return undefined;
+    }
+    case "peek": {
+      if (!job || job.id !== req.args.job || job.kind !== "sim") {
+        throw new Error("no such sim");
+      }
+      return JSON.parse(
+        wolges.sim_step(
+          job.handle,
+          JSON.stringify({
+            iterations: 0,
+            prune: false,
+            against: JSON.parse(req.args.against),
+          }),
+        ),
+      );
     }
     case "read": {
       if (!job || job.id !== req.args.job) throw new Error("no such job");
