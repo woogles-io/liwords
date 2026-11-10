@@ -48,6 +48,7 @@ export const PersonalInfoWidget = React.memo((props: Props) => {
   const [imageToUpload, setImageToUpload] = useState<Blob | undefined>(
     undefined,
   );
+  const [savedEmail, setSavedEmail] = useState(props.personalInfo.email);
 
   const avatarErrorCatcher = useCallback((e: unknown) => {
     console.log(e);
@@ -118,6 +119,11 @@ export const PersonalInfoWidget = React.memo((props: Props) => {
     [propsUpdatedAvatar, avatarErrorCatcher, profileClient, notification],
   );
 
+  const [form] = Form.useForm();
+  // Changing the email takes the current password, so ask for it only then.
+  const email = Form.useWatch("email", form);
+  const emailChanged = email !== undefined && email !== savedEmail;
+
   const updateFields = async (values: { [key: string]: string }) => {
     const birthDate = values.birthDate
       ? dayjs(values.birthDate).format("YYYY-MM-DD")
@@ -127,6 +133,8 @@ export const PersonalInfoWidget = React.memo((props: Props) => {
         ...values,
         birthDate,
       });
+      setSavedEmail(values.email);
+      form.resetFields(["password"]);
       notification.info({
         message: "Success",
         description: "Your personal info was changed.",
@@ -147,8 +155,6 @@ export const PersonalInfoWidget = React.memo((props: Props) => {
       })}
     </Select>
   );
-
-  const [form] = Form.useForm();
 
   const layout = {
     labelCol: {
@@ -332,6 +338,24 @@ export const PersonalInfoWidget = React.memo((props: Props) => {
           </Form.Item>
         </Col>
       </Row>
+      {emailChanged && (
+        <Row>
+          <Col span={11}>
+            <Form.Item
+              name="password"
+              label="Current password"
+              rules={[
+                {
+                  required: true,
+                  message: "Enter your current password to change your email",
+                },
+              ]}
+            >
+              <Input.Password size="large" />
+            </Form.Item>
+          </Col>
+        </Row>
+      )}
       <Row>
         <Col span={11}>
           <Form.Item name="lastName" label="Last name">

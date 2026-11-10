@@ -18,12 +18,28 @@ import { HookAPI } from "antd/lib/modal/useModal";
 import { Client } from "@connectrpc/connect";
 import { create, toJsonString } from "@bufbuild/protobuf";
 import { getEnumValue } from "../utils/protobuf";
+import { useLoginStateStoreContext } from "../store/store";
+import { hasPermission, Perm } from "./perms";
 
 type ModProps = {
   userID: string;
 };
 
+// The profile fields an admin can clear, with their menu labels. The server
+// keeps each field's old value in the action.
+const profileFieldRemovals = [
+  ["REMOVE_FIRST_NAME", "Remove first name"],
+  ["REMOVE_LAST_NAME", "Remove last name"],
+  ["REMOVE_ABOUT", "Remove player bio"],
+  ["REMOVE_AVATAR", "Remove avatar"],
+] as const;
+
 const Moderation = (props: ModProps) => {
+  const { loginState } = useLoginStateStoreContext();
+  const canRemoveProfileFields = hasPermission(
+    loginState.permissions,
+    Perm.CanResetAndDeleteAccounts,
+  );
   const [activeActions, setActiveActions] = useState<ModActionsMap>(
     create(ModActionsMapSchema, {}),
   );
@@ -72,6 +88,12 @@ const Moderation = (props: ModProps) => {
     })();
   }, [modClient, props.userID]);
 
+  // A removed avatar's old URL, kept in the action, shows as a link (never
+  // as an image: some early uploads are very large).
+  const removedAvatars = actionsHistory.actions.filter(
+    (a) => a.type === ModActionType.REMOVE_AVATAR && a.chatText !== "",
+  );
+
   const [form] = Form.useForm();
 
   const handleSetShortDuration = useCallback(() => {
@@ -105,6 +127,13 @@ const Moderation = (props: ModProps) => {
               Reset stats and ratings
             </Select.Option>
             <Select.Option value="DELETE_ACCOUNT">Delete account</Select.Option>
+            {canRemoveProfileFields
+              ? profileFieldRemovals.map(([value, label]) => (
+                  <Select.Option key={value} value={value}>
+                    {label}
+                  </Select.Option>
+                ))
+              : null}
           </Select>
         </Form.Item>
 
@@ -151,6 +180,28 @@ const Moderation = (props: ModProps) => {
           prettySpaces: 2,
         })}
       </pre>
+      {removedAvatars.length > 0 ? (
+        <div>
+          <h3>Removed avatars</h3>
+          <ul className="readable-text-color">
+            {removedAvatars.map((a) => (
+              <li key={`${a.startTime?.seconds}-${a.chatText}`}>
+                {/^https?:\/\//.test(a.chatText) ? (
+                  <a
+                    href={a.chatText}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {a.chatText}
+                  </a>
+                ) : (
+                  a.chatText
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
     </div>
   );
 };

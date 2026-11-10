@@ -350,30 +350,6 @@ func TestSet(t *testing.T) {
 	is.Equal(cesar.Profile.CountryCode, "")
 	is.Equal(cesar.Profile.About, "")
 	is.Equal(cesar.Profile.Title, "")
-
-	err = ustore.SetRatings(ctx, cesar.UUID, mina.UUID, entity.VariantKey(variantKey), newCesarSingleRating, newMinaSingleRating)
-	is.NoErr(err)
-	err = ustore.SetStats(ctx, cesar.UUID, mina.UUID, entity.VariantKey(variantKey), newCesarStats, newMinaStats)
-	is.NoErr(err)
-
-	err = ustore.ResetProfile(ctx, mina.UUID)
-	is.NoErr(err)
-
-	actualMinaStats, err = common.GetUserStatsWithPool(ctx, pool, minaDBID, entity.VariantKey(variantKey))
-	is.NoErr(err)
-	is.Equal(actualMinaStats.PlayerOneId, "")
-
-	actualMinaRating, err = common.GetUserRatingWithPool(ctx, pool, minaDBID, entity.VariantKey(variantKey))
-	is.NoErr(err)
-	is.True(commontest.WithinEpsilon(actualMinaRating.Rating, float64(glicko.InitialRating)))
-
-	mina, err = ustore.Get(ctx, "mina")
-	is.NoErr(err)
-	is.Equal(mina.Email, "mina@gmail.com")
-	is.Equal(mina.Profile.FirstName, "")
-	is.Equal(mina.Profile.LastName, "")
-	is.Equal(mina.Profile.CountryCode, "")
-	is.Equal(mina.Profile.About, "")
 	ustore.Disconnect()
 }
 

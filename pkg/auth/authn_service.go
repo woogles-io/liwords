@@ -102,6 +102,19 @@ func passwordErr(err error) error {
 	return apiserver.InternalErr(err)
 }
 
+// CheckPassword returns nil when password matches the stored hash, an invalid
+// argument when it does not, and passwordErr's mapping when the check fails.
+func CheckPassword(password, hash string) error {
+	matches, err := ComparePassword(password, hash)
+	if err != nil {
+		return passwordErr(err)
+	}
+	if !matches {
+		return apiserver.InvalidArg("your password is incorrect")
+	}
+	return nil
+}
+
 // rehash stores a password again with the current settings. It runs after the
 // login response and gives up quietly if the hasher is busy; the next login
 // tries again.
@@ -471,12 +484,8 @@ func (as *AuthenticationService) ChangePassword(ctx context.Context, r *connect.
 		return nil, modActionExistsErr(err)
 	}
 
-	matches, err := ComparePassword(r.Msg.OldPassword, user.Password)
-	if err != nil {
-		return nil, passwordErr(err)
-	}
-	if !matches {
-		return nil, apiserver.InvalidArg("your password is incorrect")
+	if err := CheckPassword(r.Msg.OldPassword, user.Password); err != nil {
+		return nil, err
 	}
 
 	if len(r.Msg.NewPassword) < 8 {

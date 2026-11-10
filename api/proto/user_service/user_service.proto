@@ -172,6 +172,8 @@ message UpdatePersonalInfoRequest {
   string full_name = 6;
   string about = 7;
   string birth_date = 8;
+  // The current password, needed only when email changes.
+  string password = 9;
 }
 
 message UpdatePersonalInfoResponse {}

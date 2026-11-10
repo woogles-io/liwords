@@ -1795,15 +1795,17 @@ func (x *PersonalInfoResponse) GetBirthDate() string {
 }
 
 type UpdatePersonalInfoRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Email         string                 `protobuf:"bytes,1,opt,name=email,proto3" json:"email,omitempty"`
-	FirstName     string                 `protobuf:"bytes,2,opt,name=first_name,json=firstName,proto3" json:"first_name,omitempty"`
-	LastName      string                 `protobuf:"bytes,3,opt,name=last_name,json=lastName,proto3" json:"last_name,omitempty"`
-	CountryCode   string                 `protobuf:"bytes,4,opt,name=country_code,json=countryCode,proto3" json:"country_code,omitempty"`
-	AvatarUrl     string                 `protobuf:"bytes,5,opt,name=avatar_url,json=avatarUrl,proto3" json:"avatar_url,omitempty"`
-	FullName      string                 `protobuf:"bytes,6,opt,name=full_name,json=fullName,proto3" json:"full_name,omitempty"`
-	About         string                 `protobuf:"bytes,7,opt,name=about,proto3" json:"about,omitempty"`
-	BirthDate     string                 `protobuf:"bytes,8,opt,name=birth_date,json=birthDate,proto3" json:"birth_date,omitempty"`
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	Email       string                 `protobuf:"bytes,1,opt,name=email,proto3" json:"email,omitempty"`
+	FirstName   string                 `protobuf:"bytes,2,opt,name=first_name,json=firstName,proto3" json:"first_name,omitempty"`
+	LastName    string                 `protobuf:"bytes,3,opt,name=last_name,json=lastName,proto3" json:"last_name,omitempty"`
+	CountryCode string                 `protobuf:"bytes,4,opt,name=country_code,json=countryCode,proto3" json:"country_code,omitempty"`
+	AvatarUrl   string                 `protobuf:"bytes,5,opt,name=avatar_url,json=avatarUrl,proto3" json:"avatar_url,omitempty"`
+	FullName    string                 `protobuf:"bytes,6,opt,name=full_name,json=fullName,proto3" json:"full_name,omitempty"`
+	About       string                 `protobuf:"bytes,7,opt,name=about,proto3" json:"about,omitempty"`
+	BirthDate   string                 `protobuf:"bytes,8,opt,name=birth_date,json=birthDate,proto3" json:"birth_date,omitempty"`
+	// The current password, needed only when email changes.
+	Password      string `protobuf:"bytes,9,opt,name=password,proto3" json:"password,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1890,6 +1892,13 @@ func (x *UpdatePersonalInfoRequest) GetAbout() string {
 func (x *UpdatePersonalInfoRequest) GetBirthDate() string {
 	if x != nil {
 		return x.BirthDate
+	}
+	return ""
+}
+
+func (x *UpdatePersonalInfoRequest) GetPassword() string {
+	if x != nil {
+		return x.Password
 	}
 	return ""
 }
@@ -5914,7 +5923,7 @@ const file_proto_user_service_user_service_proto_rawDesc = "" +
 	"\tfull_name\x18\x06 \x01(\tR\bfullName\x12\x14\n" +
 	"\x05about\x18\a \x01(\tR\x05about\x12\x1d\n" +
 	"\n" +
-	"birth_date\x18\b \x01(\tR\tbirthDate\"\x81\x02\n" +
+	"birth_date\x18\b \x01(\tR\tbirthDate\"\x9d\x02\n" +
 	"\x19UpdatePersonalInfoRequest\x12\x14\n" +
 	"\x05email\x18\x01 \x01(\tR\x05email\x12\x1d\n" +
 	"\n" +
@@ -5926,7 +5935,8 @@ const file_proto_user_service_user_service_proto_rawDesc = "" +
 	"\tfull_name\x18\x06 \x01(\tR\bfullName\x12\x14\n" +
 	"\x05about\x18\a \x01(\tR\x05about\x12\x1d\n" +
 	"\n" +
-	"birth_date\x18\b \x01(\tR\tbirthDate\"\x1c\n" +
+	"birth_date\x18\b \x01(\tR\tbirthDate\x12\x1a\n" +
+	"\bpassword\x18\t \x01(\tR\bpassword\"\x1c\n" +
 	"\x1aUpdatePersonalInfoResponse\"0\n" +
 	"\x13UpdateAvatarRequest\x12\x19\n" +
 	"\bjpg_data\x18\x01 \x01(\fR\ajpgData\"5\n" +

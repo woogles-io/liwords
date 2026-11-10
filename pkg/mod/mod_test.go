@@ -276,14 +276,23 @@ func TestMod(t *testing.T) {
 	_, err = ActionExists(ctx, us, "Hacker", false, []ms.ModActionType{hackerAction.Type, longerHackerAction.Type, permanentHackerAction.Type})
 	is.True(err.Error() == "Whoops, something went wrong! Please log out and try logging in again.")
 
-	// Apply a delete action and ensure that the profile is deleted and the account is suspended
+	// Apply a delete action and ensure that the profile is deleted, the
+	// ratings and stats are kept, and the account is suspended
 	deleteAbout := "plz delet this"
 	err = us.SetPersonalInfo(ctx, "Deleter", "email", "firstname", "lastname", "2000-01-01", "USA", deleteAbout)
+	is.NoErr(err)
+	variant := entity.VariantKey("burrito")
+	deleterRating := &entity.SingleRating{Rating: 1777, RatingDeviation: 60, Volatility: 0.06}
+	err = us.SetRatings(ctx, "Deleter", "Sandbagger", variant, deleterRating, entity.NewDefaultRating(false))
+	is.NoErr(err)
+	err = us.SetStats(ctx, "Deleter", "Sandbagger", variant,
+		&entity.Stats{PlayerOneId: "Deleter"}, &entity.Stats{PlayerOneId: "Sandbagger"})
 	is.NoErr(err)
 
 	deleterUser, err := us.GetByUUID(ctx, "Deleter")
 	is.NoErr(err)
 	is.True(deleteAbout == deleterUser.Profile.About)
+	is.Equal(deleterUser.Profile.Ratings.Data[variant].Rating, deleterRating.Rating)
 
 	deleteAction := &ms.ModAction{UserId: "Deleter", Type: ms.ModActionType_DELETE_ACCOUNT, Duration: 9}
 	err = ApplyActions(ctx, us, cs, "Moderator", []*ms.ModAction{deleteAction})
@@ -295,6 +304,23 @@ func TestMod(t *testing.T) {
 	deleterUser, err = us.GetByUUID(ctx, "Deleter")
 	is.NoErr(err)
 	is.True(deleterUser.Profile.About == "")
+	is.Equal(deleterUser.Profile.FirstName, "")
+	is.Equal(deleterUser.Profile.LastName, "")
+	is.Equal(deleterUser.Profile.CountryCode, "")
+	is.Equal(deleterUser.Profile.Ratings.Data[variant], *deleterRating)
+	is.True(deleterUser.Profile.Stats.Data[variant] != nil)
+	is.Equal(deleterUser.Profile.Stats.Data[variant].PlayerOneId, "Deleter")
+
+	// Removing the suspension restores the account with its ratings and stats intact
+	err = RemoveActions(ctx, us, "Moderator", []*ms.ModAction{{UserId: "Deleter", Type: ms.ModActionType_SUSPEND_ACCOUNT}})
+	is.NoErr(err)
+	permaban, err = ActionExists(ctx, us, "Deleter", false, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT})
+	is.True(!permaban)
+	is.NoErr(err)
+	deleterUser, err = us.GetByUUID(ctx, "Deleter")
+	is.NoErr(err)
+	is.Equal(deleterUser.Profile.Ratings.Data[variant], *deleterRating)
+	is.Equal(deleterUser.Profile.Stats.Data[variant].PlayerOneId, "Deleter")
 
 	// TEST UNIQUE TO DB ACTIONS
 

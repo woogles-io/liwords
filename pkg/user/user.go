@@ -41,7 +41,6 @@ type Store interface {
 	PruneClients(ctx context.Context, cutoff time.Time) (int64, error)
 	ResetRatings(ctx context.Context, uuid string) error
 	ResetStats(ctx context.Context, uuid string) error
-	ResetProfile(ctx context.Context, uuid string) error
 	ResetPersonalInfo(ctx context.Context, uuid string) error
 	GetBot(ctx context.Context, botType macondopb.BotRequest_BotCode) (*entity.User, error)
 

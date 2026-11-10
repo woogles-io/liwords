@@ -302,6 +302,21 @@
         width: 100px;
       }
     }
+    // A password input sits inside its wrapper, so the wrapper takes the box
+    // the plain inputs above have, and the input inside takes none of it.
+    .ant-input-affix-wrapper {
+      border-radius: 4px;
+      font-size: 14px;
+      margin-bottom: 20px;
+      padding-bottom: 9.1px;
+      padding-top: 9.1px;
+
+      input {
+        margin-bottom: 0;
+        padding-bottom: 0;
+        padding-top: 0;
+      }
+    }
     .ant-picker {
       padding: 0 9px;
       margin-bottom: 20px;

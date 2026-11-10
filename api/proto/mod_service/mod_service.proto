@@ -16,6 +16,10 @@ enum ModActionType {
   RESET_STATS_AND_RATINGS = 6;
   REMOVE_CHAT = 7;
   DELETE_ACCOUNT = 8;
+  REMOVE_FIRST_NAME = 9;
+  REMOVE_LAST_NAME = 10;
+  REMOVE_ABOUT = 11;
+  REMOVE_AVATAR = 12;
 }
 
 enum EmailType {
@@ -35,6 +39,9 @@ message ModAction {
   string message_id = 8;
   string applier_user_id = 9;
   string remover_user_id = 10;
+  // ChatText: the removed text, kept for the record: the chat message for
+  // REMOVE_CHAT, or the cleared field's old value for REMOVE_FIRST_NAME,
+  // REMOVE_LAST_NAME, REMOVE_ABOUT, and REMOVE_AVATAR (the avatar's URL).
   string chat_text = 11;
   // Note: an optional note from the moderator.
   string note = 12;
