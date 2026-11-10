@@ -73,6 +73,7 @@ import {
   SimStat,
   endgameBag,
   endgameMemoryMb,
+  exchangesBySeat,
   labNow,
   passesAtEnd,
   scorelessTurnsAtEnd,
@@ -95,21 +96,39 @@ type WasmPlay =
     }
   | { action: "exchange"; tiles: Array<number> };
 
+// An endgame's answer: the tiles in the bag, the steps that solved and the
+// nodes they searched, the play to make and its value (none before the first
+// step), and the lead it ends with. With an empty bag, the depth searched and
+// the line; with tiles in the bag, the pass the answer is from (0 while no
+// pass has valued every move, END_DEPTH once searched to the end), the share
+// of deals the play wins, the endgames searched, and the moves the pass under
+// way has valued of all it values; then each tile the bag may be (one tile),
+// or each set of tiles it may hold and every play valued (two or more).
 type EndgameAnswer = {
+  bag: number;
   steps: number;
+  nodes: number;
   exact: boolean;
   play: WasmPlay | null;
-  value: number;
+  value?: number;
   spread: number;
   depth: number;
-} & (
-  | { bag: 0; line: Array<{ play: WasmPlay; value: number }> }
-  | {
-      bag: 1;
-      win: number;
-      tiles: Array<{ tile: number; count: number; value: number }>;
-    }
-);
+  line?: Array<{ play: WasmPlay; value: number }>;
+  win?: number;
+  endgames?: number;
+  moves?: [number, number];
+  tiles?: Array<{ tile: number; count: number; value: number }>;
+  draws?: Array<{ tiles: Array<number>; count: number; value: number }>;
+  candidates?: Array<{ play: WasmPlay; win: number; value: number }>;
+};
+
+// The depth a pre-endgame's answer gives once searched to the end.
+const END_DEPTH = 127;
+
+// What each player knows in a pre-endgame of two or more tiles in the bag
+// once the first move is made: nothing more, each choosing blind over every
+// split of the tiles they cannot see until the bag empties; or both racks.
+export type EndgameModel = "info_sets" | "random_draws";
 
 // A ply of a candidate's rollouts: how many reached it, the score made on it,
 // and the share of them whose play took a whole rack.
@@ -156,6 +175,8 @@ export type LabPosition = {
   // whether the other player has gone out with the play just made, which the
   // game's rules still let the player to move challenge off
   challengeable: boolean;
+  // each seat's exchanges so far
+  exchanges: Array<number>;
   // each player's name, by seat
   names: Array<string>;
   // the position, as a string, to tell one from another
@@ -206,6 +227,7 @@ export const useLabPosition = (
         turns[turns.length - 1]?.type === GameEvent_Type.TILE_PLACEMENT_MOVE &&
         challengeRule !== undefined &&
         challengeRule !== ChallengeRule.VOID,
+      exchanges: exchangesBySeat(turns),
       names,
       key: JSON.stringify([position, boardObj.leave]),
     };
@@ -508,13 +530,57 @@ type EndgamePanelProps = {
   onClose: () => void;
 };
 
+const MODEL_OPTIONS: Array<{
+  label: string;
+  value: EndgameModel;
+  tip: string;
+}> = [
+  {
+    label: "Blind",
+    value: "info_sets",
+    tip: "Each player chooses blind over every split of the tiles they cannot see until the bag empties",
+  },
+  {
+    label: "Racks known",
+    value: "random_draws",
+    tip: "Faster: both racks are known once the first move is made",
+  },
+];
+
+// How far a solve has got: an empty bag's depth; a pre-endgame's pass, the
+// moves its pass under way has valued, and the endgames searched.
+const progressText = (solved: EndgameAnswer) => {
+  if (solved.bag === 0) return `depth ${solved.depth}`;
+  const pass =
+    solved.depth >= END_DEPTH
+      ? "searched to the end"
+      : solved.depth > 0
+        ? `pass ${solved.depth}`
+        : "first pass";
+  const moves =
+    solved.moves && solved.depth < END_DEPTH
+      ? `, ${solved.moves[0]} of ${solved.moves[1]} moves valued`
+      : "";
+  return `${pass}${moves}, ${solved.endgames ?? 0} endgames`;
+};
+
+const bagTitle = (bag: number | null) => {
+  if (bag === null || bag === 0) return "Endgame";
+  if (bag === 1) return "Endgame, one tile in the bag";
+  return `Pre-endgame, ${bag} tiles in the bag`;
+};
+
 export const EndgamePanel = (props: EndgamePanelProps) => {
   const { lab, onClose } = props;
   const placeMove = usePlaceMoveCallback();
   // Nothing unseen: the other player has gone out.
   const over = lab.unseen.length === 0;
   const bag = endgameBag(lab.unseen.length, lab.rack.length);
-  const solvable = !over && bag !== null && bag <= 1;
+  const solvable = !over && bag !== null;
+  // with two or more tiles in the bag, what each player knows, which makes
+  // another search
+  const [model, setModel] = useState<EndgameModel>("info_sets");
+  const modeled = bag !== null && bag >= 2;
   const job = useLabJob<EndgameAnswer>(
     solvable
       ? async () => {
@@ -534,29 +600,51 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
               request: JSON.stringify({
                 ...lab.position,
                 max_memory_mb: endgameMemoryMb(),
+                ...(modeled ? { model, exchanges: lab.exchanges } : {}),
               }),
             },
           });
         }
       : null,
-    lab.key,
+    modeled ? `${lab.key}/${model}` : lab.key,
   );
   const { answer } = job;
-  // the answer from its first depth on: before that, it has no value or win
-  // to give, which the wasm leaves out or gives as 0
-  const solved = answer && answer.depth > 0 ? answer : undefined;
+  // the answer from its first step on, the best so far: before that, it has
+  // no value or win to give
+  const solved =
+    answer && answer.steps > 0 && answer.value !== undefined
+      ? (answer as EndgameAnswer & { value: number })
+      : undefined;
   const ranMs = useRunMs(job.job, job.running);
   const line = useMemo(
-    () => (solved?.bag === 0 ? lineMoves(solved.line, lab) : []),
+    () => (solved?.line ? lineMoves(solved.line, lab) : []),
     [solved, lab],
   );
-  const best = useMemo(
-    () =>
-      solved?.bag === 1 && solved.play
-        ? toAnalyzerMove(solved.play, solved.value, lab.letters, lab.rack, lab)
-        : null,
-    [solved, lab],
-  );
+  // a pre-endgame's plays, each with the share of deals it wins: the best
+  // alone with one tile in the bag, every play valued with two or more
+  const plays = useMemo(() => {
+    if (!solved || solved.line) return [];
+    if (solved.candidates) {
+      return solved.candidates.map((c) => ({
+        move: toAnalyzerMove(c.play, c.value, lab.letters, lab.rack, lab),
+        win: c.win,
+      }));
+    }
+    return solved.play
+      ? [
+          {
+            move: toAnalyzerMove(
+              solved.play,
+              solved.value,
+              lab.letters,
+              lab.rack,
+              lab,
+            ),
+            win: solved.win,
+          },
+        ]
+      : [];
+  }, [solved, lab]);
 
   // the players by who moves first in the line: the player to move, then the
   // other
@@ -570,25 +658,22 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
   if (over) {
     status = goneOutText(lab);
   } else if (!solvable) {
-    status =
-      bag === null
-        ? "Needs the full rack of the player to move."
-        : `The bag holds ${bag} tiles.`;
+    status = "Needs the full rack of the player to move.";
   } else if (job.error) {
     status = <span className="analyzer-error">{job.error}</span>;
   } else if (!solved || !solved.play) {
     status = "Solving...";
   } else {
-    const depth = `depth ${solved.depth} after ${ranText(ranMs)}${solved.exact ? ", exact" : job.running ? ", solving" : ", stopped"}`;
+    const progress = `${progressText(solved)} after ${ranText(ranMs)}${solved.exact ? ", exact" : job.running ? ", solving" : ", stopped"}`;
     status =
       solved.bag === 0
-        ? `Value ${signed(solved.value)}, spread ${signed(solved.spread)}, ${depth}`
-        : `Expected value ${signed(solved.value, 2)}, wins ${percent(solved.win)}, ${depth}`;
+        ? `Value ${signed(solved.value)}, spread ${signed(solved.spread)}, ${progress}`
+        : `Expected value ${signed(solved.value, 2)}, wins ${percent(solved.win ?? 0)}, ${progress}`;
   }
 
   return (
     <PanelFrame
-      title={bag === 1 ? "Endgame, one tile in the bag" : "Endgame"}
+      title={bagTitle(bag)}
       status={status}
       running={job.running}
       canResume={job.job !== undefined && !answer?.exact && !job.error}
@@ -598,7 +683,7 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
     >
       {solvable && (
         // what each player holds: with an empty bag the other player holds
-        // every tile unseen, and with one in the bag all but that one
+        // every tile unseen, and with tiles in the bag all but those
         <div className="lab-racks">
           <div>
             {names[0]} to move: {runes(lab.rack)}
@@ -608,8 +693,23 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
           </div>
         </div>
       )}
+      {solvable && modeled && (
+        <Radio.Group
+          className="lab-model"
+          optionType="button"
+          size="small"
+          value={model}
+          onChange={(e) => setModel(e.target.value)}
+        >
+          {MODEL_OPTIONS.map((o) => (
+            <Tooltip key={o.value} title={o.tip}>
+              <Radio.Button value={o.value}>{o.label}</Radio.Button>
+            </Tooltip>
+          ))}
+        </Radio.Group>
+      )}
       <table>
-        {(line.length > 0 || best) && (
+        {(line.length > 0 || plays.length > 0) && (
           <thead>
             <tr>
               <th className="lab-who" />
@@ -617,6 +717,11 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
               <th className="move" />
               <th className="move-score">Score</th>
               <th className="move-leave">Leave</th>
+              {plays.length > 0 && (
+                <th className="lab-win">
+                  <ColumnName name="Win" tip="The share of deals it wins" />
+                </th>
+              )}
               <th className="move-equity">
                 <ColumnName
                   name="Value"
@@ -641,28 +746,41 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
               <td className="move-equity">{signed(m.equity)}</td>
             </tr>
           ))}
-          {best && (
-            <tr onClick={() => placeMove(best)}>
-              <td className="lab-who">{names[0]}</td>
-              <td className="move-coords">{best.coordinates}</td>
-              <td className="move">{best.displayMove}</td>
-              <td className="move-score">{best.score}</td>
-              <td className="move-leave">{runes(best.leave)}</td>
-              <td className="move-equity">{signed(best.equity, 2)}</td>
+          {plays.map(({ move: m, win }, i) => (
+            <tr key={m.jsonKey} onClick={() => placeMove(m)}>
+              <td className="lab-who">{i === 0 ? names[0] : ""}</td>
+              <td className="move-coords">{m.coordinates}</td>
+              <td className="move">{m.displayMove}</td>
+              <td className="move-score">{m.score}</td>
+              <td className="move-leave">{runes(m.leave)}</td>
+              <td className="lab-win">
+                {win === undefined ? "" : percent(win)}
+              </td>
+              <td className="move-equity">{signed(m.equity, 2)}</td>
             </tr>
-          )}
-          {solved?.bag === 1 &&
-            solved.tiles.map((t) => (
-              <tr key={t.tile} className="lab-tile">
-                <td className="lab-who" />
-                <td className="move-coords" />
-                <td className="move" colSpan={3}>
-                  {machineLetterToRune(t.tile, lab.alphabet)} in the bag
-                  {t.count > 1 ? ` (${t.count})` : ""}
-                </td>
-                <td className="move-equity">{signed(t.value)}</td>
-              </tr>
-            ))}
+          ))}
+          {solved?.tiles?.map((t) => (
+            <tr key={t.tile} className="lab-tile">
+              <td className="lab-who" />
+              <td className="move-coords" />
+              <td className="move" colSpan={4}>
+                {machineLetterToRune(t.tile, lab.alphabet)} in the bag
+                {t.count > 1 ? ` (${t.count})` : ""}
+              </td>
+              <td className="move-equity">{signed(t.value)}</td>
+            </tr>
+          ))}
+          {solved?.draws?.map((d) => (
+            <tr key={d.tiles.join(",")} className="lab-tile">
+              <td className="lab-who" />
+              <td className="move-coords" />
+              <td className="move" colSpan={4}>
+                {runes(d.tiles)} in the bag
+                {` (${d.count} ${d.count === 1 ? "deal" : "deals"})`}
+              </td>
+              <td className="move-equity">{signed(d.value, 2)}</td>
+            </tr>
+          ))}
         </tbody>
       </table>
     </PanelFrame>

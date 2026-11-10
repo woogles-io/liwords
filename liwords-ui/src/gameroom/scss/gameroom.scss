@@ -420,6 +420,13 @@ p.streak-loss {
     text-align: left;
   }
 
+  // what each player of a pre-endgame knows once the first move is made
+  .lab-model {
+    display: block;
+    padding: 0 12px 6px;
+    text-align: left;
+  }
+
   // The lab's rows hold more columns than the analyzer's, so they sit closer.
   th,
   td {
@@ -474,7 +481,8 @@ p.streak-loss {
   }
 
   td.lab-bingo,
-  td.lab-n {
+  td.lab-n,
+  td.lab-win {
     text-align: right;
   }
 

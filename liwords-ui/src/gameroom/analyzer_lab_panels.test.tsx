@@ -150,6 +150,7 @@ const position = (
   },
   leave: "CSW24",
   challengeable: false,
+  exchanges: [1, 2],
   names: ["andy", "wolges"],
   key: JSON.stringify(unseen),
   ...more,
@@ -279,6 +280,8 @@ describe("the endgame panel", () => {
       spread: 14.875,
       depth: 2,
       win: 0.75,
+      endgames: 40,
+      moves: [3, 9],
       tiles: [
         { tile: E, count: 2, value: 6 },
         { tile: I, count: 4, value: -3 },
@@ -289,18 +292,24 @@ describe("the endgame panel", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        "Expected value +4.88, wins 75.0%, depth 2 after 0 s, solving",
+        "Expected value +4.88, wins 75.0%, pass 2, 3 of 9 moves valued, 40 endgames after 0 s, solving",
       ),
     ).toBeInTheDocument();
     expect(screen.getByText("Unseen: ABEEIIII")).toBeInTheDocument();
+    // one tile in the bag is no question of what either player knows
+    expect(screen.queryByText("Blind")).not.toBeInTheDocument();
+    const made = lab.calls.find((c) => c.op === "endgame");
+    const request = JSON.parse((made?.args as { request: string }).request);
+    expect(request.model).toBeUndefined();
+    expect(request.exchanges).toBeUndefined();
     expect(bodyRows()).toEqual([
-      "andy8HBA10AEEII+4.88",
+      "andy8HBA10AEEII75.0%+4.88",
       "E in the bag (2)+6",
       "I in the bag (4)-3",
     ]);
   });
 
-  it("shows no value before its first depth, nor any move", async () => {
+  it("shows no value before its first step, nor any move", async () => {
     render(
       <Store>
         <EndgamePanel
@@ -309,19 +318,111 @@ describe("the endgame panel", () => {
         />
       </Store>,
     );
-    // a tile in the bag, at depth 0: no value or win yet
+    // a tile in the bag, before any step: no value or win yet
     await step({
       bag: 1,
-      steps: 1,
+      steps: 0,
+      nodes: 0,
       exact: false,
-      play: across(7, 7, [B, A]),
+      play: null,
       spread: 10,
       depth: 0,
+      endgames: 0,
       tiles: [],
     });
     expect(screen.getByText("Solving...")).toBeInTheDocument();
     expect(bodyRows()).toEqual([]);
     expect(screen.queryByText(/NaN|undefined/)).not.toBeInTheDocument();
+  });
+
+  it("shows the best of the moves valued so far in a pre-endgame's first pass", async () => {
+    render(
+      <Store>
+        <EndgamePanel
+          lab={position([A, B, E, E, I, I, I, I])}
+          onClose={() => {}}
+        />
+      </Store>,
+    );
+    await step({
+      bag: 1,
+      steps: 1,
+      nodes: 50,
+      exact: false,
+      play: across(7, 7, [B, A]),
+      value: 2,
+      spread: 12,
+      depth: 0,
+      win: 0.5,
+      endgames: 6,
+      moves: [2, 9],
+      tiles: [],
+    });
+    expect(
+      screen.getByText(
+        "Expected value +2.00, wins 50.0%, first pass, 2 of 9 moves valued, 6 endgames after 0 s, solving",
+      ),
+    ).toBeInTheDocument();
+    expect(bodyRows()).toEqual(["andy8HBA10AEEII50.0%+2.00"]);
+  });
+
+  it("solves a pre-endgame of two tiles in the bag, every play valued, blind or with both racks known", async () => {
+    render(
+      <Store>
+        <EndgamePanel
+          lab={position([A, B, E, E, I, I, I, I, I])}
+          onClose={() => {}}
+        />
+      </Store>,
+    );
+    await step({
+      bag: 2,
+      steps: 4,
+      nodes: 900,
+      exact: true,
+      play: across(7, 7, [B, A]),
+      value: 3.5,
+      spread: 13.5,
+      depth: 127,
+      win: 0.6,
+      endgames: 120,
+      moves: [9, 9],
+      draws: [
+        { tiles: [E, I], count: 10, value: 5 },
+        { tiles: [I, I], count: 1, value: -2 },
+      ],
+      candidates: [
+        { play: across(7, 7, [B, A]), win: 0.6, value: 3.5 },
+        { play: { action: "exchange", tiles: [] }, win: 0.25, value: -8 },
+      ],
+    });
+    expect(
+      screen.getByText("Pre-endgame, 2 tiles in the bag"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Expected value +3.50, wins 60.0%, searched to the end, 120 endgames after 0 s, exact",
+      ),
+    ).toBeInTheDocument();
+    expect(headRow()).toBe("ScoreLeaveWinValue");
+    expect(bodyRows()).toEqual([
+      "andy8HBA10AEEII60.0%+3.50",
+      "Pass0AABEEII25.0%-8.00",
+      "EI in the bag (10 deals)+5.00",
+      "II in the bag (1 deal)-2.00",
+    ]);
+    // blind by default, with each seat's exchanges
+    const requests = () =>
+      lab.calls
+        .filter((c) => c.op === "endgame")
+        .map((c) => JSON.parse((c.args as { request: string }).request));
+    expect(requests()).toHaveLength(1);
+    expect(requests()[0].model).toBe("info_sets");
+    expect(requests()[0].exchanges).toEqual([1, 2]);
+    // both racks known makes another search
+    fireEvent.click(screen.getByText("Racks known"));
+    await waitFor(() => expect(requests()).toHaveLength(2));
+    expect(requests()[1].model).toBe("random_draws");
   });
 
   it("shows how long it has solved, the time going on between its steps", async () => {
@@ -367,7 +468,7 @@ describe("the endgame panel", () => {
     ).toBeInTheDocument();
   });
 
-  it("solves nothing once the other player has gone out, or with two in the bag", async () => {
+  it("solves nothing once the other player has gone out, or without the full rack of the player to move", async () => {
     const { unmount } = render(
       <Store>
         <EndgamePanel lab={position([])} onClose={() => {}} />
@@ -395,12 +496,14 @@ describe("the endgame panel", () => {
     render(
       <Store>
         <EndgamePanel
-          lab={position([A, B, E, E, I, I, I, I, I])}
+          lab={position([A, B, E, E, I, I, I, I, I], { rack: [A, B] })}
           onClose={() => {}}
         />
       </Store>,
     );
-    expect(screen.getByText("The bag holds 2 tiles.")).toBeInTheDocument();
+    expect(
+      screen.getByText("Needs the full rack of the player to move."),
+    ).toBeInTheDocument();
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(lab.calls).toEqual([]);
   });

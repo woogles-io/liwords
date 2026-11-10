@@ -56,6 +56,18 @@ export const passesAtEnd = (turns: Array<GameEvent>) => {
   return count;
 };
 
+// Each seat's exchanges so far, by seat, which an endgame with two or more
+// tiles in the bag is told of.
+export const exchangesBySeat = (turns: Array<GameEvent>) => {
+  const exchanges = [0, 0];
+  for (const t of turns) {
+    if (t.type === GameEvent_Type.EXCHANGE && t.playerIndex in exchanges) {
+      exchanges[t.playerIndex]++;
+    }
+  }
+  return exchanges;
+};
+
 // The tiles the player to move cannot see. The pool holds every tile off the
 // board, that player's own rack too.
 export const unseenBy = (pool: TileDistribution, rack: MachineWord) => {
