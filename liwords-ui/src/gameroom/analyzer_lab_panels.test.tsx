@@ -674,7 +674,7 @@ describe("the sim panel", () => {
       screen.getByText("Static equity until the sim starts."),
     ).toBeInTheDocument();
     expect(bodyRows()).toEqual([
-      `${JSON.stringify(down)}+20.00`,
+      `${JSON.stringify(down)}+20.00*`,
       `${JSON.stringify(ab)}+8.00`,
       `${JSON.stringify(ba)}+3.00`,
     ]);
@@ -990,11 +990,8 @@ describe("the sim panel", () => {
         />
       </Store>,
     );
-    expect(
-      screen.getByText(
-        "SARKIER is a phony, simmed unchallenged: CONDS is not in CSW24.",
-      ),
-    ).toBeInTheDocument();
+    // as the analyzer shows one: its words starred under it, its equity too
+    expect(bodyRows()).toContain("SARKIER(CONDS*)0.00*");
     expect(bodyRows()).toHaveLength(3);
     await start();
     const sim = lab.calls.find((c) => c.op === "sim");
@@ -1250,11 +1247,9 @@ describe("the sim panel", () => {
       </Store>,
     );
     act(() => screen.getByRole("button", { name: "Add" }).click());
-    expect(
-      await screen.findByText(
-        "BE is a phony, simmed unchallenged: BAZQPE and UB are not in CSW24.",
-      ),
-    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(bodyRows()).toContain("8HBE(BAZQPE*, UB*)+50.00*"),
+    );
     expect(bodyRows()).toHaveLength(2);
     page.answer = undefined;
     act(() => screen.getByRole("button", { name: "Add" }).click());
@@ -1262,6 +1257,57 @@ describe("the sim panel", () => {
       await screen.findByText("That move is listed already."),
     ).toBeInTheDocument();
     expect(bodyRows()).toHaveLength(2);
+  });
+
+  it("adds points below 0, a score counted short, and a phony as it was left standing", async () => {
+    placeBE();
+    page.answer = {
+      ...be,
+      score: 10,
+      result: "scored",
+      canonical: true,
+      valid: false,
+      invalid_words: [[B, E]],
+      equity: 4,
+    };
+    render(
+      <Store>
+        <Sim lab={midgame()} moves={[listed(ba)]} />
+      </Store>,
+    );
+    const challenged = () =>
+      act(() => screen.getByRole("button", { name: "Challenged" }).click());
+    challenged();
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Points added" }), {
+      target: { value: "-2" },
+    });
+    act(() =>
+      screen.getByRole("button", { name: "Add with the points" }).click(),
+    );
+    await waitFor(() => expect(bodyRows()).toHaveLength(2));
+    expect(bodyRows()).toContain("8HBE -2(BE*)+2.00*");
+    challenged();
+    act(() =>
+      screen.getByRole("button", { name: "Add challenged off" }).click(),
+    );
+    await waitFor(() => expect(bodyRows()).toHaveLength(3));
+    // each marked a phony, with its points or challenged off
+    expect(bodyRows()).toContain("8HBE (challenged off)(BE*)+4.00*");
+    await start();
+    const sim = lab.calls.find((c) => c.op === "sim");
+    expect(JSON.parse((sim?.args as { plays: string }).plays)).toEqual([
+      ba,
+      { ...be, bonus: -2 },
+      { ...be, challenged_off: true },
+    ]);
+    // 0 adds nothing
+    challenged();
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Points added" }), {
+      target: { value: "0" },
+    });
+    expect(
+      screen.getByRole("button", { name: "Add with the points" }),
+    ).toBeDisabled();
   });
 
   it("adds the move placed on the board with a challenge's bonus, and challenged off, each a candidate of its own", async () => {
@@ -1275,9 +1321,11 @@ describe("the sim panel", () => {
       act(() => screen.getByRole("button", { name: "Challenged" }).click());
     challenged();
     // the game's own bonus to begin with
-    expect(screen.getByRole("spinbutton", { name: "Bonus" })).toHaveValue("5");
+    expect(
+      screen.getByRole("spinbutton", { name: "Points added" }),
+    ).toHaveValue("5");
     act(() =>
-      screen.getByRole("button", { name: "Add with the bonus" }).click(),
+      screen.getByRole("button", { name: "Add with the points" }).click(),
     );
     await waitFor(() => expect(bodyRows()).toHaveLength(2));
     expect(bodyRows()).toContain("8HBE +5+9.00");

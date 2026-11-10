@@ -105,7 +105,9 @@ type WasmPlay =
     }
   | { action: "exchange"; tiles: Array<number> };
 
-// What a play given to a sim is besides the play: a bonus, or challenged off.
+// What a play given to a sim is besides the play: points added to its score,
+// as a challenge's bonus or a miscount left standing (below 0 too, a score
+// counted short), or challenged off.
 type PlayVariant = { bonus: number } | { challenged_off: true };
 
 // An endgame's answer: the tiles in the bag, the steps that solved and the
@@ -958,7 +960,7 @@ const heldMove = (moves: HeldMoves, held: Held) => {
 // A move as a sim takes it, a bonus or a challenge named.
 const variantName = (m: AnalyzerMove, variant: PlayVariant) =>
   "bonus" in variant
-    ? `${m.displayMove} +${variant.bonus}`
+    ? `${m.displayMove} ${signed(variant.bonus)}`
     : `${m.displayMove} (challenged off)`;
 
 // The move placed on the board, as the wasm writes a play (its score 0, which
@@ -1094,19 +1096,16 @@ const knownTiles = (
 
 const errorText = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
-// Words as a sentence lists them: A; A and B; A, B, and C.
-const listWords = (words: Array<string>) =>
-  words.length < 3
-    ? words.join(" and ")
-    : `${words.slice(0, -1).join(", ")}, and ${words[words.length - 1]}`;
-
-// What the sim says of a phony among its moves, which it plays as it
-// stands, unchallenged: the words the lexicon lacks.
-const phonyText = (m: AnalyzerMove, lexicon: string | undefined) => {
-  const words = m.invalid_words ?? [];
-  return words.length
-    ? `${m.displayMove} is a phony, simmed unchallenged: ${listWords(words)} ${words.length > 1 ? "are" : "is"} not in ${lexicon ?? "the lexicon"}.`
-    : `${m.displayMove} is a phony, simmed unchallenged.`;
+// A move's words the lexicon lacks, under it, each starred, as the analyzer
+// shows a phony: a sim plays one as it stands, unchallenged, or challenged off
+// as given.
+const PhonyWords = (props: { move: AnalyzerMove }) => {
+  const words = props.move.invalid_words ?? [];
+  return words.length ? (
+    <React.Fragment>
+      <br />({words.map((w) => `${w}*`).join(", ")})
+    </React.Fragment>
+  ) : null;
 };
 
 // A play checked and scored on the page's own wasm, as the analyzer checks and
@@ -1847,8 +1846,6 @@ export const SimPanel = (props: SimPanelProps) => {
       (row) => (row.stat?.state === "running" ? "Pause" : "Resume"),
       (row) => sim.hold(row.play, row.stat?.state === "running"),
     );
-  // The phonies among the sim's moves, which it plays unchallenged.
-  const phonies = over ? [] : sim.candidates.filter((m) => !(m.valid ?? true));
 
   let status: React.ReactNode;
   if (over) {
@@ -1877,14 +1874,7 @@ export const SimPanel = (props: SimPanelProps) => {
   return (
     <PanelFrame
       title="Sim"
-      status={
-        <React.Fragment>
-          {status}
-          {phonies.map((m) => (
-            <div key={m.jsonKey}>{phonyText(m, lab.position.lexicon)}</div>
-          ))}
-        </React.Fragment>
-      }
+      status={status}
       running={sim.running}
       canResume={sim.canRun}
       resumeLabel={made ? "Resume" : "Start"}
@@ -2032,12 +2022,16 @@ export const SimPanel = (props: SimPanelProps) => {
               }}
             >
               <td className="move-coords">{m.coordinates}</td>
-              <td className="move">{m.displayMove}</td>
+              <td className="move">
+                {m.displayMove}
+                <PhonyWords move={m} />
+              </td>
               <td className="move-score">
                 {stat?.n ? percent(stat.win.mean) : ""}
               </td>
               <td className="move-equity">
                 {signed(stat?.n ? stat.equity.mean : m.equity, 2)}
+                {!(m.valid ?? true) && "*"}
               </td>
               <td className="lab-bingo">
                 {stat?.n && stat.plies?.[0] ? percent(stat.plies[0].bingo) : ""}
@@ -2600,8 +2594,9 @@ type ChallengeButtonProps = {
   onAdd: (variant: PlayVariant) => void;
 };
 
-// The move placed on the board as a challenge leaves it: with a bonus added
-// to its score, or challenged off.
+// The move placed on the board as it was left standing: with points added to
+// its score (a challenge's bonus, starting at the game's own, or a miscount,
+// below 0 for one counted short), or challenged off.
 const ChallengeButton = (props: ChallengeButtonProps) => {
   const { bonus: ruled, disabled, onAdd } = props;
   const [open, setOpen] = useState(false);
@@ -2621,11 +2616,10 @@ const ChallengeButton = (props: ChallengeButtonProps) => {
       content={
         <div className="lab-top">
           <label>
-            Bonus
+            Points added
             <InputNumber
               size="small"
-              aria-label="Bonus"
-              min={1}
+              aria-label="Points added"
               precision={0}
               value={bonus}
               onChange={(v) => setBonus(v)}
@@ -2634,10 +2628,10 @@ const ChallengeButton = (props: ChallengeButtonProps) => {
           <div className="lab-exchange-actions">
             <Button
               size="small"
-              disabled={bonus === null || bonus < 1}
+              disabled={!bonus}
               onClick={() => bonus && add({ bonus })}
             >
-              Add with the bonus
+              Add with the points
             </Button>
             <Button size="small" onClick={() => add({ challenged_off: true })}>
               Add challenged off
