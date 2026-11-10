@@ -103,11 +103,54 @@ func (ts *TournamentService) SetTournamentMetadata(ctx context.Context, req *con
 		return nil, err
 	}
 
+	_, oldSlug, oldErr := ts.nameAndSlug(ctx, req.Msg.Metadata.Id)
 	err = SetTournamentMetadata(ctx, ts.tournamentStore, req.Msg.Metadata, req.Msg.SetOnlySpecified)
 	if err != nil {
 		return nil, apiserver.InvalidArg(err.Error())
 	}
+	if oldErr == nil {
+		ts.announceSlugChange(ctx, req.Msg.Metadata.Id, oldSlug)
+	}
 	return connect.NewResponse(&pb.TournamentResponse{}), nil
+}
+
+// nameAndSlug reads a tournament's name and slug under its lock.
+func (ts *TournamentService) nameAndSlug(ctx context.Context, id string) (string, string, error) {
+	t, err := ts.tournamentStore.Get(ctx, id)
+	if err != nil {
+		return "", "", err
+	}
+	t.RLock()
+	defer t.RUnlock()
+	return t.Name, t.Slug, nil
+}
+
+// announceSlugChange tells the channel that hears of new tournaments when a
+// change of metadata moved a tournament to a new slug.
+func (ts *TournamentService) announceSlugChange(ctx context.Context, id, oldSlug string) {
+	name, newSlug, err := ts.nameAndSlug(ctx, id)
+	if err != nil {
+		log.Err(err).Str("tournament", id).Msg("slug-change-notice-get")
+		return
+	}
+	if newSlug == oldSlug {
+		return
+	}
+	cfg, err := config.Ctx(ctx)
+	if err != nil {
+		log.Err(err).Str("tournament", id).Msg("slug-change-notice-nil-config")
+		return
+	}
+	if cfg.DiscordToken == "" {
+		return
+	}
+	user, err := apiserver.AuthUser(ctx, ts.userStore)
+	if err != nil {
+		log.Err(err).Str("tournament", id).Msg("slug-change-notice-user")
+		return
+	}
+	notify.Post(fmt.Sprintf("A tournament's slug has been changed by %s: %s (from %s to %s)",
+		user.Username, name, oldSlug, newSlug), cfg.DiscordToken)
 }
 
 func (ts *TournamentService) SetSingleRoundControls(ctx context.Context, req *connect.Request[pb.SingleRoundControlsRequest]) (*connect.Response[pb.SingleRoundControlsResponse], error) {
