@@ -11,6 +11,9 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/woogles-io/liwords/pkg/entity"
@@ -32,6 +35,16 @@ type DBStore struct {
 // NewDBStore creates a new DB store for tournament managers.
 func NewDBStore(p *pgxpool.Pool, gs *game.Cache) (*DBStore, error) {
 	return &DBStore{dbPool: p, queries: models.New(p), gameStore: gs}, nil
+}
+
+var tracer = otel.Tracer("tournament-store")
+
+// startSpan names a span after the store method. The pgx spans inside are
+// named after their SQL, and the long ones can't be searched for in Jaeger.
+func startSpan(ctx context.Context, op, key string) (context.Context, trace.Span) {
+	ctx, span := tracer.Start(ctx, "tournament."+op)
+	span.SetAttributes(attribute.String("tournament.key", key))
+	return ctx, span
 }
 
 // storedDivision is a division as the divisions column holds it. Classic is
@@ -116,10 +129,83 @@ func (s *DBStore) dbObjToEntity(tm *models.Tournament) (*entity.Tournament, erro
 }
 
 func (s *DBStore) Get(ctx context.Context, id string) (*entity.Tournament, error) {
+	ctx, span := startSpan(ctx, "Get", id)
+	defer span.End()
 	tm, err := s.queries.GetTournamentByUUID(ctx, text(id))
 	if err != nil {
 		return nil, err
 	}
+	span.SetAttributes(attribute.Int("tournament.divisions_bytes", len(tm.Divisions)))
+	return s.dbObjToEntity(&tm)
+}
+
+// GetHeader loads a tournament without its divisions.
+func (s *DBStore) GetHeader(ctx context.Context, id string) (*entity.TournamentHeader, error) {
+	ctx, span := startSpan(ctx, "GetHeader", id)
+	defer span.End()
+	row, err := s.queries.GetTournamentHeaderByUUID(ctx, text(id))
+	if err != nil {
+		return nil, err
+	}
+	directors := &ipc.TournamentPersons{}
+	if err := json.Unmarshal(row.Directors, directors); err != nil {
+		return nil, err
+	}
+	extraMeta := &entity.TournamentMeta{}
+	// As in dbObjToEntity, a tournament may have no extra meta.
+	_ = json.Unmarshal(row.ExtraMeta, extraMeta)
+	return &entity.TournamentHeader{
+		UUID:               row.Uuid.String,
+		Name:               row.Name.String,
+		Description:        row.Description.String,
+		Slug:               row.Slug.String,
+		ParentID:           row.Parent.String,
+		Type:               entity.CompetitionType(row.Type.String),
+		Directors:          directors,
+		ExtraMeta:          extraMeta,
+		IsStarted:          row.IsStarted.Valid && row.IsStarted.Bool,
+		IsFinished:         row.IsFinished.Valid && row.IsFinished.Bool,
+		ScheduledStartTime: optTime(row.ScheduledStartTime),
+		ScheduledEndTime:   optTime(row.ScheduledEndTime),
+	}, nil
+}
+
+// GetUUIDBySlug looks up a tournament's ID from its slug, case-insensitively.
+func (s *DBStore) GetUUIDBySlug(ctx context.Context, slug string) (string, error) {
+	ctx, span := startSpan(ctx, "GetUUIDBySlug", slug)
+	defer span.End()
+	id, err := s.queries.GetTournamentUUIDBySlug(ctx, slug)
+	if err != nil {
+		return "", err
+	}
+	return id.String, nil
+}
+
+// GetSummary loads a tournament with its divisions' players and controls but
+// not their pairings or standings, like the listings. The result must never
+// be cached or saved.
+func (s *DBStore) GetSummary(ctx context.Context, id string) (*entity.Tournament, error) {
+	ctx, span := startSpan(ctx, "GetSummary", id)
+	defer span.End()
+	row, err := s.queries.GetTournamentSummaryByUUID(ctx, text(id))
+	if err != nil {
+		return nil, err
+	}
+	span.SetAttributes(attribute.Int("tournament.divisions_bytes", len(row.Divisions)))
+	tm := models.Tournament(row)
+	return s.dbObjToEntity(&tm)
+}
+
+// GetSummaryBySlug is GetSummary by slug, case-insensitively.
+func (s *DBStore) GetSummaryBySlug(ctx context.Context, slug string) (*entity.Tournament, error) {
+	ctx, span := startSpan(ctx, "GetSummaryBySlug", slug)
+	defer span.End()
+	row, err := s.queries.GetTournamentSummaryBySlug(ctx, slug)
+	if err != nil {
+		return nil, err
+	}
+	span.SetAttributes(attribute.Int("tournament.divisions_bytes", len(row.Divisions)))
+	tm := models.Tournament(row)
 	return s.dbObjToEntity(&tm)
 }
 
@@ -131,10 +217,13 @@ func (s *DBStore) PrivateAnalysis(ctx context.Context, id string) (bool, error) 
 }
 
 func (s *DBStore) GetBySlug(ctx context.Context, slug string) (*entity.Tournament, error) {
+	ctx, span := startSpan(ctx, "GetBySlug", slug)
+	defer span.End()
 	tm, err := s.queries.GetTournamentBySlug(ctx, slug)
 	if err != nil {
 		return nil, err
 	}
+	span.SetAttributes(attribute.Int("tournament.divisions_bytes", len(tm.Divisions)))
 	return s.dbObjToEntity(&tm)
 }
 
@@ -147,6 +236,8 @@ func (s *DBStore) TournamentEventChan() chan<- *entity.EventWrapper {
 // skipped zero values, so those changes reached the cache but not the
 // database.)
 func (s *DBStore) Set(ctx context.Context, tm *entity.Tournament) error {
+	ctx, span := startSpan(ctx, "Set", tm.UUID)
+	defer span.End()
 	dbt, err := s.toDBObj(tm)
 	if err != nil {
 		return err

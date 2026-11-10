@@ -19,6 +19,10 @@ type backingStore interface {
 	Get(ctx context.Context, id string) (*entity.Tournament, error)
 	GetBySlug(ctx context.Context, id string) (*entity.Tournament, error)
 	PrivateAnalysis(ctx context.Context, id string) (bool, error)
+	GetHeader(ctx context.Context, id string) (*entity.TournamentHeader, error)
+	GetUUIDBySlug(ctx context.Context, slug string) (string, error)
+	GetSummary(ctx context.Context, id string) (*entity.Tournament, error)
+	GetSummaryBySlug(ctx context.Context, slug string) (*entity.Tournament, error)
 	Set(context.Context, *entity.Tournament) error
 	Create(context.Context, *entity.Tournament) error
 	GetRecentGames(ctx context.Context, tourneyID string, numGames int, offset int) (*pb.RecentGamesResponse, error)
@@ -117,6 +121,25 @@ func (c *Cache) GetBySlug(ctx context.Context, id string) (*entity.Tournament, e
 // going away.
 func (c *Cache) PrivateAnalysis(ctx context.Context, id string) (bool, error) {
 	return c.backing.PrivateAnalysis(ctx, id)
+}
+
+// GetHeader, GetUUIDBySlug, GetSummary and GetSummaryBySlug read the
+// database, not the cache, for the same reason as PrivateAnalysis. Summaries
+// have no pairings or standings, so they must never go into the cache.
+func (c *Cache) GetHeader(ctx context.Context, id string) (*entity.TournamentHeader, error) {
+	return c.backing.GetHeader(ctx, id)
+}
+
+func (c *Cache) GetUUIDBySlug(ctx context.Context, slug string) (string, error) {
+	return c.backing.GetUUIDBySlug(ctx, slug)
+}
+
+func (c *Cache) GetSummary(ctx context.Context, id string) (*entity.Tournament, error) {
+	return c.backing.GetSummary(ctx, id)
+}
+
+func (c *Cache) GetSummaryBySlug(ctx context.Context, slug string) (*entity.Tournament, error) {
+	return c.backing.GetSummaryBySlug(ctx, slug)
 }
 
 // Set sets a tournament in the cache, AND in the backing store. This ensures if the

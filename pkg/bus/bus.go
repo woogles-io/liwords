@@ -494,11 +494,11 @@ func (b *Bus) handleNatsRequest(ctx context.Context, topic string,
 			}
 
 		} else if strings.HasPrefix(path, "/tournament/") || strings.HasPrefix(path, "/club/") {
-			t, err := b.stores.TournamentStore.GetBySlug(ctx, path)
+			tid, err := b.stores.TournamentStore.GetUUIDBySlug(ctx, path)
 			if err != nil {
 				return err
 			}
-			currentTournamentID = t.UUID
+			currentTournamentID = tid
 			tournamentRealm := "tournament-" + currentTournamentID
 			resp.Realms = append(resp.Realms, tournamentRealm, "chat-"+tournamentRealm)
 		} else if strings.HasPrefix(path, "/leagues/") {

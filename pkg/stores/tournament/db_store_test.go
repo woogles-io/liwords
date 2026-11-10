@@ -107,6 +107,40 @@ func TestCreateGetSet(t *testing.T) {
 	is.NoErr(err)
 	is.Equal(bySlug.UUID, "tid1")
 
+	header, err := store.GetHeader(ctx, "tid1")
+	is.NoErr(err)
+	is.Equal(header.Name, tm.Name)
+	is.Equal(header.Slug, tm.Slug)
+	is.Equal(header.Type, tm.Type)
+	is.Equal(header.Directors.Persons[0].Id, "director-uuid:director")
+	is.True(header.ExtraMeta.PrivateAnalysis)
+	is.True(header.ScheduledEndTime.Equal(*tm.ScheduledEndTime))
+
+	id, err := store.GetUUIDBySlug(ctx, "/tournament/SOME-tournament")
+	is.NoErr(err)
+	is.Equal(id, "tid1")
+
+	summaryByID, err := store.GetSummary(ctx, "tid1")
+	is.NoErr(err)
+	summaryBySlug, err := store.GetSummaryBySlug(ctx, "/tournament/some-TOURNAMENT")
+	is.NoErr(err)
+	for _, summary := range []*entity.Tournament{summaryByID, summaryBySlug} {
+		is.Equal(summary.UUID, "tid1")
+		is.Equal(len(summary.Divisions), len(tm.Divisions))
+		for name, div := range summary.Divisions {
+			full := tm.Divisions[name].DivisionManager.(*tl.ClassicDivision)
+			stripped := div.DivisionManager.(*tl.ClassicDivision)
+			is.Equal(len(stripped.PairingMap), 0)
+			is.Equal(len(stripped.Players.Persons), len(full.Players.Persons))
+			is.Equal(len(stripped.RoundControls), len(full.RoundControls))
+		}
+	}
+
+	_, err = store.GetHeader(ctx, "nonexistent")
+	is.True(err != nil)
+	_, err = store.GetUUIDBySlug(ctx, "/tournament/nonexistent")
+	is.True(err != nil)
+
 	private, err := store.PrivateAnalysis(ctx, "tid1")
 	is.NoErr(err)
 	is.True(private)

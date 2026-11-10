@@ -8,6 +8,40 @@ SELECT * FROM tournaments WHERE uuid = @uuid;
 -- Slugs are case-insensitive; idx_tournaments_slug is unique on lower(slug).
 SELECT * FROM tournaments WHERE lower(slug) = lower(@slug);
 
+-- name: GetTournamentHeaderByUUID :one
+-- Everything about a tournament except its divisions.
+SELECT uuid, name, description, slug, parent, type, directors, extra_meta,
+    is_started, is_finished, scheduled_start_time, scheduled_end_time
+FROM tournaments WHERE uuid = @uuid;
+
+-- name: GetTournamentSummaryByUUID :one
+-- A tournament with its divisions stripped like the listings below: players
+-- and controls, no pairings or standings. Never cache or save the result.
+SELECT t.id, t.created_at, t.updated_at, t.deleted_at, t.uuid, t.name, t.description,
+    t.directors, t.is_started,
+    COALESCE((
+        SELECT jsonb_object_agg(d.key, jsonb_set(d.value, '{json}',
+            COALESCE(d.value->'json', '{}'::jsonb) - 'pairingMap' - 'standings' - 'matrix' - 'pidxMap'))
+        FROM jsonb_each(t.divisions) d
+    ), '{}'::jsonb)::jsonb AS divisions,
+    t.type, t.parent, t.slug, t.default_settings, t.alias_of, t.is_finished, t.extra_meta,
+    t.scheduled_start_time, t.scheduled_end_time, t.created_by
+FROM tournaments t
+WHERE t.uuid = @uuid;
+
+-- name: GetTournamentSummaryBySlug :one
+SELECT t.id, t.created_at, t.updated_at, t.deleted_at, t.uuid, t.name, t.description,
+    t.directors, t.is_started,
+    COALESCE((
+        SELECT jsonb_object_agg(d.key, jsonb_set(d.value, '{json}',
+            COALESCE(d.value->'json', '{}'::jsonb) - 'pairingMap' - 'standings' - 'matrix' - 'pidxMap'))
+        FROM jsonb_each(t.divisions) d
+    ), '{}'::jsonb)::jsonb AS divisions,
+    t.type, t.parent, t.slug, t.default_settings, t.alias_of, t.is_finished, t.extra_meta,
+    t.scheduled_start_time, t.scheduled_end_time, t.created_by
+FROM tournaments t
+WHERE lower(t.slug) = lower(@slug);
+
 -- name: GetTournamentPrivateAnalysis :one
 SELECT coalesce((extra_meta->>'privateAnalysis')::boolean, false)::boolean AS private_analysis
 FROM tournaments WHERE uuid = @uuid;

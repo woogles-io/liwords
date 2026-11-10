@@ -347,7 +347,7 @@ func (r *RedisChatStore) LatestChannels(ctx context.Context, count, offset int,
 	// If a tournament ID is passed in, we should fetch the tournament channel
 	// as well as the latest chat for this tournament.
 	if getTournament {
-		t, err := r.tournamentStore.Get(ctx, tournamentID)
+		t, err := r.tournamentStore.GetHeader(ctx, tournamentID)
 		if err != nil {
 			return nil, err
 		}

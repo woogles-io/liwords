@@ -46,6 +46,13 @@ type ActiveMonitoringStream struct {
 type TournamentStore interface {
 	Get(context.Context, string) (*entity.Tournament, error)
 	GetBySlug(context.Context, string) (*entity.Tournament, error)
+	// GetHeader is the tournament without its divisions.
+	GetHeader(ctx context.Context, id string) (*entity.TournamentHeader, error)
+	GetUUIDBySlug(ctx context.Context, slug string) (string, error)
+	// GetSummary and GetSummaryBySlug have divisions with players and
+	// controls, but no pairings or standings. Never save them.
+	GetSummary(ctx context.Context, id string) (*entity.Tournament, error)
+	GetSummaryBySlug(ctx context.Context, slug string) (*entity.Tournament, error)
 	Set(context.Context, *entity.Tournament) error
 	Create(context.Context, *entity.Tournament) error
 	GetRecentGames(ctx context.Context, tourneyID string, numGames int, offset int) (*pb.RecentGamesResponse, error)
@@ -146,13 +153,10 @@ func NewTournament(ctx context.Context,
 }
 
 // SendTournamentMessage sends updated tournament information on the channel.
+//
+// It doesn't check that the tournament exists: every caller has just loaded
+// or saved it, and without the cache a check would load it a second time.
 func SendTournamentMessage(ctx context.Context, ts TournamentStore, id string, wrapped *entity.EventWrapper) error {
-
-	_, err := ts.Get(ctx, id)
-	if err != nil {
-		return err
-	}
-
 	eventChannel := ts.TournamentEventChan()
 
 	wrapped.AddAudience(entity.AudTournament, id)
@@ -1741,7 +1745,7 @@ func DeletePairings(ctx context.Context, ts TournamentStore, id string, division
 }
 
 func IsStarted(ctx context.Context, ts TournamentStore, id string) (bool, error) {
-	t, err := ts.Get(ctx, id)
+	t, err := ts.GetHeader(ctx, id)
 	if err != nil {
 		return false, err
 	}
@@ -1830,7 +1834,7 @@ func SetUnfinished(ctx context.Context, ts TournamentStore, id string) error {
 }
 
 func IsFinished(ctx context.Context, ts TournamentStore, id string) (bool, error) {
-	t, err := ts.Get(ctx, id)
+	t, err := ts.GetHeader(ctx, id)
 	if err != nil {
 		return false, err
 	}
@@ -2484,16 +2488,15 @@ func ResetMonitoringStream(ctx context.Context, ts TournamentStore, tournamentID
 // This is used by directors to poll for stream status updates
 // Returns ALL tournament players across all divisions, with monitoring status if available
 func GetTournamentMonitoring(ctx context.Context, ts TournamentStore, tournamentID string) ([]*ipc.MonitoringData, error) {
-	// First check if monitoring is enabled by reading tournament (read-only)
-	t, err := ts.Get(ctx, tournamentID)
+	// First check if monitoring is enabled. The summary has every division's
+	// players, which is all this needs.
+	t, err := ts.GetSummary(ctx, tournamentID)
 	if err != nil {
 		return nil, err
 	}
 
-	t.RLock()
 	monitored := t.ExtraMeta.Monitored
 	divisions := t.Divisions
-	t.RUnlock()
 
 	if !monitored {
 		return nil, errors.New("monitoring is not enabled for this tournament")
@@ -2554,14 +2557,12 @@ func GetTournamentMonitoring(ctx context.Context, ts TournamentStore, tournament
 // InitializeMonitoringKeys generates and stores stream keys for a user if they don't already exist
 // This is called when a user first opens the monitoring modal
 func InitializeMonitoringKeys(ctx context.Context, ts TournamentStore, tournamentID, userID string) error {
-	t, err := ts.Get(ctx, tournamentID)
+	t, err := ts.GetHeader(ctx, tournamentID)
 	if err != nil {
 		return err
 	}
 
-	t.RLock()
 	monitored := t.ExtraMeta.Monitored
-	t.RUnlock()
 
 	if !monitored {
 		return errors.New("monitoring is not enabled for this tournament")

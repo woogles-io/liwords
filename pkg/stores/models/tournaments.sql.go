@@ -355,6 +355,48 @@ func (q *Queries) GetTournamentByUUID(ctx context.Context, uuid pgtype.Text) (To
 	return i, err
 }
 
+const getTournamentHeaderByUUID = `-- name: GetTournamentHeaderByUUID :one
+SELECT uuid, name, description, slug, parent, type, directors, extra_meta,
+    is_started, is_finished, scheduled_start_time, scheduled_end_time
+FROM tournaments WHERE uuid = $1
+`
+
+type GetTournamentHeaderByUUIDRow struct {
+	Uuid               pgtype.Text
+	Name               pgtype.Text
+	Description        pgtype.Text
+	Slug               pgtype.Text
+	Parent             pgtype.Text
+	Type               pgtype.Text
+	Directors          []byte
+	ExtraMeta          []byte
+	IsStarted          pgtype.Bool
+	IsFinished         pgtype.Bool
+	ScheduledStartTime pgtype.Timestamptz
+	ScheduledEndTime   pgtype.Timestamptz
+}
+
+// Everything about a tournament except its divisions.
+func (q *Queries) GetTournamentHeaderByUUID(ctx context.Context, uuid pgtype.Text) (GetTournamentHeaderByUUIDRow, error) {
+	row := q.db.QueryRow(ctx, getTournamentHeaderByUUID, uuid)
+	var i GetTournamentHeaderByUUIDRow
+	err := row.Scan(
+		&i.Uuid,
+		&i.Name,
+		&i.Description,
+		&i.Slug,
+		&i.Parent,
+		&i.Type,
+		&i.Directors,
+		&i.ExtraMeta,
+		&i.IsStarted,
+		&i.IsFinished,
+		&i.ScheduledStartTime,
+		&i.ScheduledEndTime,
+	)
+	return i, err
+}
+
 const getTournamentPrivateAnalysis = `-- name: GetTournamentPrivateAnalysis :one
 SELECT coalesce((extra_meta->>'privateAnalysis')::boolean, false)::boolean AS private_analysis
 FROM tournaments WHERE uuid = $1
@@ -365,6 +407,138 @@ func (q *Queries) GetTournamentPrivateAnalysis(ctx context.Context, uuid pgtype.
 	var private_analysis bool
 	err := row.Scan(&private_analysis)
 	return private_analysis, err
+}
+
+const getTournamentSummaryBySlug = `-- name: GetTournamentSummaryBySlug :one
+SELECT t.id, t.created_at, t.updated_at, t.deleted_at, t.uuid, t.name, t.description,
+    t.directors, t.is_started,
+    COALESCE((
+        SELECT jsonb_object_agg(d.key, jsonb_set(d.value, '{json}',
+            COALESCE(d.value->'json', '{}'::jsonb) - 'pairingMap' - 'standings' - 'matrix' - 'pidxMap'))
+        FROM jsonb_each(t.divisions) d
+    ), '{}'::jsonb)::jsonb AS divisions,
+    t.type, t.parent, t.slug, t.default_settings, t.alias_of, t.is_finished, t.extra_meta,
+    t.scheduled_start_time, t.scheduled_end_time, t.created_by
+FROM tournaments t
+WHERE lower(t.slug) = lower($1)
+`
+
+type GetTournamentSummaryBySlugRow struct {
+	ID                 int64
+	CreatedAt          pgtype.Timestamptz
+	UpdatedAt          pgtype.Timestamptz
+	DeletedAt          pgtype.Timestamptz
+	Uuid               pgtype.Text
+	Name               pgtype.Text
+	Description        pgtype.Text
+	Directors          []byte
+	IsStarted          pgtype.Bool
+	Divisions          []byte
+	Type               pgtype.Text
+	Parent             pgtype.Text
+	Slug               pgtype.Text
+	DefaultSettings    []byte
+	AliasOf            pgtype.Text
+	IsFinished         pgtype.Bool
+	ExtraMeta          []byte
+	ScheduledStartTime pgtype.Timestamptz
+	ScheduledEndTime   pgtype.Timestamptz
+	CreatedBy          pgtype.Int4
+}
+
+func (q *Queries) GetTournamentSummaryBySlug(ctx context.Context, slug string) (GetTournamentSummaryBySlugRow, error) {
+	row := q.db.QueryRow(ctx, getTournamentSummaryBySlug, slug)
+	var i GetTournamentSummaryBySlugRow
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.Uuid,
+		&i.Name,
+		&i.Description,
+		&i.Directors,
+		&i.IsStarted,
+		&i.Divisions,
+		&i.Type,
+		&i.Parent,
+		&i.Slug,
+		&i.DefaultSettings,
+		&i.AliasOf,
+		&i.IsFinished,
+		&i.ExtraMeta,
+		&i.ScheduledStartTime,
+		&i.ScheduledEndTime,
+		&i.CreatedBy,
+	)
+	return i, err
+}
+
+const getTournamentSummaryByUUID = `-- name: GetTournamentSummaryByUUID :one
+SELECT t.id, t.created_at, t.updated_at, t.deleted_at, t.uuid, t.name, t.description,
+    t.directors, t.is_started,
+    COALESCE((
+        SELECT jsonb_object_agg(d.key, jsonb_set(d.value, '{json}',
+            COALESCE(d.value->'json', '{}'::jsonb) - 'pairingMap' - 'standings' - 'matrix' - 'pidxMap'))
+        FROM jsonb_each(t.divisions) d
+    ), '{}'::jsonb)::jsonb AS divisions,
+    t.type, t.parent, t.slug, t.default_settings, t.alias_of, t.is_finished, t.extra_meta,
+    t.scheduled_start_time, t.scheduled_end_time, t.created_by
+FROM tournaments t
+WHERE t.uuid = $1
+`
+
+type GetTournamentSummaryByUUIDRow struct {
+	ID                 int64
+	CreatedAt          pgtype.Timestamptz
+	UpdatedAt          pgtype.Timestamptz
+	DeletedAt          pgtype.Timestamptz
+	Uuid               pgtype.Text
+	Name               pgtype.Text
+	Description        pgtype.Text
+	Directors          []byte
+	IsStarted          pgtype.Bool
+	Divisions          []byte
+	Type               pgtype.Text
+	Parent             pgtype.Text
+	Slug               pgtype.Text
+	DefaultSettings    []byte
+	AliasOf            pgtype.Text
+	IsFinished         pgtype.Bool
+	ExtraMeta          []byte
+	ScheduledStartTime pgtype.Timestamptz
+	ScheduledEndTime   pgtype.Timestamptz
+	CreatedBy          pgtype.Int4
+}
+
+// A tournament with its divisions stripped like the listings below: players
+// and controls, no pairings or standings. Never cache or save the result.
+func (q *Queries) GetTournamentSummaryByUUID(ctx context.Context, uuid pgtype.Text) (GetTournamentSummaryByUUIDRow, error) {
+	row := q.db.QueryRow(ctx, getTournamentSummaryByUUID, uuid)
+	var i GetTournamentSummaryByUUIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.Uuid,
+		&i.Name,
+		&i.Description,
+		&i.Directors,
+		&i.IsStarted,
+		&i.Divisions,
+		&i.Type,
+		&i.Parent,
+		&i.Slug,
+		&i.DefaultSettings,
+		&i.AliasOf,
+		&i.IsFinished,
+		&i.ExtraMeta,
+		&i.ScheduledStartTime,
+		&i.ScheduledEndTime,
+		&i.CreatedBy,
+	)
+	return i, err
 }
 
 const insertMonitoringStream = `-- name: InsertMonitoringStream :exec

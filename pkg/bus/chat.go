@@ -82,7 +82,7 @@ func (b *Bus) chat(ctx context.Context, userID string, evt *pb.ChatMessage) erro
 		if len(tid) == 0 {
 			return errors.New("nonexistent tournament")
 		}
-		t, err := b.stores.TournamentStore.Get(ctx, tid)
+		t, err := b.stores.TournamentStore.GetHeader(ctx, tid)
 		if err != nil {
 			return err
 		}
