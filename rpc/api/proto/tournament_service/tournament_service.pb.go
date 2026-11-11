@@ -727,8 +727,11 @@ type PairRoundRequest struct {
 	Round          int32                  `protobuf:"varint,3,opt,name=round,proto3" json:"round,omitempty"`
 	PreserveByes   bool                   `protobuf:"varint,4,opt,name=preserve_byes,json=preserveByes,proto3" json:"preserve_byes,omitempty"`
 	DeletePairings bool                   `protobuf:"varint,5,opt,name=delete_pairings,json=deletePairings,proto3" json:"delete_pairings,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// keep_pairings keeps every pairing already in the round, byes and
+	// games alike, and pairs only the players still unpaired.
+	KeepPairings  bool `protobuf:"varint,6,opt,name=keep_pairings,json=keepPairings,proto3" json:"keep_pairings,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *PairRoundRequest) Reset() {
@@ -792,6 +795,13 @@ func (x *PairRoundRequest) GetPreserveByes() bool {
 func (x *PairRoundRequest) GetDeletePairings() bool {
 	if x != nil {
 		return x.DeletePairings
+	}
+	return false
+}
+
+func (x *PairRoundRequest) GetKeepPairings() bool {
+	if x != nil {
+		return x.KeepPairings
 	}
 	return false
 }
@@ -4391,13 +4401,14 @@ const file_proto_tournament_service_tournament_service_proto_rawDesc = "" +
 	"\x1aSingleRoundControlsRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1a\n" +
 	"\bdivision\x18\x02 \x01(\tR\bdivision\x128\n" +
-	"\x0eround_controls\x18\x03 \x01(\v2\x11.ipc.RoundControlR\rroundControls\"\xa2\x01\n" +
+	"\x0eround_controls\x18\x03 \x01(\v2\x11.ipc.RoundControlR\rroundControls\"\xc7\x01\n" +
 	"\x10PairRoundRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1a\n" +
 	"\bdivision\x18\x02 \x01(\tR\bdivision\x12\x14\n" +
 	"\x05round\x18\x03 \x01(\x05R\x05round\x12#\n" +
 	"\rpreserve_byes\x18\x04 \x01(\bR\fpreserveByes\x12'\n" +
-	"\x0fdelete_pairings\x18\x05 \x01(\bR\x0edeletePairings\"G\n" +
+	"\x0fdelete_pairings\x18\x05 \x01(\bR\x0edeletePairings\x12#\n" +
+	"\rkeep_pairings\x18\x06 \x01(\bR\fkeepPairings\"G\n" +
 	"\x19TournamentDivisionRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1a\n" +
 	"\bdivision\x18\x02 \x01(\tR\bdivision\"\xbd\x01\n" +
