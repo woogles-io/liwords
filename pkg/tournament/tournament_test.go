@@ -665,22 +665,22 @@ func TestTournamentSingleDivision(t *testing.T) {
 	err = tournament.StartRoundCountdown(ctx, tstore, ty.UUID, divOneName, 2)
 	is.NoErr(err)
 
-	_, err = tournament.PairRound(ctx, tstore, ty.UUID, divOneName, -1, true)
+	_, err = tournament.PairRound(ctx, tstore, ty.UUID, divOneName, -1, true, false)
 	is.True(err.Error() == entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_PAIR_NON_FUTURE_ROUND, tournamentName, divOneName, "0", "3").Error())
 
-	_, err = tournament.PairRound(ctx, tstore, ty.UUID, divOneName, 5, true)
+	_, err = tournament.PairRound(ctx, tstore, ty.UUID, divOneName, 5, true, false)
 	is.True(err.Error() == entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_ROUND_NUMBER_OUT_OF_RANGE, tournamentName, divOneName, "6", "PairRound").Error())
 
-	_, err = tournament.PairRound(ctx, tstore, ty.UUID, divOneName, 0, true)
+	_, err = tournament.PairRound(ctx, tstore, ty.UUID, divOneName, 0, true, false)
 	is.True(err.Error() == entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_PAIR_NON_FUTURE_ROUND, tournamentName, divOneName, "1", "3").Error())
 
-	_, err = tournament.PairRound(ctx, tstore, ty.UUID, divOneName, 1, true)
+	_, err = tournament.PairRound(ctx, tstore, ty.UUID, divOneName, 1, true, false)
 	is.True(err.Error() == entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_PAIR_NON_FUTURE_ROUND, tournamentName, divOneName, "2", "3").Error())
 
-	_, err = tournament.PairRound(ctx, tstore, ty.UUID, divOneName, 2, true)
+	_, err = tournament.PairRound(ctx, tstore, ty.UUID, divOneName, 2, true, false)
 	is.True(err.Error() == entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_PAIR_NON_FUTURE_ROUND, tournamentName, divOneName, "3", "3").Error())
 
-	_, err = tournament.PairRound(ctx, tstore, ty.UUID, divOneName, 3, true)
+	_, err = tournament.PairRound(ctx, tstore, ty.UUID, divOneName, 3, true, false)
 	is.NoErr(err)
 
 	// See if round is complete for division that does not exist

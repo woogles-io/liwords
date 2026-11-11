@@ -5,6 +5,7 @@ import (
 	"math"
 	"math/rand"
 	"os"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -4839,4 +4840,232 @@ func TestClassicDivisionAssignedTeamsErrors(t *testing.T) {
 		is.True(tc.IsRoundPaired(round))
 	}
 	is.NoErr(tc.StartRound(true))
+}
+
+// keptPairingKeys returns the pairing key of each player in the round.
+func keptPairingKeys(tc *ClassicDivision, round int, players ...string) (map[string]string, error) {
+	keys := map[string]string{}
+	for _, p := range players {
+		pk, err := tc.getPairingKey(p, round)
+		if err != nil {
+			return nil, err
+		}
+		keys[p] = pk
+	}
+	return keys, nil
+}
+
+// pairedOnce checks that every unsuspended player in the round is in
+// exactly one pairing of the round.
+func pairedOnce(tc *ClassicDivision, round int) error {
+	seen := map[string]int{}
+	for _, players := range tc.getPlayerPairings(round) {
+		for _, p := range players {
+			seen[p]++
+		}
+	}
+	for _, p := range tc.Players.Persons {
+		if !p.Suspended && seen[p.Id] != 1 {
+			return fmt.Errorf("%s is paired %d times in round %d", p.Id, seen[p.Id], round+1)
+		}
+	}
+	return validatePairings(tc, round)
+}
+
+func TestClassicDivisionKeepPairings(t *testing.T) {
+	is := is.New(t)
+
+	for _, method := range []pb.PairingMethod{pb.PairingMethod_KING_OF_THE_HILL, pb.PairingMethod_AUSTRALIAN_DRAW} {
+		tc, err := newGibsonByeDivision(method, 1)
+		is.NoErr(err)
+		// No gibsonization: a is only 300 ahead with two rounds to go.
+		err = pairAndPlayWithBye(tc, []string{"a", "b", "c", "d", "e", "f", "g", "h"}, []int{30, 20, 10, 5}, "i", pb.TournamentGameResult_BYE, 0)
+		is.NoErr(err)
+		is.True(tc.countGibsonizedPlayers(0) == 0)
+
+		// The director has paired b with i and given e a bye, and the
+		// rest are unpaired.
+		is.NoErr(tc.DeletePairings(1))
+		_, err = tc.SetPairing("b", "i", 1, pb.TournamentGameResult_NO_RESULT)
+		is.NoErr(err)
+		_, err = tc.SetPairing("e", "e", 1, pb.TournamentGameResult_BYE)
+		is.NoErr(err)
+		before, err := keptPairingKeys(tc, 1, "b", "i", "e")
+		is.NoErr(err)
+		beforeBI := tc.PairingMap[before["b"]]
+		beforeE := tc.PairingMap[before["e"]]
+
+		_, err = tc.PairRoundKeepingPairings(1)
+		is.NoErr(err)
+		after, err := keptPairingKeys(tc, 1, "b", "i", "e")
+		is.NoErr(err)
+		is.Equal(before, after)
+		is.True(tc.PairingMap[after["b"]] == beforeBI)
+		is.True(tc.PairingMap[after["e"]] == beforeE)
+		is.Equal(beforeE.Outcomes[0], pb.TournamentGameResult_BYE)
+		is.NoErr(pairedOnce(tc, 1))
+		// The other six are paired among themselves, without a bye.
+		for _, p := range []string{"a", "c", "d", "f", "g", "h"} {
+			opp, err := tc.opponentOf(p, 1)
+			is.NoErr(err)
+			is.True(opp != p && opp != "b" && opp != "i" && opp != "e")
+		}
+
+		// With nothing unpaired, nothing changes.
+		allBefore := tc.getPlayerPairings(1)
+		_, err = tc.PairRoundKeepingPairings(1)
+		is.NoErr(err)
+		is.NoErr(equalPairingStrings(allBefore, tc.getPlayerPairings(1)))
+
+		// An odd number left unpaired gets a bye among them.
+		is.NoErr(tc.DeletePairings(1))
+		_, err = tc.SetPairing("b", "i", 1, pb.TournamentGameResult_NO_RESULT)
+		is.NoErr(err)
+		_, err = tc.PairRoundKeepingPairings(1)
+		is.NoErr(err)
+		is.NoErr(pairedOnce(tc, 1))
+		opp, err := tc.opponentOf("b", 1)
+		is.NoErr(err)
+		is.Equal(opp, "i")
+		byes := 0
+		for _, players := range tc.getPlayerPairings(1) {
+			if len(players) == 1 {
+				byes++
+				is.True(players[0] != "b" && players[0] != "i")
+			}
+		}
+		is.Equal(byes, 1)
+	}
+}
+
+func TestClassicDivisionKeepPairingsSuspended(t *testing.T) {
+	is := is.New(t)
+
+	tc, err := newGibsonByeDivision(pb.PairingMethod_KING_OF_THE_HILL, 1)
+	is.NoErr(err)
+	err = pairAndPlayWithBye(tc, []string{"a", "b", "c", "d", "e", "f", "g", "h"}, []int{30, 20, 10, 5}, "i", pb.TournamentGameResult_BYE, 0)
+	is.NoErr(err)
+	is.NoErr(tc.DeletePairings(1))
+	_, err = tc.SetPairing("b", "i", 1, pb.TournamentGameResult_NO_RESULT)
+	is.NoErr(err)
+	_, err = tc.SetPairing("c", "d", 1, pb.TournamentGameResult_NO_RESULT)
+	is.NoErr(err)
+	// A pairing with a suspended player in it is not kept.
+	tc.Players.Persons[tc.PlayerIndexMap["d"]].Suspended = true
+	_, err = tc.PairRoundKeepingPairings(1)
+	is.NoErr(err)
+	is.NoErr(pairedOnce(tc, 1))
+	opp, err := tc.opponentOf("b", 1)
+	is.NoErr(err)
+	is.Equal(opp, "i")
+	opp, err = tc.opponentOf("c", 1)
+	is.NoErr(err)
+	is.True(opp != "d")
+}
+
+func TestClassicDivisionKeepPairingsRefused(t *testing.T) {
+	is := is.New(t)
+
+	for _, method := range []pb.PairingMethod{pb.PairingMethod_ROUND_ROBIN, pb.PairingMethod_ELIMINATION} {
+		roundControls := defaultRoundControls(2)
+		for i := range roundControls {
+			roundControls[i].PairingMethod = method
+		}
+		tc, err := compactNewClassicDivision(defaultPlayers, roundControls, true)
+		is.NoErr(err)
+		before := slices.Clone(tc.Matrix[1])
+		_, err = tc.PairRoundKeepingPairings(1)
+		is.True(err != nil)
+		is.Equal(before, tc.Matrix[1])
+	}
+}
+
+func TestClassicDivisionGibsonKeptGame(t *testing.T) {
+	is := is.New(t)
+
+	for _, method := range []pb.PairingMethod{pb.PairingMethod_KING_OF_THE_HILL, pb.PairingMethod_AUSTRALIAN_DRAW} {
+		tc, err := newGibsonByeDivision(method, 1)
+		is.NoErr(err)
+		err = pairAndPlayWithBye(tc, []string{"a", "b", "c", "d", "e", "f", "g", "h"}, []int{300, 150, 120, 100}, "i", pb.TournamentGameResult_BYE, 0)
+		is.NoErr(err)
+		err = pairAndPlayWithBye(tc, []string{"a", "c", "b", "e", "d", "g", "f", "i"}, []int{300, 50, 20, 10}, "h", pb.TournamentGameResult_BYE, 1)
+		is.NoErr(err)
+		// a is 2-0 and 520 ahead of g with a round to go. Everyone else
+		// is 1-1: g, e, i, h, f, d, c, b.
+		is.True(tc.isGibsonized("a", 1))
+
+		// The director keeps a game between g and e and a bye for i, and
+		// the rest are paired as if those three were not there: a, the
+		// gibsonized player, is paired with the last of them, since
+		// everyone can still reach second place.
+		is.NoErr(tc.DeletePairings(2))
+		_, err = tc.SetPairing("g", "e", 2, pb.TournamentGameResult_NO_RESULT)
+		is.NoErr(err)
+		_, err = tc.SetPairing("i", "i", 2, pb.TournamentGameResult_BYE)
+		is.NoErr(err)
+		_, err = tc.PairRoundKeepingPairings(2)
+		is.NoErr(err)
+		is.NoErr(pairedOnce(tc, 2))
+		is.NoErr(equalPairingStrings(tc.getPlayerPairings(2), [][]string{{"a", "b"}, {"c", "d"}, {"e", "g"}, {"f", "h"}, {"i"}}))
+	}
+
+	// A kept game keeps its players' places in the standings when a
+	// gibsonized player is paired with someone who cannot cash.
+	tc, err := newGibsonByeDivision(pb.PairingMethod_KING_OF_THE_HILL, 6)
+	is.NoErr(err)
+	err = pairAndPlayWithBye(tc, []string{"a", "b", "c", "d", "e", "f", "g", "h"}, []int{300, 100, 100, 300}, "i", pb.TournamentGameResult_FORFEIT_LOSS, 0)
+	is.NoErr(err)
+	err = pairAndPlayWithBye(tc, []string{"a", "c", "b", "e", "d", "g", "f", "i"}, []int{300, 100, 50, 300}, "h", pb.TournamentGameResult_FORFEIT_LOSS, 1)
+	is.NoErr(err)
+	is.True(tc.isGibsonized("a", 1))
+	is.NoErr(tc.DeletePairings(2))
+	_, err = tc.SetPairing("g", "f", 2, pb.TournamentGameResult_NO_RESULT)
+	is.NoErr(err)
+	_, err = tc.PairRoundKeepingPairings(2)
+	is.NoErr(err)
+	is.NoErr(pairedOnce(tc, 2))
+	// The prizes go down to seventh place, which is c. With g and f in
+	// a kept game and c on the bye, h is the first player who cannot
+	// reach it.
+	is.NoErr(equalPairingStrings(tc.getPlayerPairings(2), [][]string{{"a", "h"}, {"b", "i"}, {"c"}, {"d", "e"}, {"f", "g"}}))
+}
+
+func TestClassicDivisionKeepPairingsCOP(t *testing.T) {
+	is := is.New(t)
+
+	tc, err := newGibsonByeDivision(pb.PairingMethod_KING_OF_THE_HILL, 1)
+	is.NoErr(err)
+	rc := tc.RoundControls[2]
+	rc.PairingMethod = pb.PairingMethod_PAIRING_METHOD_COP
+	rc.DivisionSims = 1000
+	rc.ControlLossSims = 1000
+	rc.PlacePrizes = 1
+	rc.ControlLossThreshold = 0.25
+	rc.GibsonSpreads = []int32{250}
+	rc.HopefulnessThresholds = []float64{0.1}
+	err = pairAndPlayWithBye(tc, []string{"a", "b", "c", "d", "e", "f", "g", "h"}, []int{30, 20, 10, 5}, "i", pb.TournamentGameResult_BYE, 0)
+	is.NoErr(err)
+	err = pairAndPlayWithBye(tc, []string{"a", "c", "b", "e", "d", "g", "f", "i"}, []int{30, 20, 10, 5}, "h", pb.TournamentGameResult_BYE, 1)
+	is.NoErr(err)
+
+	// COP sees the players in kept pairings as removed, and pairs the rest
+	// among themselves.
+	is.NoErr(tc.DeletePairings(2))
+	_, err = tc.SetPairing("a", "b", 2, pb.TournamentGameResult_NO_RESULT)
+	is.NoErr(err)
+	_, err = tc.SetPairing("c", "c", 2, pb.TournamentGameResult_BYE)
+	is.NoErr(err)
+	before, err := keptPairingKeys(tc, 2, "a", "b", "c")
+	is.NoErr(err)
+	_, err = tc.PairRoundKeepingPairings(2)
+	is.NoErr(err)
+	after, err := keptPairingKeys(tc, 2, "a", "b", "c")
+	is.NoErr(err)
+	is.Equal(before, after)
+	is.NoErr(pairedOnce(tc, 2))
+	for _, p := range []string{"d", "e", "f", "g", "h", "i"} {
+		opp, err := tc.opponentOf(p, 2)
+		is.NoErr(err)
+		is.True(opp != p && opp != "a" && opp != "b" && opp != "c")
+	}
 }
