@@ -20,12 +20,19 @@ import (
 // SetPersonalInfo saves. Any other method of user.Store panics.
 type personalInfoStore struct {
 	user.Store
-	u     *entity.User
-	saved []string
+	u       *entity.User
+	saved   []string
+	changes [][]string
 }
 
 func (s *personalInfoStore) Get(ctx context.Context, username string) (*entity.User, error) {
 	return s.u, nil
+}
+
+func (s *personalInfoStore) AddEmailChange(ctx context.Context, uuid string, oldEmail string,
+	newEmail string, changedBy string) error {
+	s.changes = append(s.changes, []string{uuid, oldEmail, newEmail, changedBy})
+	return nil
 }
 
 // GetByEmail finds only taken@example.com, which another account has.
@@ -77,11 +84,19 @@ func TestUpdatePersonalInfoPassword(t *testing.T) {
 			if tc.refused {
 				is.Equal(connect.CodeOf(err), connect.CodeInvalidArgument)
 				is.True(store.saved == nil) // nothing saved
+				is.True(store.changes == nil)
 				return
 			}
 			is.NoErr(err)
 			is.Equal(store.saved[0], strings.TrimSpace(tc.email))
 			is.Equal(store.saved[5], "new bio")
+			// A changed email, and only a changed one, is recorded as the
+			// user's own change.
+			if store.saved[0] == "old@example.com" {
+				is.True(store.changes == nil)
+			} else {
+				is.Equal(store.changes, [][]string{{"uuid-1", "old@example.com", store.saved[0], "uuid-1"}})
+			}
 		})
 	}
 }

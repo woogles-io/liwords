@@ -242,10 +242,17 @@ func (ps *ProfileService) UpdatePersonalInfo(ctx context.Context, r *connect.Req
 		}
 	}
 
+	// The email and its record are two writes; they should be one
+	// transaction, so that an email is never changed with no record of it.
 	updateErr := ps.userStore.SetPersonalInfo(ctx, u.UUID, email, r.Msg.FirstName,
 		r.Msg.LastName, r.Msg.BirthDate, r.Msg.CountryCode, r.Msg.About)
 	if updateErr != nil {
 		return nil, apiserver.InternalErr(updateErr)
+	}
+	if email != u.Email {
+		if err := ps.userStore.AddEmailChange(ctx, u.UUID, u.Email, email, u.UUID); err != nil {
+			return nil, apiserver.InternalErr(err)
+		}
 	}
 
 	return connect.NewResponse(&pb.UpdatePersonalInfoResponse{}), nil
