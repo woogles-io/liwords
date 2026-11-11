@@ -2,6 +2,7 @@ package mod
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -39,6 +40,7 @@ var ModActionDispatching = map[ms.ModActionType]func(context.Context, user.Store
 	ms.ModActionType_REMOVE_LAST_NAME:        removeLastName,
 	ms.ModActionType_REMOVE_ABOUT:            removeAbout,
 	ms.ModActionType_REMOVE_AVATAR:           removeAvatar,
+	ms.ModActionType_CHANGE_EMAIL:            refuseChangeEmail,
 }
 
 var ModActionTextMap = map[ms.ModActionType]string{
@@ -397,6 +399,38 @@ func removePersonalInfoField(ctx context.Context, us user.Store, action *ms.ModA
 	action.ChatText = *f
 	*f = ""
 	return us.SetPersonalInfo(ctx, u.UUID, u.Email, p.FirstName, p.LastName, p.BirthDate, p.CountryCode, p.About)
+}
+
+// refuseChangeEmail keeps CHANGE_EMAIL out of ApplyActions: it is only what
+// ChangeEmail is checked as.
+func refuseChangeEmail(ctx context.Context, us user.Store, cs user.ChatStore, action *ms.ModAction) error {
+	return errors.New("an email is changed with ChangeEmail, not as an action")
+}
+
+// ChangeEmail sets a user's email at once, with the same checks as a user's
+// own change, and records it in the email changes. No mail goes to either
+// address.
+func ChangeEmail(ctx context.Context, us user.Store, applierUserId string, userId string,
+	email string) error {
+	u, err := us.GetByUUID(ctx, userId)
+	if err != nil {
+		return err
+	}
+	if u.Profile == nil {
+		return fmt.Errorf("user %s has no profile", userId)
+	}
+	email, err = user.CheckNewEmail(ctx, us, u.UUID, email)
+	if err != nil {
+		return err
+	}
+	p := u.Profile
+	// The email and its record are two writes; they should be one
+	// transaction, so that an email is never changed with no record of it.
+	err = us.SetPersonalInfo(ctx, u.UUID, email, p.FirstName, p.LastName, p.BirthDate, p.CountryCode, p.About)
+	if err != nil {
+		return err
+	}
+	return us.AddEmailChange(ctx, u.UUID, u.Email, email, applierUserId)
 }
 
 // removeAvatar unsets a user's avatar and keeps its URL in the action. The

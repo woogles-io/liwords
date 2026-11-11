@@ -56,6 +56,8 @@ const (
 	// ModServiceGetChannelChatsProcedure is the fully-qualified name of the ModService's
 	// GetChannelChats RPC.
 	ModServiceGetChannelChatsProcedure = "/mod_service.ModService/GetChannelChats"
+	// ModServiceChangeEmailProcedure is the fully-qualified name of the ModService's ChangeEmail RPC.
+	ModServiceChangeEmailProcedure = "/mod_service.ModService/ChangeEmail"
 )
 
 // ModServiceClient is a client for the mod_service.ModService service.
@@ -68,6 +70,7 @@ type ModServiceClient interface {
 	ResetNotoriety(context.Context, *connect.Request[mod_service.ResetNotorietyRequest]) (*connect.Response[mod_service.ResetNotorietyResponse], error)
 	ListChatChannels(context.Context, *connect.Request[mod_service.ListChatChannelsRequest]) (*connect.Response[mod_service.ListChatChannelsResponse], error)
 	GetChannelChats(context.Context, *connect.Request[mod_service.GetChannelChatsRequest]) (*connect.Response[ipc.ChatMessages], error)
+	ChangeEmail(context.Context, *connect.Request[mod_service.ChangeEmailRequest]) (*connect.Response[mod_service.ChangeEmailResponse], error)
 }
 
 // NewModServiceClient constructs a client for the mod_service.ModService service. By default, it
@@ -129,6 +132,12 @@ func NewModServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...
 			connect.WithSchema(modServiceMethods.ByName("GetChannelChats")),
 			connect.WithClientOptions(opts...),
 		),
+		changeEmail: connect.NewClient[mod_service.ChangeEmailRequest, mod_service.ChangeEmailResponse](
+			httpClient,
+			baseURL+ModServiceChangeEmailProcedure,
+			connect.WithSchema(modServiceMethods.ByName("ChangeEmail")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -142,6 +151,7 @@ type modServiceClient struct {
 	resetNotoriety     *connect.Client[mod_service.ResetNotorietyRequest, mod_service.ResetNotorietyResponse]
 	listChatChannels   *connect.Client[mod_service.ListChatChannelsRequest, mod_service.ListChatChannelsResponse]
 	getChannelChats    *connect.Client[mod_service.GetChannelChatsRequest, ipc.ChatMessages]
+	changeEmail        *connect.Client[mod_service.ChangeEmailRequest, mod_service.ChangeEmailResponse]
 }
 
 // ApplyActions calls mod_service.ModService.ApplyActions.
@@ -184,6 +194,11 @@ func (c *modServiceClient) GetChannelChats(ctx context.Context, req *connect.Req
 	return c.getChannelChats.CallUnary(ctx, req)
 }
 
+// ChangeEmail calls mod_service.ModService.ChangeEmail.
+func (c *modServiceClient) ChangeEmail(ctx context.Context, req *connect.Request[mod_service.ChangeEmailRequest]) (*connect.Response[mod_service.ChangeEmailResponse], error) {
+	return c.changeEmail.CallUnary(ctx, req)
+}
+
 // ModServiceHandler is an implementation of the mod_service.ModService service.
 type ModServiceHandler interface {
 	ApplyActions(context.Context, *connect.Request[mod_service.ModActionsList]) (*connect.Response[mod_service.ModActionResponse], error)
@@ -194,6 +209,7 @@ type ModServiceHandler interface {
 	ResetNotoriety(context.Context, *connect.Request[mod_service.ResetNotorietyRequest]) (*connect.Response[mod_service.ResetNotorietyResponse], error)
 	ListChatChannels(context.Context, *connect.Request[mod_service.ListChatChannelsRequest]) (*connect.Response[mod_service.ListChatChannelsResponse], error)
 	GetChannelChats(context.Context, *connect.Request[mod_service.GetChannelChatsRequest]) (*connect.Response[ipc.ChatMessages], error)
+	ChangeEmail(context.Context, *connect.Request[mod_service.ChangeEmailRequest]) (*connect.Response[mod_service.ChangeEmailResponse], error)
 }
 
 // NewModServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -251,6 +267,12 @@ func NewModServiceHandler(svc ModServiceHandler, opts ...connect.HandlerOption) 
 		connect.WithSchema(modServiceMethods.ByName("GetChannelChats")),
 		connect.WithHandlerOptions(opts...),
 	)
+	modServiceChangeEmailHandler := connect.NewUnaryHandler(
+		ModServiceChangeEmailProcedure,
+		svc.ChangeEmail,
+		connect.WithSchema(modServiceMethods.ByName("ChangeEmail")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/mod_service.ModService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ModServiceApplyActionsProcedure:
@@ -269,6 +291,8 @@ func NewModServiceHandler(svc ModServiceHandler, opts ...connect.HandlerOption) 
 			modServiceListChatChannelsHandler.ServeHTTP(w, r)
 		case ModServiceGetChannelChatsProcedure:
 			modServiceGetChannelChatsHandler.ServeHTTP(w, r)
+		case ModServiceChangeEmailProcedure:
+			modServiceChangeEmailHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -308,4 +332,8 @@ func (UnimplementedModServiceHandler) ListChatChannels(context.Context, *connect
 
 func (UnimplementedModServiceHandler) GetChannelChats(context.Context, *connect.Request[mod_service.GetChannelChatsRequest]) (*connect.Response[ipc.ChatMessages], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mod_service.ModService.GetChannelChats is not implemented"))
+}
+
+func (UnimplementedModServiceHandler) ChangeEmail(context.Context, *connect.Request[mod_service.ChangeEmailRequest]) (*connect.Response[mod_service.ChangeEmailResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mod_service.ModService.ChangeEmail is not implemented"))
 }

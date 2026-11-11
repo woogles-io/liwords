@@ -20,6 +20,9 @@ enum ModActionType {
   REMOVE_LAST_NAME = 10;
   REMOVE_ABOUT = 11;
   REMOVE_AVATAR = 12;
+  // CHANGE_EMAIL: what an admin's ChangeEmail is checked as. It is never
+  // stored as an action; the change goes in the email changes.
+  CHANGE_EMAIL = 13;
 }
 
 enum EmailType {
@@ -55,6 +58,15 @@ message ModActionsList { repeated ModAction actions = 1; }
 message GetActionsRequest { string user_id = 1; }
 
 message ModActionResponse {}
+
+// ChangeEmailRequest sets a user's email at once, with no mail to either
+// address, and records it in the email changes. Only an admin may.
+message ChangeEmailRequest {
+  string user_id = 1;
+  string email = 2;
+}
+
+message ChangeEmailResponse {}
 
 // Automod
 
@@ -159,4 +171,5 @@ service ModService {
   rpc ListChatChannels(ListChatChannelsRequest)
       returns (ListChatChannelsResponse);
   rpc GetChannelChats(GetChannelChatsRequest) returns (ipc.ChatMessages);
+  rpc ChangeEmail(ChangeEmailRequest) returns (ChangeEmailResponse);
 }

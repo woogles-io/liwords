@@ -48,6 +48,7 @@ var AdminRequiredMap = map[pb.ModActionType]bool{
 	pb.ModActionType_REMOVE_LAST_NAME:        true,
 	pb.ModActionType_REMOVE_ABOUT:            true,
 	pb.ModActionType_REMOVE_AVATAR:           true,
+	pb.ModActionType_CHANGE_EMAIL:            true,
 }
 
 func (ms *ModService) GetNotorietyReport(ctx context.Context, req *connect.Request[pb.GetNotorietyReportRequest],
@@ -128,6 +129,20 @@ func (ms *ModService) ApplyActions(ctx context.Context, req *connect.Request[pb.
 		return nil, apiserver.InvalidArg(err.Error())
 	}
 	return connect.NewResponse(&pb.ModActionResponse{}), nil
+}
+
+func (ms *ModService) ChangeEmail(ctx context.Context, req *connect.Request[pb.ChangeEmailRequest],
+) (*connect.Response[pb.ChangeEmailResponse], error) {
+	applierUserId, err := authenticateMod(ctx, ms, &pb.ModActionsList{
+		Actions: []*pb.ModAction{{UserId: req.Msg.UserId, Type: pb.ModActionType_CHANGE_EMAIL}}})
+	if err != nil {
+		return nil, err
+	}
+	err = ChangeEmail(ctx, ms.userStore, applierUserId, req.Msg.UserId, req.Msg.Email)
+	if err != nil {
+		return nil, apiserver.InvalidArg(err.Error())
+	}
+	return connect.NewResponse(&pb.ChangeEmailResponse{}), nil
 }
 
 func authenticateMod(ctx context.Context, ms *ModService, req *pb.ModActionsList) (string, error) {

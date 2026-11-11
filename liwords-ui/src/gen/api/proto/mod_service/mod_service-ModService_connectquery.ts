@@ -43,3 +43,8 @@ export const listChatChannels = ModService.method.listChatChannels;
  * @generated from rpc mod_service.ModService.GetChannelChats
  */
 export const getChannelChats = ModService.method.getChannelChats;
+
+/**
+ * @generated from rpc mod_service.ModService.ChangeEmail
+ */
+export const changeEmail = ModService.method.changeEmail;
