@@ -37,6 +37,7 @@ import { Settings } from "./settings/settings";
 import { PasswordReset } from "./lobby/password_reset";
 import { NewPassword } from "./lobby/new_password";
 import { VerifyEmail } from "./lobby/verify_email";
+import { applyHandoverStorage } from "./utils/handover";
 import { encodeToSocketFmt } from "./utils/protobuf";
 import { Clubs } from "./clubs";
 import { TournamentRoom } from "./tournament/room";
@@ -124,10 +125,7 @@ const HandoverSignedCookie = () => {
 
   const successFn = useCallback(() => {
     if (ls) {
-      const lsobj = JSON.parse(ls);
-      for (const k in lsobj) {
-        localStorage.setItem(k, lsobj[k]);
-      }
+      applyHandoverStorage(JSON.parse(ls));
     }
     if (path) {
       window.location.replace(path);
