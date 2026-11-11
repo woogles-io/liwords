@@ -59,6 +59,7 @@ type backingStore interface {
 	ListActiveCorrespondenceForUser(ctx context.Context, userID string) (*pb.GameInfoResponses, error)
 	ListActiveCorrespondenceForUserAndLeague(ctx context.Context, leagueID uuid.UUID, userID string) (*pb.GameInfoResponses, error)
 	ListActiveCorrespondenceRaw(ctx context.Context) ([]models.ListActiveCorrespondenceGamesRow, error)
+	ListCorrespondenceTimeoutCandidates(ctx context.Context, nowMs int64) ([]models.ListActiveCorrespondenceGamesRow, error)
 	ListActiveRealTimeRaw(ctx context.Context) ([]models.ListActiveRealTimeGamesForAdjudicationRow, error)
 	Count(ctx context.Context) (int64, error)
 	GameEventChan() chan<- *entity.EventWrapper
@@ -284,6 +285,10 @@ func (c *Cache) ListActiveRealTimeRaw(ctx context.Context) ([]models.ListActiveR
 // Don't cache correspondence game lists, always query DB.
 func (c *Cache) ListActiveCorrespondenceRaw(ctx context.Context) ([]models.ListActiveCorrespondenceGamesRow, error) {
 	return c.backing.ListActiveCorrespondenceRaw(ctx)
+}
+
+func (c *Cache) ListCorrespondenceTimeoutCandidates(ctx context.Context, nowMs int64) ([]models.ListActiveCorrespondenceGamesRow, error) {
+	return c.backing.ListCorrespondenceTimeoutCandidates(ctx, nowMs)
 }
 
 func (c *Cache) Count(ctx context.Context) (int64, error) {

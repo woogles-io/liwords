@@ -1668,7 +1668,7 @@ func (s *DBStore) ListActive(ctx context.Context, tourneyID string, bust bool) (
 	var responses []*pb.GameInfoResponse
 
 	if tourneyID != "" {
-		games, err := s.queries.ListActiveTournamentGames(ctx, tourneyID)
+		games, err := ActiveTournamentGames(ctx, s.queries, tourneyID)
 		if err != nil {
 			return nil, err
 		}
@@ -1692,7 +1692,7 @@ func (s *DBStore) ListActive(ctx context.Context, tourneyID string, bust bool) (
 			responses = append(responses, info)
 		}
 	} else {
-		games, err := s.queries.ListActiveGames(ctx)
+		games, err := ActiveGames(ctx, s.queries)
 		if err != nil {
 			return nil, err
 		}
@@ -1801,7 +1801,7 @@ func ScoresFromHistory(historyBytes []byte) []int32 {
 func (s *DBStore) ListActiveCorrespondenceForUser(ctx context.Context, userID string) (*pb.GameInfoResponses, error) {
 	var responses []*pb.GameInfoResponse
 
-	games, err := s.queries.ListActiveCorrespondenceGamesForUser(ctx, userID)
+	games, err := ActiveCorrespondenceGamesForUser(ctx, s.queries, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -1853,7 +1853,7 @@ func (s *DBStore) ListActiveCorrespondenceForUserAndLeague(ctx context.Context, 
 		UserUuid: userID,
 	}
 
-	games, err := s.queries.ListActiveCorrespondenceGamesForUserAndLeague(ctx, params)
+	games, err := ActiveCorrespondenceGamesForUserAndLeague(ctx, s.queries, params)
 	if err != nil {
 		return nil, err
 	}
@@ -1893,13 +1893,19 @@ func (s *DBStore) ListActiveCorrespondenceForUserAndLeague(ctx context.Context, 
 // ongoing real-time game, so it can find the games to act on without loading
 // each one.
 func (s *DBStore) ListActiveRealTimeRaw(ctx context.Context) ([]models.ListActiveRealTimeGamesForAdjudicationRow, error) {
-	return s.queries.ListActiveRealTimeGamesForAdjudication(ctx)
+	return ActiveRealTimeGamesForAdjudication(ctx, s.queries)
+}
+
+// ListCorrespondenceTimeoutCandidates returns the correspondence games the
+// adjudicator should check at nowMs; see CorrespondenceTimeoutCandidates.
+func (s *DBStore) ListCorrespondenceTimeoutCandidates(ctx context.Context, nowMs int64) ([]models.ListActiveCorrespondenceGamesRow, error) {
+	return CorrespondenceTimeoutCandidates(ctx, s.queries, nowMs)
 }
 
 // ListActiveCorrespondenceRaw returns raw DB rows with timer data.
 // This is used internally by ListActiveCorrespondence and the adjudication process.
 func (s *DBStore) ListActiveCorrespondenceRaw(ctx context.Context) ([]models.ListActiveCorrespondenceGamesRow, error) {
-	games, err := s.queries.ListActiveCorrespondenceGames(ctx)
+	games, err := ActiveCorrespondenceGames(ctx, s.queries)
 	if err != nil {
 		return nil, err
 	}

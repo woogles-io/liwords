@@ -111,6 +111,37 @@ on get theirs from the backfill.
    between the two reads; re-run them before worrying. Run them again a day
    later, and after a busy weekend.
 
+   *Done 2026-11-09:* flag on with `liwords-api:328`, backfill wrote 2,327
+   rows (`failed=0 remaining=0`), all four checks 0 then and ten minutes
+   later.
+6. **Turn on `READ_ONGOING_GAMES`** once the checks have stayed at 0 for a few
+   days. The active-game listings -- lobby, tournament and league
+   correspondence lists, both adjudicators, the bot unfreeze tool, the
+   correspondence count and the moderators' chat review -- then pick their
+   games from `ongoing_games` and read the columns from `games` by uuid
+   (`pkg/stores/game/listings.go`). Each `...FromOngoing` query returns the
+   same columns as its `games` twin; `TestListingsAgreeAcrossTables` holds
+   them to the same rows. On 2026-11-09 the old and new queries returned
+   identical sets on production (68 real-time, 2,392 correspondence, 2
+   tournament, 1 bot on turn). The real-time listing goes from ~122 ms to
+   ~3 ms; the full correspondence listing from ~122 ms to ~47 ms, the rest
+   being the 2,400 `games` rows it still reads.
+   The correspondence adjudicator no longer reads that listing: it asks
+   `ListCorrespondenceTimeoutCandidatesFromOngoing` for the games whose
+   `ongoing_games` timers say the player on turn may have run out -- RanOut's
+   test in SQL, using the increment the timers now carry (#2235) -- and reads
+   `games` only for those. On 2026-11-09 that was 0 of 2,389. A row whose
+   timers lack `"inc"` is always a candidate, so the filter is exact once
+   #2235's migration has run and merely unhelpful before it.
+   `TestCorrespondenceTimeoutCandidates` pins it to `RanOut` at the boundary.
+   The read flag is ignored unless `WRITE_ONGOING_GAMES` is also on, so
+   turning the writer off can never leave listings reading a stale table.
+   *Rollback:* unset `READ_ONGOING_GAMES` and redeploy; nothing is written
+   differently.
+   *Watch:* lobby game counts, correspondence timeouts still firing
+   (`adjudicating-after-gameplay-timed-out`), real-time timeouts and
+   never-started cancellations.
+
 **Do not turn the flag off and on again** without cleaning up. A game that ends
 while the flag is off keeps its row, and a ready while it is off is missing
 from the row. If it ever is turned off, delete every row and run the backfill
@@ -363,11 +394,19 @@ Evidence-gathering, behind flags, serving nothing:
       both for one release, read `event_bin` when present, then drop `event`.
       `DecodeTurn` already accepts either encoding. Add `cmd/decode-turn` so a
       row can still be read during an incident.
-- [ ] **Move the listings onto `ongoing_games`**, once it is populated and
-      checked (above). The listing queries exist with no Go callers. This is
-      also what ends the `idx_games_game_end_reason` bloat: the active-game
-      queries take ~114 ms today, scanning a 150 MB index full of dead entries
-      for ~2,000 live games.
+- [ ] **Move the listings onto `ongoing_games`** -- behind
+      `READ_ONGOING_GAMES` (rollout step 6). Once it has been on for a release,
+      delete the `games` versions of the queries and the flag, and drop
+      `idx_games_game_end_reason` if nothing else uses it.
+      The older `ListOngoing*` queries in `ongoing_games.sql` still have no
+      callers; delete them then too.
+- [x] **Correspondence adjudication without reading `games`** -- the
+      increment is in the timers (#2235) and the adjudicator pre-filters in
+      SQL behind `READ_ONGOING_GAMES` (rollout step 6).
+- [ ] **Time-bank updates take no game lock.** `AddTimeBank*` (league admin)
+      update the timers in SQL; a move saved at the same moment writes the
+      timers it loaded and drops the added time. Rare and admin-only; route
+      them through the lock (or retry) if it ever matters.
 - [ ] **Delete the `Cache` wrapper.** `pkg/stores/game/cache.go` is a
       pass-through to `DBStore` now, apart from the per-server `activeGames`
       listing TTL.

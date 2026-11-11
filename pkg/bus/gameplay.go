@@ -642,13 +642,14 @@ func (b *Bus) cancelIfStillUnstarted(ctx context.Context, gameID string) bool {
 // adjudicateCorrespondenceGames is an optimized version for correspondence games
 // that checks for timeouts without loading the full game from the database.
 func (b *Bus) adjudicateCorrespondenceGames(ctx context.Context) error {
-	// Get active correspondence games with timers
-	games, err := b.stores.GameStore.ListActiveCorrespondenceRaw(ctx)
+	// The games that may have run out of time: every live correspondence game,
+	// or with READ_ONGOING_GAMES only those whose timers say so. RanOut below
+	// decides each one either way.
+	now := time.Now().UnixMilli()
+	games, err := b.stores.GameStore.ListCorrespondenceTimeoutCandidates(ctx, now)
 	if err != nil {
 		return err
 	}
-
-	now := time.Now().UnixMilli()
 	log.Debug().Int("num-games", len(games)).Msg("adjudicating-correspondence-games")
 
 	for _, g := range games {
