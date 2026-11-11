@@ -2,6 +2,8 @@ package profile
 
 import (
 	"context"
+	"errors"
+	"strings"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -24,6 +26,14 @@ type personalInfoStore struct {
 
 func (s *personalInfoStore) Get(ctx context.Context, username string) (*entity.User, error) {
 	return s.u, nil
+}
+
+// GetByEmail finds only taken@example.com, which another account has.
+func (s *personalInfoStore) GetByEmail(ctx context.Context, email string) (*entity.User, error) {
+	if strings.EqualFold(email, "taken@example.com") {
+		return &entity.User{UUID: "uuid-2", Email: "taken@example.com"}, nil
+	}
+	return nil, errors.New("user not found")
 }
 
 func (s *personalInfoStore) SetPersonalInfo(ctx context.Context, uuid string, email string, firstName string,
@@ -51,6 +61,10 @@ func TestUpdatePersonalInfoPassword(t *testing.T) {
 		{"email changed, wrong password", "new@example.com", "wrong horse", true},
 		{"email changed, right password", "new@example.com", "correct horse", false},
 		{"email kept, no password", "old@example.com", "", false},
+		{"email taken by another account", "Taken@example.com", "correct horse", true},
+		{"email not an address", "not an address", "correct horse", true},
+		{"email with a display name", "New <new@example.com>", "correct horse", true},
+		{"email with space around it", " new@example.com ", "correct horse", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			is := is.New(t)
@@ -66,7 +80,7 @@ func TestUpdatePersonalInfoPassword(t *testing.T) {
 				return
 			}
 			is.NoErr(err)
-			is.Equal(store.saved[0], tc.email)
+			is.Equal(store.saved[0], strings.TrimSpace(tc.email))
 			is.Equal(store.saved[5], "new bio")
 		})
 	}
