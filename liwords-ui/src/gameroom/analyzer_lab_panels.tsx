@@ -139,11 +139,6 @@ type EndgameAnswer = {
 // The depth a pre-endgame's answer gives once searched to the end.
 const END_DEPTH = 127;
 
-// The most tiles in the bag a pre-endgame is solved with: with 7 or more, the
-// wasm's first step runs far past its time, holding the lab's worker; with 6
-// or fewer, its steps keep to it. A pre-endgame of 7 or more is a legal one.
-const MAX_PEG_BAG = 6;
-
 // What each player knows in a pre-endgame of two or more tiles in the bag
 // once the first move is made: nothing more, each choosing blind over every
 // split of the tiles they cannot see until the bag empties; or both racks.
@@ -666,7 +661,7 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
   // Nothing unseen: the other player has gone out.
   const over = lab.unseen.length === 0;
   const bag = endgameBag(lab.unseen.length, lab.rack.length);
-  const solvable = !over && bag !== null && bag <= MAX_PEG_BAG;
+  const solvable = !over && bag !== null;
   // with two or more tiles in the bag, what each player knows, which makes
   // another search
   const [model, setModel] = useState<EndgameModel>("info_sets");
@@ -756,8 +751,6 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
     status = goneOutText(lab);
   } else if (bag === null) {
     status = "Needs the full rack of the player to move.";
-  } else if (!solvable) {
-    status = `The bag holds ${bag} tiles: a pre-endgame is solved with ${MAX_PEG_BAG} or fewer.`;
   } else if (job.error) {
     status = <span className="analyzer-error">{job.error}</span>;
   } else if (!solved || !solved.play) {

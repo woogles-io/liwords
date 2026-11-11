@@ -550,21 +550,6 @@ describe("the endgame panel", () => {
     expect(
       screen.getByText("Needs the full rack of the player to move."),
     ).toBeInTheDocument();
-    cleanup();
-    // seven in the bag: an exchange is open
-    render(
-      <Store>
-        <EndgamePanel
-          lab={position([A, B, E, E, I, I, I, I, I, A, A, B, B, E])}
-          onClose={() => {}}
-        />
-      </Store>,
-    );
-    expect(
-      screen.getByText(
-        "The bag holds 7 tiles: a pre-endgame is solved with 6 or fewer.",
-      ),
-    ).toBeInTheDocument();
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(lab.calls).toEqual([]);
   });

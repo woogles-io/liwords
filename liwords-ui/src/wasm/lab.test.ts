@@ -287,77 +287,56 @@ describe("a sim in parts", () => {
   });
 });
 
-describe("a stuck worker", () => {
-  it("is ended once a stop goes unanswered, its job failing and what waits on it sent to a new one", async () => {
-    vi.useFakeTimers();
-    try {
-      setLabPartsForTest(1);
-      const job = await labCall<number>({
-        op: "endgame",
-        args: { request: "{}" },
-      });
-      // the worker answers nothing more: inside a call that keeps no time
-      const stuck = made[0];
-      stuck.postMessage = (m: Sent) => {
-        stuck.sent.push(m);
-      };
-      const stopped = labCall({ op: "stop" });
-      const prepared = labCall({ op: "prepare", args: { files: [] } });
-      await vi.advanceTimersByTimeAsync(3000);
-      await stopped;
-      await prepared;
-      expect(made).toHaveLength(2);
-      expect(made[1].sent.map((m) => m.op)).toEqual(["prepare"]);
-      expect(events).toContainEqual({
-        job,
-        error: "The solve did not stop in time, so it was dropped.",
-      });
-    } finally {
-      vi.useRealTimers();
-    }
+describe("closing a job", () => {
+  it("ends a worker still running the job's steps at once, the job freed and what waits sent to a new one", async () => {
+    setLabPartsForTest(1);
+    const job = await labCall<number>({
+      op: "endgame",
+      args: { request: "{}" },
+    });
+    await labCall({ op: "run", args: { job, ms: 8 } });
+    // the worker answers nothing more: inside a call that keeps no time
+    const stuck = made[0];
+    stuck.postMessage = (m: Sent) => {
+      stuck.sent.push(m);
+    };
+    await labCall({ op: "free", args: { job } });
+    expect(events).toContainEqual({ job, freed: true });
+    const next = labCall<number>({
+      op: "endgame",
+      args: { request: '{"model":"random_draws"}' },
+    });
+    expect(await next).toBe(12);
+    expect(made).toHaveLength(2);
+    expect(made[1].sent.map((m) => m.op)).toEqual(["endgame"]);
+    // no free was sent to the stuck one
+    expect(stuck.sent.map((m) => m.op)).not.toContain("free");
   });
 
-  it("lets a new solve start once the stuck one is freed, as a change of model does", async () => {
-    vi.useFakeTimers();
-    try {
-      setLabPartsForTest(1);
-      const job = await labCall<number>({
-        op: "endgame",
-        args: { request: "{}" },
-      });
-      const stuck = made[0];
-      stuck.postMessage = (m: Sent) => {
-        stuck.sent.push(m);
-      };
-      // the panel frees the old solve and makes the new one at once
-      const freed = labCall({ op: "free", args: { job } });
-      const prepared = labCall({ op: "prepare", args: { files: [] } });
-      const next = labCall<number>({
-        op: "endgame",
-        args: { request: '{"model":"random_draws"}' },
-      });
-      await vi.advanceTimersByTimeAsync(3000);
-      await freed;
-      await prepared;
-      expect(await next).toBe(12);
-      expect(made[1].sent.map((m) => m.op)).toEqual(["prepare", "endgame"]);
-      expect(made[1].sent[1].args).toEqual({
-        request: '{"model":"random_draws"}',
-      });
-    } finally {
-      vi.useRealTimers();
-    }
-  });
-
-  it("is left alone while it answers the stop in time", async () => {
-    vi.useFakeTimers();
-    try {
-      setLabPartsForTest(1);
-      await labCall({ op: "stop" });
-      await vi.advanceTimersByTimeAsync(5000);
-      expect(made).toHaveLength(1);
-    } finally {
-      vi.useRealTimers();
-    }
+  it("sends a free as usual once the run is done, and a stop always", async () => {
+    setLabPartsForTest(1);
+    const job = await labCall<number>({
+      op: "endgame",
+      args: { request: "{}" },
+    });
+    await labCall({ op: "run", args: { job, ms: 8 } });
+    await labCall({ op: "stop" });
+    await labCall({ op: "free", args: { job } });
+    expect(made).toHaveLength(1);
+    expect(made[0].sent.map((m) => m.op)).toEqual([
+      "endgame",
+      "run",
+      "stop",
+      "free",
+    ]);
+    // a run that finished frees as usual too
+    const again = await labCall<number>({
+      op: "endgame",
+      args: { request: "{}" },
+    });
+    await labCall({ op: "run", args: { job: again, ms: 8 } });
+    made[0].event({ job: 12, answer: { exact: true }, done: true });
+    await labCall({ op: "free", args: { job: again } });
+    expect(made).toHaveLength(1);
   });
 });
