@@ -40,6 +40,24 @@ package tournament
 // the lock is on the tournament's ID, not on where it is stored: it stays the
 // same when divisions move to their own tables, and it can cover them and any
 // other table a change writes.
+//
+// How this differs from the game lock (pkg/stores/game/lock.go), which uses
+// LockGame, then the ordinary Get and Set, then Unlock:
+//
+//   - Scope. A move does several separate writes under its lock (the move,
+//     and at the end of the game ratings, the archive, this tournament's
+//     result), so the game lock is session-scoped and outlives any one
+//     transaction. A tournament change is one load and one save, so it fits
+//     in one transaction, and the lock ends with it: commit and rollback
+//     release it, and so does a lost connection, so it can't leak.
+//   - Connections. A move holds two at once, one for the lock and one for its
+//     queries, which is why the game lock bounds its holders to half the pool.
+//     A tournament change holds one: the lock, the load and the save share the
+//     transaction's connection. That is what makes it safe to take while
+//     holding a game lock.
+//   - Enforcement. Any code can call the game store's Set, with or without
+//     the lock. Here the only way to save a tournament is Save on what
+//     LockForChange returned, so a change without the lock doesn't compile.
 
 import (
 	"context"
