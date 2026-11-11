@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 
 import { message, Form, Select, InputNumber, Input, Button } from "antd";
 import { ExclamationCircleOutlined } from "@ant-design/icons";
@@ -33,6 +33,43 @@ const profileFieldRemovals = [
   ["REMOVE_ABOUT", "Remove player bio"],
   ["REMOVE_AVATAR", "Remove avatar"],
 ] as const;
+
+// ChangeEmail sets the user's email at once; the server sends no mail to
+// either address, and refuses one that is malformed or another account's.
+export const ChangeEmail = (props: ModProps) => {
+  const modClient = useClient(ModService);
+
+  const onFinish = async (values: { email: string }) => {
+    try {
+      await modClient.changeEmail({
+        userId: props.userID,
+        email: values.email,
+      });
+      message.info({
+        content: "Changed email",
+        duration: 2,
+      });
+    } catch (e) {
+      flashError(e);
+    }
+  };
+
+  return (
+    <React.Fragment>
+      <h3>Change email</h3>
+      <Form name="change-email" onFinish={onFinish}>
+        <Form.Item name="email" label="New email" rules={[{ required: true }]}>
+          <Input></Input>
+        </Form.Item>
+        <Form.Item>
+          <Button type="primary" htmlType="submit">
+            Change email
+          </Button>
+        </Form.Item>
+      </Form>
+    </React.Fragment>
+  );
+};
 
 const Moderation = (props: ModProps) => {
   const { loginState } = useLoginStateStoreContext();
@@ -166,6 +203,8 @@ const Moderation = (props: ModProps) => {
           <Button onClick={handleSetShortDuration}>Set short duration</Button>
         </Form.Item>
       </Form>
+
+      {canRemoveProfileFields ? <ChangeEmail userID={props.userID} /> : null}
 
       <h3>Active mod actions</h3>
       <pre className="readable-text-color">
