@@ -120,21 +120,37 @@ func NewBus(cfg *config.Config, natsconn *nats.Conn, stores *stores.Stores, redi
 		ch := make(chan *nats.Msg, 512)
 		var err error
 		var sub *nats.Subscription
-		if strings.Contains(topic, ".request.") {
-			sub, err = natsconn.ChanQueueSubscribe(topic, "requestworkers", ch)
-			if err != nil {
-				return nil, err
-			}
+		if group := queueGroup(topic); group != "" {
+			sub, err = natsconn.ChanQueueSubscribe(topic, group, ch)
 		} else {
-			sub, err = natsconn.ChanQueueSubscribe(topic, "pbworkers", ch)
-			if err != nil {
-				return nil, err
-			}
+			sub, err = natsconn.ChanSubscribe(topic, ch)
+		}
+		if err != nil {
+			return nil, err
 		}
 		bus.subscriptions = append(bus.subscriptions, sub)
 		bus.subchans[topic] = ch
 	}
 	return bus, nil
+}
+
+// queueGroup is the NATS queue group the API servers share for a topic, or
+// "" for a plain subscription.
+//
+// Messages that must be handled once (socket messages, requests, bot moves)
+// go to one server of the group. user.> and game.> only feed the event-stream
+// API, whose clients are each connected to one server: every server needs
+// every message, or a client on one server misses what was delivered to the
+// other.
+func queueGroup(topic string) string {
+	switch {
+	case topic == "user.>" || topic == "game.>":
+		return ""
+	case strings.Contains(topic, ".request."):
+		return "requestworkers"
+	default:
+		return "pbworkers"
+	}
 }
 
 func (b *Bus) EventAPIServerInstance() *EventAPIServer {
