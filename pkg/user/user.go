@@ -28,6 +28,9 @@ type Store interface {
 	SetAvatarUrl(ctx context.Context, uuid string, avatarUrl string) error
 	GetBriefProfiles(ctx context.Context, uuids []string) (map[string]*upb.BriefProfile, error)
 	SetPersonalInfo(ctx context.Context, uuid string, email string, firstName string, lastName string, birthDate string, countryCode string, about string) error
+	// AddEmailChange records that a user's email went from oldEmail to
+	// newEmail, changed by the user with the UUID changedBy.
+	AddEmailChange(ctx context.Context, uuid string, oldEmail string, newEmail string, changedBy string) error
 	SetRatings(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey,
 		p1Rating *entity.SingleRating, p2Rating *entity.SingleRating) error
 	SetStats(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey,

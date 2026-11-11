@@ -410,6 +410,18 @@ func (s *DBStore) SetPersonalInfo(ctx context.Context, uuid string, email string
 	return tx.Commit(ctx)
 }
 
+func (s *DBStore) AddEmailChange(ctx context.Context, uuid string, oldEmail string, newEmail string, changedBy string) error {
+	n, err := s.queries.AddEmailChange(ctx, models.AddEmailChangeParams{
+		UserUuid: uuid, OldEmail: oldEmail, NewEmail: newEmail, ChangedByUuid: changedBy})
+	if err != nil {
+		return err
+	}
+	if n != 1 {
+		return fmt.Errorf("email change not recorded for user %s by %s", uuid, changedBy)
+	}
+	return nil
+}
+
 // SetRatings set the specific ratings for the given variant in a transaction.
 func (s *DBStore) SetRatings(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey,
 	p0Rating *entity.SingleRating, p1Rating *entity.SingleRating) error {

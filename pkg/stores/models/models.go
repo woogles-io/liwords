@@ -180,6 +180,15 @@ type DbSession struct {
 	Data      []byte
 }
 
+type EmailChange struct {
+	ID        int64
+	UserID    int32
+	OldEmail  string
+	NewEmail  string
+	ChangedAt pgtype.Timestamptz
+	ChangedBy int32
+}
+
 type Following struct {
 	UserID     pgtype.Int4
 	FollowerID pgtype.Int4
