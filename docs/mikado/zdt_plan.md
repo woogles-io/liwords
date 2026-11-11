@@ -283,6 +283,16 @@ Needed, in order, within `stopTimeout`:
 The socket server sends requests (`ipc.request.registerRealm` and others) with
 a timeout; during a drain they go to the remaining server.
 
+**Status (2026-11-11): steps 1-5 done in code** (`pkg/bus/drain.go`). On
+SIGTERM `/ping` returns 503, then `Bus.Drain` drains each subscription (not
+the connection, which handlers still publish on), lets the loop take what was
+delivered, stops adjudication and seek expiry, waits for the tracked handlers
+(socket messages, requests, bot moves, adjudications) and for their events to
+be published. Then HTTP shutdown, the archive wait, and a NATS flush and close.
+The whole sequence has 25s (`GracefulShutdownTimeout`), under ECS's default
+30s `stopTimeout`. Still to do with the infrastructure (section 1): set
+`stopTimeout` and a deregistration delay to match.
+
 ## 6. Old and new versions side by side
 
 During an overlapping deploy both versions run for a minute or more. Rules

@@ -10,6 +10,8 @@ import (
 	"runtime/debug"
 	"strconv"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/gomodule/redigo/redis"
@@ -59,8 +61,13 @@ type Bus struct {
 
 	redisPool *redis.Pool
 
-	subscriptions []*nats.Subscription
+	subscriptions []subscription
 	subchans      map[string]chan *nats.Msg
+
+	// For shutting down without dropping work in progress; see Drain.
+	handlers sync.WaitGroup
+	draining atomic.Bool
+	syncReq  chan chan struct{}
 
 	gameEventChan       chan *entity.EventWrapper
 	tournamentEventChan chan *entity.EventWrapper
@@ -73,7 +80,8 @@ func NewBus(cfg *config.Config, natsconn *nats.Conn, stores *stores.Stores, redi
 	bus := &Bus{
 		natsconn:            natsconn,
 		stores:              stores,
-		subscriptions:       []*nats.Subscription{},
+		subscriptions:       []subscription{},
+		syncReq:             make(chan chan struct{}),
 		subchans:            map[string]chan *nats.Msg{},
 		config:              cfg,
 		gameEventChan:       make(chan *entity.EventWrapper, 64),
@@ -185,7 +193,9 @@ outerfor:
 			// Update context with scoped logger
 			msgCtx = scopedLogger.WithContext(msgCtx)
 
+			b.handlers.Add(1)
 			go func(msgCtx context.Context, span trace.Span, subtopics []string, data []byte) {
+				defer b.handlers.Done()
 				defer span.End()
 				log := zerolog.Ctx(msgCtx)
 				err := recoverToError(msgCtx, func() error {
@@ -233,7 +243,9 @@ outerfor:
 			// Update context with scoped logger
 			reqCtx = scopedLogger.WithContext(reqCtx)
 
+			b.handlers.Add(1)
 			go func(reqCtx context.Context, span trace.Span) {
+				defer b.handlers.Done()
 				defer span.End()
 				log := zerolog.Ctx(reqCtx)
 				err := recoverToError(reqCtx, func() error {
@@ -391,12 +403,22 @@ outerfor:
 				}
 			}
 
+		case done := <-b.syncReq:
+			// Drain's round trip: every message taken before this one has
+			// been handed off (tracked or published) by now.
+			close(done)
+
 		case <-ctx.Done():
 			log.Info().Msg("pubsub context done, breaking")
 			break outerfor
 
 		case <-adjudicator.C:
+			if b.draining.Load() {
+				break
+			}
+			b.handlers.Add(1)
 			go func() {
+				defer b.handlers.Done()
 				err := b.adjudicateGames(ctx, false) // false = real-time games only
 				if err != nil {
 					log.Err(err).Msg("adjudicate-error")
@@ -404,7 +426,12 @@ outerfor:
 			}()
 
 		case <-correspondenceAdjudicator.C:
+			if b.draining.Load() {
+				break
+			}
+			b.handlers.Add(1)
 			go func() {
+				defer b.handlers.Done()
 				err := b.adjudicateGames(ctx, true) // true = correspondence games only
 				if err != nil {
 					log.Err(err).Msg("adjudicate-correspondence-error")
@@ -412,6 +439,9 @@ outerfor:
 			}()
 
 		case <-seekExpirer.C:
+			if b.draining.Load() {
+				break
+			}
 			go func() {
 				err := b.stores.SoughtGameStore.ExpireOld(ctx)
 				if err != nil {

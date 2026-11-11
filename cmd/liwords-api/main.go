@@ -11,6 +11,7 @@ import (
 	"os/signal"
 	"runtime"
 	"strings"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -93,7 +94,10 @@ import (
 )
 
 const (
-	GracefulShutdownTimeout = 30 * time.Second
+	// GracefulShutdownTimeout bounds the whole shutdown after SIGTERM. ECS
+	// kills the container stopTimeout after SIGTERM (30s unless the task
+	// definition sets it), so this stays under that.
+	GracefulShutdownTimeout = 25 * time.Second
 )
 
 var (
@@ -122,8 +126,17 @@ func newPool(addr string) *redis.Pool {
 	}
 }
 
+// shuttingDown is set on SIGTERM. /ping then fails, so a health check sees
+// the server going away while it finishes the work it has.
+var shuttingDown atomic.Bool
+
 func pingEndpoint(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-Type", "application/json")
+	if shuttingDown.Load() {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		w.Write([]byte(`{"status":"shutting down"}`))
+		return
+	}
 	w.WriteHeader(200)
 	w.Write([]byte(`{"status":"copacetic"}`))
 }
@@ -547,7 +560,15 @@ func main() {
 		signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
 		<-sig
 		log.Info().Msg("got quit signal...")
+		shuttingDown.Store(true)
 		ctx, shutdownCancel := context.WithTimeout(context.Background(), GracefulShutdownTimeout)
+		// Moves and other socket messages first: stop taking them, and
+		// finish the ones in progress (see pkg/bus/drain.go).
+		drainStart := time.Now()
+		if err := pubsubBus.Drain(ctx); err != nil {
+			log.Error().Err(err).Msg("bus-drain-on-shutdown")
+		}
+		log.Info().Dur("took", time.Since(drainStart)).Msg("bus-drained")
 		if err := srv.Shutdown(ctx); err != nil {
 			// Error from closing listeners, or context timeout:
 			log.Error().Msgf("HTTP server Shutdown: %v", err)
@@ -561,6 +582,11 @@ func main() {
 		shutdownCancel()
 		pubsubCancel()
 		stores.GameStore.StopCleanup()
+		// Send what the handlers published before closing the connection.
+		if err := natsconn.FlushTimeout(2 * time.Second); err != nil {
+			log.Error().Err(err).Msg("nats-flush-on-shutdown")
+		}
+		natsconn.Close()
 		close(idleConnsClosed)
 	}()
 	log.Info().Msg("starting listening...")
