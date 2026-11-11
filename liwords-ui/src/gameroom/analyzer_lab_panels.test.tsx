@@ -70,7 +70,9 @@ vi.mock("../wasm/lab", () => ({
     }
     return undefined;
   },
-  labParts: () => lab.parts,
+  setLabParts: (n: number) => {
+    lab.parts = n;
+  },
   onLabEvent: (listener: (e: LabEvent) => void) => {
     lab.listeners.add(listener);
     return () => {
@@ -692,6 +694,7 @@ describe("the sim panel", () => {
     expect(lab.calls.find((c) => c.op === "run")?.args).toEqual({
       job: 1,
       ms: 8,
+      alpha: 0.05,
     });
 
     // shown by the chance to win
@@ -729,6 +732,7 @@ describe("the sim panel", () => {
     expect(lab.calls.find((c) => c.op === "run")?.args).toEqual({
       job: 1,
       ms: 16.5,
+      alpha: 0.05,
     });
   });
 
@@ -806,7 +810,7 @@ describe("the sim panel", () => {
     await waitFor(() =>
       expect(lab.calls[lab.calls.length - 1]).toEqual({
         op: "run",
-        args: { job: 1, ms: 8 },
+        args: { job: 1, ms: 8, alpha: 0.05 },
       }),
     );
     expect(screen.getByRole("button", { name: "Stop" })).toBeInTheDocument();
@@ -1002,13 +1006,63 @@ describe("the sim panel", () => {
     ]);
   });
 
-  it("says how many workers the sim runs on, when more than one", async () => {
-    lab.parts = 3;
+  it("prunes at the alpha set, and infers at the fuzz set, listing the leaves asked", async () => {
     render(
       <Store>
         <Sim lab={midgame()} moves={[listed(ba), listed(ab)]} />
       </Store>,
     );
+    act(() => screen.getByRole("button", { name: "Sim settings" }).click());
+    fireEvent.click(screen.getByText("Infer their leave"));
+    const field = (name: string, value: string) =>
+      fireEvent.change(screen.getByRole("spinbutton", { name }), {
+        target: { value },
+      });
+    field("Fuzz", "2");
+    field("Leaves listed", "5");
+    field("Alpha", "0.01");
+    act(() => screen.getByRole("button", { name: "Apply" }).click());
+    await start();
+    const sim = lab.calls.find((c) => c.op === "sim");
+    expect(JSON.parse((sim?.args as { infer: string }).infer)).toMatchObject({
+      fuzz: 2,
+      list: 5,
+    });
+    expect(lab.calls.find((c) => c.op === "run")?.args).toMatchObject({
+      alpha: 0.01,
+    });
+  });
+
+  it("applies no alpha outside 0 to 1", async () => {
+    render(
+      <Store>
+        <Sim lab={midgame()} moves={[listed(ba), listed(ab)]} />
+      </Store>,
+    );
+    act(() => screen.getByRole("button", { name: "Sim settings" }).click());
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Alpha" }), {
+      target: { value: "1" },
+    });
+    expect(screen.getByRole("button", { name: "Apply" })).toBeDisabled();
+  });
+
+  it("says how many workers the sim runs on, when more than one", async () => {
+    render(
+      <Store>
+        <Sim lab={midgame()} moves={[listed(ba), listed(ab)]} />
+      </Store>,
+    );
+    // one until set; set, the lab runs the next sim on that many
+    vi.stubGlobal("navigator", { ...navigator, hardwareConcurrency: 8 });
+    act(() => screen.getByRole("button", { name: "Sim settings" }).click());
+    expect(screen.getByRole("spinbutton", { name: "Workers" })).toHaveValue(
+      "1",
+    );
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Workers" }), {
+      target: { value: "3" },
+    });
+    act(() => screen.getByRole("button", { name: "Apply" }).click());
+    expect(lab.parts).toBe(3);
     await start();
     emit({
       job: 1,
@@ -2252,7 +2306,7 @@ describe("the sim panel", () => {
       rules: "CrosswordGame",
       play: midgame().lastMove!.play,
       fuzz: 3.105,
-      list: 10,
+      list: 0,
     });
     emit({
       job: 1,
@@ -2522,7 +2576,7 @@ describe("the sim panel", () => {
     await waitFor(() =>
       expect(lab.calls[lab.calls.length - 1]).toEqual({
         op: "run",
-        args: { job: 1, ms: 8 },
+        args: { job: 1, ms: 8, alpha: 0.05 },
       }),
     );
   });

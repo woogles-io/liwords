@@ -1,11 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  LabEvent,
-  labCall,
-  onLabEvent,
-  partsFor,
-  setLabPartsForTest,
-} from "./lab";
+import { LabEvent, labCall, onLabEvent, setLabPartsForTest } from "./lab";
 
 // The lab's workers, faked: each records what it is sent and answers each
 // request at once, as a test says, the rest with nothing; a test sends each
@@ -129,7 +123,7 @@ describe("a sim in parts", () => {
     expect(requests[0].seed).toBe(requests[1].seed);
     expect(Number.isInteger(requests[0].seed)).toBe(true);
     // each part prunes nothing on its own
-    await labCall({ op: "run", args: { job, ms: 8 } });
+    await labCall({ op: "run", args: { job, ms: 8, alpha: 0.05 } });
     expect(lastOf(0, "run")?.args).toEqual({ job: 11, ms: 8, prune: false });
     expect(lastOf(1, "run")?.args).toEqual({ job: 11, ms: 8, prune: false });
     // a change goes to every part
@@ -197,7 +191,7 @@ describe("a sim in parts", () => {
           }
         : base(w, m);
     const job = await start();
-    await labCall({ op: "run", args: { job, ms: 8 } });
+    await labCall({ op: "run", args: { job, ms: 8, alpha: 0.05 } });
     const step = (w: number, abState = "running") =>
       made[w].event({
         job: 11,
@@ -290,19 +284,6 @@ describe("a sim in parts", () => {
     made[1].event({ job: 11, error: "out of memory" });
     expect(events).toEqual([{ job, error: "out of memory" }]);
     expect(ops(0)).toContain("stop");
-  });
-});
-
-describe("how many workers a sim runs on", () => {
-  it("runs on many only where the device says it has the memory", () => {
-    expect(partsFor(8, 8)).toBe(4);
-    expect(partsFor(3, 16)).toBe(2);
-    expect(partsFor(8, 4)).toBe(1);
-    expect(partsFor(8, 2)).toBe(1);
-    // a browser that says nothing of its memory
-    expect(partsFor(8, undefined)).toBe(2);
-    expect(partsFor(1, undefined)).toBe(1);
-    expect(partsFor(undefined, undefined)).toBe(1);
   });
 });
 

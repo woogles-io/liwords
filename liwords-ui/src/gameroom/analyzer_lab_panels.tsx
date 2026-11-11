@@ -61,7 +61,7 @@ import {
   roomClass,
   roomInWindow,
 } from "../utils/window_room";
-import { labCall, labParts, onLabEvent } from "../wasm/lab";
+import { labCall, onLabEvent, setLabParts } from "../wasm/lab";
 import { getLoadableFiles, getWolges } from "../wasm/loader";
 import {
   AnalyzerMove,
@@ -1018,14 +1018,10 @@ type Inferred = {
   leaves: Array<{ tiles: Array<number>; weight: number }>;
 };
 
-// How far a move inferred from may fall short of a rack's best, in points:
-// wolges's own infer::FUZZ. And how many of the likeliest leaves are listed.
-const INFER_FUZZ = 3.105;
-const INFER_LIST = 10;
-
 // The request that infers the opponent's leave from their last move, as the
-// player to move sees it.
-const inferRequest = (lab: LabPosition) =>
+// player to move sees it, with the settings' fuzz and how many of the
+// likeliest leaves it lists.
+const inferRequest = (lab: LabPosition, settings: SimSettings) =>
   lab.lastMove
     ? JSON.stringify({
         rack: lab.rack,
@@ -1034,8 +1030,8 @@ const inferRequest = (lab: LabPosition) =>
         leave: lab.leave,
         rules: lab.position.rules,
         play: lab.lastMove.play,
-        fuzz: INFER_FUZZ,
-        list: INFER_LIST,
+        fuzz: settings.fuzz,
+        list: settings.list,
       })
     : undefined;
 
@@ -1050,24 +1046,44 @@ const DEFAULT_SIM_PLIES = 4;
 // null for every ply to the game's end, and the tiles known to be on the
 // opponent's rack, written as tiles are, a blank as ?; whether it prunes none
 // of its candidates, rolling each out until stopped; and whether the opponent
-// passes every turn of each rollout; and whether, in place of the tiles
-// known, the opponent's leave is inferred from their last move, each
-// iteration dealing them one leave by its weight.
+// passes every turn of each rollout; whether, in place of the tiles known,
+// the opponent's leave is inferred from their last move, each iteration
+// dealing them one leave by its weight, with how many points the move may
+// fall short of a rack's best (fuzz) and how many of the likeliest leaves are
+// listed; the chance a pruning sim ever prunes its best candidate (alpha);
+// and how many workers a sim runs on, each holding its own tables.
 export type SimSettings = {
   plies: number | null;
   known: string;
   unpruned: boolean;
   opponentsPass: boolean;
   infer: boolean;
+  fuzz: number;
+  list: number;
+  alpha: number;
+  workers: number;
 };
 
+// The settings until the user sets others: wolges's own fuzz (infer::FUZZ)
+// and its alpha (the one in twenty move_picker's paired_z splits); the
+// wasm's own list of none; one worker.
 const defaultSimSettings: SimSettings = {
   plies: DEFAULT_SIM_PLIES,
   known: "",
   unpruned: false,
   opponentsPass: false,
   infer: false,
+  fuzz: 3.105,
+  list: 0,
+  alpha: 0.05,
+  workers: 1,
 };
+
+// How a run of the sim prunes, by the settings: not at all, or at their alpha.
+const runArgs = (job: number, ms: number, settings: SimSettings) =>
+  settings.unpruned
+    ? { job, ms, prune: false }
+    : { job, ms, alpha: settings.alpha };
 
 // The tiles written as known on the opponent's rack, or why they cannot be
 // there: each one a tile of the game, and all of them among the tiles unseen.
@@ -1213,30 +1229,34 @@ export const useLabSim = (
   };
 
   // Run the sim made on, each step as long as a frame.
-  const runOn = async (job: number, unpruned: boolean) => {
+  const runOn = async (job: number, settings: SimSettings) => {
     const ms = await frameMs();
     setSim((s) => (s?.job === job ? { ...s, running: true, done: false } : s));
-    labCall({
-      op: "run",
-      args: unpruned ? { job, ms, prune: false } : { job, ms },
-    }).catch((e) =>
+    labCall({ op: "run", args: runArgs(job, ms, settings) }).catch((e) =>
       setSim((s) =>
         s?.job === job ? { ...s, running: false, error: errorText(e) } : s,
       ),
     );
   };
 
-  // New plies or tiles apply to the sim made of this position from its next
-  // iteration on, its rollouts so far kept; a sim of another position goes,
-  // as the next is made with them. Whether the opponent passes makes a new
-  // sim. Whether it prunes applies to the sim made from its next step on.
+  // New plies or tiles, or an inference made again, apply to the sim made of
+  // this position from its next iteration on, its rollouts so far kept; a sim
+  // of another position goes, as the next is made with them. Whether the
+  // opponent passes, or how many workers, makes a new sim. Whether it prunes,
+  // and at what alpha, applies to the sim made from its next step on.
   const changeSettings = async (next: SimSettings) => {
     setNote(undefined);
     const rolled =
       next.plies !== settings.plies ||
       next.known !== settings.known ||
-      next.infer !== settings.infer;
-    if (next.opponentsPass !== settings.opponentsPass) {
+      next.infer !== settings.infer ||
+      (next.infer &&
+        (next.fuzz !== settings.fuzz || next.list !== settings.list));
+    if (
+      next.opponentsPass !== settings.opponentsPass ||
+      next.workers !== settings.workers
+    ) {
+      setLabParts(next.workers);
       setSettings(next);
       setSim(null);
       return;
@@ -1248,7 +1268,7 @@ export const useLabSim = (
         setNote({ key: at, text: `Not applied: ${known.error}.` });
         return;
       }
-      const infer = next.infer ? inferRequest(lab) : undefined;
+      const infer = next.infer ? inferRequest(lab, next) : undefined;
       if (next.infer && !infer) {
         setNote({ key: at, text: `Not applied: ${NOTHING_TO_INFER}.` });
         return;
@@ -1272,8 +1292,11 @@ export const useLabSim = (
       setSim(null);
     }
     setSettings(next);
-    if (made && next.unpruned !== settings.unpruned) {
-      if (made.running) runOn(made.job, next.unpruned);
+    if (
+      made &&
+      (next.unpruned !== settings.unpruned || next.alpha !== settings.alpha)
+    ) {
+      if (made.running) runOn(made.job, next);
       // done as it was pruning, it may have more to do now
       else setSim((s) => (s?.job === made.job ? { ...s, done: false } : s));
     }
@@ -1283,7 +1306,7 @@ export const useLabSim = (
   const run = async () => {
     if (!lab) return;
     if (made) {
-      runOn(made.job, settings.unpruned);
+      runOn(made.job, settings);
       return;
     }
     if (startingRef.current) return;
@@ -1295,7 +1318,7 @@ export const useLabSim = (
       setNote({ key: at, text: `Not started: ${known.error}.` });
       return;
     }
-    const infer = settings.infer ? inferRequest(lab) : undefined;
+    const infer = settings.infer ? inferRequest(lab, settings) : undefined;
     if (settings.infer && !infer) {
       setNote({ key: at, text: `Not started: ${NOTHING_TO_INFER}.` });
       return;
@@ -1345,7 +1368,7 @@ export const useLabSim = (
       });
       await labCall({
         op: "run",
-        args: settings.unpruned ? { job, ms, prune: false } : { job, ms },
+        args: runArgs(job, ms, settings),
       });
     } catch (e) {
       setSim((s) => (s?.key === at ? { ...s, running: false } : s));
@@ -2439,8 +2462,8 @@ const settingsText = (
     : !settings.infer && settings.known.trim()
       ? `; the opponent holds ${settings.known.trim().toUpperCase()}`
       : "";
-  const parts = labParts();
-  return `${played}${held}${settings.opponentsPass ? "; the opponent passes" : ""}${settings.unpruned ? "; unpruned" : ""}${parts > 1 ? `; on ${parts} workers` : ""}`;
+  const { workers } = settings;
+  return `${played}${held}${settings.opponentsPass ? "; the opponent passes" : ""}${settings.unpruned ? "; unpruned" : ""}${workers > 1 ? `; on ${workers} workers` : ""}`;
 };
 
 type SimSettingsButtonProps = {
@@ -2466,23 +2489,36 @@ const SimSettingsButton = (props: SimSettingsButtonProps) => {
   const [known, setKnown] = useState(settings.known);
   const [unpruned, setUnpruned] = useState(settings.unpruned);
   const [opponentsPass, setOpponentsPass] = useState(settings.opponentsPass);
-  const unset = !toEnd && plies === null;
+  const [fuzz, setFuzz] = useState<number | null>(settings.fuzz);
+  const [list, setList] = useState<number | null>(settings.list);
+  const [alpha, setAlpha] = useState<number | null>(settings.alpha);
+  const [workers, setWorkers] = useState<number | null>(settings.workers);
+  const cores = navigator.hardwareConcurrency || 1;
+  const unset =
+    (!toEnd && plies === null) ||
+    fuzz === null ||
+    list === null ||
+    alpha === null ||
+    !(alpha > 0 && alpha < 1) ||
+    workers === null;
   const apply = () => {
     if (unset) return;
     setOpen(false);
-    const next = {
+    const next: SimSettings = {
       plies: toEnd ? null : plies,
       known,
       unpruned,
       opponentsPass,
       infer,
+      fuzz,
+      list,
+      alpha,
+      workers,
     };
     if (
-      next.plies !== settings.plies ||
-      known !== settings.known ||
-      unpruned !== settings.unpruned ||
-      opponentsPass !== settings.opponentsPass ||
-      infer !== settings.infer
+      (Object.keys(next) as Array<keyof SimSettings>).some(
+        (k) => next[k] !== settings[k],
+      )
     ) {
       onChange(next);
     }
@@ -2499,6 +2535,10 @@ const SimSettingsButton = (props: SimSettingsButtonProps) => {
           setUnpruned(settings.unpruned);
           setOpponentsPass(settings.opponentsPass);
           setInfer(settings.infer);
+          setFuzz(settings.fuzz);
+          setList(settings.list);
+          setAlpha(settings.alpha);
+          setWorkers(settings.workers);
         }
       }}
       trigger="click"
@@ -2549,6 +2589,37 @@ const SimSettingsButton = (props: SimSettingsButtonProps) => {
                 : "Their last turn is no play or exchange to infer from."}
             </span>
           </Checkbox>
+          <label>
+            Fuzz
+            <span className="lab-settings-note">
+              The points their move may fall short of a rack's best.
+            </span>
+            <InputNumber
+              size="small"
+              aria-label="Fuzz"
+              min={0}
+              disabled={!infer}
+              status={fuzz === null ? "error" : undefined}
+              value={fuzz}
+              onChange={(v) => setFuzz(v)}
+            />
+          </label>
+          <label>
+            Leaves listed
+            <span className="lab-settings-note">
+              How many of the likeliest the details list.
+            </span>
+            <InputNumber
+              size="small"
+              aria-label="Leaves listed"
+              min={0}
+              precision={0}
+              disabled={!infer}
+              status={list === null ? "error" : undefined}
+              value={list}
+              onChange={(v) => setList(v)}
+            />
+          </label>
           <Checkbox
             checked={unpruned}
             onChange={(e) => setUnpruned(e.target.checked)}
@@ -2558,6 +2629,27 @@ const SimSettingsButton = (props: SimSettingsButtonProps) => {
               Each candidate rolls out until the sim is stopped.
             </span>
           </Checkbox>
+          <label>
+            Alpha
+            <span className="lab-settings-note">
+              The chance the sim ever prunes its best candidate, above 0 and
+              below 1.
+            </span>
+            <InputNumber
+              size="small"
+              aria-label="Alpha"
+              min={0}
+              max={1}
+              disabled={unpruned}
+              status={
+                alpha === null || !(alpha > 0 && alpha < 1)
+                  ? "error"
+                  : undefined
+              }
+              value={alpha}
+              onChange={(v) => setAlpha(v)}
+            />
+          </label>
           <Checkbox
             checked={opponentsPass}
             onChange={(e) => setOpponentsPass(e.target.checked)}
@@ -2568,6 +2660,22 @@ const SimSettingsButton = (props: SimSettingsButtonProps) => {
               starts the sim again.
             </span>
           </Checkbox>
+          <label>
+            Workers
+            <span className="lab-settings-note">
+              {`The sim runs on this many at once, up to ${cores}, each holding its own tables. Changing this starts the sim again.`}
+            </span>
+            <InputNumber
+              size="small"
+              aria-label="Workers"
+              min={1}
+              max={cores}
+              precision={0}
+              status={workers === null ? "error" : undefined}
+              value={workers}
+              onChange={(v) => setWorkers(v)}
+            />
+          </label>
           <Button size="small" type="primary" disabled={unset} onClick={apply}>
             Apply
           </Button>

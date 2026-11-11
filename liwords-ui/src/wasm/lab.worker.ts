@@ -44,15 +44,20 @@ export type LabRequest =
   | { op: "peek"; args: { job: number; against: string } }
   // the job stepped ms at a time until it is done or stopped; a sim told
   // prune false prunes none of its candidates
-  | { op: "run"; args: { job: number; ms: number; prune?: boolean } }
+  | {
+      op: "run";
+      args: { job: number; ms: number; prune?: boolean; alpha?: number };
+    }
   | { op: "stop" }
   | { op: "free"; args: { job: number } };
 type Job = {
   id: number;
   kind: "sim" | "endgame";
   handle: number;
-  // false when a sim's last run said to prune none of its candidates
+  // false when a sim's last run said to prune none of its candidates, and
+  // the alpha it said to prune at otherwise
   prune?: boolean;
+  alpha?: number;
   // a sim's iterations, as its last answer had them
   iterations?: number;
   // the play a sim's candidates are compared with, as the sim takes one
@@ -65,27 +70,30 @@ type Answer = {
 };
 
 // How a sim prunes its candidates, told to it at every step: wolges's own
-// numbers (https://github.com/andy-k/wolges/blob/main/src/move_picker.rs: a
-// look every PRUNE_CADENCE iterations, and a win chance within 1/1000 of 0 or
-// 1 taken as decided). A sim here has no iteration budget, so its z is the
-// stitched boundary's at its iterations so far (stitched_z), which keeps the
-// chance it ever prunes its best candidate behind another to PRUNE_ALPHA
-// however long it runs: the one in twenty that paired_z splits over a
-// budget's looks.
+// look every PRUNE_CADENCE iterations and win chance within 1/1000 of 0 or 1
+// taken as decided (https://github.com/andy-k/wolges/blob/main/src/move_picker.rs);
+// and, as a sim here has no iteration budget, the stitched boundary's z at
+// its iterations so far (stitched_z), at the alpha its run was given: the
+// chance it ever prunes its best candidate behind another, however long it
+// runs. A run that prunes and gives no alpha fails.
 const PRUNE_EVERY = 16;
-const PRUNE_ALPHA = 0.05;
 const PRUNE_DECIDED = 0.001;
-const pruning = (wolges: Wolges, j: Job) => ({
-  ...(j.prune !== false
-    ? {
-        prune: true,
-        prune_every: PRUNE_EVERY,
-        prune_z: wolges.stitched_z(Math.max(1, j.iterations ?? 0), PRUNE_ALPHA),
-        prune_decided: PRUNE_DECIDED,
-      }
-    : { prune: false }),
-  ...(j.against !== undefined ? { against: j.against } : {}),
-});
+const pruning = (wolges: Wolges, j: Job) => {
+  if (j.prune !== false && j.alpha === undefined) {
+    throw new Error("a pruning run needs an alpha");
+  }
+  return {
+    ...(j.prune !== false
+      ? {
+          prune: true,
+          prune_every: PRUNE_EVERY,
+          prune_z: wolges.stitched_z(Math.max(1, j.iterations ?? 0), j.alpha!),
+          prune_decided: PRUNE_DECIDED,
+        }
+      : { prune: false }),
+    ...(j.against !== undefined ? { against: j.against } : {}),
+  };
+};
 
 const post = (message: unknown) =>
   (self as unknown as Worker).postMessage(message);
@@ -317,8 +325,10 @@ const handle = async (req: LabRequest): Promise<unknown> => {
           ? wolges.sim_step(
               job.handle,
               JSON.stringify({
+                // a read runs no iteration, so prunes nothing
                 iterations: 0,
-                ...pruning(wolges, job),
+                prune: false,
+                ...(job.against !== undefined ? { against: job.against } : {}),
               }),
             )
           : wolges.endgame_step(job.handle, JSON.stringify({ ms: 0 })),
@@ -331,6 +341,7 @@ const handle = async (req: LabRequest): Promise<unknown> => {
       running = true;
       const j = job;
       j.prune = req.args.prune;
+      j.alpha = req.args.alpha;
       const chain = ++chainId;
       const { ms } = req.args;
       later(() => step(j, chain, ms));

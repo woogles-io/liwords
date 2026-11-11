@@ -39,28 +39,14 @@ type Pending = {
 
 type WorkerEvent = LabEvent;
 
-// How many parts a sim runs in. Each part is its own wasm, holding its own
-// lexicon, leave table and, inferring, its own inference tables (some 43 MB
-// in English), so the page's memory grows with each: a worker a core but one,
-// four at most, only on a device that says it has 8 GB or more; two at most
-// on one that says nothing; one, as before, on any other (a phone's browser
-// kills a tab that holds too much).
-export const partsFor = (cores: number | undefined, gb: number | undefined) => {
-  const spare = Math.max(1, (cores ?? 2) - 1);
-  if (gb === undefined) return Math.min(2, spare);
-  if (gb >= 8) return Math.min(4, spare);
-  return 1;
-};
+// How many parts a sim runs in, a worker each, each holding its own wasm and
+// tables: one until the page sets more.
+let parts = 1;
+export const labParts = () => parts;
 
-let parts: number | undefined;
-export const labParts = () => {
-  if (parts === undefined) {
-    parts = partsFor(
-      navigator.hardwareConcurrency,
-      (navigator as Navigator & { deviceMemory?: number }).deviceMemory,
-    );
-  }
-  return parts;
+// The parts the sims made from now on run in.
+export const setLabParts = (n: number) => {
+  parts = Math.max(1, Math.floor(n));
 };
 
 // For tests: the parts a sim runs in from now on, the workers made anew.
@@ -86,10 +72,9 @@ const listeners = new Set<(e: LabEvent) => void>();
 let lastJob = 0;
 const jobs = new Map<number, Array<{ worker: number; job: number }>>();
 
-// How a sim prunes on its merged numbers: wolges's own, as the worker prunes
-// one part's (lab.worker.ts).
+// How a sim prunes on its merged numbers: as the worker prunes one part's
+// (lab.worker.ts), at the alpha its run was given.
 const PRUNE_EVERY = 16;
-const PRUNE_ALPHA = 0.05;
 const PRUNE_DECIDED = 0.001;
 
 // A sim in parts as the page keeps it: each part's last answer, whether it
@@ -99,6 +84,7 @@ const PRUNE_DECIDED = 0.001;
 type Sim = {
   answers: Array<PartAnswer | undefined>;
   prune: boolean;
+  alpha: number;
   looked: number;
   pruned: Set<string>;
   given: Map<string, unknown>;
@@ -305,7 +291,7 @@ const lookBehind = async (page: number, sim: Sim, answer: PartAnswer) => {
     );
     const merged = mergeAnswers(reads);
     if (!merged || !sims.has(page)) return;
-    const z = stitchedZ(merged.iterations, PRUNE_ALPHA);
+    const z = stitchedZ(merged.iterations, sim.alpha);
     const behind = behindLeader(
       merged.candidates,
       lead,
@@ -426,6 +412,7 @@ const multi = async (request: LabRequest): Promise<unknown> => {
       sims.set(page, {
         answers: new Array(n).fill(undefined),
         prune: true,
+        alpha: 0,
         looked: 0,
         pruned: new Set(),
         given,
@@ -490,6 +477,10 @@ const multi = async (request: LabRequest): Promise<unknown> => {
       if (sim) {
         // the page prunes the parts, none of them on its own
         sim.prune = request.args.prune !== false;
+        if (sim.prune && request.args.alpha === undefined) {
+          throw new Error("a pruning run needs an alpha");
+        }
+        sim.alpha = request.args.alpha ?? 0;
         sim.running = true;
         await each(job, (j) => ({
           op: "run",

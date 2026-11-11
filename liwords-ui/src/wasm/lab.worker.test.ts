@@ -135,7 +135,7 @@ describe("the lab's worker", () => {
     expect(wasm.endgame_new).toHaveBeenCalledWith("{}");
     const job = made.result as number;
 
-    await send(2, "run", { job, ms: 50 });
+    await send(2, "run", { job, ms: 50, alpha: 0.05 });
     await vi.waitFor(() => expect(events().some((e) => e.done)).toBe(true));
     expect(events()).toEqual([
       { job, answer: { exact: false, depth: 3 }, done: false },
@@ -155,7 +155,9 @@ describe("the lab's worker", () => {
     await send(4, "free", { job });
     expect(wasm.endgame_free).toHaveBeenCalledWith(7);
     expect(events()[events().length - 1]).toEqual({ job, freed: true });
-    expect((await send(5, "run", { job, ms: 50 })).error).toBe("no such job");
+    expect((await send(5, "run", { job, ms: 50, alpha: 0.05 })).error).toBe(
+      "no such job",
+    );
   });
 
   it("steps an endgame the same frame every step, whatever its bag and depth", async () => {
@@ -170,7 +172,7 @@ describe("the lab's worker", () => {
       .mockReturnValueOnce(answer(0, 2))
       .mockReturnValueOnce(answer(0, 2, true));
     const job = (await send(1, "endgame", { request: "{}" })).result as number;
-    await send(2, "run", { job, ms: 8 });
+    await send(2, "run", { job, ms: 8, alpha: 0.05 });
     await vi.waitFor(() => expect(events().some((e) => e.done)).toBe(true));
     expect(stepsMs()).toEqual([8, 8, 8, 8, 8]);
 
@@ -181,7 +183,7 @@ describe("the lab's worker", () => {
       .mockReturnValueOnce(answer(2, 0))
       .mockReturnValueOnce(answer(2, 127, true));
     const last = (await send(3, "endgame", { request: "{}" })).result as number;
-    await send(4, "run", { job: last, ms: 8 });
+    await send(4, "run", { job: last, ms: 8, alpha: 0.05 });
     await vi.waitFor(() =>
       expect(events().filter((e) => e.done)).toHaveLength(2),
     );
@@ -199,7 +201,7 @@ describe("the lab's worker", () => {
       .mockReturnValueOnce(simAnswer("running", "pruned"));
     const made = await send(1, "sim", { request: "{}", plays: "[]" });
     const { job } = made.result as { job: number };
-    await send(2, "run", { job, ms: 10 });
+    await send(2, "run", { job, ms: 10, alpha: 0.05 });
     await vi.waitFor(() => expect(events().some((e) => e.done)).toBe(true));
     expect(wasm.stitched_z.mock.calls).toEqual([
       [1, 0.05],
@@ -242,7 +244,7 @@ describe("the lab's worker", () => {
     const requests = () =>
       wasm.sim_step.mock.calls.map(([, r]) => JSON.parse(r as string));
     expect(requests()[0].against).toEqual(play);
-    await send(4, "run", { job, ms: 10 });
+    await send(4, "run", { job, ms: 10, alpha: 0.05 });
     await vi.waitFor(() => expect(requests().length).toBeGreaterThan(1));
     await send(5, "stop");
     expect(requests()[1].against).toEqual(play);
@@ -338,7 +340,7 @@ describe("the lab's worker", () => {
       { play: { action: "exchange", tiles: [] }, was: "absent" },
     ]);
 
-    await send(2, "run", { job, ms: 100 });
+    await send(2, "run", { job, ms: 100, alpha: 0.05 });
     await vi.waitFor(() => expect(events().some((e) => e.done)).toBe(true));
     expect(events().map((e) => e.done)).toEqual([false, true]);
     // each step says how the sim prunes
@@ -349,7 +351,9 @@ describe("the lab's worker", () => {
 
     await send(3, "free", { job });
     expect(wasm.sim_free).toHaveBeenCalledWith(9);
-    expect((await send(4, "run", { job, ms: 100 })).error).toBe("no such job");
+    expect((await send(4, "run", { job, ms: 100, alpha: 0.05 })).error).toBe(
+      "no such job",
+    );
   });
 
   it("frees a sim whose plays the wasm turns down", async () => {
@@ -389,7 +393,7 @@ describe("the lab's worker", () => {
     await send(4, "read", { job });
     expect(wasm.sim_step).toHaveBeenCalledWith(
       9,
-      JSON.stringify({ iterations: 0, ...pruned }),
+      JSON.stringify({ iterations: 0, prune: false }),
     );
     expect(events()).toEqual([{ job, answer: { candidates: [] }, done: true }]);
 
@@ -414,7 +418,7 @@ describe("the lab's worker", () => {
       .mockReturnValueOnce(simAnswer("paused", "paused", "pruned"));
     const { job } = (await send(1, "sim", { request: "{}", plays: "[]" }))
       .result as { job: number };
-    await send(2, "run", { job, ms: 10 });
+    await send(2, "run", { job, ms: 10, alpha: 0.05 });
     await vi.waitFor(() => expect(events().some((e) => e.done)).toBe(true));
     expect(events().map((e) => e.done)).toEqual([false, true]);
   });
@@ -468,7 +472,7 @@ describe("the lab's worker", () => {
     wasm.sim_step.mockReturnValue(simAnswer("running", "running"));
     const { job } = (await send(1, "sim", { request: "{}", plays: "[]" }))
       .result as { job: number };
-    await send(2, "run", { job, ms: 10 });
+    await send(2, "run", { job, ms: 10, alpha: 0.05 });
     await vi.waitFor(() => expect(events().length).toBeGreaterThan(1));
     await send(3, "stop");
     const steps = wasm.sim_step.mock.calls.length;
