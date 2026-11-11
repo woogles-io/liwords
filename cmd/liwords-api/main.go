@@ -87,6 +87,7 @@ import (
 	"github.com/woogles-io/liwords/rpc/api/proto/mod_service/mod_serviceconnect"
 	"github.com/woogles-io/liwords/rpc/api/proto/omgwords_service/omgwords_serviceconnect"
 	"github.com/woogles-io/liwords/rpc/api/proto/pair_service/pair_serviceconnect"
+	"github.com/woogles-io/liwords/rpc/api/proto/push_service/push_serviceconnect"
 	"github.com/woogles-io/liwords/rpc/api/proto/puzzle_service/puzzle_serviceconnect"
 	"github.com/woogles-io/liwords/rpc/api/proto/tournament_service/tournament_serviceconnect"
 	"github.com/woogles-io/liwords/rpc/api/proto/user_service/user_serviceconnect"
@@ -233,8 +234,10 @@ func main() {
 	stores.SetLeagueStandingsUpdater(league.NewStandingsUpdaterImpl(stores.LeagueStore))
 
 	// Left nil, and so off, unless every web push setting is set.
+	var pushSender *push.Sender
 	if pushSettings != nil {
-		stores.PushSender = push.NewSender(pushSettings, stores.Queries)
+		pushSender = push.NewSender(pushSettings, stores.Queries)
+		stores.PushSender = pushSender
 	}
 
 	middlewares := alice.New(
@@ -332,6 +335,7 @@ func main() {
 	broadcastService := broadcasts.NewBroadcastService(stores.UserStore, stores.Queries, cfg, stores.GameDocumentStore, stores.AnnotatedGameStore)
 	omgwordsService.SetAnnotatedGameDoneHook(broadcastService.HandleAnnotatedGameDone)
 	pairService := pair.NewPairService(cfg, lambdaClient)
+	pushService := push.NewService(pushSender)
 	vdoWebhookService := vdowebhook.NewVDOWebhookService(stores.TournamentStore, cfg.VDOPollingIntervalSeconds)
 	analysisService := analysis.NewAnalysisService(stores.UserStore, stores.GameStore, stores.Queries, dbPool)
 	if bucket := os.Getenv("ANALYSIS_UPLOAD_BUCKET"); bucket != "" {
@@ -448,6 +452,9 @@ func main() {
 	)
 	connectapi.Handle(
 		pair_serviceconnect.NewPairServiceHandler(pairService, options),
+	)
+	connectapi.Handle(
+		push_serviceconnect.NewPushServiceHandler(pushService, options),
 	)
 	connectapi.Handle(
 		user_serviceconnect.NewAuthorizationServiceHandler(authorizationService, options),

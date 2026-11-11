@@ -1,0 +1,36 @@
+syntax = "proto3";
+package push_service;
+
+// Web push: a browser subscribes to get correspondence turns with Woogles
+// closed. Every call says push is off unless the server has all of its web
+// push settings.
+
+message GetPushConfigRequest {}
+
+message PushConfigResponse {
+  // False when the server does not send web pushes.
+  bool enabled = 1;
+  // The VAPID public key in base64url, for PushManager.subscribe. Empty when
+  // push is off.
+  string public_key = 2;
+}
+
+message SubscribeRequest {
+  // The PushSubscription's endpoint and keys, as its toJSON() gives them.
+  string endpoint = 1;
+  string p256dh = 2;
+  string auth = 3;
+}
+
+message UnsubscribeRequest { string endpoint = 1; }
+
+message PushResponse {}
+
+service PushService {
+  rpc GetPushConfig(GetPushConfigRequest) returns (PushConfigResponse);
+  // Subscribe keeps this device's subscription for the signed-in user.
+  rpc Subscribe(SubscribeRequest) returns (PushResponse);
+  // Unsubscribe forgets this device's subscription, if the signed-in user
+  // owns it.
+  rpc Unsubscribe(UnsubscribeRequest) returns (PushResponse);
+}
