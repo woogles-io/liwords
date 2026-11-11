@@ -55,7 +55,7 @@ func main() {
 	for _, tid := range ids {
 		// A one-off script: the user lookups below run under the lock, which
 		// only matters for the API server's pool.
-		t, lk, err := tournamentStore.GetForUpdate(ctx, tid)
+		t, lk, err := tournamentStore.LockForChange(ctx, tid)
 		if err != nil {
 			log.Err(err).Str("tid", tid).Msg("bug")
 			continue

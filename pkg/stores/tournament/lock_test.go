@@ -17,7 +17,7 @@ import (
 
 // Changes from two stores (two servers: each has its own in-process lock,
 // so only the advisory lock keeps them apart) all land.
-func TestGetForUpdateSerializesAcrossServers(t *testing.T) {
+func TestLockForChangeSerializesAcrossServers(t *testing.T) {
 	is := is.New(t)
 	ctx := context.Background()
 	pool, a := recreateDB(t)
@@ -34,7 +34,7 @@ func TestGetForUpdateSerializesAcrossServers(t *testing.T) {
 			store = b
 		}
 		wg.Go(func() {
-			tm, lk, err := store.GetForUpdate(ctx, "tid1")
+			tm, lk, err := store.LockForChange(ctx, "tid1")
 			if err != nil {
 				errs <- err
 				return
@@ -67,7 +67,7 @@ func TestReleaseWithoutSave(t *testing.T) {
 	is.NoErr(err)
 	is.NoErr(a.Create(ctx, testTournament(t, 0)))
 
-	tm, lk, err := a.GetForUpdate(ctx, "tid1")
+	tm, lk, err := a.LockForChange(ctx, "tid1")
 	is.NoErr(err)
 	tm.Description = "not kept"
 	lk.Release()
@@ -80,7 +80,7 @@ func TestReleaseWithoutSave(t *testing.T) {
 	short, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 	for _, store := range []*DBStore{a, b} {
-		_, lk, err := store.GetForUpdate(short, "tid1")
+		_, lk, err := store.LockForChange(short, "tid1")
 		is.NoErr(err)
 		lk.Release()
 	}
@@ -96,7 +96,7 @@ func TestWaitersHoldNoConnection(t *testing.T) {
 	pool, store := recreateDB(t)
 	is.NoErr(store.Create(ctx, testTournament(t, 0)))
 
-	_, held, err := store.GetForUpdate(ctx, "tid1")
+	_, held, err := store.LockForChange(ctx, "tid1")
 	is.NoErr(err)
 	is.Equal(pool.Stat().AcquiredConns(), int32(1))
 
@@ -106,7 +106,7 @@ func TestWaitersHoldNoConnection(t *testing.T) {
 	errs := make(chan error, waiters)
 	for range waiters {
 		wg.Go(func() {
-			_, lk, err := store.GetForUpdate(waitCtx, "tid1")
+			_, lk, err := store.LockForChange(waitCtx, "tid1")
 			if err == nil {
 				lk.Release()
 			}
@@ -137,23 +137,23 @@ func TestWaitOnOtherServerHonorsContext(t *testing.T) {
 	is.NoErr(err)
 	is.NoErr(a.Create(ctx, testTournament(t, 0)))
 
-	_, held, err := a.GetForUpdate(ctx, "tid1")
+	_, held, err := a.LockForChange(ctx, "tid1")
 	is.NoErr(err)
 
 	short, cancel := context.WithTimeout(ctx, 200*time.Millisecond)
 	defer cancel()
-	_, _, err = b.GetForUpdate(short, "tid1")
+	_, _, err = b.LockForChange(short, "tid1")
 	is.True(err != nil)
 	is.Equal(len(b.local.entries), 0)
 
 	held.Release()
-	_, lk, err := b.GetForUpdate(ctx, "tid1")
+	_, lk, err := b.LockForChange(ctx, "tid1")
 	is.NoErr(err)
 	lk.Release()
 }
 
-// The GetForUpdate span splits into the two lock waits and the load, and
-// GetForUpdate and Save both record the size of the divisions.
+// The LockForChange span splits into the two lock waits and the load, and
+// LockForChange and Save both record the size of the divisions.
 func TestLockSpans(t *testing.T) {
 	is := is.New(t)
 	ctx := context.Background()
@@ -164,7 +164,7 @@ func TestLockSpans(t *testing.T) {
 
 	_, store := recreateDB(t)
 	is.NoErr(store.Create(ctx, testTournament(t, 0)))
-	_, lk, err := store.GetForUpdate(ctx, "tid1")
+	_, lk, err := store.LockForChange(ctx, "tid1")
 	is.NoErr(err)
 	is.NoErr(lk.Save(ctx))
 
@@ -172,7 +172,7 @@ func TestLockSpans(t *testing.T) {
 	for _, s := range rec.Ended() {
 		spans[s.Name()] = s
 	}
-	get, save := spans["tournament.GetForUpdate"], spans["tournament.Save"]
+	get, save := spans["tournament.LockForChange"], spans["tournament.Save"]
 	is.True(get != nil)
 	is.True(save != nil)
 	events := []string{}

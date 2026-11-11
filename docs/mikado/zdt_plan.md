@@ -94,7 +94,7 @@ they are unaffected.
 
 **Status (2026-11-10): done**, as step 1d of `tournament_store_rewrite.md`.
 The cache and the entity mutex are gone. Every change goes through
-`GetForUpdate` (`pkg/stores/tournament/lock.go`): an in-process lock on the
+`LockForChange` (`pkg/stores/tournament/lock.go`): an in-process lock on the
 tournament, then a transaction holding `pg_advisory_xact_lock` on it, the
 load, the change, the save and the commit. Socket messages go out after the
 commit. Reads load from the database each time. Measured before: full loads

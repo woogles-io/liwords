@@ -1046,7 +1046,7 @@ func (ts *TournamentService) UnstartTournament(ctx context.Context, req *connect
 		return nil, err
 	}
 
-	t, lk, err := ts.tournamentStore.GetForUpdate(ctx, req.Msg.Id)
+	t, lk, err := ts.tournamentStore.LockForChange(ctx, req.Msg.Id)
 	if err != nil {
 		return nil, err
 	}

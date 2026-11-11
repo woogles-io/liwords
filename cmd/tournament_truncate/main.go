@@ -60,7 +60,7 @@ func main() {
 		log.Fatalf("Failed to get tournament %s: %v", slug, err)
 	}
 	// Held until the save, so a result recorded meanwhile isn't lost.
-	tourney, lk, err := tournamentStore.GetForUpdate(ctx, tid)
+	tourney, lk, err := tournamentStore.LockForChange(ctx, tid)
 	if err != nil {
 		log.Fatalf("Failed to get tournament %s: %v", slug, err)
 	}

@@ -45,7 +45,7 @@ type ActiveMonitoringStream struct {
 
 type TournamentStore interface {
 	// Get loads the tournament to read. Every call loads it from the
-	// database; there is no cache. Changes go through GetForUpdate.
+	// database; there is no cache. Changes go through LockForChange.
 	Get(context.Context, string) (*entity.Tournament, error)
 	GetBySlug(context.Context, string) (*entity.Tournament, error)
 	// GetHeader is the tournament without its divisions.
@@ -62,9 +62,9 @@ type TournamentStore interface {
 	ClearReady(ctx context.Context, tid, division string, round int, playerID string) error
 	UnreadyConnection(ctx context.Context, connID string) ([]entity.TournamentReady, error)
 	WaitingReady(ctx context.Context, tid string) ([]entity.TournamentReady, error)
-	// GetForUpdate loads the tournament for a change, under its lock. See
+	// LockForChange loads the tournament for a change, under its lock. See
 	// pkg/stores/tournament/lock.go: run no queries between it and Save.
-	GetForUpdate(ctx context.Context, id string) (*entity.Tournament, TournamentLock, error)
+	LockForChange(ctx context.Context, id string) (*entity.Tournament, TournamentLock, error)
 	Create(context.Context, *entity.Tournament) error
 	GetRecentGames(ctx context.Context, tourneyID string, numGames int, offset int) (*pb.RecentGamesResponse, error)
 	SetTournamentEventChan(c chan<- *entity.EventWrapper)
@@ -91,7 +91,7 @@ type TournamentStore interface {
 	GetActiveMonitoringStreams(ctx context.Context) ([]ActiveMonitoringStream, error)
 }
 
-// TournamentLock holds a tournament loaded by GetForUpdate.
+// TournamentLock holds a tournament loaded by LockForChange.
 type TournamentLock interface {
 	// Save writes the tournament, commits, and releases the lock.
 	Save(ctx context.Context) error
@@ -175,7 +175,7 @@ func NewTournament(ctx context.Context,
 //
 // It doesn't check that the tournament exists: every caller has just loaded
 // or saved it, and without the cache a check would load it a second time.
-// Call it after Save, never while holding a tournament from GetForUpdate:
+// Call it after Save, never while holding a tournament from LockForChange:
 // the channel can block.
 func SendTournamentMessage(ctx context.Context, ts TournamentStore, id string, wrapped *entity.EventWrapper) error {
 	eventChannel := ts.TournamentEventChan()
@@ -209,7 +209,7 @@ func SetTournamentMetadata(ctx context.Context, ts TournamentStore, meta *pb.Tou
 		}
 	}
 
-	t, lk, err := ts.GetForUpdate(ctx, meta.Id)
+	t, lk, err := ts.LockForChange(ctx, meta.Id)
 	if err != nil {
 		return err
 	}
@@ -312,7 +312,7 @@ func SetTournamentMetadata(ctx context.Context, ts TournamentStore, meta *pb.Tou
 // ClassicDivision.SetSingleRoundControls).
 func SetSingleRoundControls(ctx context.Context, ts TournamentStore, id string, division string, round int, controls *ipc.RoundControl) (bool, []string, error) {
 
-	t, lk, err := ts.GetForUpdate(ctx, id)
+	t, lk, err := ts.LockForChange(ctx, id)
 	if err != nil {
 		return false, nil, err
 	}
@@ -380,7 +380,7 @@ func SetSingleRoundControls(ctx context.Context, ts TournamentStore, id string, 
 }
 
 func SetRoundControls(ctx context.Context, ts TournamentStore, id string, division string, roundControls []*ipc.RoundControl) error {
-	t, lk, err := ts.GetForUpdate(ctx, id)
+	t, lk, err := ts.LockForChange(ctx, id)
 	if err != nil {
 		return err
 	}
@@ -419,7 +419,7 @@ func SetRoundControls(ctx context.Context, ts TournamentStore, id string, divisi
 
 func SetDivisionControls(ctx context.Context, ts TournamentStore, id string, division string, controls *ipc.DivisionControls) error {
 
-	t, lk, err := ts.GetForUpdate(ctx, id)
+	t, lk, err := ts.LockForChange(ctx, id)
 	if err != nil {
 		return err
 	}
@@ -459,7 +459,7 @@ func SetDivisionControls(ctx context.Context, ts TournamentStore, id string, div
 }
 
 func AddDivision(ctx context.Context, ts TournamentStore, id string, division string) error {
-	t, lk, err := ts.GetForUpdate(ctx, id)
+	t, lk, err := ts.LockForChange(ctx, id)
 	if err != nil {
 		return err
 	}
@@ -499,7 +499,7 @@ func AddDivision(ctx context.Context, ts TournamentStore, id string, division st
 }
 
 func RenameDivision(ctx context.Context, ts TournamentStore, id string, division, newName string) error {
-	t, lk, err := ts.GetForUpdate(ctx, id)
+	t, lk, err := ts.LockForChange(ctx, id)
 	if err != nil {
 		return err
 	}
@@ -566,7 +566,7 @@ func RenameDivision(ctx context.Context, ts TournamentStore, id string, division
 }
 
 func RemoveDivision(ctx context.Context, ts TournamentStore, id string, division string) error {
-	t, lk, err := ts.GetForUpdate(ctx, id)
+	t, lk, err := ts.LockForChange(ctx, id)
 	if err != nil {
 		return err
 	}
@@ -601,7 +601,7 @@ func RemoveDivision(ctx context.Context, ts TournamentStore, id string, division
 }
 
 // lookupFullIDs looks up the tournament IDs (uuid:username) of the named
-// users. It runs before GetForUpdate, since no queries may run while a
+// users. It runs before LockForChange, since no queries may run while a
 // tournament is held. A user who can't be found is left out, and fullID
 // reports them once the tournament's name is known.
 func lookupFullIDs(ctx context.Context, us user.Store, usernames ...string) map[string]string {
@@ -647,7 +647,7 @@ func personIDs(persons *ipc.TournamentPersons) []string {
 
 func AddDirectors(ctx context.Context, ts TournamentStore, us user.Store, id string, directors *ipc.TournamentPersons) error {
 	ids := lookupFullIDs(ctx, us, personIDs(directors)...)
-	t, lk, err := ts.GetForUpdate(ctx, id)
+	t, lk, err := ts.LockForChange(ctx, id)
 	if err != nil {
 		return err
 	}
@@ -692,7 +692,7 @@ func AddDirectors(ctx context.Context, ts TournamentStore, us user.Store, id str
 
 func RemoveDirectors(ctx context.Context, ts TournamentStore, us user.Store, id string, directors *ipc.TournamentPersons) error {
 	ids := lookupFullIDs(ctx, us, personIDs(directors)...)
-	t, lk, err := ts.GetForUpdate(ctx, id)
+	t, lk, err := ts.LockForChange(ctx, id)
 	if err != nil {
 		return err
 	}
@@ -731,7 +731,7 @@ func AddPlayers(ctx context.Context, ts TournamentStore, us user.Store, id strin
 	if err != nil {
 		return err
 	}
-	t, lk, err := ts.GetForUpdate(ctx, id)
+	t, lk, err := ts.LockForChange(ctx, id)
 	if err != nil {
 		return err
 	}
@@ -843,7 +843,7 @@ func RemovePlayers(ctx context.Context, ts TournamentStore, us user.Store, id st
 	if err != nil {
 		return err
 	}
-	t, lk, err := ts.GetForUpdate(ctx, id)
+	t, lk, err := ts.LockForChange(ctx, id)
 	if err != nil {
 		return err
 	}
@@ -921,7 +921,7 @@ func EditPlayer(ctx context.Context, ts TournamentStore, us user.Store, id strin
 	if err != nil {
 		return err
 	}
-	t, lk, err := ts.GetForUpdate(ctx, id)
+	t, lk, err := ts.LockForChange(ctx, id)
 	if err != nil {
 		return err
 	}
@@ -1083,7 +1083,7 @@ func MovePlayer(ctx context.Context, ts TournamentStore, us user.Store, id strin
 	if err != nil {
 		return err
 	}
-	t, lk, err := ts.GetForUpdate(ctx, id)
+	t, lk, err := ts.LockForChange(ctx, id)
 	if err != nil {
 		return err
 	}
@@ -1198,7 +1198,7 @@ func MovePlayer(ctx context.Context, ts TournamentStore, us user.Store, id strin
 // follow-on work that failed without failing the request.
 func SetPairings(ctx context.Context, ts TournamentStore, id string, division string, pairings []*pb.TournamentPairingRequest) ([]string, error) {
 
-	t, lk, err := ts.GetForUpdate(ctx, id)
+	t, lk, err := ts.LockForChange(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -1298,7 +1298,7 @@ func SetResult(ctx context.Context,
 
 	log.Info().Str("tid", id).Str("playerOneId", playerOneId).Str("playerTwoId", playerTwoId).Msg("tSetResult")
 
-	// Everything that needs a query happens before GetForUpdate. This runs
+	// Everything that needs a query happens before LockForChange. This runs
 	// at the end of a game, under the game's lock, which already holds one
 	// connection (see pkg/stores/tournament/lock.go).
 	h, err := ts.GetHeader(ctx, id)
@@ -1390,7 +1390,7 @@ func SetResult(ctx context.Context,
 		lookupErr = err
 	}
 
-	t, lk, err := ts.GetForUpdate(ctx, id)
+	t, lk, err := ts.LockForChange(ctx, id)
 	if err != nil {
 		return err
 	}
@@ -1614,7 +1614,7 @@ func sendDivisionStart(ts TournamentStore, tuuid string, division string, round 
 }
 
 func StartAllRoundCountdowns(ctx context.Context, ts TournamentStore, id string, round int) error {
-	t, lk, err := ts.GetForUpdate(ctx, id)
+	t, lk, err := ts.LockForChange(ctx, id)
 	if err != nil {
 		return err
 	}
@@ -1658,7 +1658,7 @@ func StartAllRoundCountdowns(ctx context.Context, ts TournamentStore, id string,
 
 func StartRoundCountdown(ctx context.Context, ts TournamentStore, id string,
 	division string, round int) error {
-	t, lk, err := ts.GetForUpdate(ctx, id)
+	t, lk, err := ts.LockForChange(ctx, id)
 	if err != nil {
 		return err
 	}
@@ -1696,7 +1696,7 @@ func DivisionChannelName(tid, division string) string {
 // PairRound pairs the round for a director. It returns warnings for
 // follow-on work that failed without failing the request.
 func PairRound(ctx context.Context, ts TournamentStore, id string, division string, round int, preserveByes bool) ([]string, error) {
-	t, lk, err := ts.GetForUpdate(ctx, id)
+	t, lk, err := ts.LockForChange(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -1754,7 +1754,7 @@ func PairRound(ctx context.Context, ts TournamentStore, id string, division stri
 }
 
 func DeletePairings(ctx context.Context, ts TournamentStore, id string, division string, round int) error {
-	t, lk, err := ts.GetForUpdate(ctx, id)
+	t, lk, err := ts.LockForChange(ctx, id)
 	if err != nil {
 		return err
 	}
@@ -1809,7 +1809,7 @@ func IsStarted(ctx context.Context, ts TournamentStore, id string) (bool, error)
 }
 
 func SetFinished(ctx context.Context, ts TournamentStore, id string) error {
-	t, lk, err := ts.GetForUpdate(ctx, id)
+	t, lk, err := ts.LockForChange(ctx, id)
 	if err != nil {
 		return err
 	}
@@ -1848,7 +1848,7 @@ func SetFinished(ctx context.Context, ts TournamentStore, id string) error {
 }
 
 func SetUnfinished(ctx context.Context, ts TournamentStore, id string) error {
-	t, lk, err := ts.GetForUpdate(ctx, id)
+	t, lk, err := ts.LockForChange(ctx, id)
 	if err != nil {
 		return err
 	}
@@ -2146,7 +2146,7 @@ func validateTournamentTypeMatchesSlug(ttype pb.TType, slug string) (entity.Comp
 }
 
 func Register(ctx context.Context, ts TournamentStore, tid, division, playerid string) error {
-	t, lk, err := ts.GetForUpdate(ctx, tid)
+	t, lk, err := ts.LockForChange(ctx, tid)
 	if err != nil {
 		return err
 	}
@@ -2205,7 +2205,7 @@ func Register(ctx context.Context, ts TournamentStore, tid, division, playerid s
 }
 
 func CheckIn(ctx context.Context, ts TournamentStore, tid, playerid string) error {
-	t, lk, err := ts.GetForUpdate(ctx, tid)
+	t, lk, err := ts.LockForChange(ctx, tid)
 	if err != nil {
 		return err
 	}
@@ -2258,7 +2258,7 @@ func CheckIn(ctx context.Context, ts TournamentStore, tid, playerid string) erro
 }
 
 func UncheckIn(ctx context.Context, ts TournamentStore, tid, playerid string) error {
-	t, lk, err := ts.GetForUpdate(ctx, tid)
+	t, lk, err := ts.LockForChange(ctx, tid)
 	if err != nil {
 		return err
 	}
@@ -2308,7 +2308,7 @@ func UncheckIn(ctx context.Context, ts TournamentStore, tid, playerid string) er
 }
 
 func UncheckAllIn(ctx context.Context, ts TournamentStore, tid string) error {
-	t, lk, err := ts.GetForUpdate(ctx, tid)
+	t, lk, err := ts.LockForChange(ctx, tid)
 	if err != nil {
 		return err
 	}
@@ -2350,7 +2350,7 @@ func UncheckAllIn(ctx context.Context, ts TournamentStore, tid string) error {
 }
 
 func OpenCheckins(ctx context.Context, ts TournamentStore, tid string) error {
-	t, lk, err := ts.GetForUpdate(ctx, tid)
+	t, lk, err := ts.LockForChange(ctx, tid)
 	if err != nil {
 		return err
 	}
@@ -2376,7 +2376,7 @@ func OpenCheckins(ctx context.Context, ts TournamentStore, tid string) error {
 }
 
 func CloseCheckins(ctx context.Context, ts TournamentStore, tid string) error {
-	t, lk, err := ts.GetForUpdate(ctx, tid)
+	t, lk, err := ts.LockForChange(ctx, tid)
 	if err != nil {
 		return err
 	}
@@ -2398,7 +2398,7 @@ func CloseCheckins(ctx context.Context, ts TournamentStore, tid string) error {
 }
 
 func RemoveAllPlayersNotCheckedIn(ctx context.Context, ts TournamentStore, tid string) error {
-	t, lk, err := ts.GetForUpdate(ctx, tid)
+	t, lk, err := ts.LockForChange(ctx, tid)
 	if err != nil {
 		return err
 	}
@@ -2456,7 +2456,7 @@ func RemoveAllPlayersNotCheckedIn(ctx context.Context, ts TournamentStore, tid s
 }
 
 func OpenRegistration(ctx context.Context, ts TournamentStore, tid string) error {
-	t, lk, err := ts.GetForUpdate(ctx, tid)
+	t, lk, err := ts.LockForChange(ctx, tid)
 	if err != nil {
 		return err
 	}
@@ -2482,7 +2482,7 @@ func OpenRegistration(ctx context.Context, ts TournamentStore, tid string) error
 }
 
 func CloseRegistration(ctx context.Context, ts TournamentStore, tid string) error {
-	t, lk, err := ts.GetForUpdate(ctx, tid)
+	t, lk, err := ts.LockForChange(ctx, tid)
 	if err != nil {
 		return err
 	}

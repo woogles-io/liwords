@@ -31,7 +31,7 @@ type DBStore struct {
 	tournamentEventChan chan<- *entity.EventWrapper
 	gameStore           *game.Cache
 	// local holds each tournament on this server while it is changed. See
-	// GetForUpdate.
+	// LockForChange.
 	local keyedMutex
 }
 

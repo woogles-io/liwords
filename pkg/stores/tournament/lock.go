@@ -6,7 +6,7 @@ package tournament
 // it, save it. With more than one API server, two changes to the same
 // tournament can run at once, and without a lock across all three steps the
 // second save silently discards the first (a result, a pairing, a player).
-// So every change goes through GetForUpdate, which holds the tournament until
+// So every change goes through LockForChange, which holds the tournament until
 // the change is saved or abandoned:
 //
 //  1. an in-process lock on the tournament ID, so that changes on one server
@@ -26,10 +26,10 @@ package tournament
 // first, a server holds at most one connection per tournament for this.
 //
 // The rule that keeps this safe, the same one the game lock states: between
-// GetForUpdate and Save or Release, run no queries on the pool. The holder
+// LockForChange and Save or Release, run no queries on the pool. The holder
 // already has its transaction's connection; asking the pool for another while
 // holding it is how a burst of holders runs the pool dry. Look up users and
-// anything else the change needs before calling GetForUpdate, and send socket
+// anything else the change needs before calling LockForChange, and send socket
 // messages after Save, not before (the event channel can block).
 //
 // It is an advisory lock rather than SELECT ... FOR UPDATE on the row because
@@ -109,7 +109,7 @@ func (k *keyedMutex) drop(key string, e *keyedEntry) {
 	k.mu.Unlock()
 }
 
-// lockedTournament is a tournament loaded by GetForUpdate.
+// lockedTournament is a tournament loaded by LockForChange.
 type lockedTournament struct {
 	s      *DBStore
 	tx     pgx.Tx
@@ -118,11 +118,11 @@ type lockedTournament struct {
 	done   bool
 }
 
-// GetForUpdate loads the tournament for a change, under its lock (see the
+// LockForChange loads the tournament for a change, under its lock (see the
 // top of this file). The caller must call Release, normally deferred, and
 // Save to keep the change:
 //
-//	t, lk, err := ts.GetForUpdate(ctx, id)
+//	t, lk, err := ts.LockForChange(ctx, id)
 //	if err != nil {
 //		return err
 //	}
@@ -132,8 +132,8 @@ type lockedTournament struct {
 //		return err
 //	}
 //	// send messages
-func (s *DBStore) GetForUpdate(ctx context.Context, id string) (*entity.Tournament, tl.TournamentLock, error) {
-	ctx, span := startSpan(ctx, "GetForUpdate", id)
+func (s *DBStore) LockForChange(ctx context.Context, id string) (*entity.Tournament, tl.TournamentLock, error) {
+	ctx, span := startSpan(ctx, "LockForChange", id)
 	defer span.End()
 
 	unlock, err := s.local.lock(ctx, id)
@@ -153,7 +153,7 @@ func (s *DBStore) GetForUpdate(ctx context.Context, id string) (*entity.Tourname
 }
 
 // lockAndLoad marks the span when the advisory lock is taken, so a trace
-// splits GetForUpdate into the wait on this server ("local-lock"), the wait
+// splits LockForChange into the wait on this server ("local-lock"), the wait
 // on other servers ("advisory-lock") and the load (the rest). The load's
 // size is in tournament.divisions_bytes, as for Get.
 func (s *DBStore) lockAndLoad(ctx context.Context, span trace.Span, id string) (*entity.Tournament, pgx.Tx, error) {
