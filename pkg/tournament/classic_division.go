@@ -2205,28 +2205,24 @@ func (t *ClassicDivision) StartRound(checkForStartable bool) error {
 	return nil
 }
 
-// SetReadyForGame sets the playerID with the given connID to be ready for the game
-// with the given 0-based round (and gameIndex, optionally). If `unready` is
-// passed in, we make the player unready.
-// It returns a list of playerId:username:connIDs involved in the game, a boolean saying if they're ready,
-// and an optional error.
-func (t *ClassicDivision) SetReadyForGame(playerID, connID string, round, gameIndex int, unready bool) ([]string, bool, error) {
+// ReadyPairing checks that the player can get ready (or unready) for their
+// game in the given 0-based round, and returns that pairing's two players in
+// order, and the player's position in it. It changes nothing: the ready state
+// itself is stored outside the division (TournamentStore.SetReady).
+func (t *ClassicDivision) ReadyPairing(playerID string, round int, unready bool) ([2]string, int, error) {
+	var players [2]string
 	if round >= len(t.Matrix) || round < 0 {
-		return nil, false, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_ROUND_NUMBER_OUT_OF_RANGE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), "SetReadyForGame")
-	}
-	toSet := connID
-	if unready {
-		toSet = ""
+		return players, -1, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_ROUND_NUMBER_OUT_OF_RANGE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), "SetReadyForGame")
 	}
 	if round < t.firstOpenRound() || round > int(t.CurrentRound) {
-		return nil, false, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_SET_GAME_ROUND_NUMBER, t.TournamentName, t.DivisionName, strconv.Itoa(round+1))
+		return players, -1, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_SET_GAME_ROUND_NUMBER, t.TournamentName, t.DivisionName, strconv.Itoa(round+1))
 	}
 	// Players play their games in order: a player can only get ready for
 	// a lagged round once their game in the round before it has a result.
 	if !unready && round-1 >= t.firstOpenRound() {
 		previousPairing, err := t.getPairing(playerID, round-1)
 		if err != nil {
-			return nil, false, err
+			return players, -1, err
 		}
 		if previousPairing != nil && previousPairing.Players != nil {
 			playerIndex := 0
@@ -2234,71 +2230,53 @@ func (t *ClassicDivision) SetReadyForGame(playerID, connID string, round, gameIn
 				playerIndex = 1
 			}
 			if previousPairing.Outcomes[playerIndex] == pb.TournamentGameResult_NO_RESULT {
-				return nil, false, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_PREVIOUS_GAME_UNFINISHED, t.TournamentName, t.DivisionName, strconv.Itoa(round), playerID)
+				return players, -1, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_PREVIOUS_GAME_UNFINISHED, t.TournamentName, t.DivisionName, strconv.Itoa(round), playerID)
 			}
 		}
 	}
-	// gameIndex is ignored for ClassicDivision?
 	pairingKey, err := t.getPairingKey(playerID, round)
 	if err != nil {
-		return nil, false, err
+		return players, -1, err
 	}
-	if pairingKey == "" {
-		return nil, false, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_NONEXISTENT_PAIRING, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), playerID, pairingKey, "SetReadyForGame")
-	}
-
 	pairing, ok := t.PairingMap[pairingKey]
-	if !ok {
-		return nil, false, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_NONEXISTENT_PAIRING, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), playerID, pairingKey, "SetReadyForGame")
+	if pairingKey == "" || !ok {
+		return players, -1, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_NONEXISTENT_PAIRING, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), playerID, pairingKey, "SetReadyForGame")
+	}
+	if len(pairing.Players) != 2 {
+		return players, -1, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_NONEXISTENT_PAIRING, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), playerID, pairingKey, "SetReadyForGame")
 	}
 
-	// search for player
 	foundIdx := -1
 	for idx, pn := range pairing.Players {
 		if int(pn) >= len(t.Players.Persons) || pn < 0 {
-			return nil, false, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_PLAYER_INDEX_OUT_OF_RANGE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), playerID, strconv.Itoa(int(pn)), "SetReadyForGame")
+			return players, -1, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_PLAYER_INDEX_OUT_OF_RANGE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), playerID, strconv.Itoa(int(pn)), "SetReadyForGame")
 		}
-		pairingPlayerID := t.Players.Persons[pn].Id
-		if playerID == pairingPlayerID {
-			if !unready && pairing.ReadyStates[idx] != "" {
-				// The user already said they were ready. Return an error.
-				return nil, false, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_ALREADY_READY, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), playerID)
-			}
+		players[idx] = t.Players.Persons[pn].Id
+		if players[idx] == playerID {
 			if foundIdx != -1 {
-				// This should never happen, but if it does, we'll just return an error.
-				return nil, false, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_SET_READY_MULTIPLE_IDS, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), playerID)
+				// A player paired with themselves: a bye or a forfeit, which
+				// has no game to get ready for.
+				return players, -1, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_SET_READY_MULTIPLE_IDS, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), playerID)
 			}
 			foundIdx = idx
 		}
 	}
 	if foundIdx == -1 {
-		return nil, false, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_SET_READY_PLAYER_NOT_FOUND, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), playerID)
+		return players, -1, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_SET_READY_PLAYER_NOT_FOUND, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), playerID)
 	}
-	pairing.ReadyStates[foundIdx] = toSet
-
-	playerOneId := t.Players.Persons[pairing.Players[0]].Id
-	playerTwoId := t.Players.Persons[pairing.Players[1]].Id
-	// Check to see if both players are ready.
-	involvedPlayers := []string{
-		playerOneId + ":" + pairing.ReadyStates[0],
-		playerTwoId + ":" + pairing.ReadyStates[1],
-	}
-	bothReady := pairing.ReadyStates[0] != "" && pairing.ReadyStates[1] != ""
-	return involvedPlayers, bothReady, nil
-
+	return players, foundIdx, nil
 }
 
-func (t *ClassicDivision) ClearReadyStates(playerID string, round, gameIndex int) ([]*pb.Pairing, error) {
-	if round >= len(t.Matrix) || round < 0 {
-		return nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_ROUND_NUMBER_OUT_OF_RANGE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), "ClearReadyStates")
-	}
-	// ignore gameIndex for classicdivision
-	p, err := t.getPairing(playerID, round)
-	if err != nil {
-		return nil, err
-	}
-	p.ReadyStates = []string{"", ""}
-	return []*pb.Pairing{p}, nil
+// GetPairing returns the player's pairing in the 0-based round. Callers must
+// not change it; clone it to send a modified copy.
+func (t *ClassicDivision) GetPairing(playerID string, round int) (*pb.Pairing, error) {
+	return t.getPairing(playerID, round)
+}
+
+// PairingKey returns the key in PairingMap of the player's pairing in the
+// 0-based round, or "" if the player isn't paired in it.
+func (t *ClassicDivision) PairingKey(playerID string, round int) (string, error) {
+	return t.getPairingKey(playerID, round)
 }
 
 func (t *ClassicDivision) IsRoundComplete(round int) (bool, error) {

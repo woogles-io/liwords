@@ -155,6 +155,35 @@ const deletePairings = (
   return updatedPairings;
 };
 
+// The server keeps ready states outside the pairings, so pairing updates
+// (sent after results, for example) carry them empty. When exactly one player
+// of an unplayed pairing is waiting for the other, keep that from the earlier
+// ready messages instead of wiping it. Both ready means the game was created,
+// and an update with them empty is the reset after that game was cancelled.
+const keptReadyStates = (
+  existing: SinglePairing | undefined,
+  newPlayers: Array<TournamentPerson>,
+  incoming: Pairing,
+): Array<string> => {
+  const incomingEmpty = incoming.readyStates.every((s) => s === "");
+  const noResult = incoming.outcomes.every(
+    (o) => o === TournamentGameResult.NO_RESULT,
+  );
+  if (
+    !incomingEmpty ||
+    !noResult ||
+    !existing?.players ||
+    existing.players.length !== 2 ||
+    newPlayers.length !== 2 ||
+    existing.players[0]?.id !== newPlayers[0]?.id ||
+    existing.players[1]?.id !== newPlayers[1]?.id
+  ) {
+    return incoming.readyStates;
+  }
+  const readyCount = existing.readyStates.filter((s) => s !== "").length;
+  return readyCount === 1 ? [...existing.readyStates] : incoming.readyStates;
+};
+
 const reducePairings = (
   players: Array<TournamentPerson>,
   playerIndexMap: { [playerID: string]: number },
@@ -164,10 +193,15 @@ const reducePairings = (
   const updatedPairings = [...existingPairings];
 
   newPairings.forEach((value: Pairing) => {
+    const newPlayers = value.players.map((v) => players[v]);
     const newSinglePairing = {
-      players: value.players.map((v) => players[v]),
+      players: newPlayers,
       outcomes: value.outcomes,
-      readyStates: value.readyStates,
+      readyStates: keptReadyStates(
+        updatedPairings[value.round]?.roundPairings[value.players[0]],
+        newPlayers,
+        value,
+      ),
       games: value.games.map((g) => ({
         scores: g.scores,
         gameEndReason: g.gameEndReason,

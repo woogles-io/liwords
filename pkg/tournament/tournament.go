@@ -23,6 +23,7 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
@@ -53,6 +54,13 @@ type TournamentStore interface {
 	// controls, but no pairings or standings. Never save them.
 	GetSummary(ctx context.Context, id string) (*entity.Tournament, error)
 	GetSummaryBySlug(ctx context.Context, slug string) (*entity.Tournament, error)
+
+	// Ready states of pairings, kept out of the divisions. See DBStore.SetReady.
+	SetReady(ctx context.Context, k entity.TournamentPairingKey, idx int, connID string) (flag int, conns [2]string, already bool, err error)
+	Unready(ctx context.Context, k entity.TournamentPairingKey, idx int) (changed bool, conns [2]string, err error)
+	ClearReady(ctx context.Context, tid, division string, round int, playerID string) error
+	UnreadyConnection(ctx context.Context, connID string) ([]entity.TournamentReady, error)
+	WaitingReady(ctx context.Context, tid string) ([]entity.TournamentReady, error)
 	Set(context.Context, *entity.Tournament) error
 	Create(context.Context, *entity.Tournament) error
 	GetRecentGames(ctx context.Context, tourneyID string, numGames int, offset int) (*pb.RecentGamesResponse, error)
@@ -1850,6 +1858,10 @@ func GetXHRResponse(ctx context.Context, ts TournamentStore, id string) (*ipc.Fu
 	if err != nil {
 		return nil, err
 	}
+	waiting, err := ts.WaitingReady(ctx, id)
+	if err != nil {
+		return nil, err
+	}
 	t.RLock()
 	defer t.RUnlock()
 
@@ -1868,55 +1880,142 @@ func GetXHRResponse(ctx context.Context, ts TournamentStore, id string) (*ipc.Fu
 		xhr.Division = divisionKey
 		response.Divisions[divisionKey] = xhr
 	}
+	addReadyStates(t, response, waiting)
 	return response, nil
 }
 
+// addReadyStates fills in the ready states of the pairings where a player is
+// waiting for their opponent, so a page loaded then shows who is ready. The
+// pairings in the response are the cached tournament's own, so the ones that
+// change are replaced with copies, in a copy of the division's pairing map.
+func addReadyStates(t *entity.Tournament, response *ipc.FullTournamentDivisions, waiting []entity.TournamentReady) {
+	copied := map[string]bool{}
+	for _, r := range waiting {
+		division, ok := t.Divisions[r.Division]
+		xhr := response.Divisions[r.Division]
+		if !ok || xhr == nil || xhr.Players == nil {
+			continue
+		}
+		key, err := division.DivisionManager.PairingKey(r.Players[0], r.Round)
+		if err != nil || key == "" {
+			continue
+		}
+		pairing := xhr.PairingMap[key]
+		// The row may be for an earlier pairing of this round, since re-paired.
+		if pairing == nil || len(pairing.Players) != 2 || pairing.Round != int32(r.Round) ||
+			!samePlayer(xhr.Players, pairing.Players[0], r.Players[0]) ||
+			!samePlayer(xhr.Players, pairing.Players[1], r.Players[1]) {
+			continue
+		}
+		if !copied[r.Division] {
+			m := make(map[string]*ipc.Pairing, len(xhr.PairingMap))
+			for k, v := range xhr.PairingMap {
+				m[k] = v
+			}
+			xhr.PairingMap = m
+			copied[r.Division] = true
+		}
+		pairing = proto.Clone(pairing).(*ipc.Pairing)
+		pairing.ReadyStates = []string{"", ""}
+		for i := range 2 {
+			if r.Flag&(1<<i) != 0 {
+				pairing.ReadyStates[i] = "ready"
+			}
+		}
+		xhr.PairingMap[key] = pairing
+	}
+}
+
+func samePlayer(persons *ipc.TournamentPersons, idx int32, id string) bool {
+	return idx >= 0 && int(idx) < len(persons.Persons) && persons.Persons[idx].Id == id
+}
+
+// SetReadyForGame marks the player ready (or unready) for their game in the
+// round. It checks the click against the division and stores the ready state
+// in the tournament_ready table; the tournament itself isn't saved.
+//
+// It returns both players of the pairing as playerID:connID (connID empty
+// for a player who isn't ready), and whether both are now ready. Exactly one
+// call sees both ready, even across servers, and that caller starts the game.
+// An unready that changes nothing (the player wasn't ready, or the game has
+// started) returns no players.
 func SetReadyForGame(ctx context.Context, ts TournamentStore, t *entity.Tournament,
 	playerID, connID, division string,
 	round, gameIndex int, unready bool) ([]string, bool, error) {
 
-	t.Lock()
-	defer t.Unlock()
-
+	t.RLock()
+	name := t.Name
 	if t.IsFinished {
-		return nil, false, entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_FINISHED, t.Name, division)
+		t.RUnlock()
+		return nil, false, entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_FINISHED, name, division)
 	}
-
-	_, ok := t.Divisions[division]
+	div, ok := t.Divisions[division]
 	if !ok {
-		return nil, false, entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, division)
+		t.RUnlock()
+		return nil, false, entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, name, division)
 	}
-	connIDs, bothReady, err := t.Divisions[division].DivisionManager.SetReadyForGame(playerID, connID, round, gameIndex, unready)
+	players, idx, err := div.DivisionManager.ReadyPairing(playerID, round, unready)
+	t.RUnlock()
 	if err != nil {
 		return nil, false, err
 	}
-	return connIDs, bothReady, ts.Set(ctx, t)
+
+	key := entity.TournamentPairingKey{TournamentID: t.UUID, Division: division, Round: round, Players: players}
+	var conns [2]string
+	bothReady := false
+	if unready {
+		var changed bool
+		changed, conns, err = ts.Unready(ctx, key, idx)
+		if err != nil {
+			return nil, false, err
+		}
+		if !changed {
+			return nil, false, nil
+		}
+	} else {
+		var flag int
+		var already bool
+		flag, conns, already, err = ts.SetReady(ctx, key, idx, connID)
+		if err != nil {
+			return nil, false, err
+		}
+		if already {
+			return nil, false, entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_ALREADY_READY, name, division, strconv.Itoa(round+1), playerID)
+		}
+		bothReady = flag == 3
+	}
+	return []string{players[0] + ":" + conns[0], players[1] + ":" + conns[1]}, bothReady, nil
 }
 
+// ClearReadyStates resets the ready states of the player's pairing in the
+// round, after its game was cancelled, so both players can ready again.
 func ClearReadyStates(ctx context.Context, ts TournamentStore, t *entity.Tournament,
 	division, userID string, round, gameIndex int) error {
 
-	t.Lock()
-	defer t.Unlock()
-
+	t.RLock()
 	if t.IsFinished {
+		t.RUnlock()
 		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_FINISHED, t.Name, division)
 	}
-
-	_, ok := t.Divisions[division]
+	div, ok := t.Divisions[division]
 	if !ok {
+		t.RUnlock()
 		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, division)
 	}
+	pairing, err := div.DivisionManager.GetPairing(userID, round)
+	if err == nil {
+		pairing = proto.Clone(pairing).(*ipc.Pairing)
+	}
+	t.RUnlock()
+	if err != nil {
+		return err
+	}
 
-	pairing, err := t.Divisions[division].DivisionManager.ClearReadyStates(userID, round, gameIndex)
-	if err != nil {
+	if err := ts.ClearReady(ctx, t.UUID, division, round, userID); err != nil {
 		return err
 	}
-	err = ts.Set(ctx, t)
-	if err != nil {
-		return err
-	}
-	pairingsMessage := PairingsToResponse(t.UUID, division, pairing, make(map[int32]*ipc.RoundStandings))
+	pairing.ReadyStates = []string{"", ""}
+	pairingsMessage := PairingsToResponse(t.UUID, division, []*ipc.Pairing{pairing}, make(map[int32]*ipc.RoundStandings))
 	wrapped := entity.WrapEvent(pairingsMessage, ipc.MessageType_TOURNAMENT_DIVISION_PAIRINGS_MESSAGE)
 	return SendTournamentMessage(ctx, ts, t.UUID, wrapped)
 }

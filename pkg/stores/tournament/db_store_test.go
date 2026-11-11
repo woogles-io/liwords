@@ -2,7 +2,9 @@ package tournament
 
 import (
 	"context"
+	"fmt"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
@@ -228,4 +230,112 @@ func TestMonitoringStreams(t *testing.T) {
 	data, err = store.GetMonitoringStream(ctx, "tid1", "u1")
 	is.NoErr(err)
 	is.True(data == nil)
+}
+
+func TestReadyStates(t *testing.T) {
+	is := is.New(t)
+	ctx := context.Background()
+	_, store := recreateDB(t)
+
+	k := entity.TournamentPairingKey{TournamentID: "tid1", Division: "A", Round: 2,
+		Players: [2]string{"u1:alice", "u2:bob"}}
+
+	flag, conns, already, err := store.SetReady(ctx, k, 1, "bobconn")
+	is.NoErr(err)
+	is.True(!already)
+	is.Equal(flag, 2)
+	is.Equal(conns, [2]string{"", "bobconn"})
+
+	// Readying twice changes nothing.
+	_, _, already, err = store.SetReady(ctx, k, 1, "otherconn")
+	is.NoErr(err)
+	is.True(already)
+
+	waiting, err := store.WaitingReady(ctx, "tid1")
+	is.NoErr(err)
+	is.Equal(len(waiting), 1)
+	is.Equal(waiting[0].TournamentPairingKey, k)
+	is.Equal(waiting[0].Flag, 2)
+
+	// Closing another tab does nothing; closing Bob's unreadies him.
+	left, err := store.UnreadyConnection(ctx, "someoneelse")
+	is.NoErr(err)
+	is.Equal(len(left), 0)
+	left, err = store.UnreadyConnection(ctx, "bobconn")
+	is.NoErr(err)
+	is.Equal(len(left), 1)
+	is.Equal(left[0].TournamentPairingKey, k)
+	is.Equal(left[0].Flag, 2)
+	waiting, err = store.WaitingReady(ctx, "tid1")
+	is.NoErr(err)
+	is.Equal(len(waiting), 0)
+
+	// Unready only changes a player who is ready.
+	changed, _, err := store.Unready(ctx, k, 0)
+	is.NoErr(err)
+	is.True(!changed)
+	_, _, _, err = store.SetReady(ctx, k, 0, "aliceconn")
+	is.NoErr(err)
+	changed, conns, err = store.Unready(ctx, k, 0)
+	is.NoErr(err)
+	is.True(changed)
+	is.Equal(conns, [2]string{"", ""})
+
+	// Both ready: the game starts, and after that nothing unreadies them or
+	// readies them again.
+	_, _, _, err = store.SetReady(ctx, k, 0, "aliceconn")
+	is.NoErr(err)
+	flag, conns, _, err = store.SetReady(ctx, k, 1, "bobconn")
+	is.NoErr(err)
+	is.Equal(flag, 3)
+	is.Equal(conns, [2]string{"aliceconn", "bobconn"})
+	changed, _, err = store.Unready(ctx, k, 0)
+	is.NoErr(err)
+	is.True(!changed)
+	left, err = store.UnreadyConnection(ctx, "aliceconn")
+	is.NoErr(err)
+	is.Equal(len(left), 0)
+	_, _, already, err = store.SetReady(ctx, k, 0, "aliceconn")
+	is.NoErr(err)
+	is.True(already)
+
+	// A cancelled game clears the pairing, found through either player.
+	is.NoErr(store.ClearReady(ctx, "tid1", "A", 2, "u2:bob"))
+	flag, _, already, err = store.SetReady(ctx, k, 0, "aliceconn")
+	is.NoErr(err)
+	is.True(!already)
+	is.Equal(flag, 1)
+}
+
+// Players readying at the same moment, on any server: exactly one of them
+// sees both ready, so exactly one game starts.
+func TestReadyRace(t *testing.T) {
+	is := is.New(t)
+	ctx := context.Background()
+	_, store := recreateDB(t)
+
+	for round := range 50 {
+		k := entity.TournamentPairingKey{TournamentID: "tid1", Division: "A", Round: round,
+			Players: [2]string{"u1:alice", "u2:bob"}}
+		var wg sync.WaitGroup
+		flags := make([]int, 2)
+		errs := make([]error, 2)
+		for i := range 2 {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				flags[i], _, _, errs[i] = store.SetReady(ctx, k, i, fmt.Sprintf("conn%d", i))
+			}()
+		}
+		wg.Wait()
+		is.NoErr(errs[0])
+		is.NoErr(errs[1])
+		started := 0
+		for _, f := range flags {
+			if f == 3 {
+				started++
+			}
+		}
+		is.Equal(started, 1)
+	}
 }

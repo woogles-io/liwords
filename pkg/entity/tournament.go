@@ -37,8 +37,9 @@ type DivisionManager interface {
 	StartRound(bool) error
 	IsRoundStartable() error
 	GetXHRResponse() (*pb.TournamentDivisionDataResponse, error)
-	SetReadyForGame(userID, connID string, round, gameIndex int, unready bool) ([]string, bool, error)
-	ClearReadyStates(userID string, round, gameIndex int) ([]*pb.Pairing, error)
+	ReadyPairing(userID string, round int, unready bool) ([2]string, int, error)
+	GetPairing(userID string, round int) (*pb.Pairing, error)
+	PairingKey(userID string, round int) (string, error)
 	ResetToBeginning() error
 	ChangeName(string)
 	ClearAllCheckedIn() error
@@ -113,6 +114,23 @@ type Tournament struct {
 	ScheduledStartTime *time.Time                     `json:"scheduledStartTime"`
 	ScheduledEndTime   *time.Time                     `json:"scheduledEndTime"`
 	CreatedBy          uint
+}
+
+// TournamentPairingKey names one pairing: a division, a round, and its two
+// players (uuid:username) in the pairing's order. It keys the tournament_ready
+// table.
+type TournamentPairingKey struct {
+	TournamentID string
+	Division     string
+	Round        int
+	Players      [2]string
+}
+
+// TournamentReady is a pairing's ready state. Bit 0 of Flag is Players[0],
+// bit 1 is Players[1].
+type TournamentReady struct {
+	TournamentPairingKey
+	Flag int
 }
 
 // TournamentHeader is a tournament without its divisions: what callers need
