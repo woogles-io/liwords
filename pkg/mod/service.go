@@ -11,6 +11,7 @@ import (
 	"github.com/woogles-io/liwords/pkg/stores/models"
 	"github.com/woogles-io/liwords/pkg/user"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/mod_service"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 var (
@@ -143,6 +144,32 @@ func (ms *ModService) ChangeEmail(ctx context.Context, req *connect.Request[pb.C
 		return nil, apiserver.InvalidArg(err.Error())
 	}
 	return connect.NewResponse(&pb.ChangeEmailResponse{}), nil
+}
+
+// ListEmailChanges lists a user's email changes, newest first. It takes the
+// admin's permission, not the one to see private user data: moderators have
+// that one.
+func (ms *ModService) ListEmailChanges(ctx context.Context, req *connect.Request[pb.ListEmailChangesRequest],
+) (*connect.Response[pb.ListEmailChangesResponse], error) {
+	_, err := apiserver.AuthenticateWithPermission(ctx, ms.userStore, ms.queries, rbac.CanResetAndDeleteAccounts)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := ms.queries.ListEmailChanges(ctx, req.Msg.UserId)
+	if err != nil {
+		return nil, apiserver.InternalErr(err)
+	}
+	changes := make([]*pb.EmailChange, len(rows))
+	for i, r := range rows {
+		changes[i] = &pb.EmailChange{
+			OldEmail:          r.OldEmail,
+			NewEmail:          r.NewEmail,
+			ChangedAt:         timestamppb.New(r.ChangedAt.Time),
+			ChangedByUserId:   r.ChangedByUuid,
+			ChangedByUsername: r.ChangedByUsername,
+		}
+	}
+	return connect.NewResponse(&pb.ListEmailChangesResponse{Changes: changes}), nil
 }
 
 func authenticateMod(ctx context.Context, ms *ModService, req *pb.ModActionsList) (string, error) {

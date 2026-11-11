@@ -68,6 +68,21 @@ message ChangeEmailRequest {
 
 message ChangeEmailResponse {}
 
+// EmailChange is one change of a user's email, by the user or by an admin.
+message EmailChange {
+  string old_email = 1;
+  string new_email = 2;
+  google.protobuf.Timestamp changed_at = 3;
+  string changed_by_user_id = 4;
+  string changed_by_username = 5;
+}
+
+message ListEmailChangesRequest { string user_id = 1; }
+
+// ListEmailChangesResponse lists the changes newest first. Only an admin may
+// see them.
+message ListEmailChangesResponse { repeated EmailChange changes = 1; }
+
 // Automod
 
 enum NotoriousGameType {
@@ -172,4 +187,6 @@ service ModService {
       returns (ListChatChannelsResponse);
   rpc GetChannelChats(GetChannelChatsRequest) returns (ipc.ChatMessages);
   rpc ChangeEmail(ChangeEmailRequest) returns (ChangeEmailResponse);
+  rpc ListEmailChanges(ListEmailChangesRequest)
+      returns (ListEmailChangesResponse);
 }

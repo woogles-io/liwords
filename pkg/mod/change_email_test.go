@@ -102,3 +102,44 @@ func TestChangeEmail(t *testing.T) {
 	is.True(ApplyActions(ctx, us, chatStore(), "Moderator",
 		[]*ms.ModAction{{UserId: "Hacker", Type: ms.ModActionType_CHANGE_EMAIL}}) != nil)
 }
+
+func TestListEmailChanges(t *testing.T) {
+	is := is.New(t)
+	session := &entity.Session{
+		ID:       "stuvwx",
+		Username: "Moderator",
+		UserUUID: "Moderator",
+		Expiry:   time.Now().Add(time.Second * 100)}
+	ctx := apiserver.PlaceInContext(context.Background(), session)
+
+	recreateDB()
+	us := userStore()
+	defer us.(*user.DBStore).Disconnect()
+	pool, err := common.OpenTestingDB(pkg)
+	is.NoErr(err)
+	defer pool.Close()
+	q := models.New(pool)
+	svc := &ModService{userStore: us, queries: q}
+	is.NoErr(us.AddEmailChange(ctx, "Hacker", "old@woogles.io", "hacker@woogles.io", "Hacker"))
+
+	list := func() (*connect.Response[ms.ListEmailChangesResponse], error) {
+		return svc.ListEmailChanges(ctx, connect.NewRequest(&ms.ListEmailChangesRequest{UserId: "Hacker"}))
+	}
+
+	// A moderator may see private user data, but not this.
+	is.NoErr(q.AssignRole(ctx, models.AssignRoleParams{Username: "Moderator", RoleName: string(rbac.Moderator)}))
+	_, err = list()
+	is.Equal(connect.CodeOf(err), connect.CodePermissionDenied)
+
+	// An admin may.
+	is.NoErr(q.AssignRole(ctx, models.AssignRoleParams{Username: "Moderator", RoleName: string(rbac.Admin)}))
+	resp, err := list()
+	is.NoErr(err)
+	is.Equal(len(resp.Msg.Changes), 1)
+	c := resp.Msg.Changes[0]
+	is.Equal(c.OldEmail, "old@woogles.io")
+	is.Equal(c.NewEmail, "hacker@woogles.io")
+	is.Equal(c.ChangedByUserId, "Hacker")
+	is.Equal(c.ChangedByUsername, "Hacker")
+	is.True(time.Since(c.ChangedAt.AsTime()) < time.Minute)
+}
