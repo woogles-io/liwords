@@ -54,16 +54,12 @@ export const setLabPartsForTest = (n: number) => {
   parts = n;
   workers.forEach((w) => w?.terminate());
   workers = [];
-  current.clear();
-  busy.clear();
   pending.clear();
   sims.clear();
   jobs.clear();
 };
 
 let workers: Array<Worker | undefined> = [];
-// The job each worker last made, as the worker numbers it.
-const current = new Map<number, number>();
 let lastId = 0;
 const pending = new Map<number, Pending>();
 const listeners = new Set<(e: LabEvent) => void>();
@@ -104,7 +100,6 @@ const getWorker = (w: number) => {
     worker.onmessage = (e: MessageEvent) => {
       const { id, result, error, event } = e.data;
       if (event) {
-        if (event.done || event.error || event.freed) busy.delete(w);
         heard(w, event);
         return;
       }
@@ -115,13 +110,6 @@ const getWorker = (w: number) => {
         p.reject(new Error(error));
         return;
       }
-      // a stop answered: the worker runs no steps
-      if (p.request.op === "stop") busy.delete(w);
-      // a job made is the one the worker now holds
-      if (p.request.op === "endgame") current.set(w, result as number);
-      if (p.request.op === "sim") {
-        current.set(w, (result as { job: number }).job);
-      }
       p.resolve(result);
     };
     workers[w] = worker;
@@ -129,22 +117,7 @@ const getWorker = (w: number) => {
   return worker;
 };
 
-// The workers running a job's steps: from a run until the run is done, fails,
-// or a stop is answered.
-const busy = new Set<number>();
-
-// A job is freed by sending the worker a free, unless the worker is still
-// running its steps: a step may be inside a wasm call that does not give the
-// worker back, so the worker is ended at once (the job was to go anyway) and
-// a new one takes its place. Nothing waits on a timer: how long to let a job
-// run is the user's to decide.
 const send = (id: number, p: Pending) => {
-  if (p.request.op === "free" && busy.has(p.worker)) {
-    replaceWorker(p.worker);
-    p.resolve(undefined);
-    return;
-  }
-  if (p.request.op === "run") busy.add(p.worker);
   pending.set(id, p);
   getWorker(p.worker).postMessage({ id, ...p.request });
 };
@@ -158,46 +131,6 @@ const call = <T>(worker: number, request: LabRequest): Promise<T> =>
       request,
     });
   });
-
-// A worker ended, and another made in its place, which holds no tables and no
-// job: the job it held is freed, saying so; the requests waiting on it that
-// make something new go to the new worker; a stop or a free is done; any
-// other, for a job that is gone, fails.
-const replaceWorker = (w: number) => {
-  workers[w]?.terminate();
-  workers[w] = undefined;
-  busy.delete(w);
-  const gone = current.get(w);
-  current.delete(w);
-  const waiting = [...pending].filter(([, p]) => p.worker === w);
-  waiting.forEach(([id]) => pending.delete(id));
-  if (labParts() === 1) {
-    if (gone !== undefined) emit({ job: gone, freed: true });
-  } else {
-    for (const [page, held] of [...jobs]) {
-      if (held.some((h) => h.worker === w)) {
-        if (sims.has(page)) freeParts(page, w);
-        else jobs.delete(page);
-        emit({ job: page, freed: true });
-      }
-    }
-  }
-  for (const [id, p] of waiting) {
-    const { op } = p.request;
-    if (
-      op === "prepare" ||
-      op === "analyze" ||
-      op === "sim" ||
-      op === "endgame"
-    ) {
-      send(id, p);
-    } else if (op === "stop" || op === "free") {
-      p.resolve(undefined);
-    } else {
-      p.reject(new Error("the job is gone"));
-    }
-  }
-};
 
 // The page's job a worker's job is part of.
 const pageJob = (worker: number, job: number) => {
