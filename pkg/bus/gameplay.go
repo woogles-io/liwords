@@ -358,6 +358,7 @@ func (b *Bus) readyForTournamentGame(ctx context.Context, evt *pb.ReadyForTourna
 		}
 		b.pubToUser(s[0], ngevt, "")
 	}
+	b.pubReadyToDirectors(t.Directors, evt.TournamentId, ngevt, playerIDs)
 
 	if !bothReady {
 		return nil

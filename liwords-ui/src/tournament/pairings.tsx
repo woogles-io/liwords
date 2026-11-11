@@ -1,6 +1,7 @@
 import React, { ReactNode, useMemo } from "react";
 import { useTournamentStoreContext } from "../store/store";
 import { Affix, Alert, Button, List, Table, Tag } from "antd";
+import { CheckCircleTwoTone } from "@ant-design/icons";
 import { Division, SinglePairing } from "../store/reducers/tournament_reducer";
 
 import { useNavigate } from "react-router";
@@ -202,6 +203,29 @@ export const Pairings = React.memo((props: Props) => {
         )
       : undefined;
 
+  const findGameIdFromActive = (playerName: string, round: number) => {
+    //This assumes one game per round per user
+    const game = tournamentContext.activeGames.find((game) => {
+      return (
+        game.players.map((pm) => pm.displayName).includes(playerName) &&
+        // With two rounds open, a player's game may be in either one.
+        (open.length < 2 || game.tournamentRound === round)
+      );
+    });
+    return game?.gameID;
+  };
+
+  // A pairing in an open round whose game hasn't started: the players may
+  // be ready or not. Directors see which.
+  const awaitingReady = (pairing: SinglePairing) =>
+    selectedRoundIsOpen &&
+    pairing.players[0].id !== pairing.players[1].id &&
+    pairing.outcomes[0] === TournamentGameResult.NO_RESULT &&
+    !findGameIdFromActive(
+      usernameFromPlayerEntry(pairing.players[0].id),
+      props.selectedRound,
+    );
+
   const formatPairingsData = (
     division: Division,
     round: number,
@@ -215,18 +239,6 @@ export const Pairings = React.memo((props: Props) => {
       return new Array<PairingTableData>();
     }
     const { status } = competitorState;
-
-    const findGameIdFromActive = (playerName: string) => {
-      //This assumes one game per round per user
-      const game = tournamentContext.activeGames.find((game) => {
-        return (
-          game.players.map((pm) => pm.displayName).includes(playerName) &&
-          // With two rounds open, a player's game may be in either one.
-          (open.length < 2 || game.tournamentRound === round)
-        );
-      });
-      return game?.gameID;
-    };
     const pairingsData = pairings.map(
       (pairing: SinglePairing): PairingTableData => {
         const playerFullIDs = pairing.players.map((v) => v.id);
@@ -256,6 +268,8 @@ export const Pairings = React.memo((props: Props) => {
         if (tables) {
           sortPriority = -(table ?? tables.size + 1);
         }
+        // Directors see who has clicked ready, to nudge who hasn't.
+        const showReady = props.isDirector && awaitingReady(pairing);
         const isRemoved = (playerID: string) =>
           division.players[division.playerIndexMap[playerID]]?.suspended;
 
@@ -323,17 +337,13 @@ export const Pairings = React.memo((props: Props) => {
                   {isGibsonized(playerID) && (
                     <Tag className="ant-tag-gibsonized">Gibsonized</Tag>
                   )}
-                  {/* {props.isDirector && pairing.readyStates[idx] !== '' && (
-                    <CheckCircleTwoTone />
-                    Temporary for https://github.com/woogles-io/liwords/issues/825
-
-                    This requires a back-end change to send the ready state to
-                    the directors as well as the involved players.
-
-                    The reducer would have to significantly change as well,
-                    as it expects any Ready state messages to be directed
-                    to a player currently in the tournament.
-                  )} */}
+                  {showReady && !!pairing.readyStates[idx] && (
+                    <CheckCircleTwoTone
+                      twoToneColor="#52c41a"
+                      title="Ready"
+                      aria-label="Ready"
+                    />
+                  )}
                 </p>
               ))}
             </div>
@@ -363,7 +373,7 @@ export const Pairings = React.memo((props: Props) => {
                 if (
                   status === TourneyStatus.ROUND_GAME_ACTIVE &&
                   props.username &&
-                  findGameIdFromActive(props.username)
+                  findGameIdFromActive(props.username, round)
                 ) {
                   actions = (
                     <Button
@@ -372,7 +382,7 @@ export const Pairings = React.memo((props: Props) => {
                         if (props.username) {
                           navigate(
                             `/game/${encodeURIComponent(
-                              findGameIdFromActive(props.username) || "",
+                              findGameIdFromActive(props.username, round) || "",
                             )}`,
                           );
                         }
@@ -386,7 +396,7 @@ export const Pairings = React.memo((props: Props) => {
             }
           } else {
             //it's not my game
-            const otherGameId = findGameIdFromActive(playerNames[0]);
+            const otherGameId = findGameIdFromActive(playerNames[0], round);
 
             if (otherGameId && !pairing.games[0]?.gameEndReason) {
               actions = (
@@ -585,6 +595,26 @@ export const Pairings = React.memo((props: Props) => {
     pairings,
   );
 
+  // For directors: who the open games are waiting on.
+  const opponentWaiting: string[] = [];
+  let neitherReady = 0;
+  if (props.isDirector) {
+    for (const pairing of pairings) {
+      if (!awaitingReady(pairing)) {
+        continue;
+      }
+      // readyStates may be empty: no one has readied.
+      const ready = [0, 1].map((i) => !!pairing.readyStates[i]);
+      if (ready[0] !== ready[1]) {
+        opponentWaiting.push(
+          usernameFromPlayerEntry(pairing.players[ready[0] ? 1 : 0].id),
+        );
+      } else if (!ready[0]) {
+        neitherReady++;
+      }
+    }
+  }
+
   const selectedDivisionData = divisions[props.selectedDivision];
   const laggedBasis =
     selectedDivisionData &&
@@ -599,6 +629,14 @@ export const Pairings = React.memo((props: Props) => {
           {laggedBasis < 0
             ? "Paired from the initial seeding, before any results"
             : `Paired from results through round ${laggedBasis + 1}`}
+        </p>
+      )}
+      {(opponentWaiting.length > 0 || neitherReady > 0) && (
+        <p className="readable-text-color ready-summary">
+          {opponentWaiting.length > 0 &&
+            `Opponent ready, waiting on: ${opponentWaiting.join(", ")}. `}
+          {neitherReady > 0 &&
+            `${neitherReady} ${neitherReady === 1 ? "game" : "games"} with neither player ready.`}
         </p>
       )}
       {props.tentative && tableData.length > 0 && (

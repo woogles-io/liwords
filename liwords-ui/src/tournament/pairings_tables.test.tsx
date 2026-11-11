@@ -142,3 +142,42 @@ describe("the pairings' table numbers", () => {
     ]);
   });
 });
+
+describe("who directors are waiting on", () => {
+  // Round 2 open: alan has clicked ready, ken hasn't; donald and barbara
+  // neither; edsger has the bye.
+  const renderReady = (isDirector: boolean) => {
+    const div = division();
+    const alanKen =
+      div.pairings[1].roundPairings[div.playerIndexMap[person("alan").id]];
+    alanKen.readyStates = ["ready", ""];
+    divisions.value = { d: div };
+    render(
+      <Pairings
+        selectedDivision="d"
+        selectedRound={1}
+        sendReady={() => true}
+        isDirector={isDirector}
+        tentative={false}
+      />,
+    );
+  };
+
+  it("shows directors who has readied and whom the games wait on", () => {
+    renderReady(true);
+    expect(
+      screen.getByText(
+        "Opponent ready, waiting on: ken. 1 game with neither player ready.",
+      ),
+    ).toBeTruthy();
+    const marks = screen.getAllByLabelText("Ready");
+    expect(marks).toHaveLength(1);
+    expect(marks[0].closest("p")?.textContent).toContain("alan");
+  });
+
+  it("shows players neither", () => {
+    renderReady(false);
+    expect(screen.queryByText(/waiting on/)).toBeNull();
+    expect(screen.queryByLabelText("Ready")).toBeNull();
+  });
+});

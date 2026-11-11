@@ -744,7 +744,9 @@ export function TournamentReducer(
       };
 
       const division = state.divisions[m.ready.division];
-      const fullPlayerID = `${m.loginState.userID}:${m.loginState.username}`;
+      if (!division) {
+        return state;
+      }
       if (!openRounds(division).includes(m.ready.round)) {
         // this should not happen, the ready state should always be for an
         // open round: the current round, or the round before it while a
@@ -753,7 +755,9 @@ export function TournamentReducer(
         return state;
       }
 
-      const pairing = getPairing(m.ready.round, fullPlayerID, division);
+      // The message is about m.ready.playerId: the viewer, their opponent,
+      // or, for a director, any player in the tournament.
+      const pairing = getPairing(m.ready.round, m.ready.playerId, division);
       if (!pairing) {
         return state;
       }
@@ -761,23 +765,11 @@ export function TournamentReducer(
         ...pairing,
         readyStates: [...pairing.readyStates],
       };
-      // find out where _we_ are
-      let usLoc;
       const involvedIDs = newPairing.players.map((x) => x.id);
-      if (newPairing.players[0].id === fullPlayerID) {
-        usLoc = 0;
-      } else if (newPairing.players[1].id === fullPlayerID) {
-        usLoc = 1;
-      } else {
-        console.error("unexpected usLoc", newPairing);
+      const toModify = involvedIDs.indexOf(m.ready.playerId);
+      if (toModify === -1) {
+        console.error("ready player not in their pairing", newPairing);
         return state;
-      }
-      let toModify;
-      if (m.ready.playerId === fullPlayerID) {
-        toModify = usLoc;
-      } else {
-        // it's the opponent
-        toModify = 1 - usLoc;
       }
 
       newPairing.readyStates[toModify] = m.ready.unready ? "" : "ready";
