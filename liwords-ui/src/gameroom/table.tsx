@@ -103,6 +103,11 @@ import { create, toBinary } from "@bufbuild/protobuf";
 import { useTournamentCompetitorState } from "../hooks/use_tournament_competitor_state";
 import { showTurnNotification } from "../utils/notifications";
 import {
+  closeGameNotifications,
+  currentSubscription,
+  webPushSupported,
+} from "../utils/web_push";
+import {
   nextPin,
   onTurnCountdowns,
   pickNextCorresGame,
@@ -162,6 +167,16 @@ const ManageWindowTitleAndTurnSound = (props: {
   // A real new move pushes a new event, making turns.length > lastTurnCount.current.
   const lastTurnCount = useRef(-1);
 
+  // The game is open, so its pushed turn notifications have done their job.
+  useEffect(() => {
+    if (!gameContext.gameID) {
+      return;
+    }
+    closeGameNotifications(gameContext.gameID).catch((e) =>
+      console.log("Closing this game's notifications failed:", e),
+    );
+  }, [gameContext.gameID]);
+
   useEffect(() => {
     const turnCount = gameContext.turns.length;
     if (canPlaySound) {
@@ -213,11 +228,21 @@ const ManageWindowTitleAndTurnSound = (props: {
             timeCtrl = tc;
           }
 
-          showTurnNotification({
-            opponentName,
-            timeControl: timeCtrl,
-            gameId: gameContext.gameID,
-          });
+          const show = () =>
+            showTurnNotification({
+              opponentName,
+              timeControl: timeCtrl,
+              gameId: gameContext.gameID,
+            });
+          // A browser with web push gets this turn pushed, saying when to
+          // move by; this notification would replace that one.
+          if (isCorrespondence && webPushSupported()) {
+            currentSubscription().then((sub) => {
+              if (!sub) show();
+            }, show);
+          } else {
+            show();
+          }
           notificationShown.current = true;
         }
       } else {

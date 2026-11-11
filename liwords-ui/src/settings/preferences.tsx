@@ -18,6 +18,9 @@ import {
 } from "../store/constants";
 import "../gameroom/scss/gameroom.scss";
 import { BoardPreview } from "./board_preview";
+import { syncWebPush } from "./web_push_setting";
+import { PushService } from "../gen/api/proto/push_service/push_service_pb";
+import { flashError, useClient } from "../utils/hooks/connect";
 import { MatchLexiconDisplay, puzzleLexica } from "../shared/lexicon_display";
 import { TouchBackend } from "react-dnd-touch-backend";
 import { DndProvider } from "react-dnd";
@@ -224,6 +227,15 @@ export const Preferences = React.memo(() => {
     setPuzzleLexicon(lexicon);
   }, []);
 
+  // The switch also subscribes this device to web push, or unsubscribes it.
+  const pushClient = useClient(PushService);
+  const syncPush = useCallback(
+    (on: boolean) => {
+      syncWebPush(pushClient, on).catch(flashError);
+    },
+    [pushClient],
+  );
+
   // Permission is asked for only when the switch is turned on: browsers expect
   // a click behind the prompt (Firefox refuses one without), and a prompt on
   // opening the page was easy to miss or dismiss.
@@ -245,6 +257,7 @@ export const Preferences = React.memo(() => {
           const granted = await requestNotificationPermission();
           setTurnNotificationPreference(granted);
           setTurnNotifications(granted);
+          syncPush(granted);
           // Whatever the browser now says: a dismissed prompt leaves it
           // undecided, so the switch can be tried again rather than show as
           // blocked.
@@ -253,13 +266,15 @@ export const Preferences = React.memo(() => {
           // Permission already granted, just update preference
           setTurnNotificationPreference(true);
           setTurnNotifications(true);
+          syncPush(true);
         }
       } else {
         setTurnNotificationPreference(false);
         setTurnNotifications(false);
+        syncPush(false);
       }
     },
-    [],
+    [syncPush],
   );
 
   const handleUserBoardChange = useCallback(
@@ -372,11 +387,11 @@ export const Preferences = React.memo(() => {
             </div>
           </div>
           <div className="toggle-section">
-            <div className="title">Turn notifications</div>
+            <div className="title">Notifications</div>
             <div>
               <div>
-                Get a notification when it's your turn (works when tab is
-                unfocused)
+                Let Woogles notify you on this device, such as when it's your
+                turn
                 {permissionState === "denied" && (
                   <div style={{ marginTop: 8, fontSize: 12, color: "#ff4d4f" }}>
                     Permission blocked.{" "}

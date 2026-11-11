@@ -34,6 +34,7 @@ import { Team } from "./about/team";
 import { Register } from "./lobby/register";
 import { PlayerProfile } from "./profile/profile";
 import { Settings } from "./settings/settings";
+import { useWebPushSync } from "./settings/web_push_setting";
 import { PasswordReset } from "./lobby/password_reset";
 import { NewPassword } from "./lobby/new_password";
 import { VerifyEmail } from "./lobby/verify_email";
@@ -168,6 +169,7 @@ const App = React.memo(() => {
 
   const { loginState, dispatchLoginState } = useLoginStateStoreContext();
   const { loggedIn, userID } = loginState;
+  useWebPushSync(loggedIn ? userID : undefined);
 
   const { setAdmins, setModerators } = useModeratorStoreContext();
 

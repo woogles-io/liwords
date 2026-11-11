@@ -17,6 +17,8 @@ import { LoginModal } from "../lobby/login";
 import { isClubType } from "../store/constants";
 import { flashError, useClient } from "../utils/hooks/connect";
 import { AuthenticationService } from "../gen/api/proto/user_service/user_service_pb";
+import { PushService } from "../gen/api/proto/push_service/push_service_pb";
+import { logOutForgettingDevice } from "../utils/web_push";
 
 const TopMenu = React.memo((props: Props) => {
   const playMenuItems = [
@@ -195,12 +197,13 @@ export const TopBar = React.memo((props: Props) => {
   const { username, loggedIn, connectedToSocket } = loginState;
   const [loginModalVisible, setLoginModalVisible] = useState(false);
   const authClient = useClient(AuthenticationService);
+  const pushClient = useClient(PushService);
   const navigate = useNavigate();
   const { notification } = App.useApp();
 
   const handleLogout = async () => {
     try {
-      await authClient.logout({});
+      await logOutForgettingDevice(pushClient, () => authClient.logout({}));
       notification.info({
         message: "Success",
         description: "You have been logged out.",
