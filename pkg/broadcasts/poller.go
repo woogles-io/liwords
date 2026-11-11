@@ -12,7 +12,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/nats-io/nats.go"
 	"github.com/rs/zerolog/log"
 
 	"github.com/woogles-io/liwords/pkg/entity"
@@ -27,9 +26,13 @@ const (
 	pollerTickInterval        = 30 * time.Second
 )
 
-// StartPoller launches the background feed-polling goroutine.
-// Call once from main after NATS is ready.
+// StartPoller launches the background feed-polling goroutine, and the
+// listener that keeps this server's caches current when another server polls
+// (feed_sync.go). Call once from main after NATS is ready.
 func (bs *BroadcastService) StartPoller(ctx context.Context) {
+	if bs.natsConn != nil {
+		bs.startFeedSync(ctx)
+	}
 	go func() {
 		ticker := time.NewTicker(pollerTickInterval)
 		defer ticker.Stop()
@@ -88,7 +91,7 @@ func (bs *BroadcastService) pollBroadcast(ctx context.Context, id int32, broadca
 	}
 
 	if bs.natsConn != nil {
-		publishBroadcastUpdate(bs.natsConn, broadcastUUID, slug, divs)
+		bs.publishBroadcastUpdate(broadcastUUID, slug, divs, time.Now())
 	}
 
 	log.Debug().Str("slug", slug).Int("numDivisions", len(divs)).Msg("broadcast-polled")
@@ -221,7 +224,7 @@ func cacheBustedURL(feedURL string, now time.Time) string {
 	return u.String()
 }
 
-func publishBroadcastUpdate(nc *nats.Conn, broadcastUUID, slug string, divs map[string]*FeedData) {
+func (bs *BroadcastService) publishBroadcastUpdate(broadcastUUID, slug string, divs map[string]*FeedData, polledAt time.Time) {
 	// Use the first (alphabetically) division's current round for the event.
 	currentRound := int32(0)
 	firstName := ""
@@ -244,7 +247,7 @@ func publishBroadcastUpdate(nc *nats.Conn, broadcastUUID, slug string, divs map[
 		return
 	}
 
-	if err := nc.Publish(NatsBroadcastSubjectPrefix+broadcastUUID, bts); err != nil {
+	if err := bs.publishBroadcastEvent(broadcastUUID, slug, bts, polledAt); err != nil {
 		log.Err(err).Str("slug", slug).Msg("broadcast-nats-publish-failed")
 	}
 }

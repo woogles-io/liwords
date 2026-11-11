@@ -687,7 +687,10 @@ func (h *OBSHandler) ensureSlotNATSSubs(stream *obsStream, key, slug, slotName s
 	}
 
 	// Broadcast-level subscription for slot reassignment.
-	broadcastSub, err := h.natsConn.Subscribe(NatsBroadcastSubjectPrefix+broadcastUUID, func(_ *nats.Msg) {
+	broadcastSub, err := h.natsConn.Subscribe(NatsBroadcastSubjectPrefix+broadcastUUID, func(m *nats.Msg) {
+		// Before reading the feed cache: an update from another server
+		// means ours may be stale.
+		h.broadcastSvc.applyRemoteBroadcastEvent(m)
 		ctx := context.Background()
 		row, err := h.queries.GetBroadcastSlotGame(ctx, models.GetBroadcastSlotGameParams{
 			Slug:     slug,
@@ -851,7 +854,8 @@ func (h *OBSHandler) rebindBroadcastSub(stream *obsStream, key, username, slotNa
 		return
 	}
 
-	newSub, err := h.natsConn.Subscribe(NatsBroadcastSubjectPrefix+newBroadcastUUID, func(_ *nats.Msg) {
+	newSub, err := h.natsConn.Subscribe(NatsBroadcastSubjectPrefix+newBroadcastUUID, func(m *nats.Msg) {
+		h.broadcastSvc.applyRemoteBroadcastEvent(m)
 		h.refreshUserSlot(stream, key, username, slotName)
 	})
 	if err != nil {

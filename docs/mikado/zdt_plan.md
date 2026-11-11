@@ -132,6 +132,16 @@ Fix, either:
 
 The first avoids hitting the external feed once per server.
 
+**Status (2026-11-11): done, a variant of the first** (`pkg/broadcasts/feed_sync.go`).
+The NATS update turned out to carry only the slug and round, not the feed, so
+servers don't copy the data: each tags its broadcast publishes with NATS
+headers (its instance ID, the slug, and when the feed was fetched), listens
+to `broadcasts.>`, and on another server's update drops its RPC caches for
+that broadcast and its feed if fetched before that poll. The next read
+fetches the feed again, so a feed is fetched at most once per server per
+poll, and only by a server something reads it on. OBS streams apply the same
+update before re-rendering. With one server nothing changes.
+
 ## 5. Shutdown and draining
 
 What happens on SIGTERM now (`cmd/liwords-api/main.go`):

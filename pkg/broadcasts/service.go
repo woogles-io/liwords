@@ -38,6 +38,7 @@ const feedFailureTTL = 5 * time.Minute
 // One HTTP request populates all divisions at once.
 type feedCacheEntry struct {
 	divisions map[string]*FeedData // division name → FeedData (e.g. "A", "B")
+	fetchedAt time.Time
 	expiresAt time.Time
 	failed    bool // the last fetch failed; treated as a miss until expiresAt
 }
@@ -65,6 +66,10 @@ type BroadcastService struct {
 	gameEventChan chan *entity.EventWrapper
 	natsConn      *nats.Conn
 
+	// instanceID tells this server's broadcast updates from other servers'
+	// (feed_sync.go).
+	instanceID string
+
 	feedCacheMu sync.RWMutex
 	feedCache   map[string]*feedCacheEntry // keyed by slug
 	sfGroup     singleflight.Group
@@ -90,6 +95,7 @@ func NewBroadcastService(
 		cfg:           cfg,
 		gameStore:     gameStore,
 		metadataStore: metadataStore,
+		instanceID:    uuid.NewString(),
 		feedCache:     make(map[string]*feedCacheEntry),
 		statsCache:    expirable.NewLRU[string, *pb.GetBroadcastGameStatsResponse](0, nil, rpcCacheTTLStats),
 		allGamesCache: expirable.NewLRU[string, *pb.GetBroadcastAllGamesResponse](0, nil, rpcCacheTTLAllGames),
@@ -1505,7 +1511,7 @@ func (bs *BroadcastService) notifyBroadcastGamesUpdated(broadcastUUID, slug stri
 		log.Err(err).Str("slug", slug).Msg("broadcast-games-updated-serialize-failed")
 		return
 	}
-	if err := bs.natsConn.Publish(NatsBroadcastSubjectPrefix+broadcastUUID, bts); err != nil {
+	if err := bs.publishBroadcastEvent(broadcastUUID, slug, bts, time.Time{}); err != nil {
 		log.Err(err).Str("slug", slug).Msg("broadcast-games-updated-publish-failed")
 	}
 }
@@ -1555,7 +1561,8 @@ func (bs *BroadcastService) HandleAnnotatedGameDone(ctx context.Context, gameUUI
 // poller after each successful fetch.
 func (bs *BroadcastService) setCachedFeed(slug string, divisions map[string]*FeedData) {
 	bs.feedCacheMu.Lock()
-	bs.feedCache[slug] = &feedCacheEntry{divisions: divisions, expiresAt: time.Now().Add(feedCacheTTL)}
+	now := time.Now()
+	bs.feedCache[slug] = &feedCacheEntry{divisions: divisions, fetchedAt: now, expiresAt: now.Add(feedCacheTTL)}
 	bs.feedCacheMu.Unlock()
 }
 
