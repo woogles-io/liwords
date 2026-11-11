@@ -88,8 +88,8 @@ func TestReleaseWithoutSave(t *testing.T) {
 }
 
 // Changes waiting on this server hold no connection while they wait, so a
-// queue of them (the end of a round) can't use up the pool. A waiter whose
-// context ends gives up without taking the lock.
+// queue of them (results bunching up toward the end of a round) can't use up
+// the pool. A waiter whose context ends gives up without taking the lock.
 func TestWaitersHoldNoConnection(t *testing.T) {
 	is := is.New(t)
 	ctx := context.Background()

@@ -14,8 +14,8 @@ import (
 	"github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
-// The end of a round: every game of the round ends at once, and the results
-// come in through two servers. Each loads the tournament, records its result
+// The worst case of results bunching up toward the end of a round: every game
+// of the round ends at once, and the results come in through two servers. Each loads the tournament, records its result
 // and saves; without the lock, a save made from a copy loaded before another
 // result was saved would drop that result.
 func TestConcurrentResultsAcrossServers(t *testing.T) {

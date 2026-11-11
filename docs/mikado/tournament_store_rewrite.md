@@ -207,7 +207,7 @@ player, written in the same transaction as the result that changes it.
    saves in one transaction. The cache and the entity mutex go. The per-
    division tables below then come after ZDT, where measurements say so.
    Writes wait for an in-process lock on the tournament before the advisory
-   lock, so that results queued at the end of a round wait without holding
+   lock, so that results that bunch up toward the end of a round wait without holding
    connections, and nothing between the load and the save queries the pool:
    results run under their game's lock, which holds a connection already
    (`pkg/stores/tournament/lock.go`). Measure in Jaeger as

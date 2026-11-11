@@ -17,13 +17,17 @@ package tournament
 //  3. the load, inside the transaction; then the caller's change; then the
 //     save and the commit, which ends the advisory lock.
 //
-// Why the in-process lock first. At the end of a round, many games of one
-// tournament end at once, and each records its result while holding its
-// game's lock (pkg/stores/game/lock.go). If they all waited for the advisory
-// lock inside open transactions, each would hold a connection while waiting:
-// up to one per game-lock slot, on top of the game locks' own, leaving the
-// rest of the server almost none until the queue drained. Waiting in Go
-// first, a server holds at most one connection per tournament for this.
+// Why the in-process lock first. Games of a round end one by one, but toward
+// the end of a round they bunch up, and changes to one tournament then
+// overlap and queue. Each game records its result while holding its game's
+// lock (pkg/stores/game/lock.go), which holds a connection. If the queued
+// changes waited for the advisory lock inside open transactions, each would
+// hold a second connection while waiting: in the worst case one per
+// game-lock slot, leaving the rest of the server almost none until the queue
+// drained. Waiting in Go first, a server holds at most one connection per
+// tournament for this, however long the queue. Correctness doesn't depend on
+// it: without it, changes are still serialized by the advisory lock, and only
+// use more connections while they wait.
 //
 // The rule that keeps this safe, the same one the game lock states: between
 // LockForChange and Save or Release, run no queries on the pool. The holder
