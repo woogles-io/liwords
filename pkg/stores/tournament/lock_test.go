@@ -10,6 +10,9 @@ import (
 	"time"
 
 	"github.com/matryer/is"
+	"go.opentelemetry.io/otel"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 )
 
 // Changes from two stores (two servers: each has its own in-process lock,
@@ -147,4 +150,43 @@ func TestWaitOnOtherServerHonorsContext(t *testing.T) {
 	_, lk, err := b.GetForUpdate(ctx, "tid1")
 	is.NoErr(err)
 	lk.Release()
+}
+
+// The GetForUpdate span splits into the two lock waits and the load, and
+// GetForUpdate and Save both record the size of the divisions.
+func TestLockSpans(t *testing.T) {
+	is := is.New(t)
+	ctx := context.Background()
+	rec := tracetest.NewSpanRecorder()
+	prev := otel.GetTracerProvider()
+	otel.SetTracerProvider(sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(rec)))
+	defer otel.SetTracerProvider(prev)
+
+	_, store := recreateDB(t)
+	is.NoErr(store.Create(ctx, testTournament(t, 0)))
+	_, lk, err := store.GetForUpdate(ctx, "tid1")
+	is.NoErr(err)
+	is.NoErr(lk.Save(ctx))
+
+	spans := map[string]sdktrace.ReadOnlySpan{}
+	for _, s := range rec.Ended() {
+		spans[s.Name()] = s
+	}
+	get, save := spans["tournament.GetForUpdate"], spans["tournament.Save"]
+	is.True(get != nil)
+	is.True(save != nil)
+	events := []string{}
+	for _, e := range get.Events() {
+		events = append(events, e.Name)
+	}
+	is.Equal(events, []string{"local-lock", "advisory-lock"})
+	for _, s := range []sdktrace.ReadOnlySpan{get, save} {
+		size := int64(0)
+		for _, a := range s.Attributes() {
+			if a.Key == "tournament.divisions_bytes" {
+				size = a.Value.AsInt64()
+			}
+		}
+		is.True(size > 0) // divisions size recorded
+	}
 }

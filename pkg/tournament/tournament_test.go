@@ -155,6 +155,27 @@ func reload(ctx context.Context, is *is.I, ts tournament.TournamentStore, id str
 	return t
 }
 
+// roundComplete reports whether a round of a division is complete, as
+// stored. A finished tournament counts as complete, and one not started as
+// not.
+func roundComplete(ctx context.Context, ts tournament.TournamentStore, id, division string, round int) (bool, error) {
+	t, err := ts.Get(ctx, id)
+	if err != nil {
+		return false, err
+	}
+	if t.IsFinished {
+		return true, nil
+	}
+	if !t.IsStarted {
+		return false, nil
+	}
+	d, ok := t.Divisions[division]
+	if !ok {
+		return false, entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, division)
+	}
+	return d.DivisionManager.IsRoundComplete(round)
+}
+
 func makeTournamentPersons(persons map[string]int32) *ipc.TournamentPersons {
 	tp := &ipc.TournamentPersons{}
 	for key, value := range persons {
@@ -555,7 +576,7 @@ func TestTournamentSingleDivision(t *testing.T) {
 	is.NoErr(err)
 	is.True(isStarted)
 
-	isRoundComplete, err := tournament.IsRoundComplete(ctx, tstore, ty.UUID, divOneName, 0)
+	isRoundComplete, err := roundComplete(ctx, tstore, ty.UUID, divOneName, 0)
 	is.NoErr(err)
 	is.True(!isRoundComplete)
 
@@ -578,7 +599,7 @@ func TestTournamentSingleDivision(t *testing.T) {
 		nil, stores.Queries)
 	is.NoErr(err)
 
-	isRoundComplete, err = tournament.IsRoundComplete(ctx, tstore, ty.UUID, divOneName, 0)
+	isRoundComplete, err = roundComplete(ctx, tstore, ty.UUID, divOneName, 0)
 	is.NoErr(err)
 	is.True(isRoundComplete)
 
@@ -637,7 +658,7 @@ func TestTournamentSingleDivision(t *testing.T) {
 		nil, stores.Queries)
 	is.NoErr(err)
 
-	isRoundComplete, err = tournament.IsRoundComplete(ctx, tstore, ty.UUID, divOneName, 1)
+	isRoundComplete, err = roundComplete(ctx, tstore, ty.UUID, divOneName, 1)
 	is.NoErr(err)
 	is.True(isRoundComplete)
 
@@ -663,7 +684,7 @@ func TestTournamentSingleDivision(t *testing.T) {
 	is.NoErr(err)
 
 	// See if round is complete for division that does not exist
-	_, err = tournament.IsRoundComplete(ctx, tstore, ty.UUID, divOneName+"yah", 0)
+	_, err = roundComplete(ctx, tstore, ty.UUID, divOneName+"yah", 0)
 	is.True(err.Error() == entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, tournamentName, divOneName+"yah").Error())
 
 	isFinished, err := tournament.IsFinished(ctx, tstore, ty.UUID)
@@ -823,11 +844,11 @@ func TestTournamentMultipleDivisions(t *testing.T) {
 		nil, stores.Queries)
 	is.NoErr(err)
 
-	divOneComplete, err := tournament.IsRoundComplete(ctx, tstore, ty.UUID, divOneName, 0)
+	divOneComplete, err := roundComplete(ctx, tstore, ty.UUID, divOneName, 0)
 	is.NoErr(err)
 	is.True(divOneComplete)
 
-	divTwoComplete, err := tournament.IsRoundComplete(ctx, tstore, ty.UUID, divTwoName, 0)
+	divTwoComplete, err := roundComplete(ctx, tstore, ty.UUID, divTwoName, 0)
 	is.NoErr(err)
 	is.True(divTwoComplete)
 }

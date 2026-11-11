@@ -245,15 +245,15 @@ func (s *DBStore) TournamentEventChan() chan<- *entity.EventWrapper {
 // ones, so clearing a description or a scheduled time is saved. (Gorm's
 // Updates skipped zero values, so those changes reached the cache but not the
 // database.) Only lockedTournament.Save calls it, inside the change's
-// transaction.
-func (s *DBStore) update(ctx context.Context, q *models.Queries, tm *entity.Tournament) error {
+// transaction. It returns the size of the divisions it wrote.
+func (s *DBStore) update(ctx context.Context, q *models.Queries, tm *entity.Tournament) (int, error) {
 	dbt, err := s.toDBObj(tm)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	log.Info().Str("tid", tm.UUID).Bool("finished", tm.IsFinished).Msg("db-set-tournament")
 
-	return q.UpdateTournament(ctx, models.UpdateTournamentParams{
+	return len(dbt.Divisions), q.UpdateTournament(ctx, models.UpdateTournamentParams{
 		Name:               dbt.Name,
 		Description:        dbt.Description,
 		AliasOf:            dbt.AliasOf,

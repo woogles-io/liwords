@@ -1808,29 +1808,6 @@ func IsStarted(ctx context.Context, ts TournamentStore, id string) (bool, error)
 	return t.IsStarted, nil
 }
 
-func IsRoundComplete(ctx context.Context, ts TournamentStore, id string, division string, round int) (bool, error) {
-	t, err := ts.Get(ctx, id)
-	if err != nil {
-		return false, err
-	}
-
-	if t.IsFinished {
-		return true, nil
-	}
-
-	if !t.IsStarted {
-		return false, nil
-	}
-
-	_, ok := t.Divisions[division]
-
-	if !ok {
-		return false, entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, division)
-	}
-
-	return t.Divisions[division].DivisionManager.IsRoundComplete(round)
-}
-
 func SetFinished(ctx context.Context, ts TournamentStore, id string) error {
 	t, lk, err := ts.GetForUpdate(ctx, id)
 	if err != nil {

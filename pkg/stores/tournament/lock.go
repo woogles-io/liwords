@@ -46,6 +46,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/woogles-io/liwords/pkg/entity"
 	tl "github.com/woogles-io/liwords/pkg/tournament"
@@ -142,7 +143,7 @@ func (s *DBStore) GetForUpdate(ctx context.Context, id string) (*entity.Tourname
 	}
 	span.AddEvent("local-lock")
 
-	tm, tx, err := s.lockAndLoad(ctx, id)
+	tm, tx, err := s.lockAndLoad(ctx, span, id)
 	if err != nil {
 		unlock()
 		span.SetStatus(codes.Error, err.Error())
@@ -151,7 +152,11 @@ func (s *DBStore) GetForUpdate(ctx context.Context, id string) (*entity.Tourname
 	return tm, &lockedTournament{s: s, tx: tx, tm: tm, unlock: unlock}, nil
 }
 
-func (s *DBStore) lockAndLoad(ctx context.Context, id string) (*entity.Tournament, pgx.Tx, error) {
+// lockAndLoad marks the span when the advisory lock is taken, so a trace
+// splits GetForUpdate into the wait on this server ("local-lock"), the wait
+// on other servers ("advisory-lock") and the load (the rest). The load's
+// size is in tournament.divisions_bytes, as for Get.
+func (s *DBStore) lockAndLoad(ctx context.Context, span trace.Span, id string) (*entity.Tournament, pgx.Tx, error) {
 	tx, err := s.dbPool.Begin(ctx)
 	if err != nil {
 		return nil, nil, err
@@ -168,10 +173,12 @@ func (s *DBStore) lockAndLoad(ctx context.Context, id string) (*entity.Tournamen
 	if err := q.LockTournament(ctx, id); err != nil {
 		return fail(err)
 	}
+	span.AddEvent("advisory-lock")
 	row, err := q.GetTournamentByUUID(ctx, text(id))
 	if err != nil {
 		return fail(err)
 	}
+	span.SetAttributes(attribute.Int("tournament.divisions_bytes", len(row.Divisions)))
 	tm, err := s.dbObjToEntity(&row)
 	if err != nil {
 		return fail(err)
@@ -195,10 +202,12 @@ func (l *lockedTournament) Save(ctx context.Context) error {
 	ctx, span := startSpan(ctx, "Save", l.tm.UUID)
 	defer span.End()
 	defer l.Release()
-	if err := l.s.update(ctx, l.s.queries.WithTx(l.tx), l.tm); err != nil {
+	size, err := l.s.update(ctx, l.s.queries.WithTx(l.tx), l.tm)
+	if err != nil {
 		span.SetStatus(codes.Error, err.Error())
 		return err
 	}
+	span.SetAttributes(attribute.Int("tournament.divisions_bytes", size))
 	if err := l.tx.Commit(ctx); err != nil {
 		span.SetStatus(codes.Error, err.Error())
 		return err
