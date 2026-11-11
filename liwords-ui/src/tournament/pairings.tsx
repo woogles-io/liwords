@@ -595,26 +595,6 @@ export const Pairings = React.memo((props: Props) => {
     pairings,
   );
 
-  // For directors: who the open games are waiting on.
-  const opponentWaiting: string[] = [];
-  let neitherReady = 0;
-  if (props.isDirector) {
-    for (const pairing of pairings) {
-      if (!awaitingReady(pairing)) {
-        continue;
-      }
-      // readyStates may be empty: no one has readied.
-      const ready = [0, 1].map((i) => !!pairing.readyStates[i]);
-      if (ready[0] !== ready[1]) {
-        opponentWaiting.push(
-          usernameFromPlayerEntry(pairing.players[ready[0] ? 1 : 0].id),
-        );
-      } else if (!ready[0]) {
-        neitherReady++;
-      }
-    }
-  }
-
   const selectedDivisionData = divisions[props.selectedDivision];
   const laggedBasis =
     selectedDivisionData &&
@@ -629,14 +609,6 @@ export const Pairings = React.memo((props: Props) => {
           {laggedBasis < 0
             ? "Paired from the initial seeding, before any results"
             : `Paired from results through round ${laggedBasis + 1}`}
-        </p>
-      )}
-      {(opponentWaiting.length > 0 || neitherReady > 0) && (
-        <p className="readable-text-color ready-summary">
-          {opponentWaiting.length > 0 &&
-            `Opponent ready, waiting on: ${opponentWaiting.join(", ")}. `}
-          {neitherReady > 0 &&
-            `${neitherReady} ${neitherReady === 1 ? "game" : "games"} with neither player ready.`}
         </p>
       )}
       {props.tentative && tableData.length > 0 && (

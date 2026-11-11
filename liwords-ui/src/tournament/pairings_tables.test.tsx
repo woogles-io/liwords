@@ -143,7 +143,7 @@ describe("the pairings' table numbers", () => {
   });
 });
 
-describe("who directors are waiting on", () => {
+describe("who has clicked ready", () => {
   // Round 2 open: alan has clicked ready, ken hasn't; donald and barbara
   // neither; edsger has the bye.
   const renderReady = (isDirector: boolean) => {
@@ -163,21 +163,15 @@ describe("who directors are waiting on", () => {
     );
   };
 
-  it("shows directors who has readied and whom the games wait on", () => {
+  it("shows directors who has readied", () => {
     renderReady(true);
-    expect(
-      screen.getByText(
-        "Opponent ready, waiting on: ken. 1 game with neither player ready.",
-      ),
-    ).toBeTruthy();
     const marks = screen.getAllByLabelText("Ready");
     expect(marks).toHaveLength(1);
     expect(marks[0].closest("p")?.textContent).toContain("alan");
   });
 
-  it("shows players neither", () => {
+  it("doesn't show players", () => {
     renderReady(false);
-    expect(screen.queryByText(/waiting on/)).toBeNull();
     expect(screen.queryByLabelText("Ready")).toBeNull();
   });
 });
