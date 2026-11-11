@@ -173,3 +173,18 @@ func TestSetReadyReportsTheFlag(t *testing.T) {
 	is.NoErr(err)
 	is.Equal(rf, 3)
 }
+
+// A ready message goes to every director once, except a director who is one
+// of the two players and was sent it as a player.
+func TestReadyDirectorRecipients(t *testing.T) {
+	is := is.New(t)
+	directors := &pb.TournamentPersons{Persons: []*pb.TournamentPerson{
+		{Id: "dir1:alice"},
+		{Id: "p1:bob"}, // directs and plays
+		{Id: "dir2:carol"},
+		{Id: "dir1:alice"},
+	}}
+	players := []string{"p1:bob:conn1", "p2:dave:"}
+	is.Equal(readyDirectorRecipients(directors, players), []string{"dir1", "dir2"})
+	is.Equal(len(readyDirectorRecipients(nil, players)), 0)
+}

@@ -363,6 +363,23 @@ it("accepts a ready for the current round", () => {
   expect(readyStateOf(newState, joshID, 1)).toBe("ready");
 });
 
+// A director sees ready messages for pairings they aren't in.
+it("applies a ready message about another pairing, as a director sees it", () => {
+  const state = nwlRound2State(0);
+  const asViewer = (unready: boolean) => {
+    const action = readyForRound(joshID, 1);
+    action.payload.ready.unready = unready;
+    return {
+      ...action,
+      payload: { ...action.payload, loginState: cesarLoginState() },
+    };
+  };
+  const readied = TournamentReducer(state, asViewer(false));
+  expect(readyStateOf(readied, joshID, 1)).toBe("ready");
+  const unreadied = TournamentReducer(readied, asViewer(true));
+  expect(readyStateOf(unreadied, joshID, 1)).toBe("");
+});
+
 // A pairings message for josh's round 2 pairing, with the ready states empty
 // as the server sends them, and no result.
 const joshPairingUpdate = (state: TournamentState) => {

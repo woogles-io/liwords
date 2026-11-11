@@ -1083,9 +1083,51 @@ func (b *Bus) deleteTournamentReadyMsgs(ctx context.Context, userID, connID stri
 				uuid, _, _ := strings.Cut(p, ":")
 				b.pubToUser(uuid, evt, "")
 			}
+			header, err := b.stores.TournamentStore.GetHeader(ctx, r.TournamentID)
+			if err != nil {
+				log.Err(err).Str("tid", r.TournamentID).Msg("unready-directors-lookup")
+				continue
+			}
+			b.pubReadyToDirectors(header.Directors, r.TournamentID, evt, r.Players[:])
 		}
 	}
 	return nil
+}
+
+// pubReadyToDirectors sends a ready or unready message to the tournament's
+// directors as well as the two players, so they can see who hasn't readied
+// yet. Only their connections on the tournament (or one of its games) get
+// it.
+func (b *Bus) pubReadyToDirectors(directors *pb.TournamentPersons, tid string,
+	evt *entity.EventWrapper, players []string) {
+	for _, uuid := range readyDirectorRecipients(directors, players) {
+		b.pubToUser(uuid, evt, "tournament."+tid)
+	}
+}
+
+// readyDirectorRecipients returns the user IDs of the directors to send a
+// ready message to: each once, and not the pairing's players, who were sent
+// it already. Player and director IDs are "uuid:username", and players may
+// carry a connection ID after that.
+func readyDirectorRecipients(directors *pb.TournamentPersons, players []string) []string {
+	if directors == nil {
+		return nil
+	}
+	sent := map[string]bool{}
+	for _, p := range players {
+		uuid, _, _ := strings.Cut(p, ":")
+		sent[uuid] = true
+	}
+	var ids []string
+	for _, d := range directors.Persons {
+		uuid, _, _ := strings.Cut(d.Id, ":")
+		if uuid == "" || sent[uuid] {
+			continue
+		}
+		sent[uuid] = true
+		ids = append(ids, uuid)
+	}
+	return ids
 }
 
 func (b *Bus) leaveSite(ctx context.Context, userID string) error {
