@@ -1410,6 +1410,19 @@ func (t *ClassicDivision) pairRoundWithCOP(round int, keptPlayers map[string]boo
 		pmessage = combinePairingMessages(pmessage, newPairingMessage)
 	}
 
+	// A suspended player gets the division's suspended result, as with
+	// every other pairing method.
+	for i := 0; i < len(t.Players.Persons); i++ {
+		player := t.Players.Persons[i]
+		if player.Suspended && roundPairings[i] == "" {
+			newPairingMessage, err := t.SetPairing(player.Id, player.Id, round, pb.TournamentGameResult_NO_RESULT)
+			if err != nil {
+				return nil, err
+			}
+			pmessage = combinePairingMessages(pmessage, newPairingMessage)
+		}
+	}
+
 	// Verify all non-suspended players are paired
 	for i := 0; i < len(t.Players.Persons); i++ {
 		player := t.Players.Persons[i]
