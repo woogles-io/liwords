@@ -2,6 +2,7 @@ package tournament
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"maps"
 	"math/rand/v2"
@@ -14,7 +15,6 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/pair"
-	"github.com/woogles-io/liwords/pkg/pair/cop"
 	"github.com/woogles-io/liwords/pkg/utilities"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
@@ -65,6 +65,9 @@ type ClassicDivision struct {
 	// the last TakeAutoPairingFailures. Those failures don't fail the
 	// action that triggered them, so the caller reports them instead.
 	autoPairingFailures []int
+	// cop answers COP requests for the change in progress, so COP can run
+	// outside the tournament's lock (cop_answers.go). Nil runs COP directly.
+	cop *copAnswers
 }
 
 func NewClassicDivision(tournamentName string, divisionName string) *ClassicDivision {
@@ -1298,7 +1301,12 @@ func (t *ClassicDivision) pairRoundWithCOP(round int, preserveByes bool) (*pb.Di
 
 	// Call COP pairing algorithm
 	log.Info().Str("tournament", t.TournamentName).Str("division", t.DivisionName).Int("round", round+1).Msg("calling COP pairing algorithm")
-	pairResponse := cop.COPPair(pairRequest)
+	pairResponse, err := t.cop.pair(pairRequest)
+	if err != nil {
+		// Deferred: the change is applied again once COP has run outside
+		// the lock. The caller puts the round back as it was.
+		return nil, err
+	}
 	log.Info().Str("tournament", t.TournamentName).Str("division", t.DivisionName).Int("round", round+1).Msg("returned from COP pairing algorithm")
 
 	if pairResponse.ErrorCode != pb.PairError_SUCCESS {
@@ -1826,6 +1834,11 @@ func (t *ClassicDivision) PairLaggedRoundAfter(round int) (*pb.DivisionPairingsR
 // recordAutoPairingFailure notes that follow-on pairing failed to pair the
 // round, which keeps the pairings it had. See TakeAutoPairingFailures.
 func (t *ClassicDivision) recordAutoPairingFailure(round int, err error) {
+	if errors.Is(err, errCOPDeferred) {
+		// Not a failure: the change will be applied again with COP's answer.
+		t.autoPairingFailures = append(t.autoPairingFailures, round)
+		return
+	}
 	log.Err(err).Str("tournament", t.TournamentName).Str("division", t.DivisionName).
 		Int("round", round+1).Msg("auto-pair-failed")
 	t.autoPairingFailures = append(t.autoPairingFailures, round)
