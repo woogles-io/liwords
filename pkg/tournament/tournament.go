@@ -23,7 +23,6 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
-	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
@@ -45,13 +44,15 @@ type ActiveMonitoringStream struct {
 }
 
 type TournamentStore interface {
+	// Get loads the tournament to read. Every call loads it from the
+	// database; there is no cache. Changes go through LockForChange.
 	Get(context.Context, string) (*entity.Tournament, error)
 	GetBySlug(context.Context, string) (*entity.Tournament, error)
 	// GetHeader is the tournament without its divisions.
 	GetHeader(ctx context.Context, id string) (*entity.TournamentHeader, error)
 	GetUUIDBySlug(ctx context.Context, slug string) (string, error)
 	// GetSummary and GetSummaryBySlug have divisions with players and
-	// controls, but no pairings or standings. Never save them.
+	// controls, but no pairings or standings.
 	GetSummary(ctx context.Context, id string) (*entity.Tournament, error)
 	GetSummaryBySlug(ctx context.Context, slug string) (*entity.Tournament, error)
 
@@ -61,10 +62,11 @@ type TournamentStore interface {
 	ClearReady(ctx context.Context, tid, division string, round int, playerID string) error
 	UnreadyConnection(ctx context.Context, connID string) ([]entity.TournamentReady, error)
 	WaitingReady(ctx context.Context, tid string) ([]entity.TournamentReady, error)
-	Set(context.Context, *entity.Tournament) error
+	// LockForChange loads the tournament for a change, under its lock. See
+	// pkg/stores/tournament/lock.go: run no queries between it and Save.
+	LockForChange(ctx context.Context, id string) (*entity.Tournament, TournamentLock, error)
 	Create(context.Context, *entity.Tournament) error
 	GetRecentGames(ctx context.Context, tourneyID string, numGames int, offset int) (*pb.RecentGamesResponse, error)
-	Unload(context.Context, string)
 	SetTournamentEventChan(c chan<- *entity.EventWrapper)
 	TournamentEventChan() chan<- *entity.EventWrapper
 	ListAllIDs(context.Context) ([]string, error)
@@ -87,6 +89,15 @@ type TournamentStore interface {
 	GetMonitoringStream(ctx context.Context, tournamentID, userID string) (*ipc.MonitoringData, error)
 	DeleteMonitoringStreamsForTournament(ctx context.Context, tournamentID string) error
 	GetActiveMonitoringStreams(ctx context.Context) ([]ActiveMonitoringStream, error)
+}
+
+// TournamentLock holds a tournament loaded by LockForChange.
+type TournamentLock interface {
+	// Save writes the tournament, commits, and releases the lock.
+	Save(ctx context.Context) error
+	// Release abandons the change if it wasn't saved, and releases the
+	// lock. It does nothing after Save, so it can always be deferred.
+	Release()
 }
 
 func md5hash(s string) string {
@@ -164,6 +175,8 @@ func NewTournament(ctx context.Context,
 //
 // It doesn't check that the tournament exists: every caller has just loaded
 // or saved it, and without the cache a check would load it a second time.
+// Call it after Save, never while holding a tournament from LockForChange:
+// the channel can block.
 func SendTournamentMessage(ctx context.Context, ts TournamentStore, id string, wrapped *entity.EventWrapper) error {
 	eventChannel := ts.TournamentEventChan()
 
@@ -196,13 +209,11 @@ func SetTournamentMetadata(ctx context.Context, ts TournamentStore, meta *pb.Tou
 		}
 	}
 
-	t, err := ts.Get(ctx, meta.Id)
+	t, lk, err := ts.LockForChange(ctx, meta.Id)
 	if err != nil {
 		return err
 	}
-
-	t.Lock()
-	defer t.Unlock()
+	defer lk.Release()
 	name := strings.TrimSpace(meta.Name)
 	if name == "" && !merge {
 		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_EMPTY_NAME, t.Name)
@@ -287,14 +298,11 @@ func SetTournamentMetadata(ctx context.Context, ts TournamentStore, meta *pb.Tou
 		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_SCHEDULED_START_AFTER_END, t.Name)
 	}
 
-	err = ts.Set(ctx, t)
+	err = lk.Save(ctx)
 	if err != nil {
 		return err
 	}
-	tdevt, err := TournamentDataResponse(ctx, ts, meta.Id)
-	if err != nil {
-		return err
-	}
+	tdevt := tournamentDataResponse(t)
 	wrapped := entity.WrapEvent(tdevt, ipc.MessageType_TOURNAMENT_MESSAGE)
 	return SendTournamentMessage(ctx, ts, meta.Id, wrapped)
 }
@@ -304,13 +312,11 @@ func SetTournamentMetadata(ctx context.Context, ts TournamentStore, meta *pb.Tou
 // ClassicDivision.SetSingleRoundControls).
 func SetSingleRoundControls(ctx context.Context, ts TournamentStore, id string, division string, round int, controls *ipc.RoundControl) (bool, []string, error) {
 
-	t, err := ts.Get(ctx, id)
+	t, lk, err := ts.LockForChange(ctx, id)
 	if err != nil {
 		return false, nil, err
 	}
-
-	t.Lock()
-	defer t.Unlock()
+	defer lk.Release()
 
 	if t.IsFinished {
 		return false, nil, entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_FINISHED, t.Name, division)
@@ -339,7 +345,7 @@ func SetSingleRoundControls(ctx context.Context, ts TournamentStore, id string, 
 		return false, nil, err
 	}
 
-	err = ts.Set(ctx, t)
+	err = lk.Save(ctx)
 	if err != nil {
 		return false, nil, err
 	}
@@ -374,13 +380,11 @@ func SetSingleRoundControls(ctx context.Context, ts TournamentStore, id string, 
 }
 
 func SetRoundControls(ctx context.Context, ts TournamentStore, id string, division string, roundControls []*ipc.RoundControl) error {
-	t, err := ts.Get(ctx, id)
+	t, lk, err := ts.LockForChange(ctx, id)
 	if err != nil {
 		return err
 	}
-
-	t.Lock()
-	defer t.Unlock()
+	defer lk.Release()
 
 	if t.IsFinished {
 		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_FINISHED, t.Name, division)
@@ -400,7 +404,7 @@ func SetRoundControls(ctx context.Context, ts TournamentStore, id string, divisi
 		return err
 	}
 
-	err = ts.Set(ctx, t)
+	err = lk.Save(ctx)
 	if err != nil {
 		return err
 	}
@@ -415,13 +419,11 @@ func SetRoundControls(ctx context.Context, ts TournamentStore, id string, divisi
 
 func SetDivisionControls(ctx context.Context, ts TournamentStore, id string, division string, controls *ipc.DivisionControls) error {
 
-	t, err := ts.Get(ctx, id)
+	t, lk, err := ts.LockForChange(ctx, id)
 	if err != nil {
 		return err
 	}
-
-	t.Lock()
-	defer t.Unlock()
+	defer lk.Release()
 
 	if t.IsFinished {
 		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_FINISHED, t.Name, division)
@@ -442,7 +444,7 @@ func SetDivisionControls(ctx context.Context, ts TournamentStore, id string, div
 	if err != nil {
 		return err
 	}
-	err = ts.Set(ctx, t)
+	err = lk.Save(ctx)
 	if err != nil {
 		return err
 	}
@@ -457,13 +459,11 @@ func SetDivisionControls(ctx context.Context, ts TournamentStore, id string, div
 }
 
 func AddDivision(ctx context.Context, ts TournamentStore, id string, division string) error {
-	t, err := ts.Get(ctx, id)
+	t, lk, err := ts.LockForChange(ctx, id)
 	if err != nil {
 		return err
 	}
-
-	t.Lock()
-	defer t.Unlock()
+	defer lk.Release()
 
 	if t.IsFinished {
 		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_FINISHED, t.Name, division)
@@ -484,7 +484,7 @@ func AddDivision(ctx context.Context, ts TournamentStore, id string, division st
 
 	t.Divisions[division] = &entity.TournamentDivision{DivisionManager: NewClassicDivision(t.Name, division)}
 
-	err = ts.Set(ctx, t)
+	err = lk.Save(ctx)
 	if err != nil {
 		return err
 	}
@@ -499,13 +499,11 @@ func AddDivision(ctx context.Context, ts TournamentStore, id string, division st
 }
 
 func RenameDivision(ctx context.Context, ts TournamentStore, id string, division, newName string) error {
-	t, err := ts.Get(ctx, id)
+	t, lk, err := ts.LockForChange(ctx, id)
 	if err != nil {
 		return err
 	}
-
-	t.Lock()
-	defer t.Unlock()
+	defer lk.Release()
 
 	if t.IsFinished {
 		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_FINISHED, t.Name, division)
@@ -543,7 +541,7 @@ func RenameDivision(ctx context.Context, ts TournamentStore, id string, division
 	t.Divisions[newName] = div
 	delete(t.Divisions, division)
 
-	err = ts.Set(ctx, t)
+	err = lk.Save(ctx)
 	if err != nil {
 		return err
 	}
@@ -568,13 +566,11 @@ func RenameDivision(ctx context.Context, ts TournamentStore, id string, division
 }
 
 func RemoveDivision(ctx context.Context, ts TournamentStore, id string, division string) error {
-	t, err := ts.Get(ctx, id)
+	t, lk, err := ts.LockForChange(ctx, id)
 	if err != nil {
 		return err
 	}
-
-	t.Lock()
-	defer t.Unlock()
+	defer lk.Release()
 
 	if t.IsFinished {
 		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_FINISHED, t.Name, division)
@@ -594,7 +590,7 @@ func RemoveDivision(ctx context.Context, ts TournamentStore, id string, division
 	}
 
 	delete(t.Divisions, division)
-	err = ts.Set(ctx, t)
+	err = lk.Save(ctx)
 	if err != nil {
 		return err
 	}
@@ -604,22 +600,58 @@ func RemoveDivision(ctx context.Context, ts TournamentStore, id string, division
 	return SendTournamentMessage(ctx, ts, id, wrapped)
 }
 
-func constructFullID(tournamentName string, divisionName string, ctx context.Context, us user.Store, user string) (string, string, error) {
-	u, err := us.Get(ctx, user)
-	if err != nil {
-		return "", "", entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_PLAYER_ID_CONSTRUCTION, tournamentName, divisionName, user)
+// lookupFullIDs looks up the tournament IDs (uuid:username) of the named
+// users. It runs before LockForChange, since no queries may run while a
+// tournament is held. A user who can't be found is left out, and fullID
+// reports them once the tournament's name is known.
+func lookupFullIDs(ctx context.Context, us user.Store, usernames ...string) map[string]string {
+	ids := make(map[string]string, len(usernames))
+	for _, name := range usernames {
+		if _, ok := ids[name]; ok {
+			continue
+		}
+		if u, err := us.Get(ctx, name); err == nil {
+			ids[name] = u.TournamentID()
+		}
 	}
-	return u.TournamentID(), u.UUID, nil
+	return ids
+}
+
+// lookupPlayerIDs is lookupFullIDs for players, who in IRL tournaments have
+// no Woogles account: it looks them up only if the tournament isn't IRL.
+func lookupPlayerIDs(ctx context.Context, ts TournamentStore, us user.Store, id string, usernames ...string) (map[string]string, error) {
+	h, err := ts.GetHeader(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if h.ExtraMeta != nil && h.ExtraMeta.IRLMode {
+		return nil, nil
+	}
+	return lookupFullIDs(ctx, us, usernames...), nil
+}
+
+func lookedUpID(ids map[string]string, tournamentName, divisionName, username string) (string, error) {
+	if id, ok := ids[username]; ok {
+		return id, nil
+	}
+	return "", entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_PLAYER_ID_CONSTRUCTION, tournamentName, divisionName, username)
+}
+
+func personIDs(persons *ipc.TournamentPersons) []string {
+	ids := make([]string, len(persons.GetPersons()))
+	for i, p := range persons.GetPersons() {
+		ids[i] = p.Id
+	}
+	return ids
 }
 
 func AddDirectors(ctx context.Context, ts TournamentStore, us user.Store, id string, directors *ipc.TournamentPersons) error {
-	t, err := ts.Get(ctx, id)
+	ids := lookupFullIDs(ctx, us, personIDs(directors)...)
+	t, lk, err := ts.LockForChange(ctx, id)
 	if err != nil {
 		return err
 	}
-
-	t.Lock()
-	defer t.Unlock()
+	defer lk.Release()
 
 	if t.IsFinished {
 		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_FINISHED, t.Name, "")
@@ -627,7 +659,7 @@ func AddDirectors(ctx context.Context, ts TournamentStore, us user.Store, id str
 	// Only perform the add operation if all persons can be added.
 
 	for _, director := range directors.Persons {
-		fullID, _, err := constructFullID(t.Name, "", ctx, us, director.Id)
+		fullID, err := lookedUpID(ids, t.Name, "", director.Id)
 		if err != nil {
 			return err
 		}
@@ -647,35 +679,31 @@ func AddDirectors(ctx context.Context, ts TournamentStore, us user.Store, id str
 
 	t.Directors.Persons = append(t.Directors.Persons, directors.Persons...)
 
-	err = ts.Set(ctx, t)
+	err = lk.Save(ctx)
 	if err != nil {
 		return err
 	}
 
-	tdevt, err := TournamentDataResponse(ctx, ts, id)
-	if err != nil {
-		return err
-	}
+	tdevt := tournamentDataResponse(t)
 
 	wrapped := entity.WrapEvent(tdevt, ipc.MessageType_TOURNAMENT_MESSAGE)
 	return SendTournamentMessage(ctx, ts, id, wrapped)
 }
 
 func RemoveDirectors(ctx context.Context, ts TournamentStore, us user.Store, id string, directors *ipc.TournamentPersons) error {
-	t, err := ts.Get(ctx, id)
+	ids := lookupFullIDs(ctx, us, personIDs(directors)...)
+	t, lk, err := ts.LockForChange(ctx, id)
 	if err != nil {
 		return err
 	}
-
-	t.Lock()
-	defer t.Unlock()
+	defer lk.Release()
 
 	if t.IsFinished {
 		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_FINISHED, t.Name, "")
 	}
 
 	for _, newDirector := range directors.Persons {
-		newDirectorfullID, _, err := constructFullID(t.Name, "", ctx, us, newDirector.Id)
+		newDirectorfullID, err := lookedUpID(ids, t.Name, "", newDirector.Id)
 		if err != nil {
 			return err
 		}
@@ -689,26 +717,25 @@ func RemoveDirectors(ctx context.Context, ts TournamentStore, us user.Store, id 
 
 	t.Directors = newDirectors
 
-	err = ts.Set(ctx, t)
+	err = lk.Save(ctx)
 	if err != nil {
 		return err
 	}
-	tdevt, err := TournamentDataResponse(ctx, ts, id)
-	if err != nil {
-		return err
-	}
+	tdevt := tournamentDataResponse(t)
 	wrapped := entity.WrapEvent(tdevt, ipc.MessageType_TOURNAMENT_MESSAGE)
 	return SendTournamentMessage(ctx, ts, id, wrapped)
 }
 
 func AddPlayers(ctx context.Context, ts TournamentStore, us user.Store, id string, division string, players *ipc.TournamentPersons) error {
-	t, err := ts.Get(ctx, id)
+	ids, err := lookupPlayerIDs(ctx, ts, us, id, personIDs(players)...)
 	if err != nil {
 		return err
 	}
-
-	t.Lock()
-	defer t.Unlock()
+	t, lk, err := ts.LockForChange(ctx, id)
+	if err != nil {
+		return err
+	}
+	defer lk.Release()
 
 	if t.IsFinished {
 		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_FINISHED, t.Name, division)
@@ -764,7 +791,7 @@ func AddPlayers(ctx context.Context, ts TournamentStore, us user.Store, id strin
 				newIRLIDs = append(newIRLIDs, fullID)
 			}
 		} else {
-			fullID, _, err = constructFullID(t.Name, division, ctx, us, player.Id)
+			fullID, err = lookedUpID(ids, t.Name, division, player.Id)
 			if err != nil {
 				return err
 			}
@@ -789,7 +816,7 @@ func AddPlayers(ctx context.Context, ts TournamentStore, us user.Store, id strin
 	// 	}
 	// }
 
-	err = ts.Set(ctx, t)
+	err = lk.Save(ctx)
 	if err != nil {
 		return err
 	}
@@ -812,13 +839,15 @@ func AddPlayers(ctx context.Context, ts TournamentStore, us user.Store, id strin
 }
 
 func RemovePlayers(ctx context.Context, ts TournamentStore, us user.Store, id string, division string, players *ipc.TournamentPersons) error {
-	t, err := ts.Get(ctx, id)
+	ids, err := lookupPlayerIDs(ctx, ts, us, id, personIDs(players)...)
 	if err != nil {
 		return err
 	}
-
-	t.Lock()
-	defer t.Unlock()
+	t, lk, err := ts.LockForChange(ctx, id)
+	if err != nil {
+		return err
+	}
+	defer lk.Release()
 
 	if t.IsFinished {
 		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_FINISHED, t.Name, division)
@@ -840,7 +869,7 @@ func RemovePlayers(ctx context.Context, ts TournamentStore, us user.Store, id st
 		if t.ExtraMeta.IRLMode {
 			fullID = irlPlayerIDOrDefault(t, division, player.Id)
 		} else {
-			fullID, _, err = constructFullID(t.Name, division, ctx, us, player.Id)
+			fullID, err = lookedUpID(ids, t.Name, division, player.Id)
 			if err != nil {
 				return err
 			}
@@ -862,7 +891,7 @@ func RemovePlayers(ctx context.Context, ts TournamentStore, us user.Store, id st
 	// 	}
 	// }
 
-	err = ts.Set(ctx, t)
+	err = lk.Save(ctx)
 	if err != nil {
 		return err
 	}
@@ -888,13 +917,15 @@ func RemovePlayers(ctx context.Context, ts TournamentStore, us user.Store, id st
 // username (or name, in IRL mode), as with RemovePlayers. Any nil field is
 // left unchanged.
 func EditPlayer(ctx context.Context, ts TournamentStore, us user.Store, id string, division string, playerID string, rating *int32, newName *string, team *string) error {
-	t, err := ts.Get(ctx, id)
+	ids, err := lookupPlayerIDs(ctx, ts, us, id, playerID)
 	if err != nil {
 		return err
 	}
-
-	t.Lock()
-	defer t.Unlock()
+	t, lk, err := ts.LockForChange(ctx, id)
+	if err != nil {
+		return err
+	}
+	defer lk.Release()
 
 	// Edits are allowed on finished tournaments so directors can fix names
 	// and ratings after the fact.
@@ -911,14 +942,14 @@ func EditPlayer(ctx context.Context, ts TournamentStore, us user.Store, id strin
 	if t.ExtraMeta.IRLMode {
 		fullID = irlPlayerIDOrDefault(t, division, playerID)
 	} else {
-		fullID, _, err = constructFullID(t.Name, division, ctx, us, playerID)
+		fullID, err = lookedUpID(ids, t.Name, division, playerID)
 		if err != nil {
 			return err
 		}
 	}
 
-	// Validate the rename before changing anything, so a rejected edit
-	// doesn't leave a half-applied change on the cached tournament.
+	// Validate the rename before changing anything. (A rejected edit is
+	// never saved, but checking first keeps the errors in a clear order.)
 	newID := ""
 	if newName != nil {
 		// Online, a player's ID is their Woogles user, so a "rename" would
@@ -965,7 +996,7 @@ func EditPlayer(ctx context.Context, ts TournamentStore, us user.Store, id strin
 		}
 	}
 
-	err = ts.Set(ctx, t)
+	err = lk.Save(ctx)
 	if err != nil {
 		return err
 	}
@@ -1048,13 +1079,15 @@ func newIRLPlayerID(t *entity.Tournament, pending []string, name string) string 
 }
 
 func MovePlayer(ctx context.Context, ts TournamentStore, us user.Store, id string, sourceDivision string, targetDivision string, playerID string) error {
-	t, err := ts.Get(ctx, id)
+	ids, err := lookupPlayerIDs(ctx, ts, us, id, playerID)
 	if err != nil {
 		return err
 	}
-
-	t.Lock()
-	defer t.Unlock()
+	t, lk, err := ts.LockForChange(ctx, id)
+	if err != nil {
+		return err
+	}
+	defer lk.Release()
 
 	if t.IsFinished {
 		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_FINISHED, t.Name, sourceDivision)
@@ -1094,7 +1127,7 @@ func MovePlayer(ctx context.Context, ts TournamentStore, us user.Store, id strin
 	if t.ExtraMeta.IRLMode {
 		fullID = irlPlayerIDOrDefault(t, sourceDivision, playerID)
 	} else {
-		fullID, _, err = constructFullID(t.Name, sourceDivision, ctx, us, playerID)
+		fullID, err = lookedUpID(ids, t.Name, sourceDivision, playerID)
 		if err != nil {
 			return err
 		}
@@ -1130,7 +1163,7 @@ func MovePlayer(ctx context.Context, ts TournamentStore, us user.Store, id strin
 		return err
 	}
 
-	err = ts.Set(ctx, t)
+	err = lk.Save(ctx)
 	if err != nil {
 		return err
 	}
@@ -1165,13 +1198,11 @@ func MovePlayer(ctx context.Context, ts TournamentStore, us user.Store, id strin
 // follow-on work that failed without failing the request.
 func SetPairings(ctx context.Context, ts TournamentStore, id string, division string, pairings []*pb.TournamentPairingRequest) ([]string, error) {
 
-	t, err := ts.Get(ctx, id)
+	t, lk, err := ts.LockForChange(ctx, id)
 	if err != nil {
 		return nil, err
 	}
-
-	t.Lock()
-	defer t.Unlock()
+	defer lk.Release()
 
 	if t.IsFinished {
 		return nil, entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_FINISHED, t.Name, division)
@@ -1234,7 +1265,7 @@ func SetPairings(ctx context.Context, ts TournamentStore, id string, division st
 	if err != nil {
 		return nil, err
 	}
-	err = ts.Set(ctx, t)
+	err = lk.Save(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -1267,32 +1298,30 @@ func SetResult(ctx context.Context,
 
 	log.Info().Str("tid", id).Str("playerOneId", playerOneId).Str("playerTwoId", playerTwoId).Msg("tSetResult")
 
-	t, err := ts.Get(ctx, id)
+	// Everything that needs a query happens before LockForChange. This runs
+	// at the end of a game, under the game's lock, which already holds one
+	// connection (see pkg/stores/tournament/lock.go).
+	h, err := ts.GetHeader(ctx, id)
 	if err != nil {
 		return err
 	}
-
-	t.Lock()
-	defer t.Unlock()
-
-	span.AddEvent("lock", trace.WithAttributes(attribute.String("tid", id)))
-
-	if t.IsFinished {
+	if h.IsFinished {
 		log.Error().Str("tid", id).Msg("cant-set-score-tournament-finished")
-		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_FINISHED, t.Name, division)
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_FINISHED, h.Name, division)
 	}
 	testMode := false
 	if strings.HasSuffix(os.Args[0], ".test") {
 		testMode = true
 	}
 
-	if !testMode && (t.Type == entity.TypeClub || t.Type == entity.TypeLegacy) {
+	if !testMode && (h.Type == entity.TypeClub || h.Type == entity.TypeLegacy) {
 		// This game was played in a legacy "Clubhouse".
 		// This is a tournament of "club" type (note, not a club *session*) or
 		// a tournament of "legacy" type.
 		// This is a casual type of tournament game with no defined divisions, pairings,
 		// game settings, etc, so we bypass all of this code and just send a
-		// tournament game ended message.
+		// tournament game ended message. Nothing is saved, so the tournament
+		// isn't locked.
 
 		p1user, err := us.GetByUUID(ctx, playerOneId)
 		if err != nil {
@@ -1334,6 +1363,47 @@ func SetResult(ctx context.Context,
 		return nil
 	}
 
+	// We need to send the division manager the "full" user ID, so look that up here.
+	// IRL mode can't change once there are players, so the header's setting
+	// still holds when the tournament is loaded.
+	// A lookup error is returned after the checks below, as before the
+	// lookups moved here.
+	var p1TID, p2TID string
+	var lookupErr error
+	if h.ExtraMeta != nil && h.ExtraMeta.IRLMode {
+		// note this is only the first part of the full tournamentt ID in this case
+		// we do not look up the player in the DB since IRLMode does not use
+		// Woogles IDs
+		p1TID = playerOneId
+		p2TID = playerTwoId
+	} else {
+		p1, err := us.GetByUUID(ctx, playerOneId)
+		if err == nil {
+			p1TID = p1.TournamentID()
+			var p2 *entity.User
+			p2, err = us.GetByUUID(ctx, playerTwoId)
+			if err == nil {
+				p2TID = p2.TournamentID()
+				log.Debug().Str("p1", p1.Username).Str("p2", p2.Username).Msg("after-get-by-uuid")
+			}
+		}
+		lookupErr = err
+	}
+
+	t, lk, err := ts.LockForChange(ctx, id)
+	if err != nil {
+		return err
+	}
+	defer lk.Release()
+
+	span.AddEvent("lock", trace.WithAttributes(attribute.String("tid", id)))
+
+	// Checked again: a director may have finished it since the header was read.
+	if t.IsFinished {
+		log.Error().Str("tid", id).Msg("cant-set-score-tournament-finished")
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_FINISHED, t.Name, division)
+	}
+
 	divisionObject, ok := t.Divisions[division]
 
 	if !ok {
@@ -1343,27 +1413,8 @@ func SetResult(ctx context.Context,
 	if !t.IsStarted {
 		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NOT_STARTED, t.Name, division)
 	}
-
-	// We need to send the division manager the "full" user ID, so look that up here.
-	var p1TID, p2TID string
-	if t.ExtraMeta.IRLMode {
-		// note this is only the first part of the full tournamentt ID in this case
-		// we do not look up the player in the DB since IRLMode does not use
-		// Woogles IDs
-		p1TID = playerOneId
-		p2TID = playerTwoId
-	} else {
-		p1, err := us.GetByUUID(ctx, playerOneId)
-		if err != nil {
-			return err
-		}
-		p2, err := us.GetByUUID(ctx, playerTwoId)
-		if err != nil {
-			return err
-		}
-		log.Debug().Str("p1", p1.Username).Str("p2", p2.Username).Msg("after-get-by-uuid")
-		p1TID = p1.TournamentID()
-		p2TID = p2.TournamentID()
+	if lookupErr != nil {
+		return lookupErr
 	}
 
 	gid := ""
@@ -1396,7 +1447,7 @@ func SetResult(ctx context.Context,
 		return err
 	}
 
-	err = ts.Set(ctx, t)
+	err = lk.Save(ctx)
 	if err != nil {
 		return err
 	}
@@ -1563,13 +1614,11 @@ func sendDivisionStart(ts TournamentStore, tuuid string, division string, round 
 }
 
 func StartAllRoundCountdowns(ctx context.Context, ts TournamentStore, id string, round int) error {
-	t, err := ts.Get(ctx, id)
+	t, lk, err := ts.LockForChange(ctx, id)
 	if err != nil {
 		return err
 	}
-
-	t.Lock()
-	defer t.Unlock()
+	defer lk.Release()
 
 	err = startTournamentChecks(t)
 	if err != nil {
@@ -1592,7 +1641,7 @@ func StartAllRoundCountdowns(ctx context.Context, ts TournamentStore, id string,
 	t.IsStarted = true
 	t.ExtraMeta.CheckinsOpen = false
 	t.ExtraMeta.RegistrationOpen = false
-	err = ts.Set(ctx, t)
+	err = lk.Save(ctx)
 	if err != nil {
 		return err
 	}
@@ -1609,13 +1658,11 @@ func StartAllRoundCountdowns(ctx context.Context, ts TournamentStore, id string,
 
 func StartRoundCountdown(ctx context.Context, ts TournamentStore, id string,
 	division string, round int) error {
-	t, err := ts.Get(ctx, id)
+	t, lk, err := ts.LockForChange(ctx, id)
 	if err != nil {
 		return err
 	}
-
-	t.Lock()
-	defer t.Unlock()
+	defer lk.Release()
 
 	err = startTournamentChecks(t)
 	if err != nil {
@@ -1632,7 +1679,7 @@ func StartRoundCountdown(ctx context.Context, ts TournamentStore, id string,
 		return err
 	}
 	t.IsStarted = true
-	err = ts.Set(ctx, t)
+	err = lk.Save(ctx)
 	if err != nil {
 		return err
 	}
@@ -1649,13 +1696,11 @@ func DivisionChannelName(tid, division string) string {
 // PairRound pairs the round for a director. It returns warnings for
 // follow-on work that failed without failing the request.
 func PairRound(ctx context.Context, ts TournamentStore, id string, division string, round int, preserveByes bool) ([]string, error) {
-	t, err := ts.Get(ctx, id)
+	t, lk, err := ts.LockForChange(ctx, id)
 	if err != nil {
 		return nil, err
 	}
-
-	t.Lock()
-	defer t.Unlock()
+	defer lk.Release()
 
 	if t.IsFinished {
 		return nil, entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_FINISHED, t.Name, division)
@@ -1696,7 +1741,7 @@ func PairRound(ctx context.Context, ts TournamentStore, id string, division stri
 		}
 	}
 
-	err = ts.Set(ctx, t)
+	err = lk.Save(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -1709,13 +1754,11 @@ func PairRound(ctx context.Context, ts TournamentStore, id string, division stri
 }
 
 func DeletePairings(ctx context.Context, ts TournamentStore, id string, division string, round int) error {
-	t, err := ts.Get(ctx, id)
+	t, lk, err := ts.LockForChange(ctx, id)
 	if err != nil {
 		return err
 	}
-
-	t.Lock()
-	defer t.Unlock()
+	defer lk.Release()
 
 	if t.IsFinished {
 		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_FINISHED, t.Name, division)
@@ -1741,7 +1784,7 @@ func DeletePairings(ctx context.Context, ts TournamentStore, id string, division
 		return err
 	}
 
-	err = ts.Set(ctx, t)
+	err = lk.Save(ctx)
 	if err != nil {
 		return err
 	}
@@ -1765,34 +1808,12 @@ func IsStarted(ctx context.Context, ts TournamentStore, id string) (bool, error)
 	return t.IsStarted, nil
 }
 
-func IsRoundComplete(ctx context.Context, ts TournamentStore, id string, division string, round int) (bool, error) {
-	t, err := ts.Get(ctx, id)
-	if err != nil {
-		return false, err
-	}
-
-	if t.IsFinished {
-		return true, nil
-	}
-
-	if !t.IsStarted {
-		return false, nil
-	}
-
-	_, ok := t.Divisions[division]
-
-	if !ok {
-		return false, entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, division)
-	}
-
-	return t.Divisions[division].DivisionManager.IsRoundComplete(round)
-}
-
 func SetFinished(ctx context.Context, ts TournamentStore, id string) error {
-	t, err := ts.Get(ctx, id)
+	t, lk, err := ts.LockForChange(ctx, id)
 	if err != nil {
 		return err
 	}
+	defer lk.Release()
 
 	if t.IsFinished {
 		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_FINISHED, t.Name, "")
@@ -1818,7 +1839,7 @@ func SetFinished(ctx context.Context, ts TournamentStore, id string) error {
 	log.Info().Str("tid", id).Msg("tourney-set-is-finished")
 	t.IsFinished = true
 
-	err = ts.Set(ctx, t)
+	err = lk.Save(ctx)
 	if err != nil {
 		return err
 	}
@@ -1827,10 +1848,11 @@ func SetFinished(ctx context.Context, ts TournamentStore, id string) error {
 }
 
 func SetUnfinished(ctx context.Context, ts TournamentStore, id string) error {
-	t, err := ts.Get(ctx, id)
+	t, lk, err := ts.LockForChange(ctx, id)
 	if err != nil {
 		return err
 	}
+	defer lk.Release()
 
 	if !t.IsFinished {
 		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NOT_FINISHED, t.Name, "")
@@ -1838,7 +1860,7 @@ func SetUnfinished(ctx context.Context, ts TournamentStore, id string) error {
 
 	t.IsFinished = false
 	// Don't bother sending an event at this time; this is mostly a debug operation.
-	return ts.Set(ctx, t)
+	return lk.Save(ctx)
 }
 
 func IsFinished(ctx context.Context, ts TournamentStore, id string) (bool, error) {
@@ -1862,9 +1884,6 @@ func GetXHRResponse(ctx context.Context, ts TournamentStore, id string) (*ipc.Fu
 	if err != nil {
 		return nil, err
 	}
-	t.RLock()
-	defer t.RUnlock()
-
 	response := &ipc.FullTournamentDivisions{Divisions: make(map[string]*ipc.TournamentDivisionDataResponse),
 		Started: t.IsStarted}
 	for divisionKey, division := range t.Divisions {
@@ -1886,10 +1905,9 @@ func GetXHRResponse(ctx context.Context, ts TournamentStore, id string) (*ipc.Fu
 
 // addReadyStates fills in the ready states of the pairings where a player is
 // waiting for their opponent, so a page loaded then shows who is ready. The
-// pairings in the response are the cached tournament's own, so the ones that
-// change are replaced with copies, in a copy of the division's pairing map.
+// tournament was loaded for this response alone, so its pairings are changed
+// in place.
 func addReadyStates(t *entity.Tournament, response *ipc.FullTournamentDivisions, waiting []entity.TournamentReady) {
-	copied := map[string]bool{}
 	for _, r := range waiting {
 		division, ok := t.Divisions[r.Division]
 		xhr := response.Divisions[r.Division]
@@ -1907,22 +1925,12 @@ func addReadyStates(t *entity.Tournament, response *ipc.FullTournamentDivisions,
 			!samePlayer(xhr.Players, pairing.Players[1], r.Players[1]) {
 			continue
 		}
-		if !copied[r.Division] {
-			m := make(map[string]*ipc.Pairing, len(xhr.PairingMap))
-			for k, v := range xhr.PairingMap {
-				m[k] = v
-			}
-			xhr.PairingMap = m
-			copied[r.Division] = true
-		}
-		pairing = proto.Clone(pairing).(*ipc.Pairing)
 		pairing.ReadyStates = []string{"", ""}
 		for i := range 2 {
 			if r.Flag&(1<<i) != 0 {
 				pairing.ReadyStates[i] = "ready"
 			}
 		}
-		xhr.PairingMap[key] = pairing
 	}
 }
 
@@ -1943,19 +1951,15 @@ func SetReadyForGame(ctx context.Context, ts TournamentStore, t *entity.Tourname
 	playerID, connID, division string,
 	round, gameIndex int, unready bool) ([]string, bool, error) {
 
-	t.RLock()
 	name := t.Name
 	if t.IsFinished {
-		t.RUnlock()
 		return nil, false, entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_FINISHED, name, division)
 	}
 	div, ok := t.Divisions[division]
 	if !ok {
-		t.RUnlock()
 		return nil, false, entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, name, division)
 	}
 	players, idx, err := div.DivisionManager.ReadyPairing(playerID, round, unready)
-	t.RUnlock()
 	if err != nil {
 		return nil, false, err
 	}
@@ -1992,21 +1996,14 @@ func SetReadyForGame(ctx context.Context, ts TournamentStore, t *entity.Tourname
 func ClearReadyStates(ctx context.Context, ts TournamentStore, t *entity.Tournament,
 	division, userID string, round, gameIndex int) error {
 
-	t.RLock()
 	if t.IsFinished {
-		t.RUnlock()
 		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_FINISHED, t.Name, division)
 	}
 	div, ok := t.Divisions[division]
 	if !ok {
-		t.RUnlock()
 		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, division)
 	}
 	pairing, err := div.DivisionManager.GetPairing(userID, round)
-	if err == nil {
-		pairing = proto.Clone(pairing).(*ipc.Pairing)
-	}
-	t.RUnlock()
 	if err != nil {
 		return err
 	}
@@ -2020,11 +2017,9 @@ func ClearReadyStates(ctx context.Context, ts TournamentStore, t *entity.Tournam
 	return SendTournamentMessage(ctx, ts, t.UUID, wrapped)
 }
 
-func TournamentDataResponse(ctx context.Context, ts TournamentStore, id string) (*ipc.TournamentDataResponse, error) {
-	t, err := ts.Get(ctx, id)
-	if err != nil {
-		return nil, err
-	}
+// tournamentDataResponse is the message that sends the tournament's own
+// fields, built from the tournament just saved.
+func tournamentDataResponse(t *entity.Tournament) *ipc.TournamentDataResponse {
 	var scheduledStartTime *timestamppb.Timestamp
 	if t.ScheduledStartTime != nil {
 		scheduledStartTime = timestamppb.New(*t.ScheduledStartTime)
@@ -2033,7 +2028,6 @@ func TournamentDataResponse(ctx context.Context, ts TournamentStore, id string) 
 	if t.ScheduledEndTime != nil {
 		scheduledEndTime = timestamppb.New(*t.ScheduledEndTime)
 	}
-	// no lock needed; only gets called while already locked.
 	return &ipc.TournamentDataResponse{Id: t.UUID,
 		Name:               t.Name,
 		Description:        t.Description,
@@ -2043,7 +2037,7 @@ func TournamentDataResponse(ctx context.Context, ts TournamentStore, id string) 
 		ScheduledEndTime:   scheduledEndTime,
 		CheckinsOpen:       t.ExtraMeta.CheckinsOpen,
 		RegistrationOpen:   t.ExtraMeta.RegistrationOpen,
-	}, nil
+	}
 }
 
 func PairingsToResponse(id string, division string, pairings []*ipc.Pairing, standings map[int32]*ipc.RoundStandings) *ipc.DivisionPairingsResponse {
@@ -2152,12 +2146,11 @@ func validateTournamentTypeMatchesSlug(ttype pb.TType, slug string) (entity.Comp
 }
 
 func Register(ctx context.Context, ts TournamentStore, tid, division, playerid string) error {
-	t, err := ts.Get(ctx, tid)
+	t, lk, err := ts.LockForChange(ctx, tid)
 	if err != nil {
 		return err
 	}
-	t.Lock()
-	defer t.Unlock()
+	defer lk.Release()
 	if !t.ExtraMeta.RegistrationOpen {
 		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_REGISTRATIONS_CLOSED, t.Name)
 	}
@@ -2193,7 +2186,7 @@ func Register(ctx context.Context, ts TournamentStore, tid, division, playerid s
 
 	allCurrentPlayers := mgr.GetPlayers()
 
-	err = ts.Set(ctx, t)
+	err = lk.Save(ctx)
 	if err != nil {
 		return err
 	}
@@ -2212,12 +2205,11 @@ func Register(ctx context.Context, ts TournamentStore, tid, division, playerid s
 }
 
 func CheckIn(ctx context.Context, ts TournamentStore, tid, playerid string) error {
-	t, err := ts.Get(ctx, tid)
+	t, lk, err := ts.LockForChange(ctx, tid)
 	if err != nil {
 		return err
 	}
-	t.Lock()
-	defer t.Unlock()
+	defer lk.Release()
 	if !t.ExtraMeta.CheckinsOpen {
 		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_CHECKINS_CLOSED, t.Name)
 	}
@@ -2249,7 +2241,7 @@ func CheckIn(ctx context.Context, ts TournamentStore, tid, playerid string) erro
 		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NOT_REGISTERED, t.Name)
 	}
 
-	err = ts.Set(ctx, t)
+	err = lk.Save(ctx)
 	if err != nil {
 		return err
 	}
@@ -2266,12 +2258,11 @@ func CheckIn(ctx context.Context, ts TournamentStore, tid, playerid string) erro
 }
 
 func UncheckIn(ctx context.Context, ts TournamentStore, tid, playerid string) error {
-	t, err := ts.Get(ctx, tid)
+	t, lk, err := ts.LockForChange(ctx, tid)
 	if err != nil {
 		return err
 	}
-	t.Lock()
-	defer t.Unlock()
+	defer lk.Release()
 	if !t.ExtraMeta.CheckinsOpen {
 		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_CHECKINS_CLOSED, t.Name)
 	}
@@ -2300,7 +2291,7 @@ func UncheckIn(ctx context.Context, ts TournamentStore, tid, playerid string) er
 		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NOT_REGISTERED, t.Name)
 	}
 
-	err = ts.Set(ctx, t)
+	err = lk.Save(ctx)
 	if err != nil {
 		return err
 	}
@@ -2317,13 +2308,14 @@ func UncheckIn(ctx context.Context, ts TournamentStore, tid, playerid string) er
 }
 
 func UncheckAllIn(ctx context.Context, ts TournamentStore, tid string) error {
-	t, err := ts.Get(ctx, tid)
+	t, lk, err := ts.LockForChange(ctx, tid)
 	if err != nil {
 		return err
 	}
-	t.Lock()
-	defer t.Unlock()
+	defer lk.Release()
 
+	// Sent after the save, so nobody hears of a change that wasn't kept.
+	msgs := []*entity.EventWrapper{}
 	for dname, d := range t.Divisions {
 		mgr := d.DivisionManager
 		if mgr == nil {
@@ -2341,24 +2333,28 @@ func UncheckAllIn(ctx context.Context, ts TournamentStore, tid string) error {
 		}
 		tdevt.Id = tid
 		tdevt.Division = dname
-		wrapped := entity.WrapEvent(tdevt, ipc.MessageType_TOURNAMENT_DIVISION_MESSAGE)
+		msgs = append(msgs, entity.WrapEvent(tdevt, ipc.MessageType_TOURNAMENT_DIVISION_MESSAGE))
+	}
+
+	err = lk.Save(ctx)
+	if err != nil {
+		return err
+	}
+	for _, wrapped := range msgs {
 		err = SendTournamentMessage(ctx, ts, tid, wrapped)
 		if err != nil {
 			log.Err(err).Msg("sending-tournament-division-msg")
 		}
-
 	}
-
-	return ts.Set(ctx, t)
+	return nil
 }
 
 func OpenCheckins(ctx context.Context, ts TournamentStore, tid string) error {
-	t, err := ts.Get(ctx, tid)
+	t, lk, err := ts.LockForChange(ctx, tid)
 	if err != nil {
 		return err
 	}
-	t.Lock()
-	defer t.Unlock()
+	defer lk.Release()
 	if t.IsFinished {
 		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_FINISHED, t.Name, "")
 	}
@@ -2369,52 +2365,44 @@ func OpenCheckins(ctx context.Context, ts TournamentStore, tid string) error {
 		return errors.New("cannot open checkins for IRL tournaments")
 	}
 	t.ExtraMeta.CheckinsOpen = true
-	err = ts.Set(ctx, t)
+	err = lk.Save(ctx)
 	if err != nil {
 		return err
 	}
-	tdevt, err := TournamentDataResponse(ctx, ts, tid)
-	if err != nil {
-		return err
-	}
+	tdevt := tournamentDataResponse(t)
 
 	wrapped := entity.WrapEvent(tdevt, ipc.MessageType_TOURNAMENT_MESSAGE)
 	return SendTournamentMessage(ctx, ts, tid, wrapped)
 }
 
 func CloseCheckins(ctx context.Context, ts TournamentStore, tid string) error {
-	t, err := ts.Get(ctx, tid)
+	t, lk, err := ts.LockForChange(ctx, tid)
 	if err != nil {
 		return err
 	}
-	t.Lock()
-	defer t.Unlock()
+	defer lk.Release()
 	if t.IsFinished {
 		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_FINISHED, t.Name, "")
 	}
 
 	t.ExtraMeta.CheckinsOpen = false
-	err = ts.Set(ctx, t)
+	err = lk.Save(ctx)
 	if err != nil {
 		return err
 	}
 
-	tdevt, err := TournamentDataResponse(ctx, ts, tid)
-	if err != nil {
-		return err
-	}
+	tdevt := tournamentDataResponse(t)
 
 	wrapped := entity.WrapEvent(tdevt, ipc.MessageType_TOURNAMENT_MESSAGE)
 	return SendTournamentMessage(ctx, ts, tid, wrapped)
 }
 
 func RemoveAllPlayersNotCheckedIn(ctx context.Context, ts TournamentStore, tid string) error {
-	t, err := ts.Get(ctx, tid)
+	t, lk, err := ts.LockForChange(ctx, tid)
 	if err != nil {
 		return err
 	}
-	t.Lock()
-	defer t.Unlock()
+	defer lk.Release()
 	if t.IsFinished {
 		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_FINISHED, t.Name, "")
 	}
@@ -2428,6 +2416,8 @@ func RemoveAllPlayersNotCheckedIn(ctx context.Context, ts TournamentStore, tid s
 		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_CANNOT_REMOVE_UNCHECKED_IN_IF_CHECKINS_OPEN, t.Name)
 	}
 
+	// Sent after the save, so nobody hears of a change that wasn't kept.
+	msgs := []*entity.EventWrapper{}
 	for dname, v := range t.Divisions {
 		players := &ipc.TournamentPersons{Persons: []*ipc.TournamentPerson{}}
 		dp := v.DivisionManager.GetPlayers()
@@ -2449,23 +2439,28 @@ func RemoveAllPlayersNotCheckedIn(ctx context.Context, ts TournamentStore, tid s
 			Players:           allCurrentPlayers,
 			DivisionPairings:  pairingsResp.DivisionPairings,
 			DivisionStandings: pairingsResp.DivisionStandings}
-		wrapped := entity.WrapEvent(removePlayersMessage, ipc.MessageType_TOURNAMENT_DIVISION_PLAYER_CHANGE_MESSAGE)
+		msgs = append(msgs, entity.WrapEvent(removePlayersMessage, ipc.MessageType_TOURNAMENT_DIVISION_PLAYER_CHANGE_MESSAGE))
+	}
+
+	err = lk.Save(ctx)
+	if err != nil {
+		return err
+	}
+	for _, wrapped := range msgs {
 		err = SendTournamentMessage(ctx, ts, tid, wrapped)
 		if err != nil {
 			return err
 		}
 	}
-
-	return ts.Set(ctx, t)
+	return nil
 }
 
 func OpenRegistration(ctx context.Context, ts TournamentStore, tid string) error {
-	t, err := ts.Get(ctx, tid)
+	t, lk, err := ts.LockForChange(ctx, tid)
 	if err != nil {
 		return err
 	}
-	t.Lock()
-	defer t.Unlock()
+	defer lk.Release()
 	if t.IsFinished {
 		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_FINISHED, t.Name)
 	}
@@ -2476,40 +2471,33 @@ func OpenRegistration(ctx context.Context, ts TournamentStore, tid string) error
 		return errors.New("cannot open self-registration for IRL tournaments. Players must be added manually by the director.")
 	}
 	t.ExtraMeta.RegistrationOpen = true
-	err = ts.Set(ctx, t)
+	err = lk.Save(ctx)
 	if err != nil {
 		return err
 	}
-	tdevt, err := TournamentDataResponse(ctx, ts, tid)
-	if err != nil {
-		return err
-	}
+	tdevt := tournamentDataResponse(t)
 
 	wrapped := entity.WrapEvent(tdevt, ipc.MessageType_TOURNAMENT_MESSAGE)
 	return SendTournamentMessage(ctx, ts, tid, wrapped)
 }
 
 func CloseRegistration(ctx context.Context, ts TournamentStore, tid string) error {
-	t, err := ts.Get(ctx, tid)
+	t, lk, err := ts.LockForChange(ctx, tid)
 	if err != nil {
 		return err
 	}
-	t.Lock()
-	defer t.Unlock()
+	defer lk.Release()
 	if t.IsFinished {
 		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_FINISHED, t.Name)
 	}
 
 	t.ExtraMeta.RegistrationOpen = false
-	err = ts.Set(ctx, t)
+	err = lk.Save(ctx)
 	if err != nil {
 		return err
 	}
 
-	tdevt, err := TournamentDataResponse(ctx, ts, tid)
-	if err != nil {
-		return err
-	}
+	tdevt := tournamentDataResponse(t)
 
 	wrapped := entity.WrapEvent(tdevt, ipc.MessageType_TOURNAMENT_MESSAGE)
 	return SendTournamentMessage(ctx, ts, tid, wrapped)

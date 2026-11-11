@@ -53,7 +53,9 @@ func main() {
 	}
 
 	for _, tid := range ids {
-		t, err := tournamentStore.Get(ctx, tid)
+		// A one-off script: the user lookups below run under the lock, which
+		// only matters for the API server's pool.
+		t, lk, err := tournamentStore.LockForChange(ctx, tid)
 		if err != nil {
 			log.Err(err).Str("tid", tid).Msg("bug")
 			continue
@@ -68,12 +70,13 @@ func main() {
 			player, err := userStore.GetByUUID(ctx, uuid)
 			if err != nil {
 				log.Err(err).Str("uuid", uuid).Msg("err-userstore-get")
+				lk.Release()
 				panic(err)
 			}
 			person.Id = uuid + ":" + player.Username
 		}
 		t.Directors = newDirectors
-		err = tournamentStore.Set(ctx, t)
+		err = lk.Save(ctx)
 		if err != nil {
 			panic(err)
 		}

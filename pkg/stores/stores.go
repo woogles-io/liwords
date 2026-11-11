@@ -30,7 +30,7 @@ type Stores struct {
 	ChatStore       *redis.RedisChatStore
 	ListStatStore   *stats.DBStore
 	NotorietyStore  *mod.DBStore
-	TournamentStore *tournament.Cache // this cache too
+	TournamentStore *tournament.DBStore
 	ConfigStore     *config.RedisConfigStore
 	SessionStore    *session.DBStore
 	PuzzleStore     *puzzles.DBStore
@@ -73,11 +73,10 @@ func NewInitializedStores(dbPool *pgxpool.Pool, redisPool *redigoredis.Pool, cfg
 
 	stores.GameStore = game.NewCache(tmpGameStore)
 
-	tmpTournamentStore, err := tournament.NewDBStore(dbPool, stores.GameStore)
+	stores.TournamentStore, err = tournament.NewDBStore(dbPool, stores.GameStore)
 	if err != nil {
 		return nil, err
 	}
-	stores.TournamentStore = tournament.NewCache(tmpTournamentStore)
 
 	stores.SoughtGameStore, err = soughtgame.NewDBStore(dbPool)
 	if err != nil {

@@ -30,6 +30,9 @@ type DBStore struct {
 	queries             *models.Queries
 	tournamentEventChan chan<- *entity.EventWrapper
 	gameStore           *game.Cache
+	// local holds each tournament on this server while it is changed. See
+	// LockForChange.
+	local keyedMutex
 }
 
 // NewDBStore creates a new DB store for tournament managers.
@@ -190,8 +193,7 @@ func (s *DBStore) GetUUIDBySlug(ctx context.Context, slug string) (string, error
 }
 
 // GetSummary loads a tournament with its divisions' players and controls but
-// not their pairings or standings, like the listings. The result must never
-// be cached or saved.
+// not their pairings or standings, like the listings.
 func (s *DBStore) GetSummary(ctx context.Context, id string) (*entity.Tournament, error) {
 	ctx, span := startSpan(ctx, "GetSummary", id)
 	defer span.End()
@@ -239,20 +241,19 @@ func (s *DBStore) TournamentEventChan() chan<- *entity.EventWrapper {
 	return s.tournamentEventChan
 }
 
-// Set writes every column the entity holds, including empty and nil ones, so
-// clearing a description or a scheduled time is saved. (Gorm's Updates
-// skipped zero values, so those changes reached the cache but not the
-// database.)
-func (s *DBStore) Set(ctx context.Context, tm *entity.Tournament) error {
-	ctx, span := startSpan(ctx, "Set", tm.UUID)
-	defer span.End()
+// update writes every column the entity holds, including empty and nil
+// ones, so clearing a description or a scheduled time is saved. (Gorm's
+// Updates skipped zero values, so those changes reached the cache but not the
+// database.) Only lockedTournament.Save calls it, inside the change's
+// transaction. It returns the size of the divisions it wrote.
+func (s *DBStore) update(ctx context.Context, q *models.Queries, tm *entity.Tournament) (int, error) {
 	dbt, err := s.toDBObj(tm)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	log.Info().Str("tid", tm.UUID).Bool("finished", tm.IsFinished).Msg("db-set-tournament")
 
-	return s.queries.UpdateTournament(ctx, models.UpdateTournamentParams{
+	return len(dbt.Divisions), q.UpdateTournament(ctx, models.UpdateTournamentParams{
 		Name:               dbt.Name,
 		Description:        dbt.Description,
 		AliasOf:            dbt.AliasOf,

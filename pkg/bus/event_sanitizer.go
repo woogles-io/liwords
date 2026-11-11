@@ -19,7 +19,7 @@ import (
 // Events need to be sanitized so that we don't send user racks to people
 // who shouldn't get them. Note that sanitize only runs for events that are
 // sent DIRECTLY to a player (see AudUser), and not for AudGameTv for example.
-func sanitize(us user.Store, gs gameplay.GameStore, ts *tournament.Cache, evt *entity.EventWrapper, userID string) (*entity.EventWrapper, error) {
+func sanitize(us user.Store, gs gameplay.GameStore, ts *tournament.DBStore, evt *entity.EventWrapper, userID string) (*entity.EventWrapper, error) {
 	// Depending on the event type and even the state of the game, we return a
 	// sanitized event (or not).
 	switch evt.Type {

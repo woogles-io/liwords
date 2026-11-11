@@ -170,11 +170,14 @@ func TestCreateGetSet(t *testing.T) {
 
 	// Clearing fields is saved. Gorm's Updates skipped empty strings and nil
 	// times, so these used to stay in the database.
-	got.Description = ""
-	got.ScheduledStartTime = nil
-	got.ScheduledEndTime = nil
-	got.IsStarted = true
-	is.NoErr(store.Set(ctx, got))
+	locked, lk, err := store.LockForChange(ctx, "tid1")
+	is.NoErr(err)
+	locked.Description = ""
+	locked.ScheduledStartTime = nil
+	locked.ScheduledEndTime = nil
+	locked.IsStarted = true
+	is.NoErr(lk.Save(ctx))
+	lk.Release() // a no-op after Save
 
 	again, err := store.Get(ctx, "tid1")
 	is.NoErr(err)

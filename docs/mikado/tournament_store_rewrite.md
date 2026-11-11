@@ -159,6 +159,54 @@ player, written in the same transaction as the result that changes it.
 - The tournament row's own fields (name, directors, meta) are written under a
   tournament-level lock, rarely.
 
+### Writes as plain transactions
+
+Today every change is a read-modify-write of the whole tournament: read the
+divisions, change them in Go (record the result, recompute standings, pair
+any round that just became pairable, maybe auto-start it), write them back.
+Under read committed, two of those interleave and the second write discards
+the first, with no error. That is why every change takes a lock before the
+read (`LockForChange`); `SELECT ... FOR UPDATE` or serializable isolation
+would do the same job, the last with retries of expensive work.
+
+With rows, most writes don't need to read anything first, and can be the
+plain transaction they look like:
+
+```sql
+begin;
+update games set ... where uuid = $game;
+update tournament_pairings set score = $1, result = $2, game_id = $3
+ where division_id = $4 and round = $5 and player_index in ($6, $7);
+commit;
+```
+
+Postgres's row locks then keep concurrent results apart on their own, and
+results for different pairings don't wait for each other at all. To think
+through when designing the tables:
+
+- **What still needs a read.** Pairing a newly pairable round and
+  auto-starting it work on the whole division, and stay read-compute-write
+  under the division lock. They happen once per round, not once per result.
+  Standings computed on read (section 5) take recomputing them out of the
+  write.
+- **Who notices that a round is complete.** Two last results committing at
+  once can each see the other's pairing still unreported, and then neither
+  pairs the next round. Something has to serialize that check. A candidate:
+  each result also runs `update tournament_divisions set pending = pending - 1
+  ... returning pending` in the same transaction; that row lock is held only
+  until commit, and the one result that sees zero takes the division lock
+  and pairs.
+- **The game's end and its result in one transaction.** Today the game is
+  saved in one transaction and the result in another; if the server dies in
+  between, the game is over and the result is missing until a director enters
+  it. With the result a row update, both can share the game's transaction.
+  The lock order is then fixed: game lock first, then the division's. Nothing
+  may take a game lock while holding a division lock.
+- **Director operations** (moving a player, removing one mid-tournament,
+  changing round controls) keep the lock and the read, since they rewrite
+  much of a division. They are rare.
+- Socket messages are still sent after the commit.
+
 ### Reads
 
 - Each read path queries what it needs. `GetTournament` still returns
@@ -206,6 +254,12 @@ player, written in the same transaction as the result that changes it.
    transaction-scoped advisory lock on the tournament, loads, changes and
    saves in one transaction. The cache and the entity mutex go. The per-
    division tables below then come after ZDT, where measurements say so.
+   Writes wait for an in-process lock on the tournament before the advisory
+   lock, so that results that bunch up toward the end of a round wait without holding
+   connections, and nothing between the load and the save queries the pool:
+   results run under their game's lock, which holds a connection already
+   (`pkg/stores/tournament/lock.go`). Measure in Jaeger as
+   `tournament.LockForChange` (lock wait and load) and `tournament.Save`.
 2. **Lift the socket limit**: #2167, then #2168 a week after its frontend
    deploys. Independent of everything below.
 3. **New tables, dual-written.** Every save of the current entity also writes
@@ -242,3 +296,7 @@ player, written in the same transaction as the result that changes it.
   `tournament_standings` exists).
 - Whether pairings with several games fit one row per player per round, or
   need a child table of games.
+- How the last result of a round triggers pairing the next one without a
+  division lock on every result (section 5, writes as plain transactions).
+- Whether the game's end and its tournament result move into one
+  transaction in the same step as the result writes, or after.

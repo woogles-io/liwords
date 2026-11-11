@@ -66,7 +66,7 @@ func TestAutoStartIsAnnounced(t *testing.T) {
 					ipc.GameEndReason_STANDARD, 0, 0, false, nil, stores.Queries))
 			}
 
-			is.Equal(ty.Divisions[divOneName].DivisionManager.GetCurrentRound(), tc.currentRound)
+			is.Equal(reload(ctx, is, tstore, ty.UUID).Divisions[divOneName].DivisionManager.GetCurrentRound(), tc.currentRound)
 			startedRounds := []int32{}
 			for len(eventChan) > 0 {
 				evt := <-eventChan
@@ -113,7 +113,7 @@ func setUpServiceDivision(t *testing.T, players map[string]int32, autoStart bool
 	is.NoErr(tournament.SetDivisionControls(ctx, tstore, ty.UUID, divOneName, controls))
 	is.NoErr(tournament.SetRoundControls(ctx, tstore, ty.UUID, divOneName, roundControls))
 	is.NoErr(tournament.StartRoundCountdown(ctx, tstore, ty.UUID, divOneName, 0))
-	return ctx, stores, ty, eventChan
+	return ctx, stores, reload(ctx, is, tstore, ty.UUID), eventChan
 }
 
 // pairingsSentForRound reports whether a pairings message with pairings for
@@ -155,7 +155,9 @@ func TestLaggedPairingFailureKeepsDirectorPairings(t *testing.T) {
 		is := is.New(t)
 		ctx, stores, ty, eventChan := setUpServiceDivision(t, players, false,
 			laggedRepeatLimitedSwissControls(ipc.PairingMethod_MANUAL))
-		dm := ty.Divisions[divOneName].DivisionManager
+		dm := func() entity.DivisionManager {
+			return reload(ctx, is, stores.TournamentStore, ty.UUID).Divisions[divOneName].DivisionManager
+		}
 		is.NoErr(setServiceResult(ctx, stores, ty, 0, "Will", "Josh"))
 		drainEvents(eventChan)
 
@@ -164,8 +166,8 @@ func TestLaggedPairingFailureKeepsDirectorPairings(t *testing.T) {
 		})
 		is.NoErr(err)
 		is.Equal(warnings, []string{autoPairFailed(3)})
-		is.True(dm.IsRoundPaired(1))
-		is.True(!dm.IsRoundPaired(2))
+		is.True(dm().IsRoundPaired(1))
+		is.True(!dm().IsRoundPaired(2))
 		is.True(pairingsSentForRound(drainEvents(eventChan), 1))
 	})
 
@@ -173,12 +175,14 @@ func TestLaggedPairingFailureKeepsDirectorPairings(t *testing.T) {
 		is := is.New(t)
 		ctx, stores, ty, eventChan := setUpServiceDivision(t, players, false,
 			laggedRepeatLimitedSwissControls(ipc.PairingMethod_KING_OF_THE_HILL))
-		dm := ty.Divisions[divOneName].DivisionManager
+		dm := func() entity.DivisionManager {
+			return reload(ctx, is, stores.TournamentStore, ty.UUID).Divisions[divOneName].DivisionManager
+		}
 		// Completing round 1 pairs round 2, but not the lagged round 3,
 		// and nobody is waiting on the result, so the directors are told.
 		is.NoErr(setServiceResult(ctx, stores, ty, 0, "Will", "Josh"))
-		is.True(dm.IsRoundPaired(1))
-		is.True(!dm.IsRoundPaired(2))
+		is.True(dm().IsRoundPaired(1))
+		is.True(!dm().IsRoundPaired(2))
 		is.Equal(directorNotices(drainEvents(eventChan)), []string{"user.Kieran: " + autoPairFailed(3)})
 
 		is.NoErr(tournament.DeletePairings(ctx, stores.TournamentStore, ty.UUID, divOneName, 1))
@@ -186,8 +190,8 @@ func TestLaggedPairingFailureKeepsDirectorPairings(t *testing.T) {
 		warnings, err := tournament.PairRound(ctx, stores.TournamentStore, ty.UUID, divOneName, 1, false)
 		is.NoErr(err)
 		is.Equal(warnings, []string{autoPairFailed(3)})
-		is.True(dm.IsRoundPaired(1))
-		is.True(!dm.IsRoundPaired(2))
+		is.True(dm().IsRoundPaired(1))
+		is.True(!dm().IsRoundPaired(2))
 		is.True(pairingsSentForRound(drainEvents(eventChan), 1))
 	})
 }
@@ -242,7 +246,9 @@ func TestLaggedRoundWaitingOnManualRound(t *testing.T) {
 	ctx, stores, ty, eventChan := setUpLaggedServiceDivision(t, true, []ipc.PairingMethod{
 		ipc.PairingMethod_KING_OF_THE_HILL, ipc.PairingMethod_MANUAL,
 		ipc.PairingMethod_KING_OF_THE_HILL, ipc.PairingMethod_KING_OF_THE_HILL}, 2)
-	dm := ty.Divisions[divOneName].DivisionManager
+	dm := func() entity.DivisionManager {
+		return reload(ctx, is, stores.TournamentStore, ty.UUID).Divisions[divOneName].DivisionManager
+	}
 
 	is.NoErr(setServiceResult(ctx, stores, ty, 0, "Will", "Josh"))
 	drainEvents(eventChan)
@@ -254,23 +260,23 @@ func TestLaggedRoundWaitingOnManualRound(t *testing.T) {
 		}
 	}
 	is.True(sentPairings)
-	complete, err := dm.IsRoundComplete(0)
+	complete, err := dm().IsRoundComplete(0)
 	is.NoErr(err)
 	is.True(complete)
-	is.Equal(dm.GetCurrentRound(), 0)
-	is.True(!dm.IsRoundPaired(2))
+	is.Equal(dm().GetCurrentRound(), 0)
+	is.True(!dm().IsRoundPaired(2))
 
 	// Pairing the MANUAL round by hand pairs the lagged round after it.
 	noWarnings(is)(tournament.SetPairings(ctx, stores.TournamentStore, ty.UUID, divOneName, []*pb.TournamentPairingRequest{
 		{PlayerOneId: "Will:Will", PlayerTwoId: "Conrad:Conrad", Round: 1},
 		{PlayerOneId: "Josh:Josh", PlayerTwoId: "Jesse:Jesse", Round: 1},
 	}))
-	is.True(dm.IsRoundPaired(2))
+	is.True(dm().IsRoundPaired(2))
 
 	// Once the director opens round 2, AutoStart opens round 3 alongside it.
 	is.NoErr(tournament.StartRoundCountdown(ctx, stores.TournamentStore, ty.UUID, divOneName, 1))
 	is.NoErr(setServiceResult(ctx, stores, ty, 1, "Will", "Conrad"))
-	is.Equal(dm.GetCurrentRound(), 2)
+	is.Equal(dm().GetCurrentRound(), 2)
 }
 
 // The service only pairs a waiting lagged round when the round before it
@@ -281,11 +287,13 @@ func TestLaggedRoundDeletedPairingsStayDeleted(t *testing.T) {
 	ctx, stores, ty, _ := setUpLaggedServiceDivision(t, false, []ipc.PairingMethod{
 		ipc.PairingMethod_KING_OF_THE_HILL, ipc.PairingMethod_KING_OF_THE_HILL,
 		ipc.PairingMethod_KING_OF_THE_HILL}, 2)
-	dm := ty.Divisions[divOneName].DivisionManager
+	dm := func() entity.DivisionManager {
+		return reload(ctx, is, stores.TournamentStore, ty.UUID).Divisions[divOneName].DivisionManager
+	}
 
 	is.NoErr(setServiceResult(ctx, stores, ty, 0, "Will", "Josh"))
 	is.NoErr(setServiceResult(ctx, stores, ty, 0, "Conrad", "Jesse"))
-	is.True(dm.IsRoundPaired(2))
+	is.True(dm().IsRoundPaired(2))
 
 	is.NoErr(tournament.DeletePairings(ctx, stores.TournamentStore, ty.UUID, divOneName, 2))
 	noWarnings(is)(tournament.SetPairings(ctx, stores.TournamentStore, ty.UUID, divOneName, []*pb.TournamentPairingRequest{
@@ -293,5 +301,5 @@ func TestLaggedRoundDeletedPairingsStayDeleted(t *testing.T) {
 		{PlayerOneId: "Josh:Josh", PlayerTwoId: "Jesse:Jesse", Round: 1},
 	}))
 	noWarnings(is)(tournament.PairRound(ctx, stores.TournamentStore, ty.UUID, divOneName, 1, false))
-	is.True(!dm.IsRoundPaired(2))
+	is.True(!dm().IsRoundPaired(2))
 }

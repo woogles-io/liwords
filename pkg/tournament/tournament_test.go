@@ -147,6 +147,35 @@ func makeTournament(ctx context.Context, ts tournament.TournamentStore, cfg *con
 	)
 }
 
+// reload loads the tournament from the database. Each change loads and
+// saves its own copy, so the test's copy doesn't see it.
+func reload(ctx context.Context, is *is.I, ts tournament.TournamentStore, id string) *entity.Tournament {
+	t, err := ts.Get(ctx, id)
+	is.NoErr(err)
+	return t
+}
+
+// roundComplete reports whether a round of a division is complete, as
+// stored. A finished tournament counts as complete, and one not started as
+// not.
+func roundComplete(ctx context.Context, ts tournament.TournamentStore, id, division string, round int) (bool, error) {
+	t, err := ts.Get(ctx, id)
+	if err != nil {
+		return false, err
+	}
+	if t.IsFinished {
+		return true, nil
+	}
+	if !t.IsStarted {
+		return false, nil
+	}
+	d, ok := t.Divisions[division]
+	if !ok {
+		return false, entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, division)
+	}
+	return d.DivisionManager.IsRoundComplete(round)
+}
+
 func makeTournamentPersons(persons map[string]int32) *ipc.TournamentPersons {
 	tp := &ipc.TournamentPersons{}
 	for key, value := range persons {
@@ -274,10 +303,10 @@ func TestTournamentSingleDivision(t *testing.T) {
 
 	err = tournament.SetTournamentMetadata(ctx, tstore, meta, false)
 	is.NoErr(err)
-	is.Equal(ty.Name, tournamentName)
-	is.Equal(ty.Description, "New Description")
-	is.Equal(ty.Slug, "/tournament/foo")
-	is.Equal(ty.Type, entity.TypeStandard)
+	is.Equal(reload(ctx, is, tstore, ty.UUID).Name, tournamentName)
+	is.Equal(reload(ctx, is, tstore, ty.UUID).Description, "New Description")
+	is.Equal(reload(ctx, is, tstore, ty.UUID).Slug, "/tournament/foo")
+	is.Equal(reload(ctx, is, tstore, ty.UUID).Type, entity.TypeStandard)
 
 	// test merge
 	err = tournament.SetTournamentMetadata(ctx, tstore, &pb.TournamentMetadata{
@@ -287,16 +316,16 @@ func TestTournamentSingleDivision(t *testing.T) {
 	}, true)
 	is.NoErr(err)
 	// old meta didn't change
-	is.Equal(ty.Name, tournamentName)
-	is.Equal(ty.Description, "New Description")
-	is.Equal(ty.Slug, "/tournament/foo")
-	is.Equal(ty.Type, entity.TypeStandard)
+	is.Equal(reload(ctx, is, tstore, ty.UUID).Name, tournamentName)
+	is.Equal(reload(ctx, is, tstore, ty.UUID).Description, "New Description")
+	is.Equal(reload(ctx, is, tstore, ty.UUID).Slug, "/tournament/foo")
+	is.Equal(reload(ctx, is, tstore, ty.UUID).Type, entity.TypeStandard)
 	// new meta got put in:
-	is.Equal(ty.ExtraMeta.Color, "#00bdff")
-	is.Equal(ty.ExtraMeta.Logo, "https://www.example.com/macondo.jpg")
+	is.Equal(reload(ctx, is, tstore, ty.UUID).ExtraMeta.Color, "#00bdff")
+	is.Equal(reload(ctx, is, tstore, ty.UUID).ExtraMeta.Logo, "https://www.example.com/macondo.jpg")
 
 	// Check that directors are set correctly
-	is.NoErr(equalTournamentPersons(directors, ty.Directors))
+	is.NoErr(equalTournamentPersons(directors, reload(ctx, is, tstore, ty.UUID).Directors))
 
 	// Attempt to remove a division that doesn't exist in the empty tournament
 	err = tournament.RemoveDivision(ctx, tstore, ty.UUID, "The Big Boys")
@@ -318,106 +347,105 @@ func TestTournamentSingleDivision(t *testing.T) {
 	// Attempt to add directors that already exist
 	err = tournament.AddDirectors(ctx, tstore, us, ty.UUID, makeTournamentPersons(map[string]int32{"Guy": 1, "Vince": 2}))
 	is.True(err != nil)
-	is.NoErr(equalTournamentPersons(directors, ty.Directors))
+	is.NoErr(equalTournamentPersons(directors, reload(ctx, is, tstore, ty.UUID).Directors))
 
 	// Remove Vince and Jennifer
 	err = tournament.RemoveDirectors(ctx, tstore, us, ty.UUID, makeTournamentPersons(map[string]int32{"Vince": -1, "Jennifer": -1}))
 	is.NoErr(err)
-	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{"Kieran:Kieran": 0}), ty.Directors))
+	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{"Kieran:Kieran": 0}), reload(ctx, is, tstore, ty.UUID).Directors))
 
 	// Add directors
 	err = tournament.AddDirectors(ctx, tstore, us, ty.UUID, makeTournamentPersons(map[string]int32{"Evans": 4, "Oof": 2, "Vince": 2, "Guy": 10, "Harry": 11, "Jennifer": 2}))
 	is.NoErr(err)
-	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{"Kieran:Kieran": 0, "Vince:Vince": 2, "Jennifer:Jennifer": 2, "Evans:Evans": 4, "Oof:Oof": 2, "Guy:Guy": 10, "Harry:Harry": 11}), ty.Directors))
+	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{"Kieran:Kieran": 0, "Vince:Vince": 2, "Jennifer:Jennifer": 2, "Evans:Evans": 4, "Oof:Oof": 2, "Guy:Guy": 10, "Harry:Harry": 11}), reload(ctx, is, tstore, ty.UUID).Directors))
 
 	// Attempt to remove directors that don't exist
 	err = tournament.RemoveDirectors(ctx, tstore, us, ty.UUID, makeTournamentPersons(map[string]int32{"Evans": -1, "Zoof": 2}))
 	is.True(err.Error() == entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NONEXISTENT_PLAYER, tournamentName, "", "0", "Zoof:Zoof", "removeTournamentPersons").Error())
-	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{"Kieran:Kieran": 0, "Vince:Vince": 2, "Jennifer:Jennifer": 2, "Evans:Evans": 4, "Oof:Oof": 2, "Guy:Guy": 10, "Harry:Harry": 11}), ty.Directors))
+	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{"Kieran:Kieran": 0, "Vince:Vince": 2, "Jennifer:Jennifer": 2, "Evans:Evans": 4, "Oof:Oof": 2, "Guy:Guy": 10, "Harry:Harry": 11}), reload(ctx, is, tstore, ty.UUID).Directors))
 
 	// Attempt to remove the executive director
 	err = tournament.RemoveDirectors(ctx, tstore, us, ty.UUID, makeTournamentPersons(map[string]int32{"Evans": -1, "Kieran": 0}))
 	is.NoErr(err)
-	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{"Vince:Vince": 2, "Jennifer:Jennifer": 2, "Oof:Oof": 2, "Guy:Guy": 10, "Harry:Harry": 11}), ty.Directors))
+	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{"Vince:Vince": 2, "Jennifer:Jennifer": 2, "Oof:Oof": 2, "Guy:Guy": 10, "Harry:Harry": 11}), reload(ctx, is, tstore, ty.UUID).Directors))
 
 	// Remove directors
 	err = tournament.RemoveDirectors(ctx, tstore, us, ty.UUID, makeTournamentPersons(map[string]int32{"Oof": 2, "Guy": -5, "Harry": 300}))
 	is.NoErr(err)
-	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{"Vince:Vince": 2, "Jennifer:Jennifer": 2}), ty.Directors))
+	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{"Vince:Vince": 2, "Jennifer:Jennifer": 2}), reload(ctx, is, tstore, ty.UUID).Directors))
 
 	// Attempt to remove all remaining directors (should fail - cannot remove last director)
 	err = tournament.RemoveDirectors(ctx, tstore, us, ty.UUID, makeTournamentPersons(map[string]int32{"Vince": 2, "Jennifer": 2}))
 	is.True(err != nil)
 	is.True(err.Error() == "cannot remove the last director from a tournament")
 	// Directors should remain unchanged
-	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{"Vince:Vince": 2, "Jennifer:Jennifer": 2}), ty.Directors))
+	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{"Vince:Vince": 2, "Jennifer:Jennifer": 2}), reload(ctx, is, tstore, ty.UUID).Directors))
 
 	// HACK: Test read-only directors using Rating field (-1=Read-only, otherwise Full)
 	// TODO: Replace with proper permissions field when backend schema is updated
 	// Add a read-only director
 	err = tournament.AddDirectors(ctx, tstore, us, ty.UUID, makeTournamentPersons(map[string]int32{"Noah": -1}))
 	is.NoErr(err)
-	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{"Vince:Vince": 2, "Jennifer:Jennifer": 2, "Noah:Noah": -1}), ty.Directors))
+	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{"Vince:Vince": 2, "Jennifer:Jennifer": 2, "Noah:Noah": -1}), reload(ctx, is, tstore, ty.UUID).Directors))
 
 	// Attempt to remove all full directors, leaving only read-only director (should fail)
 	err = tournament.RemoveDirectors(ctx, tstore, us, ty.UUID, makeTournamentPersons(map[string]int32{"Vince": 2, "Jennifer": 2}))
 	is.True(err != nil)
 	is.True(err.Error() == "cannot remove the last non-read-only director from a tournament")
 	// Directors should remain unchanged
-	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{"Vince:Vince": 2, "Jennifer:Jennifer": 2, "Noah:Noah": -1}), ty.Directors))
+	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{"Vince:Vince": 2, "Jennifer:Jennifer": 2, "Noah:Noah": -1}), reload(ctx, is, tstore, ty.UUID).Directors))
 
 	// Should be able to remove just one full director (leaving one full director and the read-only director)
 	err = tournament.RemoveDirectors(ctx, tstore, us, ty.UUID, makeTournamentPersons(map[string]int32{"Jennifer": 2}))
 	is.NoErr(err)
-	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{"Vince:Vince": 2, "Noah:Noah": -1}), ty.Directors))
+	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{"Vince:Vince": 2, "Noah:Noah": -1}), reload(ctx, is, tstore, ty.UUID).Directors))
 
 	// Should be able to remove the read-only director, leaving one full director
 	err = tournament.RemoveDirectors(ctx, tstore, us, ty.UUID, makeTournamentPersons(map[string]int32{"Noah": -1}))
 	is.NoErr(err)
-	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{"Vince:Vince": 2}), ty.Directors))
+	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{"Vince:Vince": 2}), reload(ctx, is, tstore, ty.UUID).Directors))
 
 	// Same thing for players.
-	div1 := ty.Divisions[divOneName]
 
 	// Add players
 	err = tournament.AddPlayers(ctx, tstore, us, ty.UUID, divOneName, players)
 	is.NoErr(err)
-	XHRResponse, err := div1.DivisionManager.GetXHRResponse()
+	XHRResponse, err := reload(ctx, is, tstore, ty.UUID).Divisions[divOneName].DivisionManager.GetXHRResponse()
 	is.NoErr(err)
 	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{"Will:Will": 1000, "Josh:Josh": 3000, "Conrad:Conrad": 2200, "Jesse:Jesse": 2100}), XHRResponse.Players))
 
 	// Add players to a division that doesn't exist
 	err = tournament.AddPlayers(ctx, tstore, us, ty.UUID, divOneName+"not quite", makeTournamentPersons(map[string]int32{"Noah": 4, "Bob": 2}))
 	is.True(err.Error() == entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, tournamentName, divOneName+"not quite").Error())
-	XHRResponse, err = div1.DivisionManager.GetXHRResponse()
+	XHRResponse, err = reload(ctx, is, tstore, ty.UUID).Divisions[divOneName].DivisionManager.GetXHRResponse()
 	is.NoErr(err)
 	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{"Will:Will": 1000, "Josh:Josh": 3000, "Conrad:Conrad": 2200, "Jesse:Jesse": 2100}), XHRResponse.Players))
 
 	// Add players
 	err = tournament.AddPlayers(ctx, tstore, us, ty.UUID, divOneName, makeTournamentPersons(map[string]int32{"Noah": 4, "Bob": 2}))
 	is.NoErr(err)
-	XHRResponse, err = div1.DivisionManager.GetXHRResponse()
+	XHRResponse, err = reload(ctx, is, tstore, ty.UUID).Divisions[divOneName].DivisionManager.GetXHRResponse()
 	is.NoErr(err)
 	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{"Will:Will": 1000, "Josh:Josh": 3000, "Conrad:Conrad": 2200, "Jesse:Jesse": 2100, "Noah:Noah": 4, "Bob:Bob": 2}), XHRResponse.Players))
 
 	// Remove players that don't exist
 	err = tournament.RemovePlayers(ctx, tstore, us, ty.UUID, divOneName, makeTournamentPersons(map[string]int32{"Evans": -1}))
 	is.True(err.Error() == entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NONEXISTENT_PLAYER, tournamentName, divOneName, "0", "Evans:Evans", "removePlayers").Error())
-	XHRResponse, err = div1.DivisionManager.GetXHRResponse()
+	XHRResponse, err = reload(ctx, is, tstore, ty.UUID).Divisions[divOneName].DivisionManager.GetXHRResponse()
 	is.NoErr(err)
 	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{"Will:Will": 1000, "Josh:Josh": 3000, "Conrad:Conrad": 2200, "Jesse:Jesse": 2100, "Noah:Noah": 4, "Bob:Bob": 2}), XHRResponse.Players))
 
 	// Remove players from a division that doesn't exist
 	err = tournament.RemovePlayers(ctx, tstore, us, ty.UUID, divOneName+"hmm", makeTournamentPersons(map[string]int32{"Josh": -1, "Conrad": 2}))
 	is.True(err.Error() == entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, tournamentName, divOneName+"hmm").Error())
-	XHRResponse, err = div1.DivisionManager.GetXHRResponse()
+	XHRResponse, err = reload(ctx, is, tstore, ty.UUID).Divisions[divOneName].DivisionManager.GetXHRResponse()
 	is.NoErr(err)
 	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{"Will:Will": 1000, "Josh:Josh": 3000, "Conrad:Conrad": 2200, "Jesse:Jesse": 2100, "Noah:Noah": 4, "Bob:Bob": 2}), XHRResponse.Players))
 
 	// Remove players
 	err = tournament.RemovePlayers(ctx, tstore, us, ty.UUID, divOneName, makeTournamentPersons(map[string]int32{"Josh": -1, "Conrad": 2}))
 	is.NoErr(err)
-	XHRResponse, err = div1.DivisionManager.GetXHRResponse()
+	XHRResponse, err = reload(ctx, is, tstore, ty.UUID).Divisions[divOneName].DivisionManager.GetXHRResponse()
 	is.NoErr(err)
 	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{"Will:Will": 1000, "Jesse:Jesse": 2100, "Noah:Noah": 4, "Bob:Bob": 2}), XHRResponse.Players))
 
@@ -438,7 +466,7 @@ func TestTournamentSingleDivision(t *testing.T) {
 	is.NoErr(err)
 	is.True(!isStarted)
 
-	_, err = div1.DivisionManager.GetXHRResponse()
+	_, err = reload(ctx, is, tstore, ty.UUID).Divisions[divOneName].DivisionManager.GetXHRResponse()
 	is.NoErr(err)
 	// Set pairing should work before the tournament starts
 	pairings := []*pb.TournamentPairingRequest{{PlayerOneId: "Will:Will", PlayerTwoId: "Jesse:Jesse", Round: 0}}
@@ -448,7 +476,7 @@ func TestTournamentSingleDivision(t *testing.T) {
 	// Remove players and attempt to set pairings
 	err = tournament.RemovePlayers(ctx, tstore, us, ty.UUID, divOneName, makeTournamentPersons(map[string]int32{"Will": 1000, "Jesse": 2100, "Noah": 4, "Bob": 2}))
 	is.NoErr(err)
-	XHRResponse, err = div1.DivisionManager.GetXHRResponse()
+	XHRResponse, err = reload(ctx, is, tstore, ty.UUID).Divisions[divOneName].DivisionManager.GetXHRResponse()
 	is.NoErr(err)
 	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{}), XHRResponse.Players))
 
@@ -479,7 +507,7 @@ func TestTournamentSingleDivision(t *testing.T) {
 	players = makeTournamentPersons(map[string]int32{"Will": 1000, "Josh": 3000, "Conrad": 2200, "Jesse": 2100})
 	err = tournament.AddPlayers(ctx, tstore, us, ty.UUID, divOneName, players)
 	is.NoErr(err)
-	XHRResponse, err = div1.DivisionManager.GetXHRResponse()
+	XHRResponse, err = reload(ctx, is, tstore, ty.UUID).Divisions[divOneName].DivisionManager.GetXHRResponse()
 	is.NoErr(err)
 	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{"Will:Will": 1000, "Josh:Josh": 3000, "Conrad:Conrad": 2200, "Jesse:Jesse": 2100}), XHRResponse.Players))
 
@@ -548,7 +576,7 @@ func TestTournamentSingleDivision(t *testing.T) {
 	is.NoErr(err)
 	is.True(isStarted)
 
-	isRoundComplete, err := tournament.IsRoundComplete(ctx, tstore, ty.UUID, divOneName, 0)
+	isRoundComplete, err := roundComplete(ctx, tstore, ty.UUID, divOneName, 0)
 	is.NoErr(err)
 	is.True(!isRoundComplete)
 
@@ -571,7 +599,7 @@ func TestTournamentSingleDivision(t *testing.T) {
 		nil, stores.Queries)
 	is.NoErr(err)
 
-	isRoundComplete, err = tournament.IsRoundComplete(ctx, tstore, ty.UUID, divOneName, 0)
+	isRoundComplete, err = roundComplete(ctx, tstore, ty.UUID, divOneName, 0)
 	is.NoErr(err)
 	is.True(isRoundComplete)
 
@@ -630,7 +658,7 @@ func TestTournamentSingleDivision(t *testing.T) {
 		nil, stores.Queries)
 	is.NoErr(err)
 
-	isRoundComplete, err = tournament.IsRoundComplete(ctx, tstore, ty.UUID, divOneName, 1)
+	isRoundComplete, err = roundComplete(ctx, tstore, ty.UUID, divOneName, 1)
 	is.NoErr(err)
 	is.True(isRoundComplete)
 
@@ -656,7 +684,7 @@ func TestTournamentSingleDivision(t *testing.T) {
 	is.NoErr(err)
 
 	// See if round is complete for division that does not exist
-	_, err = tournament.IsRoundComplete(ctx, tstore, ty.UUID, divOneName+"yah", 0)
+	_, err = roundComplete(ctx, tstore, ty.UUID, divOneName+"yah", 0)
 	is.True(err.Error() == entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, tournamentName, divOneName+"yah").Error())
 
 	isFinished, err := tournament.IsFinished(ctx, tstore, ty.UUID)
@@ -709,19 +737,17 @@ func TestTournamentMultipleDivisions(t *testing.T) {
 	err = tournament.SetRoundControls(ctx, tstore, ty.UUID, divTwoName, makeRoundControls())
 	is.NoErr(err)
 
-	div1 := ty.Divisions[divOneName]
-	div2 := ty.Divisions[divTwoName]
 	fmt.Println(divOnePlayers)
 	// Add players
 	err = tournament.AddPlayers(ctx, tstore, us, ty.UUID, divOneName, divOnePlayers)
 	is.NoErr(err)
-	XHRResponse, err := div1.DivisionManager.GetXHRResponse()
+	XHRResponse, err := reload(ctx, is, tstore, ty.UUID).Divisions[divOneName].DivisionManager.GetXHRResponse()
 	is.NoErr(err)
 	is.NoErr(equalTournamentPersons(divOnePlayersCompare, XHRResponse.Players))
 
 	err = tournament.AddPlayers(ctx, tstore, us, ty.UUID, divTwoName, divTwoPlayers)
 	is.NoErr(err)
-	XHRResponse, err = div2.DivisionManager.GetXHRResponse()
+	XHRResponse, err = reload(ctx, is, tstore, ty.UUID).Divisions[divTwoName].DivisionManager.GetXHRResponse()
 	is.NoErr(err)
 	is.NoErr(equalTournamentPersons(divTwoPlayersCompare, XHRResponse.Players))
 
@@ -818,11 +844,11 @@ func TestTournamentMultipleDivisions(t *testing.T) {
 		nil, stores.Queries)
 	is.NoErr(err)
 
-	divOneComplete, err := tournament.IsRoundComplete(ctx, tstore, ty.UUID, divOneName, 0)
+	divOneComplete, err := roundComplete(ctx, tstore, ty.UUID, divOneName, 0)
 	is.NoErr(err)
 	is.True(divOneComplete)
 
-	divTwoComplete, err := tournament.IsRoundComplete(ctx, tstore, ty.UUID, divTwoName, 0)
+	divTwoComplete, err := roundComplete(ctx, tstore, ty.UUID, divTwoName, 0)
 	is.NoErr(err)
 	is.True(divTwoComplete)
 }
@@ -878,7 +904,7 @@ func TestIRLRenameKeepsScorecardToken(t *testing.T) {
 		makeTournamentPersons(map[string]int32{"Bob": 1500, "Carol": 1400})))
 
 	idOf := func(name string) string {
-		for _, p := range ty.Divisions["A"].DivisionManager.GetPlayers().Persons {
+		for _, p := range reload(ctx, is, tstore, ty.UUID).Divisions["A"].DivisionManager.GetPlayers().Persons {
 			if strings.HasSuffix(p.Id, ":"+name) {
 				return p.Id
 			}

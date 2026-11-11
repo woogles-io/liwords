@@ -55,10 +55,16 @@ func main() {
 	ctx := context.Background()
 
 	// Get tournament by slug
-	tourney, err := tournamentStore.GetBySlug(ctx, slug)
+	tid, err := tournamentStore.GetUUIDBySlug(ctx, slug)
 	if err != nil {
 		log.Fatalf("Failed to get tournament %s: %v", slug, err)
 	}
+	// Held until the save, so a result recorded meanwhile isn't lost.
+	tourney, lk, err := tournamentStore.LockForChange(ctx, tid)
+	if err != nil {
+		log.Fatalf("Failed to get tournament %s: %v", slug, err)
+	}
+	defer lk.Release()
 
 	fmt.Printf("Found tournament: %s (UUID: %s)\n", tourney.Name, tourney.UUID)
 
@@ -129,9 +135,7 @@ func main() {
 
 	// Save the tournament back
 	fmt.Printf("\nSaving tournament...\n")
-	tourney.Lock()
-	err = tournamentStore.Set(ctx, tourney)
-	tourney.Unlock()
+	err = lk.Save(ctx)
 	if err != nil {
 		log.Fatalf("Failed to save tournament: %v", err)
 	}
