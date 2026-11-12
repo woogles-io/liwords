@@ -23,6 +23,9 @@ export type LabRequest =
   | { op: "prepare"; args: { files: Array<LabFile> } }
   // the position's plays, best first, as many as the request's count asks
   | { op: "analyze"; args: { request: string } }
+  // what the opponent may play next, by score alone; with an inference's
+  // request, from racks starting with the leave inferred, as a sim's does
+  | { op: "threats"; args: { request: string; infer?: string } }
   // an endgame; a pre-endgame on as many workers as parts says, if fewer than
   // the lab's (lab.ts), which a worker reads no further
   | { op: "endgame"; args: { request: string; parts?: number } }
@@ -267,6 +270,19 @@ const handle = async (req: LabRequest): Promise<unknown> => {
       return prepare(wolges, req.args.files);
     case "analyze":
       return JSON.parse(wolges.analyze(req.args.request));
+    case "threats": {
+      // threats comes with the wasm after the one this page is built with;
+      // until then, the call fails as one to anything the wasm lacks does
+      const { threats } = wolges as { threats?: (request: string) => string };
+      if (!threats) throw new Error("this wasm has no threats");
+      const { result, inferred } = inferring(
+        wolges,
+        req.args.request,
+        req.args.infer,
+        threats,
+      );
+      return { answer: JSON.parse(result), ...(inferred ? { inferred } : {}) };
+    }
     case "endgame":
       freeJob(wolges);
       job = {

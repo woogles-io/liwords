@@ -35,6 +35,9 @@ const wasm = vi.hoisted(() => ({
   ),
   infer_free: vi.fn(),
   stitched_z: vi.fn((iterations: number, alpha: number) => iterations + alpha),
+  threats: vi.fn((_request: string) => JSON.stringify({ exact: true })) as
+    | ((request: string) => string)
+    | undefined,
 }));
 vi.mock("wolges-wasm", () => wasm);
 
@@ -530,5 +533,35 @@ describe("the lab's worker", () => {
     const steps = wasm.sim_step.mock.calls.length;
     await new Promise((resolve) => setTimeout(resolve, 20));
     expect(wasm.sim_step.mock.calls.length).toBe(steps);
+  });
+
+  it("counts the threats, from the leave inferred when asked", async () => {
+    const plain = await send(1, "threats", { request: '{"count":2}' });
+    expect(wasm.threats).toHaveBeenCalledWith('{"count":2}');
+    expect(plain.result).toEqual({ answer: { exact: true } });
+
+    const inferred = await send(2, "threats", {
+      request: '{"count":2,"known":[1]}',
+      infer: '{"fuzz":3}',
+    });
+    expect(wasm.infer).toHaveBeenCalledWith('{"fuzz":3}');
+    // the inference's handle in place of the tiles known, let go after
+    expect(wasm.threats).toHaveBeenLastCalledWith('{"count":2,"inferred":4}');
+    expect(wasm.infer_free).toHaveBeenCalledWith(4);
+    expect(inferred.result).toEqual({
+      answer: { exact: true },
+      inferred: { count: 3, leaves: [{ tiles: [1], weight: 1 }] },
+    });
+  });
+
+  it("says so when the wasm has no threats", async () => {
+    const threats = wasm.threats;
+    wasm.threats = undefined;
+    try {
+      const answer = await send(1, "threats", { request: "{}" });
+      expect(answer.error).toBe("this wasm has no threats");
+    } finally {
+      wasm.threats = threats;
+    }
   });
 });
