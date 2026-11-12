@@ -20,7 +20,7 @@ import "../gameroom/scss/gameroom.scss";
 import { BoardPreview } from "./board_preview";
 import { syncWebPush } from "./web_push_setting";
 import { PushService } from "../gen/api/proto/push_service/push_service_pb";
-import { flashError, useClient } from "../utils/hooks/connect";
+import { useClient } from "../utils/hooks/connect";
 import { MatchLexiconDisplay, puzzleLexica } from "../shared/lexicon_display";
 import { TouchBackend } from "react-dnd-touch-backend";
 import { DndProvider } from "react-dnd";
@@ -228,10 +228,14 @@ export const Preferences = React.memo(() => {
   }, []);
 
   // The switch also subscribes this device to web push, or unsubscribes it.
+  // A failure there is only logged: the switch still works for notifications
+  // in an open tab, and a server without web push is not an error.
   const pushClient = useClient(PushService);
   const syncPush = useCallback(
     (on: boolean) => {
-      syncWebPush(pushClient, on).catch(flashError);
+      syncWebPush(pushClient, on).catch((e) =>
+        console.log("Updating this device's web push failed:", e),
+      );
     },
     [pushClient],
   );
