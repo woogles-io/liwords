@@ -29,7 +29,8 @@ package bus
 // Twice the loop holds a message that is in no buffer and not yet counted:
 // just after taking it from a subscription, and while publishing an event. So
 // the conditions of steps 2 and 3 are checked by the loop itself, between
-// iterations (loopUntil), where it holds nothing. Checked from outside, they
+// iterations, where it holds nothing: Drain sends each as a drainCheck and
+// waits for the loop's answer (waitInLoop). Checked from outside, they
 // could hold while the loop was still in the middle of one.
 //
 // ProcessMessages must keep running until Drain returns.
@@ -56,8 +57,8 @@ type subscription interface {
 	IsValid() bool
 }
 
-// untilCheckEvery is how often an idle loop checks Drain's conditions.
-const untilCheckEvery = 20 * time.Millisecond
+// drainCheckEvery is how often an idle loop checks Drain's conditions.
+const drainCheckEvery = 20 * time.Millisecond
 
 // Drain stops taking new messages and waits until everything already taken
 // has been handled and its events published, or until ctx ends.
@@ -90,7 +91,7 @@ func (b *Bus) Drain(ctx context.Context) (err error) {
 	}
 
 	step = "take-buffered"
-	if err := b.loopUntil(ctx, func() bool {
+	if err := b.waitInLoop(ctx, func() bool {
 		for _, sub := range b.subscriptions {
 			if sub.IsValid() {
 				return false
@@ -106,7 +107,7 @@ func (b *Bus) Drain(ctx context.Context) (err error) {
 		attribute.Int("bus.events_queued", b.eventsQueued())))
 
 	step = "finish-handlers-and-events"
-	if err := b.loopUntil(ctx, func() bool {
+	if err := b.waitInLoop(ctx, func() bool {
 		return b.inFlight.Load() == 0 && b.eventsQueued() == 0
 	}); err != nil {
 		return err
@@ -115,74 +116,76 @@ func (b *Bus) Drain(ctx context.Context) (err error) {
 	return nil
 }
 
-// loopUntil returns once ProcessMessages, checking between its iterations,
+// waitInLoop returns once ProcessMessages, checking between its iterations,
 // finds cond true, or when ctx ends.
-func (b *Bus) loopUntil(ctx context.Context, cond func() bool) error {
-	r := untilReq{cond: cond, done: make(chan struct{})}
+func (b *Bus) waitInLoop(ctx context.Context, cond func() bool) error {
+	c := drainCheck{cond: cond, done: make(chan struct{})}
 	select {
-	case b.untilReqs <- r:
+	case b.drainChecks <- c:
 	case <-ctx.Done():
 		return ctx.Err()
 	}
 	select {
-	case <-r.done:
+	case <-c.done:
 		return nil
 	case <-ctx.Done():
 		return ctx.Err()
 	}
 }
 
-type untilReq struct {
+// drainCheck asks ProcessMessages to close done once cond holds. Drain sends
+// them on Bus.drainChecks (see waitInLoop).
+type drainCheck struct {
 	cond func() bool
 	done chan struct{}
 }
 
-// untilChecks are the loopUntil requests ProcessMessages is checking. Only
-// the loop uses it.
-type untilChecks struct {
-	pending []untilReq
+// pendingDrainChecks are the drain checks ProcessMessages hasn't answered
+// yet. Only the loop uses it.
+type pendingDrainChecks struct {
+	pending []drainCheck
 	ticker  *time.Ticker
 }
 
-func (u *untilChecks) add(r untilReq) {
-	u.pending = append(u.pending, r)
-	if u.ticker == nil {
-		u.ticker = time.NewTicker(untilCheckEvery)
+func (p *pendingDrainChecks) add(c drainCheck) {
+	p.pending = append(p.pending, c)
+	if p.ticker == nil {
+		p.ticker = time.NewTicker(drainCheckEvery)
 	}
 }
 
 // tick wakes an idle loop while something is pending; otherwise it is nil,
 // which never fires.
-func (u *untilChecks) tick() <-chan time.Time {
-	if u.ticker == nil {
+func (p *pendingDrainChecks) tick() <-chan time.Time {
+	if p.ticker == nil {
 		return nil
 	}
-	return u.ticker.C
+	return p.ticker.C
 }
 
-// check answers the requests whose condition holds.
-func (u *untilChecks) check() {
-	if len(u.pending) == 0 {
+// check answers the checks whose condition holds.
+func (p *pendingDrainChecks) check() {
+	if len(p.pending) == 0 {
 		return
 	}
-	left := u.pending[:0]
-	for _, r := range u.pending {
-		if r.cond() {
-			close(r.done)
+	left := p.pending[:0]
+	for _, c := range p.pending {
+		if c.cond() {
+			close(c.done)
 		} else {
-			left = append(left, r)
+			left = append(left, c)
 		}
 	}
-	u.pending = left
-	if len(u.pending) == 0 {
-		u.stop()
+	p.pending = left
+	if len(p.pending) == 0 {
+		p.stop()
 	}
 }
 
-func (u *untilChecks) stop() {
-	if u.ticker != nil {
-		u.ticker.Stop()
-		u.ticker = nil
+func (p *pendingDrainChecks) stop() {
+	if p.ticker != nil {
+		p.ticker.Stop()
+		p.ticker = nil
 	}
 }
 

@@ -311,7 +311,7 @@ a timeout; during a drain they go to the remaining server.
    still publish on), stop adjudication and seek expiry, then wait until the
    loop has taken everything buffered, every handler goroutine is done, and
    every event is published. The loop checks those conditions itself,
-   between iterations (`loopUntil`), since it twice holds a message that is
+   between iterations (`waitInLoop`), since it twice holds a message that is
    in no buffer and not yet counted.
 3. The archive wait, then a NATS flush and close.
 

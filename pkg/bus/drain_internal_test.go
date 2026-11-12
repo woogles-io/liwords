@@ -48,7 +48,7 @@ func drainTestBus(t *testing.T) (*Bus, []*fakeSub) {
 	b := &Bus{
 		config:              config.DefaultConfig(),
 		subchans:            map[string]chan *nats.Msg{"user.>": make(chan *nats.Msg, 8)},
-		untilReqs:           make(chan untilReq),
+		drainChecks:         make(chan drainCheck),
 		publish:             func(string, []byte) error { return nil },
 		gameEventChan:       make(chan *entity.EventWrapper, 8),
 		tournamentEventChan: make(chan *entity.EventWrapper, 8),

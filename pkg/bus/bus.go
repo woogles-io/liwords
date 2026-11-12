@@ -64,9 +64,9 @@ type Bus struct {
 	subchans      map[string]chan *nats.Msg
 
 	// For shutting down without dropping work in progress; see Drain.
-	inFlight  atomic.Int64 // handler goroutines running (trackHandler)
-	draining  atomic.Bool
-	untilReqs chan untilReq
+	inFlight    atomic.Int64 // handler goroutines running (trackHandler)
+	draining    atomic.Bool
+	drainChecks chan drainCheck
 	// publish sends the events the loop publishes; natsconn.Publish, but
 	// tests replace it.
 	publish func(subject string, data []byte) error
@@ -83,7 +83,7 @@ func NewBus(cfg *config.Config, natsconn *nats.Conn, stores *stores.Stores, redi
 		natsconn:            natsconn,
 		stores:              stores,
 		subscriptions:       []subscription{},
-		untilReqs:           make(chan untilReq),
+		drainChecks:         make(chan drainCheck),
 		publish:             natsconn.Publish,
 		subchans:            map[string]chan *nats.Msg{},
 		config:              cfg,
@@ -161,9 +161,9 @@ func (b *Bus) ProcessMessages(ctx context.Context) {
 	channelMonitor := time.NewTicker(ChannelMonitorInterval)
 	defer channelMonitor.Stop()
 
-	// Drain's requests (loopUntil), checked between iterations.
-	var until untilChecks
-	defer until.stop()
+	// Drain's checks (see drainCheck), answered between iterations.
+	var checks pendingDrainChecks
+	defer checks.stop()
 
 outerfor:
 	for {
@@ -412,10 +412,10 @@ outerfor:
 				}
 			}
 
-		case r := <-b.untilReqs:
-			until.add(r)
+		case c := <-b.drainChecks:
+			checks.add(c)
 
-		case <-until.tick():
+		case <-checks.tick():
 			// Idle: nothing else would wake the loop to check.
 
 		case <-ctx.Done():
@@ -477,7 +477,7 @@ outerfor:
 
 		}
 		// Between iterations: nothing taken is in the loop's hands.
-		until.check()
+		checks.check()
 	}
 
 	log.Info().Msg("exiting processMessages loop")
