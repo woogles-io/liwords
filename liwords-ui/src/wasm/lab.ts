@@ -1,4 +1,5 @@
 import type { LabRequest } from "./lab.worker";
+import { EndgamePartAnswer, mergeEndgameAnswers } from "./lab_endgame_merge";
 import {
   PartAnswer,
   behindLeader,
@@ -18,8 +19,11 @@ import {
 // the parts together are the sim one worker would run. Their answers are
 // merged as they come, and with more than one part the page prunes on the
 // merged numbers, as the wasm prunes one sim's: no part prunes on its own,
-// which would leave the parts with other candidates. Every other job, an
-// endgame, an analysis, runs on the first worker.
+// which would leave the parts with other candidates. A pre-endgame (an
+// endgame asked with a model: two or more tiles in the bag) runs on every
+// worker too, each valuing its part of the bag's sets, the parts' answers
+// merged. Every other job, an endgame of an empty bag or one tile, an
+// analysis, runs on the first worker.
 
 export type LabEvent = {
   job: number;
@@ -56,6 +60,7 @@ export const setLabPartsForTest = (n: number) => {
   workers = [];
   pending.clear();
   sims.clear();
+  endgames.clear();
   jobs.clear();
 };
 
@@ -90,6 +95,14 @@ type Sim = {
   freed: boolean;
 };
 const sims = new Map<number, Sim>();
+
+// A pre-endgame in parts as the page keeps it: each part's last answer, and
+// whether a part has gone.
+type PartedEndgame = {
+  answers: Array<EndgamePartAnswer | undefined>;
+  freed: boolean;
+};
+const endgames = new Map<number, PartedEndgame>();
 
 const emit = (e: LabEvent) => listeners.forEach((listener) => listener(e));
 
@@ -154,6 +167,11 @@ const heard = (worker: number, e: WorkerEvent) => {
   }
   const page = pageJob(worker, e.job);
   if (page === undefined) return;
+  const endgame = endgames.get(page);
+  if (endgame) {
+    heardEndgame(worker, page, endgame, e);
+    return;
+  }
   const sim = sims.get(page);
   if (!sim) {
     if (e.freed) jobs.delete(page);
@@ -178,6 +196,37 @@ const heard = (worker: number, e: WorkerEvent) => {
   }
   if (e.answer) sim.answers[part] = e.answer as PartAnswer;
   report(page, sim);
+};
+
+// A pre-endgame's part heard: gone, the whole with it; failed, the others
+// stopped; or answered, the parts merged once each has answered, and done
+// once every part is exact.
+const heardEndgame = (
+  worker: number,
+  page: number,
+  endgame: PartedEndgame,
+  e: WorkerEvent,
+) => {
+  if (e.freed) {
+    if (!endgame.freed) {
+      endgame.freed = true;
+      freeParts(page, worker);
+      emit({ job: page, freed: true });
+    }
+    return;
+  }
+  if (e.error) {
+    stopParts(page);
+    emit({ job: page, error: e.error });
+    return;
+  }
+  const part = jobs.get(page)!.findIndex((h) => h.worker === worker);
+  if (e.answer) endgame.answers[part] = e.answer as EndgamePartAnswer;
+  if (endgame.answers.some((a) => !a)) return;
+  const answer = mergeEndgameAnswers(
+    endgame.answers as Array<EndgamePartAnswer>,
+  );
+  emit({ job: page, answer, done: answer.exact });
 };
 
 // The sim's merged answer, the candidates it pruned so shown, sent; and a
@@ -279,6 +328,7 @@ const freeParts = (page: number, gone?: number) => {
   }
   jobs.delete(page);
   sims.delete(page);
+  endgames.delete(page);
 };
 
 // A job's parts, each with the request given its own job's number there.
@@ -294,10 +344,11 @@ const each = <T>(
 ): Promise<Array<T>> =>
   Promise.all(partsOf(job).map((h) => call<T>(h.worker, request(h.job))));
 
-// The sims made before this job, freed: a worker holds one job at a time,
-// so a job made on one worker frees the sim's part there, and the sim goes.
+// The jobs in parts made before this job, freed: a worker holds one job at
+// a time, so a job made on one worker frees the part there, and the whole
+// goes.
 const freeSims = () => {
-  for (const page of [...sims.keys()]) {
+  for (const page of [...sims.keys(), ...endgames.keys()]) {
     freeParts(page);
     emit({ job: page, freed: true });
   }
@@ -318,6 +369,28 @@ const multi = async (request: LabRequest): Promise<unknown> => {
       return call(0, request);
     case "endgame": {
       freeSims();
+      const base = JSON.parse(request.args.request);
+      if (base.model !== undefined) {
+        // part k of n values the bag's sets whose index is k mod n
+        const made = await Promise.all(
+          Array.from({ length: n }, (_, w) =>
+            call<number>(w, {
+              op: "endgame",
+              args: { request: JSON.stringify({ ...base, part: [w, n] }) },
+            }),
+          ),
+        );
+        const page = ++lastJob;
+        jobs.set(
+          page,
+          made.map((job, w) => ({ worker: w, job })),
+        );
+        endgames.set(page, {
+          answers: new Array(n).fill(undefined),
+          freed: false,
+        });
+        return page;
+      }
       const job = await call<number>(0, request);
       const page = ++lastJob;
       jobs.set(page, [{ worker: 0, job }]);
@@ -451,7 +524,7 @@ const multi = async (request: LabRequest): Promise<unknown> => {
       return undefined;
     case "free": {
       const { job } = request.args;
-      if (sims.has(job)) {
+      if (sims.has(job) || endgames.has(job)) {
         freeParts(job);
         emit({ job, freed: true });
         return undefined;

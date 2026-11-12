@@ -62,7 +62,7 @@ import {
   roomClass,
   roomInWindow,
 } from "../utils/window_room";
-import { labCall, onLabEvent, setLabParts } from "../wasm/lab";
+import { labCall, labParts, onLabEvent, setLabParts } from "../wasm/lab";
 import { getLoadableFiles, getWolges } from "../wasm/loader";
 import {
   AnalyzerMove,
@@ -717,6 +717,9 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
   // another search
   const [model, setModel] = useState<EndgameModel>("info_sets");
   const modeled = bag !== null && bag >= 2;
+  // the workers the solve runs on: a pre-endgame on as many as a sim, each
+  // valuing its part of the bag's sets
+  const [workers, setWorkers] = useState(1);
   const job = useLabJob<EndgameAnswer>(
     solvable
       ? async () => {
@@ -730,6 +733,7 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
               ),
             },
           });
+          setWorkers(modeled ? labParts() : 1);
           return labCall<number>({
             op: "endgame",
             args: {
@@ -843,7 +847,7 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
         ? `Solving: ${progressText(answer)} after ${ranText(ranMs)}`
         : "Solving...";
   } else {
-    const progress = `${progressText(solved)} after ${ranText(ranMs)}${solved.exact ? ", exact" : job.running ? ", solving" : ", stopped"}`;
+    const progress = `${progressText(solved)} after ${ranText(ranMs)}${solved.exact ? ", exact" : job.running ? ", solving" : ", stopped"}${workers > 1 ? `; on ${workers} workers` : ""}`;
     status =
       solved.bag === 0
         ? `Value ${signed(solved.value)}, spread ${signed(solved.spread)}, ${progress}`
@@ -1199,7 +1203,8 @@ const DEFAULT_SIM_PLIES = 4;
 // dealing them one leave by its weight, with how many points the move may
 // fall short of a rack's best (fuzz) and how many of the likeliest leaves are
 // listed; the chance a pruning sim ever prunes its best candidate (alpha);
-// and how many workers a sim runs on, each holding its own tables.
+// and how many workers a sim, or a pre-endgame, runs on, each holding its
+// own tables.
 export type SimSettings = {
   plies: number | null;
   known: string;
@@ -2816,7 +2821,7 @@ const SimSettingsButton = (props: SimSettingsButtonProps) => {
           <label>
             Workers
             <span className="lab-settings-note">
-              {`The sim runs on this many at once, up to ${cores}, each holding its own tables. Changing this starts the sim again.`}
+              {`The sim, and a pre-endgame solved from then on, runs on this many at once, up to ${cores}, each holding its own tables. Changing this starts the sim again.`}
             </span>
             <InputNumber
               size="small"

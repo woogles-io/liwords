@@ -70,6 +70,7 @@ vi.mock("../wasm/lab", () => ({
     }
     return undefined;
   },
+  labParts: () => lab.parts,
   setLabParts: (n: number) => {
     lab.parts = n;
   },
@@ -575,6 +576,38 @@ describe("the endgame panel", () => {
     ]);
     // picking is not placing
     expect(board.placed).toEqual([]);
+  });
+
+  it("says how many workers a pre-endgame runs on, as many as a sim", async () => {
+    lab.parts = 3;
+    render(
+      <Store>
+        <EndgamePanel
+          lab={position([A, B, E, E, I, I, I, I, I])}
+          onClose={() => {}}
+        />
+      </Store>,
+    );
+    await step({
+      bag: 2,
+      steps: 1,
+      nodes: 90,
+      exact: true,
+      play: across(7, 7, [B, A]),
+      value: 3.5,
+      spread: 13.5,
+      depth: 127,
+      win: 0.6,
+      endgames: 12,
+      moves: [9, 9],
+      draws: [],
+      candidates: [],
+    });
+    expect(
+      screen.getByText(
+        "Expected value +3.50, wins 60.0%, searched to the end, 12 endgames after 0 s, exact; on 3 workers",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("marks the values not yet searched to the end", async () => {

@@ -286,3 +286,90 @@ describe("a sim in parts", () => {
     expect(ops(0)).toContain("stop");
   });
 });
+
+describe("a pre-endgame in parts", () => {
+  const endgamePart = (k: number, value: number, win: number) => ({
+    bag: 2,
+    steps: 1,
+    nodes: 10,
+    exact: true,
+    play: ba,
+    value,
+    win,
+    spread: 10 + value,
+    depth: 127,
+    part: [k, 2],
+    candidates: [
+      {
+        play: ba,
+        value,
+        win,
+        exact: true,
+        draws: [{ tiles: [k], count: 1, value, win }],
+      },
+    ],
+  });
+
+  it("runs on every worker, each its part of the bag's sets, merged once each has answered", async () => {
+    setLabPartsForTest(2);
+    const job = await labCall<number>({
+      op: "endgame",
+      args: { request: JSON.stringify({ model: "info_sets" }) },
+    });
+    expect(
+      [0, 1].map((w) =>
+        JSON.parse(lastOf(w, "endgame")!.args!.request as string),
+      ),
+    ).toEqual([
+      { model: "info_sets", part: [0, 2] },
+      { model: "info_sets", part: [1, 2] },
+    ]);
+    await labCall({ op: "run", args: { job, ms: 16 } });
+    expect(lastOf(0, "run")?.args).toEqual({ job: 12, ms: 16 });
+    expect(lastOf(1, "run")?.args).toEqual({ job: 12, ms: 16 });
+    made[0].event({ job: 12, answer: endgamePart(0, 4, 1), done: true });
+    expect(events).toEqual([]);
+    made[1].event({
+      job: 12,
+      answer: { ...endgamePart(1, -2, 0), exact: false },
+      done: false,
+    });
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({
+      job,
+      done: false,
+      answer: { exact: false, play: ba, value: 1, win: 0.5, spread: 11 },
+    });
+    made[1].event({ job: 12, answer: endgamePart(1, -2, 0), done: true });
+    expect(events[1]).toMatchObject({
+      job,
+      done: true,
+      answer: { exact: true },
+    });
+    // freed, every part with it
+    await labCall({ op: "free", args: { job } });
+    expect(lastOf(0, "free")?.args).toEqual({ job: 12 });
+    expect(lastOf(1, "free")?.args).toEqual({ job: 12 });
+    expect(events[events.length - 1]).toEqual({ job, freed: true });
+  });
+
+  it("runs an endgame of one tile or none on the first worker alone", async () => {
+    setLabPartsForTest(2);
+    await labCall<number>({ op: "endgame", args: { request: "{}" } });
+    expect(JSON.parse(lastOf(0, "endgame")!.args!.request as string)).toEqual(
+      {},
+    );
+    expect(made[1]?.sent.some((m) => m.op === "endgame") ?? false).toBe(false);
+  });
+
+  it("stops the others on a part's error, and says so", async () => {
+    setLabPartsForTest(2);
+    const job = await labCall<number>({
+      op: "endgame",
+      args: { request: JSON.stringify({ model: "random_draws" }) },
+    });
+    made[1].event({ job: 12, error: "out of memory" });
+    expect(events).toEqual([{ job, error: "out of memory" }]);
+    expect(ops(0)).toContain("stop");
+  });
+});
