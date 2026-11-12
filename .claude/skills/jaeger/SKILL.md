@@ -32,8 +32,8 @@ from the repo root; it needs only ssh access to `woogles-jaeger`.
 | N+1 loops, repeated queries, uninstrumented time | `jaeger_es.py fetch --out <scratchpad>/traces --since 6h`, then `scripts/jaeger-audit.py --cache-dir <scratchpad>/traces` |
 
 Common options: `--since 30m|1h|2d` (default 1h) or `--from/--to` (ISO 8601 or
-epoch seconds), `--where key=value` (repeatable tag filter; `--where key` alone
-means the tag exists), `--top N`, `--service` (default `liwords`).
+epoch seconds), `--where key=value` (repeatable tag filter, on span tags or
+process tags such as `host.name`; `--where key` alone means the tag exists), `--top N`, `--service` (default `liwords`).
 
 For anything the script doesn't cover, write the query yourself (below), and
 consider adding a subcommand.
@@ -59,6 +59,11 @@ consider adding a subcommand.
 - The parent is `references[0].spanID` (`references` is nested too). A span with
   no references is a trace root. For "who calls X", collect X's parent span IDs,
   then aggregate `operationName` over `{"terms": {"spanID": [...]}}`.
+- `process.tags` (nested too) holds the resource attributes. `host.name` is
+  the API container's hostname, so it tells servers apart. Shutdowns are
+  `api.shutdown` traces (spans `bus.drain`, `http.shutdown`, `archive.wait`,
+  `nats.flush`); the messages a drain waited for are the spans with the same
+  `host.name` inside the `bus.drain` span's time window.
 - `cache.Get` is used by more than one cache. `otel.scope.name` tells them apart:
   `tournament-cache`, `game-cache`.
 - Operation names over 256 characters aren't indexed. Many sqlc query spans are

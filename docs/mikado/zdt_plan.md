@@ -312,8 +312,8 @@ shutdown starts, which is capped at 5s, so an open stream can't use up the
 archive wait's time. The sequence has 25s (`GracefulShutdownTimeout`), plus
 2s each for the NATS flush and the span export, under ECS's default 30s
 `stopTimeout`. Each shutdown is an `api.shutdown` trace in Jaeger, with a span
-per step; `bus.drain` has an event per step, and handlers that ran during it
-have `bus.draining=true`. Still to do with the infrastructure (section 1): set
+per step; `bus.drain` has an event per step. Spans carry `host.name`, so the
+messages a drain waited for are that host's spans inside the drain's window. Still to do with the infrastructure (section 1): set
 `stopTimeout` and a deregistration delay to match.
 
 ## 6. Old and new versions side by side

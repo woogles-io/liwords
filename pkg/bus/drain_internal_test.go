@@ -45,11 +45,8 @@ func (f *fakeSub) IsValid() bool {
 func drainTestBus(t *testing.T) (*Bus, []*fakeSub) {
 	subs := []*fakeSub{{}, {}}
 	b := &Bus{
-		config: config.DefaultConfig(),
-		subchans: map[string]chan *nats.Msg{
-			"user.>":   make(chan *nats.Msg, 8),
-			"ipc.pb.>": make(chan *nats.Msg, 8),
-		},
+		config:              config.DefaultConfig(),
+		subchans:            map[string]chan *nats.Msg{"user.>": make(chan *nats.Msg, 8)},
 		syncReq:             make(chan chan struct{}),
 		gameEventChan:       make(chan *entity.EventWrapper, 8),
 		tournamentEventChan: make(chan *entity.EventWrapper, 8),
@@ -231,24 +228,4 @@ func TestDrainSpanAtDeadline(t *testing.T) {
 	is.Equal(stuck.AsString(), "wait-for-handlers")
 	left, _ := attr(span, "bus.handlers_left")
 	is.Equal(left.AsInt64(), int64(1))
-}
-
-// A message handled during a drain is tagged on its span.
-func TestHandlerSpanMarkedDuringDrain(t *testing.T) {
-	is := is.New(t)
-	rec := recordSpans(t)
-	b, _ := drainTestBus(t)
-
-	// Delivered but not taken yet when the drain starts. Its type is
-	// unknown, so handling it fails at once, without the stores.
-	b.draining.Store(true)
-	b.subchans["ipc.pb.>"] <- &nats.Msg{Subject: "ipc.pb.9999"}
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-	defer cancel()
-	is.NoErr(b.Drain(ctx))
-
-	span := endedSpan(is, rec, "nats.publish.9999")
-	draining, ok := attr(span, "bus.draining")
-	is.True(ok)
-	is.True(draining.AsBool())
 }

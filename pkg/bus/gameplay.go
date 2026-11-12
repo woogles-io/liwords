@@ -182,7 +182,6 @@ func (b *Bus) goHandleBotMove(ctx context.Context, resp *macondo.BotResponse,
 		ctx, span := otel.Tracer("bus-message-processor").Start(ctx, "bus.HandleBotMove",
 			trace.WithAttributes(attribute.String("game.id", gid)))
 		defer span.End()
-		b.markDraining(span)
 		defer func() {
 			// acknowledge the NATS message - empty response is fine.
 			err := b.natsconn.Publish(replyChan, []byte{})

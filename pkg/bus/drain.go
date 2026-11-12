@@ -24,9 +24,9 @@ package bus
 //
 // ProcessMessages must keep running until Drain returns.
 //
-// Drain records a "bus.drain" span with an event as each step finishes, and
-// the handlers that run during it get bus.draining=true on their own spans,
-// so a shutdown can be followed in Jaeger.
+// Drain records a "bus.drain" span with an event as each step finishes. The
+// messages it waited for are the spans from the same host (host.name) inside
+// its time window.
 
 import (
 	"context"
@@ -128,13 +128,6 @@ func (b *Bus) trackHandler() func() {
 	return func() {
 		b.inFlight.Add(-1)
 		b.handlers.Done()
-	}
-}
-
-// markDraining tags a handler's span when it runs during a drain.
-func (b *Bus) markDraining(span trace.Span) {
-	if b.draining.Load() {
-		span.SetAttributes(attribute.Bool("bus.draining", true))
 	}
 }
 

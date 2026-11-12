@@ -188,8 +188,6 @@ outerfor:
 				),
 			)
 
-			b.markDraining(span)
-
 			// Create scoped logger from context logger
 			scopedLogger := zerolog.Ctx(msgCtx).With().Str("msg-subject", msg.Subject).Logger()
 			scopedLogger.Debug().Msg("got ipc.pb message")
@@ -239,8 +237,6 @@ outerfor:
 					attribute.String("msg.reply", msg.Reply),
 				),
 			)
-
-			b.markDraining(span)
 
 			// Create scoped logger from context logger
 			scopedLogger := zerolog.Ctx(reqCtx).With().Str("msg-subject", msg.Subject).Logger()
