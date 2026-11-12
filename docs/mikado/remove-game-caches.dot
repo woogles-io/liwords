@@ -1,6 +1,7 @@
 // The mikado graph for the game-storage work.
 //
-// Checked against the code and production on 2026-11-02. A node marked done
+// Checked against the code and production on 2026-11-02; the end-state,
+// stats and infra nodes were added on 2026-11-11. A node marked done
 // means merged AND deployed, unless its label says otherwise. A graph that
 // claims finished work is worse than no graph: an earlier version marked the
 // turns read path done (it was reverted after corrupting ~944 games in May
@@ -12,6 +13,10 @@
 //   xwordgame_remaining.md what is left, and production facts
 //   zdt_plan.md           zero-downtime deploys and more than one API server
 //   tournament_store_rewrite.md
+//
+// The end state: live games in ongoing_games + game_turns, finished games in
+// S3, stats in ClickHouse, and a games table slimmed to metadata, dumped and
+// restored onto RDS in one planned infrastructure downtime.
 //
 // Regenerate the SVG with:  dot -Tsvg remove-game-caches.dot -o remove-game-caches.svg
 
@@ -49,9 +54,11 @@ digraph RedoGameModel {
     AdjudicateFromRows [label = "Adjudicator decides from rows ✅\n(no full game load per active game\nevery 10 s; re-checks under the lock. #2159)";];
     ChallengeGuard [label = "Refuse challenges unless the last\nevent is a tile placement ✅\n(server side; was UI only. Removes the\nshadow noise from macondo's replay. #2163,\ndeployed 2026-11-02)";];
     OngoingGamesWriter [label = "ongoing_games table, writer\nand backfill ✅ (row kept in the save tx;\nWRITE_ONGOING_GAMES on 2026-11-09. Split step 7)";];
-    OngoingPopulated [label = "ongoing_games populated and checked ✅\n(backfill 2026-11-09, all checks 0;\nrecheck after a few days before\nREAD_ONGOING_GAMES; xwordgame_remaining.md)";];
+    OngoingPopulated [label = "ongoing_games populated and checked ✅\n(backfill 2026-11-09, all checks 0;\nstill 0 on 2026-11-11, and old and new\nlisting queries return identical rows)";];
     TournamentCacheSpan [label = "Trace tournament cache lookups ✅\n(tournament-cache span, cache.hit attr. #2161)";];
     TournamentUuidIndex [label = "Tournament uuid unique index,\none-pass division decode ✅ (#2166)";];
+    ProdShadowEvidence [label = "Shadows quiet on production traffic ✅\n(zero shadow-turns-mismatch and\nshadow-load-mismatch from #2163's deploy\n2026-11-02 to 2026-11-11, two weekends;\n~12-18k comparisons an hour each)";];
+    TimersCarryIncrement [label = "Timers carry the increment ✅\n(\"inc\", #2235; refilled by #2232's\nmigration: 1,972 of 1,972 live rows)";];
 
     // ── Dropped nodes ❌ ──────────────────────────────────────────────────
     node [shape = box; color = lightgray; fontcolor = lightgray; style = "dashed,filled"; fillcolor = "#f0f0f0";];
@@ -71,7 +78,6 @@ digraph RedoGameModel {
     OTelObservability [label = "Re-enable the OTel meter provider\n(otel.go — disabled for a heap leak.\nNeeds delta temporality + deny-by-default\nviews + OTLP. Traces are unaffected.)";];
 
     // ── The referee: phases 1-3 (pr1975_split.md, "After the split") ─────
-    ProdShadowEvidence [label = "Shadows quiet on production traffic\n(zero shadow-turns-mismatch and\nshadow-load-mismatch for a week including\na weekend, counted from #2163's\ndeploy on 2026-11-02)";];
     ShadowReferee [label = "Phase 1: xwordgame decides live moves\nalongside macondo, compared, serves nothing\n(SHADOW_REFEREE; referee-shadow-mismatch)";];
     XwordgameServes [label = "Phase 2: xwordgame serves, position rebuilt\nfrom game_turns (StateFromTurns)\n(XWORDGAME_REFEREE; real-time first,\ncorrespondence last; history bytea\nstill written for instant rollback)";];
     MacondoOffLivePath [label = "Phase 3: macondo off the live path\n(entity.Game holds the xwordgame position;\nstop writing history bytea)";];
@@ -88,15 +94,26 @@ digraph RedoGameModel {
     CacheWrapperCleanup [label = "Delete the Cache wrapper\n(cache.go is a pass-through now,\nplus the per-server activeGames TTL)";];
 
     // ── MakeDBFaster prerequisites ────────────────────────────────────────
-    ListingsOnOngoingGames [label = "Move active-game listings onto ongoing_games\n(behind READ_ONGOING_GAMES; real-time\nlisting ~122 ms -> ~3 ms)";];
+    ListingsOnOngoingGames [label = "Move active-game listings onto ongoing_games\n(#2232 deployed; READ_ONGOING_GAMES off\non 2026-11-11. Correspondence adjudicator\n92 ms -> 15 ms and 0 game loads)";];
+    DeleteGamesListingQueries [label = "Delete the games versions of the\nlisting queries and READ_ONGOING_GAMES\n(after the flag has been on a release;\ndrop idx_games_game_end_reason if unused)";];
+    DropLiveColumns [label = "Drop live-game columns from games\n(timers, player_on_turn, ready_flag, started,\nmeta_events; last_known_racks moves\nto ongoing_games)";];
+    DropHistoryBytea [label = "Drop games.history bytea\n(the last large field)";];
     TurnsBinaryProto [label = "game_turns.event jsonb → bytea proto\n(no backfill: rows are deleted at archival)";];
     DropUnusedGamesIndexes [label = "Drop unused indexes on games\n(~2.4 GB with near-zero scans;\nxwordgame_remaining.md)";];
     MetaEventsTable [label = "Meta events into an append-only\ngame_meta_events table";];
     EfficientTable [label = "Make game DB model more efficient";];
     ClearLargeFields [label = "Clear large fields in games table\n(history, stats, quickdata, timers)";];
     MigrateStatsToClickhouse [label = "Migrate game stats to ClickHouse\n(replaces liststats + games.stats;\nreads assembled GameHistory at end-of-game)";];
+    StatsAudit [label = "Audit which stats to keep\n(list stats and game stats)";];
+    ClickHouseServer [label = "Bring up a ClickHouse server";];
+    StatsBackfill [label = "Recompute all stats into ClickHouse\nfrom every game's history bytea\n(before the bytea is dropped: reading it\nin the DB is faster and cheaper than\nfetching ~11M objects from S3)";];
+    StatsWriterToClickhouse [label = "End-of-game writer also writes\nstats to ClickHouse\n(on before the backfill, so no game\nfinished during it is missed)";];
+    StatsReadersOnClickhouse [label = "Stats readers use ClickHouse;\nstop writing games.stats and liststats";];
     OnlyUseNewStorage [label = "Only use new storage\n(game_turns + S3 + game_players + ongoing_games)";];
     ReplaceQuickData [label = "Replace QuickData with JOINs\n(game_players + users)";];
+
+    // ── Infrastructure ────────────────────────────────────────────────────
+    InfraUpgrade [label = "Planned infrastructure downtime\n(dump the slimmed DB, restore onto RDS\nwith its built-in backups; upgrade NATS,\nRedis and the servers. DROP COLUMN frees\nnothing until a rewrite: this restore is it)";];
 
     // ── DeprecateGameDocument branch ──────────────────────────────────────
     DeprecateGameDocument [label = "Deprecate GameDocument entirely\n(storage + runtime type)";shape = oval;];
@@ -177,6 +194,9 @@ digraph RedoGameModel {
     MakeDBFaster -> ClearLargeFields;
     MakeDBFaster -> ListingsOnOngoingGames;
     MakeDBFaster -> DropUnusedGamesIndexes;
+    MakeDBFaster -> InfraUpgrade;
+    InfraUpgrade -> ClearLargeFields;
+    InfraUpgrade -> ReplaceQuickData;
     ListingsOnOngoingGames -> OngoingPopulated;
     OngoingPopulated -> OngoingGamesWriter;
     OngoingGamesWriter -> AtomicMoveWrite;
@@ -190,6 +210,23 @@ digraph RedoGameModel {
     ClearLargeFields -> OnlyUseNewStorage;
     ClearLargeFields -> MigrateStatsToClickhouse;
     ClearLargeFields -> MetaEventsTable;
+    ClearLargeFields -> DropLiveColumns;
+    ClearLargeFields -> DropHistoryBytea;
+
+    DeleteGamesListingQueries -> ListingsOnOngoingGames;
+    ListingsOnOngoingGames -> TimersCarryIncrement;
+    DropLiveColumns -> DeleteGamesListingQueries;
+    DropLiveColumns -> MetaEventsTable;
+    // last_known_racks is read by the rebuild, so it moves with phase 2.
+    DropLiveColumns -> XwordgameServes;
+    DropHistoryBytea -> MacondoOffLivePath;
+    DropHistoryBytea -> StatsBackfill;
+
+    MigrateStatsToClickhouse -> StatsReadersOnClickhouse;
+    StatsReadersOnClickhouse -> StatsBackfill;
+    StatsBackfill -> StatsWriterToClickhouse;
+    StatsWriterToClickhouse -> ClickHouseServer;
+    StatsWriterToClickhouse -> StatsAudit;
     OnlyUseNewStorage -> ReplaceQuickData;
     OnlyUseNewStorage -> S3ArchiveOnGameEnd;
     OnlyUseNewStorage -> S3LoadPath;

@@ -12,6 +12,48 @@ advisory lock, and there is no game cache. The two shadows run on production.
 `ongoing_games` (step 7) is written behind a flag that is off, and nothing reads
 it. Nothing is served from the new path yet: macondo still referees every move.
 
+## The end state, and the order to get there (2026-11-11)
+
+Where this is going: live games in `ongoing_games` plus `game_turns`, finished
+games in S3, stats in ClickHouse, and a `games` table slimmed to metadata,
+moved onto RDS in one planned infrastructure downtime. The graph has a node
+for each step.
+
+1. **`READ_ONGOING_GAMES` on** (rollout step 6 below), then a release later
+   delete the `games` versions of the listing queries and the flag.
+2. **Phase 1, the shadow referee**, is the main track. Its gate is met: no
+   `shadow-turns-mismatch` or `shadow-load-mismatch` from #2163's deploy on
+   2026-11-02 to 2026-11-11, two weekends, with each shadow comparing
+   ~12-18k games an hour. Then phases 2 and 3 (`pr1975_split.md`, "After the
+   split"). Loading from `game_turns` is phase 2 itself, not a step before
+   the referee switch: `entity.Game` embeds macondo's game, and the rebuild
+   produces an xwordgame position.
+3. **Small, independent PRs alongside it:** `game_turns.event` to bytea
+   (before phase 2, which makes every load decode turns), dropping the unused
+   `games` indexes, quickdata to joins (`game_players` is in place), and the
+   `game_meta_events` table.
+4. **Stats to ClickHouse, a separate track that can start any time:** an audit
+   of which list stats and game stats to keep, a ClickHouse server, the
+   end-of-game writer also writing ClickHouse, then a backfill that
+   recomputes every game finished before the writer went on, then the readers
+   moved over. The writer goes first so no game finished during the backfill
+   is missed. **The backfill reads the `history` bytea, so it must
+   run before that column is dropped:** reading it in the database is faster
+   and cheaper than fetching ~11M objects from S3.
+5. **Drop the live-game columns from `games`** (`timers`, `player_on_turn`,
+   `ready_flag`, `started`) once step 1's cleanup is done; `meta_events` once
+   its table exists; `last_known_racks` moves to `ongoing_games` with phase 2,
+   because the rebuild reads it. `stats` after step 4. **`history` last**,
+   after phase 3 and the stats backfill.
+6. **Planned infrastructure downtime:** dump the slimmed database and restore
+   it onto RDS, whose backups hold no long transaction (today's `pg_dump`
+   runs ~4 hours a day and blocks vacuum on every table while it does);
+   upgrade NATS, Redis and the servers. `DROP COLUMN` frees no space until
+   the table is rewritten, and this restore is that rewrite, so the slimming
+   only shows on disk after it. Logical replication into RDS with a short
+   switchover is the alternative to a full dump-and-restore window. Fargate
+   is earlier, on the zero-downtime track (`zdt_plan.md`).
+
 ## Production, as measured
 
 | | |
@@ -370,8 +412,8 @@ Evidence-gathering, behind flags, serving nothing:
 
 ## What is left, in order
 
-- [ ] **Shadows quiet** for a week including a weekend, counted from #2163's
-      deploy on 2026-11-02 (above).
+- [x] **Shadows quiet** for a week including a weekend, counted from #2163's
+      deploy on 2026-11-02: zero mismatches through 2026-11-11.
 - [ ] **Phases 1 to 3** — xwordgame decides live moves next to macondo, then
       serves, then macondo leaves the live path. They are in
       `pr1975_split.md`, "After the split", and the work items in #2037.
