@@ -28,10 +28,13 @@ for each step.
    split"). Loading from `game_turns` is phase 2 itself, not a step before
    the referee switch: `entity.Game` embeds macondo's game, and the rebuild
    produces an xwordgame position.
-3. **Small, independent PRs alongside it:** `game_turns.event` to bytea
-   (before phase 2, which makes every load decode turns), dropping the unused
-   `games` indexes, quickdata to joins (`game_players` is in place), and the
-   `game_meta_events` table.
+3. **Small, independent PRs alongside it:** quickdata to joins
+   (`game_players` is in place). Dropping the unused `games` indexes is done
+   (#2260). `game_turns.event` to bytea (#2259) is a draft until game loads
+   from turns show up as hot after phase 2: a full replay from protojson costs
+   ~70 µs more than from binary, next to a DB round trip of a millisecond or
+   more. The `game_meta_events` table (#2261) was dropped; see "Where meta
+   events should live".
 4. **Stats to ClickHouse, a separate track that can start any time:** an audit
    of which list stats and game stats to keep, a ClickHouse server, the
    end-of-game writer also writing ClickHouse, then a backfill that
@@ -41,8 +44,7 @@ for each step.
    run before that column is dropped:** reading it in the database is faster
    and cheaper than fetching ~11M objects from S3.
 5. **Drop the live-game columns from `games`** (`timers`, `player_on_turn`,
-   `ready_flag`, `started`) once step 1's cleanup is done; `meta_events` once
-   its table exists; `last_known_racks` moves to `ongoing_games` with phase 2,
+   `ready_flag`, `started`, `meta_events`) once step 1's cleanup is done; `last_known_racks` moves to `ongoing_games` with phase 2,
    because the rebuild reads it. `stats` after step 4. **`history` last**,
    after phase 3 and the stats backfill.
 6. **Planned infrastructure downtime:** dump the slimmed database and restore
@@ -300,32 +302,48 @@ almost nothing will not shrink on its own.
 
 ### Where meta events should live
 
-**Not in the live table, and not where they are now.** An append-only
-`game_meta_events (game_uuid, idx, event, created_at)` keyed on
-`(game_uuid, idx)`, never deleted.
+**Only on the live game, in `ongoing_games.meta_events`.** Nothing reads them
+after the game ends, so nothing keeps them. An append-only `game_meta_events`
+table was planned (#2261) and dropped on 2026-11-12, before it merged.
 
-The reasoning, since this was the open question:
+Every type, and who reads it:
 
-- **Live-only loses the record**, which is the objection that matters. An abort
-  denial is evidence about a player's conduct -- automod reads it for
-  `NO_PLAY_DENIED_NUDGE` -- and a moderator may want it years later. Deleting
-  the row when the game ends destroys it.
-- **Staying on `games` is what we are trying to stop.** It is a mutable jsonb
-  blob on the 12M-row table, rewritten whenever a meta event arrives, and 327 MB
-  of it is ~97% empty: only 2.61% of games have any meta events at all, and
-  never more than 10. As rows, that is roughly 330k rows instead of 12.7M
-  mostly-empty values, and no rewrite of the games row.
-- **Not in `game_turns`.** They are a different type -- `ipc.GameMetaEvent`, not
-  macondo's `GameEvent` -- and `game_turns` feeds `assembleHistory`, which feeds
-  the S3 history, GCG export and stats. Worse, comments and puzzles are keyed on
-  absolute event index (`pkg/stores/comments/db.go:33`,
-  `pkg/stores/puzzles/db.go:167,387`), so inserting anything into that sequence
-  re-anchors every comment and moves every puzzle position.
+| Type | Stored | Read by |
+|---|---|---|
+| `REQUEST_ABORT`, `REQUEST_ADJUDICATION` (nudge) | yes | the live game: request limits, the outstanding-request check, the timeout path |
+| `ABORT_ACCEPTED`, `ADJUDICATION_ACCEPTED` | yes | the live game: they end it |
+| `ABORT_DENIED`, `ADJUDICATION_DENIED` | yes | the live game, and automod at game end |
+| `TIMER_EXPIRED` | becomes an `*_ACCEPTED` event | the live game |
+| `ADD_TIME` | no; it only changes the clock | -- |
+| `REQUEST_UNDO`, `REQUEST_ADJOURN`, `UNDO_*` | cannot be used | -- |
 
-They are events, so they get an event table; they are a different kind of event,
-so they get their own. Keep the rows at archival rather than folding them into
-the S3 object -- they are small, and a moderator reviewing a player should not
-have to fetch from S3 to do it.
+After the game ends:
+
+- **Automod** (`loserDeniedNudge`, `pkg/mod/automod.go`) is the only reader
+  that looks back. It runs in `pkg/gameplay/end.go` on the in-memory game,
+  before the final save, and records its verdict (`NO_PLAY_DENIED_NUDGE`) in
+  the notoriety table. Nothing re-reads the events to check or recompute it:
+  the verdict is the record.
+- **The frontend** only uses `outstandingEvent` from the history refresher,
+  which `HistoryRefresherEvent` sets only while the game is in progress.
+- **`GetGameDocument`** copies them into the document; nothing reads them
+  there.
+- **No moderator tool or query reads them.**
+
+They are small: 2.6% of games have any, ~120 MB in all (0.2% sample,
+2026-11-12). Clearing old ones from `games` with a maintenance job would
+update ~340k rows of a 70 GB table to free that, so they stay until the column
+is dropped. Today `Set` writes the full list to both `games.meta_events` and
+`ongoing_games.meta_events`. Once reads move to `ongoing_games`, `Set` can
+stop writing the `games` copy, and the column goes with the other live-game
+columns (step 5).
+
+**Optional: keep the event behind a mod verdict.** Losing the events means a
+moderator reviewing a disputed `NO_PLAY_DENIED_NUDGE` cannot see the denial it
+rests on. If that turns out to matter, store the triggering denial -- its type
+and timestamp, or the whole `GameMetaEvent` -- alongside the notoriety row
+when automod writes it. That keeps one event per penalized game rather than
+every event of every game.
 
 ## The design changed: state is reconstructed, not stored
 

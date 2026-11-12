@@ -96,11 +96,10 @@ digraph RedoGameModel {
     // ── MakeDBFaster prerequisites ────────────────────────────────────────
     ListingsOnOngoingGames [label = "Move active-game listings onto ongoing_games\n(#2232 deployed; READ_ONGOING_GAMES off\non 2026-11-11. Correspondence adjudicator\n92 ms -> 15 ms and 0 game loads)";];
     DeleteGamesListingQueries [label = "Delete the games versions of the\nlisting queries and READ_ONGOING_GAMES\n(after the flag has been on a release;\ndrop idx_games_game_end_reason if unused)";];
-    DropLiveColumns [label = "Drop live-game columns from games\n(timers, player_on_turn, ready_flag, started,\nmeta_events; last_known_racks moves\nto ongoing_games)";];
+    DropLiveColumns [label = "Drop live-game columns from games\n(timers, player_on_turn, ready_flag, started,\nmeta_events: read only while the game is live;\nlast_known_racks moves to ongoing_games)";];
     DropHistoryBytea [label = "Drop games.history bytea\n(the last large field)";];
-    TurnsBinaryProto [label = "game_turns.event jsonb → bytea proto\n(no backfill: rows are deleted at archival)";];
-    DropUnusedGamesIndexes [label = "Drop unused indexes on games\n(~2.4 GB with near-zero scans;\nxwordgame_remaining.md)";];
-    MetaEventsTable [label = "Meta events into an append-only\ngame_meta_events table";];
+    TurnsBinaryProto [label = "game_turns.event jsonb → bytea proto\n(no backfill: rows are deleted at archival)\nDeferred: #2259 is a draft until\nturn loads show up as hot";];
+    DropUnusedGamesIndexes [label = "Drop unused indexes on games ✅\n(#2260)\n(~2.4 GB with near-zero scans;\nxwordgame_remaining.md)";];
     EfficientTable [label = "Make game DB model more efficient";];
     ClearLargeFields [label = "Clear large fields in games table\n(history, stats, quickdata, timers)";];
     MigrateStatsToClickhouse [label = "Migrate game stats to ClickHouse\n(replaces liststats + games.stats;\nreads assembled GameHistory at end-of-game)";];
@@ -209,14 +208,12 @@ digraph RedoGameModel {
 
     ClearLargeFields -> OnlyUseNewStorage;
     ClearLargeFields -> MigrateStatsToClickhouse;
-    ClearLargeFields -> MetaEventsTable;
     ClearLargeFields -> DropLiveColumns;
     ClearLargeFields -> DropHistoryBytea;
 
     DeleteGamesListingQueries -> ListingsOnOngoingGames;
     ListingsOnOngoingGames -> TimersCarryIncrement;
     DropLiveColumns -> DeleteGamesListingQueries;
-    DropLiveColumns -> MetaEventsTable;
     // last_known_racks is read by the rebuild, so it moves with phase 2.
     DropLiveColumns -> XwordgameServes;
     DropHistoryBytea -> MacondoOffLivePath;
