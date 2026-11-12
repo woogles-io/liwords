@@ -10,7 +10,6 @@ import (
 	"runtime/debug"
 	"strconv"
 	"strings"
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -65,10 +64,12 @@ type Bus struct {
 	subchans      map[string]chan *nats.Msg
 
 	// For shutting down without dropping work in progress; see Drain.
-	handlers sync.WaitGroup
-	inFlight atomic.Int64 // handlers running; for Drain's span
-	draining atomic.Bool
-	syncReq  chan chan struct{}
+	inFlight  atomic.Int64 // handler goroutines running (trackHandler)
+	draining  atomic.Bool
+	untilReqs chan untilReq
+	// publish sends the events the loop publishes; natsconn.Publish, but
+	// tests replace it.
+	publish func(subject string, data []byte) error
 
 	gameEventChan       chan *entity.EventWrapper
 	tournamentEventChan chan *entity.EventWrapper
@@ -82,7 +83,8 @@ func NewBus(cfg *config.Config, natsconn *nats.Conn, stores *stores.Stores, redi
 		natsconn:            natsconn,
 		stores:              stores,
 		subscriptions:       []subscription{},
-		syncReq:             make(chan chan struct{}),
+		untilReqs:           make(chan untilReq),
+		publish:             natsconn.Publish,
 		subchans:            map[string]chan *nats.Msg{},
 		config:              cfg,
 		gameEventChan:       make(chan *entity.EventWrapper, 64),
@@ -158,6 +160,10 @@ func (b *Bus) ProcessMessages(ctx context.Context) {
 
 	channelMonitor := time.NewTicker(ChannelMonitorInterval)
 	defer channelMonitor.Stop()
+
+	// Drain's requests (loopUntil), checked between iterations.
+	var until untilChecks
+	defer until.stop()
 
 outerfor:
 	for {
@@ -318,7 +324,9 @@ outerfor:
 						// but continue anyway
 					} else {
 						// this should be async because b.broadcastChannelChanges sends to b.genericEventChan and while we are here <-b.genericEventChan is not being drained
+						done := b.trackHandler()
 						go func() {
+							defer done()
 							for idx, chans := range ret {
 								oldChannels := chans[0]
 								newChannels := chans[1]
@@ -359,7 +367,7 @@ outerfor:
 					}
 
 				} else {
-					err := b.natsconn.Publish(topic, data)
+					err := b.publish(topic, data)
 					if err != nil {
 						log.Err(err).Str("topic", topic).Msg("pub-error")
 					}
@@ -379,7 +387,7 @@ outerfor:
 			for _, topic := range topics {
 				// Fails for a message over the server's max_payload (1MB by
 				// default), which would otherwise vanish without a trace.
-				if err := b.natsconn.Publish(topic, data); err != nil {
+				if err := b.publish(topic, data); err != nil {
 					log.Err(err).Str("topic", topic).Int("bytes", len(data)).Msg("pub-error")
 				}
 			}
@@ -399,15 +407,16 @@ outerfor:
 			for _, topic := range topics {
 				// Fails for a message over the server's max_payload (1MB by
 				// default), which would otherwise vanish without a trace.
-				if err := b.natsconn.Publish(topic, data); err != nil {
+				if err := b.publish(topic, data); err != nil {
 					log.Err(err).Str("topic", topic).Int("bytes", len(data)).Msg("pub-error")
 				}
 			}
 
-		case done := <-b.syncReq:
-			// Drain's round trip: every message taken before this one has
-			// been handed off (tracked or published) by now.
-			close(done)
+		case r := <-b.untilReqs:
+			until.add(r)
+
+		case <-until.tick():
+			// Idle: nothing else would wake the loop to check.
 
 		case <-ctx.Done():
 			log.Info().Msg("pubsub context done, breaking")
@@ -467,7 +476,8 @@ outerfor:
 			}()
 
 		}
-
+		// Between iterations: nothing taken is in the loop's hands.
+		until.check()
 	}
 
 	log.Info().Msg("exiting processMessages loop")
@@ -870,7 +880,7 @@ func (b *Bus) pubToUser(userID string, evt *entity.EventWrapper,
 		fullChannel = "user." + userID + "." + channel
 	}
 
-	return b.natsconn.Publish(fullChannel, bts)
+	return b.publish(fullChannel, bts)
 }
 
 func (b *Bus) pubToConnectionID(connID, userID string, evt *entity.EventWrapper) error {

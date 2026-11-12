@@ -10,17 +10,27 @@ package bus
 // also stayed subscribed until then, so new moves kept arriving at a server
 // that was about to drop them.
 //
-// Drain stops new work and waits for the work already taken:
+// A message's way through the bus:
+//
+//	NATS → subscription buffer → loop takes it → handler goroutine
+//	     → event channel → loop takes it → published to NATS
+//
+// Drain stops new work and waits until nothing is left anywhere on it:
 //
 //  1. Stop the subscriptions. Messages NATS already sent us still arrive; new
 //     ones go to the other servers in the queue groups, or, with one server,
-//     nowhere (as they did while the server was down anyway).
-//  2. Let ProcessMessages take every message still buffered, and stop
-//     starting adjudication and seek expiry.
-//  3. Wait for the handlers, which still publish their results: the NATS
-//     connection stays open, so it must not be drained as a whole (that
-//     closes it).
-//  4. Let ProcessMessages publish the events the handlers left behind.
+//     nowhere (as they did while the server was down anyway). Adjudication
+//     and seek expiry stop starting.
+//  2. Wait until the loop has taken everything buffered.
+//  3. Wait until every handler is done and the loop has published every
+//     event. Handlers still publish: the NATS connection stays open, so it
+//     must not be drained as a whole (that closes it).
+//
+// Twice the loop holds a message that is in no buffer and not yet counted:
+// just after taking it from a subscription, and while publishing an event. So
+// the conditions of steps 2 and 3 are checked by the loop itself, between
+// iterations (loopUntil), where it holds nothing. Checked from outside, they
+// could hold while the loop was still in the middle of one.
 //
 // ProcessMessages must keep running until Drain returns.
 //
@@ -46,7 +56,8 @@ type subscription interface {
 	IsValid() bool
 }
 
-const drainPoll = 20 * time.Millisecond
+// untilCheckEvery is how often an idle loop checks Drain's conditions.
+const untilCheckEvery = 20 * time.Millisecond
 
 // Drain stops taking new messages and waits until everything already taken
 // has been handled and its events published, or until ctx ends.
@@ -77,8 +88,9 @@ func (b *Bus) Drain(ctx context.Context) (err error) {
 			return err
 		}
 	}
+
 	step = "take-buffered"
-	if err := b.waitFor(ctx, func() bool {
+	if err := b.loopUntil(ctx, func() bool {
 		for _, sub := range b.subscriptions {
 			if sub.IsValid() {
 				return false
@@ -88,47 +100,97 @@ func (b *Bus) Drain(ctx context.Context) (err error) {
 	}); err != nil {
 		return err
 	}
-	// A message ProcessMessages took just before the buffers emptied may not
-	// be tracked yet; once the loop answers, it is. From here on the loop
-	// starts no handlers, so waiting on them is safe.
-	if err := b.sync(ctx); err != nil {
-		return err
-	}
+	// Nothing new will be taken, and everything taken is counted.
 	span.AddEvent("buffers-taken", trace.WithAttributes(
-		attribute.Int64("bus.handlers_in_flight", b.inFlight.Load())))
-	step = "wait-for-handlers"
-	handled := make(chan struct{})
-	go func() {
-		b.handlers.Wait()
-		close(handled)
-	}()
-	select {
-	case <-handled:
-	case <-ctx.Done():
-		return ctx.Err()
-	}
-	span.AddEvent("handlers-done", trace.WithAttributes(
+		attribute.Int64("bus.handlers_in_flight", b.inFlight.Load()),
 		attribute.Int("bus.events_queued", b.eventsQueued())))
-	step = "publish-events"
-	if err := b.waitFor(ctx, b.eventsPublished); err != nil {
+
+	step = "finish-handlers-and-events"
+	if err := b.loopUntil(ctx, func() bool {
+		return b.inFlight.Load() == 0 && b.eventsQueued() == 0
+	}); err != nil {
 		return err
 	}
-	if err := b.sync(ctx); err != nil {
-		return err
-	}
-	span.AddEvent("events-published")
+	span.AddEvent("handlers-and-events-done")
 	return nil
 }
 
-// trackHandler counts a handler goroutine that Drain must wait for; it
-// returns the function the handler defers.
-func (b *Bus) trackHandler() func() {
-	b.handlers.Add(1)
-	b.inFlight.Add(1)
-	return func() {
-		b.inFlight.Add(-1)
-		b.handlers.Done()
+// loopUntil returns once ProcessMessages, checking between its iterations,
+// finds cond true, or when ctx ends.
+func (b *Bus) loopUntil(ctx context.Context, cond func() bool) error {
+	r := untilReq{cond: cond, done: make(chan struct{})}
+	select {
+	case b.untilReqs <- r:
+	case <-ctx.Done():
+		return ctx.Err()
 	}
+	select {
+	case <-r.done:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
+type untilReq struct {
+	cond func() bool
+	done chan struct{}
+}
+
+// untilChecks are the loopUntil requests ProcessMessages is checking. Only
+// the loop uses it.
+type untilChecks struct {
+	pending []untilReq
+	ticker  *time.Ticker
+}
+
+func (u *untilChecks) add(r untilReq) {
+	u.pending = append(u.pending, r)
+	if u.ticker == nil {
+		u.ticker = time.NewTicker(untilCheckEvery)
+	}
+}
+
+// tick wakes an idle loop while something is pending; otherwise it is nil,
+// which never fires.
+func (u *untilChecks) tick() <-chan time.Time {
+	if u.ticker == nil {
+		return nil
+	}
+	return u.ticker.C
+}
+
+// check answers the requests whose condition holds.
+func (u *untilChecks) check() {
+	if len(u.pending) == 0 {
+		return
+	}
+	left := u.pending[:0]
+	for _, r := range u.pending {
+		if r.cond() {
+			close(r.done)
+		} else {
+			left = append(left, r)
+		}
+	}
+	u.pending = left
+	if len(u.pending) == 0 {
+		u.stop()
+	}
+}
+
+func (u *untilChecks) stop() {
+	if u.ticker != nil {
+		u.ticker.Stop()
+		u.ticker = nil
+	}
+}
+
+// trackHandler counts a goroutine whose work Drain must wait for; it
+// returns the function the goroutine defers.
+func (b *Bus) trackHandler() func() {
+	b.inFlight.Add(1)
+	return func() { b.inFlight.Add(-1) }
 }
 
 // buffered is how many received messages ProcessMessages hasn't taken yet.
@@ -142,37 +204,4 @@ func (b *Bus) buffered() int {
 
 func (b *Bus) eventsQueued() int {
 	return len(b.gameEventChan) + len(b.tournamentEventChan) + len(b.genericEventChan)
-}
-
-func (b *Bus) eventsPublished() bool {
-	return b.eventsQueued() == 0
-}
-
-// sync returns once ProcessMessages has finished whatever it was doing.
-func (b *Bus) sync(ctx context.Context) error {
-	done := make(chan struct{})
-	select {
-	case b.syncReq <- done:
-	case <-ctx.Done():
-		return ctx.Err()
-	}
-	select {
-	case <-done:
-		return nil
-	case <-ctx.Done():
-		return ctx.Err()
-	}
-}
-
-func (b *Bus) waitFor(ctx context.Context, cond func() bool) error {
-	t := time.NewTicker(drainPoll)
-	defer t.Stop()
-	for !cond() {
-		select {
-		case <-t.C:
-		case <-ctx.Done():
-			return ctx.Err()
-		}
-	}
-	return nil
 }

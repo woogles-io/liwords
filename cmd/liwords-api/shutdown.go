@@ -41,8 +41,8 @@ func startShutdownSpan(ctx context.Context) (context.Context, trace.Span) {
 // new server. Ordinary requests on these routes finish well within the grace.
 const streamGrace = 2 * time.Second
 
-// httpShutdownBudget caps srv.Shutdown, so the archive wait after it still
-// gets its time.
+// httpShutdownBudget caps srv.Shutdown, so the bus drain and the archive
+// wait after it keep their time.
 const httpShutdownBudget = 5 * time.Second
 
 // endStreamsOnShutdown makes srv's shutdown end the requests handled by the

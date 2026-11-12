@@ -301,20 +301,27 @@ Needed, in order, within `stopTimeout`:
 The socket server sends requests (`ipc.request.registerRealm` and others) with
 a timeout; during a drain they go to the remaining server.
 
-**Status (2026-11-11): steps 1-5 done in code** (`pkg/bus/drain.go`). On
-SIGTERM `/ping` returns 503, then `Bus.Drain` drains each subscription (not
-the connection, which handlers still publish on), lets the loop take what was
-delivered, stops adjudication and seek expiry, waits for the tracked handlers
-(socket messages, requests, bot moves, adjudications) and for their events to
-be published. Then HTTP shutdown, the archive wait, and a NATS flush and close.
-Streaming routes (event-stream API, OBS overlays) end 2s after the HTTP
-shutdown starts, which is capped at 5s, so an open stream can't use up the
-archive wait's time. The sequence has 25s (`GracefulShutdownTimeout`), plus
-2s each for the NATS flush and the span export, under ECS's default 30s
-`stopTimeout`. Each shutdown is an `api.shutdown` trace in Jaeger, with a span
-per step; `bus.drain` has an event per step. Spans carry `host.name`, so the
-messages a drain waited for are that host's spans inside the drain's window. Still to do with the infrastructure (section 1): set
-`stopTimeout` and a deregistration delay to match.
+**Status (2026-11-12): done in code** (`pkg/bus/drain.go`,
+`cmd/liwords-api/shutdown.go`). On SIGTERM `/ping` returns 503, then:
+
+1. HTTP shutdown, capped at 5s. Streaming routes (event-stream API, OBS
+   overlays) end 2s after it starts, so an open stream can't hold it. HTTP
+   goes first because requests send events through the bus.
+2. `Bus.Drain`: drain each subscription (not the connection, which handlers
+   still publish on), stop adjudication and seek expiry, then wait until the
+   loop has taken everything buffered, every handler goroutine is done, and
+   every event is published. The loop checks those conditions itself,
+   between iterations (`loopUntil`), since it twice holds a message that is
+   in no buffer and not yet counted.
+3. The archive wait, then a NATS flush and close.
+
+It has 25s (`GracefulShutdownTimeout`), plus 2s each for the NATS flush and
+the span export, under ECS's default 30s `stopTimeout`. Each shutdown is an
+`api.shutdown` trace in Jaeger with a span per step; `bus.drain` has an event
+per step. Spans carry `host.name`, so the messages a drain waited for are
+that host's spans inside the drain's window. Still to do with the
+infrastructure (section 1): set `stopTimeout` and a deregistration delay to
+match.
 
 ## 6. Old and new versions side by side
 

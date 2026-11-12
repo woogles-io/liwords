@@ -18,6 +18,7 @@ import (
 
 	"github.com/woogles-io/liwords/pkg/config"
 	"github.com/woogles-io/liwords/pkg/entity"
+	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
 // fakeSub finishes draining a little after Drain, as a NATS subscription
@@ -47,7 +48,8 @@ func drainTestBus(t *testing.T) (*Bus, []*fakeSub) {
 	b := &Bus{
 		config:              config.DefaultConfig(),
 		subchans:            map[string]chan *nats.Msg{"user.>": make(chan *nats.Msg, 8)},
-		syncReq:             make(chan chan struct{}),
+		untilReqs:           make(chan untilReq),
+		publish:             func(string, []byte) error { return nil },
 		gameEventChan:       make(chan *entity.EventWrapper, 8),
 		tournamentEventChan: make(chan *entity.EventWrapper, 8),
 		genericEventChan:    make(chan *entity.EventWrapper, 8),
@@ -201,7 +203,7 @@ func TestDrainSpan(t *testing.T) {
 	for _, e := range span.Events() {
 		events = append(events, e.Name)
 	}
-	is.Equal(events, []string{"buffers-taken", "handlers-done", "events-published"})
+	is.Equal(events, []string{"buffers-taken", "handlers-and-events-done"})
 	is.Equal(span.Status().Code, codes.Unset)
 }
 
@@ -225,7 +227,73 @@ func TestDrainSpanAtDeadline(t *testing.T) {
 	span := endedSpan(is, rec, "bus.drain")
 	is.Equal(span.Status().Code, codes.Error)
 	stuck, _ := attr(span, "bus.drain.stuck_at")
-	is.Equal(stuck.AsString(), "wait-for-handlers")
+	is.Equal(stuck.AsString(), "finish-handlers-and-events")
 	left, _ := attr(span, "bus.handlers_left")
 	is.Equal(left.AsInt64(), int64(1))
+}
+
+func chatEvent(audience string) *entity.EventWrapper {
+	e := entity.WrapEvent(&pb.ChatMessage{Message: "m"}, pb.MessageType_CHAT_MESSAGE)
+	e.SetAudience(audience)
+	return e
+}
+
+// slowPublisher stands in for NATS: each publish takes a while, and is
+// recorded once it has completed.
+type slowPublisher struct {
+	mu        sync.Mutex
+	delay     time.Duration
+	published []string
+}
+
+func (p *slowPublisher) publish(subject string, data []byte) error {
+	time.Sleep(p.delay)
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.published = append(p.published, subject)
+	return nil
+}
+
+func (p *slowPublisher) subjects() []string {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return append([]string(nil), p.published...)
+}
+
+// Drain returns only after the loop has finished publishing the last event,
+// not as soon as the event channel is empty: the loop takes the event out of
+// the channel first, then spends a while publishing it.
+func TestDrainWaitsForEventBeingPublished(t *testing.T) {
+	is := is.New(t)
+	b, _ := drainTestBus(t)
+	pub := &slowPublisher{delay: 300 * time.Millisecond}
+	b.publish = pub.publish
+
+	b.genericEventChan <- chatEvent("chat.lobby")
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	is.NoErr(b.Drain(ctx))
+	is.Equal(pub.subjects(), []string{"chat.lobby"})
+}
+
+// The events a handler sends on its way out are published before Drain
+// returns, even when the handler finishes after Drain started.
+func TestDrainPublishesHandlersEvents(t *testing.T) {
+	is := is.New(t)
+	b, _ := drainTestBus(t)
+	pub := &slowPublisher{delay: 50 * time.Millisecond}
+	b.publish = pub.publish
+
+	done := b.trackHandler()
+	go func() {
+		defer done()
+		time.Sleep(100 * time.Millisecond) // a move being handled
+		for i := range 3 {
+			b.genericEventChan <- chatEvent("chat." + string(rune('a'+i)))
+		}
+	}()
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	is.NoErr(b.Drain(ctx))
+	is.Equal(pub.subjects(), []string{"chat.a", "chat.b", "chat.c"})
 }

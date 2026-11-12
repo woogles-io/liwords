@@ -571,19 +571,22 @@ func main() {
 		shuttingDown.Store(true)
 		ctx, shutdownCancel := context.WithTimeout(context.Background(), GracefulShutdownTimeout)
 		ctx, shutdownSpan := startShutdownSpan(ctx)
-		// Moves and other socket messages first: stop taking them, and
-		// finish the ones in progress (see pkg/bus/drain.go).
-		drainStart := time.Now()
-		if err := pubsubBus.Drain(ctx); err != nil {
-			log.Error().Err(err).Msg("bus-drain-on-shutdown")
-		}
-		log.Info().Dur("took", time.Since(drainStart)).Msg("bus-drained")
+		// HTTP first: the load balancer has stopped sending requests by now,
+		// and the ones still running send events through the bus, which
+		// the drain below then publishes.
 		if err := shutdownStep(ctx, "http.shutdown", func(ctx context.Context) error {
 			return shutdownHTTP(ctx, srv)
 		}); err != nil {
 			// Error from closing listeners, or context timeout:
 			log.Error().Msgf("HTTP server Shutdown: %v", err)
 		}
+		// Then moves and other socket messages: stop taking them, and
+		// finish the ones in progress (see pkg/bus/drain.go).
+		drainStart := time.Now()
+		if err := pubsubBus.Drain(ctx); err != nil {
+			log.Error().Err(err).Msg("bus-drain-on-shutdown")
+		}
+		log.Info().Dur("took", time.Since(drainStart)).Msg("bus-drained")
 		// Games that ended just before the signal may still be uploading.
 		if stores.GameHistoryArchiver != nil {
 			if err := shutdownStep(ctx, "archive.wait", stores.GameHistoryArchiver.Wait); err != nil {
