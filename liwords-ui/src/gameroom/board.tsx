@@ -326,8 +326,9 @@ const Board = React.memo((props: Props) => {
           squareClicked={props.squareClicked}
         />
         {!isExamining && <LearnOverlay gridDim={props.gridSize} />}
-        <LabHooksOverlay gridDim={props.gridSize} />
+        {/* the hooks' letters over the threats' tint */}
         <LabThreatsOverlay gridDim={props.gridSize} />
+        <LabHooksOverlay gridDim={props.gridSize} />
         <Tiles
           tileColorId={props.tileColorId}
           gridDim={props.gridSize}

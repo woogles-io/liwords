@@ -1,5 +1,7 @@
 import { act, cleanup, fireEvent, render } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { publishLabHooks } from "./lab_hooks";
+import { LabHooksOverlay } from "./lab_hooks_overlay";
 import { LabThreats, publishLabThreats } from "./lab_threats";
 import { LabThreatsOverlay } from "./lab_threats_overlay";
 
@@ -18,6 +20,7 @@ const threats = (more: Partial<LabThreats> = {}): LabThreats => ({
 
 afterEach(() => {
   act(() => publishLabThreats(publisher, null));
+  act(() => publishLabHooks(publisher, null));
   cleanup();
 });
 
@@ -54,5 +57,34 @@ describe("LabThreatsOverlay", () => {
     );
     fireEvent.click(container.querySelectorAll(".lab-threat")[4]);
     expect(pick).toHaveBeenLastCalledWith(null);
+  });
+
+  it("shares the squares with the hooks: the tint alone, and the opponent's tile in place of the hooks", () => {
+    act(() => publishLabThreats(publisher, threats()));
+    act(() =>
+      publishLabHooks(publisher, {
+        dim: 3,
+        squares: [
+          undefined,
+          { across: ["A"], down: null },
+          { across: ["B"], down: ["C"] },
+        ],
+      }),
+    );
+    const { container } = render(
+      <div>
+        <LabThreatsOverlay gridDim={3} />
+        <LabHooksOverlay gridDim={3} />
+      </div>,
+    );
+    const tinted = container.querySelectorAll(".lab-threat");
+    // the number gives way to the hooks' letters, the tint stays
+    expect(tinted[1].textContent).toBe("");
+    expect(tinted[1].querySelector(".lab-heat")).not.toBeNull();
+    const hooked = container.querySelectorAll(".lab-hook");
+    expect(hooked[1].textContent).toBe("A");
+    // the opponent's tile shows; the hooks there do not
+    expect(tinted[2].textContent).toBe("S");
+    expect(hooked[2].textContent).toBe("");
   });
 });

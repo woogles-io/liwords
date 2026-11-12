@@ -1,4 +1,5 @@
 import React from "react";
+import { useLabHooks } from "./lab_hooks";
 import { useLabThreats } from "./lab_threats";
 
 type Props = {
@@ -10,9 +11,11 @@ type Props = {
 // the play picked in the list as the opponent's tiles, apart from any the
 // player has placed; and the squares of the play pointed at, outlined. While
 // the panel picks a square, a click on one narrows the list to it, and a
-// click on it again widens the list back.
+// click on it again widens the list back. While the hooks show too, their
+// letters take the square's room, and the tint alone says how hot it is.
 export const LabThreatsOverlay = React.memo((props: Props) => {
   const threats = useLabThreats();
+  const hooks = useLabHooks();
   if (!threats || threats.dim !== props.gridDim) return null;
   const squares = Array.from(
     { length: threats.dim * threats.dim },
@@ -49,7 +52,7 @@ export const LabThreatsOverlay = React.memo((props: Props) => {
                   className="lab-heat"
                   style={{ opacity: 0.15 + 0.6 * heat.level }}
                 />
-                <span className="lab-heat-label">{heat.label}</span>
+                {!hooks && <span className="lab-heat-label">{heat.label}</span>}
               </React.Fragment>
             )}
             {ghost}
