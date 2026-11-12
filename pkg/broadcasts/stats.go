@@ -11,7 +11,7 @@ import (
 type GameStatJSON struct {
 	Player1Score  int    `json:"p1_score"`
 	Player2Score  int    `json:"p2_score"`
-	Winner        int    `json:"winner"` // 0=p1, 1=p2, -1=tie
+	Winner        int    `json:"winner"`  // 0=p1, 1=p2, -1=tie
 	Player1Bingos int    `json:"p1_bingos"`
 	Player2Bingos int    `json:"p2_bingos"`
 	MaxPlayScore  int    `json:"max_play_score"`

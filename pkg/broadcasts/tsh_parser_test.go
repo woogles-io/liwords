@@ -9,20 +9,18 @@ import (
 // 3 rounds, and realistic board/pairing data.
 //
 // Player layout:
-//
-//	1: Alice  (id=1)
-//	2: Bob    (id=2)
-//	3: Carol  (id=3)
+//   1: Alice  (id=1)
+//   2: Bob    (id=2)
+//   3: Carol  (id=3)
 //
 // Round 1: Alice(1) vs Bob(2) at table 2, Carol(3) has bye
 // Round 2: Alice(1) vs Carol(3) at table 1, Bob(2) has bye
 // Round 3: Bob(2) vs Carol(3) at table 3 (unplayed), Alice(1) has bye
 //
 // Scores (0-indexed):
-//
-//	Alice:  [400, 350, 0]
-//	Bob:    [380, 0,   0]
-//	Carol:  [50,  370, 0]  (50 = bye score for round 1)
+//   Alice:  [400, 350, 0]
+//   Bob:    [380, 0,   0]
+//   Carol:  [50,  370, 0]  (50 = bye score for round 1)
 const minimalTSHFeed = `newt={"config":{"event_name":"Test Tournament","max_rounds":3},"divisions":[{"players":[null,` +
 	`{"id":1,"name":"Alice","rating":1500,"scores":[400,350,0],"pairings":[2,3,0],"etc":{"board":[2,1,0],"p12":[1,2,0]}},` +
 	`{"id":2,"name":"Bob","rating":1400,"scores":[380,0,0],"pairings":[1,0,3],"etc":{"board":[2,0,3],"p12":[2,0,2]}},` +
