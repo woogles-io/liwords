@@ -63,6 +63,7 @@ import {
   roomInWindow,
 } from "../utils/window_room";
 import { labCall, labParts, onLabEvent, setLabParts } from "../wasm/lab";
+import { OUT_OF_MEMORY } from "../wasm/lab_errors";
 import { getLoadableFiles, getWolges } from "../wasm/loader";
 import {
   AnalyzerMove,
@@ -717,15 +718,25 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
   // another search
   const [model, setModel] = useState<EndgameModel>("info_sets");
   const modeled = bag !== null && bag >= 2;
+  // the most workers a pre-endgame of this lexicon has found room on: each
+  // part's share of the memory must hold its own lexicon and still search
+  const [cap, setCap] = useState<{ lexicon: string; workers: number }>();
   // the workers the solve runs on: a pre-endgame on as many as a sim, each
-  // valuing its part of the bag's sets
-  const [workers, setWorkers] = useState(1);
+  // valuing its part of the bag's sets, fewer if they found no room
+  const workers = modeled
+    ? Math.min(
+        labParts(),
+        cap?.lexicon === lab.loadableKey ? cap.workers : Infinity,
+      )
+    : 1;
+  // the workers the job shown was made on, which an error of it is from
+  const [madeOn, setMadeOn] = useState(workers);
   const job = useLabJob<EndgameAnswer>(
     solvable
       ? async () => {
           // An endgame makes its own word graph from the lexicon's, and reads
           // no leaves.
-          await labCall({
+          const sizes = await labCall<Record<string, number> | undefined>({
             op: "prepare",
             args: {
               files: getLoadableFiles(lab.loadableKey).filter((f) =>
@@ -733,11 +744,19 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
               ),
             },
           });
-          const n = modeled ? labParts() : 1;
-          setWorkers(n);
+          // Each worker holds its own lexicon, inside its share of the
+          // memory, with room left to search: no more workers than leave
+          // each a share bigger than the lexicon.
+          const bytes = Object.values(sizes ?? {}).reduce((a, b) => a + b, 0);
+          const fit = bytes
+            ? Math.max(1, Math.ceil((endgameMemoryMb() * 2 ** 20) / bytes) - 1)
+            : workers;
+          const n = Math.min(workers, fit);
+          setMadeOn(n);
           return labCall<number>({
             op: "endgame",
             args: {
+              parts: n,
               request: JSON.stringify({
                 ...lab.position,
                 // the device's allowance shared by the workers, each part
@@ -754,8 +773,14 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
           });
         }
       : null,
-    modeled ? `${lab.key}/${model}` : lab.key,
+    modeled ? `${lab.key}/${model}/${workers}` : lab.key,
   );
+  // a part out of room (the endgame's own graph and table not fitting beside
+  // the lexicon): solved again on half the workers, each with twice the
+  // share, until it fits or runs on one
+  if (job.error === OUT_OF_MEMORY && madeOn > 1 && workers > madeOn / 2) {
+    setCap({ lexicon: lab.loadableKey, workers: Math.floor(madeOn / 2) });
+  }
   const { answer } = job;
   // the answer from its first step on, the best so far: before that, it has
   // no value or win to give
@@ -850,7 +875,7 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
         ? `Solving: ${progressText(answer)} after ${ranText(ranMs)}`
         : "Solving...";
   } else {
-    const progress = `${progressText(solved)} after ${ranText(ranMs)}${solved.exact ? ", exact" : job.running ? ", solving" : ", stopped"}${workers > 1 ? `; on ${workers} workers` : ""}`;
+    const progress = `${progressText(solved)} after ${ranText(ranMs)}${solved.exact ? ", exact" : job.running ? ", solving" : ", stopped"}${madeOn > 1 ? `; on ${madeOn} workers` : ""}`;
     status =
       solved.bag === 0
         ? `Value ${signed(solved.value)}, spread ${signed(solved.spread)}, ${progress}`

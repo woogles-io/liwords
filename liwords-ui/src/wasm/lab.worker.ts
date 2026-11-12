@@ -8,6 +8,7 @@
 // {event: {job, error}}. A job freed, by a request or by the next job made,
 // says so as {event: {job, freed: true}}.
 
+import { OUT_OF_MEMORY } from "./lab_errors";
 import { importWolges } from "./wolges";
 
 // The wasm is imported, not loaded statically: a static import would make this
@@ -18,10 +19,13 @@ const wolgesPromise = importWolges();
 type Wolges = Awaited<typeof wolgesPromise>;
 type LabFile = { cacheKey: string; path: string };
 export type LabRequest =
+  // the files a job needs loaded, answered with each one's size in bytes
   | { op: "prepare"; args: { files: Array<LabFile> } }
   // the position's plays, best first, as many as the request's count asks
   | { op: "analyze"; args: { request: string } }
-  | { op: "endgame"; args: { request: string } }
+  // an endgame; a pre-endgame on as many workers as parts says, if fewer than
+  // the lab's (lab.ts), which a worker reads no further
+  | { op: "endgame"; args: { request: string; parts?: number } }
   // a sim of the plays given; with an inference's request, the opponent's
   // leave inferred, as infer takes one, and dealt in each iteration
   | { op: "sim"; args: { request: string; plays: string; infer?: string } }
@@ -63,11 +67,14 @@ type Job = {
   alpha?: number;
   // a sim's iterations, as its last answer had them
   iterations?: number;
+  // an endgame's nodes searched, as its last step's answer had them
+  nodes?: number;
   // the play a sim's candidates are compared with, as the sim takes one
   against?: unknown;
 };
 type Answer = {
   exact?: boolean;
+  nodes?: number;
   iterations?: number;
   candidates?: Array<{ state: string }>;
 };
@@ -104,8 +111,9 @@ const errorText = (e: unknown) => (e instanceof Error ? e.message : String(e));
 const nameOf = (cacheKey: string) =>
   cacheKey.substring(cacheKey.indexOf("/") + 1);
 
-// The cache keys loaded, as the page's loader names them.
-const loaded = new Set<string>();
+// The cache keys loaded, as the page's loader names them, each with its
+// size in bytes.
+const loaded = new Map<string, number>();
 let job: Job | null = null;
 let lastJobId = 0;
 let running = false;
@@ -192,6 +200,20 @@ const step = async (j: Job, chain: number, ms: number) => {
         : wolges.endgame_step(j.handle, request),
     );
     j.iterations = answer.iterations;
+    // A step of an endgame not yet exact that searched no node stopped on the
+    // memory cap, which counts every byte the instance holds, the lexicon too:
+    // no step after it can search either.
+    if (
+      j.kind === "endgame" &&
+      !answer.exact &&
+      answer.nodes !== undefined &&
+      answer.nodes === j.nodes
+    ) {
+      running = false;
+      post({ event: { job: j.id, error: OUT_OF_MEMORY } });
+      return;
+    }
+    j.nodes = answer.nodes;
     const done = isDone(j, answer);
     if (done) running = false;
     post({ event: { job: j.id, answer, done } });
@@ -209,7 +231,9 @@ const step = async (j: Job, chain: number, ms: number) => {
 // any are dropped, and stays when none are.
 const prepare = async (wolges: Wolges, files: Array<LabFile>) => {
   const wanted = new Set(files.map((f) => f.cacheKey));
-  const unwanted = [...loaded].filter((cacheKey) => !wanted.has(cacheKey));
+  const unwanted = [...loaded.keys()].filter(
+    (cacheKey) => !wanted.has(cacheKey),
+  );
   if (unwanted.length) freeJob(wolges);
   for (const cacheKey of unwanted) {
     if (cacheKey.startsWith("klv/")) wolges.evict_klv(nameOf(cacheKey));
@@ -228,8 +252,11 @@ const prepare = async (wolges: Wolges, files: Array<LabFile>) => {
         } else {
           wolges.precache_kwg(nameOf(cacheKey), bytes);
         }
-        loaded.add(cacheKey);
+        loaded.set(cacheKey, bytes.length);
       }),
+  );
+  return Object.fromEntries(
+    files.map(({ cacheKey }) => [cacheKey, loaded.get(cacheKey)!]),
   );
 };
 
@@ -237,8 +264,7 @@ const handle = async (req: LabRequest): Promise<unknown> => {
   const wolges = await wolgesPromise;
   switch (req.op) {
     case "prepare":
-      await prepare(wolges, req.args.files);
-      return undefined;
+      return prepare(wolges, req.args.files);
     case "analyze":
       return JSON.parse(wolges.analyze(req.args.request));
     case "endgame":
@@ -247,6 +273,8 @@ const handle = async (req: LabRequest): Promise<unknown> => {
         id: ++lastJobId,
         kind: "endgame",
         handle: wolges.endgame_new(req.args.request),
+        // a new endgame has searched none
+        nodes: 0,
       };
       return job.id;
     case "sim": {

@@ -353,6 +353,23 @@ describe("a pre-endgame in parts", () => {
     expect(events[events.length - 1]).toEqual({ job, freed: true });
   });
 
+  it("runs on as few workers as asked, on one with no part", async () => {
+    setLabPartsForTest(4);
+    const request = JSON.stringify({ model: "info_sets" });
+    await labCall<number>({ op: "endgame", args: { request, parts: 2 } });
+    expect(made.map((w) => w.sent.some((m) => m.op === "endgame"))).toEqual([
+      true,
+      true,
+    ]);
+    expect(JSON.parse(lastOf(1, "endgame")!.args!.request as string)).toEqual({
+      model: "info_sets",
+      part: [1, 2],
+    });
+    await labCall<number>({ op: "endgame", args: { request, parts: 1 } });
+    expect(lastOf(0, "endgame")!.args).toEqual({ request });
+    expect(made[1].sent.filter((m) => m.op === "endgame")).toHaveLength(1);
+  });
+
   it("runs an endgame of one tile or none on the first worker alone", async () => {
     setLabPartsForTest(2);
     await labCall<number>({ op: "endgame", args: { request: "{}" } });

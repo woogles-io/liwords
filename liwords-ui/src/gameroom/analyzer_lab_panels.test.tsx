@@ -18,6 +18,7 @@ import {
 } from "../gen/api/proto/vendored/macondo/macondo_pb";
 import { Store } from "../store/store";
 import { LabEvent } from "../wasm/lab";
+import { OUT_OF_MEMORY } from "../wasm/lab_errors";
 import { AnalyzerMove } from "./analyzer";
 import {
   EndgamePanel,
@@ -35,6 +36,8 @@ const lab = vi.hoisted(() => ({
   calls: [] as Array<{ op: string; args?: object }>,
   listeners: new Set<(e: LabEvent) => void>(),
   top: [] as Array<object>,
+  // each file's size in bytes, as the worker loads it
+  sizes: {} as Record<string, number>,
   // the workers a sim runs on
   parts: 1,
   // what an inference of the opponent's leave finds
@@ -50,6 +53,7 @@ vi.mock("../wasm/lab", () => ({
   labCall: async (request: { op: string; args?: { plays?: string } }) => {
     lab.calls.push(request);
     if (request.op === "analyze") return lab.top;
+    if (request.op === "prepare") return lab.sizes;
     if (request.op === "endgame") return 1;
     if (request.op === "sim") {
       const args = request.args as { plays: string; infer?: string };
@@ -234,6 +238,7 @@ beforeEach(() => {
   board.placed.length = 0;
   clock.now = 0;
   lab.top = [];
+  lab.sizes = {};
   page.scored.length = 0;
   page.answer = undefined;
   tentative.placedTiles = new Set();
@@ -613,6 +618,74 @@ describe("the endgame panel", () => {
     expect(
       JSON.parse((made?.args as { request: string }).request).max_memory_mb,
     ).toBe(85);
+  });
+
+  it("runs on no more workers than leave each a share bigger than the lexicon", async () => {
+    lab.parts = 8;
+    // 256 MiB shared: six of a 40 MiB lexicon fit, seven would not
+    lab.sizes = { "kwg/CSW24": 40 * 2 ** 20 };
+    render(
+      <Store>
+        <EndgamePanel
+          lab={position([A, B, E, E, I, I, I, I, I])}
+          onClose={() => {}}
+        />
+      </Store>,
+    );
+    await waitFor(() =>
+      expect(lab.calls.some((c) => c.op === "endgame")).toBe(true),
+    );
+    const args = lab.calls.find((c) => c.op === "endgame")!.args as {
+      request: string;
+      parts: number;
+    };
+    expect(args.parts).toBe(6);
+    expect(JSON.parse(args.request).max_memory_mb).toBe(42);
+  });
+
+  it("solves again on half the workers when a part has no room, down to one", async () => {
+    lab.parts = 4;
+    render(
+      <Store>
+        <EndgamePanel
+          lab={position([A, B, E, E, I, I, I, I, I])}
+          onClose={() => {}}
+        />
+      </Store>,
+    );
+    const made = () =>
+      lab.calls
+        .filter((c) => c.op === "endgame")
+        .map((c) => {
+          const args = c.args as { request: string; parts: number };
+          return [args.parts, JSON.parse(args.request).max_memory_mb];
+        });
+    await waitFor(() => expect(made()).toEqual([[4, 64]]));
+    const outOfRoom = async (n: number) => {
+      await waitFor(() =>
+        expect(lab.calls.filter((c) => c.op === "run")).toHaveLength(n),
+      );
+      emit({ job: 1, error: OUT_OF_MEMORY });
+    };
+    await outOfRoom(1);
+    await waitFor(() =>
+      expect(made()).toEqual([
+        [4, 64],
+        [2, 128],
+      ]),
+    );
+    await outOfRoom(2);
+    await waitFor(() =>
+      expect(made()).toEqual([
+        [4, 64],
+        [2, 128],
+        [1, 256],
+      ]),
+    );
+    // on one, nothing fewer to try: the error stands
+    await outOfRoom(3);
+    expect(await screen.findByText(OUT_OF_MEMORY)).toBeInTheDocument();
+    expect(made()).toHaveLength(3);
   });
 
   it("marks the values not yet searched to the end", async () => {

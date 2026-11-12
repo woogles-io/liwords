@@ -119,9 +119,12 @@ describe("the lab's worker", () => {
       expect.any(Uint8Array),
     );
 
-    // what is loaded already is not loaded again
-    await send(3, "prepare", {
+    // what is loaded already is not loaded again, its size still told
+    const again = await send(3, "prepare", {
       files: [{ cacheKey: "kwg/NWL23", path: "/wasm/2024/NWL23.kwg" }],
+    });
+    expect(again.result).toEqual({
+      "kwg/NWL23": "bytes:/wasm/2024/NWL23.kwg".length,
     });
     expect(wasm.precache_kwg).toHaveBeenCalledTimes(2);
     expect(wasm.evict_klv).toHaveBeenCalledWith("NWL23");
@@ -158,6 +161,34 @@ describe("the lab's worker", () => {
     expect((await send(5, "run", { job, ms: 50, alpha: 0.05 })).error).toBe(
       "no such job",
     );
+  });
+
+  it("stops an endgame whose step searched no node, out of memory", async () => {
+    wasm.endgame_step
+      .mockReturnValueOnce(JSON.stringify({ exact: false, nodes: 40 }))
+      .mockReturnValueOnce(JSON.stringify({ exact: false, nodes: 40 }));
+    const job = (await send(1, "endgame", { request: "{}" })).result as number;
+    await send(2, "run", { job, ms: 16 });
+    await vi.waitFor(() => expect(events().some((e) => e.error)).toBe(true));
+    expect(events()).toEqual([
+      { job, answer: { exact: false, nodes: 40 }, done: false },
+      {
+        job,
+        error:
+          "Out of memory: the solve has no room to search. Use fewer workers.",
+      },
+    ]);
+    expect(wasm.endgame_step).toHaveBeenCalledTimes(2);
+  });
+
+  it("stops an endgame whose first step searched no node", async () => {
+    wasm.endgame_step.mockReturnValueOnce(
+      JSON.stringify({ exact: false, nodes: 0, play: null }),
+    );
+    const job = (await send(1, "endgame", { request: "{}" })).result as number;
+    await send(2, "run", { job, ms: 16 });
+    await vi.waitFor(() => expect(events().some((e) => e.error)).toBe(true));
+    expect(wasm.endgame_step).toHaveBeenCalledTimes(1);
   });
 
   it("values an empty bag's every first move without stepping, only for an endgame", async () => {

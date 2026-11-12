@@ -362,21 +362,23 @@ const multi = async (request: LabRequest): Promise<unknown> => {
   const n = labParts();
   switch (request.op) {
     case "prepare":
-      // each part holds its own tables
-      await Promise.all(Array.from({ length: n }, (_, w) => call(w, request)));
-      return undefined;
+      // each part holds its own tables, the same sizes in each
+      return (
+        await Promise.all(Array.from({ length: n }, (_, w) => call(w, request)))
+      )[0];
     case "analyze":
       return call(0, request);
     case "endgame": {
       freeSims();
       const base = JSON.parse(request.args.request);
-      if (base.model !== undefined) {
+      const k = Math.min(n, request.args.parts ?? n);
+      if (base.model !== undefined && k > 1) {
         // part k of n values the bag's sets whose index is k mod n
         const made = await Promise.all(
-          Array.from({ length: n }, (_, w) =>
+          Array.from({ length: k }, (_, w) =>
             call<number>(w, {
               op: "endgame",
-              args: { request: JSON.stringify({ ...base, part: [w, n] }) },
+              args: { request: JSON.stringify({ ...base, part: [w, k] }) },
             }),
           ),
         );
@@ -386,12 +388,15 @@ const multi = async (request: LabRequest): Promise<unknown> => {
           made.map((job, w) => ({ worker: w, job })),
         );
         endgames.set(page, {
-          answers: new Array(n).fill(undefined),
+          answers: new Array(k).fill(undefined),
           freed: false,
         });
         return page;
       }
-      const job = await call<number>(0, request);
+      const job = await call<number>(0, {
+        op: "endgame",
+        args: { request: request.args.request },
+      });
       const page = ++lastJob;
       jobs.set(page, [{ worker: 0, job }]);
       return page;
