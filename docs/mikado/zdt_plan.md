@@ -22,6 +22,7 @@ an in-process mutex. Everything below is what is still in the way.
 |---|---|---|---|---|
 | 1 | Deploy infrastructure | A second API task cannot be placed | blocker | infra |
 | 2 | Tournament store | Per-server cache and in-process mutex; two servers overwrite each other | blocker, correctness | large |
+| 2a | COP pairing | Runs for seconds under the tournament lock | correctness with two servers | medium |
 | 3 | Event-stream API | Queue-subscribed, so each server sees only some events | correctness | small |
 | 4 | Broadcast feed cache | Only the server that polls refreshes; others stale up to 30 min | staleness | small |
 | 5 | Shutdown | Moves in flight are killed; NATS keeps delivering during shutdown | lost moves on every deploy | medium |
@@ -99,6 +100,122 @@ tournament, then a transaction holding `pg_advisory_xact_lock` on it, the
 load, the change, the save and the commit. Socket messages go out after the
 commit. Reads load from the database each time. Measured before: full loads
 2-15 ms, saves 8-33 ms, on the ten largest production tournaments.
+
+### 2a. Pairing rounds with COP
+
+**Problem.** COP pairs a round by simulating the rest of the tournament. At
+the UI defaults (100,000 division sims, 10,000 control-loss sims) that takes
+2.5-3.5 s on 16 cores mid-event and 4.5-7 s with two cores, which is what
+production has. It runs inside the change that makes the round pairable, so
+the tournament lock is held the whole time:
+
+- every other change to the tournament, in every division, waits for it;
+- with two servers, a change waiting on the other server's lock gives up
+  after the 10 s `lock_timeout` and the result is lost;
+- the last game of a round ends under its game lock, so that game's final
+  save waits for COP too;
+- a server stopped mid-COP (every deploy) loses the change in flight.
+
+COP is reached from `ClassicDivision.PairRound` → `pairRoundWithCOP`, which is
+called from `SubmitResult`, the director's Pair Round, `SetRoundControls`,
+`SetSingleRoundControls`, `AddPlayers`, `RemovePlayers` and
+`PairLaggedRoundAfter`. The COP lambda (`cmd/coprunner`,
+`PairService.HandlePairRequest`) never touches tournaments.
+
+**Rejected: retry around the callers (#2251, closed).** Apply the change
+with COP disabled; on a miss, abandon it, run COP unlocked, and apply again,
+using an answer only for an identical request. It is correct, but covers only
+the callers that are wrapped, keeps the finishing game waiting, and loses the
+change if the server stops mid-COP.
+
+**Plan: a durable pairing job (transactional outbox).**
+
+1. **Mark, don't pair.** When the division would pair a COP round,
+   `pairRoundWithCOP` records the round as pending instead of calling COP.
+   Every caller goes through it, so one change covers them all. Other pairing
+   methods are cheap and stay inline.
+2. **Write the job in the same transaction as the change.** A `pair_round`
+   row (tournament, division, round, `run_at = now`) in `tournament_jobs`,
+   saved with the change that made the round pairable. The result and the
+   promise to pair it commit together or not at all, so a job survives a
+   deploy or a crash. The lock goes back to being held for milliseconds.
+   After the commit, the server publishes a wake message (below).
+3. **The job runner pairs.** It claims the job with a lease, loads the
+   tournament without the lock, builds the `PairRequest` and runs COP, in
+   process or on the lambda. Then it takes `LockForChange`, builds the request
+   again, and:
+   - if it is equal, applies the pairings, marks the job done, commits, and
+     publishes the pairings;
+   - if not (a director amended a score meanwhile), runs COP again. Nothing
+     waits on it, so there is no fallback to computing under the lock.
+   A job that keeps failing is reported to the directors through the
+   existing auto-pairing failure path (`TakeAutoPairingFailures`).
+4. **Pending state in the UI:** "Pairing round N…" until the pairings arrive.
+
+**The job runner (`pkg/jobs`).** `pair_round` is its first kind; tournament
+automation (scheduled round starts, ready deadlines and so on) adds more kinds
+to the same table and runner later.
+
+```sql
+tournament_jobs (
+  id            bigserial primary key,
+  tournament_id uuid,
+  kind          text not null,              -- pair_round, ...
+  division      text not null default '',
+  round         int  not null default -1,
+  run_at        timestamptz not null,
+  lease_until   timestamptz,
+  done_at       timestamptz,
+  attempts      int not null default 0,
+  last_error    text,
+  unique (tournament_id, kind, division, round)
+);
+```
+
+- **No fixed polling.** One goroutine sleeps until the next job is due
+  (`min(coalesce(lease_until, run_at))` over jobs not done), or until a wake
+  message arrives, and at most 5 minutes as a safety net. A `pair_round` job
+  is due at once, so with the wake message COP starts milliseconds after the
+  result commits. Idle cost: one indexed query every 5 minutes.
+- **Wake messages.** Whoever enqueues a job publishes
+  `tournament.jobs.wake` on NATS after the commit. Runners subscribe with a
+  plain subscription, not a queue group, so every runner hears it. A lost
+  wake delays a job by at most the safety-net sleep.
+- **Claims and leases.** Due jobs are claimed with `UPDATE … FOR UPDATE SKIP
+  LOCKED`, setting `lease_until = now + 30 s` (COP takes about 5 s). The
+  claim commits before the job runs: no transaction stays open across COP.
+  Each job goes to exactly one runner; if a runner dies mid-job its lease
+  expires and another takes it.
+- **Idempotent handlers.** Every handler re-checks the state under
+  `LockForChange`; pairing a round that is already paired is a no-op. So a
+  duplicate run or a retry after a lost lease is harmless.
+- **Shutdown.** On drain (section 5) the runner stops claiming. A job in
+  flight finishes or its lease expires.
+
+**Where it runs.**
+
+1. **Until the worker service exists:** in every API server. The runner is
+   built for several at once, so this is safe on one server and on two.
+2. **Then:** only in the worker service (section 7), behind a mode flag. API
+   servers only enqueue and wake. COP's CPU moves off the API servers with
+   it, or to the lambda. The worker then needs overlapping deploys, or
+   pairing waits out its restart.
+
+"Round complete, next round not yet paired" already exists: MANUAL rounds,
+and lagged rounds whose follow-on pairing failed. `autoStartRounds` logs and
+carries on when the next round can't open, so the round start just waits for
+the job.
+
+Before COP moves to the lambda, `HandlePairRequest` needs auth and a cap on
+sims; today anyone can call it.
+
+Later, the same outbox could make bus publishes survive a crash between
+commit and publish. Not needed now: clients refetch when they reconnect.
+
+**Status (2026-11-11): planned.** Needed before two servers share the lock
+(step 5 below); with one server, COP under the lock blocks other changes for
+a few seconds, as it always has. It runs in the API servers first because the
+worker service comes later.
 
 ## 3. Event-stream API subscriptions
 
@@ -202,8 +319,24 @@ What runs on every API server today, and what happens with two:
 None of these is a correctness problem with two servers once section 4 is
 fixed. A separate worker service (the same binary in a worker mode, its own
 ECS service, one task) would remove the duplicate work and give these jobs one
-owner. A gap while the worker redeploys only delays a timeout by a few
-seconds. It is worth doing, but after sections 1-5.
+owner. It is worth doing, but after sections 1-5.
+
+Background work then comes in two kinds:
+
+- **Tickers** (the table above) are safe on every server and move to the
+  worker only to stop running twice.
+- **Durable jobs** must run once and survive deploys: rows in
+  `tournament_jobs`, run by the job runner of section 2a. The first kind is
+  COP pairing (`pair_round`); tournament automation adds more
+  (`docs/automated_tournaments_plan.md` §3.2). The runner starts out in the
+  API servers and moves to the worker with the tickers.
+
+The worker must use overlapping deploys (min 100% / max 200%, like the socket
+service), not stop-then-start. For tickers a 30-60 s gap would only delay a
+timeout, but durable jobs would wait it out: a 15 s "next round" countdown
+would take a minute, and a round's COP pairings would wait for the restart.
+Two workers running briefly during a deploy is safe, because jobs are claimed
+with `SKIP LOCKED` leases.
 
 The scheduled maintenance tasks (`aws/cfn/maintenance-tasks.yaml`) already run
 as their own ECS task and are not affected.
@@ -230,6 +363,7 @@ some jitter, so a deploy doesn't reconnect every client in the same second.
    - draining: health check, NATS drain, tracked handlers, `stopTimeout`
      (section 5). This one helps immediately: deploys stop killing moves.
 3. **Tournaments without the cache**, with a lock per tournament (section 2).
+   Then COP pairing as a job outside the lock (section 2a).
 4. **Infrastructure:** Fargate (or dynamic ports), overlapping deploys, load
    balancer timings (section 1).
 5. **Two API servers on staging:** bots playing real-time games and a
