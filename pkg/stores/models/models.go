@@ -276,6 +276,7 @@ type GameTurn struct {
 	TurnIdx   int32
 	Event     []byte
 	CreatedAt pgtype.Timestamptz
+	EventBin  []byte
 }
 
 type Integration struct {

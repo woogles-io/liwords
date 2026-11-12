@@ -1,0 +1,12 @@
+-- Each turn as binary proto beside the protojson copy.
+--
+-- Binary proto is ~4x smaller and ~7x faster to decode than protojson, and a
+-- live game decodes every one of its turns on each load. This release writes
+-- both columns and reads event_bin when it is there, so the release before it
+-- can still be rolled back to: that code reads only `event`.
+--
+-- Nullable because rows written before this release have no binary copy. They
+-- are not backfilled here: protojson can't be converted to proto in SQL, and
+-- most turn rows are deleted when their game is archived. The release that
+-- stops writing `event` converts the rows that are left first.
+ALTER TABLE game_turns ADD COLUMN event_bin bytea;
