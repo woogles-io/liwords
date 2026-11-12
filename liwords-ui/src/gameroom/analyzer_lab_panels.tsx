@@ -733,13 +733,16 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
               ),
             },
           });
-          setWorkers(modeled ? labParts() : 1);
+          const n = modeled ? labParts() : 1;
+          setWorkers(n);
           return labCall<number>({
             op: "endgame",
             args: {
               request: JSON.stringify({
                 ...lab.position,
-                max_memory_mb: endgameMemoryMb(),
+                // the device's allowance shared by the workers, each part
+                // its own table
+                max_memory_mb: Math.floor(endgameMemoryMb() / n),
                 // with two or more in the bag, the first passes value every
                 // move fast, a line still leaving tiles in the bag by its
                 // equity, and later ones deepen to the bag's end

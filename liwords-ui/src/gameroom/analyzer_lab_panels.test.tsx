@@ -608,6 +608,11 @@ describe("the endgame panel", () => {
         "Expected value +3.50, wins 60.0%, searched to the end, 12 endgames after 0 s, exact; on 3 workers",
       ),
     ).toBeInTheDocument();
+    // the device's 256 MiB shared by the three
+    const made = lab.calls.find((c) => c.op === "endgame");
+    expect(
+      JSON.parse((made?.args as { request: string }).request).max_memory_mb,
+    ).toBe(85);
   });
 
   it("marks the values not yet searched to the end", async () => {
