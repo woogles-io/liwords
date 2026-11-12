@@ -1,5 +1,6 @@
 import React from "react";
 import { Switch } from "antd";
+import { ANALYZER_LAB_KEY } from "../gameroom/analyzer_lab";
 import { useLocalStorageBool } from "../utils/use_local_storage";
 
 export const Secret = React.memo(() => {
@@ -21,6 +22,7 @@ export const Secret = React.memo(() => {
     useLocalStorageBool("showBonusLabels");
   const [flipBoardOffTurn, setFlipBoardOffTurn] =
     useLocalStorageBool("flipBoardOffTurn");
+  const [analyzerLab, setAnalyzerLab] = useLocalStorageBool(ANALYZER_LAB_KEY);
 
   return (
     <div className="preferences secret">
@@ -147,6 +149,17 @@ export const Secret = React.memo(() => {
                 checked={flipBoardOffTurn}
                 onChange={setFlipBoardOffTurn}
                 className="flip-board-toggle"
+              />
+            </div>
+          </div>
+          <div className="toggle-section">
+            <div className="title">Analyzer lab</div>
+            <div>
+              <div>More ways to look at a position in the analyzer</div>
+              <Switch
+                checked={analyzerLab}
+                onChange={setAnalyzerLab}
+                className="analyzer-lab-toggle"
               />
             </div>
           </div>
