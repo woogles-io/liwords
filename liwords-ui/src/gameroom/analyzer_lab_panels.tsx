@@ -18,6 +18,7 @@ import {
   Tooltip,
 } from "antd";
 import {
+  AimOutlined,
   BorderInnerOutlined,
   CaretRightOutlined,
   CloseOutlined,
@@ -89,7 +90,7 @@ import {
 } from "./analyzer_lab";
 import { LabHooks, publishLabHooks } from "./lab_hooks";
 
-export type LabView = "sim" | "endgame";
+export type LabView = "sim" | "endgame" | "threats";
 
 // A play as the wasm writes one, with no equity. A play given to a sim may
 // add a challenge's bonus to its score, or be challenged off the board: it
@@ -262,7 +263,7 @@ export type LabPosition = {
 
 // The board as the wasm takes one: each square's tile, a blank's letter
 // below 0.
-const wasmBoard = (letters: Array<MachineLetter>, dim: number) =>
+export const wasmBoard = (letters: Array<MachineLetter>, dim: number) =>
   Array.from({ length: dim }, (_, row) =>
     letters
       .slice(row * dim, row * dim + dim)
@@ -378,7 +379,7 @@ const goneOutText = (lab: LabPosition) =>
     ? "The other player has gone out, but the play can still be challenged."
     : "The other player has gone out: the game is over.";
 
-const toAnalyzerMove = (
+export const toAnalyzerMove = (
   play: WasmPlay,
   value: number,
   letters: Array<MachineLetter>,
@@ -555,7 +556,7 @@ const useLabJob = <T,>(start: (() => Promise<number>) | null, key: string) => {
 };
 
 // A column's name, with what the column holds on hover.
-const ColumnName = (props: { name: string; tip: string }) => (
+export const ColumnName = (props: { name: string; tip: string }) => (
   <Tooltip title={props.tip}>
     <span>{props.name}</span>
   </Tooltip>
@@ -613,7 +614,7 @@ export const useLabRoom = (panel: React.RefObject<HTMLElement | null>) => {
   }, [panel]);
 };
 
-const PanelFrame = (props: PanelFrameProps) => {
+export const PanelFrame = (props: PanelFrameProps) => {
   const resumeLabel = props.resumeLabel ?? "Resume";
   const panel = useRef<HTMLDivElement>(null);
   useLabRoom(panel);
@@ -1201,7 +1202,7 @@ type Inferred = {
 // The request that infers the opponent's leave from their last move, as the
 // player to move sees it, with the settings' fuzz and how many of the
 // likeliest leaves it lists.
-const inferRequest = (lab: LabPosition, settings: SimSettings) =>
+export const inferRequest = (lab: LabPosition, settings: SimSettings) =>
   lab.lastMove
     ? JSON.stringify({
         rack: lab.rack,
@@ -1215,7 +1216,7 @@ const inferRequest = (lab: LabPosition, settings: SimSettings) =>
       })
     : undefined;
 
-const NOTHING_TO_INFER =
+export const NOTHING_TO_INFER =
   "the opponent's last turn is no play or exchange to infer their leave from";
 
 // The plies a sim's rollouts play until the user sets others: liwords's own
@@ -1268,7 +1269,7 @@ const runArgs = (job: number, ms: number, settings: SimSettings) =>
 
 // The tiles written as known on the opponent's rack, or why they cannot be
 // there: each one a tile of the game, and all of them among the tiles unseen.
-const knownTiles = (
+export const knownTiles = (
   written: string,
   lab: LabPosition,
 ): { tiles: MachineWord } | { error: string } => {
@@ -3177,6 +3178,16 @@ export const LabButtons = (props: LabButtonsProps) => {
           icon={<ExperimentOutlined />}
           type={view === "sim" ? "primary" : "default"}
           onClick={() => setView(view === "sim" ? null : "sim")}
+        />
+      </Tooltip>
+      <Tooltip title="What the opponent may play next">
+        <Button
+          shape="circle"
+          size="small"
+          icon={<AimOutlined />}
+          aria-label="Threats"
+          type={view === "threats" ? "primary" : "default"}
+          onClick={() => setView(view === "threats" ? null : "threats")}
         />
       </Tooltip>
       <Tooltip title="Solve the endgame">
