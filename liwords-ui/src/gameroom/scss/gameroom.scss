@@ -482,6 +482,22 @@ p.streak-loss {
     cursor: default;
   }
 
+  // a set of tiles a play then draws, under the set it draws from
+  tr.lab-drawn td.move {
+    padding-left: 1.5em;
+  }
+
+  // a play other than the best whose draws are shown
+  tr.lab-shown td {
+    background-color: m($gray-subtle);
+  }
+
+  // a play's win, which shows its draws
+  td.lab-win button.lab-pick {
+    height: auto;
+    padding: 0;
+  }
+
   td.lab-bingo,
   td.lab-n,
   td.lab-win {

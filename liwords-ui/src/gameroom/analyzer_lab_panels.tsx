@@ -110,6 +110,37 @@ type WasmPlay =
 // counted short), or challenged off.
 type PlayVariant = { bonus: number } | { challenged_off: true };
 
+// What a play gains with one tile in the bag, for each tile the bag may be,
+// and how many of that tile are unseen.
+type EndgameTile = { tile: number; count: number; value: number };
+
+// What a play gains with two or more tiles in the bag, for each set of tiles
+// the bag may hold, the deals of it, and the play's chance to win then; with
+// both racks known, under it each set of tiles the play then draws from it.
+type EndgameDraw = {
+  tiles: Array<number>;
+  count: number;
+  value: number;
+  win?: number;
+  drawn?: Array<{
+    tiles: Array<number>;
+    count: number;
+    value: number;
+    win: number;
+  }>;
+};
+
+// A play an endgame valued: what it gains, its chance to win (with two or
+// more tiles in the bag), and what it gains for each tile the bag may be
+// (one tile) or each set of tiles it may hold (two or more).
+type EndgameCandidate = {
+  play: WasmPlay;
+  win?: number;
+  value: number;
+  tiles?: Array<EndgameTile>;
+  draws?: Array<EndgameDraw>;
+};
+
 // An endgame's answer: the tiles in the bag, the steps that solved and the
 // nodes they searched, the play to make and its value (none before the first
 // step), and the lead it ends with. With an empty bag, the depth searched and
@@ -117,7 +148,7 @@ type PlayVariant = { bonus: number } | { challenged_off: true };
 // pass has valued every move, END_DEPTH once searched to the end), the share
 // of deals the play wins, the endgames searched, and the moves the pass under
 // way has valued of all it values; then each tile the bag may be (one tile),
-// or each set of tiles it may hold and every play valued (two or more).
+// or each set of tiles it may hold (two or more), and every play valued.
 type EndgameAnswer = {
   bag: number;
   steps: number;
@@ -131,10 +162,27 @@ type EndgameAnswer = {
   win?: number;
   endgames?: number;
   moves?: [number, number];
-  tiles?: Array<{ tile: number; count: number; value: number }>;
-  draws?: Array<{ tiles: Array<number>; count: number; value: number }>;
-  candidates?: Array<{ play: WasmPlay; win: number; value: number }>;
+  tiles?: Array<EndgameTile>;
+  draws?: Array<EndgameDraw>;
+  candidates?: Array<EndgameCandidate>;
 };
+
+// How the game ends for the player to move, leading by this much at the end:
+// a win counts 1, a tie a half.
+const endScore = (end: number) => (end > 0 ? 1 : end < 0 ? 0 : 0.5);
+
+// The share of deals a play wins with one tile in the bag, from what it gains
+// for each tile, the lead now given.
+const tilesWin = (tiles: Array<EndgameTile>, lead: number) => {
+  const deals = tiles.reduce((sum, t) => sum + t.count, 0);
+  return deals
+    ? tiles.reduce((sum, t) => sum + t.count * endScore(lead + t.value), 0) /
+        deals
+    : undefined;
+};
+
+const dealsText = (count: number) =>
+  ` (${count} ${count === 1 ? "deal" : "deals"})`;
 
 // The depth a pre-endgame's answer gives once searched to the end.
 const END_DEPTH = 127;
@@ -705,31 +753,38 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
     () => (solved?.line ? lineMoves(solved.line, lab) : []),
     [solved, lab],
   );
-  // a pre-endgame's plays, each with the share of deals it wins: the best
-  // alone with one tile in the bag, every play valued with two or more
+  // how the game ends for the player to move with a gain of this much: the
+  // lead now is the answer's spread less its value
+  const lead = solved ? solved.spread - solved.value : 0;
+  // a pre-endgame's plays, each with the share of deals it wins and what it
+  // gains for each tile or set of tiles the bag may hold: every play valued,
+  // the best first, or the best alone where the answer lists no other. The
+  // best's own tiles or sets are the answer's where its entry has none.
   const plays = useMemo(() => {
     if (!solved || solved.line) return [];
-    if (solved.candidates) {
-      return solved.candidates.map((c) => ({
+    const listed: Array<EndgameCandidate> = solved.candidates?.length
+      ? solved.candidates
+      : solved.play
+        ? [{ play: solved.play, value: solved.value, win: solved.win }]
+        : [];
+    return listed.map((c, i) => {
+      const tiles = c.tiles ?? (i === 0 ? solved.tiles : undefined);
+      const draws = c.draws ?? (i === 0 ? solved.draws : undefined);
+      return {
         move: toAnalyzerMove(c.play, c.value, lab.letters, lab.rack, lab),
-        win: c.win,
-      }));
-    }
-    return solved.play
-      ? [
-          {
-            move: toAnalyzerMove(
-              solved.play,
-              solved.value,
-              lab.letters,
-              lab.rack,
-              lab,
-            ),
-            win: solved.win,
-          },
-        ]
-      : [];
-  }, [solved, lab]);
+        win:
+          c.win ??
+          (tiles ? tilesWin(tiles, lead) : i === 0 ? solved.win : undefined),
+        tiles: tiles?.length ? tiles : undefined,
+        draws: draws?.length ? draws : undefined,
+      };
+    });
+  }, [solved, lab, lead]);
+  // the play whose tiles or sets are shown, the best unless another is picked
+  const [picked, setPicked] = useState<string>();
+  const shown =
+    plays.find((p) => p.move.jsonKey === picked) ??
+    plays.find((p) => p.tiles || p.draws);
 
   // the players by who moves first in the line: the player to move, then the
   // other
@@ -738,9 +793,6 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
   );
   const runes = (tiles: MachineWord) =>
     machineWordToRunes(tiles, lab.alphabet, false, true);
-  // how the game ends for the player to move with a gain of this much: the
-  // lead now is the answer's spread less its value
-  const lead = solved ? solved.spread - solved.value : 0;
   const endText = (value: number) => {
     const end = lead + value;
     return end > 0 ? "wins" : end < 0 ? "loses" : "ties";
@@ -843,28 +895,58 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
               <td className="move-equity">{signed(m.equity)}</td>
             </tr>
           ))}
-          {plays.map(({ move: m, win }, i) => (
-            <tr key={m.jsonKey} onClick={() => placeMove(m)}>
-              <td className="lab-who">{i === 0 ? names[0] : ""}</td>
-              <td className="move-coords">{m.coordinates}</td>
-              <td className="move">{m.displayMove}</td>
-              <td className="move-score">{m.score}</td>
-              <td className="move-leave">{runes(m.leave)}</td>
-              <td className="lab-win">
-                {win === undefined ? "" : percent(win)}
-              </td>
-              <td className="move-equity">{signed(m.equity, 2)}</td>
-            </tr>
-          ))}
-          {plays[0] && (solved?.tiles?.length || solved?.draws?.length) ? (
+          {plays.map((p, i) => {
+            const m = p.move;
+            const win = p.win === undefined ? "" : percent(p.win);
+            return (
+              <tr
+                key={m.jsonKey}
+                className={
+                  shown && shown !== plays[0] && p === shown
+                    ? "lab-shown"
+                    : undefined
+                }
+                onClick={() => placeMove(m)}
+              >
+                <td className="lab-who">{i === 0 ? names[0] : ""}</td>
+                <td className="move-coords">{m.coordinates}</td>
+                <td className="move">{m.displayMove}</td>
+                <td className="move-score">{m.score}</td>
+                <td className="move-leave">{runes(m.leave)}</td>
+                <td className="lab-win">
+                  {p.tiles || p.draws ? (
+                    // the win picks the play whose deals are shown below
+                    <Tooltip title="Show what it gains for each draw">
+                      <Button
+                        type="link"
+                        size="small"
+                        className="lab-pick"
+                        aria-label={`Draws of ${moveName(m)}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPicked(m.jsonKey);
+                        }}
+                      >
+                        {win}
+                      </Button>
+                    </Tooltip>
+                  ) : (
+                    win
+                  )}
+                </td>
+                <td className="move-equity">{signed(m.equity, 2)}</td>
+              </tr>
+            );
+          })}
+          {shown ? (
             <tr className="lab-tile lab-draws-head">
               <td className="lab-who" />
               <td className="move" colSpan={6}>
-                {`${moveName(plays[0].move)}, with the bag holding:`}
+                {`${moveName(shown.move)}, with the bag holding:`}
               </td>
             </tr>
           ) : null}
-          {solved?.tiles?.map((t) => (
+          {shown?.tiles?.map((t) => (
             <tr key={t.tile} className="lab-tile">
               <td className="lab-who" />
               <td className="move-coords" />
@@ -876,17 +958,34 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
               <td className="move-equity">{signed(t.value)}</td>
             </tr>
           ))}
-          {solved?.draws?.map((d) => (
-            <tr key={d.tiles.join(",")} className="lab-tile">
-              <td className="lab-who" />
-              <td className="move-coords" />
-              <td className="move" colSpan={3}>
-                {runes(d.tiles)}
-                {` (${d.count} ${d.count === 1 ? "deal" : "deals"})`}
-              </td>
-              <td className="lab-win">{endText(d.value)}</td>
-              <td className="move-equity">{signed(d.value, 2)}</td>
-            </tr>
+          {shown?.draws?.map((d) => (
+            <React.Fragment key={d.tiles.join(",")}>
+              <tr className="lab-tile">
+                <td className="lab-who" />
+                <td className="move-coords" />
+                <td className="move" colSpan={3}>
+                  {runes(d.tiles)}
+                  {dealsText(d.count)}
+                </td>
+                <td className="lab-win">
+                  {d.win === undefined ? endText(d.value) : percent(d.win)}
+                </td>
+                <td className="move-equity">{signed(d.value, 2)}</td>
+              </tr>
+              {d.drawn?.map((r) => (
+                // with both racks known, what the play then draws from the set
+                <tr key={r.tiles.join(",")} className="lab-tile lab-drawn">
+                  <td className="lab-who" />
+                  <td className="move-coords" />
+                  <td className="move" colSpan={3}>
+                    {`draws ${runes(r.tiles)}`}
+                    {dealsText(r.count)}
+                  </td>
+                  <td className="lab-win">{percent(r.win)}</td>
+                  <td className="move-equity">{signed(r.value, 2)}</td>
+                </tr>
+              ))}
+            </React.Fragment>
           ))}
         </tbody>
       </table>

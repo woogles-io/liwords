@@ -444,6 +444,144 @@ describe("the endgame panel", () => {
     expect(bodyRows()).toEqual(["andy8HBA10AEEII50.0%+2.00"]);
   });
 
+  it("lists every move valued with a tile in the bag, each with its tiles, and shows the tiles of the one picked", async () => {
+    render(
+      <Store>
+        <EndgamePanel
+          lab={position([A, B, E, E, I, I, I, I])}
+          onClose={() => {}}
+        />
+      </Store>,
+    );
+    await step({
+      bag: 1,
+      steps: 3,
+      exact: true,
+      play: across(7, 7, [B, A]),
+      value: 4,
+      spread: 14,
+      depth: 127,
+      win: 1,
+      endgames: 40,
+      moves: [9, 9],
+      tiles: [
+        { tile: E, count: 2, value: 6 },
+        { tile: I, count: 4, value: 3 },
+      ],
+      candidates: [
+        {
+          play: across(7, 7, [B, A]),
+          value: 4,
+          exact: true,
+          tiles: [
+            { tile: E, count: 2, value: 6 },
+            { tile: I, count: 4, value: 3 },
+          ],
+        },
+        {
+          play: { action: "exchange", tiles: [] },
+          value: -9,
+          exact: true,
+          tiles: [
+            { tile: E, count: 2, value: -10 },
+            { tile: I, count: 4, value: -9 },
+          ],
+        },
+      ],
+    });
+    // the lead now 10: the pass wins with I and ties with E
+    expect(bodyRows()).toEqual([
+      "andy8HBA10AEEII100.0%+4.00",
+      "Pass0AABEEII83.3%-9.00",
+      "8H BA, with the bag holding:",
+      "E (2)wins+6",
+      "I (4)wins+3",
+    ]);
+    fireEvent.click(screen.getByRole("button", { name: "Draws of Pass" }));
+    expect(bodyRows()).toEqual([
+      "andy8HBA10AEEII100.0%+4.00",
+      "Pass0AABEEII83.3%-9.00",
+      "Pass, with the bag holding:",
+      "E (2)ties-10",
+      "I (4)wins-9",
+    ]);
+    // picking is not placing
+    expect(board.placed).toEqual([]);
+  });
+
+  it("shows each play's own sets of tiles, with the chance to win with each, and with both racks known what it then draws", async () => {
+    render(
+      <Store>
+        <EndgamePanel
+          lab={position([A, B, E, E, I, I, I, I, I])}
+          onClose={() => {}}
+        />
+      </Store>,
+    );
+    const draws = [
+      {
+        tiles: [E, I],
+        count: 10,
+        value: 5,
+        win: 0.9,
+        drawn: [
+          { tiles: [E], count: 4, value: 7, win: 1 },
+          { tiles: [I], count: 6, value: 3.67, win: 0.83 },
+        ],
+      },
+      { tiles: [I, I], count: 1, value: -12, win: 0, drawn: [] },
+    ];
+    await step({
+      bag: 2,
+      steps: 4,
+      nodes: 900,
+      exact: true,
+      play: across(7, 7, [B, A]),
+      value: 3.5,
+      spread: 13.5,
+      depth: 127,
+      win: 0.82,
+      endgames: 120,
+      moves: [9, 9],
+      draws,
+      candidates: [
+        {
+          play: across(7, 7, [B, A]),
+          win: 0.82,
+          value: 3.5,
+          exact: true,
+          draws,
+        },
+        {
+          play: { action: "exchange", tiles: [] },
+          win: 0.25,
+          value: -8,
+          exact: true,
+          draws: [
+            { tiles: [E, I], count: 10, value: -7, win: 0.3 },
+            { tiles: [I, I], count: 1, value: -18, win: 0 },
+          ],
+        },
+      ],
+    });
+    expect(bodyRows()).toEqual([
+      "andy8HBA10AEEII82.0%+3.50",
+      "Pass0AABEEII25.0%-8.00",
+      "8H BA, with the bag holding:",
+      "EI (10 deals)90.0%+5.00",
+      "draws E (4 deals)100.0%+7.00",
+      "draws I (6 deals)83.0%+3.67",
+      "II (1 deal)0.0%-12.00",
+    ]);
+    fireEvent.click(screen.getByRole("button", { name: "Draws of Pass" }));
+    expect(bodyRows().slice(2)).toEqual([
+      // a pass draws nothing
+      "Pass, with the bag holding:",
+      "EI (10 deals)30.0%-7.00",
+      "II (1 deal)0.0%-18.00",
+    ]);
+  });
+
   it("solves a pre-endgame of two tiles in the bag, every play valued, blind or with both racks known", async () => {
     render(
       <Store>
