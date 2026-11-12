@@ -131,12 +131,14 @@ type EndgameDraw = {
 };
 
 // A play an endgame valued: what it gains, its chance to win (with two or
-// more tiles in the bag), and what it gains for each tile the bag may be
-// (one tile) or each set of tiles it may hold (two or more).
+// more tiles in the bag), whether that is searched to the game's end or an
+// estimate, and what it gains for each tile the bag may be (one tile) or each
+// set of tiles it may hold (two or more).
 type EndgameCandidate = {
   play: WasmPlay;
   win?: number;
   value: number;
+  exact?: boolean;
   tiles?: Array<EndgameTile>;
   draws?: Array<EndgameDraw>;
 };
@@ -733,7 +735,12 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
               request: JSON.stringify({
                 ...lab.position,
                 max_memory_mb: endgameMemoryMb(),
-                ...(modeled ? { model, exchanges: lab.exchanges } : {}),
+                // with two or more in the bag, the first passes value every
+                // move fast, a line still leaving tiles in the bag by its
+                // equity, and later ones deepen to the bag's end
+                ...(modeled
+                  ? { model, exchanges: lab.exchanges, estimates: true }
+                  : {}),
               }),
             },
           });
@@ -775,6 +782,7 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
         win:
           c.win ??
           (tiles ? tilesWin(tiles, lead) : i === 0 ? solved.win : undefined),
+        exact: c.exact,
         tiles: tiles?.length ? tiles : undefined,
         draws: draws?.length ? draws : undefined,
       };
@@ -817,7 +825,7 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
     status =
       solved.bag === 0
         ? `Value ${signed(solved.value)}, spread ${signed(solved.spread)}, ${progress}`
-        : `Expected value ${signed(solved.value, 2)}, wins ${percent(solved.win ?? 0)}, ${progress}`;
+        : `Expected value ${plays[0]?.exact === false ? "~" : ""}${signed(solved.value, 2)}, wins ${percent(solved.win ?? 0)}, ${progress}`;
   }
 
   return (
@@ -874,7 +882,7 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
               <th className="move-equity">
                 <ColumnName
                   name="Value"
-                  tip="What the player gains from here to the game's end"
+                  tip="What the player gains from here to the game's end; ~ marks a value not yet searched to the end"
                 />
               </th>
             </tr>
@@ -934,7 +942,9 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
                     win
                   )}
                 </td>
-                <td className="move-equity">{signed(m.equity, 2)}</td>
+                <td className="move-equity">
+                  {`${p.exact === false ? "~" : ""}${signed(m.equity, 2)}`}
+                </td>
               </tr>
             );
           })}

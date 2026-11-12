@@ -509,6 +509,72 @@ describe("the endgame panel", () => {
     expect(board.placed).toEqual([]);
   });
 
+  it("marks the values not yet searched to the end", async () => {
+    render(
+      <Store>
+        <EndgamePanel
+          lab={position([A, B, E, E, I, I, I, I, I])}
+          onClose={() => {}}
+        />
+      </Store>,
+    );
+    await step({
+      bag: 2,
+      steps: 1,
+      nodes: 90,
+      exact: false,
+      play: across(7, 7, [B, A]),
+      value: 3.5,
+      spread: 13.5,
+      depth: 1,
+      win: 0.6,
+      endgames: 12,
+      moves: [9, 9],
+      draws: [],
+      candidates: [
+        { play: across(7, 7, [B, A]), win: 0.6, value: 3.5, exact: true },
+        {
+          play: { action: "exchange", tiles: [] },
+          win: 0.25,
+          value: -8,
+          exact: false,
+        },
+      ],
+    });
+    expect(bodyRows()).toEqual([
+      "andy8HBA10AEEII60.0%+3.50",
+      "Pass0AABEEII25.0%~-8.00",
+    ]);
+    expect(
+      screen.getByText(
+        "Expected value +3.50, wins 60.0%, pass 1, 9 of 9 moves valued, 12 endgames after 0 s, solving",
+      ),
+    ).toBeInTheDocument();
+    // the best an estimate too
+    await step({
+      bag: 2,
+      steps: 2,
+      nodes: 190,
+      exact: false,
+      play: across(7, 7, [B, A]),
+      value: 3,
+      spread: 13,
+      depth: 2,
+      win: 0.6,
+      endgames: 30,
+      moves: [9, 9],
+      draws: [],
+      candidates: [
+        { play: across(7, 7, [B, A]), win: 0.6, value: 3, exact: false },
+      ],
+    });
+    expect(
+      screen.getByText(
+        "Expected value ~+3.00, wins 60.0%, pass 2, 9 of 9 moves valued, 30 endgames after 0 s, solving",
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("shows each play's own sets of tiles, with the chance to win with each, and with both racks known what it then draws", async () => {
     render(
       <Store>
@@ -637,6 +703,8 @@ describe("the endgame panel", () => {
     expect(requests()).toHaveLength(1);
     expect(requests()[0].model).toBe("info_sets");
     expect(requests()[0].exchanges).toEqual([1, 2]);
+    // estimates first, labeled, then exact
+    expect(requests()[0].estimates).toBe(true);
     // both racks known makes another search
     fireEvent.click(screen.getByText("Racks known"));
     await waitFor(() => expect(requests()).toHaveLength(2));
