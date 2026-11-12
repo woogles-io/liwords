@@ -23,10 +23,19 @@ package bus
 //  4. Let ProcessMessages publish the events the handlers left behind.
 //
 // ProcessMessages must keep running until Drain returns.
+//
+// Drain records a "bus.drain" span with an event as each step finishes, and
+// the handlers that run during it get bus.draining=true on their own spans,
+// so a shutdown can be followed in Jaeger.
 
 import (
 	"context"
 	"time"
+
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // subscription is what Drain needs of a NATS subscription.
@@ -41,25 +50,41 @@ const drainPoll = 20 * time.Millisecond
 
 // Drain stops taking new messages and waits until everything already taken
 // has been handled and its events published, or until ctx ends.
-func (b *Bus) Drain(ctx context.Context) error {
+func (b *Bus) Drain(ctx context.Context) (err error) {
+	ctx, span := otel.Tracer("bus-drain").Start(ctx, "bus.drain")
+	defer span.End()
+	span.SetAttributes(
+		attribute.Int("bus.buffered", b.buffered()),
+		attribute.Int64("bus.handlers_in_flight", b.inFlight.Load()),
+		attribute.Int("bus.events_queued", b.eventsQueued()))
+	step := "stop-subscriptions"
+	defer func() {
+		if err != nil {
+			// Where it was stuck, and with how much left.
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
+			span.SetAttributes(
+				attribute.String("bus.drain.stuck_at", step),
+				attribute.Int("bus.buffered_left", b.buffered()),
+				attribute.Int64("bus.handlers_left", b.inFlight.Load()),
+				attribute.Int("bus.events_left", b.eventsQueued()))
+		}
+	}()
+
 	b.draining.Store(true)
 	for _, sub := range b.subscriptions {
 		if err := sub.Drain(); err != nil {
 			return err
 		}
 	}
+	step = "take-buffered"
 	if err := b.waitFor(ctx, func() bool {
 		for _, sub := range b.subscriptions {
 			if sub.IsValid() {
 				return false
 			}
 		}
-		for _, ch := range b.subchans {
-			if len(ch) > 0 {
-				return false
-			}
-		}
-		return true
+		return b.buffered() == 0
 	}); err != nil {
 		return err
 	}
@@ -69,6 +94,9 @@ func (b *Bus) Drain(ctx context.Context) error {
 	if err := b.sync(ctx); err != nil {
 		return err
 	}
+	span.AddEvent("buffers-taken", trace.WithAttributes(
+		attribute.Int64("bus.handlers_in_flight", b.inFlight.Load())))
+	step = "wait-for-handlers"
 	handled := make(chan struct{})
 	go func() {
 		b.handlers.Wait()
@@ -79,13 +107,52 @@ func (b *Bus) Drain(ctx context.Context) error {
 	case <-ctx.Done():
 		return ctx.Err()
 	}
-	if err := b.waitFor(ctx, func() bool {
-		return len(b.gameEventChan) == 0 && len(b.tournamentEventChan) == 0 &&
-			len(b.genericEventChan) == 0
-	}); err != nil {
+	span.AddEvent("handlers-done", trace.WithAttributes(
+		attribute.Int("bus.events_queued", b.eventsQueued())))
+	step = "publish-events"
+	if err := b.waitFor(ctx, b.eventsPublished); err != nil {
 		return err
 	}
-	return b.sync(ctx)
+	if err := b.sync(ctx); err != nil {
+		return err
+	}
+	span.AddEvent("events-published")
+	return nil
+}
+
+// trackHandler counts a handler goroutine that Drain must wait for; it
+// returns the function the handler defers.
+func (b *Bus) trackHandler() func() {
+	b.handlers.Add(1)
+	b.inFlight.Add(1)
+	return func() {
+		b.inFlight.Add(-1)
+		b.handlers.Done()
+	}
+}
+
+// markDraining tags a handler's span when it runs during a drain.
+func (b *Bus) markDraining(span trace.Span) {
+	if b.draining.Load() {
+		span.SetAttributes(attribute.Bool("bus.draining", true))
+	}
+}
+
+// buffered is how many received messages ProcessMessages hasn't taken yet.
+func (b *Bus) buffered() int {
+	n := 0
+	for _, ch := range b.subchans {
+		n += len(ch)
+	}
+	return n
+}
+
+func (b *Bus) eventsQueued() int {
+	return len(b.gameEventChan) + len(b.tournamentEventChan) + len(b.genericEventChan)
+}
+
+func (b *Bus) eventsPublished() bool {
+	return b.eventsQueued() == 0
 }
 
 // sync returns once ProcessMessages has finished whatever it was doing.

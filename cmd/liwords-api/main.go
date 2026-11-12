@@ -94,9 +94,10 @@ import (
 )
 
 const (
-	// GracefulShutdownTimeout bounds the whole shutdown after SIGTERM. ECS
-	// kills the container stopTimeout after SIGTERM (30s unless the task
-	// definition sets it), so this stays under that.
+	// GracefulShutdownTimeout bounds the shutdown after SIGTERM. ECS kills
+	// the container stopTimeout after SIGTERM (30s unless the task
+	// definition sets it), so this, plus the NATS flush and the span export
+	// (2s each), stays under that.
 	GracefulShutdownTimeout = 25 * time.Second
 )
 
@@ -213,7 +214,11 @@ func main() {
 
 	// Handle shutdown properly so nothing leaks.
 	defer func() {
-		err = errors.Join(err, otelShutdown(context.Background()))
+		// Exports the spans still buffered, including the shutdown's own.
+		// Bounded: ECS kills the container stopTimeout after SIGTERM.
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+		err = errors.Join(err, otelShutdown(ctx))
 	}()
 
 	// TODO(metrics-leak): disabled — see comment on setupOTelSDK in otel.go.
@@ -522,32 +527,35 @@ func main() {
 	broadcastService.SetEventChannel(pubsubBus.GameEventChannel())
 	broadcastService.SetNatsConn(natsconn)
 
-	obsHandler := broadcasts.NewOBSHandler(stores.Queries, stores.GameDocumentStore, cfg, natsconn, wordService, broadcastService)
-	router.Handle(broadcasts.OBSHandlerPrefix, otelhttp.NewHandler(
-		obsHandler,
-		"obs-broadcast-api",
-		otelhttp.WithSpanNameFormatter(customHTTPSpanNameFormatter),
-	))
-	router.Handle(broadcasts.OBSGameHandlerPrefix, otelhttp.NewHandler(
-		http.HandlerFunc(obsHandler.ServeGameHTTP),
-		"obs-game-api",
-		otelhttp.WithSpanNameFormatter(customHTTPSpanNameFormatter),
-	))
-	router.Handle(broadcasts.OBSUserHandlerPrefix, otelhttp.NewHandler(
-		http.HandlerFunc(obsHandler.ServeUserHTTP),
-		"obs-user-api",
-		otelhttp.WithSpanNameFormatter(customHTTPSpanNameFormatter),
-	))
-
-	router.Handle(bus.GameEventStreamPrefix,
-		middlewares.Then(pubsubBus.EventAPIServerInstance()))
-
 	srv := &http.Server{
 		Addr:         cfg.ListenAddr,
 		Handler:      router,
 		WriteTimeout: 120 * time.Second,
 		ReadTimeout:  10 * time.Second,
 		IdleTimeout:  90 * time.Second}
+
+	// The streaming routes end when the server shuts down (shutdown.go).
+	streamRoute := endStreamsOnShutdown(srv)
+
+	obsHandler := broadcasts.NewOBSHandler(stores.Queries, stores.GameDocumentStore, cfg, natsconn, wordService, broadcastService)
+	router.Handle(broadcasts.OBSHandlerPrefix, streamRoute(otelhttp.NewHandler(
+		obsHandler,
+		"obs-broadcast-api",
+		otelhttp.WithSpanNameFormatter(customHTTPSpanNameFormatter),
+	)))
+	router.Handle(broadcasts.OBSGameHandlerPrefix, streamRoute(otelhttp.NewHandler(
+		http.HandlerFunc(obsHandler.ServeGameHTTP),
+		"obs-game-api",
+		otelhttp.WithSpanNameFormatter(customHTTPSpanNameFormatter),
+	)))
+	router.Handle(broadcasts.OBSUserHandlerPrefix, streamRoute(otelhttp.NewHandler(
+		http.HandlerFunc(obsHandler.ServeUserHTTP),
+		"obs-user-api",
+		otelhttp.WithSpanNameFormatter(customHTTPSpanNameFormatter),
+	)))
+
+	router.Handle(bus.GameEventStreamPrefix,
+		streamRoute(middlewares.Then(pubsubBus.EventAPIServerInstance())))
 
 	go pubsubBus.ProcessMessages(ctx)
 	go vdoWebhookService.Start(ctx)
@@ -562,6 +570,7 @@ func main() {
 		log.Info().Msg("got quit signal...")
 		shuttingDown.Store(true)
 		ctx, shutdownCancel := context.WithTimeout(context.Background(), GracefulShutdownTimeout)
+		ctx, shutdownSpan := startShutdownSpan(ctx)
 		// Moves and other socket messages first: stop taking them, and
 		// finish the ones in progress (see pkg/bus/drain.go).
 		drainStart := time.Now()
@@ -569,24 +578,29 @@ func main() {
 			log.Error().Err(err).Msg("bus-drain-on-shutdown")
 		}
 		log.Info().Dur("took", time.Since(drainStart)).Msg("bus-drained")
-		if err := srv.Shutdown(ctx); err != nil {
+		if err := shutdownStep(ctx, "http.shutdown", func(ctx context.Context) error {
+			return shutdownHTTP(ctx, srv)
+		}); err != nil {
 			// Error from closing listeners, or context timeout:
 			log.Error().Msgf("HTTP server Shutdown: %v", err)
 		}
 		// Games that ended just before the signal may still be uploading.
 		if stores.GameHistoryArchiver != nil {
-			if err := stores.GameHistoryArchiver.Wait(ctx); err != nil {
+			if err := shutdownStep(ctx, "archive.wait", stores.GameHistoryArchiver.Wait); err != nil {
 				log.Error().Err(err).Msg("archive-wait-on-shutdown")
 			}
 		}
-		shutdownCancel()
 		pubsubCancel()
 		stores.GameStore.StopCleanup()
 		// Send what the handlers published before closing the connection.
-		if err := natsconn.FlushTimeout(2 * time.Second); err != nil {
+		if err := shutdownStep(ctx, "nats.flush", func(context.Context) error {
+			return natsconn.FlushTimeout(2 * time.Second)
+		}); err != nil {
 			log.Error().Err(err).Msg("nats-flush-on-shutdown")
 		}
 		natsconn.Close()
+		shutdownSpan.End()
+		shutdownCancel()
 		close(idleConnsClosed)
 	}()
 	log.Info().Msg("starting listening...")

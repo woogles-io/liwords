@@ -174,14 +174,15 @@ func (b *Bus) instantiateAndStartGame(ctx context.Context, accUser *entity.User,
 func (b *Bus) goHandleBotMove(ctx context.Context, resp *macondo.BotResponse,
 	gid, replyChan string) {
 
-	b.handlers.Add(1)
+	done := b.trackHandler()
 	go func() {
-		defer b.handlers.Done()
+		defer done()
 		// Its own trace, so a bot move's database work and lock show up in
 		// Jaeger under one span rather than loose.
 		ctx, span := otel.Tracer("bus-message-processor").Start(ctx, "bus.HandleBotMove",
 			trace.WithAttributes(attribute.String("game.id", gid)))
 		defer span.End()
+		b.markDraining(span)
 		defer func() {
 			// acknowledge the NATS message - empty response is fine.
 			err := b.natsconn.Publish(replyChan, []byte{})

@@ -66,6 +66,7 @@ type Bus struct {
 
 	// For shutting down without dropping work in progress; see Drain.
 	handlers sync.WaitGroup
+	inFlight atomic.Int64 // handlers running; for Drain's span
 	draining atomic.Bool
 	syncReq  chan chan struct{}
 
@@ -187,15 +188,17 @@ outerfor:
 				),
 			)
 
+			b.markDraining(span)
+
 			// Create scoped logger from context logger
 			scopedLogger := zerolog.Ctx(msgCtx).With().Str("msg-subject", msg.Subject).Logger()
 			scopedLogger.Debug().Msg("got ipc.pb message")
 			// Update context with scoped logger
 			msgCtx = scopedLogger.WithContext(msgCtx)
 
-			b.handlers.Add(1)
+			done := b.trackHandler()
 			go func(msgCtx context.Context, span trace.Span, subtopics []string, data []byte) {
-				defer b.handlers.Done()
+				defer done()
 				defer span.End()
 				log := zerolog.Ctx(msgCtx)
 				err := recoverToError(msgCtx, func() error {
@@ -237,15 +240,17 @@ outerfor:
 				),
 			)
 
+			b.markDraining(span)
+
 			// Create scoped logger from context logger
 			scopedLogger := zerolog.Ctx(reqCtx).With().Str("msg-subject", msg.Subject).Logger()
 			scopedLogger.Debug().Msg("got ipc.request")
 			// Update context with scoped logger
 			reqCtx = scopedLogger.WithContext(reqCtx)
 
-			b.handlers.Add(1)
+			done := b.trackHandler()
 			go func(reqCtx context.Context, span trace.Span) {
-				defer b.handlers.Done()
+				defer done()
 				defer span.End()
 				log := zerolog.Ctx(reqCtx)
 				err := recoverToError(reqCtx, func() error {
@@ -416,9 +421,9 @@ outerfor:
 			if b.draining.Load() {
 				break
 			}
-			b.handlers.Add(1)
+			done := b.trackHandler()
 			go func() {
-				defer b.handlers.Done()
+				defer done()
 				err := b.adjudicateGames(ctx, false) // false = real-time games only
 				if err != nil {
 					log.Err(err).Msg("adjudicate-error")
@@ -429,9 +434,9 @@ outerfor:
 			if b.draining.Load() {
 				break
 			}
-			b.handlers.Add(1)
+			done := b.trackHandler()
 			go func() {
-				defer b.handlers.Done()
+				defer done()
 				err := b.adjudicateGames(ctx, true) // true = correspondence games only
 				if err != nil {
 					log.Err(err).Msg("adjudicate-correspondence-error")

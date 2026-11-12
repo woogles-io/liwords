@@ -10,6 +10,11 @@ import (
 
 	"github.com/matryer/is"
 	"github.com/nats-io/nats.go"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 
 	"github.com/woogles-io/liwords/pkg/config"
 	"github.com/woogles-io/liwords/pkg/entity"
@@ -40,8 +45,11 @@ func (f *fakeSub) IsValid() bool {
 func drainTestBus(t *testing.T) (*Bus, []*fakeSub) {
 	subs := []*fakeSub{{}, {}}
 	b := &Bus{
-		config:              config.DefaultConfig(),
-		subchans:            map[string]chan *nats.Msg{"user.>": make(chan *nats.Msg, 8)},
+		config: config.DefaultConfig(),
+		subchans: map[string]chan *nats.Msg{
+			"user.>":   make(chan *nats.Msg, 8),
+			"ipc.pb.>": make(chan *nats.Msg, 8),
+		},
 		syncReq:             make(chan chan struct{}),
 		gameEventChan:       make(chan *entity.EventWrapper, 8),
 		tournamentEventChan: make(chan *entity.EventWrapper, 8),
@@ -71,9 +79,9 @@ func TestDrainWaitsForHandlers(t *testing.T) {
 	b, subs := drainTestBus(t)
 
 	var finished atomic.Bool
-	b.handlers.Add(1)
+	done := b.trackHandler()
 	go func() {
-		defer b.handlers.Done()
+		defer done()
 		time.Sleep(200 * time.Millisecond) // a move being handled
 		finished.Store(true)
 	}()
@@ -96,9 +104,9 @@ func TestDrainGivesUpAtDeadline(t *testing.T) {
 
 	release := make(chan struct{})
 	defer close(release)
-	b.handlers.Add(1)
+	done := b.trackHandler()
 	go func() {
-		defer b.handlers.Done()
+		defer done()
 		<-release
 	}()
 
@@ -144,4 +152,103 @@ func TestDrainRealSubscription(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 	is.Equal(len(mine), 0)
 	is.Equal(len(other), 4)
+}
+
+// recordSpans sends the spans started during the test to a recorder.
+func recordSpans(t *testing.T) *tracetest.SpanRecorder {
+	rec := tracetest.NewSpanRecorder()
+	prev := otel.GetTracerProvider()
+	otel.SetTracerProvider(sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(rec)))
+	t.Cleanup(func() { otel.SetTracerProvider(prev) })
+	return rec
+}
+
+func endedSpan(is *is.I, rec *tracetest.SpanRecorder, name string) sdktrace.ReadOnlySpan {
+	for _, s := range rec.Ended() {
+		if s.Name() == name {
+			return s
+		}
+	}
+	is.Fail() // no such span
+	return nil
+}
+
+func attr(s sdktrace.ReadOnlySpan, key string) (attribute.Value, bool) {
+	for _, kv := range s.Attributes() {
+		if string(kv.Key) == key {
+			return kv.Value, true
+		}
+	}
+	return attribute.Value{}, false
+}
+
+// Drain's span shows each step, and what was in flight when it started.
+func TestDrainSpan(t *testing.T) {
+	is := is.New(t)
+	rec := recordSpans(t)
+	b, _ := drainTestBus(t)
+
+	done := b.trackHandler()
+	go func() {
+		defer done()
+		time.Sleep(100 * time.Millisecond)
+	}()
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	is.NoErr(b.Drain(ctx))
+
+	span := endedSpan(is, rec, "bus.drain")
+	inFlight, _ := attr(span, "bus.handlers_in_flight")
+	is.Equal(inFlight.AsInt64(), int64(1))
+	events := []string{}
+	for _, e := range span.Events() {
+		events = append(events, e.Name)
+	}
+	is.Equal(events, []string{"buffers-taken", "handlers-done", "events-published"})
+	is.Equal(span.Status().Code, codes.Unset)
+}
+
+// A drain that runs out of time says where it was stuck.
+func TestDrainSpanAtDeadline(t *testing.T) {
+	is := is.New(t)
+	rec := recordSpans(t)
+	b, _ := drainTestBus(t)
+
+	release := make(chan struct{})
+	defer close(release)
+	done := b.trackHandler()
+	go func() {
+		defer done()
+		<-release
+	}()
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Millisecond)
+	defer cancel()
+	is.True(errors.Is(b.Drain(ctx), context.DeadlineExceeded))
+
+	span := endedSpan(is, rec, "bus.drain")
+	is.Equal(span.Status().Code, codes.Error)
+	stuck, _ := attr(span, "bus.drain.stuck_at")
+	is.Equal(stuck.AsString(), "wait-for-handlers")
+	left, _ := attr(span, "bus.handlers_left")
+	is.Equal(left.AsInt64(), int64(1))
+}
+
+// A message handled during a drain is tagged on its span.
+func TestHandlerSpanMarkedDuringDrain(t *testing.T) {
+	is := is.New(t)
+	rec := recordSpans(t)
+	b, _ := drainTestBus(t)
+
+	// Delivered but not taken yet when the drain starts. Its type is
+	// unknown, so handling it fails at once, without the stores.
+	b.draining.Store(true)
+	b.subchans["ipc.pb.>"] <- &nats.Msg{Subject: "ipc.pb.9999"}
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	is.NoErr(b.Drain(ctx))
+
+	span := endedSpan(is, rec, "nats.publish.9999")
+	draining, ok := attr(span, "bus.draining")
+	is.True(ok)
+	is.True(draining.AsBool())
 }
