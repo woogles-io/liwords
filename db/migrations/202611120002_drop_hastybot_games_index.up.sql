@@ -1,0 +1,11 @@
+-- Built for one bot's games in an investigation; never scanned since the
+-- statistics were reset (2026-03-03).
+-- One statement per file: DROP INDEX CONCURRENTLY cannot run inside a
+-- transaction block, and golang-migrate sends a file as one query, so a second
+-- statement would put both in an implicit transaction and fail.
+--
+-- CONCURRENTLY so writes to games carry on while it runs. It waits for every
+-- transaction that has games open to finish, so it will wait out the daily
+-- pg_dump (18:00 to ~22:00 UTC) if started during it; plain DROP INDEX would
+-- wait just as long while blocking every query on games behind it.
+DROP INDEX CONCURRENTLY IF EXISTS hastybot_games_index;

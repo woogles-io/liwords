@@ -1,0 +1,11 @@
+-- No query filters games on deleted_at (GORM's soft delete went with GORM),
+-- and no game row has it set. Four scans since 2026-03-03.
+-- One statement per file: DROP INDEX CONCURRENTLY cannot run inside a
+-- transaction block, and golang-migrate sends a file as one query, so a second
+-- statement would put both in an implicit transaction and fail.
+--
+-- CONCURRENTLY so writes to games carry on while it runs. It waits for every
+-- transaction that has games open to finish, so it will wait out the daily
+-- pg_dump (18:00 to ~22:00 UTC) if started during it; plain DROP INDEX would
+-- wait just as long while blocking every query on games behind it.
+DROP INDEX CONCURRENTLY IF EXISTS idx_games_deleted_at;
