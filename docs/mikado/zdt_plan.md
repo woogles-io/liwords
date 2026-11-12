@@ -249,6 +249,9 @@ subscriptions, because each must be handled exactly once.
 
 Open question: who uses the event-stream API today.
 
+**Status (2026-11-11): done** (`queueGroup` in `pkg/bus/bus.go`). With one
+server nothing changes: it already received every message.
+
 ## 4. Broadcast feed cache
 
 The broadcast poller (`pkg/broadcasts/poller.go`) runs every 30s on every
