@@ -1840,7 +1840,13 @@ describe("the sim panel", () => {
     const analyzed = lab.calls.find((c) => c.op === "analyze");
     expect(
       JSON.parse((analyzed?.args as { request: string }).request),
-    ).toMatchObject({ count: 3, leave: "CSW24", scores: [300, 290] });
+    ).toMatchObject({
+      count: 3,
+      leave: "CSW24",
+      scores: [300, 290],
+      // the player to move's own exchanges
+      exchanges: 1,
+    });
     expect(bodyRows()).toEqual([
       "8HBE+6.00",
       `${JSON.stringify(ba)}+3.00`,

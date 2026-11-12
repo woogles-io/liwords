@@ -1550,7 +1550,12 @@ export const useLabSim = (
       plays = await labCall({
         op: "analyze",
         args: {
-          request: JSON.stringify({ ...lab.position, leave: lab.leave, count }),
+          request: JSON.stringify({
+            ...lab.position,
+            leave: lab.leave,
+            exchanges: lab.exchanges[lab.position.turn] ?? 0,
+            count,
+          }),
         },
       });
     } catch (e) {

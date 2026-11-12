@@ -27,7 +27,7 @@ import {
 } from "../gen/api/proto/vendored/macondo/macondo_pb";
 import { GameType } from "../gen/api/proto/ipc/omgwords_pb";
 import { ComputerAnalysis } from "./computer_analysis";
-import { ANALYZER_LAB_KEY } from "./analyzer_lab";
+import { ANALYZER_LAB_KEY, exchangesBySeat } from "./analyzer_lab";
 import {
   EndgamePanel,
   LabButtons,
@@ -314,6 +314,7 @@ export const parseExaminableGameContext = (
     onturn,
     players,
     alphabet,
+    turns,
   } = examinableGameContext;
 
   const letterDistribution = defaultLetterDistribution(lexicon);
@@ -349,6 +350,9 @@ export const parseExaminableGameContext = (
     lexicon: getLexiconKey(loadableKey),
     leave: getLeaveKey(loadableKey),
     rules,
+    // the exchanges the player to move has made, which a rule capping them
+    // counts
+    exchanges: exchangesBySeat(turns)[onturn] ?? 0,
   };
 
   return {
