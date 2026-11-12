@@ -429,6 +429,33 @@ p.streak-loss {
     text-align: left;
   }
 
+  // how the threats tint the board, how many plays they list, and how long
+  // they weigh the racks
+  .lab-threat-settings {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 0 12px 6px;
+
+    label {
+      align-items: center;
+      display: flex;
+      gap: 4px;
+    }
+  }
+
+  // the opponent's plays: the move on the left, its numbers on the right
+  .lab-threat-plays {
+    th:first-child {
+      text-align: left;
+    }
+
+    td.lab-n {
+      text-align: right;
+    }
+  }
+
   // The lab's rows hold more columns than the analyzer's, so they sit closer.
   th,
   td {
@@ -1196,7 +1223,8 @@ p.streak-loss {
   // Text that is read rather than played turns back upright, in place.
   &.board-flipped .bonus-label,
   &.board-flipped .tentative-score,
-  &.board-flipped .lab-hook {
+  &.board-flipped .lab-hook,
+  &.board-flipped .lab-threat {
     transform: rotate(180deg);
   }
 
@@ -1244,6 +1272,71 @@ p.streak-loss {
 
 .zomgboard {
   --dim: 21;
+}
+
+// The analyzer lab's threats, over the squares, sized by the container: each
+// empty square tinted by how hot it is, with its number; the opponent's tiles
+// of the play picked; and the squares of the play pointed at, outlined.
+.lab-threats {
+  display: grid;
+  gap: 1px;
+  grid-template-columns: repeat(var(--dim, 15), 1fr);
+  grid-template-rows: repeat(var(--dim, 15), 1fr);
+  height: 100%;
+  left: 0;
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+  width: 100%;
+
+  &.lab-picking {
+    cursor: crosshair;
+    pointer-events: auto;
+  }
+
+  .lab-threat {
+    align-items: center;
+    display: flex;
+    font-weight: 600;
+    justify-content: center;
+    position: relative;
+  }
+
+  .lab-heat {
+    background: m($timer-out-dark);
+    inset: 0;
+    position: absolute;
+  }
+
+  .lab-heat-label {
+    bottom: 0;
+    color: m($gray-extreme);
+    font-size: 8px;
+    line-height: 1;
+    padding: 1px;
+    position: absolute;
+    right: 0;
+    text-shadow:
+      0 0 2px m($background),
+      0 0 2px m($background),
+      0 0 2px m($background);
+  }
+
+  .lab-ghost {
+    background: m($secondary);
+    border-radius: 2px;
+    color: m($white);
+  }
+
+  .lab-outlined {
+    outline: 2px solid m($gray-extreme);
+    outline-offset: -2px;
+  }
+
+  .lab-narrowed {
+    outline: 2px dashed m($gray-extreme);
+    outline-offset: -2px;
+  }
 }
 
 .board-spaces,
