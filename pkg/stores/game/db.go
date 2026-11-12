@@ -88,9 +88,6 @@ func (s *DBStore) SetHistoryFetcher(f HistoryFetcher) {
 
 // NewDBStore creates a new DB store for games.
 func NewDBStore(config *config.Config, userStore pkguser.Store, dbPool *pgxpool.Pool) (*DBStore, error) {
-	// Note: We need to manually add the following index on production:
-	// create index rematch_req_idx ON games using hash ((quickdata->>'o'));
-
 	return &DBStore{
 		cfg:       config,
 		dbPool:    dbPool,
