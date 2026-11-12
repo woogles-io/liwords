@@ -2,18 +2,20 @@ package broadcasts
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"regexp"
-	"sync"
 	"time"
 
 	"connectrpc.com/connect"
-	"github.com/hashicorp/golang-lru/v2/expirable"
-	"golang.org/x/sync/singleflight"
 	"github.com/google/uuid"
+	lru "github.com/hashicorp/golang-lru/v2"
+	"github.com/hashicorp/golang-lru/v2/expirable"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/nats-io/nats.go"
 	"github.com/rs/zerolog/log"
+	"golang.org/x/sync/singleflight"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/woogles-io/liwords/pkg/apiserver"
@@ -28,26 +30,9 @@ import (
 	"github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
-const feedCacheTTL = 30 * time.Minute
-
-// feedFailureTTL is how long a failed feed fetch is remembered, so a dead or
-// misconfigured URL isn't refetched on every request that touches the cache.
-const feedFailureTTL = 5 * time.Minute
-
-// feedCacheEntry holds all divisions for a single broadcast URL fetch.
-// One HTTP request populates all divisions at once.
-type feedCacheEntry struct {
-	divisions map[string]*FeedData // division name → FeedData (e.g. "A", "B")
-	expiresAt time.Time
-	failed    bool // the last fetch failed; treated as a miss until expiresAt
-}
-
-// slugRoundDivKey is the cache key for GetBroadcastGames.
-type slugRoundDivKey struct {
-	slug, division string
-	round          int32
-}
-
+// Response caches absorb viewers' polling. They are keyed by the broadcast's
+// version (see feed_store.go), so these TTLs only bound how stale the live
+// scores of games in progress get.
 const (
 	rpcCacheTTLStats    = 8 * time.Second
 	rpcCacheTTLAllGames = 10 * time.Second
@@ -65,16 +50,16 @@ type BroadcastService struct {
 	gameEventChan chan *entity.EventWrapper
 	natsConn      *nats.Conn
 
-	feedCacheMu sync.RWMutex
-	feedCache   map[string]*feedCacheEntry // keyed by slug
-	sfGroup     singleflight.Group
+	// Parsed stored feeds, by slug (feed_store.go).
+	parsedFeeds *lru.Cache[string, *parsedFeed]
+	feedSF      singleflight.Group
 
 	// Short-TTL response caches: absorb viewer fan-out on polled read endpoints.
 	cacheSF       singleflight.Group
-	statsCache    *expirable.LRU[string, *pb.GetBroadcastGameStatsResponse]
-	allGamesCache *expirable.LRU[string, *pb.GetBroadcastAllGamesResponse]
-	gamesCache    *expirable.LRU[slugRoundDivKey, *pb.GetBroadcastGamesResponse]
-	slotsCache    *expirable.LRU[string, *pb.ListSlotsResponse]
+	statsCache    *expirable.LRU[rpcCacheKey, *pb.GetBroadcastGameStatsResponse]
+	allGamesCache *expirable.LRU[rpcCacheKey, *pb.GetBroadcastAllGamesResponse]
+	gamesCache    *expirable.LRU[rpcCacheKey, *pb.GetBroadcastGamesResponse]
+	slotsCache    *expirable.LRU[rpcCacheKey, *pb.ListSlotsResponse]
 }
 
 func NewBroadcastService(
@@ -90,11 +75,11 @@ func NewBroadcastService(
 		cfg:           cfg,
 		gameStore:     gameStore,
 		metadataStore: metadataStore,
-		feedCache:     make(map[string]*feedCacheEntry),
-		statsCache:    expirable.NewLRU[string, *pb.GetBroadcastGameStatsResponse](0, nil, rpcCacheTTLStats),
-		allGamesCache: expirable.NewLRU[string, *pb.GetBroadcastAllGamesResponse](0, nil, rpcCacheTTLAllGames),
-		gamesCache:    expirable.NewLRU[slugRoundDivKey, *pb.GetBroadcastGamesResponse](0, nil, rpcCacheTTLGames),
-		slotsCache:    expirable.NewLRU[string, *pb.ListSlotsResponse](0, nil, rpcCacheTTLSlots),
+		parsedFeeds:   newParsedFeedCache(),
+		statsCache:    expirable.NewLRU[rpcCacheKey, *pb.GetBroadcastGameStatsResponse](0, nil, rpcCacheTTLStats),
+		allGamesCache: expirable.NewLRU[rpcCacheKey, *pb.GetBroadcastAllGamesResponse](0, nil, rpcCacheTTLAllGames),
+		gamesCache:    expirable.NewLRU[rpcCacheKey, *pb.GetBroadcastGamesResponse](0, nil, rpcCacheTTLGames),
+		slotsCache:    expirable.NewLRU[rpcCacheKey, *pb.ListSlotsResponse](0, nil, rpcCacheTTLSlots),
 	}
 }
 
@@ -104,19 +89,6 @@ func (bs *BroadcastService) SetEventChannel(c chan *entity.EventWrapper) {
 
 func (bs *BroadcastService) SetNatsConn(nc *nats.Conn) {
 	bs.natsConn = nc
-}
-
-// invalidateSlugCaches removes all cached RPC responses for a broadcast slug.
-// Call before notifyBroadcastGamesUpdated so the next request serves fresh data.
-func (bs *BroadcastService) invalidateSlugCaches(slug string) {
-	bs.statsCache.Remove(slug)
-	bs.allGamesCache.Remove(slug)
-	bs.slotsCache.Remove(slug)
-	for _, k := range bs.gamesCache.Keys() {
-		if k.slug == slug {
-			bs.gamesCache.Remove(k)
-		}
-	}
 }
 
 // requireDirector checks that the authenticated user is a director for the
@@ -241,15 +213,19 @@ func (bs *BroadcastService) GetBroadcast(ctx context.Context, req *connect.Reque
 		row.Lexicon, row.BoardLayout, row.LetterDistribution, row.ChallengeRule,
 		row.Active, row.CreatedAt, row.CreatorUsername)
 
+	feed := bs.feed(ctx, row.Slug)
 	division := req.Msg.Division
-	divisionNames := bs.getCachedDivisionNames(row.Slug, row.BroadcastUrl, row.BroadcastUrlFormat)
 	// Default to first division if not specified.
-	if division == "" && len(divisionNames) > 0 {
-		division = divisionNames[0]
+	if division == "" {
+		division = feed.firstDivision()
 	}
-
-	if fd := bs.getCachedFeed(row.Slug, division, row.BroadcastUrl, row.BroadcastUrlFormat); fd != nil {
+	fd := feed.division(division)
+	if fd != nil {
 		broadcast.CurrentRound = int32(fd.CurrentRound)
+	}
+	var divisionNames []string
+	if feed != nil {
+		divisionNames = feed.names
 	}
 
 	directors, err := bs.queries.GetBroadcastDirectors(ctx, row.ID)
@@ -276,18 +252,31 @@ func (bs *BroadcastService) GetBroadcast(ctx context.Context, req *connect.Reque
 
 	var players []*pb.BroadcastPlayer
 	var totalRounds int32
-	if fd := bs.getCachedFeed(row.Slug, division, row.BroadcastUrl, row.BroadcastUrlFormat); fd != nil {
+	if fd != nil {
 		players, totalRounds = feedDataToProto(fd)
 	}
 
-	return connect.NewResponse(&pb.GetBroadcastResponse{
+	resp := &pb.GetBroadcastResponse{
 		Broadcast:          broadcast,
 		Players:            players,
 		DirectorUsernames:  dirUsernames,
 		AnnotatorUsernames: annUsernames,
 		TotalRounds:        totalRounds,
 		Divisions:          divisionNames,
-	}), nil
+	}
+	if st, err := bs.queries.GetBroadcastFeedStatus(ctx, row.ID); err == nil {
+		if st.FetchedAt.Valid {
+			resp.FeedFetchedAt = timestamppb.New(st.FetchedAt.Time)
+		}
+		// Only an error since the last successful fetch is news.
+		if st.ConsecutiveFailures > 0 && st.LastErrorAt.Valid {
+			resp.FeedError = st.LastError
+			resp.FeedErrorAt = timestamppb.New(st.LastErrorAt.Time)
+		}
+	} else if !errors.Is(err, pgx.ErrNoRows) {
+		log.Err(err).Str("slug", row.Slug).Msg("broadcast-feed-status-failed")
+	}
+	return connect.NewResponse(resp), nil
 }
 
 func (bs *BroadcastService) GetBroadcastGames(ctx context.Context, req *connect.Request[pb.GetBroadcastGamesRequest]) (
@@ -298,14 +287,16 @@ func (bs *BroadcastService) GetBroadcastGames(ctx context.Context, req *connect.
 		return nil, apiserver.NotFound("broadcast not found")
 	}
 
-	// Resolve division and round using the in-process feed cache (fast reads).
+	v, err := bs.version(ctx, row.Slug)
+	if err != nil {
+		return nil, apiserver.InternalErr(err)
+	}
+	feed := bs.feedAt(ctx, row.Slug, v.feedHash)
 	division := req.Msg.Division
 	if division == "" {
-		if names := bs.getCachedDivisionNames(row.Slug, row.BroadcastUrl, row.BroadcastUrlFormat); len(names) > 0 {
-			division = names[0]
-		}
+		division = feed.firstDivision()
 	}
-	fd := bs.getCachedFeed(row.Slug, division, row.BroadcastUrl, row.BroadcastUrlFormat)
+	fd := feed.division(division)
 	round := req.Msg.Round
 	if round == 0 {
 		if fd != nil && fd.CurrentRound > 0 {
@@ -318,9 +309,8 @@ func (bs *BroadcastService) GetBroadcastGames(ctx context.Context, req *connect.
 		round = int32(fd.TotalRounds)
 	}
 
-	key := slugRoundDivKey{slug: req.Msg.Slug, division: division, round: round}
-	resp, err := cachedFetch(ctx, bs.gamesCache, &bs.cacheSF, key,
-		fmt.Sprintf("games:%s|%s|%d", req.Msg.Slug, division, round),
+	key := rpcCacheKey{slug: row.Slug, division: division, round: round, version: v}
+	resp, err := cachedFetch(ctx, bs.gamesCache, &bs.cacheSF, key, "games:"+key.String(),
 		"games",
 		func(ctx context.Context) (*pb.GetBroadcastGamesResponse, error) {
 			return bs.computeGetBroadcastGames(ctx, row, fd, division, round)
@@ -411,10 +401,15 @@ func (bs *BroadcastService) GetBroadcastGameStats(ctx context.Context, req *conn
 	*connect.Response[pb.GetBroadcastGameStatsResponse], error) {
 
 	slug := req.Msg.Slug
-	resp, err := cachedFetch(ctx, bs.statsCache, &bs.cacheSF, slug, "stats:"+slug,
+	v, err := bs.version(ctx, slug)
+	if err != nil {
+		return nil, apiserver.NotFound("broadcast not found")
+	}
+	key := rpcCacheKey{slug: slug, version: v}
+	resp, err := cachedFetch(ctx, bs.statsCache, &bs.cacheSF, key, "stats:"+key.String(),
 		"stats",
 		func(ctx context.Context) (*pb.GetBroadcastGameStatsResponse, error) {
-			return bs.computeGetBroadcastGameStats(ctx, slug)
+			return bs.computeGetBroadcastGameStats(ctx, slug, v.feedHash)
 		})
 	if err != nil {
 		return nil, err
@@ -422,7 +417,7 @@ func (bs *BroadcastService) GetBroadcastGameStats(ctx context.Context, req *conn
 	return connect.NewResponse(resp), nil
 }
 
-func (bs *BroadcastService) computeGetBroadcastGameStats(ctx context.Context, slug string) (*pb.GetBroadcastGameStatsResponse, error) {
+func (bs *BroadcastService) computeGetBroadcastGameStats(ctx context.Context, slug, feedHash string) (*pb.GetBroadcastGameStatsResponse, error) {
 	broadcast, err := bs.queries.GetBroadcastBySlug(ctx, slug)
 	if err != nil {
 		return nil, apiserver.NotFound("broadcast not found")
@@ -431,7 +426,7 @@ func (bs *BroadcastService) computeGetBroadcastGameStats(ctx context.Context, sl
 	if err != nil {
 		return nil, apiserver.InternalErr(err)
 	}
-	liveScores := bs.hydrateLiveScores(ctx, broadcast, rows)
+	liveScores := bs.hydrateLiveScores(ctx, broadcast, feedHash, rows)
 	stats := make([]*pb.BroadcastGameStat, 0, len(rows))
 	for _, row := range rows {
 		stats = append(stats, buildAnnotatedStat(row, liveScores))
@@ -446,10 +441,15 @@ func (bs *BroadcastService) GetBroadcastAllGames(ctx context.Context, req *conne
 	*connect.Response[pb.GetBroadcastAllGamesResponse], error) {
 
 	slug := req.Msg.Slug
-	resp, err := cachedFetch(ctx, bs.allGamesCache, &bs.cacheSF, slug, "allgames:"+slug,
+	v, err := bs.version(ctx, slug)
+	if err != nil {
+		return nil, apiserver.NotFound("broadcast not found")
+	}
+	key := rpcCacheKey{slug: slug, version: v}
+	resp, err := cachedFetch(ctx, bs.allGamesCache, &bs.cacheSF, key, "allgames:"+key.String(),
 		"allgames",
 		func(ctx context.Context) (*pb.GetBroadcastAllGamesResponse, error) {
-			return bs.computeGetBroadcastAllGames(ctx, slug)
+			return bs.computeGetBroadcastAllGames(ctx, slug, v.feedHash)
 		})
 	if err != nil {
 		return nil, err
@@ -457,7 +457,7 @@ func (bs *BroadcastService) GetBroadcastAllGames(ctx context.Context, req *conne
 	return connect.NewResponse(resp), nil
 }
 
-func (bs *BroadcastService) computeGetBroadcastAllGames(ctx context.Context, slug string) (*pb.GetBroadcastAllGamesResponse, error) {
+func (bs *BroadcastService) computeGetBroadcastAllGames(ctx context.Context, slug, feedHash string) (*pb.GetBroadcastAllGamesResponse, error) {
 	broadcast, err := bs.queries.GetBroadcastBySlug(ctx, slug)
 	if err != nil {
 		return nil, apiserver.NotFound("broadcast not found")
@@ -466,7 +466,7 @@ func (bs *BroadcastService) computeGetBroadcastAllGames(ctx context.Context, slu
 	if err != nil {
 		return nil, apiserver.InternalErr(err)
 	}
-	liveScores := bs.hydrateLiveScores(ctx, broadcast, rows)
+	liveScores := bs.hydrateLiveScores(ctx, broadcast, feedHash, rows)
 
 	// Index broadcast_games rows by (division|round|table) for merge with feed.
 	claimedRows := make(map[string]models.GetBroadcastGameStatsBySlugRow, len(rows))
@@ -478,9 +478,8 @@ func (bs *BroadcastService) computeGetBroadcastAllGames(ctx context.Context, slu
 	var stats []*pb.BroadcastGameStat
 
 	// Primary source: TSH feed — walk every division × every round.
-	entry := bs.getCachedEntry(broadcast.Slug, broadcast.BroadcastUrl, broadcast.BroadcastUrlFormat)
-	if entry != nil {
-		for divName, fd := range entry.divisions {
+	if feed := bs.feedAt(ctx, broadcast.Slug, feedHash); feed != nil {
+		for divName, fd := range feed.divisions {
 			for round := 1; round <= fd.TotalRounds; round++ {
 				for _, p := range GetAllRoundPairings(fd, round) {
 					if !p.Finalized {
@@ -536,7 +535,7 @@ func (bs *BroadcastService) computeGetBroadcastAllGames(ctx context.Context, slu
 // hydrateLiveScores fetches current scores for in-progress annotated games and
 // lazy-fills the materialized stats column for any game that finished without
 // triggering the normal write hook.
-func (bs *BroadcastService) hydrateLiveScores(ctx context.Context, broadcast models.GetBroadcastBySlugRow, rows []models.GetBroadcastGameStatsBySlugRow) map[string][2]int32 {
+func (bs *BroadcastService) hydrateLiveScores(ctx context.Context, broadcast models.GetBroadcastBySlugRow, feedHash string, rows []models.GetBroadcastGameStatsBySlugRow) map[string][2]int32 {
 	liveScores := make(map[string][2]int32)
 	for _, row := range rows {
 		if row.Stats != nil || row.GameUuid == "" {
@@ -548,7 +547,7 @@ func (bs *BroadcastService) hydrateLiveScores(ctx context.Context, broadcast mod
 		}
 		if doc.PlayState == ipc.PlayState_GAME_OVER {
 			p1Name, p2Name := docPlayerNames(doc)
-			p1Rating, p2Rating := bs.playerRatings(broadcast.Slug, broadcast.BroadcastUrl, broadcast.BroadcastUrlFormat, p1Name, p2Name)
+			p1Rating, p2Rating := playerRatings(bs.feedAt(ctx, broadcast.Slug, feedHash), p1Name, p2Name)
 			stat := ComputeGameStat(doc, p1Rating, p2Rating)
 			statBytes, _ := MarshalGameStat(stat)
 			if statBytes != nil {
@@ -597,7 +596,6 @@ func docPlayerNames(doc *ipc.GameDocument) (p1, p2 string) {
 	return name(0), name(1)
 }
 
-
 // buildAnnotatedStat converts a broadcast_games row to a BroadcastGameStat proto.
 func buildAnnotatedStat(row models.GetBroadcastGameStatsBySlugRow, liveScores map[string][2]int32) *pb.BroadcastGameStat {
 	s := &pb.BroadcastGameStat{
@@ -643,14 +641,13 @@ func playerRatingFromFeed(fd *FeedData, name string) int {
 	return 0
 }
 
-// playerRatings looks up two players' ratings from the feed cache by name.
-func (bs *BroadcastService) playerRatings(slug, broadcastURL, format, p1Name, p2Name string) (int, int) {
-	entry := bs.getCachedEntry(slug, broadcastURL, format)
-	if entry == nil {
+// playerRatings looks up two players' ratings in the feed by name.
+func playerRatings(feed *parsedFeed, p1Name, p2Name string) (int, int) {
+	if feed == nil {
 		return 0, 0
 	}
 	var r1, r2 int
-	for _, fd := range entry.divisions {
+	for _, fd := range feed.divisions {
 		for _, p := range fd.Players {
 			if p.Name == p1Name {
 				r1 = p.Rating
@@ -711,7 +708,7 @@ func (bs *BroadcastService) ClaimGame(ctx context.Context, req *connect.Request[
 	}
 
 	// Find the pairing from the feed to get player names.
-	player1Name, player2Name, err := bs.playerNamesForTable(req.Msg.Slug, req.Msg.Division, broadcast.BroadcastUrl, broadcast.BroadcastUrlFormat,
+	player1Name, player2Name, err := playerNamesForTable(bs.feed(ctx, broadcast.Slug), req.Msg.Division,
 		int(req.Msg.Round), int(req.Msg.TableNumber))
 	if err != nil {
 		return nil, apiserver.InvalidArg(err.Error())
@@ -754,7 +751,7 @@ func (bs *BroadcastService) ClaimGame(ctx context.Context, req *connect.Request[
 		log.Err(err).Str("gameID", gameID).Msg("record-broadcast-game-failed")
 	}
 
-	bs.invalidateSlugCaches(broadcast.Slug)
+	bs.gamesChanged(ctx, broadcast.ID)
 	bs.notifyBroadcastGamesUpdated(broadcast.Uuid.String(), broadcast.Slug)
 	return connect.NewResponse(&pb.ClaimGameResponse{GameId: gameID}), nil
 }
@@ -826,7 +823,7 @@ func (bs *BroadcastService) UnclaimGame(ctx context.Context, req *connect.Reques
 		}
 	}
 
-	bs.invalidateSlugCaches(broadcast.Slug)
+	bs.gamesChanged(ctx, broadcast.ID)
 	bs.notifyBroadcastGamesUpdated(broadcast.Uuid.String(), broadcast.Slug)
 	return connect.NewResponse(&pb.UnclaimGameResponse{}), nil
 }
@@ -939,7 +936,12 @@ func (bs *BroadcastService) ListSlots(ctx context.Context, req *connect.Request[
 	*connect.Response[pb.ListSlotsResponse], error) {
 
 	slug := req.Msg.Slug
-	resp, err := cachedFetch(ctx, bs.slotsCache, &bs.cacheSF, slug, "slots:"+slug,
+	v, err := bs.version(ctx, slug)
+	if err != nil {
+		return nil, apiserver.NotFound("broadcast not found")
+	}
+	key := rpcCacheKey{slug: slug, version: v}
+	resp, err := cachedFetch(ctx, bs.slotsCache, &bs.cacheSF, key, "slots:"+key.String(),
 		"slots",
 		func(ctx context.Context) (*pb.ListSlotsResponse, error) {
 			return bs.computeListSlots(ctx, slug)
@@ -1004,7 +1006,7 @@ func (bs *BroadcastService) CreateSlot(ctx context.Context, req *connect.Request
 	}); err != nil {
 		return nil, apiserver.InternalErr(err)
 	}
-	bs.invalidateSlugCaches(broadcast.Slug)
+	bs.gamesChanged(ctx, broadcast.ID)
 	return connect.NewResponse(&pb.CreateSlotResponse{}), nil
 }
 
@@ -1032,7 +1034,7 @@ func (bs *BroadcastService) AssignSlot(ctx context.Context, req *connect.Request
 		return nil, apiserver.InternalErr(err)
 	}
 
-	bs.invalidateSlugCaches(broadcast.Slug)
+	bs.gamesChanged(ctx, broadcast.ID)
 	bs.notifyBroadcastGamesUpdated(broadcast.Uuid.String(), broadcast.Slug)
 	return connect.NewResponse(&pb.AssignSlotResponse{}), nil
 }
@@ -1057,7 +1059,7 @@ func (bs *BroadcastService) DeleteSlot(ctx context.Context, req *connect.Request
 	}); err != nil {
 		return nil, apiserver.InternalErr(err)
 	}
-	bs.invalidateSlugCaches(broadcast.Slug)
+	bs.gamesChanged(ctx, broadcast.ID)
 	// Notify so OBS pages still open on this slot clear themselves. Without
 	// this they never hear about the deletion at all, and sit frozen on the
 	// last game the slot pointed at.
@@ -1411,15 +1413,7 @@ func (bs *BroadcastService) GetActiveBroadcasts(ctx context.Context, req *connec
 			row.Lexicon, row.BoardLayout, row.LetterDistribution, row.ChallengeRule,
 			row.Active, row.CreatedAt, row.CreatorUsername,
 		)
-		// Cache only: fetching here would hit every feed URL serially. The
-		// poller keeps active broadcasts warm.
-		if entry := bs.peekCachedEntry(row.Slug); entry != nil {
-			// Use first division's current round for the broadcast list.
-			div := firstDivision(entry)
-			if fd := entry.divisions[div]; fd != nil {
-				b.CurrentRound = int32(fd.CurrentRound)
-			}
-		}
+		b.CurrentRound = row.FeedCurrentRound
 		broadcasts = append(broadcasts, b)
 	}
 
@@ -1443,14 +1437,7 @@ func (bs *BroadcastService) GetAllBroadcasts(ctx context.Context, req *connect.R
 			row.Lexicon, row.BoardLayout, row.LetterDistribution, row.ChallengeRule,
 			row.Active, row.CreatedAt, row.CreatorUsername,
 		)
-		// Cache only: fetching here would hit every feed URL serially. The
-		// poller keeps active broadcasts warm.
-		if entry := bs.peekCachedEntry(row.Slug); entry != nil {
-			div := firstDivision(entry)
-			if fd := entry.divisions[div]; fd != nil {
-				b.CurrentRound = int32(fd.CurrentRound)
-			}
-		}
+		b.CurrentRound = row.FeedCurrentRound
 		broadcasts = append(broadcasts, b)
 	}
 
@@ -1468,17 +1455,18 @@ func (bs *BroadcastService) TriggerPoll(ctx context.Context, req *connect.Reques
 		return nil, err
 	}
 
-	if err := bs.pollBroadcast(ctx, broadcast.ID, broadcast.Uuid.String(), broadcast.Slug, broadcast.BroadcastUrl, broadcast.BroadcastUrlFormat); err != nil {
+	changed, err := bs.pollBroadcast(ctx, broadcast.ID, broadcast.Uuid.String(), broadcast.Slug, broadcast.BroadcastUrl, broadcast.BroadcastUrlFormat)
+	if err != nil {
 		return nil, apiserver.InternalErr(err)
 	}
 
-	return connect.NewResponse(&pb.TriggerPollResponse{DataChanged: true}), nil
+	return connect.NewResponse(&pb.TriggerPollResponse{DataChanged: changed}), nil
 }
 
 // ---- helpers ----
 
-func (bs *BroadcastService) playerNamesForTable(slug, division, broadcastURL, format string, round, tableNumber int) (string, string, error) {
-	fd := bs.getCachedFeed(slug, division, broadcastURL, format)
+func playerNamesForTable(feed *parsedFeed, division string, round, tableNumber int) (string, string, error) {
+	fd := feed.division(division)
 	if fd == nil {
 		return "", "", fmt.Errorf("feed data not available")
 	}
@@ -1527,8 +1515,7 @@ func (bs *BroadcastService) HandleAnnotatedGameDone(ctx context.Context, gameUUI
 	}
 
 	p1Name, p2Name := docPlayerNames(doc)
-	p1Rating, p2Rating := bs.playerRatings(row.BroadcastSlug, row.BroadcastUrl, row.BroadcastUrlFormat,
-		p1Name, p2Name)
+	p1Rating, p2Rating := playerRatings(bs.feed(ctx, row.BroadcastSlug), p1Name, p2Name)
 
 	stat := ComputeGameStat(doc, p1Rating, p2Rating)
 	statBytes, err := MarshalGameStat(stat)
@@ -1547,152 +1534,8 @@ func (bs *BroadcastService) HandleAnnotatedGameDone(ctx context.Context, gameUUI
 		return
 	}
 
-	bs.invalidateSlugCaches(row.BroadcastSlug)
+	bs.gamesChanged(ctx, row.BroadcastID)
 	bs.notifyBroadcastGamesUpdated(row.BroadcastUuid.String(), row.BroadcastSlug)
-}
-
-// setCachedFeed stores all parsed divisions for a broadcast. Called by the
-// poller after each successful fetch.
-func (bs *BroadcastService) setCachedFeed(slug string, divisions map[string]*FeedData) {
-	bs.feedCacheMu.Lock()
-	bs.feedCache[slug] = &feedCacheEntry{divisions: divisions, expiresAt: time.Now().Add(feedCacheTTL)}
-	bs.feedCacheMu.Unlock()
-}
-
-// fetchAndCacheAllDivisions fetches the broadcast URL, parses all divisions,
-// stores them in the cache, and returns the division map.
-func (bs *BroadcastService) fetchAndCacheAllDivisions(slug, broadcastURL, format string) (map[string]*FeedData, error) {
-	rawData, err := fetchURL(broadcastURL)
-	if err != nil {
-		return nil, err
-	}
-	p, err := NewFeedParser(format)
-	if err != nil {
-		return nil, err
-	}
-	tp, ok := p.(*TSHNewtParser)
-	if !ok {
-		// Non-TSH parser: fall back to single-division parse under empty key.
-		fd, err := p.Parse(rawData)
-		if err != nil {
-			return nil, err
-		}
-		divs := map[string]*FeedData{"": fd}
-		bs.setCachedFeed(slug, divs)
-		return divs, nil
-	}
-	divNames, err := tp.ListDivisions(rawData)
-	if err != nil {
-		return nil, err
-	}
-	divs := make(map[string]*FeedData, len(divNames))
-	for _, name := range divNames {
-		fd, err := tp.ParseDivision(rawData, name)
-		if err != nil {
-			log.Err(err).Str("slug", slug).Str("division", name).Msg("feed: failed to parse division")
-			continue
-		}
-		divs[name] = fd
-	}
-	bs.setCachedFeed(slug, divs)
-	return divs, nil
-}
-
-// peekCachedEntry returns the cache entry for a slug without fetching, or nil
-// if there is no fresh, successful entry.
-func (bs *BroadcastService) peekCachedEntry(slug string) *feedCacheEntry {
-	bs.feedCacheMu.RLock()
-	entry, ok := bs.feedCache[slug]
-	bs.feedCacheMu.RUnlock()
-	if !ok || entry.failed || !time.Now().Before(entry.expiresAt) {
-		return nil
-	}
-	return entry
-}
-
-// getCachedEntry returns the cache entry for a slug, fetching on miss.
-func (bs *BroadcastService) getCachedEntry(slug, broadcastURL, format string) *feedCacheEntry {
-	bs.feedCacheMu.RLock()
-	entry, ok := bs.feedCache[slug]
-	bs.feedCacheMu.RUnlock()
-	if ok && time.Now().Before(entry.expiresAt) {
-		if entry.failed {
-			return nil
-		}
-		return entry
-	}
-
-	result, err, _ := bs.sfGroup.Do(slug, func() (any, error) {
-		divs, err := bs.fetchAndCacheAllDivisions(slug, broadcastURL, format)
-		if err != nil {
-			bs.feedCacheMu.Lock()
-			bs.feedCache[slug] = &feedCacheEntry{failed: true, expiresAt: time.Now().Add(feedFailureTTL)}
-			bs.feedCacheMu.Unlock()
-		}
-		return divs, err
-	})
-	if err != nil {
-		log.Err(err).Str("slug", slug).Msg("feed-cache-miss-fetch-failed")
-		return nil
-	}
-	divs := result.(map[string]*FeedData)
-	bs.feedCacheMu.RLock()
-	entry = bs.feedCache[slug]
-	bs.feedCacheMu.RUnlock()
-	if entry != nil {
-		return entry
-	}
-	// Fallback: construct an ephemeral entry (shouldn't normally happen).
-	return &feedCacheEntry{divisions: divs, expiresAt: time.Now().Add(feedCacheTTL)}
-}
-
-// getCachedFeed returns the FeedData for a specific division. If division is
-// empty, the first available division is returned.
-func (bs *BroadcastService) getCachedFeed(slug, division, broadcastURL, format string) *FeedData {
-	entry := bs.getCachedEntry(slug, broadcastURL, format)
-	if entry == nil {
-		return nil
-	}
-	if division == "" {
-		division = firstDivision(entry)
-		if division == "" {
-			return nil
-		}
-	}
-	return entry.divisions[division]
-}
-
-// getCachedDivisionNames returns the sorted list of division names from the cache.
-func (bs *BroadcastService) getCachedDivisionNames(slug, broadcastURL, format string) []string {
-	entry := bs.getCachedEntry(slug, broadcastURL, format)
-	if entry == nil {
-		return nil
-	}
-	names := make([]string, 0, len(entry.divisions))
-	for name := range entry.divisions {
-		names = append(names, name)
-	}
-	// Sort for stable ordering.
-	for i := 1; i < len(names); i++ {
-		for j := i; j > 0 && names[j] < names[j-1]; j-- {
-			names[j], names[j-1] = names[j-1], names[j]
-		}
-	}
-	return names
-}
-
-// firstDivision returns the first (lowest alphabetically) division name from an entry.
-func firstDivision(entry *feedCacheEntry) string {
-	if entry == nil {
-		return ""
-	}
-	best := ""
-	for name := range entry.divisions {
-		if best == "" || name < best {
-			best = name
-		}
-	}
-	return best
 }
 
 func feedDataToProto(fd *FeedData) ([]*pb.BroadcastPlayer, int32) {
@@ -1831,4 +1674,3 @@ func (bs *BroadcastService) isAnnotatedGameDone(ctx context.Context, gameUUID st
 	}
 	return done
 }
-

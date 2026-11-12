@@ -13,6 +13,9 @@ import {
   listSlots,
 } from "../gen/api/proto/broadcast_service/broadcast_service-BroadcastService_connectquery";
 import type { Broadcast } from "../gen/api/proto/broadcast_service/broadcast_service_pb";
+import type { Timestamp } from "@bufbuild/protobuf/wkt";
+import { timestampDate } from "@bufbuild/protobuf/wkt";
+import moment from "moment";
 import { flashError } from "../utils/hooks/connect";
 import { StreamSlotsPanel } from "./StreamSlotsPanel";
 import { BroadcastSlotsSection } from "./BroadcastSlotsSection";
@@ -26,6 +29,37 @@ type Props = {
   divisions?: string[];
   activeDivision?: string;
   activeRound?: number;
+  feedFetchedAt?: Timestamp;
+  feedError?: string;
+  feedErrorAt?: Timestamp;
+};
+
+// FeedStatus says how current the stored feed is. Pages keep showing the last
+// feed fetched, so a broken feed URL is easy to miss without it.
+const FeedStatus: React.FC<{
+  fetchedAt?: Timestamp;
+  error?: string;
+  errorAt?: Timestamp;
+}> = ({ fetchedAt, error, errorAt }) => {
+  const fetched = fetchedAt
+    ? moment(timestampDate(fetchedAt)).fromNow()
+    : undefined;
+  if (error && errorAt) {
+    return (
+      <p className="feed-status" role="status">
+        Feed fetch failing since {moment(timestampDate(errorAt)).fromNow()}:{" "}
+        {error}.{" "}
+        {fetched
+          ? `Showing the feed fetched ${fetched}.`
+          : "No feed has been fetched yet."}
+      </p>
+    );
+  }
+  return (
+    <p className="feed-status">
+      {fetched ? `Feed last fetched ${fetched}.` : "Feed not fetched yet."}
+    </p>
+  );
 };
 
 export const BroadcastDirectorPanel: React.FC<Props> = ({
@@ -35,6 +69,9 @@ export const BroadcastDirectorPanel: React.FC<Props> = ({
   divisions = [],
   activeDivision = "",
   activeRound = 1,
+  feedFetchedAt,
+  feedError,
+  feedErrorAt,
 }) => {
   const { notification } = App.useApp();
   const queryClient = useQueryClient();
@@ -75,8 +112,16 @@ export const BroadcastDirectorPanel: React.FC<Props> = ({
   });
 
   const pollMutation = useMutation(triggerPoll, {
-    onSuccess: () => notification.success({ message: "Poll triggered" }),
-    onError: (e) => flashError(e),
+    onSuccess: (resp) => {
+      notification.success({
+        message: resp.dataChanged ? "Feed updated" : "Feed unchanged",
+      });
+      invalidateBroadcast();
+    },
+    onError: (e) => {
+      flashError(e);
+      invalidateBroadcast();
+    },
   });
 
   const peopleCount = annotatorUsernames.length + directorUsernames.length;
@@ -180,6 +225,11 @@ export const BroadcastDirectorPanel: React.FC<Props> = ({
         </Button>
       }
     >
+      <FeedStatus
+        fetchedAt={feedFetchedAt}
+        error={feedError}
+        errorAt={feedErrorAt}
+      />
       {/* The global tabs mixin hides antd's overflow arrows, so tabs that don't
           fit would be unreachable. Below sm, swap the bar for a select — the
           same fallback BroadcastRoom uses for its own tabs. */}
