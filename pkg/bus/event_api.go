@@ -38,33 +38,83 @@ type EventAPIServer struct {
 	uStore    user.Store
 	gamestore gameplay.GameStore
 
-	channelsForReqId     map[requestID]chan []byte
+	subs                 map[requestID]*eventSub
 	reqIDsForChannelName map[string]map[requestID]struct{} // req ID to channel name
+}
+
+// eventSubBuffer is how many events a stream client may fall behind by
+// before it is cut off. Cut off, it reconnects and gets the game's history
+// again.
+const eventSubBuffer = 64
+
+// eventSub is one stream client's subscription. processEvent, on the bus
+// loop, puts events on ch in the order they arrive and never waits for the
+// client: if ch is full, it closes tooSlow instead, and the stream ends.
+type eventSub struct {
+	ch      chan []byte
+	tooSlow chan struct{}
+	cut     bool
 }
 
 func NewEventApiServer(ustore user.Store, gstore gameplay.GameStore) *EventAPIServer {
 	return &EventAPIServer{
-		channelsForReqId:     make(map[requestID]chan []byte),
+		subs:                 make(map[requestID]*eventSub),
 		reqIDsForChannelName: make(map[string]map[requestID]struct{}),
 		uStore:               ustore,
 		gamestore:            gstore,
 	}
 }
 
+// processEvent hands an event to the stream clients subscribed to subject.
+// It runs on the bus loop, so it doesn't wait on any of them.
 func (s *EventAPIServer) processEvent(subject string, data []byte) error {
-	if sub, ok := s.reqIDsForChannelName[subject]; !ok {
-		return nil // no one is listening on this channel.
-	} else {
-		go func() {
-			for rid := range sub {
-				c := s.channelsForReqId[rid]
-				if c != nil {
-					c <- data
-				}
-			}
-		}()
+	s.Lock()
+	defer s.Unlock()
+	for rid := range s.reqIDsForChannelName[subject] {
+		sub := s.subs[rid]
+		if sub == nil || sub.cut {
+			continue
+		}
+		select {
+		case sub.ch <- data:
+		default:
+			sub.cut = true
+			close(sub.tooSlow)
+		}
 	}
 	return nil
+}
+
+// subscribe registers a stream client for channels; the returned function
+// unregisters it.
+func (s *EventAPIServer) subscribe(reqID requestID, channels []string) (*eventSub, func()) {
+	sub := &eventSub{ch: make(chan []byte, eventSubBuffer), tooSlow: make(chan struct{})}
+	s.Lock()
+	defer s.Unlock()
+	for _, chname := range channels {
+		if s.reqIDsForChannelName[chname] == nil {
+			s.reqIDsForChannelName[chname] = make(map[requestID]struct{})
+		}
+		s.reqIDsForChannelName[chname][reqID] = struct{}{}
+	}
+	s.subs[reqID] = sub
+	log.Debug().Str("reqID", string(reqID)).
+		Int("rifcn-map-len", len(s.reqIDsForChannelName)).
+		Int("subs-len", len(s.subs)).
+		Msg("event-api-new-subscription")
+
+	return sub, func() {
+		s.Lock()
+		defer s.Unlock()
+		log.Debug().Str("reqID", string(reqID)).Msg("event-api-cleaning-up")
+		delete(s.subs, reqID)
+		for _, chname := range channels {
+			delete(s.reqIDsForChannelName[chname], reqID)
+			if len(s.reqIDsForChannelName[chname]) == 0 {
+				delete(s.reqIDsForChannelName, chname)
+			}
+		}
+	}
 }
 
 func (s *EventAPIServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -87,6 +137,11 @@ func (s *EventAPIServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if flusher, ok = w.(http.Flusher); !ok {
 		http.Error(w, "no flusher", 500)
 		return
+	}
+	// The server's WriteTimeout covers the whole response, which would end
+	// this stream a couple of minutes in; streams have no write deadline.
+	if err := http.NewResponseController(w).SetWriteDeadline(time.Time{}); err != nil {
+		log.Err(err).Msg("event-api-clear-write-deadline")
 	}
 
 	var gid string
@@ -115,55 +170,13 @@ func (s *EventAPIServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Write(append(histjson, '\n'))
 	flusher.Flush()
 	reqID := requestID(shortuuid.New())
-	reqChan := make(chan []byte)
-
-	// subscribe
-	s.Lock()
-	userGameChannel := "user." + user.UUID + ".game." + gid
-	gameChannel := "game." + gid
-	if s.reqIDsForChannelName == nil {
-		s.reqIDsForChannelName = make(map[string]map[requestID]struct{})
-	}
-
-	for _, chname := range [2]string{userGameChannel, gameChannel} {
-		reqs := s.reqIDsForChannelName[chname]
-		if reqs == nil {
-			s.reqIDsForChannelName[chname] = make(map[requestID]struct{})
-		}
-		s.reqIDsForChannelName[chname][reqID] = struct{}{}
-	}
-	if s.channelsForReqId == nil {
-		s.channelsForReqId = make(map[requestID]chan []byte)
-	}
-	s.channelsForReqId[reqID] = reqChan
-
-	log.Debug().Str("reqID", string(reqID)).
-		Int("rifcn-map-len", len(s.reqIDsForChannelName)).
-		Int("cnfri-map-len", len(s.channelsForReqId)).
-		Msg("event-api-new-subscription")
-
-	s.Unlock()
-
-	// clean up at the end
-	defer func() {
-		s.Lock()
-		log.Debug().Str("reqID", string(reqID)).Msg("event-api-cleaning-up")
-		delete(s.channelsForReqId, reqID)
-		for _, chname := range [2]string{userGameChannel, gameChannel} {
-			delete(s.reqIDsForChannelName[chname], reqID)
-			if len(s.reqIDsForChannelName[chname]) == 0 {
-				delete(s.reqIDsForChannelName, chname)
-			}
-		}
-		log.Debug().Int("rifcn-map-len", len(s.reqIDsForChannelName)).Msg("event-api-cleaned-up")
-		log.Debug().Int("cnfri-map-len", len(s.channelsForReqId)).Msg("event-api-cleaned-up")
-		s.Unlock()
-	}()
+	sub, unsubscribe := s.subscribe(reqID, []string{"user." + user.UUID + ".game." + gid, "game." + gid})
+	defer unsubscribe()
 
 infloop:
 	for {
 		select {
-		case msg := <-reqChan:
+		case msg := <-sub.ch:
 			log.Debug().Interface("msg", msg).Msg("got-event")
 			e, err := entity.EventFromByteArray(msg)
 			if err != nil {
@@ -181,6 +194,9 @@ infloop:
 				log.Err(err).Msg("error-writing-to-client")
 			}
 			flusher.Flush()
+		case <-sub.tooSlow:
+			log.Info().Str("reqID", string(reqID)).Msg("event-api-client-too-slow")
+			break infloop
 		case <-ctx.Done():
 			log.Err(ctx.Err()).Str("reqID", string(reqID)).Msg("client-disconnected")
 			break infloop
