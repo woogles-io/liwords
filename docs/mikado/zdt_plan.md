@@ -252,6 +252,55 @@ Open question: who uses the event-stream API today.
 **Status (2026-11-11): done** (`queueGroup` in `pkg/bus/bus.go`). With one
 server nothing changes: it already received every message.
 
+### NATS subscriptions with more than one of each service (audit, 2026-11-12)
+
+A subscription is either in a queue group (each message to one subscriber of
+the group) or plain (each message to every subscriber). The queue groups on
+`ipc.pb.>` and `ipc.request.>` date from 2020, when those were the only
+topics; `user.>` and `game.>` were added to the same loop in 2022 for the
+event-stream API and joined `pbworkers` by default, not by choice.
+
+API (`liwords-api`):
+
+| Topic | Message types | Handler touches | Delivery |
+|---|---|---|---|
+| `ipc.pb.>` | seek request, chat, decline seek, game meta event, seek accepted, gameplay event, timed out, ready for game, ready for tournament game, `initRealmInfo`, `leaveSite`, `leaveTab`, `pongReceived` | Postgres (under the game or tournament lock), Redis (presence, chat, config), NATS publishes | queue `pbworkers`: once |
+| `ipc.request.>` | `registerRealm`, `getFollowers`, `getFollows` | reads, one reply | queue `requestworkers`: once |
+| `bot.publish_event.>` | bot moves | same path as a player's move | queue `pbworkers`: once |
+| `user.>`, `game.>` | everything the API sends to sockets | this server's event-stream clients | plain: every server |
+| `channel.anno*`, broadcast and user-slot subjects | "changed, reload" signals | this server's OBS overlay clients | plain: every server |
+
+"Once" is right only if no handler changes something kept in one server's
+memory, which the other server would then never see. Checked: games and
+tournaments aren't cached (#2091, #2242); presence, chat and the
+games-enabled flag are in Redis; seeks, users and sessions in Postgres; the
+bus has no package-level state. The one exception is the game store's
+5-second cache of the active-games list (`pkg/stores/game/cache.go`): a server
+clears it when a game starts or ends there, so the other's copy can lag the
+lobby by up to 5s. Acceptable.
+
+Publishes from outside the bus: analysis results to `user.<uuid>` (sockets
+and event streams), `sessionend.<uuid>` (every socket server), annotation and
+broadcast change signals (every API server's OBS subscriptions). No message is
+meant for one API server only.
+
+Socket server (`liwords-socket`): plain subscriptions on all its topics
+(`services/socketsrv/pkg/hub/pubsub.go`), so every socket server gets every
+message and delivers it to its own clients; `connid.<cid>` reaches only the
+server holding that connection. What it sends goes to the API's queue groups.
+Its followers and follows caches (5-minute TTL, never invalidated) are stale
+the same way with one server or two.
+
+Bot (`macondo-bot`, in the macondo repo): one queue subscription,
+`bot.commands` in `bot_queue` (`bot/bot.go`), so each move request goes to
+one bot. It sends the move with a NATS request to `bot.publish_event.<gid>`
+and retries until the API acknowledges, so a lost acknowledgement can deliver
+a move twice; the second is rejected as not on turn. The service already
+deploys with overlap (100% / 200%). On SIGTERM it exits without draining, so
+a move being computed is lost: a real-time bot game then ends when the bot's
+clock runs out, and a correspondence game waits for an admin's
+`UnfreezeBot`. Worth a drain like the API's, in the macondo repo.
+
 ## 4. Broadcast feed cache
 
 The broadcast poller (`pkg/broadcasts/poller.go`) runs every 30s on every
