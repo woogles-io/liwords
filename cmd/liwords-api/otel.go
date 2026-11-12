@@ -15,6 +15,7 @@ import (
 	otelmetric "go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
 )
 
@@ -96,10 +97,27 @@ func newTraceProvider() (*trace.TracerProvider, error) {
 		return nil, err
 	}
 
+	res, err := traceResource()
+	if err != nil {
+		return nil, err
+	}
 	traceProvider := trace.NewTracerProvider(
 		trace.WithBatcher(traceExporter),
+		trace.WithResource(res),
 	)
 	return traceProvider, nil
+}
+
+// traceResource describes this process on every span: what the default
+// resource has (service name and version from OTEL_SERVICE_NAME and
+// OTEL_RESOURCE_ATTRIBUTES, the SDK), plus host.name, the container's
+// hostname, so spans from different API servers can be told apart.
+func traceResource() (*resource.Resource, error) {
+	host, err := resource.New(context.Background(), resource.WithHost())
+	if err != nil {
+		return nil, err
+	}
+	return resource.Merge(resource.Default(), host)
 }
 
 func newMeterProvider() (*metric.MeterProvider, error) {

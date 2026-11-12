@@ -44,6 +44,24 @@ What is there now (read from ECS and the load balancer, 2026-10-31):
 - For comparison, `woogles-socket` already runs minimum 100% / maximum 200%
   with a 30s deregistration delay, so socket deploys overlap today.
 
+What a deploy looks like now (ECS events and API logs, 2026-11-11, times
+UTC):
+
+| Time | |
+|---|---|
+| 05:22:30 | Old task deregistered from the load balancer. HTTP gets 503s from here. |
+| 05:22:59 | Old task gets SIGTERM and exits within a millisecond. Moves over NATS fail from here. |
+| 05:23:11 | New task started. |
+| 05:23:18 | New task listening, and subscribed to NATS: moves work again. |
+| 05:23:22 | New task registered with the load balancer. |
+| ~05:23:32 | Earliest it can pass 2 health checks 5s apart. HTTP works again. |
+
+So HTTP is down for over a minute, and moves for about 20s: the old task keeps
+handling NATS for the 30s between deregistration and SIGTERM, and the new one
+subscribes before it passes health checks. Draining (section 5) adds the time
+in-flight work takes, normally milliseconds, to the gap between the tasks;
+only overlapping deploys remove the gap.
+
 What is needed:
 
 - **Room for two tasks.** Fargate does this directly: each task gets its own
@@ -282,6 +300,28 @@ Needed, in order, within `stopTimeout`:
 
 The socket server sends requests (`ipc.request.registerRealm` and others) with
 a timeout; during a drain they go to the remaining server.
+
+**Status (2026-11-12): done in code** (`pkg/bus/drain.go`,
+`cmd/liwords-api/shutdown.go`). On SIGTERM `/ping` returns 503, then:
+
+1. HTTP shutdown, capped at 5s. Streaming routes (event-stream API, OBS
+   overlays) end 2s after it starts, so an open stream can't hold it. HTTP
+   goes first because requests send events through the bus.
+2. `Bus.Drain`: drain each subscription (not the connection, which handlers
+   still publish on), stop adjudication and seek expiry, then wait until the
+   loop has taken everything buffered, every handler goroutine is done, and
+   every event is published. The loop checks those conditions itself,
+   between iterations (`waitInLoop`), since it twice holds a message that is
+   in no buffer and not yet counted.
+3. The archive wait, then a NATS flush and close.
+
+It has 25s (`GracefulShutdownTimeout`), plus 2s each for the NATS flush and
+the span export, under ECS's default 30s `stopTimeout`. Each shutdown is an
+`api.shutdown` trace in Jaeger with a span per step; `bus.drain` has an event
+per step. Spans carry `host.name`, so the messages a drain waited for are
+that host's spans inside the drain's window. Still to do with the
+infrastructure (section 1): set `stopTimeout` and a deregistration delay to
+match.
 
 ## 6. Old and new versions side by side
 

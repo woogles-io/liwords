@@ -174,7 +174,9 @@ func (b *Bus) instantiateAndStartGame(ctx context.Context, accUser *entity.User,
 func (b *Bus) goHandleBotMove(ctx context.Context, resp *macondo.BotResponse,
 	gid, replyChan string) {
 
+	done := b.trackHandler()
 	go func() {
+		defer done()
 		// Its own trace, so a bot move's database work and lock show up in
 		// Jaeger under one span rather than loose.
 		ctx, span := otel.Tracer("bus-message-processor").Start(ctx, "bus.HandleBotMove",

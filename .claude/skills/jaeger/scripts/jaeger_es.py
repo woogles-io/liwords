@@ -70,10 +70,13 @@ def window(args):
 
 
 def tag_filter(key, value=None):
-    must = [{"term": {"tags.key": key}}]
-    if value is not None:
-        must.append({"term": {"tags.value": value}})
-    return {"nested": {"path": "tags", "query": {"bool": {"must": must}}}}
+    """A span tag, or a process tag (resource attribute, such as host.name)."""
+    def on(path):
+        must = [{"term": {f"{path}.key": key}}]
+        if value is not None:
+            must.append({"term": {f"{path}.value": value}})
+        return {"nested": {"path": path, "query": {"bool": {"must": must}}}}
+    return {"bool": {"should": [on("tags"), on("process.tags")], "minimum_should_match": 1}}
 
 
 def filters(args, op=None):

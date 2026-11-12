@@ -10,6 +10,7 @@ import (
 	"runtime/debug"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/gomodule/redigo/redis"
@@ -59,8 +60,16 @@ type Bus struct {
 
 	redisPool *redis.Pool
 
-	subscriptions []*nats.Subscription
+	subscriptions []subscription
 	subchans      map[string]chan *nats.Msg
+
+	// For shutting down without dropping work in progress; see Drain.
+	inFlight    atomic.Int64 // handler goroutines running (trackHandler)
+	draining    atomic.Bool
+	drainChecks chan drainCheck
+	// publish sends the events the loop publishes; natsconn.Publish, but
+	// tests replace it.
+	publish func(subject string, data []byte) error
 
 	gameEventChan       chan *entity.EventWrapper
 	tournamentEventChan chan *entity.EventWrapper
@@ -73,7 +82,9 @@ func NewBus(cfg *config.Config, natsconn *nats.Conn, stores *stores.Stores, redi
 	bus := &Bus{
 		natsconn:            natsconn,
 		stores:              stores,
-		subscriptions:       []*nats.Subscription{},
+		subscriptions:       []subscription{},
+		drainChecks:         make(chan drainCheck),
+		publish:             natsconn.Publish,
 		subchans:            map[string]chan *nats.Msg{},
 		config:              cfg,
 		gameEventChan:       make(chan *entity.EventWrapper, 64),
@@ -150,6 +161,10 @@ func (b *Bus) ProcessMessages(ctx context.Context) {
 	channelMonitor := time.NewTicker(ChannelMonitorInterval)
 	defer channelMonitor.Stop()
 
+	// Drain's checks (see drainCheck), answered between iterations.
+	var checks pendingDrainChecks
+	defer checks.stop()
+
 outerfor:
 	for {
 		select {
@@ -185,7 +200,9 @@ outerfor:
 			// Update context with scoped logger
 			msgCtx = scopedLogger.WithContext(msgCtx)
 
+			done := b.trackHandler()
 			go func(msgCtx context.Context, span trace.Span, subtopics []string, data []byte) {
+				defer done()
 				defer span.End()
 				log := zerolog.Ctx(msgCtx)
 				err := recoverToError(msgCtx, func() error {
@@ -233,7 +250,9 @@ outerfor:
 			// Update context with scoped logger
 			reqCtx = scopedLogger.WithContext(reqCtx)
 
+			done := b.trackHandler()
 			go func(reqCtx context.Context, span trace.Span) {
+				defer done()
 				defer span.End()
 				log := zerolog.Ctx(reqCtx)
 				err := recoverToError(reqCtx, func() error {
@@ -305,7 +324,9 @@ outerfor:
 						// but continue anyway
 					} else {
 						// this should be async because b.broadcastChannelChanges sends to b.genericEventChan and while we are here <-b.genericEventChan is not being drained
+						done := b.trackHandler()
 						go func() {
+							defer done()
 							for idx, chans := range ret {
 								oldChannels := chans[0]
 								newChannels := chans[1]
@@ -346,7 +367,7 @@ outerfor:
 					}
 
 				} else {
-					err := b.natsconn.Publish(topic, data)
+					err := b.publish(topic, data)
 					if err != nil {
 						log.Err(err).Str("topic", topic).Msg("pub-error")
 					}
@@ -366,7 +387,7 @@ outerfor:
 			for _, topic := range topics {
 				// Fails for a message over the server's max_payload (1MB by
 				// default), which would otherwise vanish without a trace.
-				if err := b.natsconn.Publish(topic, data); err != nil {
+				if err := b.publish(topic, data); err != nil {
 					log.Err(err).Str("topic", topic).Int("bytes", len(data)).Msg("pub-error")
 				}
 			}
@@ -386,17 +407,28 @@ outerfor:
 			for _, topic := range topics {
 				// Fails for a message over the server's max_payload (1MB by
 				// default), which would otherwise vanish without a trace.
-				if err := b.natsconn.Publish(topic, data); err != nil {
+				if err := b.publish(topic, data); err != nil {
 					log.Err(err).Str("topic", topic).Int("bytes", len(data)).Msg("pub-error")
 				}
 			}
+
+		case c := <-b.drainChecks:
+			checks.add(c)
+
+		case <-checks.tick():
+			// Idle: nothing else would wake the loop to check.
 
 		case <-ctx.Done():
 			log.Info().Msg("pubsub context done, breaking")
 			break outerfor
 
 		case <-adjudicator.C:
+			if b.draining.Load() {
+				break
+			}
+			done := b.trackHandler()
 			go func() {
+				defer done()
 				err := b.adjudicateGames(ctx, false) // false = real-time games only
 				if err != nil {
 					log.Err(err).Msg("adjudicate-error")
@@ -404,7 +436,12 @@ outerfor:
 			}()
 
 		case <-correspondenceAdjudicator.C:
+			if b.draining.Load() {
+				break
+			}
+			done := b.trackHandler()
 			go func() {
+				defer done()
 				err := b.adjudicateGames(ctx, true) // true = correspondence games only
 				if err != nil {
 					log.Err(err).Msg("adjudicate-correspondence-error")
@@ -412,6 +449,9 @@ outerfor:
 			}()
 
 		case <-seekExpirer.C:
+			if b.draining.Load() {
+				break
+			}
 			go func() {
 				err := b.stores.SoughtGameStore.ExpireOld(ctx)
 				if err != nil {
@@ -436,7 +476,8 @@ outerfor:
 			}()
 
 		}
-
+		// Between iterations: nothing taken is in the loop's hands.
+		checks.check()
 	}
 
 	log.Info().Msg("exiting processMessages loop")
@@ -839,7 +880,7 @@ func (b *Bus) pubToUser(userID string, evt *entity.EventWrapper,
 		fullChannel = "user." + userID + "." + channel
 	}
 
-	return b.natsconn.Publish(fullChannel, bts)
+	return b.publish(fullChannel, bts)
 }
 
 func (b *Bus) pubToConnectionID(connID, userID string, evt *entity.EventWrapper) error {
