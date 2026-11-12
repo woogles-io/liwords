@@ -754,7 +754,12 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
   } else if (job.error) {
     status = <span className="analyzer-error">{job.error}</span>;
   } else if (!solved || !solved.play) {
-    status = "Solving...";
+    // a step may end before the search has valued any move, for many steps
+    // with a big bag: how far it has got, until the first move comes
+    status =
+      answer && answer.steps > 0
+        ? `Solving: ${progressText(answer)} after ${ranText(ranMs)}`
+        : "Solving...";
   } else {
     const progress = `${progressText(solved)} after ${ranText(ranMs)}${solved.exact ? ", exact" : job.running ? ", solving" : ", stopped"}`;
     status =

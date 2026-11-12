@@ -379,6 +379,40 @@ describe("the endgame panel", () => {
     expect(screen.queryByText(/NaN|undefined/)).not.toBeInTheDocument();
   });
 
+  it("shows how far a step got when it ends before any move has a value", async () => {
+    render(
+      <Store>
+        <EndgamePanel
+          lab={position([A, B, E, E, I, I, I, I, I, I, I])}
+          onClose={() => {}}
+        />
+      </Store>,
+    );
+    // four tiles in the bag, steps that valued no move yet
+    await step({
+      bag: 4,
+      steps: 3,
+      nodes: 700,
+      exact: false,
+      play: null,
+      spread: 10,
+      depth: 0,
+      endgames: 40,
+      moves: [0, 31],
+      draws: [],
+      candidates: [],
+    });
+    expect(
+      screen.getByText(
+        "Solving: first pass, 0 of 31 moves valued, 40 endgames after 0 s",
+      ),
+    ).toBeInTheDocument();
+    expect(bodyRows()).toEqual([]);
+    expect(screen.queryByText(/NaN|undefined/)).not.toBeInTheDocument();
+    // still stepping
+    expect(screen.getByRole("button", { name: "Stop" })).toBeInTheDocument();
+  });
+
   it("shows the best of the moves valued so far in a pre-endgame's first pass", async () => {
     render(
       <Store>
