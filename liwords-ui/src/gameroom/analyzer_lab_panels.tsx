@@ -27,6 +27,7 @@ import {
   PauseOutlined,
   PlusOutlined,
   ProfileOutlined,
+  UnorderedListOutlined,
   QuestionOutlined,
   SettingOutlined,
   SwapOutlined,
@@ -766,9 +767,11 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
   // a pre-endgame's plays, each with the share of deals it wins and what it
   // gains for each tile or set of tiles the bag may hold: every play valued,
   // the best first, or the best alone where the answer lists no other. The
-  // best's own tiles or sets are the answer's where its entry has none.
+  // best's own tiles or sets are the answer's where its entry has none. With
+  // an empty bag, every first move once valued, beside the line.
   const plays = useMemo(() => {
-    if (!solved || solved.line) return [];
+    if (!solved) return [];
+    if (solved.bag === 0 && !solved.candidates?.length) return [];
     const listed: Array<EndgameCandidate> = solved.candidates?.length
       ? solved.candidates
       : solved.play
@@ -805,14 +808,33 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
     const end = lead + value;
     return end > 0 ? "wins" : end < 0 ? "loses" : "ties";
   };
+  // with an empty bag, a move's win is how the game ends: 1, 0.5 or 0
+  const emptyBag = solved?.bag === 0;
+  const winText = (win: number) =>
+    emptyBag
+      ? win > 0.5
+        ? "wins"
+        : win < 0.5
+          ? "loses"
+          : "ties"
+      : percent(win);
+  // a failed valuing of every first move
+  const [valuesError, setValuesError] = useState<string>();
+  const valueEvery = (seconds: number) => {
+    if (job.job === undefined) return;
+    setValuesError(undefined);
+    labCall({ op: "values", args: { job: job.job, ms: seconds * 1000 } }).catch(
+      (e) => setValuesError(errorText(e)),
+    );
+  };
 
   let status: React.ReactNode;
   if (over) {
     status = goneOutText(lab);
   } else if (bag === null) {
     status = "Needs the full rack of the player to move.";
-  } else if (job.error) {
-    status = <span className="analyzer-error">{job.error}</span>;
+  } else if (job.error || valuesError) {
+    status = <span className="analyzer-error">{job.error ?? valuesError}</span>;
   } else if (!solved || !solved.play) {
     // a step may end before the search has valued any move, for many steps
     // with a big bag: how far it has got, until the first move comes
@@ -837,6 +859,14 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
       stop={job.stop}
       resume={job.resume}
       onClose={onClose}
+      buttons={
+        bag === 0 && solvable ? (
+          <EveryMoveButton
+            disabled={job.running || !solved}
+            onValue={valueEvery}
+          />
+        ) : undefined
+      }
     >
       {solvable && (
         // what each player holds: with an empty bag the other player holds
@@ -900,12 +930,21 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
               <td className="move">{m.displayMove}</td>
               <td className="move-score">{m.score}</td>
               <td className="move-leave">{runes(m.leave)}</td>
+              {plays.length > 0 && <td className="lab-win" />}
               <td className="move-equity">{signed(m.equity)}</td>
             </tr>
           ))}
+          {line.length > 0 && plays.length > 0 && (
+            <tr className="lab-tile lab-draws-head">
+              <td className="lab-who" />
+              <td className="move" colSpan={6}>
+                Every first move:
+              </td>
+            </tr>
+          )}
           {plays.map((p, i) => {
             const m = p.move;
-            const win = p.win === undefined ? "" : percent(p.win);
+            const win = p.win === undefined ? "" : winText(p.win);
             return (
               <tr
                 key={m.jsonKey}
@@ -916,7 +955,9 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
                 }
                 onClick={() => placeMove(m)}
               >
-                <td className="lab-who">{i === 0 ? names[0] : ""}</td>
+                <td className="lab-who">
+                  {i === 0 && line.length === 0 ? names[0] : ""}
+                </td>
                 <td className="move-coords">{m.coordinates}</td>
                 <td className="move">{m.displayMove}</td>
                 <td className="move-score">{m.score}</td>
@@ -943,7 +984,7 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
                   )}
                 </td>
                 <td className="move-equity">
-                  {`${p.exact === false ? "~" : ""}${signed(m.equity, 2)}`}
+                  {`${p.exact === false ? "~" : ""}${signed(m.equity, emptyBag ? 0 : 2)}`}
                 </td>
               </tr>
             );
@@ -2944,6 +2985,68 @@ const ExchangeButton = (props: ExchangeButtonProps) => {
           size="small"
           icon={<SwapOutlined />}
           aria-label="Exchange or pass"
+          disabled={disabled}
+        />
+      </Tooltip>
+    </Popover>
+  );
+};
+
+type EveryMoveButtonProps = {
+  disabled: boolean;
+  onValue: (seconds: number) => void;
+};
+
+// An empty bag's every first move valued on what the solve has searched, in
+// as many seconds as asked, a second unless changed.
+const EveryMoveButton = (props: EveryMoveButtonProps) => {
+  const { disabled, onValue } = props;
+  const [open, setOpen] = useState(false);
+  const [seconds, setSeconds] = useState<number | null>(null);
+  const value = () => {
+    if (seconds === null || seconds <= 0) return;
+    setOpen(false);
+    onValue(seconds);
+  };
+  return (
+    <Popover
+      open={open}
+      onOpenChange={(o) => {
+        setOpen(o);
+        if (o) setSeconds(1);
+      }}
+      trigger="click"
+      content={
+        <div className="lab-top">
+          <label>
+            Seconds
+            <InputNumber
+              size="small"
+              aria-label="Seconds"
+              min={0}
+              value={seconds}
+              onChange={(v) => setSeconds(v)}
+              onPressEnter={value}
+            />
+          </label>
+          <Button
+            size="small"
+            type="primary"
+            aria-label="Value every first move"
+            disabled={seconds === null || seconds <= 0}
+            onClick={value}
+          >
+            Value
+          </Button>
+        </div>
+      }
+    >
+      <Tooltip title="Value every first move, to the depth searched">
+        <Button
+          shape="circle"
+          size="small"
+          icon={<UnorderedListOutlined />}
+          aria-label="Every first move"
           disabled={disabled}
         />
       </Tooltip>

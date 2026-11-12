@@ -39,6 +39,9 @@ export type LabRequest =
   | { op: "against"; args: { job: number; play: string | null } }
   // the job's answer as it stands, sent as a step's is, without stepping
   | { op: "read"; args: { job: number } }
+  // an empty bag's endgame, every first move valued on the table its steps
+  // kept, in at most ms, without stepping; sent as a step's answer is
+  | { op: "values"; args: { job: number; ms: number } }
   // a sim's answer as it stands, compared with the play given in place of the
   // one it is compared with, answered and not sent
   | { op: "peek"; args: { job: number; against: string } }
@@ -332,6 +335,19 @@ const handle = async (req: LabRequest): Promise<unknown> => {
               }),
             )
           : wolges.endgame_step(job.handle, JSON.stringify({ ms: 0 })),
+      );
+      post({ event: { job: job.id, answer, done: isDone(job, answer) } });
+      return undefined;
+    }
+    case "values": {
+      if (!job || job.id !== req.args.job || job.kind !== "endgame") {
+        throw new Error("no such endgame");
+      }
+      const answer: Answer = JSON.parse(
+        wolges.endgame_step(
+          job.handle,
+          JSON.stringify({ ms: 0, first_moves_ms: req.args.ms }),
+        ),
       );
       post({ event: { job: job.id, answer, done: isDone(job, answer) } });
       return undefined;

@@ -304,6 +304,74 @@ describe("the endgame panel", () => {
     expect(request.scores).toEqual([300, 290]);
   });
 
+  it("values every first move of an empty bag once stopped, in the seconds asked", async () => {
+    render(
+      <Store>
+        <EndgamePanel
+          lab={position([A, B, E, I, I, I, I])}
+          onClose={() => {}}
+        />
+      </Store>,
+    );
+    const answer = {
+      bag: 0,
+      steps: 2,
+      exact: false,
+      play: across(7, 7, [B, A]),
+      value: 12,
+      spread: 22,
+      depth: 3,
+      line: [{ play: across(7, 7, [B, A]), value: 12 }],
+    };
+    await step(answer);
+    // not while it solves
+    const every = () =>
+      screen.getByRole("button", { name: "Every first move" });
+    expect(every()).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Stop" }));
+    expect(every()).toBeEnabled();
+    fireEvent.click(every());
+    fireEvent.change(
+      await screen.findByRole("spinbutton", { name: "Seconds" }),
+      {
+        target: { value: "2.5" },
+      },
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Value every first move" }),
+    );
+    await waitFor(() =>
+      expect(lab.calls.find((c) => c.op === "values")?.args).toEqual({
+        job: 1,
+        ms: 2500,
+      }),
+    );
+    emit({
+      job: 1,
+      answer: {
+        ...answer,
+        candidates: [
+          { play: across(7, 7, [B, A]), win: 1, value: 12, exact: true },
+          {
+            play: { action: "exchange", tiles: [] },
+            win: 0,
+            value: -15,
+            exact: false,
+          },
+        ],
+      },
+      done: false,
+    });
+    expect(headRow()).toBe("ScoreLeaveWinValue");
+    expect(bodyRows()).toEqual([
+      "andy8HBA10AEEII+12",
+      "Every first move:",
+      "8HBA10AEEIIwins+12",
+      // at least that, to the depth it got to
+      "Pass0AABEEIIloses~-15",
+    ]);
+  });
+
   it("weighs a tile in the bag by each tile it may be", async () => {
     render(
       <Store>

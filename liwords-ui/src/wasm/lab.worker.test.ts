@@ -160,6 +160,27 @@ describe("the lab's worker", () => {
     );
   });
 
+  it("values an empty bag's every first move without stepping, only for an endgame", async () => {
+    const answer = {
+      exact: true,
+      depth: 5,
+      candidates: [{ play: { action: "exchange", tiles: [] }, value: 3 }],
+    };
+    wasm.endgame_step.mockReturnValueOnce(JSON.stringify(answer));
+    const job = (await send(1, "endgame", { request: "{}" })).result as number;
+    await send(2, "values", { job, ms: 1500 });
+    expect(wasm.endgame_step).toHaveBeenCalledWith(
+      7,
+      JSON.stringify({ ms: 0, first_moves_ms: 1500 }),
+    );
+    expect(events()).toEqual([{ job, answer, done: true }]);
+    const sim = (await send(3, "sim", { request: "{}", plays: "[]" }))
+      .result as { job: number };
+    expect((await send(4, "values", { job: sim.job, ms: 1 })).error).toBe(
+      "no such endgame",
+    );
+  });
+
   it("steps an endgame the same frame every step, whatever its bag and depth", async () => {
     const stepsMs = () =>
       wasm.endgame_step.mock.calls.map(([, r]) => JSON.parse(r as string).ms);
