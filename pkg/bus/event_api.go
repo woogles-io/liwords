@@ -138,6 +138,11 @@ func (s *EventAPIServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "no flusher", 500)
 		return
 	}
+	// The server's WriteTimeout covers the whole response, which would end
+	// this stream a couple of minutes in; streams have no write deadline.
+	if err := http.NewResponseController(w).SetWriteDeadline(time.Time{}); err != nil {
+		log.Err(err).Msg("event-api-clear-write-deadline")
+	}
 
 	var gid string
 	if strings.HasPrefix(r.URL.Path, GameEventStreamPrefix) {
