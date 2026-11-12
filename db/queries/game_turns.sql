@@ -1,6 +1,6 @@
 -- name: AppendGameTurn :exec
-INSERT INTO game_turns (game_uuid, turn_idx, event)
-VALUES (@game_uuid, @turn_idx, @event);
+INSERT INTO game_turns (game_uuid, turn_idx, event, event_bin)
+VALUES (@game_uuid, @turn_idx, @event, @event_bin);
 
 -- Append a whole move's events in one statement.
 --
@@ -27,18 +27,28 @@ VALUES (@game_uuid, @turn_idx, @event);
 -- silently rewrites the expression -- it emitted `($2::int4 - 1)`, dropping the
 -- ordinal entirely, which would insert every event at the same index. Check the
 -- generated SQL in pkg/stores/models/game_turns.sql.go after touching this.
+--
+-- `event_bins` holds the same events as `events`, binary-encoded, in the same
+-- order; each row takes the element at its own ordinal. The two must be the
+-- same length. Indexing past the end of an array gives NULL rather than an
+-- error, so a short `event_bins` would store rows without their binary copy.
+-- (Two-argument unnest would say the same thing more directly, but sqlc can't
+-- type it.)
 -- name: AppendGameTurns :exec
-INSERT INTO game_turns (game_uuid, turn_idx, event)
-SELECT @game_uuid, (sqlc.arg(start_idx)::int4 + t.ord::int4 - 1), t.evt
+INSERT INTO game_turns (game_uuid, turn_idx, event, event_bin)
+SELECT @game_uuid, (sqlc.arg(start_idx)::int4 + t.ord::int4 - 1), t.evt,
+       (sqlc.arg(event_bins)::bytea[])[t.ord]
 FROM unnest(@events::jsonb[]) WITH ORDINALITY AS t(evt, ord);
 
+-- Readers take the binary copy when the row has one and the protojson text
+-- otherwise; xwordbridge.DecodeTurn tells them apart by their first byte.
 -- name: GetGameTurns :many
-SELECT turn_idx, event FROM game_turns
+SELECT turn_idx, COALESCE(event_bin, convert_to(event::text, 'UTF8'))::bytea AS event FROM game_turns
 WHERE game_uuid = @game_uuid
 ORDER BY turn_idx ASC;
 
 -- name: GetLastGameTurn :one
-SELECT turn_idx, event FROM game_turns
+SELECT turn_idx, COALESCE(event_bin, convert_to(event::text, 'UTF8'))::bytea AS event FROM game_turns
 WHERE game_uuid = @game_uuid
 ORDER BY turn_idx DESC
 LIMIT 1;

@@ -546,8 +546,8 @@ func (s *DBStore) shadowLoadFromTurns(
 //
 // 	events := make([]*macondopb.GameEvent, len(turns))
 // 	for i, t := range turns {
-// 		evt := &macondopb.GameEvent{}
-// 		if err := protojson.Unmarshal(t.Event, evt); err != nil {
+// 		evt, err := xwordbridge.DecodeTurn(t.Event)
+// 		if err != nil {
 // 			span.RecordError(err)
 // 			return nil, fmt.Errorf("buildHistoryFromTurns: unmarshal turn %d: %w", i, err)
 // 		}
@@ -1367,6 +1367,7 @@ func (s *DBStore) Set(ctx context.Context, g *entity.Game) error {
 	if err := withGameTx(ctx, s.dbPool, func(ctx context.Context, q *models.Queries) error {
 		if len(pending) > 0 {
 			raw := make([][]byte, len(pending))
+			bins := make([][]byte, len(pending))
 			for i, t := range pending {
 				// AppendGameTurns derives each index as start_idx + ordinal, so
 				// it cannot express a gap -- it would write the wrong indices
@@ -1376,11 +1377,13 @@ func (s *DBStore) Set(ctx context.Context, g *entity.Game) error {
 					return fmt.Errorf("staged turns are not consecutive: row %d has index %d, expected %d", i, t.Idx, want)
 				}
 				raw[i] = t.Event
+				bins[i] = t.EventBin
 			}
 			if err := q.AppendGameTurns(ctx, models.AppendGameTurnsParams{
-				GameUuid: g.GameID(),
-				StartIdx: pending[0].Idx,
-				Events:   raw,
+				GameUuid:  g.GameID(),
+				StartIdx:  pending[0].Idx,
+				Events:    raw,
+				EventBins: bins,
 			}); err != nil {
 				return fmt.Errorf("appending %d turns from %d: %w", len(raw), pending[0].Idx, err)
 			}
@@ -1469,11 +1472,11 @@ func (s *DBStore) StageTurns(g *entity.Game, startIdx int, events []*macondopb.G
 	}
 	staged := make([]entity.PendingTurn, len(events))
 	for i, evt := range events {
-		b, err := protojson.Marshal(evt)
+		js, bin, err := encodeTurn(evt)
 		if err != nil {
 			return err
 		}
-		staged[i] = entity.PendingTurn{Idx: int32(startIdx + i), Event: b}
+		staged[i] = entity.PendingTurn{Idx: int32(startIdx + i), Event: js, EventBin: bin}
 	}
 	g.StageTurns(staged)
 	return nil
@@ -1489,18 +1492,34 @@ func (s *DBStore) AppendTurns(ctx context.Context, gameUUID string, startIdx int
 		return nil
 	}
 	raw := make([][]byte, len(events))
+	bins := make([][]byte, len(events))
 	for i, evt := range events {
-		b, err := protojson.Marshal(evt)
+		js, bin, err := encodeTurn(evt)
 		if err != nil {
 			return err
 		}
-		raw[i] = b
+		raw[i], bins[i] = js, bin
 	}
 	return s.queries.AppendGameTurns(ctx, models.AppendGameTurnsParams{
-		GameUuid: gameUUID,
-		StartIdx: int32(startIdx),
-		Events:   raw,
+		GameUuid:  gameUUID,
+		StartIdx:  int32(startIdx),
+		Events:    raw,
+		EventBins: bins,
 	})
+}
+
+// encodeTurn gives the two encodings a game_turns row is written in: protojson
+// for `event`, which the previous release reads, and binary proto for
+// `event_bin`, which this one reads. Once no release that reads `event` can be
+// rolled back to, only the binary one is needed.
+func encodeTurn(evt *macondopb.GameEvent) (js, bin []byte, err error) {
+	if js, err = protojson.Marshal(evt); err != nil {
+		return nil, nil, err
+	}
+	if bin, err = proto.Marshal(evt); err != nil {
+		return nil, nil, err
+	}
+	return js, bin, nil
 }
 
 // AppendTurn appends one proto-marshaled event to game_turns.

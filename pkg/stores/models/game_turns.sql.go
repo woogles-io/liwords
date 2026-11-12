@@ -10,31 +10,39 @@ import (
 )
 
 const appendGameTurn = `-- name: AppendGameTurn :exec
-INSERT INTO game_turns (game_uuid, turn_idx, event)
-VALUES ($1, $2, $3)
+INSERT INTO game_turns (game_uuid, turn_idx, event, event_bin)
+VALUES ($1, $2, $3, $4)
 `
 
 type AppendGameTurnParams struct {
 	GameUuid string
 	TurnIdx  int32
 	Event    []byte
+	EventBin []byte
 }
 
 func (q *Queries) AppendGameTurn(ctx context.Context, arg AppendGameTurnParams) error {
-	_, err := q.db.Exec(ctx, appendGameTurn, arg.GameUuid, arg.TurnIdx, arg.Event)
+	_, err := q.db.Exec(ctx, appendGameTurn,
+		arg.GameUuid,
+		arg.TurnIdx,
+		arg.Event,
+		arg.EventBin,
+	)
 	return err
 }
 
 const appendGameTurns = `-- name: AppendGameTurns :exec
-INSERT INTO game_turns (game_uuid, turn_idx, event)
-SELECT $1, ($2::int4 + t.ord::int4 - 1), t.evt
-FROM unnest($3::jsonb[]) WITH ORDINALITY AS t(evt, ord)
+INSERT INTO game_turns (game_uuid, turn_idx, event, event_bin)
+SELECT $1, ($2::int4 + t.ord::int4 - 1), t.evt,
+       ($3::bytea[])[t.ord]
+FROM unnest($4::jsonb[]) WITH ORDINALITY AS t(evt, ord)
 `
 
 type AppendGameTurnsParams struct {
-	GameUuid string
-	StartIdx int32
-	Events   [][]byte
+	GameUuid  string
+	StartIdx  int32
+	EventBins [][]byte
+	Events    [][]byte
 }
 
 // Append a whole move's events in one statement.
@@ -62,8 +70,20 @@ type AppendGameTurnsParams struct {
 // silently rewrites the expression -- it emitted `($2::int4 - 1)`, dropping the
 // ordinal entirely, which would insert every event at the same index. Check the
 // generated SQL in pkg/stores/models/game_turns.sql.go after touching this.
+//
+// `event_bins` holds the same events as `events`, binary-encoded, in the same
+// order; each row takes the element at its own ordinal. The two must be the
+// same length. Indexing past the end of an array gives NULL rather than an
+// error, so a short `event_bins` would store rows without their binary copy.
+// (Two-argument unnest would say the same thing more directly, but sqlc can't
+// type it.)
 func (q *Queries) AppendGameTurns(ctx context.Context, arg AppendGameTurnsParams) error {
-	_, err := q.db.Exec(ctx, appendGameTurns, arg.GameUuid, arg.StartIdx, arg.Events)
+	_, err := q.db.Exec(ctx, appendGameTurns,
+		arg.GameUuid,
+		arg.StartIdx,
+		arg.EventBins,
+		arg.Events,
+	)
 	return err
 }
 
@@ -88,7 +108,7 @@ func (q *Queries) DeleteGameTurns(ctx context.Context, gameUuid string) error {
 }
 
 const getGameTurns = `-- name: GetGameTurns :many
-SELECT turn_idx, event FROM game_turns
+SELECT turn_idx, COALESCE(event_bin, convert_to(event::text, 'UTF8'))::bytea AS event FROM game_turns
 WHERE game_uuid = $1
 ORDER BY turn_idx ASC
 `
@@ -98,6 +118,8 @@ type GetGameTurnsRow struct {
 	Event   []byte
 }
 
+// Readers take the binary copy when the row has one and the protojson text
+// otherwise; xwordbridge.DecodeTurn tells them apart by their first byte.
 func (q *Queries) GetGameTurns(ctx context.Context, gameUuid string) ([]GetGameTurnsRow, error) {
 	rows, err := q.db.Query(ctx, getGameTurns, gameUuid)
 	if err != nil {
@@ -119,7 +141,7 @@ func (q *Queries) GetGameTurns(ctx context.Context, gameUuid string) ([]GetGameT
 }
 
 const getLastGameTurn = `-- name: GetLastGameTurn :one
-SELECT turn_idx, event FROM game_turns
+SELECT turn_idx, COALESCE(event_bin, convert_to(event::text, 'UTF8'))::bytea AS event FROM game_turns
 WHERE game_uuid = $1
 ORDER BY turn_idx DESC
 LIMIT 1
