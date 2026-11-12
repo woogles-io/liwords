@@ -2,6 +2,7 @@ package game
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"sort"
@@ -1388,6 +1389,9 @@ func (s *DBStore) Set(ctx context.Context, g *entity.Game) error {
 		if err := q.UpdateGame(ctx, params); err != nil {
 			return err
 		}
+		if err := appendMetaEvents(ctx, q, g); err != nil {
+			return err
+		}
 		// In the same transaction, so the listings can never name a game whose
 		// row says something else. Nothing reads ongoing_games yet -- this
 		// populates it so it can be checked before anything does.
@@ -1410,6 +1414,44 @@ func (s *DBStore) Set(ctx context.Context, g *entity.Game) error {
 	// the corruption happened.
 	s.SpawnShadowCompare(ctx, g)
 	return nil
+}
+
+// appendMetaEvents writes the game's meta events to game_meta_events,
+// alongside games.meta_events, which is still the one read.
+//
+// The whole list goes every time and the rows already there are skipped; see
+// AppendGameMetaEvents. Most games have none, and those skip the statement.
+func appendMetaEvents(ctx context.Context, q *models.Queries, g *entity.Game) error {
+	if g.MetaEvents == nil || len(g.MetaEvents.Events) == 0 {
+		return nil
+	}
+	// Each element encoded as games.meta_events encodes it.
+	evts, err := json.Marshal(g.MetaEvents.Events)
+	if err != nil {
+		return fmt.Errorf("encoding meta events: %w", err)
+	}
+	if err := q.AppendGameMetaEvents(ctx, models.AppendGameMetaEventsParams{
+		GameUuid: g.GameID(),
+		Events:   evts,
+	}); err != nil {
+		return fmt.Errorf("appending meta events: %w", err)
+	}
+	return nil
+}
+
+// BackfillMetaEvents copies games.meta_events into game_meta_events for the
+// games with fromID <= id < toID, and returns how many rows it inserted.
+// Repeatable: rows already there are skipped.
+func (s *DBStore) BackfillMetaEvents(ctx context.Context, fromID, toID int32) (int64, error) {
+	return s.queries.BackfillGameMetaEvents(ctx, models.BackfillGameMetaEventsParams{
+		FromID: fromID,
+		ToID:   toID,
+	})
+}
+
+// MaxGameID is the largest games.id, or 0 when there are no games.
+func (s *DBStore) MaxGameID(ctx context.Context) (int64, error) {
+	return s.queries.GetMaxGameID(ctx)
 }
 
 // UpdateTimers writes only the timers column for a game (e.g. after add-time).

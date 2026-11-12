@@ -230,6 +230,13 @@ type GameDocument struct {
 	Document []byte
 }
 
+type GameMetaEvent struct {
+	GameUuid  string
+	Idx       int32
+	Event     []byte
+	CreatedAt pgtype.Timestamptz
+}
+
 type GamePlayer struct {
 	GameUuid          string
 	PlayerID          int32
