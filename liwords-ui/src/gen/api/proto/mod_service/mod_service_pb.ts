@@ -14,7 +14,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file proto/mod_service/mod_service.proto.
  */
 export const file_proto_mod_service_mod_service: GenFile = /*@__PURE__*/
-  fileDesc("CiNwcm90by9tb2Rfc2VydmljZS9tb2Rfc2VydmljZS5wcm90bxILbW9kX3NlcnZpY2UijAMKCU1vZEFjdGlvbhIPCgd1c2VyX2lkGAEgASgJEigKBHR5cGUYAiABKA4yGi5tb2Rfc2VydmljZS5Nb2RBY3Rpb25UeXBlEhAKCGR1cmF0aW9uGAMgASgFEi4KCnN0YXJ0X3RpbWUYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEiwKCGVuZF90aW1lGAUgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIwCgxyZW1vdmVkX3RpbWUYBiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEg8KB2NoYW5uZWwYByABKAkSEgoKbWVzc2FnZV9pZBgIIAEoCRIXCg9hcHBsaWVyX3VzZXJfaWQYCSABKAkSFwoPcmVtb3Zlcl91c2VyX2lkGAogASgJEhEKCWNoYXRfdGV4dBgLIAEoCRIMCgRub3RlGAwgASgJEioKCmVtYWlsX3R5cGUYDSABKA4yFi5tb2Rfc2VydmljZS5FbWFpbFR5cGUikQEKDU1vZEFjdGlvbnNNYXASOAoHYWN0aW9ucxgBIAMoCzInLm1vZF9zZXJ2aWNlLk1vZEFjdGlvbnNNYXAuQWN0aW9uc0VudHJ5GkYKDEFjdGlvbnNFbnRyeRILCgNrZXkYASABKAkSJQoFdmFsdWUYAiABKAsyFi5tb2Rfc2VydmljZS5Nb2RBY3Rpb246AjgBIjkKDk1vZEFjdGlvbnNMaXN0EicKB2FjdGlvbnMYASADKAsyFi5tb2Rfc2VydmljZS5Nb2RBY3Rpb24iJAoRR2V0QWN0aW9uc1JlcXVlc3QSDwoHdXNlcl9pZBgBIAEoCSITChFNb2RBY3Rpb25SZXNwb25zZSJ5Cg1Ob3RvcmlvdXNHYW1lEgoKAmlkGAEgASgJEiwKBHR5cGUYAiABKA4yHi5tb2Rfc2VydmljZS5Ob3RvcmlvdXNHYW1lVHlwZRIuCgpjcmVhdGVkX2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCIoChVSZXNldE5vdG9yaWV0eVJlcXVlc3QSDwoHdXNlcl9pZBgBIAEoCSIYChZSZXNldE5vdG9yaWV0eVJlc3BvbnNlIiwKGUdldE5vdG9yaWV0eVJlcG9ydFJlcXVlc3QSDwoHdXNlcl9pZBgBIAEoCSJLCg9Ob3RvcmlldHlSZXBvcnQSDQoFc2NvcmUYASABKAUSKQoFZ2FtZXMYAiADKAsyGi5tb2Rfc2VydmljZS5Ob3RvcmlvdXNHYW1lInMKF0xpc3RDaGF0Q2hhbm5lbHNSZXF1ZXN0EhYKDmNoYW5uZWxfcHJlZml4GAEgASgJEhAKCHVzZXJuYW1lGAIgASgJEg4KBmN1cnNvchgDIAEoCRIQCghjaGFubmVscxgEIAMoCRIMCgRmaW5kGAUgASgJIkMKD0NoYXRTZW5kZXJDb3VudBIPCgd1c2VyX2lkGAEgASgJEhAKCHVzZXJuYW1lGAIgASgJEg0KBWNvdW50GAMgASgFIpIBChJDaGF0Q2hhbm5lbENvbnRleHQSDQoFbGFiZWwYASABKAkSDAoEbGluaxgCIAEoCRItCgdwYXJ0aWVzGAMgAygLMhwubW9kX3NlcnZpY2UuQ2hhdFNlbmRlckNvdW50EhcKD2dhbWVfY3JlYXRlZF9hdBgEIAEoAxIXCg9nYW1lX3VwZGF0ZWRfYXQYBSABKAMigAIKEkNoYXRDaGFubmVsU3VtbWFyeRIPCgdjaGFubmVsGAEgASgJEhUKDW1lc3NhZ2VfY291bnQYAiABKAUSFwoPZmlyc3RfdGltZXN0YW1wGAMgASgDEhYKDmxhc3RfdGltZXN0YW1wGAQgASgDEi0KB3NlbmRlcnMYBSADKAsyHC5tb2Rfc2VydmljZS5DaGF0U2VuZGVyQ291bnQSEwoLdXNlcl9wbGF5ZWQYBiABKAgSMAoHY29udGV4dBgHIAEoCzIfLm1vZF9zZXJ2aWNlLkNoYXRDaGFubmVsQ29udGV4dBIbChN1c2VyX2xhc3RfdGltZXN0YW1wGAggASgDImIKGExpc3RDaGF0Q2hhbm5lbHNSZXNwb25zZRIxCghjaGFubmVscxgBIAMoCzIfLm1vZF9zZXJ2aWNlLkNoYXRDaGFubmVsU3VtbWFyeRITCgtuZXh0X2N1cnNvchgCIAEoCSIpChZHZXRDaGFubmVsQ2hhdHNSZXF1ZXN0Eg8KB2NoYW5uZWwYASABKAkqkgIKDU1vZEFjdGlvblR5cGUSCAoETVVURRAAEhMKD1NVU1BFTkRfQUNDT1VOVBABEhcKE1NVU1BFTkRfUkFURURfR0FNRVMQAhIRCg1TVVNQRU5EX0dBTUVTEAMSEQoNUkVTRVRfUkFUSU5HUxAEEg8KC1JFU0VUX1NUQVRTEAUSGwoXUkVTRVRfU1RBVFNfQU5EX1JBVElOR1MQBhIPCgtSRU1PVkVfQ0hBVBAHEhIKDkRFTEVURV9BQ0NPVU5UEAgSFQoRUkVNT1ZFX0ZJUlNUX05BTUUQCRIUChBSRU1PVkVfTEFTVF9OQU1FEAoSEAoMUkVNT1ZFX0FCT1VUEAsSEQoNUkVNT1ZFX0FWQVRBUhAMKjQKCUVtYWlsVHlwZRILCgdERUZBVUxUEAASDAoIQ0hFQVRJTkcQARIMCghERUxFVElPThACKnUKEU5vdG9yaW91c0dhbWVUeXBlEggKBEdPT0QQABILCgdOT19QTEFZEAESCwoHU0lUVElORxACEgsKB1NBTkRCQUcQAxIYChROT19QTEFZX0RFTklFRF9OVURHRRAEEhUKEUVYQ0VTU0lWRV9QSE9OSUVTEAUypQUKCk1vZFNlcnZpY2USSwoMQXBwbHlBY3Rpb25zEhsubW9kX3NlcnZpY2UuTW9kQWN0aW9uc0xpc3QaHi5tb2Rfc2VydmljZS5Nb2RBY3Rpb25SZXNwb25zZRJMCg1SZW1vdmVBY3Rpb25zEhsubW9kX3NlcnZpY2UuTW9kQWN0aW9uc0xpc3QaHi5tb2Rfc2VydmljZS5Nb2RBY3Rpb25SZXNwb25zZRJICgpHZXRBY3Rpb25zEh4ubW9kX3NlcnZpY2UuR2V0QWN0aW9uc1JlcXVlc3QaGi5tb2Rfc2VydmljZS5Nb2RBY3Rpb25zTWFwEk8KEEdldEFjdGlvbkhpc3RvcnkSHi5tb2Rfc2VydmljZS5HZXRBY3Rpb25zUmVxdWVzdBobLm1vZF9zZXJ2aWNlLk1vZEFjdGlvbnNMaXN0EloKEkdldE5vdG9yaWV0eVJlcG9ydBImLm1vZF9zZXJ2aWNlLkdldE5vdG9yaWV0eVJlcG9ydFJlcXVlc3QaHC5tb2Rfc2VydmljZS5Ob3RvcmlldHlSZXBvcnQSWQoOUmVzZXROb3RvcmlldHkSIi5tb2Rfc2VydmljZS5SZXNldE5vdG9yaWV0eVJlcXVlc3QaIy5tb2Rfc2VydmljZS5SZXNldE5vdG9yaWV0eVJlc3BvbnNlEl8KEExpc3RDaGF0Q2hhbm5lbHMSJC5tb2Rfc2VydmljZS5MaXN0Q2hhdENoYW5uZWxzUmVxdWVzdBolLm1vZF9zZXJ2aWNlLkxpc3RDaGF0Q2hhbm5lbHNSZXNwb25zZRJJCg9HZXRDaGFubmVsQ2hhdHMSIy5tb2Rfc2VydmljZS5HZXRDaGFubmVsQ2hhdHNSZXF1ZXN0GhEuaXBjLkNoYXRNZXNzYWdlc0KjAQoPY29tLm1vZF9zZXJ2aWNlQg9Nb2RTZXJ2aWNlUHJvdG9QAVo3Z2l0aHViLmNvbS93b29nbGVzLWlvL2xpd29yZHMvcnBjL2FwaS9wcm90by9tb2Rfc2VydmljZaICA01YWKoCCk1vZFNlcnZpY2XKAgpNb2RTZXJ2aWNl4gIWTW9kU2VydmljZVxHUEJNZXRhZGF0YeoCCk1vZFNlcnZpY2ViBnByb3RvMw", [file_proto_ipc_chat, file_google_protobuf_timestamp]);
+  fileDesc("CiNwcm90by9tb2Rfc2VydmljZS9tb2Rfc2VydmljZS5wcm90bxILbW9kX3NlcnZpY2UijAMKCU1vZEFjdGlvbhIPCgd1c2VyX2lkGAEgASgJEigKBHR5cGUYAiABKA4yGi5tb2Rfc2VydmljZS5Nb2RBY3Rpb25UeXBlEhAKCGR1cmF0aW9uGAMgASgFEi4KCnN0YXJ0X3RpbWUYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEiwKCGVuZF90aW1lGAUgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIwCgxyZW1vdmVkX3RpbWUYBiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEg8KB2NoYW5uZWwYByABKAkSEgoKbWVzc2FnZV9pZBgIIAEoCRIXCg9hcHBsaWVyX3VzZXJfaWQYCSABKAkSFwoPcmVtb3Zlcl91c2VyX2lkGAogASgJEhEKCWNoYXRfdGV4dBgLIAEoCRIMCgRub3RlGAwgASgJEioKCmVtYWlsX3R5cGUYDSABKA4yFi5tb2Rfc2VydmljZS5FbWFpbFR5cGUikQEKDU1vZEFjdGlvbnNNYXASOAoHYWN0aW9ucxgBIAMoCzInLm1vZF9zZXJ2aWNlLk1vZEFjdGlvbnNNYXAuQWN0aW9uc0VudHJ5GkYKDEFjdGlvbnNFbnRyeRILCgNrZXkYASABKAkSJQoFdmFsdWUYAiABKAsyFi5tb2Rfc2VydmljZS5Nb2RBY3Rpb246AjgBIjkKDk1vZEFjdGlvbnNMaXN0EicKB2FjdGlvbnMYASADKAsyFi5tb2Rfc2VydmljZS5Nb2RBY3Rpb24iJAoRR2V0QWN0aW9uc1JlcXVlc3QSDwoHdXNlcl9pZBgBIAEoCSITChFNb2RBY3Rpb25SZXNwb25zZSI0ChJDaGFuZ2VFbWFpbFJlcXVlc3QSDwoHdXNlcl9pZBgBIAEoCRINCgVlbWFpbBgCIAEoCSIVChNDaGFuZ2VFbWFpbFJlc3BvbnNlIpwBCgtFbWFpbENoYW5nZRIRCglvbGRfZW1haWwYASABKAkSEQoJbmV3X2VtYWlsGAIgASgJEi4KCmNoYW5nZWRfYXQYAyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhoKEmNoYW5nZWRfYnlfdXNlcl9pZBgEIAEoCRIbChNjaGFuZ2VkX2J5X3VzZXJuYW1lGAUgASgJIioKF0xpc3RFbWFpbENoYW5nZXNSZXF1ZXN0Eg8KB3VzZXJfaWQYASABKAkiRQoYTGlzdEVtYWlsQ2hhbmdlc1Jlc3BvbnNlEikKB2NoYW5nZXMYASADKAsyGC5tb2Rfc2VydmljZS5FbWFpbENoYW5nZSJ5Cg1Ob3RvcmlvdXNHYW1lEgoKAmlkGAEgASgJEiwKBHR5cGUYAiABKA4yHi5tb2Rfc2VydmljZS5Ob3RvcmlvdXNHYW1lVHlwZRIuCgpjcmVhdGVkX2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCIoChVSZXNldE5vdG9yaWV0eVJlcXVlc3QSDwoHdXNlcl9pZBgBIAEoCSIYChZSZXNldE5vdG9yaWV0eVJlc3BvbnNlIiwKGUdldE5vdG9yaWV0eVJlcG9ydFJlcXVlc3QSDwoHdXNlcl9pZBgBIAEoCSJLCg9Ob3RvcmlldHlSZXBvcnQSDQoFc2NvcmUYASABKAUSKQoFZ2FtZXMYAiADKAsyGi5tb2Rfc2VydmljZS5Ob3RvcmlvdXNHYW1lInMKF0xpc3RDaGF0Q2hhbm5lbHNSZXF1ZXN0EhYKDmNoYW5uZWxfcHJlZml4GAEgASgJEhAKCHVzZXJuYW1lGAIgASgJEg4KBmN1cnNvchgDIAEoCRIQCghjaGFubmVscxgEIAMoCRIMCgRmaW5kGAUgASgJIkMKD0NoYXRTZW5kZXJDb3VudBIPCgd1c2VyX2lkGAEgASgJEhAKCHVzZXJuYW1lGAIgASgJEg0KBWNvdW50GAMgASgFIpIBChJDaGF0Q2hhbm5lbENvbnRleHQSDQoFbGFiZWwYASABKAkSDAoEbGluaxgCIAEoCRItCgdwYXJ0aWVzGAMgAygLMhwubW9kX3NlcnZpY2UuQ2hhdFNlbmRlckNvdW50EhcKD2dhbWVfY3JlYXRlZF9hdBgEIAEoAxIXCg9nYW1lX3VwZGF0ZWRfYXQYBSABKAMigAIKEkNoYXRDaGFubmVsU3VtbWFyeRIPCgdjaGFubmVsGAEgASgJEhUKDW1lc3NhZ2VfY291bnQYAiABKAUSFwoPZmlyc3RfdGltZXN0YW1wGAMgASgDEhYKDmxhc3RfdGltZXN0YW1wGAQgASgDEi0KB3NlbmRlcnMYBSADKAsyHC5tb2Rfc2VydmljZS5DaGF0U2VuZGVyQ291bnQSEwoLdXNlcl9wbGF5ZWQYBiABKAgSMAoHY29udGV4dBgHIAEoCzIfLm1vZF9zZXJ2aWNlLkNoYXRDaGFubmVsQ29udGV4dBIbChN1c2VyX2xhc3RfdGltZXN0YW1wGAggASgDImIKGExpc3RDaGF0Q2hhbm5lbHNSZXNwb25zZRIxCghjaGFubmVscxgBIAMoCzIfLm1vZF9zZXJ2aWNlLkNoYXRDaGFubmVsU3VtbWFyeRITCgtuZXh0X2N1cnNvchgCIAEoCSIpChZHZXRDaGFubmVsQ2hhdHNSZXF1ZXN0Eg8KB2NoYW5uZWwYASABKAkqpAIKDU1vZEFjdGlvblR5cGUSCAoETVVURRAAEhMKD1NVU1BFTkRfQUNDT1VOVBABEhcKE1NVU1BFTkRfUkFURURfR0FNRVMQAhIRCg1TVVNQRU5EX0dBTUVTEAMSEQoNUkVTRVRfUkFUSU5HUxAEEg8KC1JFU0VUX1NUQVRTEAUSGwoXUkVTRVRfU1RBVFNfQU5EX1JBVElOR1MQBhIPCgtSRU1PVkVfQ0hBVBAHEhIKDkRFTEVURV9BQ0NPVU5UEAgSFQoRUkVNT1ZFX0ZJUlNUX05BTUUQCRIUChBSRU1PVkVfTEFTVF9OQU1FEAoSEAoMUkVNT1ZFX0FCT1VUEAsSEQoNUkVNT1ZFX0FWQVRBUhAMEhAKDENIQU5HRV9FTUFJTBANKjQKCUVtYWlsVHlwZRILCgdERUZBVUxUEAASDAoIQ0hFQVRJTkcQARIMCghERUxFVElPThACKnUKEU5vdG9yaW91c0dhbWVUeXBlEggKBEdPT0QQABILCgdOT19QTEFZEAESCwoHU0lUVElORxACEgsKB1NBTkRCQUcQAxIYChROT19QTEFZX0RFTklFRF9OVURHRRAEEhUKEUVYQ0VTU0lWRV9QSE9OSUVTEAUy2AYKCk1vZFNlcnZpY2USSwoMQXBwbHlBY3Rpb25zEhsubW9kX3NlcnZpY2UuTW9kQWN0aW9uc0xpc3QaHi5tb2Rfc2VydmljZS5Nb2RBY3Rpb25SZXNwb25zZRJMCg1SZW1vdmVBY3Rpb25zEhsubW9kX3NlcnZpY2UuTW9kQWN0aW9uc0xpc3QaHi5tb2Rfc2VydmljZS5Nb2RBY3Rpb25SZXNwb25zZRJICgpHZXRBY3Rpb25zEh4ubW9kX3NlcnZpY2UuR2V0QWN0aW9uc1JlcXVlc3QaGi5tb2Rfc2VydmljZS5Nb2RBY3Rpb25zTWFwEk8KEEdldEFjdGlvbkhpc3RvcnkSHi5tb2Rfc2VydmljZS5HZXRBY3Rpb25zUmVxdWVzdBobLm1vZF9zZXJ2aWNlLk1vZEFjdGlvbnNMaXN0EloKEkdldE5vdG9yaWV0eVJlcG9ydBImLm1vZF9zZXJ2aWNlLkdldE5vdG9yaWV0eVJlcG9ydFJlcXVlc3QaHC5tb2Rfc2VydmljZS5Ob3RvcmlldHlSZXBvcnQSWQoOUmVzZXROb3RvcmlldHkSIi5tb2Rfc2VydmljZS5SZXNldE5vdG9yaWV0eVJlcXVlc3QaIy5tb2Rfc2VydmljZS5SZXNldE5vdG9yaWV0eVJlc3BvbnNlEl8KEExpc3RDaGF0Q2hhbm5lbHMSJC5tb2Rfc2VydmljZS5MaXN0Q2hhdENoYW5uZWxzUmVxdWVzdBolLm1vZF9zZXJ2aWNlLkxpc3RDaGF0Q2hhbm5lbHNSZXNwb25zZRJJCg9HZXRDaGFubmVsQ2hhdHMSIy5tb2Rfc2VydmljZS5HZXRDaGFubmVsQ2hhdHNSZXF1ZXN0GhEuaXBjLkNoYXRNZXNzYWdlcxJQCgtDaGFuZ2VFbWFpbBIfLm1vZF9zZXJ2aWNlLkNoYW5nZUVtYWlsUmVxdWVzdBogLm1vZF9zZXJ2aWNlLkNoYW5nZUVtYWlsUmVzcG9uc2USXwoQTGlzdEVtYWlsQ2hhbmdlcxIkLm1vZF9zZXJ2aWNlLkxpc3RFbWFpbENoYW5nZXNSZXF1ZXN0GiUubW9kX3NlcnZpY2UuTGlzdEVtYWlsQ2hhbmdlc1Jlc3BvbnNlQqMBCg9jb20ubW9kX3NlcnZpY2VCD01vZFNlcnZpY2VQcm90b1ABWjdnaXRodWIuY29tL3dvb2dsZXMtaW8vbGl3b3Jkcy9ycGMvYXBpL3Byb3RvL21vZF9zZXJ2aWNlogIDTVhYqgIKTW9kU2VydmljZcoCCk1vZFNlcnZpY2XiAhZNb2RTZXJ2aWNlXEdQQk1ldGFkYXRh6gIKTW9kU2VydmljZWIGcHJvdG8z", [file_proto_ipc_chat, file_google_protobuf_timestamp]);
 
 /**
  * @generated from message mod_service.ModAction
@@ -164,6 +164,120 @@ export const ModActionResponseSchema: GenMessage<ModActionResponse> = /*@__PURE_
   messageDesc(file_proto_mod_service_mod_service, 4);
 
 /**
+ * ChangeEmailRequest sets a user's email at once, with no mail to either
+ * address, and records it in the email changes. Only an admin may.
+ *
+ * @generated from message mod_service.ChangeEmailRequest
+ */
+export type ChangeEmailRequest = Message<"mod_service.ChangeEmailRequest"> & {
+  /**
+   * @generated from field: string user_id = 1;
+   */
+  userId: string;
+
+  /**
+   * @generated from field: string email = 2;
+   */
+  email: string;
+};
+
+/**
+ * Describes the message mod_service.ChangeEmailRequest.
+ * Use `create(ChangeEmailRequestSchema)` to create a new message.
+ */
+export const ChangeEmailRequestSchema: GenMessage<ChangeEmailRequest> = /*@__PURE__*/
+  messageDesc(file_proto_mod_service_mod_service, 5);
+
+/**
+ * @generated from message mod_service.ChangeEmailResponse
+ */
+export type ChangeEmailResponse = Message<"mod_service.ChangeEmailResponse"> & {
+};
+
+/**
+ * Describes the message mod_service.ChangeEmailResponse.
+ * Use `create(ChangeEmailResponseSchema)` to create a new message.
+ */
+export const ChangeEmailResponseSchema: GenMessage<ChangeEmailResponse> = /*@__PURE__*/
+  messageDesc(file_proto_mod_service_mod_service, 6);
+
+/**
+ * EmailChange is one change of a user's email, by the user or by an admin.
+ *
+ * @generated from message mod_service.EmailChange
+ */
+export type EmailChange = Message<"mod_service.EmailChange"> & {
+  /**
+   * @generated from field: string old_email = 1;
+   */
+  oldEmail: string;
+
+  /**
+   * @generated from field: string new_email = 2;
+   */
+  newEmail: string;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp changed_at = 3;
+   */
+  changedAt?: Timestamp | undefined;
+
+  /**
+   * @generated from field: string changed_by_user_id = 4;
+   */
+  changedByUserId: string;
+
+  /**
+   * @generated from field: string changed_by_username = 5;
+   */
+  changedByUsername: string;
+};
+
+/**
+ * Describes the message mod_service.EmailChange.
+ * Use `create(EmailChangeSchema)` to create a new message.
+ */
+export const EmailChangeSchema: GenMessage<EmailChange> = /*@__PURE__*/
+  messageDesc(file_proto_mod_service_mod_service, 7);
+
+/**
+ * @generated from message mod_service.ListEmailChangesRequest
+ */
+export type ListEmailChangesRequest = Message<"mod_service.ListEmailChangesRequest"> & {
+  /**
+   * @generated from field: string user_id = 1;
+   */
+  userId: string;
+};
+
+/**
+ * Describes the message mod_service.ListEmailChangesRequest.
+ * Use `create(ListEmailChangesRequestSchema)` to create a new message.
+ */
+export const ListEmailChangesRequestSchema: GenMessage<ListEmailChangesRequest> = /*@__PURE__*/
+  messageDesc(file_proto_mod_service_mod_service, 8);
+
+/**
+ * ListEmailChangesResponse lists the changes newest first. Only an admin may
+ * see them.
+ *
+ * @generated from message mod_service.ListEmailChangesResponse
+ */
+export type ListEmailChangesResponse = Message<"mod_service.ListEmailChangesResponse"> & {
+  /**
+   * @generated from field: repeated mod_service.EmailChange changes = 1;
+   */
+  changes: EmailChange[];
+};
+
+/**
+ * Describes the message mod_service.ListEmailChangesResponse.
+ * Use `create(ListEmailChangesResponseSchema)` to create a new message.
+ */
+export const ListEmailChangesResponseSchema: GenMessage<ListEmailChangesResponse> = /*@__PURE__*/
+  messageDesc(file_proto_mod_service_mod_service, 9);
+
+/**
  * @generated from message mod_service.NotoriousGame
  */
 export type NotoriousGame = Message<"mod_service.NotoriousGame"> & {
@@ -188,7 +302,7 @@ export type NotoriousGame = Message<"mod_service.NotoriousGame"> & {
  * Use `create(NotoriousGameSchema)` to create a new message.
  */
 export const NotoriousGameSchema: GenMessage<NotoriousGame> = /*@__PURE__*/
-  messageDesc(file_proto_mod_service_mod_service, 5);
+  messageDesc(file_proto_mod_service_mod_service, 10);
 
 /**
  * @generated from message mod_service.ResetNotorietyRequest
@@ -205,7 +319,7 @@ export type ResetNotorietyRequest = Message<"mod_service.ResetNotorietyRequest">
  * Use `create(ResetNotorietyRequestSchema)` to create a new message.
  */
 export const ResetNotorietyRequestSchema: GenMessage<ResetNotorietyRequest> = /*@__PURE__*/
-  messageDesc(file_proto_mod_service_mod_service, 6);
+  messageDesc(file_proto_mod_service_mod_service, 11);
 
 /**
  * @generated from message mod_service.ResetNotorietyResponse
@@ -218,7 +332,7 @@ export type ResetNotorietyResponse = Message<"mod_service.ResetNotorietyResponse
  * Use `create(ResetNotorietyResponseSchema)` to create a new message.
  */
 export const ResetNotorietyResponseSchema: GenMessage<ResetNotorietyResponse> = /*@__PURE__*/
-  messageDesc(file_proto_mod_service_mod_service, 7);
+  messageDesc(file_proto_mod_service_mod_service, 12);
 
 /**
  * @generated from message mod_service.GetNotorietyReportRequest
@@ -235,7 +349,7 @@ export type GetNotorietyReportRequest = Message<"mod_service.GetNotorietyReportR
  * Use `create(GetNotorietyReportRequestSchema)` to create a new message.
  */
 export const GetNotorietyReportRequestSchema: GenMessage<GetNotorietyReportRequest> = /*@__PURE__*/
-  messageDesc(file_proto_mod_service_mod_service, 8);
+  messageDesc(file_proto_mod_service_mod_service, 13);
 
 /**
  * @generated from message mod_service.NotorietyReport
@@ -257,7 +371,7 @@ export type NotorietyReport = Message<"mod_service.NotorietyReport"> & {
  * Use `create(NotorietyReportSchema)` to create a new message.
  */
 export const NotorietyReportSchema: GenMessage<NotorietyReport> = /*@__PURE__*/
-  messageDesc(file_proto_mod_service_mod_service, 9);
+  messageDesc(file_proto_mod_service_mod_service, 14);
 
 /**
  * @generated from message mod_service.ListChatChannelsRequest
@@ -310,7 +424,7 @@ export type ListChatChannelsRequest = Message<"mod_service.ListChatChannelsReque
  * Use `create(ListChatChannelsRequestSchema)` to create a new message.
  */
 export const ListChatChannelsRequestSchema: GenMessage<ListChatChannelsRequest> = /*@__PURE__*/
-  messageDesc(file_proto_mod_service_mod_service, 10);
+  messageDesc(file_proto_mod_service_mod_service, 15);
 
 /**
  * @generated from message mod_service.ChatSenderCount
@@ -337,7 +451,7 @@ export type ChatSenderCount = Message<"mod_service.ChatSenderCount"> & {
  * Use `create(ChatSenderCountSchema)` to create a new message.
  */
 export const ChatSenderCountSchema: GenMessage<ChatSenderCount> = /*@__PURE__*/
-  messageDesc(file_proto_mod_service_mod_service, 11);
+  messageDesc(file_proto_mod_service_mod_service, 16);
 
 /**
  * What a channel is about, decoded from its name.
@@ -385,7 +499,7 @@ export type ChatChannelContext = Message<"mod_service.ChatChannelContext"> & {
  * Use `create(ChatChannelContextSchema)` to create a new message.
  */
 export const ChatChannelContextSchema: GenMessage<ChatChannelContext> = /*@__PURE__*/
-  messageDesc(file_proto_mod_service_mod_service, 12);
+  messageDesc(file_proto_mod_service_mod_service, 17);
 
 /**
  * @generated from message mod_service.ChatChannelSummary
@@ -445,7 +559,7 @@ export type ChatChannelSummary = Message<"mod_service.ChatChannelSummary"> & {
  * Use `create(ChatChannelSummarySchema)` to create a new message.
  */
 export const ChatChannelSummarySchema: GenMessage<ChatChannelSummary> = /*@__PURE__*/
-  messageDesc(file_proto_mod_service_mod_service, 13);
+  messageDesc(file_proto_mod_service_mod_service, 18);
 
 /**
  * @generated from message mod_service.ListChatChannelsResponse
@@ -469,7 +583,7 @@ export type ListChatChannelsResponse = Message<"mod_service.ListChatChannelsResp
  * Use `create(ListChatChannelsResponseSchema)` to create a new message.
  */
 export const ListChatChannelsResponseSchema: GenMessage<ListChatChannelsResponse> = /*@__PURE__*/
-  messageDesc(file_proto_mod_service_mod_service, 14);
+  messageDesc(file_proto_mod_service_mod_service, 19);
 
 /**
  * @generated from message mod_service.GetChannelChatsRequest
@@ -486,7 +600,7 @@ export type GetChannelChatsRequest = Message<"mod_service.GetChannelChatsRequest
  * Use `create(GetChannelChatsRequestSchema)` to create a new message.
  */
 export const GetChannelChatsRequestSchema: GenMessage<GetChannelChatsRequest> = /*@__PURE__*/
-  messageDesc(file_proto_mod_service_mod_service, 15);
+  messageDesc(file_proto_mod_service_mod_service, 20);
 
 /**
  * @generated from enum mod_service.ModActionType
@@ -556,6 +670,14 @@ export enum ModActionType {
    * @generated from enum value: REMOVE_AVATAR = 12;
    */
   REMOVE_AVATAR = 12,
+
+  /**
+   * CHANGE_EMAIL: what an admin's ChangeEmail is checked as. It is never
+   * stored as an action; the change goes in the email changes.
+   *
+   * @generated from enum value: CHANGE_EMAIL = 13;
+   */
+  CHANGE_EMAIL = 13,
 }
 
 /**
@@ -698,6 +820,22 @@ export const ModService: GenService<{
     methodKind: "unary";
     input: typeof GetChannelChatsRequestSchema;
     output: typeof ChatMessagesSchema;
+  },
+  /**
+   * @generated from rpc mod_service.ModService.ChangeEmail
+   */
+  changeEmail: {
+    methodKind: "unary";
+    input: typeof ChangeEmailRequestSchema;
+    output: typeof ChangeEmailResponseSchema;
+  },
+  /**
+   * @generated from rpc mod_service.ModService.ListEmailChanges
+   */
+  listEmailChanges: {
+    methodKind: "unary";
+    input: typeof ListEmailChangesRequestSchema;
+    output: typeof ListEmailChangesResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_proto_mod_service_mod_service, 0);

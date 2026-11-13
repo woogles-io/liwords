@@ -49,7 +49,7 @@ func TestRemoveProfileFields(t *testing.T) {
 	} {
 		t.Run(tc.actionType.String(), func(t *testing.T) {
 			is := is.New(t)
-			is.NoErr(us.SetPersonalInfo(ctx, "Hacker", "hacker@woogles.io", fullProfile.FirstName,
+			is.NoErr(us.SetPersonalInfo(ctx, "Hacker", fullProfile.FirstName,
 				fullProfile.LastName, fullProfile.BirthDate, fullProfile.CountryCode, fullProfile.About))
 			is.NoErr(us.SetAvatarUrl(ctx, "Hacker", fullProfile.AvatarUrl))
 

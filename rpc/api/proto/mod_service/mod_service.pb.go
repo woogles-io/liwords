@@ -39,6 +39,9 @@ const (
 	ModActionType_REMOVE_LAST_NAME        ModActionType = 10
 	ModActionType_REMOVE_ABOUT            ModActionType = 11
 	ModActionType_REMOVE_AVATAR           ModActionType = 12
+	// CHANGE_EMAIL: what an admin's ChangeEmail is checked as. It is never
+	// stored as an action; the change goes in the email changes.
+	ModActionType_CHANGE_EMAIL ModActionType = 13
 )
 
 // Enum value maps for ModActionType.
@@ -57,6 +60,7 @@ var (
 		10: "REMOVE_LAST_NAME",
 		11: "REMOVE_ABOUT",
 		12: "REMOVE_AVATAR",
+		13: "CHANGE_EMAIL",
 	}
 	ModActionType_value = map[string]int32{
 		"MUTE":                    0,
@@ -72,6 +76,7 @@ var (
 		"REMOVE_LAST_NAME":        10,
 		"REMOVE_ABOUT":            11,
 		"REMOVE_AVATAR":           12,
+		"CHANGE_EMAIL":            13,
 	}
 )
 
@@ -521,6 +526,263 @@ func (*ModActionResponse) Descriptor() ([]byte, []int) {
 	return file_proto_mod_service_mod_service_proto_rawDescGZIP(), []int{4}
 }
 
+// ChangeEmailRequest sets a user's email at once, with no mail to either
+// address, and records it in the email changes. Only an admin may.
+type ChangeEmailRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	Email         string                 `protobuf:"bytes,2,opt,name=email,proto3" json:"email,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ChangeEmailRequest) Reset() {
+	*x = ChangeEmailRequest{}
+	mi := &file_proto_mod_service_mod_service_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ChangeEmailRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ChangeEmailRequest) ProtoMessage() {}
+
+func (x *ChangeEmailRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_mod_service_mod_service_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ChangeEmailRequest.ProtoReflect.Descriptor instead.
+func (*ChangeEmailRequest) Descriptor() ([]byte, []int) {
+	return file_proto_mod_service_mod_service_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *ChangeEmailRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *ChangeEmailRequest) GetEmail() string {
+	if x != nil {
+		return x.Email
+	}
+	return ""
+}
+
+type ChangeEmailResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ChangeEmailResponse) Reset() {
+	*x = ChangeEmailResponse{}
+	mi := &file_proto_mod_service_mod_service_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ChangeEmailResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ChangeEmailResponse) ProtoMessage() {}
+
+func (x *ChangeEmailResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_mod_service_mod_service_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ChangeEmailResponse.ProtoReflect.Descriptor instead.
+func (*ChangeEmailResponse) Descriptor() ([]byte, []int) {
+	return file_proto_mod_service_mod_service_proto_rawDescGZIP(), []int{6}
+}
+
+// EmailChange is one change of a user's email, by the user or by an admin.
+type EmailChange struct {
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	OldEmail          string                 `protobuf:"bytes,1,opt,name=old_email,json=oldEmail,proto3" json:"old_email,omitempty"`
+	NewEmail          string                 `protobuf:"bytes,2,opt,name=new_email,json=newEmail,proto3" json:"new_email,omitempty"`
+	ChangedAt         *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=changed_at,json=changedAt,proto3" json:"changed_at,omitempty"`
+	ChangedByUserId   string                 `protobuf:"bytes,4,opt,name=changed_by_user_id,json=changedByUserId,proto3" json:"changed_by_user_id,omitempty"`
+	ChangedByUsername string                 `protobuf:"bytes,5,opt,name=changed_by_username,json=changedByUsername,proto3" json:"changed_by_username,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *EmailChange) Reset() {
+	*x = EmailChange{}
+	mi := &file_proto_mod_service_mod_service_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EmailChange) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EmailChange) ProtoMessage() {}
+
+func (x *EmailChange) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_mod_service_mod_service_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EmailChange.ProtoReflect.Descriptor instead.
+func (*EmailChange) Descriptor() ([]byte, []int) {
+	return file_proto_mod_service_mod_service_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *EmailChange) GetOldEmail() string {
+	if x != nil {
+		return x.OldEmail
+	}
+	return ""
+}
+
+func (x *EmailChange) GetNewEmail() string {
+	if x != nil {
+		return x.NewEmail
+	}
+	return ""
+}
+
+func (x *EmailChange) GetChangedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ChangedAt
+	}
+	return nil
+}
+
+func (x *EmailChange) GetChangedByUserId() string {
+	if x != nil {
+		return x.ChangedByUserId
+	}
+	return ""
+}
+
+func (x *EmailChange) GetChangedByUsername() string {
+	if x != nil {
+		return x.ChangedByUsername
+	}
+	return ""
+}
+
+type ListEmailChangesRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListEmailChangesRequest) Reset() {
+	*x = ListEmailChangesRequest{}
+	mi := &file_proto_mod_service_mod_service_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListEmailChangesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListEmailChangesRequest) ProtoMessage() {}
+
+func (x *ListEmailChangesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_mod_service_mod_service_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListEmailChangesRequest.ProtoReflect.Descriptor instead.
+func (*ListEmailChangesRequest) Descriptor() ([]byte, []int) {
+	return file_proto_mod_service_mod_service_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *ListEmailChangesRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+// ListEmailChangesResponse lists the changes newest first. Only an admin may
+// see them.
+type ListEmailChangesResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Changes       []*EmailChange         `protobuf:"bytes,1,rep,name=changes,proto3" json:"changes,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListEmailChangesResponse) Reset() {
+	*x = ListEmailChangesResponse{}
+	mi := &file_proto_mod_service_mod_service_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListEmailChangesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListEmailChangesResponse) ProtoMessage() {}
+
+func (x *ListEmailChangesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_mod_service_mod_service_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListEmailChangesResponse.ProtoReflect.Descriptor instead.
+func (*ListEmailChangesResponse) Descriptor() ([]byte, []int) {
+	return file_proto_mod_service_mod_service_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *ListEmailChangesResponse) GetChanges() []*EmailChange {
+	if x != nil {
+		return x.Changes
+	}
+	return nil
+}
+
 type NotoriousGame struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -532,7 +794,7 @@ type NotoriousGame struct {
 
 func (x *NotoriousGame) Reset() {
 	*x = NotoriousGame{}
-	mi := &file_proto_mod_service_mod_service_proto_msgTypes[5]
+	mi := &file_proto_mod_service_mod_service_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -544,7 +806,7 @@ func (x *NotoriousGame) String() string {
 func (*NotoriousGame) ProtoMessage() {}
 
 func (x *NotoriousGame) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mod_service_mod_service_proto_msgTypes[5]
+	mi := &file_proto_mod_service_mod_service_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -557,7 +819,7 @@ func (x *NotoriousGame) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NotoriousGame.ProtoReflect.Descriptor instead.
 func (*NotoriousGame) Descriptor() ([]byte, []int) {
-	return file_proto_mod_service_mod_service_proto_rawDescGZIP(), []int{5}
+	return file_proto_mod_service_mod_service_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *NotoriousGame) GetId() string {
@@ -590,7 +852,7 @@ type ResetNotorietyRequest struct {
 
 func (x *ResetNotorietyRequest) Reset() {
 	*x = ResetNotorietyRequest{}
-	mi := &file_proto_mod_service_mod_service_proto_msgTypes[6]
+	mi := &file_proto_mod_service_mod_service_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -602,7 +864,7 @@ func (x *ResetNotorietyRequest) String() string {
 func (*ResetNotorietyRequest) ProtoMessage() {}
 
 func (x *ResetNotorietyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mod_service_mod_service_proto_msgTypes[6]
+	mi := &file_proto_mod_service_mod_service_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -615,7 +877,7 @@ func (x *ResetNotorietyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResetNotorietyRequest.ProtoReflect.Descriptor instead.
 func (*ResetNotorietyRequest) Descriptor() ([]byte, []int) {
-	return file_proto_mod_service_mod_service_proto_rawDescGZIP(), []int{6}
+	return file_proto_mod_service_mod_service_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *ResetNotorietyRequest) GetUserId() string {
@@ -633,7 +895,7 @@ type ResetNotorietyResponse struct {
 
 func (x *ResetNotorietyResponse) Reset() {
 	*x = ResetNotorietyResponse{}
-	mi := &file_proto_mod_service_mod_service_proto_msgTypes[7]
+	mi := &file_proto_mod_service_mod_service_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -645,7 +907,7 @@ func (x *ResetNotorietyResponse) String() string {
 func (*ResetNotorietyResponse) ProtoMessage() {}
 
 func (x *ResetNotorietyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mod_service_mod_service_proto_msgTypes[7]
+	mi := &file_proto_mod_service_mod_service_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -658,7 +920,7 @@ func (x *ResetNotorietyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResetNotorietyResponse.ProtoReflect.Descriptor instead.
 func (*ResetNotorietyResponse) Descriptor() ([]byte, []int) {
-	return file_proto_mod_service_mod_service_proto_rawDescGZIP(), []int{7}
+	return file_proto_mod_service_mod_service_proto_rawDescGZIP(), []int{12}
 }
 
 type GetNotorietyReportRequest struct {
@@ -670,7 +932,7 @@ type GetNotorietyReportRequest struct {
 
 func (x *GetNotorietyReportRequest) Reset() {
 	*x = GetNotorietyReportRequest{}
-	mi := &file_proto_mod_service_mod_service_proto_msgTypes[8]
+	mi := &file_proto_mod_service_mod_service_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -682,7 +944,7 @@ func (x *GetNotorietyReportRequest) String() string {
 func (*GetNotorietyReportRequest) ProtoMessage() {}
 
 func (x *GetNotorietyReportRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mod_service_mod_service_proto_msgTypes[8]
+	mi := &file_proto_mod_service_mod_service_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -695,7 +957,7 @@ func (x *GetNotorietyReportRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetNotorietyReportRequest.ProtoReflect.Descriptor instead.
 func (*GetNotorietyReportRequest) Descriptor() ([]byte, []int) {
-	return file_proto_mod_service_mod_service_proto_rawDescGZIP(), []int{8}
+	return file_proto_mod_service_mod_service_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *GetNotorietyReportRequest) GetUserId() string {
@@ -715,7 +977,7 @@ type NotorietyReport struct {
 
 func (x *NotorietyReport) Reset() {
 	*x = NotorietyReport{}
-	mi := &file_proto_mod_service_mod_service_proto_msgTypes[9]
+	mi := &file_proto_mod_service_mod_service_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -727,7 +989,7 @@ func (x *NotorietyReport) String() string {
 func (*NotorietyReport) ProtoMessage() {}
 
 func (x *NotorietyReport) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mod_service_mod_service_proto_msgTypes[9]
+	mi := &file_proto_mod_service_mod_service_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -740,7 +1002,7 @@ func (x *NotorietyReport) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NotorietyReport.ProtoReflect.Descriptor instead.
 func (*NotorietyReport) Descriptor() ([]byte, []int) {
-	return file_proto_mod_service_mod_service_proto_rawDescGZIP(), []int{9}
+	return file_proto_mod_service_mod_service_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *NotorietyReport) GetScore() int32 {
@@ -781,7 +1043,7 @@ type ListChatChannelsRequest struct {
 
 func (x *ListChatChannelsRequest) Reset() {
 	*x = ListChatChannelsRequest{}
-	mi := &file_proto_mod_service_mod_service_proto_msgTypes[10]
+	mi := &file_proto_mod_service_mod_service_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -793,7 +1055,7 @@ func (x *ListChatChannelsRequest) String() string {
 func (*ListChatChannelsRequest) ProtoMessage() {}
 
 func (x *ListChatChannelsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mod_service_mod_service_proto_msgTypes[10]
+	mi := &file_proto_mod_service_mod_service_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -806,7 +1068,7 @@ func (x *ListChatChannelsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListChatChannelsRequest.ProtoReflect.Descriptor instead.
 func (*ListChatChannelsRequest) Descriptor() ([]byte, []int) {
-	return file_proto_mod_service_mod_service_proto_rawDescGZIP(), []int{10}
+	return file_proto_mod_service_mod_service_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *ListChatChannelsRequest) GetChannelPrefix() string {
@@ -855,7 +1117,7 @@ type ChatSenderCount struct {
 
 func (x *ChatSenderCount) Reset() {
 	*x = ChatSenderCount{}
-	mi := &file_proto_mod_service_mod_service_proto_msgTypes[11]
+	mi := &file_proto_mod_service_mod_service_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -867,7 +1129,7 @@ func (x *ChatSenderCount) String() string {
 func (*ChatSenderCount) ProtoMessage() {}
 
 func (x *ChatSenderCount) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mod_service_mod_service_proto_msgTypes[11]
+	mi := &file_proto_mod_service_mod_service_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -880,7 +1142,7 @@ func (x *ChatSenderCount) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ChatSenderCount.ProtoReflect.Descriptor instead.
 func (*ChatSenderCount) Descriptor() ([]byte, []int) {
-	return file_proto_mod_service_mod_service_proto_rawDescGZIP(), []int{11}
+	return file_proto_mod_service_mod_service_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *ChatSenderCount) GetUserId() string {
@@ -923,7 +1185,7 @@ type ChatChannelContext struct {
 
 func (x *ChatChannelContext) Reset() {
 	*x = ChatChannelContext{}
-	mi := &file_proto_mod_service_mod_service_proto_msgTypes[12]
+	mi := &file_proto_mod_service_mod_service_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -935,7 +1197,7 @@ func (x *ChatChannelContext) String() string {
 func (*ChatChannelContext) ProtoMessage() {}
 
 func (x *ChatChannelContext) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mod_service_mod_service_proto_msgTypes[12]
+	mi := &file_proto_mod_service_mod_service_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -948,7 +1210,7 @@ func (x *ChatChannelContext) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ChatChannelContext.ProtoReflect.Descriptor instead.
 func (*ChatChannelContext) Descriptor() ([]byte, []int) {
-	return file_proto_mod_service_mod_service_proto_rawDescGZIP(), []int{12}
+	return file_proto_mod_service_mod_service_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *ChatChannelContext) GetLabel() string {
@@ -1007,7 +1269,7 @@ type ChatChannelSummary struct {
 
 func (x *ChatChannelSummary) Reset() {
 	*x = ChatChannelSummary{}
-	mi := &file_proto_mod_service_mod_service_proto_msgTypes[13]
+	mi := &file_proto_mod_service_mod_service_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1019,7 +1281,7 @@ func (x *ChatChannelSummary) String() string {
 func (*ChatChannelSummary) ProtoMessage() {}
 
 func (x *ChatChannelSummary) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mod_service_mod_service_proto_msgTypes[13]
+	mi := &file_proto_mod_service_mod_service_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1032,7 +1294,7 @@ func (x *ChatChannelSummary) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ChatChannelSummary.ProtoReflect.Descriptor instead.
 func (*ChatChannelSummary) Descriptor() ([]byte, []int) {
-	return file_proto_mod_service_mod_service_proto_rawDescGZIP(), []int{13}
+	return file_proto_mod_service_mod_service_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *ChatChannelSummary) GetChannel() string {
@@ -1102,7 +1364,7 @@ type ListChatChannelsResponse struct {
 
 func (x *ListChatChannelsResponse) Reset() {
 	*x = ListChatChannelsResponse{}
-	mi := &file_proto_mod_service_mod_service_proto_msgTypes[14]
+	mi := &file_proto_mod_service_mod_service_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1114,7 +1376,7 @@ func (x *ListChatChannelsResponse) String() string {
 func (*ListChatChannelsResponse) ProtoMessage() {}
 
 func (x *ListChatChannelsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mod_service_mod_service_proto_msgTypes[14]
+	mi := &file_proto_mod_service_mod_service_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1127,7 +1389,7 @@ func (x *ListChatChannelsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListChatChannelsResponse.ProtoReflect.Descriptor instead.
 func (*ListChatChannelsResponse) Descriptor() ([]byte, []int) {
-	return file_proto_mod_service_mod_service_proto_rawDescGZIP(), []int{14}
+	return file_proto_mod_service_mod_service_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *ListChatChannelsResponse) GetChannels() []*ChatChannelSummary {
@@ -1153,7 +1415,7 @@ type GetChannelChatsRequest struct {
 
 func (x *GetChannelChatsRequest) Reset() {
 	*x = GetChannelChatsRequest{}
-	mi := &file_proto_mod_service_mod_service_proto_msgTypes[15]
+	mi := &file_proto_mod_service_mod_service_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1165,7 +1427,7 @@ func (x *GetChannelChatsRequest) String() string {
 func (*GetChannelChatsRequest) ProtoMessage() {}
 
 func (x *GetChannelChatsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mod_service_mod_service_proto_msgTypes[15]
+	mi := &file_proto_mod_service_mod_service_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1178,7 +1440,7 @@ func (x *GetChannelChatsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetChannelChatsRequest.ProtoReflect.Descriptor instead.
 func (*GetChannelChatsRequest) Descriptor() ([]byte, []int) {
-	return file_proto_mod_service_mod_service_proto_rawDescGZIP(), []int{15}
+	return file_proto_mod_service_mod_service_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *GetChannelChatsRequest) GetChannel() string {
@@ -1220,7 +1482,22 @@ const file_proto_mod_service_mod_service_proto_rawDesc = "" +
 	"\aactions\x18\x01 \x03(\v2\x16.mod_service.ModActionR\aactions\",\n" +
 	"\x11GetActionsRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\"\x13\n" +
-	"\x11ModActionResponse\"\x8e\x01\n" +
+	"\x11ModActionResponse\"C\n" +
+	"\x12ChangeEmailRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x14\n" +
+	"\x05email\x18\x02 \x01(\tR\x05email\"\x15\n" +
+	"\x13ChangeEmailResponse\"\xdf\x01\n" +
+	"\vEmailChange\x12\x1b\n" +
+	"\told_email\x18\x01 \x01(\tR\boldEmail\x12\x1b\n" +
+	"\tnew_email\x18\x02 \x01(\tR\bnewEmail\x129\n" +
+	"\n" +
+	"changed_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\tchangedAt\x12+\n" +
+	"\x12changed_by_user_id\x18\x04 \x01(\tR\x0fchangedByUserId\x12.\n" +
+	"\x13changed_by_username\x18\x05 \x01(\tR\x11changedByUsername\"2\n" +
+	"\x17ListEmailChangesRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\"N\n" +
+	"\x18ListEmailChangesResponse\x122\n" +
+	"\achanges\x18\x01 \x03(\v2\x18.mod_service.EmailChangeR\achanges\"\x8e\x01\n" +
 	"\rNotoriousGame\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x122\n" +
 	"\x04type\x18\x02 \x01(\x0e2\x1e.mod_service.NotoriousGameTypeR\x04type\x129\n" +
@@ -1265,7 +1542,7 @@ const file_proto_mod_service_mod_service_proto_rawDesc = "" +
 	"\vnext_cursor\x18\x02 \x01(\tR\n" +
 	"nextCursor\"2\n" +
 	"\x16GetChannelChatsRequest\x12\x18\n" +
-	"\achannel\x18\x01 \x01(\tR\achannel*\x92\x02\n" +
+	"\achannel\x18\x01 \x01(\tR\achannel*\xa4\x02\n" +
 	"\rModActionType\x12\b\n" +
 	"\x04MUTE\x10\x00\x12\x13\n" +
 	"\x0fSUSPEND_ACCOUNT\x10\x01\x12\x17\n" +
@@ -1280,7 +1557,8 @@ const file_proto_mod_service_mod_service_proto_rawDesc = "" +
 	"\x10REMOVE_LAST_NAME\x10\n" +
 	"\x12\x10\n" +
 	"\fREMOVE_ABOUT\x10\v\x12\x11\n" +
-	"\rREMOVE_AVATAR\x10\f*4\n" +
+	"\rREMOVE_AVATAR\x10\f\x12\x10\n" +
+	"\fCHANGE_EMAIL\x10\r*4\n" +
 	"\tEmailType\x12\v\n" +
 	"\aDEFAULT\x10\x00\x12\f\n" +
 	"\bCHEATING\x10\x01\x12\f\n" +
@@ -1291,7 +1569,7 @@ const file_proto_mod_service_mod_service_proto_rawDesc = "" +
 	"\aSITTING\x10\x02\x12\v\n" +
 	"\aSANDBAG\x10\x03\x12\x18\n" +
 	"\x14NO_PLAY_DENIED_NUDGE\x10\x04\x12\x15\n" +
-	"\x11EXCESSIVE_PHONIES\x10\x052\xa5\x05\n" +
+	"\x11EXCESSIVE_PHONIES\x10\x052\xd8\x06\n" +
 	"\n" +
 	"ModService\x12K\n" +
 	"\fApplyActions\x12\x1b.mod_service.ModActionsList\x1a\x1e.mod_service.ModActionResponse\x12L\n" +
@@ -1302,7 +1580,9 @@ const file_proto_mod_service_mod_service_proto_rawDesc = "" +
 	"\x12GetNotorietyReport\x12&.mod_service.GetNotorietyReportRequest\x1a\x1c.mod_service.NotorietyReport\x12Y\n" +
 	"\x0eResetNotoriety\x12\".mod_service.ResetNotorietyRequest\x1a#.mod_service.ResetNotorietyResponse\x12_\n" +
 	"\x10ListChatChannels\x12$.mod_service.ListChatChannelsRequest\x1a%.mod_service.ListChatChannelsResponse\x12I\n" +
-	"\x0fGetChannelChats\x12#.mod_service.GetChannelChatsRequest\x1a\x11.ipc.ChatMessagesB\xa3\x01\n" +
+	"\x0fGetChannelChats\x12#.mod_service.GetChannelChatsRequest\x1a\x11.ipc.ChatMessages\x12P\n" +
+	"\vChangeEmail\x12\x1f.mod_service.ChangeEmailRequest\x1a .mod_service.ChangeEmailResponse\x12_\n" +
+	"\x10ListEmailChanges\x12$.mod_service.ListEmailChangesRequest\x1a%.mod_service.ListEmailChangesResponseB\xa3\x01\n" +
 	"\x0fcom.mod_serviceB\x0fModServiceProtoP\x01Z7github.com/woogles-io/liwords/rpc/api/proto/mod_service\xa2\x02\x03MXX\xaa\x02\n" +
 	"ModService\xca\x02\n" +
 	"ModService\xe2\x02\x16ModService\\GPBMetadata\xea\x02\n" +
@@ -1321,7 +1601,7 @@ func file_proto_mod_service_mod_service_proto_rawDescGZIP() []byte {
 }
 
 var file_proto_mod_service_mod_service_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_proto_mod_service_mod_service_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
+var file_proto_mod_service_mod_service_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
 var file_proto_mod_service_mod_service_proto_goTypes = []any{
 	(ModActionType)(0),                // 0: mod_service.ModActionType
 	(EmailType)(0),                    // 1: mod_service.EmailType
@@ -1331,58 +1611,69 @@ var file_proto_mod_service_mod_service_proto_goTypes = []any{
 	(*ModActionsList)(nil),            // 5: mod_service.ModActionsList
 	(*GetActionsRequest)(nil),         // 6: mod_service.GetActionsRequest
 	(*ModActionResponse)(nil),         // 7: mod_service.ModActionResponse
-	(*NotoriousGame)(nil),             // 8: mod_service.NotoriousGame
-	(*ResetNotorietyRequest)(nil),     // 9: mod_service.ResetNotorietyRequest
-	(*ResetNotorietyResponse)(nil),    // 10: mod_service.ResetNotorietyResponse
-	(*GetNotorietyReportRequest)(nil), // 11: mod_service.GetNotorietyReportRequest
-	(*NotorietyReport)(nil),           // 12: mod_service.NotorietyReport
-	(*ListChatChannelsRequest)(nil),   // 13: mod_service.ListChatChannelsRequest
-	(*ChatSenderCount)(nil),           // 14: mod_service.ChatSenderCount
-	(*ChatChannelContext)(nil),        // 15: mod_service.ChatChannelContext
-	(*ChatChannelSummary)(nil),        // 16: mod_service.ChatChannelSummary
-	(*ListChatChannelsResponse)(nil),  // 17: mod_service.ListChatChannelsResponse
-	(*GetChannelChatsRequest)(nil),    // 18: mod_service.GetChannelChatsRequest
-	nil,                               // 19: mod_service.ModActionsMap.ActionsEntry
-	(*timestamppb.Timestamp)(nil),     // 20: google.protobuf.Timestamp
-	(*ipc.ChatMessages)(nil),          // 21: ipc.ChatMessages
+	(*ChangeEmailRequest)(nil),        // 8: mod_service.ChangeEmailRequest
+	(*ChangeEmailResponse)(nil),       // 9: mod_service.ChangeEmailResponse
+	(*EmailChange)(nil),               // 10: mod_service.EmailChange
+	(*ListEmailChangesRequest)(nil),   // 11: mod_service.ListEmailChangesRequest
+	(*ListEmailChangesResponse)(nil),  // 12: mod_service.ListEmailChangesResponse
+	(*NotoriousGame)(nil),             // 13: mod_service.NotoriousGame
+	(*ResetNotorietyRequest)(nil),     // 14: mod_service.ResetNotorietyRequest
+	(*ResetNotorietyResponse)(nil),    // 15: mod_service.ResetNotorietyResponse
+	(*GetNotorietyReportRequest)(nil), // 16: mod_service.GetNotorietyReportRequest
+	(*NotorietyReport)(nil),           // 17: mod_service.NotorietyReport
+	(*ListChatChannelsRequest)(nil),   // 18: mod_service.ListChatChannelsRequest
+	(*ChatSenderCount)(nil),           // 19: mod_service.ChatSenderCount
+	(*ChatChannelContext)(nil),        // 20: mod_service.ChatChannelContext
+	(*ChatChannelSummary)(nil),        // 21: mod_service.ChatChannelSummary
+	(*ListChatChannelsResponse)(nil),  // 22: mod_service.ListChatChannelsResponse
+	(*GetChannelChatsRequest)(nil),    // 23: mod_service.GetChannelChatsRequest
+	nil,                               // 24: mod_service.ModActionsMap.ActionsEntry
+	(*timestamppb.Timestamp)(nil),     // 25: google.protobuf.Timestamp
+	(*ipc.ChatMessages)(nil),          // 26: ipc.ChatMessages
 }
 var file_proto_mod_service_mod_service_proto_depIdxs = []int32{
 	0,  // 0: mod_service.ModAction.type:type_name -> mod_service.ModActionType
-	20, // 1: mod_service.ModAction.start_time:type_name -> google.protobuf.Timestamp
-	20, // 2: mod_service.ModAction.end_time:type_name -> google.protobuf.Timestamp
-	20, // 3: mod_service.ModAction.removed_time:type_name -> google.protobuf.Timestamp
+	25, // 1: mod_service.ModAction.start_time:type_name -> google.protobuf.Timestamp
+	25, // 2: mod_service.ModAction.end_time:type_name -> google.protobuf.Timestamp
+	25, // 3: mod_service.ModAction.removed_time:type_name -> google.protobuf.Timestamp
 	1,  // 4: mod_service.ModAction.email_type:type_name -> mod_service.EmailType
-	19, // 5: mod_service.ModActionsMap.actions:type_name -> mod_service.ModActionsMap.ActionsEntry
+	24, // 5: mod_service.ModActionsMap.actions:type_name -> mod_service.ModActionsMap.ActionsEntry
 	3,  // 6: mod_service.ModActionsList.actions:type_name -> mod_service.ModAction
-	2,  // 7: mod_service.NotoriousGame.type:type_name -> mod_service.NotoriousGameType
-	20, // 8: mod_service.NotoriousGame.created_at:type_name -> google.protobuf.Timestamp
-	8,  // 9: mod_service.NotorietyReport.games:type_name -> mod_service.NotoriousGame
-	14, // 10: mod_service.ChatChannelContext.parties:type_name -> mod_service.ChatSenderCount
-	14, // 11: mod_service.ChatChannelSummary.senders:type_name -> mod_service.ChatSenderCount
-	15, // 12: mod_service.ChatChannelSummary.context:type_name -> mod_service.ChatChannelContext
-	16, // 13: mod_service.ListChatChannelsResponse.channels:type_name -> mod_service.ChatChannelSummary
-	3,  // 14: mod_service.ModActionsMap.ActionsEntry.value:type_name -> mod_service.ModAction
-	5,  // 15: mod_service.ModService.ApplyActions:input_type -> mod_service.ModActionsList
-	5,  // 16: mod_service.ModService.RemoveActions:input_type -> mod_service.ModActionsList
-	6,  // 17: mod_service.ModService.GetActions:input_type -> mod_service.GetActionsRequest
-	6,  // 18: mod_service.ModService.GetActionHistory:input_type -> mod_service.GetActionsRequest
-	11, // 19: mod_service.ModService.GetNotorietyReport:input_type -> mod_service.GetNotorietyReportRequest
-	9,  // 20: mod_service.ModService.ResetNotoriety:input_type -> mod_service.ResetNotorietyRequest
-	13, // 21: mod_service.ModService.ListChatChannels:input_type -> mod_service.ListChatChannelsRequest
-	18, // 22: mod_service.ModService.GetChannelChats:input_type -> mod_service.GetChannelChatsRequest
-	7,  // 23: mod_service.ModService.ApplyActions:output_type -> mod_service.ModActionResponse
-	7,  // 24: mod_service.ModService.RemoveActions:output_type -> mod_service.ModActionResponse
-	4,  // 25: mod_service.ModService.GetActions:output_type -> mod_service.ModActionsMap
-	5,  // 26: mod_service.ModService.GetActionHistory:output_type -> mod_service.ModActionsList
-	12, // 27: mod_service.ModService.GetNotorietyReport:output_type -> mod_service.NotorietyReport
-	10, // 28: mod_service.ModService.ResetNotoriety:output_type -> mod_service.ResetNotorietyResponse
-	17, // 29: mod_service.ModService.ListChatChannels:output_type -> mod_service.ListChatChannelsResponse
-	21, // 30: mod_service.ModService.GetChannelChats:output_type -> ipc.ChatMessages
-	23, // [23:31] is the sub-list for method output_type
-	15, // [15:23] is the sub-list for method input_type
-	15, // [15:15] is the sub-list for extension type_name
-	15, // [15:15] is the sub-list for extension extendee
-	0,  // [0:15] is the sub-list for field type_name
+	25, // 7: mod_service.EmailChange.changed_at:type_name -> google.protobuf.Timestamp
+	10, // 8: mod_service.ListEmailChangesResponse.changes:type_name -> mod_service.EmailChange
+	2,  // 9: mod_service.NotoriousGame.type:type_name -> mod_service.NotoriousGameType
+	25, // 10: mod_service.NotoriousGame.created_at:type_name -> google.protobuf.Timestamp
+	13, // 11: mod_service.NotorietyReport.games:type_name -> mod_service.NotoriousGame
+	19, // 12: mod_service.ChatChannelContext.parties:type_name -> mod_service.ChatSenderCount
+	19, // 13: mod_service.ChatChannelSummary.senders:type_name -> mod_service.ChatSenderCount
+	20, // 14: mod_service.ChatChannelSummary.context:type_name -> mod_service.ChatChannelContext
+	21, // 15: mod_service.ListChatChannelsResponse.channels:type_name -> mod_service.ChatChannelSummary
+	3,  // 16: mod_service.ModActionsMap.ActionsEntry.value:type_name -> mod_service.ModAction
+	5,  // 17: mod_service.ModService.ApplyActions:input_type -> mod_service.ModActionsList
+	5,  // 18: mod_service.ModService.RemoveActions:input_type -> mod_service.ModActionsList
+	6,  // 19: mod_service.ModService.GetActions:input_type -> mod_service.GetActionsRequest
+	6,  // 20: mod_service.ModService.GetActionHistory:input_type -> mod_service.GetActionsRequest
+	16, // 21: mod_service.ModService.GetNotorietyReport:input_type -> mod_service.GetNotorietyReportRequest
+	14, // 22: mod_service.ModService.ResetNotoriety:input_type -> mod_service.ResetNotorietyRequest
+	18, // 23: mod_service.ModService.ListChatChannels:input_type -> mod_service.ListChatChannelsRequest
+	23, // 24: mod_service.ModService.GetChannelChats:input_type -> mod_service.GetChannelChatsRequest
+	8,  // 25: mod_service.ModService.ChangeEmail:input_type -> mod_service.ChangeEmailRequest
+	11, // 26: mod_service.ModService.ListEmailChanges:input_type -> mod_service.ListEmailChangesRequest
+	7,  // 27: mod_service.ModService.ApplyActions:output_type -> mod_service.ModActionResponse
+	7,  // 28: mod_service.ModService.RemoveActions:output_type -> mod_service.ModActionResponse
+	4,  // 29: mod_service.ModService.GetActions:output_type -> mod_service.ModActionsMap
+	5,  // 30: mod_service.ModService.GetActionHistory:output_type -> mod_service.ModActionsList
+	17, // 31: mod_service.ModService.GetNotorietyReport:output_type -> mod_service.NotorietyReport
+	15, // 32: mod_service.ModService.ResetNotoriety:output_type -> mod_service.ResetNotorietyResponse
+	22, // 33: mod_service.ModService.ListChatChannels:output_type -> mod_service.ListChatChannelsResponse
+	26, // 34: mod_service.ModService.GetChannelChats:output_type -> ipc.ChatMessages
+	9,  // 35: mod_service.ModService.ChangeEmail:output_type -> mod_service.ChangeEmailResponse
+	12, // 36: mod_service.ModService.ListEmailChanges:output_type -> mod_service.ListEmailChangesResponse
+	27, // [27:37] is the sub-list for method output_type
+	17, // [17:27] is the sub-list for method input_type
+	17, // [17:17] is the sub-list for extension type_name
+	17, // [17:17] is the sub-list for extension extendee
+	0,  // [0:17] is the sub-list for field type_name
 }
 
 func init() { file_proto_mod_service_mod_service_proto_init() }
@@ -1396,7 +1687,7 @@ func file_proto_mod_service_mod_service_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_mod_service_mod_service_proto_rawDesc), len(file_proto_mod_service_mod_service_proto_rawDesc)),
 			NumEnums:      3,
-			NumMessages:   17,
+			NumMessages:   22,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -221,7 +221,7 @@ func (ps *ProfileService) UpdatePersonalInfo(ctx context.Context, r *connect.Req
 		return nil, err
 	}
 
-	user, err := ps.userStore.Get(ctx, sess.Username)
+	u, err := ps.userStore.Get(ctx, sess.Username)
 	if err != nil {
 		log.Err(err).Msg("getting-user")
 		// The username should maybe not be in the session? We can't change
@@ -231,13 +231,28 @@ func (ps *ProfileService) UpdatePersonalInfo(ctx context.Context, r *connect.Req
 
 	// Password resets go to the email on file, so changing it takes the
 	// current password, as changing the password does.
-	if r.Msg.Email != user.Email {
-		if err := auth.CheckPassword(r.Msg.Password, user.Password); err != nil {
+	email := r.Msg.Email
+	if email != u.Email {
+		if err := auth.CheckPassword(r.Msg.Password, u.Password); err != nil {
 			return nil, err
+		}
+		email, err = user.CheckNewEmail(ctx, ps.userStore, u.UUID, email)
+		if err != nil {
+			return nil, apiserver.InvalidArg(err.Error())
 		}
 	}
 
-	updateErr := ps.userStore.SetPersonalInfo(ctx, user.UUID, r.Msg.Email, r.Msg.FirstName,
+	// The email first: it is the write that can be refused, and a refusal
+	// should leave the rest of the profile as it was.
+	if email != u.Email {
+		if err := ps.userStore.ChangeEmail(ctx, u.UUID, email, u.UUID); err != nil {
+			if errors.Is(err, user.ErrEmailTaken) {
+				return nil, apiserver.InvalidArg(err.Error())
+			}
+			return nil, apiserver.InternalErr(err)
+		}
+	}
+	updateErr := ps.userStore.SetPersonalInfo(ctx, u.UUID, r.Msg.FirstName,
 		r.Msg.LastName, r.Msg.BirthDate, r.Msg.CountryCode, r.Msg.About)
 	if updateErr != nil {
 		return nil, apiserver.InternalErr(updateErr)

@@ -2,6 +2,8 @@ package profile
 
 import (
 	"context"
+	"errors"
+	"strings"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -15,20 +17,41 @@ import (
 )
 
 // personalInfoStore holds one user for UpdatePersonalInfo and keeps what
-// SetPersonalInfo saves. Any other method of user.Store panics.
+// SetPersonalInfo saves and what ChangeEmail changes. Any other method of
+// user.Store panics.
 type personalInfoStore struct {
 	user.Store
-	u     *entity.User
-	saved []string
+	u       *entity.User
+	saved   []string
+	changes [][]string
 }
 
 func (s *personalInfoStore) Get(ctx context.Context, username string) (*entity.User, error) {
 	return s.u, nil
 }
 
-func (s *personalInfoStore) SetPersonalInfo(ctx context.Context, uuid string, email string, firstName string,
+// ChangeEmail refuses raced@example.com, as the database does an address
+// another account took after GetByEmail found no one with it.
+func (s *personalInfoStore) ChangeEmail(ctx context.Context, uuid string, email string,
+	changedBy string) error {
+	if email == "raced@example.com" {
+		return user.ErrEmailTaken
+	}
+	s.changes = append(s.changes, []string{uuid, email, changedBy})
+	return nil
+}
+
+// GetByEmail finds only taken@example.com, which another account has.
+func (s *personalInfoStore) GetByEmail(ctx context.Context, email string) (*entity.User, error) {
+	if strings.EqualFold(email, "taken@example.com") {
+		return &entity.User{UUID: "uuid-2", Email: "taken@example.com"}, nil
+	}
+	return nil, errors.New("user not found")
+}
+
+func (s *personalInfoStore) SetPersonalInfo(ctx context.Context, uuid string, firstName string,
 	lastName string, birthDate string, countryCode string, about string) error {
-	s.saved = []string{email, firstName, lastName, birthDate, countryCode, about}
+	s.saved = []string{firstName, lastName, birthDate, countryCode, about}
 	return nil
 }
 
@@ -51,6 +74,11 @@ func TestUpdatePersonalInfoPassword(t *testing.T) {
 		{"email changed, wrong password", "new@example.com", "wrong horse", true},
 		{"email changed, right password", "new@example.com", "correct horse", false},
 		{"email kept, no password", "old@example.com", "", false},
+		{"email taken by another account", "Taken@example.com", "correct horse", true},
+		{"email not an address", "not an address", "correct horse", true},
+		{"email with a display name", "New <new@example.com>", "correct horse", true},
+		{"email with space around it", " new@example.com ", "correct horse", false},
+		{"email taken after the check", "raced@example.com", "correct horse", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			is := is.New(t)
@@ -63,11 +91,19 @@ func TestUpdatePersonalInfoPassword(t *testing.T) {
 			if tc.refused {
 				is.Equal(connect.CodeOf(err), connect.CodeInvalidArgument)
 				is.True(store.saved == nil) // nothing saved
+				is.True(store.changes == nil)
 				return
 			}
 			is.NoErr(err)
-			is.Equal(store.saved[0], tc.email)
-			is.Equal(store.saved[5], "new bio")
+			is.Equal(store.saved[4], "new bio")
+			// A changed email, and only a changed one, goes through
+			// ChangeEmail as the user's own change.
+			email := strings.TrimSpace(tc.email)
+			if email == "old@example.com" {
+				is.True(store.changes == nil)
+			} else {
+				is.Equal(store.changes, [][]string{{"uuid-1", email, "uuid-1"}})
+			}
 		})
 	}
 }

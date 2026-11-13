@@ -279,7 +279,7 @@ func TestMod(t *testing.T) {
 	// Apply a delete action and ensure that the profile is deleted, the
 	// ratings and stats are kept, and the account is suspended
 	deleteAbout := "plz delet this"
-	err = us.SetPersonalInfo(ctx, "Deleter", "email", "firstname", "lastname", "2000-01-01", "USA", deleteAbout)
+	err = us.SetPersonalInfo(ctx, "Deleter", "firstname", "lastname", "2000-01-01", "USA", deleteAbout)
 	is.NoErr(err)
 	variant := entity.VariantKey("burrito")
 	deleterRating := &entity.SingleRating{Rating: 1777, RatingDeviation: 60, Volatility: 0.06}

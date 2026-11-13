@@ -2,6 +2,7 @@ package mod
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -39,6 +40,7 @@ var ModActionDispatching = map[ms.ModActionType]func(context.Context, user.Store
 	ms.ModActionType_REMOVE_LAST_NAME:        removeLastName,
 	ms.ModActionType_REMOVE_ABOUT:            removeAbout,
 	ms.ModActionType_REMOVE_AVATAR:           removeAvatar,
+	ms.ModActionType_CHANGE_EMAIL:            refuseChangeEmail,
 }
 
 var ModActionTextMap = map[ms.ModActionType]string{
@@ -396,7 +398,25 @@ func removePersonalInfoField(ctx context.Context, us user.Store, action *ms.ModA
 	f := field(&p)
 	action.ChatText = *f
 	*f = ""
-	return us.SetPersonalInfo(ctx, u.UUID, u.Email, p.FirstName, p.LastName, p.BirthDate, p.CountryCode, p.About)
+	return us.SetPersonalInfo(ctx, u.UUID, p.FirstName, p.LastName, p.BirthDate, p.CountryCode, p.About)
+}
+
+// refuseChangeEmail keeps CHANGE_EMAIL out of ApplyActions: it is only what
+// ChangeEmail is checked as.
+func refuseChangeEmail(ctx context.Context, us user.Store, cs user.ChatStore, action *ms.ModAction) error {
+	return errors.New("an email is changed with ChangeEmail, not as an action")
+}
+
+// ChangeEmail sets a user's email at once, with the same checks as a user's
+// own change, and records it in the email changes. No mail goes to either
+// address.
+func ChangeEmail(ctx context.Context, us user.Store, applierUserId string, userId string,
+	email string) error {
+	email, err := user.CheckNewEmail(ctx, us, userId, email)
+	if err != nil {
+		return err
+	}
+	return us.ChangeEmail(ctx, userId, email, applierUserId)
 }
 
 // removeAvatar unsets a user's avatar and keeps its URL in the action. The

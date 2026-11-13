@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 
-import { message, Form, Select, InputNumber, Input, Button } from "antd";
+import { message, Form, Select, InputNumber, Input, Button, Table } from "antd";
 import { ExclamationCircleOutlined } from "@ant-design/icons";
 import { flashError, useClient } from "../utils/hooks/connect";
 import {
@@ -9,6 +9,7 @@ import {
   ModService,
 } from "../gen/api/proto/mod_service/mod_service_pb";
 import {
+  EmailChange,
   EmailType,
   ModActionsList,
   ModActionsMap,
@@ -17,6 +18,8 @@ import { ModActionType } from "../gen/api/proto/mod_service/mod_service_pb";
 import { HookAPI } from "antd/lib/modal/useModal";
 import { Client } from "@connectrpc/connect";
 import { create, toJsonString } from "@bufbuild/protobuf";
+import { timestampDate } from "@bufbuild/protobuf/wkt";
+import moment from "moment";
 import { getEnumValue } from "../utils/protobuf";
 import { useLoginStateStoreContext } from "../store/store";
 import { hasPermission, Perm } from "./perms";
@@ -34,6 +37,87 @@ const profileFieldRemovals = [
   ["REMOVE_AVATAR", "Remove avatar"],
 ] as const;
 
+// ChangeEmail sets the user's email at once; the server sends no mail to
+// either address, and refuses one that is malformed or another account's.
+export const ChangeEmail = (props: ModProps & { onChanged?: () => void }) => {
+  const modClient = useClient(ModService);
+
+  const onFinish = async (values: { email: string }) => {
+    try {
+      await modClient.changeEmail({
+        userId: props.userID,
+        email: values.email,
+      });
+      message.info({
+        content: "Changed email",
+        duration: 2,
+      });
+      props.onChanged?.();
+    } catch (e) {
+      flashError(e);
+    }
+  };
+
+  return (
+    <React.Fragment>
+      <h3>Change email</h3>
+      <Form name="change-email" onFinish={onFinish}>
+        <Form.Item name="email" label="New email" rules={[{ required: true }]}>
+          <Input></Input>
+        </Form.Item>
+        <Form.Item>
+          <Button type="primary" htmlType="submit">
+            Change email
+          </Button>
+        </Form.Item>
+      </Form>
+    </React.Fragment>
+  );
+};
+
+// EmailChanges lists the user's email changes, newest first, by the user or
+// by an admin. Only admins may see them. A new refresh value reloads it.
+export const EmailChanges = (props: ModProps & { refresh: number }) => {
+  const modClient = useClient(ModService);
+  const [changes, setChanges] = useState<Array<EmailChange>>([]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const resp = await modClient.listEmailChanges({ userId: props.userID });
+        setChanges(resp.changes);
+      } catch (e) {
+        flashError(e);
+      }
+    })();
+  }, [modClient, props.userID, props.refresh]);
+
+  return (
+    <React.Fragment>
+      <h3>Email changes</h3>
+      <Table
+        className="readable-text-color"
+        dataSource={changes.map((c, i) => ({ ...c, key: i }))}
+        pagination={false}
+        size="small"
+        columns={[
+          {
+            title: "Date",
+            key: "changedAt",
+            render: (_, c: EmailChange) =>
+              c.changedAt
+                ? moment(timestampDate(c.changedAt)).format("YYYY-MM-DD HH:mm")
+                : "",
+          },
+          { title: "Old", dataIndex: "oldEmail", key: "oldEmail" },
+          { title: "New", dataIndex: "newEmail", key: "newEmail" },
+          { title: "Who", dataIndex: "changedByUsername", key: "who" },
+        ]}
+      />
+    </React.Fragment>
+  );
+};
+
 const Moderation = (props: ModProps) => {
   const { loginState } = useLoginStateStoreContext();
   const canRemoveProfileFields = hasPermission(
@@ -43,6 +127,7 @@ const Moderation = (props: ModProps) => {
   const [activeActions, setActiveActions] = useState<ModActionsMap>(
     create(ModActionsMapSchema, {}),
   );
+  const [emailChangesRefresh, setEmailChangesRefresh] = useState(0);
   const [actionsHistory, setActionsHistory] = useState<ModActionsList>(
     create(ModActionsListSchema, {}),
   );
@@ -166,6 +251,16 @@ const Moderation = (props: ModProps) => {
           <Button onClick={handleSetShortDuration}>Set short duration</Button>
         </Form.Item>
       </Form>
+
+      {canRemoveProfileFields ? (
+        <React.Fragment>
+          <ChangeEmail
+            userID={props.userID}
+            onChanged={() => setEmailChangesRefresh((r) => r + 1)}
+          />
+          <EmailChanges userID={props.userID} refresh={emailChangesRefresh} />
+        </React.Fragment>
+      ) : null}
 
       <h3>Active mod actions</h3>
       <pre className="readable-text-color">

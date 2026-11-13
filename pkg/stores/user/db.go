@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/lithammer/shortuuid/v4"
@@ -19,6 +20,7 @@ import (
 	"github.com/woogles-io/liwords/pkg/integrations/organizations"
 	"github.com/woogles-io/liwords/pkg/stores/common"
 	"github.com/woogles-io/liwords/pkg/stores/models"
+	"github.com/woogles-io/liwords/pkg/user"
 
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	ms "github.com/woogles-io/liwords/rpc/api/proto/mod_service"
@@ -382,15 +384,10 @@ func (s *DBStore) GetBriefProfiles(ctx context.Context, uuids []string) (map[str
 	return response, nil
 }
 
-func (s *DBStore) SetPersonalInfo(ctx context.Context, uuid string, email string, firstName string, lastName string, birthDate string, countryCode string, about string) error {
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback(ctx)
-
-	qtx := s.queries.WithTx(tx)
-	err = qtx.SetProfilePersonalInfo(ctx, models.SetProfilePersonalInfoParams{
+// SetPersonalInfo sets a user's name, birth date, country and about. The email
+// is changed only with ChangeEmail, which records the change.
+func (s *DBStore) SetPersonalInfo(ctx context.Context, uuid string, firstName string, lastName string, birthDate string, countryCode string, about string) error {
+	return s.queries.SetProfilePersonalInfo(ctx, models.SetProfilePersonalInfoParams{
 		FirstName:   pgtype.Text{String: firstName, Valid: true},
 		LastName:    pgtype.Text{String: lastName, Valid: true},
 		BirthDate:   pgtype.Text{String: birthDate, Valid: true},
@@ -398,15 +395,47 @@ func (s *DBStore) SetPersonalInfo(ctx context.Context, uuid string, email string
 		About:       pgtype.Text{String: about, Valid: true},
 		Uuid:        uuid,
 	})
+}
+
+// ChangeEmail sets a user's email and records the change in email_changes, in
+// one transaction: an email is never changed with no record of it, nor
+// recorded without being changed. changedBy is the UUID of whoever made the
+// change, the user or an admin. Setting the email the user already has, in
+// the same case, does nothing. It returns user.ErrEmailTaken if another
+// account has the address in any case. It does not check the address's form;
+// user.CheckNewEmail does.
+func (s *DBStore) ChangeEmail(ctx context.Context, uuid string, email string, changedBy string) error {
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
 	if err != nil {
 		return err
 	}
+	defer tx.Rollback(ctx)
+	qtx := s.queries.WithTx(tx)
 
+	oldEmail, err := qtx.GetUserEmailForUpdate(ctx, uuid)
+	if err != nil {
+		return err
+	}
+	if oldEmail == email {
+		return nil
+	}
 	err = qtx.SetUserEmail(ctx, models.SetUserEmailParams{Email: email, Uuid: uuid})
 	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" && // unique_violation
+			pgErr.ConstraintName == "email_idx" {
+			return user.ErrEmailTaken
+		}
 		return err
 	}
-
+	n, err := qtx.AddEmailChange(ctx, models.AddEmailChangeParams{
+		UserUuid: uuid, OldEmail: oldEmail, NewEmail: email, ChangedByUuid: changedBy})
+	if err != nil {
+		return err
+	}
+	if n != 1 {
+		return fmt.Errorf("email change not recorded for user %s by %s", uuid, changedBy)
+	}
 	return tx.Commit(ctx)
 }
 
