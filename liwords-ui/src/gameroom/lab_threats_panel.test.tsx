@@ -175,7 +175,6 @@ describe("ThreatsPanel", () => {
         rules: "CrosswordGame",
         rack: [A, B, E],
         known: [],
-        count: 15,
         ms: 1000,
       },
     ]);
@@ -225,6 +224,21 @@ describe("ThreatsPanel", () => {
     // the button widens the list back
     fireEvent.click(screen.getByLabelText("Plays through a square"));
     expect(screen.getByText("SEA")).toBeTruthy();
+  });
+
+  it("lists a square's plays however far down they rank, cut to the count after", async () => {
+    lab.answers.push(answer());
+    mount();
+    await screen.findByText("SEA");
+    fireEvent.change(screen.getByLabelText("Plays listed"), {
+      target: { value: "1" },
+    });
+    await waitFor(() => expect(screen.queryByText("AS")).toBeNull());
+    // the count lists without counting again
+    expect(threatsRequests()).toHaveLength(1);
+    fireEvent.click(screen.getByLabelText("Plays through a square"));
+    act(() => shown!.pick(8 * 15 + 7));
+    expect(screen.getByText("AS")).toBeTruthy();
   });
 
   it("counts the board after the tiles placed too, beside now", async () => {

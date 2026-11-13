@@ -128,7 +128,7 @@ export const ThreatsPanel = (props: ThreatsPanelProps) => {
             ? `Opponent holds ${settings.known.toUpperCase()}.`
             : undefined;
   const request = (board: ThreatBoard) =>
-    "error" in known || count === null || seconds === null
+    "error" in known || seconds === null
       ? null
       : JSON.stringify({
           board: wasmBoard(board.letters, lab.dim),
@@ -136,7 +136,8 @@ export const ThreatsPanel = (props: ThreatsPanelProps) => {
           rules: lab.position.rules,
           rack: board.rack,
           ...(infer ? {} : { known: known.tiles }),
-          count,
+          // every play, so a square's own plays are there to list however
+          // far down they rank; the list is cut to the count asked here
           ms: seconds * 1000,
         });
   const keyOf = (board: ThreatBoard | null) => {
@@ -216,6 +217,7 @@ export const ThreatsPanel = (props: ThreatsPanelProps) => {
         .filter(
           (p) => square === null || playSquares(p, lab.dim).includes(square),
         )
+        .slice(0, count ?? 0)
         .map((play) => ({
           play,
           move: toAnalyzerMove(
@@ -233,7 +235,7 @@ export const ThreatsPanel = (props: ThreatsPanelProps) => {
             lab,
           ),
         })),
-    [answer, square, lab, shownBoard],
+    [answer, square, count, lab, shownBoard],
   );
 
   // the board shows the answer listed
