@@ -3643,10 +3643,6 @@ p.rune {
   }
 }
 
-// the computer's analysis no shorter than this, however little room the
-// window leaves it
-$computer-analysis-min-height: 557px;
-
 @media (min-width: $screen-laptop-min) {
   .game-container {
     .ant-card {
@@ -3709,9 +3705,9 @@ $computer-analysis-min-height: 557px;
     min-width: 400px;
 
     // down to the window's bottom, below the chat, whether open or
-    // collapsed (grow_to_window_bottom.ts), and no shorter than it was
+    // collapsed (grow_to_window_bottom.ts), its turns scrolling within
     .analyzer-card .ant-card-body.grow-to-bottom {
-      height: max(#{$computer-analysis-min-height}, var(--grow-room));
+      height: var(--grow-room);
     }
   }
 

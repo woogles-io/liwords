@@ -738,6 +738,12 @@ const CHAT_ABOVE: Giver = {
   list: ".suggestions",
 };
 
+// The same for the computer's analysis, whose turns are what it lists.
+const CHAT_ABOVE_ANALYSIS: Giver = {
+  ...CHAT_ABOVE,
+  list: ".ca-turns",
+};
+
 export const Analyzer = React.memo((props: AnalyzerProps) => {
   const {
     autoMode,
@@ -1196,13 +1202,19 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
   // card lists (CHAT_ABOVE).
   const [chatHidden] = useLocalStorageBool("chatCollapsed");
   const card = useRef<HTMLDivElement>(null);
-  // The computer's analysis, which scrolls within the card, takes the room
-  // the chat leaves it, the chat giving up none.
   const computerAnalysisShown = showComputerAnalysis && gameDone;
   useGrowToWindowBottom(
     card,
-    !!props.includeCard,
-    chatHidden || computerAnalysisShown ? undefined : CHAT_ABOVE,
+    !!props.includeCard && !computerAnalysisShown,
+    chatHidden ? undefined : CHAT_ABOVE,
+  );
+  // The computer's analysis is a card of its own, grown the same way, the
+  // chat giving up room for the turns it lists.
+  const analysisCard = useRef<HTMLDivElement>(null);
+  useGrowToWindowBottom(
+    analysisCard,
+    !!props.includeCard && computerAnalysisShown,
+    chatHidden ? undefined : CHAT_ABOVE_ANALYSIS,
   );
 
   if (computerAnalysisShown) {
@@ -1222,6 +1234,7 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
           className="analyzer-card"
           extra={analyzerControls}
           tabIndex={-1}
+          ref={analysisCard}
         >
           {computerAnalysisContent}
         </Card>
