@@ -439,7 +439,8 @@ p.streak-loss {
     gap: 8px;
     padding: 0 12px 6px;
 
-    label {
+    // the row's own labels, not the radio buttons antd also makes labels
+    > label {
       align-items: center;
       display: flex;
       gap: 4px;
