@@ -1184,13 +1184,16 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
   // card lists (CHAT_ABOVE).
   const [chatHidden] = useLocalStorageBool("chatCollapsed");
   const card = useRef<HTMLDivElement>(null);
+  // The computer's analysis, which scrolls within the card, takes the room
+  // the chat leaves it, the chat giving up none.
+  const computerAnalysisShown = showComputerAnalysis && gameDone;
   useGrowToWindowBottom(
     card,
-    !!props.includeCard && !(showComputerAnalysis && gameDone),
-    chatHidden ? undefined : CHAT_ABOVE,
+    !!props.includeCard,
+    chatHidden || computerAnalysisShown ? undefined : CHAT_ABOVE,
   );
 
-  if (showComputerAnalysis && gameDone) {
+  if (computerAnalysisShown) {
     const computerAnalysisContent = (
       <ComputerAnalysis
         gameID={gameID}
