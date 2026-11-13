@@ -6,6 +6,7 @@ import { useTentativeTileContext } from "../store/store";
 import { MachineLetter } from "../utils/cwgame/common";
 import { phoneLayout } from "../utils/window_room";
 import { labCall } from "../wasm/lab";
+import { namedTiles } from "../wasm/lab_errors";
 import { getLoadableFiles } from "../wasm/loader";
 import { wolgesLetterToLiwordsLetter } from "./analyzer";
 import {
@@ -386,7 +387,14 @@ export const ThreatsPanel = (props: ThreatsPanelProps) => {
     const text = !c
       ? "Counting..."
       : c.error
-        ? `Could not count the threats: ${c.error}`
+        ? `Could not count the threats: ${namedTiles(c.error, (t) =>
+            machineLetterToRune(
+              wolgesLetterToLiwordsLetter(t),
+              lab.alphabet,
+              false,
+              true,
+            ),
+          )}`
         : threatsSummary(c.answer!, lab.unseen.length, !c.done);
     return (
       <div>

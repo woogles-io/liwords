@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { InputNumber, Tooltip } from "antd";
 import { machineLetterToRune } from "../constants/alphabets";
 import { labCall } from "../wasm/lab";
+import { namedTiles } from "../wasm/lab_errors";
 import { getLoadableFiles } from "../wasm/loader";
 import { wolgesLetterToLiwordsLetter } from "./analyzer";
 import {
@@ -104,7 +105,7 @@ export const InferPanel = (props: InferPanelProps) => {
       : !shown
         ? "Inferring..."
         : shown.error
-          ? `Could not infer: ${shown.error}`
+          ? `Could not infer: ${namedTiles(shown.error, rune)}`
           : `From their last move, ${inference!.count} ${inference!.count === 1 ? "leave" : "leaves"} they may have kept${
               inference!.leaves.length
                 ? `; the likeliest: ${inference!.leaves
