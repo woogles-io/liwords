@@ -1241,7 +1241,8 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
       );
     }
     return (
-      <div className="analyzer-container">
+      // the room the score card gives the analyzer, as its moves take it
+      <div className="analyzer-container" style={props.style}>
         {computerAnalysisContent}
         {analyzerControls}
       </div>
