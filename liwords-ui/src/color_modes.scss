@@ -77,6 +77,8 @@ $timer-low-light: "color-timer-low-light";
 $timer-low-dark: "color-timer-low-dark";
 $timer-out-light: "color-timer-out-light";
 $timer-out-dark: "color-timer-out-dark";
+// the analyzer lab's threats on the board: a hue no bonus square or tile has
+$lab-heat: "color-lab-heat";
 
 $profile-game-win: "color-profile-game-win";
 $profile-game-tie: "color-profile-game-tie";
@@ -152,6 +154,7 @@ $modes: (
     color-timer-low-dark: #f4b000,
     color-timer-out-light: #ffeaea,
     color-timer-out-dark: #a92e2e,
+    color-lab-heat: #1e8a4c,
 
     color-profile-game-win: #e5ffdf,
     color-profile-game-tie: #fbe5ae,
@@ -223,6 +226,7 @@ $modes: (
     color-timer-low-dark: #f4b000,
     color-timer-out-light: #561f22,
     color-timer-out-dark: #ce5f66,
+    color-lab-heat: #3fbf74,
 
     color-profile-game-win: #24542d,
     color-profile-game-tie: #f4b000,
