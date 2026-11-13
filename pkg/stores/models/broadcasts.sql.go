@@ -464,7 +464,7 @@ SELECT b.id, b.uuid, b.slug, b.name, b.description, b.broadcast_url, b.broadcast
        u.username as creator_username
 FROM broadcasts b
 JOIN users u ON b.creator_id = u.id
-WHERE b.slug = $1
+WHERE lower(b.slug) = lower($1)
 `
 
 type GetBroadcastBySlugRow struct {
@@ -616,7 +616,7 @@ const getBroadcastFeedBySlug = `-- name: GetBroadcastFeedBySlug :one
 SELECT f.format, f.raw_gz, f.content_hash
 FROM broadcast_feeds f
 JOIN broadcasts b ON b.id = f.broadcast_id
-WHERE b.slug = $1 AND f.raw_gz IS NOT NULL
+WHERE lower(b.slug) = lower($1) AND f.raw_gz IS NOT NULL
 `
 
 type GetBroadcastFeedBySlugRow struct {
@@ -813,7 +813,7 @@ SELECT bg.id, bg.broadcast_id, bg.game_uuid, bg.division, bg.round, bg.table_num
 FROM broadcast_games bg
 LEFT JOIN game_documents gd ON gd.game_id = bg.game_uuid
 JOIN broadcasts b ON bg.broadcast_id = b.id
-WHERE b.slug = $1
+WHERE lower(b.slug) = lower($1)
 ORDER BY bg.completed_at DESC NULLS LAST
 `
 
@@ -960,7 +960,7 @@ LEFT JOIN broadcast_games bg
     AND bg.division      = bs.division
     AND bg.round         = bs.round
     AND bg.table_number  = bs.table_number
-WHERE b.slug = $1 AND bs.slot_name = $2
+WHERE lower(b.slug) = lower($1) AND bs.slot_name = $2
 `
 
 type GetBroadcastSlotGameParams struct {
@@ -996,7 +996,7 @@ const getBroadcastVersion = `-- name: GetBroadcastVersion :one
 SELECT b.games_version, COALESCE(f.content_hash, '')::text AS feed_hash
 FROM broadcasts b
 LEFT JOIN broadcast_feeds f ON f.broadcast_id = b.id
-WHERE b.slug = $1
+WHERE lower(b.slug) = lower($1)
 `
 
 type GetBroadcastVersionRow struct {
@@ -1166,7 +1166,7 @@ LEFT JOIN broadcast_games bg
     AND bg.round         = bs.round
     AND bg.table_number  = bs.table_number
 LEFT JOIN game_documents gd ON gd.game_id = bg.game_uuid
-WHERE b.slug = $1 AND bs.slot_name = $2
+WHERE lower(b.slug) = lower($1) AND bs.slot_name = $2
 `
 
 type GetSlotCurrentGameParams struct {

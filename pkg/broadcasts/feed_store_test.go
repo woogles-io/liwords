@@ -51,10 +51,11 @@ func (fs *feedServer) set(body string, dead bool) {
 
 // testBroadcast is a broadcast row for the tests to poll.
 type testBroadcast struct {
-	id   int32
-	uuid string
-	slug string
-	url  string
+	id        int32
+	uuid      string
+	slug      string
+	url       string
+	creatorID int32
 }
 
 func setupFeedDB(t *testing.T) (*pgxpool.Pool, *models.Queries) {
@@ -98,7 +99,7 @@ func createTestBroadcast(t *testing.T, pool *pgxpool.Pool, q *models.Queries, sl
 	if err != nil {
 		t.Fatal(err)
 	}
-	return testBroadcast{id: row.ID, uuid: u.String(), slug: slug, url: url}
+	return testBroadcast{id: row.ID, uuid: u.String(), slug: slug, url: url, creatorID: userID}
 }
 
 func (bs *BroadcastService) pollTest(t *testing.T, b testBroadcast) (bool, error) {

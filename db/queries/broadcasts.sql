@@ -13,7 +13,7 @@ SELECT b.id, b.uuid, b.slug, b.name, b.description, b.broadcast_url, b.broadcast
        u.username as creator_username
 FROM broadcasts b
 JOIN users u ON b.creator_id = u.id
-WHERE b.slug = $1;
+WHERE lower(b.slug) = lower(sqlc.arg(slug));
 
 -- name: GetBroadcastByUUID :one
 SELECT b.id, b.uuid, b.slug, b.name, b.description, b.broadcast_url, b.broadcast_url_format,
@@ -102,13 +102,13 @@ RETURNING id, uuid, slug, broadcast_url, broadcast_url_format;
 SELECT b.games_version, COALESCE(f.content_hash, '')::text AS feed_hash
 FROM broadcasts b
 LEFT JOIN broadcast_feeds f ON f.broadcast_id = b.id
-WHERE b.slug = $1;
+WHERE lower(b.slug) = lower(sqlc.arg(slug));
 
 -- name: GetBroadcastFeedBySlug :one
 SELECT f.format, f.raw_gz, f.content_hash
 FROM broadcast_feeds f
 JOIN broadcasts b ON b.id = f.broadcast_id
-WHERE b.slug = $1 AND f.raw_gz IS NOT NULL;
+WHERE lower(b.slug) = lower(sqlc.arg(slug)) AND f.raw_gz IS NOT NULL;
 
 -- name: GetBroadcastFeedStatus :one
 SELECT fetched_at, changed_at, last_error, last_error_at, consecutive_failures
@@ -263,7 +263,7 @@ SELECT bg.id, bg.broadcast_id, bg.game_uuid, bg.division, bg.round, bg.table_num
 FROM broadcast_games bg
 LEFT JOIN game_documents gd ON gd.game_id = bg.game_uuid
 JOIN broadcasts b ON bg.broadcast_id = b.id
-WHERE b.slug = $1
+WHERE lower(b.slug) = lower(sqlc.arg(slug))
 ORDER BY bg.completed_at DESC NULLS LAST;
 
 -- name: UpdateBroadcastGameStats :exec
@@ -316,7 +316,7 @@ LEFT JOIN broadcast_games bg
     AND bg.round         = bs.round
     AND bg.table_number  = bs.table_number
 LEFT JOIN game_documents gd ON gd.game_id = bg.game_uuid
-WHERE b.slug = $1 AND bs.slot_name = $2;
+WHERE lower(b.slug) = lower(sqlc.arg(slug)) AND bs.slot_name = sqlc.arg(slot_name);
 
 -- name: GetBroadcastSlotGame :one
 -- Resolves (slug, slot_name) → current game at that (div, round, table), if any.
@@ -334,7 +334,7 @@ LEFT JOIN broadcast_games bg
     AND bg.division      = bs.division
     AND bg.round         = bs.round
     AND bg.table_number  = bs.table_number
-WHERE b.slug = $1 AND bs.slot_name = $2;
+WHERE lower(b.slug) = lower(sqlc.arg(slug)) AND bs.slot_name = sqlc.arg(slot_name);
 
 -- name: GetSlotsByGame :many
 -- Returns all slots currently pointing at a given game's (div, round, table).
