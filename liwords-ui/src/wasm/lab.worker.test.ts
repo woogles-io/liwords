@@ -197,6 +197,19 @@ describe("the lab's worker", () => {
     expect(wasm.endgame_step).toHaveBeenCalledTimes(1);
   });
 
+  it("keeps stepping a pre-endgame, whose answers count no nodes", async () => {
+    wasm.endgame_step
+      .mockReturnValueOnce(JSON.stringify({ exact: false, nodes: 0 }))
+      .mockReturnValueOnce(JSON.stringify({ exact: false, nodes: 0 }))
+      .mockReturnValueOnce(JSON.stringify({ exact: true, nodes: 0 }));
+    const job = (await send(1, "endgame", { request: '{"model":"info_sets"}' }))
+      .result as number;
+    await send(2, "run", { job, ms: 16 });
+    await vi.waitFor(() => expect(events().some((e) => e.done)).toBe(true));
+    expect(events().some((e) => e.error)).toBe(false);
+    expect(wasm.endgame_step).toHaveBeenCalledTimes(3);
+  });
+
   it("values an empty bag's every first move without stepping, only for an endgame", async () => {
     const answer = {
       exact: true,

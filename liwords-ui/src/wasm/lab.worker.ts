@@ -88,6 +88,9 @@ type Job = {
   iterations?: number;
   // an endgame's nodes searched, as its last step's answer had them
   nodes?: number;
+  // a pre-endgame (one asked with a model of the bag), whose answers count no
+  // nodes, so say nothing of its room
+  modeled?: boolean;
   // the play a sim's candidates are compared with, as the sim takes one
   against?: unknown;
 };
@@ -232,9 +235,11 @@ const step = async (j: Job, chain: number, ms: number) => {
     j.iterations = answer.iterations;
     // A step of an endgame not yet exact that searched no node stopped on the
     // memory cap, which counts every byte the instance holds, the lexicon too:
-    // no step after it can search either.
+    // no step after it can search either. A pre-endgame's answers count no
+    // nodes, searching or not, so tell nothing of it.
     if (
       j.kind === "endgame" &&
+      !j.modeled &&
       !answer.exact &&
       answer.nodes !== undefined &&
       answer.nodes === j.nodes
@@ -333,6 +338,7 @@ const handle = async (req: LabRequest): Promise<unknown> => {
         handle: wolges.endgame_new(req.args.request),
         // a new endgame has searched none
         nodes: 0,
+        modeled: JSON.parse(req.args.request).model !== undefined,
       };
       return job.id;
     case "sim": {
