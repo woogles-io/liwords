@@ -272,6 +272,11 @@ type Game struct {
 	CreatedAt      time.Time
 	LastUpdatedAt  time.Time // Set by DBStore.Set for reuse by InsertGamePlayers
 
+	// StartingRatings are the players' ratings when the game was created, in
+	// player order. nil for a player with no rating, and for a game created
+	// before they were stored whose quickdata has none either.
+	StartingRatings [2]*StartingRating
+
 	// League-specific fields
 	LeagueID                 *uuid.UUID
 	SeasonID                 *uuid.UUID

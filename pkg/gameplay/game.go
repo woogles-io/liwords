@@ -160,6 +160,7 @@ func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Co
 			IsBot:    u.IsBot,
 			First:    idx == 0,
 		}
+		entGame.StartingRatings[idx] = u.GetStartingRating(ratingKey)
 	}
 
 	// Create the Quickdata now with the original player info.

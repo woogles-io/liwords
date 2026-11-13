@@ -255,20 +255,22 @@ type GameDocument struct {
 }
 
 type GamePlayer struct {
-	GameUuid          string
-	PlayerID          int32
-	PlayerIndex       int16
-	Score             int32
-	Won               pgtype.Bool
-	GameEndReason     int16
-	CreatedAt         pgtype.Timestamptz
-	GameType          int16
-	OpponentID        int32
-	OpponentScore     int32
-	OriginalRequestID pgtype.Text
-	LeagueSeasonID    pgtype.UUID
-	UpdatedAt         pgtype.Timestamptz
-	GameMode          int16
+	GameUuid                  string
+	PlayerID                  int32
+	PlayerIndex               int16
+	Score                     int32
+	Won                       pgtype.Bool
+	GameEndReason             int16
+	CreatedAt                 pgtype.Timestamptz
+	GameType                  int16
+	OpponentID                int32
+	OpponentScore             int32
+	OriginalRequestID         pgtype.Text
+	LeagueSeasonID            pgtype.UUID
+	UpdatedAt                 pgtype.Timestamptz
+	GameMode                  int16
+	StartingRating            pgtype.Float4
+	StartingRatingProvisional pgtype.Bool
 }
 
 type GameTurn struct {
@@ -408,28 +410,32 @@ type Notoriousgame struct {
 }
 
 type OngoingGame struct {
-	GameUuid           string
-	PlayState          int16
-	OnTurn             pgtype.Int2
-	Lexicon            string
-	LetterDistribution string
-	BoardLayout        string
-	Variant            string
-	ChallengeRule      int16
-	Player0ID          int32
-	Player1ID          int32
-	Timers             []byte
-	MetaEvents         []byte
-	ReadyFlag          int64
-	Started            bool
-	GameMode           int16
-	GameType           int16
-	TournamentID       pgtype.Text
-	LeagueID           pgtype.UUID
-	SeasonID           pgtype.UUID
-	LeagueDivisionID   pgtype.UUID
-	CreatedAt          pgtype.Timestamptz
-	UpdatedAt          pgtype.Timestamptz
+	GameUuid                         string
+	PlayState                        int16
+	OnTurn                           pgtype.Int2
+	Lexicon                          string
+	LetterDistribution               string
+	BoardLayout                      string
+	Variant                          string
+	ChallengeRule                    int16
+	Player0ID                        int32
+	Player1ID                        int32
+	Timers                           []byte
+	MetaEvents                       []byte
+	ReadyFlag                        int64
+	Started                          bool
+	GameMode                         int16
+	GameType                         int16
+	TournamentID                     pgtype.Text
+	LeagueID                         pgtype.UUID
+	SeasonID                         pgtype.UUID
+	LeagueDivisionID                 pgtype.UUID
+	CreatedAt                        pgtype.Timestamptz
+	UpdatedAt                        pgtype.Timestamptz
+	Player0StartingRating            pgtype.Float4
+	Player0StartingRatingProvisional pgtype.Bool
+	Player1StartingRating            pgtype.Float4
+	Player1StartingRatingProvisional pgtype.Bool
 }
 
 type Permission struct {
