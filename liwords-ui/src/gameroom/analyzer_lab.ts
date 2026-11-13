@@ -94,6 +94,11 @@ export const endgameBag = (unseenCount: number, rackLength: number) => {
   return bag;
 };
 
+// The solver's table, in MiB, each endgame reserves from its first step
+// rather than growing it; the wasm holds it to half the endgame's memory, and
+// a wasm without it ignores it.
+export const ENDGAME_RESERVE_MB = 16;
+
 // The most memory an endgame may use, in MiB, by what the device says it has;
 // a browser that says nothing gets the least of them.
 export const endgameMemoryMb = () => {

@@ -80,6 +80,7 @@ import {
   wolgesLetterToLiwordsLetter,
 } from "./analyzer";
 import {
+  ENDGAME_RESERVE_MB,
   SimCandidate,
   SimCountedStat,
   SimStat,
@@ -819,6 +820,7 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
                 // the device's allowance shared by the workers, each part
                 // its own table
                 max_memory_mb: Math.floor(endgameMemoryMb() / n),
+                reserve_mb: ENDGAME_RESERVE_MB,
                 // with two or more in the bag, the first passes value every
                 // move fast, a line still leaving tiles in the bag by its
                 // equity, and later ones deepen to the bag's end
