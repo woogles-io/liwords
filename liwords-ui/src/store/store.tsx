@@ -250,7 +250,8 @@ type ExamineStoreData = {
   // into the position examined; a move of the game, or another turn
   // examined, lets them go
   whatIf: Array<GameEvent>;
-  playWhatIf: (events: Array<GameEvent>) => void;
+  // a move's events, and the tiles the mover draws after it, if any
+  playWhatIf: (events: Array<GameEvent>, drew?: Array<MachineLetter>) => void;
   takeBackWhatIf: () => void;
   clearWhatIf: () => void;
 };
@@ -585,12 +586,13 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
   );
 
   // Moves made up on top of the turn examined: each made as one or more
-  // events (a play, and the points for going out), kept with the turn they
-  // were made on and the game's length then, and let go once either differs.
+  // events (a play, and the points for going out) and the tiles the mover
+  // draws after it, kept with the turn they were made on and the game's
+  // length then, and let go once either differs.
   const [whatIfMade, setWhatIfMade] = useState<{
     base: number;
     turns: number;
-    moves: Array<Array<GameEvent>>;
+    moves: Array<{ events: Array<GameEvent>; drew: Array<MachineLetter> }>;
   }>({ base: NaN, turns: NaN, moves: [] });
   const whatIfMoves = useMemo(
     () =>
@@ -601,13 +603,16 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
         : [],
     [isExamining, whatIfMade, examinedTurn, numberOfTurns],
   );
-  const whatIf = useMemo(() => whatIfMoves.flat(), [whatIfMoves]);
+  const whatIf = useMemo(
+    () => whatIfMoves.flatMap((m) => m.events),
+    [whatIfMoves],
+  );
   const playWhatIf = useCallback(
-    (events: Array<GameEvent>) =>
+    (events: Array<GameEvent>, drew: Array<MachineLetter> = []) =>
       setWhatIfMade({
         base: examinedTurn,
         turns: numberOfTurns,
-        moves: [...whatIfMoves, events],
+        moves: [...whatIfMoves, { events, drew }],
       }),
     [examinedTurn, numberOfTurns, whatIfMoves],
   );
@@ -781,21 +786,43 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
     }
 
     // After the moves made up: each player's score as their last one left
-    // it, and the rack they left, the tiles they would draw not theirs yet.
-    for (const evt of whatIf) {
-      const player = ret.players[evt.playerIndex];
-      player.score = evt.cumulative;
-      if (evt.type === GameEvent_Type.TILE_PLACEMENT_MOVE) {
+    // it, and the rack they left with the tiles they drew, if any. A draw
+    // that empties the bag leaves the other player holding exactly the tiles
+    // still unseen, whatever they held in the game.
+    for (const { events, drew } of whatIfMoves) {
+      for (const evt of events) {
+        const player = ret.players[evt.playerIndex];
+        player.score = evt.cumulative;
+        if (
+          evt.type !== GameEvent_Type.TILE_PLACEMENT_MOVE &&
+          evt.type !== GameEvent_Type.EXCHANGE
+        ) {
+          continue;
+        }
         const left = runesToMachineWord(evt.rack, gameContext.alphabet);
         for (const t of runesToMachineWord(
-          evt.playedTiles,
+          evt.type === GameEvent_Type.EXCHANGE
+            ? evt.exchanged
+            : evt.playedTiles,
           gameContext.alphabet,
         )) {
           if (t === 0) continue;
           const at = left.indexOf(t & 0x80 ? 0 : t);
           if (at >= 0) left.splice(at, 1);
         }
-        player.currentRack = left;
+        player.currentRack = [...left, ...drew];
+        if (!drew.length) continue;
+        const unseen: Array<MachineLetter> = [];
+        for (const [t, n] of Object.entries(ret.pool)) {
+          for (let i = 0; i < n; ++i) unseen.push(Number(t) as MachineLetter);
+        }
+        for (const t of player.currentRack) {
+          const at = unseen.indexOf(t);
+          if (at >= 0) unseen.splice(at, 1);
+        }
+        // the bag empty: the other player holds the rest, a full rack at most
+        const other = ret.players[1 - evt.playerIndex];
+        if (unseen.length <= 7) other.currentRack = unseen;
       }
     }
 
@@ -803,7 +830,7 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
       current: new ClockController(times, doNothing, doNothing),
     };
     return ret;
-  }, [isExamining, examinedTurn, gameContext, whatIf]);
+  }, [isExamining, examinedTurn, gameContext, whatIf, whatIfMoves]);
   const handleExamineStart =
     examinableGameContext.players.length > 0
       ? handleExamineStartUnconditionally

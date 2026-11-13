@@ -429,6 +429,8 @@ describe("the endgame panel", () => {
       "E (2)wins+6",
       "I (4)wins-3",
     ]);
+    // each tile the play would draw, a way into what follows
+    expect(screen.getAllByLabelText("Go in")).toHaveLength(2);
   });
 
   it("shows no value before its first step, nor any move", async () => {

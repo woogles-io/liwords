@@ -1273,7 +1273,7 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
     ) : null;
   const analyzerContainer = (
     <div className="analyzer-container">
-      {labOpen && <WhatIfBar />}
+      {labOpen && <WhatIfBar lexicon={lexicon} />}
       {labPanel ? (
         labPanel
       ) : !examinerLoading ? (

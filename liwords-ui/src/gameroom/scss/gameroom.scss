@@ -390,12 +390,29 @@ p.streak-loss {
 
 // The what-if row, under the analyzer's buttons, above its list or the lab's
 // panel.
+// The analyzer's body lays out in a row; the what-if row takes a line of its
+// own above the rest.
+.analyzer-container:has(> .lab-what-if) {
+  flex-wrap: wrap;
+}
+
 .analyzer-container .lab-what-if {
   align-items: center;
   display: flex;
+  flex: 0 0 100%;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 4px;
   padding: 6px 12px 0;
+
+  // small circles, as the lab's own buttons are
+  button.ant-btn-circle.ant-btn-sm {
+    height: 24px;
+    margin: 0;
+  }
+
+  .lab-what-if-draws {
+    width: 6em;
+  }
 }
 
 .analyzer-container .suggestions .lab-panel {

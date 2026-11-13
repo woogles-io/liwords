@@ -25,6 +25,7 @@ import {
   ExperimentOutlined,
   EyeOutlined,
   FlagOutlined,
+  LoginOutlined,
   OrderedListOutlined,
   PauseOutlined,
   PlusOutlined,
@@ -48,6 +49,7 @@ import {
 } from "../gen/api/proto/vendored/macondo/macondo_pb";
 import {
   useExaminableGameContextStoreContext,
+  useExamineStoreContext,
   useTentativeTileContext,
 } from "../store/store";
 import { Board } from "../utils/cwgame/board";
@@ -90,6 +92,13 @@ import {
   unseenBy,
 } from "./analyzer_lab";
 import { LabHooks, publishLabHooks } from "./lab_hooks";
+import {
+  exchangeMinBag,
+  placedOfPlay,
+  whatIfExchange,
+  whatIfPlay,
+  whatIfSideOf,
+} from "./what_if";
 
 export type LabView = "sim" | "endgame" | "threats" | "infer";
 
@@ -712,6 +721,51 @@ const bagTitle = (bag: number | null) => {
 export const EndgamePanel = (props: EndgamePanelProps) => {
   const { lab, onClose } = props;
   const placeMove = usePlaceMoveCallback();
+  const { gameContext: examined } = useExaminableGameContextStoreContext();
+  const { isExamining, handleExamineStart, playWhatIf } =
+    useExamineStoreContext();
+  // Into what happens after a play or an exchange with a draw: the move
+  // made up on the position, the tiles it draws drawn, so the endgame after
+  // it can be solved. Only where the draw is the move's to know: a tile
+  // placed or put back or more for each tile drawn.
+  const goIn = (play: WasmPlay, drew: Array<number>) => {
+    const of = whatIfSideOf(examined);
+    if (!of) return;
+    const events =
+      play.action === "play"
+        ? whatIfPlay(
+            placedOfPlay(play),
+            examined.board,
+            examined.alphabet,
+            of.side,
+          )
+        : whatIfExchange(
+            play.tiles.map((t) => (t < 0 ? 0 : t) as MachineLetter),
+            examined.alphabet,
+            of.side,
+            exchangeMinBag(lab.loadableKey),
+          );
+    if (!events) return;
+    if (!isExamining) handleExamineStart();
+    playWhatIf(
+      events,
+      drew.map((t) => (t < 0 ? -t | 0x80 : t) as MachineLetter),
+    );
+  };
+  const goInButton = (play: WasmPlay, drew: Array<number>) =>
+    (play.action === "play"
+      ? play.word.filter((t) => t !== 0).length
+      : play.tiles.length) >= drew.length && drew.length > 0 ? (
+      <Tooltip title="Go in: make this move and this draw, and see what follows">
+        <Button
+          shape="circle"
+          size="small"
+          icon={<LoginOutlined />}
+          aria-label="Go in"
+          onClick={() => goIn(play, drew)}
+        />
+      </Tooltip>
+    ) : null;
   // Nothing unseen: the other player has gone out.
   const over = lab.unseen.length === 0;
   const bag = endgameBag(lab.unseen.length, lab.rack.length);
@@ -827,6 +881,7 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
       const tiles = c.tiles ?? (i === 0 ? solved.tiles : undefined);
       const draws = c.draws ?? (i === 0 ? solved.draws : undefined);
       return {
+        play: c.play,
         move: toAnalyzerMove(c.play, c.value, lab.letters, lab.rack, lab),
         win:
           c.win ??
@@ -1051,7 +1106,7 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
           ) : null}
           {shown?.tiles?.map((t) => (
             <tr key={t.tile} className="lab-tile">
-              <td className="lab-who" />
+              <td className="lab-who">{goInButton(shown.play, [t.tile])}</td>
               <td className="move-coords" />
               <td className="move" colSpan={3}>
                 {machineLetterToRune(t.tile, lab.alphabet)}
@@ -1064,7 +1119,9 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
           {shown?.draws?.map((d) => (
             <React.Fragment key={d.tiles.join(",")}>
               <tr className="lab-tile">
-                <td className="lab-who" />
+                <td className="lab-who">
+                  {!d.drawn && goInButton(shown.play, d.tiles)}
+                </td>
                 <td className="move-coords" />
                 <td className="move" colSpan={3}>
                   {runes(d.tiles)}
@@ -1078,7 +1135,7 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
               {d.drawn?.map((r) => (
                 // with both racks known, what the play then draws from the set
                 <tr key={r.tiles.join(",")} className="lab-tile lab-drawn">
-                  <td className="lab-who" />
+                  <td className="lab-who">{goInButton(shown.play, r.tiles)}</td>
                   <td className="move-coords" />
                   <td className="move" colSpan={3}>
                     {`draws ${runes(r.tiles)}`}

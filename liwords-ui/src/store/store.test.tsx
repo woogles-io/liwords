@@ -11,6 +11,10 @@ import {
   GameHistorySchema,
   PlayerInfoSchema,
 } from "../gen/api/proto/vendored/macondo/macondo_pb";
+import {
+  StandardEnglishAlphabet,
+  runesToMachineWord,
+} from "../constants/alphabets";
 import { ChatEntityType } from "./constants";
 import { SoughtGame } from "./reducers/lobby_reducer";
 import {
@@ -231,5 +235,29 @@ describe("the moves made up while examining", () => {
     // another turn examined lets them go
     act(() => result.current.examine.handleExamineFirst());
     expect(result.current.examine.whatIf).toEqual([]);
+  });
+
+  it("adds the tiles drawn, and an emptied bag leaves the other the rest", () => {
+    const { result } = renderHook(useWhatIfStores, { wrapper: Store });
+    act(() => load(result.current.game.dispatchGameContext));
+    act(() => result.current.examine.handleExamineStart());
+    const pool = result.current.examinable.gameContext.pool;
+    // draw the two tiles that leave just seven unseen beside the mover's rack
+    const unseen = Object.values(pool).reduce((a, b) => a + b, 0);
+    expect(unseen).toBeGreaterThan(16);
+    act(() =>
+      result.current.examine.playWhatIf(
+        [play],
+        runesToMachineWord("OP", StandardEnglishAlphabet),
+      ),
+    );
+    const after = result.current.examinable.gameContext;
+    expect(after.players[0].currentRack).toEqual(
+      runesToMachineWord("CDEFGOP", StandardEnglishAlphabet),
+    );
+    // a full bag: the other keeps their own rack
+    expect(after.players[1].currentRack).toEqual(
+      runesToMachineWord("HIJKLMN", StandardEnglishAlphabet),
+    );
   });
 });
