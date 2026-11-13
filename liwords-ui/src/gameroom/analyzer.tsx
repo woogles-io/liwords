@@ -1153,17 +1153,23 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
         shape="circle"
         icon={<BulbOutlined />}
         type="primary"
-        onClick={handleExaminer}
-        disabled={autoMode || examinerLoading || showComputerAnalysis}
+        onClick={() => {
+          // from the computer's analysis, back to the analyzer's own
+          setShowComputerAnalysis(false);
+          handleExaminer();
+        }}
+        disabled={autoMode || examinerLoading}
       />
       <div className="auto-controls">
         <p className="auto-label">Auto</p>
         <Switch
           checked={autoMode}
-          onChange={toggleAutoMode}
+          onChange={() => {
+            setShowComputerAnalysis(false);
+            toggleAutoMode();
+          }}
           className="auto-toggle"
           size="small"
-          disabled={showComputerAnalysis}
         />
       </div>
       {gameDone && !variant?.includes("wordsmog") && (
@@ -1190,13 +1196,16 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
   // card lists (CHAT_ABOVE).
   const [chatHidden] = useLocalStorageBool("chatCollapsed");
   const card = useRef<HTMLDivElement>(null);
+  // The computer's analysis, which scrolls within the card, takes the room
+  // the chat leaves it, the chat giving up none.
+  const computerAnalysisShown = showComputerAnalysis && gameDone;
   useGrowToWindowBottom(
     card,
-    !!props.includeCard && !(showComputerAnalysis && gameDone),
-    chatHidden ? undefined : CHAT_ABOVE,
+    !!props.includeCard,
+    chatHidden || computerAnalysisShown ? undefined : CHAT_ABOVE,
   );
 
-  if (showComputerAnalysis && gameDone) {
+  if (computerAnalysisShown) {
     const computerAnalysisContent = (
       <ComputerAnalysis
         gameID={gameID}

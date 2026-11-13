@@ -346,15 +346,6 @@ const ChatAreaDiv: React.FC<{
   );
 };
 
-const ChatIfVisible: React.FC<{ children: React.ReactNode }> = ({
-  children,
-}) => {
-  const { showComputerAnalysis } = useAnalyzerContext();
-  const { isExamining } = useExamineStoreContext();
-  if (isExamining && showComputerAnalysis) return null;
-  return <>{children}</>;
-};
-
 export const Table = React.memo((props: Props) => {
   const { gameID } = useParams();
   const ownsAnnotatedGame = useOwnsAnnotatedGame(gameID, props.annotated);
@@ -1431,24 +1422,22 @@ export const Table = React.memo((props: Props) => {
         >
           {/* Navigation card (Back/NEXT) - only in chat-area for desktop */}
           {!isInMobileView && navigationCard}
-          <ChatIfVisible>
-            {playerNames.length > 1 ? (
-              <Chat
-                sendChat={props.sendChat}
-                highlight={tournamentContext.directors}
-                highlightText="Director"
-                defaultChannel={gameChatChannel}
-                defaultDescription={getChatTitle(
-                  playerNames,
-                  username,
-                  isObserver,
-                )}
-                tournamentID={gameInfo.tournamentId}
-                firstPlayerID={gameInfo.players.find((p) => p.first)?.userId}
-                collapsible={isExamining && !examiningOwnGameInPlay}
-              />
-            ) : null}
-          </ChatIfVisible>
+          {playerNames.length > 1 ? (
+            <Chat
+              sendChat={props.sendChat}
+              highlight={tournamentContext.directors}
+              highlightText="Director"
+              defaultChannel={gameChatChannel}
+              defaultDescription={getChatTitle(
+                playerNames,
+                username,
+                isObserver,
+              )}
+              tournamentID={gameInfo.tournamentId}
+              firstPlayerID={gameInfo.players.find((p) => p.first)?.userId}
+              collapsible={isExamining && !examiningOwnGameInPlay}
+            />
+          ) : null}
           {isExamining && !examiningOwnGameInPlay ? (
             <Analyzer includeCard />
           ) : (
