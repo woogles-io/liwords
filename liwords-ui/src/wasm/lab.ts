@@ -111,7 +111,8 @@ const getWorker = (w: number) => {
   if (!worker) {
     worker = new Worker(new URL("./lab.worker.ts", import.meta.url));
     worker.onmessage = (e: MessageEvent) => {
-      const { id, result, error, event } = e.data;
+      const { id, result, error, event, dead } = e.data;
+      if (dead) bury(w, worker!);
       if (event) {
         heard(w, event);
         return;
@@ -128,6 +129,27 @@ const getWorker = (w: number) => {
     workers[w] = worker;
   }
   return worker;
+};
+
+// A worker whose wasm panicked, which no call can use again: let go, its jobs
+// with it and its other calls failed, so the next call makes a fresh one,
+// which loads its files anew.
+const bury = (w: number, worker: Worker) => {
+  if (workers[w] !== worker) return;
+  worker.terminate();
+  workers[w] = undefined;
+  for (const [id, p] of pending) {
+    if (p.worker !== w) continue;
+    pending.delete(id);
+    p.reject(new Error("The lab's worker failed and was started again."));
+  }
+  for (const [page, held] of jobs) {
+    if (held.some((h) => h.worker === w)) {
+      jobs.delete(page);
+      sims.delete(page);
+      endgames.delete(page);
+    }
+  }
 };
 
 const send = (id: number, p: Pending) => {

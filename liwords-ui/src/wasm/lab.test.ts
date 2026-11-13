@@ -390,3 +390,19 @@ describe("a pre-endgame in parts", () => {
     expect(ops(0)).toContain("stop");
   });
 });
+
+describe("a worker whose wasm panicked", () => {
+  it("is let go, its calls failed, and the next call made on a fresh one", async () => {
+    setLabPartsForTest(1);
+    const first = labCall({ op: "held" });
+    // before it answers, the worker says its wasm panicked, answering another
+    // call
+    made[0].onmessage?.({
+      data: { id: 999, error: "The wasm failed", dead: true },
+    } as MessageEvent);
+    await expect(first).rejects.toThrow("started again");
+    await labCall({ op: "held" });
+    expect(made).toHaveLength(2);
+    expect(ops(1)).toEqual(["held"]);
+  });
+});

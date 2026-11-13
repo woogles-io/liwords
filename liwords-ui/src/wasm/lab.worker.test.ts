@@ -210,6 +210,20 @@ describe("the lab's worker", () => {
     expect(wasm.endgame_step).toHaveBeenCalledTimes(2);
   });
 
+  it("names a panic in the wasm as one", async () => {
+    wasm.endgame_step.mockImplementationOnce(() => {
+      throw new WebAssembly.RuntimeError("unreachable");
+    });
+    const job = (await send(1, "endgame", { request: "{}" })).result as number;
+    await send(2, "run", { job, ms: 16 });
+    await vi.waitFor(() => expect(events().some((e) => e.error)).toBe(true));
+    expect(events().find((e) => e.error)!.error).toBe(
+      "The wasm failed (unreachable); the browser's console says why.",
+    );
+    // and the page is told this worker can be used no more
+    expect(posted.some((m) => (m as { dead?: boolean }).dead)).toBe(true);
+  });
+
   it("keeps stepping a pre-endgame, whose answers count no nodes", async () => {
     wasm.endgame_step
       .mockReturnValueOnce(JSON.stringify({ exact: false, nodes: 0 }))

@@ -136,7 +136,20 @@ const pruning = (wolges: Wolges, j: Job) => {
 
 const post = (message: unknown) =>
   (self as unknown as Worker).postMessage(message);
-const errorText = (e: unknown) => (e instanceof Error ? e.message : String(e));
+// A panic leaves the wasm's locks held, so every call after it fails too:
+// the page is told the worker is dead, to make a fresh one.
+const deadIf = (e: unknown) =>
+  e instanceof WebAssembly.RuntimeError ? { dead: true } : {};
+
+// What a failed call says: a panic in the wasm, which leaves only "unreachable"
+// to say, named as one, its own words in the console (the wasm's panic hook
+// writes them there).
+const errorText = (e: unknown) =>
+  e instanceof WebAssembly.RuntimeError
+    ? `The wasm failed (${e.message}); the browser's console says why.`
+    : e instanceof Error
+      ? e.message
+      : String(e);
 const nameOf = (cacheKey: string) =>
   cacheKey.substring(cacheKey.indexOf("/") + 1);
 
@@ -259,7 +272,7 @@ const step = async (j: Job, chain: number, ms: number) => {
     if (done) return;
   } catch (e) {
     running = false;
-    post({ event: { job: j.id, error: errorText(e) } });
+    post({ event: { job: j.id, error: errorText(e) }, ...deadIf(e) });
     return;
   }
   later(() => step(j, chain, ms));
@@ -483,7 +496,7 @@ self.onmessage = (e: MessageEvent) => {
   queue = queue.then(() =>
     handle(req as LabRequest).then(
       (result) => post({ id, result }),
-      (err) => post({ id, error: errorText(err) }),
+      (err) => post({ id, error: errorText(err), ...deadIf(err) }),
     ),
   );
 };
