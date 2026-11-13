@@ -232,7 +232,8 @@ describe("ThreatsPanel", () => {
     fireEvent.click(screen.getByLabelText("Plays through a square"));
     expect(shown?.picking).toBe(true);
     act(() => shown!.pick(8 * 15 + 7));
-    expect(shown?.picking).toBe(false);
+    // still picking, so another square moves the list to it
+    expect(shown?.picking).toBe(true);
     await waitFor(() => expect(screen.queryByText("SEA")).toBeNull());
     expect(screen.getByText("AS")).toBeTruthy();
     // asked of the count held, weighing no more

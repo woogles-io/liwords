@@ -358,10 +358,8 @@ export const ThreatsPanel = (props: ThreatsPanelProps) => {
       outline: new Set(pointed ? playSquares(pointed, lab.dim) : []),
       square,
       picking,
-      pick: (s) => {
-        setSquare(s);
-        setPicking(false);
-      },
+      // picking goes on, so a click on another square moves the list to it
+      pick: setSquare,
     });
   }, [publisher, answer, tint, picked, pointed, square, picking, lab]);
   useEffect(() => () => publishLabThreats(publisher, null), [publisher]);
@@ -409,9 +407,9 @@ export const ThreatsPanel = (props: ThreatsPanelProps) => {
         <React.Fragment>
           <Tooltip
             title={
-              square === null
-                ? "List the plays through a square: click one on the board"
-                : "List every play"
+              picking
+                ? "List every play"
+                : "List the plays through a square: click one on the board, another to move, the same again to let it go"
             }
           >
             <Button
@@ -419,11 +417,11 @@ export const ThreatsPanel = (props: ThreatsPanelProps) => {
               size="small"
               icon={<AimOutlined />}
               aria-label="Plays through a square"
-              type={picking || square !== null ? "primary" : "default"}
+              type={picking ? "primary" : "default"}
               disabled={!answer}
               onClick={() => {
-                if (square !== null) setSquare(null);
-                else setPicking(!picking);
+                setSquare(null);
+                setPicking(!picking);
               }}
             />
           </Tooltip>
