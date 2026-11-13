@@ -388,6 +388,16 @@ p.streak-loss {
   }
 }
 
+// The what-if row, under the analyzer's buttons, above its list or the lab's
+// panel.
+.analyzer-container .lab-what-if {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 6px 12px 0;
+}
+
 .analyzer-container .suggestions .lab-panel {
   // at the top of what holds it, and as wide, where the score card, turned to
   // the analyzer, centers what it holds: a panel taller than that scrolls

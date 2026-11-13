@@ -52,7 +52,10 @@ import {
 } from "../gen/api/proto/ipc/omgseeks_pb";
 import { ServerChallengeResultEvent } from "../gen/api/proto/ipc/omgwords_pb";
 import { message } from "antd";
-import { GameEvent_Type } from "../gen/api/proto/vendored/macondo/macondo_pb";
+import {
+  GameEvent,
+  GameEvent_Type,
+} from "../gen/api/proto/vendored/macondo/macondo_pb";
 import { create } from "@bufbuild/protobuf";
 import { calculateHistoricalTimeBanks } from "../utils/time_bank_calculator";
 
@@ -243,6 +246,13 @@ type ExamineStoreData = {
   addHandleExaminer: (x: () => void) => void;
   removeHandleExaminer: (x: () => void) => void;
   doneButtonRef: React.MutableRefObject<HTMLButtonElement | null>;
+  // moves made up on top of the turn examined, as events, replayed after it
+  // into the position examined; a move of the game, or another turn
+  // examined, lets them go
+  whatIf: Array<GameEvent>;
+  playWhatIf: (events: Array<GameEvent>) => void;
+  takeBackWhatIf: () => void;
+  clearWhatIf: () => void;
 };
 
 const defaultGameState = startingGameState(StandardEnglishAlphabet, [], "");
@@ -428,6 +438,10 @@ const ExamineContext = createContext<ExamineStoreData>({
   addHandleExaminer: defaultFunction,
   removeHandleExaminer: defaultFunction,
   doneButtonRef: { current: null },
+  whatIf: [],
+  playWhatIf: defaultFunction,
+  takeBackWhatIf: defaultFunction,
+  clearWhatIf: defaultFunction,
 });
 
 type Props = {
@@ -570,6 +584,47 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
     [setExaminedTurn, numberOfTurns],
   );
 
+  // Moves made up on top of the turn examined: each made as one or more
+  // events (a play, and the points for going out), kept with the turn they
+  // were made on and the game's length then, and let go once either differs.
+  const [whatIfMade, setWhatIfMade] = useState<{
+    base: number;
+    turns: number;
+    moves: Array<Array<GameEvent>>;
+  }>({ base: NaN, turns: NaN, moves: [] });
+  const whatIfMoves = useMemo(
+    () =>
+      isExamining &&
+      whatIfMade.base === examinedTurn &&
+      whatIfMade.turns === numberOfTurns
+        ? whatIfMade.moves
+        : [],
+    [isExamining, whatIfMade, examinedTurn, numberOfTurns],
+  );
+  const whatIf = useMemo(() => whatIfMoves.flat(), [whatIfMoves]);
+  const playWhatIf = useCallback(
+    (events: Array<GameEvent>) =>
+      setWhatIfMade({
+        base: examinedTurn,
+        turns: numberOfTurns,
+        moves: [...whatIfMoves, events],
+      }),
+    [examinedTurn, numberOfTurns, whatIfMoves],
+  );
+  const takeBackWhatIf = useCallback(
+    () =>
+      setWhatIfMade({
+        base: examinedTurn,
+        turns: numberOfTurns,
+        moves: whatIfMoves.slice(0, -1),
+      }),
+    [examinedTurn, numberOfTurns, whatIfMoves],
+  );
+  const clearWhatIf = useCallback(
+    () => setWhatIfMade({ base: NaN, turns: NaN, moves: [] }),
+    [],
+  );
+
   const examinableGameContext = useMemo(() => {
     if (!isExamining) return gameContext;
     const ret = startingGameState(
@@ -587,7 +642,7 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
     ret.uidToPlayerOrder = gameContext.uidToPlayerOrder;
     const replayedTurns = gameContext.turns.slice(0, examinedTurn);
     try {
-      pushTurns(ret, replayedTurns);
+      pushTurns(ret, [...replayedTurns, ...whatIf]);
     } catch {
       message.error({
         content:
@@ -725,11 +780,30 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
       ret.players[i].currentRack = rack;
     }
 
+    // After the moves made up: each player's score as their last one left
+    // it, and the rack they left, the tiles they would draw not theirs yet.
+    for (const evt of whatIf) {
+      const player = ret.players[evt.playerIndex];
+      player.score = evt.cumulative;
+      if (evt.type === GameEvent_Type.TILE_PLACEMENT_MOVE) {
+        const left = runesToMachineWord(evt.rack, gameContext.alphabet);
+        for (const t of runesToMachineWord(
+          evt.playedTiles,
+          gameContext.alphabet,
+        )) {
+          if (t === 0) continue;
+          const at = left.indexOf(t & 0x80 ? 0 : t);
+          if (at >= 0) left.splice(at, 1);
+        }
+        player.currentRack = left;
+      }
+    }
+
     ret.clockController = {
       current: new ClockController(times, doNothing, doNothing),
     };
     return ret;
-  }, [isExamining, examinedTurn, gameContext]);
+  }, [isExamining, examinedTurn, gameContext, whatIf]);
   const handleExamineStart =
     examinableGameContext.players.length > 0
       ? handleExamineStartUnconditionally
@@ -863,8 +937,16 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
       addHandleExaminer,
       removeHandleExaminer,
       doneButtonRef,
+      whatIf,
+      playWhatIf,
+      takeBackWhatIf,
+      clearWhatIf,
     }),
     [
+      whatIf,
+      playWhatIf,
+      takeBackWhatIf,
+      clearWhatIf,
       isExamining,
       examinedTurn,
       freshExamineSignal,

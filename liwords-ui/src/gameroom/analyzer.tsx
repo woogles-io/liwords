@@ -39,6 +39,7 @@ import {
 } from "./analyzer_lab_panels";
 import { InferPanel } from "./lab_infer_panel";
 import { ThreatsPanel } from "./lab_threats_panel";
+import { WhatIfBar } from "./what_if_buttons";
 import { defaultLetterDistribution } from "../lobby/sought_game_interactions";
 import {
   useExaminableGameContextStoreContext,
@@ -1272,6 +1273,7 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
     ) : null;
   const analyzerContainer = (
     <div className="analyzer-container">
+      {labOpen && <WhatIfBar />}
       {labPanel ? (
         labPanel
       ) : !examinerLoading ? (
