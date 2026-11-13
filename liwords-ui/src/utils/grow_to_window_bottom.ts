@@ -26,7 +26,7 @@ export type Giver = {
 // Given a giver, the card above gives up what the body needs past that room,
 // as far as it can spare, and keeps the most it gave until the window changes
 // size, so that the card above does not move as what the body lists changes;
-// on a page laid out as on a phone, the card then keeps its own height.
+// on a page laid out as on a phone, the card above gives up nothing.
 // Turning it on or off moves what the card holds, so the page hears a resize
 // then, and whatever sizes itself to the window measures again.
 export const useGrowToWindowBottom = (
@@ -56,12 +56,10 @@ export const useGrowToWindowBottom = (
       above?.classList.remove(GIVE);
       body.classList.add(GROW);
       const { own, phone, room } = roomInWindow(body, root);
-      if (giver && phone) {
-        unfit();
-        return;
-      }
+      // on a phone the page scrolls past the card above, which gives up
+      // nothing; the body still grows to the window
       let give = 0;
-      if (above && giver) {
+      if (above && giver && !phone) {
         const list = body.querySelector<HTMLElement>(giver.list);
         const need = list
           ? body.getBoundingClientRect().height +

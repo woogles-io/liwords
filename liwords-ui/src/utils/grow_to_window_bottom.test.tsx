@@ -265,7 +265,7 @@ describe("useGrowToWindowBottom with a card above that gives up height", () => {
     expect(above().style.getPropertyValue("--give-height")).toBe("");
   });
 
-  it("takes nothing, and keeps its own height, on a page laid out as on a phone", () => {
+  it("takes nothing, and still grows to the window, on a page laid out as on a phone", () => {
     rects = layOutBelow();
     const shown = vi
       .spyOn(HTMLElement.prototype, "getClientRects")
@@ -277,8 +277,9 @@ describe("useGrowToWindowBottom with a card above that gives up height", () => {
       </div>,
     );
     expect(above()).not.toHaveClass("gives-room");
-    expect(body()).not.toHaveClass("grow-to-bottom");
-    expect(body().style.getPropertyValue("--grow-room")).toBe("");
+    expect(above().style.getPropertyValue("--give-height")).toBe("");
+    expect(body()).toHaveClass("grow-to-bottom");
+    expect(body().style.getPropertyValue("--grow-room")).not.toBe("");
     shown.mockRestore();
   });
 });

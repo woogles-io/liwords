@@ -122,9 +122,9 @@ describe("InferPanel", () => {
       ...document.querySelectorAll(".lab-infer-tiles tbody tr"),
     ].map((r) => [...r.querySelectorAll("td")].map((d) => d.textContent));
     expect(rows).toEqual([
-      ["E", "77.2%", "57.9%"],
-      ["S", "30.0%", "30.0%"],
-      ["Q", "5.0%", "12.0%"],
+      ["E", "77.2%", "57.9%", "+19.3"],
+      ["S", "30.0%", "30.0%", "+0.0"],
+      ["Q", "5.0%", "12.0%", "-7.0"],
     ]);
   });
 

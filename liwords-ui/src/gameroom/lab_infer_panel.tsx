@@ -32,6 +32,9 @@ type InferPanelProps = {
 };
 
 const percent = (x: number) => `${(x * 100).toFixed(1)}%`;
+// a change in chance, in percentage points, signed
+const points = (x: number) =>
+  `${x >= 0 ? "+" : "-"}${Math.abs(x * 100).toFixed(1)}`;
 
 // The tiles the opponent may hold, the ones the inference makes likeliest
 // first: each with its chance as inferred and by chance alone. A tile none of
@@ -177,6 +180,12 @@ export const InferPanel = (props: InferPanelProps) => {
                   tip="The chance their rack holds one, dealt from the tiles unseen alone"
                 />
               </th>
+              <th>
+                <ColumnName
+                  name="Change"
+                  tip="How much likelier their last move makes it, in points: Held less By chance; the rows run from the likeliest to the least"
+                />
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -185,6 +194,7 @@ export const InferPanel = (props: InferPanelProps) => {
                 <td>{rune(t.tile)}</td>
                 <td className="lab-n">{percent(t.held)}</td>
                 <td className="lab-n">{percent(t.prior)}</td>
+                <td className="lab-n">{points(t.held - t.prior)}</td>
               </tr>
             ))}
           </tbody>
