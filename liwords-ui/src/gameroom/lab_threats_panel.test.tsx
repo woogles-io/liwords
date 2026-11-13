@@ -20,6 +20,8 @@ const lab = vi.hoisted(() => ({
   calls: [] as Array<{ op: string; args?: { request?: string } }>,
   answers: [] as Array<object>,
   last: undefined as object | undefined,
+  // what a step of ms 0 lists, as the wasm would from the racks weighed
+  listing: undefined as object | undefined,
 }));
 vi.mock("../wasm/lab", () => ({
   labCall: async (request: { op: string; args?: { request?: string } }) => {
@@ -28,6 +30,9 @@ vi.mock("../wasm/lab", () => ({
     // each step takes the next answer set, the last one again once none is
     // left
     if (request.op === "threats_step") {
+      if ((request.args as { ms: number }).ms === 0 && lab.listing) {
+        return lab.listing;
+      }
       lab.last = lab.answers.shift() ?? lab.last;
       return lab.last;
     }
@@ -166,6 +171,7 @@ beforeEach(() => {
   lab.calls.length = 0;
   lab.answers.length = 0;
   lab.last = undefined;
+  lab.listing = undefined;
   shown = null;
 });
 
@@ -218,34 +224,59 @@ describe("ThreatsPanel", () => {
     expect(shown!.ghost.size).toBe(0);
   });
 
-  it("lists only the plays through a square picked on the board", async () => {
+  it("lists the plays through a square picked on the board, as the wasm lists them", async () => {
     lab.answers.push(answer());
     mount();
     await screen.findByText("SEA");
+    lab.listing = answer({ plays: [answer().plays[1]] });
     fireEvent.click(screen.getByLabelText("Plays through a square"));
     expect(shown?.picking).toBe(true);
     act(() => shown!.pick(8 * 15 + 7));
-    expect(screen.queryByText("SEA")).toBeNull();
-    expect(screen.getByText("AS")).toBeTruthy();
     expect(shown?.picking).toBe(false);
+    await waitFor(() => expect(screen.queryByText("SEA")).toBeNull());
+    expect(screen.getByText("AS")).toBeTruthy();
+    // asked of the count held, weighing no more
+    expect(lab.calls.at(-1)).toEqual({
+      op: "threats_step",
+      args: { id: expect.any(Number), ms: 0, count: 15, square: [8, 7] },
+    });
     // the button widens the list back
     fireEvent.click(screen.getByLabelText("Plays through a square"));
     expect(screen.getByText("SEA")).toBeTruthy();
   });
 
-  it("lists a square's plays however far down they rank, cut to the count after", async () => {
+  it("lists another count without counting again", async () => {
     lab.answers.push(answer());
     mount();
     await screen.findByText("SEA");
+    lab.listing = answer({ plays: [answer().plays[0]] });
     fireEvent.change(screen.getByLabelText("Plays listed"), {
       target: { value: "1" },
     });
     await waitFor(() => expect(screen.queryByText("AS")).toBeNull());
-    // the count lists without counting again
     expect(threatsRequests()).toHaveLength(1);
-    fireEvent.click(screen.getByLabelText("Plays through a square"));
-    act(() => shown!.pick(8 * 15 + 7));
-    expect(screen.getByText("AS")).toBeTruthy();
+    expect(lab.calls.at(-1)).toEqual({
+      op: "threats_step",
+      args: { id: expect.any(Number), ms: 0, count: 1 },
+    });
+  });
+
+  it("lets each count go once its board is gone, and all on closing", async () => {
+    lab.answers.push(answer());
+    const { unmount } = mount();
+    await screen.findByText("SEA");
+    place(new Set([{ row: 0, col: 0, letter: B }]));
+    await waitFor(() => expect(threatsRequests()).toHaveLength(2));
+    unmount();
+    const freed = lab.calls
+      .filter((c) => c.op === "threats_free")
+      .map((c) => (c.args as unknown as { id: number }).id);
+    expect(freed.sort()).toEqual(
+      lab.calls
+        .map((c, i) => (c.op === "threats_new" ? i + 1 : 0))
+        .filter(Boolean)
+        .sort(),
+    );
   });
 
   it("counts the board after the tiles placed too, beside now", async () => {

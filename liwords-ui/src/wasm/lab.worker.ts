@@ -26,10 +26,19 @@ export type LabRequest =
   // what the opponent may play next, by score alone: every play listed, then
   // the racks weighed a step at a time, each step answering as the whole
   // count stands; with an inference's request, from racks starting with the
-  // leave inferred, as a sim's does. One count is held at a time, apart from
-  // any job; a new one lets the last go.
+  // leave inferred, as a sim's does. Each count is held, apart from any job,
+  // till it is let go; a step of ms 0 weighs nothing more, answering as the
+  // count stands, with the top count plays, through the square if given.
   | { op: "threats_new"; args: { request: string; infer?: string } }
-  | { op: "threats_step"; args: { id: number; ms: number } }
+  | {
+      op: "threats_step";
+      args: {
+        id: number;
+        ms: number;
+        count?: number;
+        square?: [number, number];
+      };
+    }
   | { op: "threats_free"; args: { id: number } }
   // an endgame; a pre-endgame on as many workers as parts says, if fewer than
   // the lab's (lab.ts), which a worker reads no further
@@ -124,11 +133,11 @@ const nameOf = (cacheKey: string) =>
 const loaded = new Map<string, number>();
 let job: Job | null = null;
 let lastJobId = 0;
-// The threats count held, as its id and the wasm's handle.
-let threats: { id: number; handle: number } | null = null;
+// The threats counts held, each id's wasm handle.
+const threats = new Map<number, number>();
 const freeThreats = (wolges: Wolges) => {
-  if (threats) wolges.threats_free(threats.handle);
-  threats = null;
+  threats.forEach((handle) => wolges.threats_free(handle));
+  threats.clear();
 };
 let running = false;
 // Each run starts a new chain of steps; an older chain sees it and ends.
@@ -285,29 +294,28 @@ const handle = async (req: LabRequest): Promise<unknown> => {
     case "analyze":
       return JSON.parse(wolges.analyze(req.args.request));
     case "threats_new": {
-      freeThreats(wolges);
       const { result: handle, inferred } = inferring(
         wolges,
         req.args.request,
         req.args.infer,
         wolges.threats_new,
       );
-      threats = { id: ++lastJobId, handle };
-      return { id: threats.id, ...(inferred ? { inferred } : {}) };
+      const id = ++lastJobId;
+      threats.set(id, handle);
+      return { id, ...(inferred ? { inferred } : {}) };
     }
-    case "threats_step":
-      if (!threats || threats.id !== req.args.id) {
-        throw new Error("no such threats count");
-      }
-      return JSON.parse(
-        wolges.threats_step(
-          threats.handle,
-          JSON.stringify({ ms: req.args.ms }),
-        ),
-      );
-    case "threats_free":
-      if (threats && threats.id === req.args.id) freeThreats(wolges);
+    case "threats_step": {
+      const { id, ...step } = req.args;
+      const handle = threats.get(id);
+      if (handle === undefined) throw new Error("no such threats count");
+      return JSON.parse(wolges.threats_step(handle, JSON.stringify(step)));
+    }
+    case "threats_free": {
+      const handle = threats.get(req.args.id);
+      if (handle !== undefined) wolges.threats_free(handle);
+      threats.delete(req.args.id);
       return undefined;
+    }
     case "endgame":
       freeJob(wolges);
       job = {

@@ -537,24 +537,32 @@ describe("the lab's worker", () => {
     expect(wasm.sim_step.mock.calls.length).toBe(steps);
   });
 
-  it("counts the threats a step at a time, from the leave inferred when asked", async () => {
-    const plain = await send(1, "threats_new", { request: '{"count":2}' });
-    expect(wasm.threats_new).toHaveBeenCalledWith('{"count":2}');
+  it("holds each threats count, steps it as asked, and lets it go", async () => {
+    const plain = await send(1, "threats_new", { request: '{"rack":[1]}' });
+    expect(wasm.threats_new).toHaveBeenCalledWith('{"rack":[1]}');
     const { id } = plain.result as { id: number };
-    const stepped = await send(2, "threats_step", { id, ms: 100 });
-    expect(wasm.threats_step).toHaveBeenCalledWith(7, '{"ms":100}');
+    const stepped = await send(2, "threats_step", {
+      id,
+      ms: 0,
+      count: 3,
+      square: [7, 8],
+    });
+    expect(wasm.threats_step).toHaveBeenCalledWith(
+      7,
+      '{"ms":0,"count":3,"square":[7,8]}',
+    );
     expect(stepped.result).toEqual({ exact: true });
 
-    // a new count lets the last go
+    // a second count, from the leave inferred, beside the first
     const inferred = await send(3, "threats_new", {
-      request: '{"count":2,"known":[1]}',
+      request: '{"rack":[1],"known":[1]}',
       infer: '{"fuzz":3}',
     });
-    expect(wasm.threats_free).toHaveBeenCalledWith(7);
+    expect(wasm.threats_free).not.toHaveBeenCalled();
     expect(wasm.infer).toHaveBeenCalledWith('{"fuzz":3}');
     // the inference's handle in place of the tiles known, let go after
     expect(wasm.threats_new).toHaveBeenLastCalledWith(
-      '{"count":2,"inferred":4}',
+      '{"rack":[1],"inferred":4}',
     );
     expect(wasm.infer_free).toHaveBeenCalledWith(4);
     expect(inferred.result).toEqual({
@@ -562,13 +570,15 @@ describe("the lab's worker", () => {
       inferred: { count: 3, leaves: [{ tiles: [1], weight: 1 }] },
     });
 
-    // the old count is gone; the new one is let go on asking
-    expect((await send(4, "threats_step", { id, ms: 1 })).error).toBe(
+    await send(4, "threats_free", { id });
+    expect(wasm.threats_free).toHaveBeenCalledWith(7);
+    expect((await send(5, "threats_step", { id, ms: 1 })).error).toBe(
       "no such threats count",
     );
-    wasm.threats_free.mockClear();
     const next = (inferred.result as { id: number }).id;
-    await send(5, "threats_free", { id: next });
-    expect(wasm.threats_free).toHaveBeenCalledWith(7);
+    expect((await send(6, "threats_step", { id: next, ms: 1 })).error).toBe(
+      undefined,
+    );
+    await send(7, "threats_free", { id: next });
   });
 });
