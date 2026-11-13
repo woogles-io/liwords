@@ -899,6 +899,24 @@ func (t *ClassicDivision) canCatch(records []*pb.PlayerStanding, round int, i in
 // PairRound pairs the round. Pairing clears the round before it pairs it,
 // so if pairing fails, the round is put back the way it was.
 func (t *ClassicDivision) PairRound(round int, preserveByes bool) (*pb.DivisionPairingsResponse, error) {
+	return t.pairRoundKeeping(round, preserveByes, false)
+}
+
+// PairRoundKeepingPairings pairs the round but keeps every pairing already
+// in it, byes and games alike, and pairs only the players still unpaired.
+// A pairing with a suspended player in it is not kept. Round robins and
+// elimination are paired from a fixed schedule or bracket, so they refuse.
+func (t *ClassicDivision) PairRoundKeepingPairings(round int) (*pb.DivisionPairingsResponse, error) {
+	if round >= 0 && round < len(t.RoundControls) {
+		pm := t.RoundControls[round].PairingMethod
+		if isRoundDependent(pm) || pm == pb.PairingMethod_ELIMINATION {
+			return nil, fmt.Errorf("round %d of division %s is paired by %s, which cannot keep pairings", round+1, t.DivisionName, pm.String())
+		}
+	}
+	return t.pairRoundKeeping(round, true, true)
+}
+
+func (t *ClassicDivision) pairRoundKeeping(round int, preserveByes bool, keepPairings bool) (*pb.DivisionPairingsResponse, error) {
 	if round < 0 || round >= len(t.Matrix) {
 		return nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_ROUND_NUMBER_OUT_OF_RANGE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), "PairRound")
 	}
@@ -915,7 +933,7 @@ func (t *ClassicDivision) PairRound(round int, preserveByes bool) (*pb.DivisionP
 	}
 	copGibsonization, hadCOPGibsonization := t.COPGibsonization[int32(round)]
 
-	pmessage, err := t.pairRound(round, preserveByes)
+	pmessage, err := t.pairRound(round, preserveByes, keepPairings)
 	if err == nil {
 		return pmessage, nil
 	}
@@ -944,19 +962,29 @@ func (t *ClassicDivision) PairRound(round int, preserveByes bool) (*pb.DivisionP
 	return nil, err
 }
 
-func (t *ClassicDivision) pairRound(round int, preserveByes bool) (*pb.DivisionPairingsResponse, error) {
+func (t *ClassicDivision) pairRound(round int, preserveByes bool, keepPairings bool) (*pb.DivisionPairingsResponse, error) {
 	roundPairings := t.Matrix[round]
 	pairingMethod := t.RoundControls[round].PairingMethod
 	// This automatic pairing could be the result of an
 	// amendment. Undo all the pairings so byes can be
 	// properly assigned (bye assignment checks for nil pairing).
 	// If preserveByes is true, then a director has called the
-	// PairRound API and byes should be preserved.
+	// PairRound API and byes should be preserved. If keepPairings is
+	// true, every pairing is kept, games as well as byes. Players in kept
+	// pairings are removed from the field the same way.
 	numberOfByes := 0
 	playersWithByes := make(map[string]bool)
 	for i := 0; i < len(roundPairings); i++ {
 		player := t.Players.Persons[i].Id
-		if preserveByes {
+		if keepPairings {
+			isKept, err := t.pairingIsKept(player, round)
+			if err != nil {
+				return nil, err
+			}
+			if isKept {
+				playersWithByes[player] = true
+			}
+		} else if preserveByes {
 			isBye, err := t.pairingIsBye(t.Players.Persons[i].Id, round)
 			if err != nil {
 				return nil, err
@@ -970,7 +998,7 @@ func (t *ClassicDivision) pairRound(round int, preserveByes bool) (*pb.DivisionP
 
 	for i := 0; i < len(roundPairings); i++ {
 		player := t.Players.Persons[i].Id
-		if !preserveByes || !playersWithByes[player] {
+		if !playersWithByes[player] {
 			err := t.clearPairingKey(t.PlayerIndexMap[player], round)
 			if err != nil {
 				return nil, err
@@ -1007,7 +1035,7 @@ func (t *ClassicDivision) pairRound(round int, preserveByes bool) (*pb.DivisionP
 
 	// Handle COP pairing differently - it needs full tournament history
 	if pairingMethod == pb.PairingMethod_PAIRING_METHOD_COP {
-		return t.pairRoundWithCOP(round, preserveByes)
+		return t.pairRoundWithCOP(round, playersWithByes)
 	}
 
 	poolMembers := []*entity.PoolMember{}
@@ -1257,7 +1285,7 @@ func (t *ClassicDivision) pairRound(round int, preserveByes bool) (*pb.DivisionP
 	return pmessage, nil
 }
 
-func (t *ClassicDivision) pairRoundWithCOP(round int, preserveByes bool) (*pb.DivisionPairingsResponse, error) {
+func (t *ClassicDivision) pairRoundWithCOP(round int, keptPlayers map[string]bool) (*pb.DivisionPairingsResponse, error) {
 	if round < 0 || round >= len(t.Matrix) {
 		return nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_ROUND_NUMBER_OUT_OF_RANGE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), "pairRoundWithCOP")
 	}
@@ -1293,6 +1321,35 @@ func (t *ClassicDivision) pairRoundWithCOP(round int, preserveByes bool) (*pb.Di
 		return nil, fmt.Errorf("failed to convert division to COP request: %w", err)
 	}
 
+	// The kept pairings go to COP as this round's prepaired pairings, a bye as
+	// the player's own index and every other player -1, so the players in
+	// them stay in the standings COP weighs while it pairs only the rest.
+	// Players still to pair are what make the round prepaired: with none, COP
+	// has nothing to pair.
+	if len(keptPlayers) > 0 {
+		prepaired := make([]int32, len(t.Players.Persons))
+		unpaired := 0
+		for i, p := range t.Players.Persons {
+			prepaired[i] = -1
+			if !keptPlayers[p.Id] || p.Suspended {
+				if !p.Suspended {
+					unpaired++
+				}
+				continue
+			}
+			opp, err := t.opponentOf(p.Id, round)
+			if err != nil {
+				return nil, err
+			}
+			prepaired[i] = int32(t.PlayerIndexMap[opp])
+		}
+		if unpaired == 0 {
+			return newPairingsMessage(), nil
+		}
+		pairRequest.DivisionPairings = append(pairRequest.DivisionPairings,
+			&pb.RoundPairings{Pairings: prepaired})
+	}
+
 	// Set the seed for reproducibility
 	pairRequest.Seed = int64(t.Seed) + int64(round)
 
@@ -1303,6 +1360,10 @@ func (t *ClassicDivision) pairRoundWithCOP(round int, preserveByes bool) (*pb.Di
 
 	if pairResponse.ErrorCode != pb.PairError_SUCCESS {
 		log.Error().Str("error", pairResponse.ErrorMessage).Msg("COP pairing failed")
+		if len(keptPlayers) > 0 {
+			// what a director can do about it, before cop's own words
+			return nil, fmt.Errorf("COP pairing failed: the kept pairings conflict with a rule COP will not break, such as the leader playing second in the last round; keep fewer pairings or pair the round by hand. COP says: %s", pairResponse.ErrorMessage)
+		}
 		return nil, fmt.Errorf("COP pairing failed: %s", pairResponse.ErrorMessage)
 	}
 
@@ -1322,24 +1383,11 @@ func (t *ClassicDivision) pairRoundWithCOP(round int, preserveByes bool) (*pb.Di
 		Interface("gibsonizedPlayers", pairResponse.GibsonizedPlayers).
 		Msg("stored COP gibsonization data")
 
-	// Clear existing pairings for this round (respecting preserveByes)
-	playersWithByes := make(map[string]bool)
-	if preserveByes {
-		for i := 0; i < len(t.Players.Persons); i++ {
-			player := t.Players.Persons[i].Id
-			isBye, err := t.pairingIsBye(player, round)
-			if err != nil {
-				return nil, err
-			}
-			if isBye {
-				playersWithByes[player] = true
-			}
-		}
-	}
-
+	// Clear existing pairings for this round except the kept ones
+	playersWithByes := keptPlayers
 	for i := 0; i < len(t.Players.Persons); i++ {
 		player := t.Players.Persons[i].Id
-		if !preserveByes || !playersWithByes[player] {
+		if !playersWithByes[player] {
 			err := t.clearPairingKey(t.PlayerIndexMap[player], round)
 			if err != nil {
 				return nil, err
@@ -1359,9 +1407,12 @@ func (t *ClassicDivision) pairRoundWithCOP(round int, preserveByes bool) (*pb.Di
 
 		playerId := t.Players.Persons[playerIdx].Id
 
-		// Skip if this player was preserved with a bye
+		// Skip if this player's pairing was kept
 		if playersWithByes[playerId] {
 			continue
+		}
+		if playersWithByes[t.Players.Persons[opponentIdx].Id] {
+			return nil, fmt.Errorf("COP paired %s with %s, whose pairing was kept", playerId, t.Players.Persons[opponentIdx].Id)
 		}
 
 		// Check if already paired (COP returns pairs from both directions)
@@ -1382,6 +1433,19 @@ func (t *ClassicDivision) pairRoundWithCOP(round int, preserveByes bool) (*pb.Di
 			return nil, err
 		}
 		pmessage = combinePairingMessages(pmessage, newPairingMessage)
+	}
+
+	// A suspended player gets the division's suspended result, as with
+	// every other pairing method.
+	for i := 0; i < len(t.Players.Persons); i++ {
+		player := t.Players.Persons[i]
+		if player.Suspended && roundPairings[i] == "" {
+			newPairingMessage, err := t.SetPairing(player.Id, player.Id, round, pb.TournamentGameResult_NO_RESULT)
+			if err != nil {
+				return nil, err
+			}
+			pmessage = combinePairingMessages(pmessage, newPairingMessage)
+		}
 	}
 
 	// Verify all non-suspended players are paired
@@ -2701,6 +2765,32 @@ func (t *ClassicDivision) clearPairingKey(playerIndex int32, round int) error {
 	delete(t.PairingMap, pairingKey)
 	t.Matrix[round][playerIndex] = ""
 	return nil
+}
+
+// pairingIsKept says whether the player's pairing in the round is kept by
+// a director's pairing that keeps pairings: it is there and nobody in it
+// is suspended.
+func (t *ClassicDivision) pairingIsKept(player string, round int) (bool, error) {
+	pairingKey, err := t.getPairingKey(player, round)
+	if err != nil {
+		return false, err
+	}
+	if pairingKey == "" {
+		return false, nil
+	}
+	pairing, err := t.getPairing(player, round)
+	if err != nil {
+		return false, err
+	}
+	if pairing == nil || len(pairing.Players) != 2 {
+		return false, nil
+	}
+	for _, p := range pairing.Players {
+		if t.Players.Persons[p].Suspended {
+			return false, nil
+		}
+	}
+	return true, nil
 }
 
 func (t *ClassicDivision) pairingIsBye(player string, round int) (bool, error) {

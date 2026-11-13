@@ -120,6 +120,9 @@ message PairRoundRequest {
   int32 round = 3;
   bool preserve_byes = 4;
   bool delete_pairings = 5;
+  // keep_pairings keeps every pairing already in the round, byes and
+  // games alike, and pairs only the players still unpaired.
+  bool keep_pairings = 6;
 }
 
 message TournamentDivisionRequest {

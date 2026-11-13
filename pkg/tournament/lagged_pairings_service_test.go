@@ -187,7 +187,7 @@ func TestLaggedPairingFailureKeepsDirectorPairings(t *testing.T) {
 
 		is.NoErr(tournament.DeletePairings(ctx, stores.TournamentStore, ty.UUID, divOneName, 1))
 		drainEvents(eventChan)
-		warnings, err := tournament.PairRound(ctx, stores.TournamentStore, ty.UUID, divOneName, 1, false)
+		warnings, err := tournament.PairRound(ctx, stores.TournamentStore, ty.UUID, divOneName, 1, false, false)
 		is.NoErr(err)
 		is.Equal(warnings, []string{autoPairFailed(3)})
 		is.True(dm().IsRoundPaired(1))
@@ -300,6 +300,6 @@ func TestLaggedRoundDeletedPairingsStayDeleted(t *testing.T) {
 		{PlayerOneId: "Will:Will", PlayerTwoId: "Conrad:Conrad", Round: 1},
 		{PlayerOneId: "Josh:Josh", PlayerTwoId: "Jesse:Jesse", Round: 1},
 	}))
-	noWarnings(is)(tournament.PairRound(ctx, stores.TournamentStore, ty.UUID, divOneName, 1, false))
+	noWarnings(is)(tournament.PairRound(ctx, stores.TournamentStore, ty.UUID, divOneName, 1, false, false))
 	is.True(!dm().IsRoundPaired(2))
 }
