@@ -18,7 +18,7 @@ import {
 } from "../gen/api/proto/vendored/macondo/macondo_pb";
 import { Store } from "../store/store";
 import { LabEvent } from "../wasm/lab";
-import { OUT_OF_MEMORY } from "../wasm/lab_errors";
+import { OUT_OF_MEMORY, OUT_OF_MEMORY_ALONE } from "../wasm/lab_errors";
 import { AnalyzerMove } from "./analyzer";
 import {
   EndgamePanel,
@@ -40,6 +40,8 @@ const lab = vi.hoisted(() => ({
   sizes: {} as Record<string, number>,
   // the workers a sim runs on
   parts: 1,
+  // the bytes a worker holds once an endgame is made
+  held: 1,
   // what an inference of the opponent's leave finds
   inferred: {
     count: 120,
@@ -55,6 +57,7 @@ vi.mock("../wasm/lab", () => ({
     if (request.op === "analyze") return lab.top;
     if (request.op === "prepare") return lab.sizes;
     if (request.op === "endgame") return 1;
+    if (request.op === "held") return lab.held;
     if (request.op === "sim") {
       const args = request.args as { plays: string; infer?: string };
       const plays = JSON.parse(args.plays) as Array<object>;
@@ -235,6 +238,7 @@ beforeEach(() => {
   lab.calls.length = 0;
   lab.listeners.clear();
   lab.parts = 1;
+  lab.held = 1;
   board.placed.length = 0;
   clock.now = 0;
   lab.top = [];
@@ -682,10 +686,31 @@ describe("the endgame panel", () => {
         [1, 256],
       ]),
     );
-    // on one, nothing fewer to try: the error stands
+    // on one, nothing fewer to try: the error stands, saying so
     await outOfRoom(3);
-    expect(await screen.findByText(OUT_OF_MEMORY)).toBeInTheDocument();
+    expect(await screen.findByText(OUT_OF_MEMORY_ALONE)).toBeInTheDocument();
     expect(made()).toHaveLength(3);
+  });
+
+  it("solves again on as many workers as what each holds leaves room for", async () => {
+    lab.parts = 4;
+    // 100 MiB held each: 256 MiB has room for two parts, not three
+    lab.held = 100 * 2 ** 20;
+    render(
+      <Store>
+        <EndgamePanel
+          lab={position([A, B, E, E, I, I, I, I, I])}
+          onClose={() => {}}
+        />
+      </Store>,
+    );
+    await waitFor(() =>
+      expect(
+        lab.calls
+          .filter((c) => c.op === "endgame")
+          .map((c) => (c.args as { parts: number }).parts),
+      ).toEqual([4, 2]),
+    );
   });
 
   it("marks the values not yet searched to the end", async () => {

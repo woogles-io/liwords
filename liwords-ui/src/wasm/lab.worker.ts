@@ -72,6 +72,8 @@ export type LabRequest =
       op: "run";
       args: { job: number; ms: number; prune?: boolean; alpha?: number };
     }
+  // the bytes the wasm holds now, as an endgame's memory cap counts them
+  | { op: "held" }
   | { op: "stop" }
   | { op: "free"; args: { job: number } };
 type Job = {
@@ -291,6 +293,8 @@ const handle = async (req: LabRequest): Promise<unknown> => {
   switch (req.op) {
     case "prepare":
       return prepare(wolges, req.args.files);
+    case "held":
+      return wolges.memory_held();
     case "analyze":
       return JSON.parse(wolges.analyze(req.args.request));
     case "threats_new": {

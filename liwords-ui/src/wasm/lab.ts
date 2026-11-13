@@ -371,6 +371,8 @@ const multi = async (request: LabRequest): Promise<unknown> => {
     case "threats_new":
     case "threats_step":
     case "threats_free":
+    // each part holds as much as the first, the same lexicon and graph
+    case "held":
       return call(0, request);
     case "endgame": {
       freeSims();

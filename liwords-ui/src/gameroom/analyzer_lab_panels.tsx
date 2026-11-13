@@ -64,7 +64,7 @@ import {
   roomInWindow,
 } from "../utils/window_room";
 import { labCall, labParts, onLabEvent, setLabParts } from "../wasm/lab";
-import { OUT_OF_MEMORY } from "../wasm/lab_errors";
+import { OUT_OF_MEMORY, OUT_OF_MEMORY_ALONE } from "../wasm/lab_errors";
 import { getLoadableFiles, getWolges } from "../wasm/loader";
 import {
   AnalyzerMove,
@@ -754,7 +754,7 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
             : workers;
           const n = Math.min(workers, fit);
           setMadeOn(n);
-          return labCall<number>({
+          const made = await labCall<number>({
             op: "endgame",
             args: {
               parts: n,
@@ -772,6 +772,18 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
               }),
             },
           });
+          // Made, each part holds the lexicon and the solve's own graph, which
+          // the lexicon's size alone cannot tell: no more workers than leave
+          // each a share bigger than that, the solve made again on as many.
+          const held = await labCall<number>({ op: "held" });
+          const room = Math.max(
+            1,
+            Math.ceil((endgameMemoryMb() * 2 ** 20) / held) - 1,
+          );
+          if (n > 1 && room < n) {
+            setCap({ lexicon: lab.loadableKey, workers: room });
+          }
+          return made;
         }
       : null,
     modeled ? `${lab.key}/${model}/${workers}` : lab.key,
@@ -867,7 +879,13 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
   } else if (bag === null) {
     status = "Needs the full rack of the player to move.";
   } else if (job.error || valuesError) {
-    status = <span className="analyzer-error">{job.error ?? valuesError}</span>;
+    status = (
+      <span className="analyzer-error">
+        {job.error === OUT_OF_MEMORY && madeOn === 1
+          ? OUT_OF_MEMORY_ALONE
+          : (job.error ?? valuesError)}
+      </span>
+    );
   } else if (!solved || !solved.play) {
     // a step may end before the search has valued any move, for many steps
     // with a big bag: how far it has got, until the first move comes

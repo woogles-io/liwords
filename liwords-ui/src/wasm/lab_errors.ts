@@ -3,3 +3,8 @@
 // small a share of the device's memory can search nothing.
 export const OUT_OF_MEMORY =
   "Out of memory: the solve has no room to search. Use fewer workers.";
+
+// The same, on one worker already: the device's allowance holds the lexicon
+// and the solve's own graph with no room left to search.
+export const OUT_OF_MEMORY_ALONE =
+  "Out of memory: the solve has no room to search, even on one worker.";
