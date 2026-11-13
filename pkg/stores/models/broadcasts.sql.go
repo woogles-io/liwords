@@ -44,6 +44,55 @@ func (q *Queries) AddBroadcastDirector(ctx context.Context, arg AddBroadcastDire
 	return err
 }
 
+const bumpBroadcastGamesVersion = `-- name: BumpBroadcastGamesVersion :exec
+UPDATE broadcasts SET games_version = games_version + 1 WHERE id = $1
+`
+
+func (q *Queries) BumpBroadcastGamesVersion(ctx context.Context, id int32) error {
+	_, err := q.db.Exec(ctx, bumpBroadcastGamesVersion, id)
+	return err
+}
+
+const claimBroadcastForPolling = `-- name: ClaimBroadcastForPolling :one
+UPDATE broadcasts
+SET next_poll_at = NOW() + make_interval(secs => GREATEST(poll_interval_seconds, 30))
+WHERE id = (
+    SELECT id FROM broadcasts
+    WHERE active
+      AND (poll_start_time IS NULL OR poll_start_time <= NOW())
+      AND (poll_end_time IS NULL OR poll_end_time >= NOW())
+      AND (next_poll_at IS NULL OR next_poll_at <= NOW())
+    ORDER BY next_poll_at NULLS FIRST
+    LIMIT 1
+    FOR UPDATE SKIP LOCKED
+)
+RETURNING id, uuid, slug, broadcast_url, broadcast_url_format
+`
+
+type ClaimBroadcastForPollingRow struct {
+	ID                 int32
+	Uuid               uuid.UUID
+	Slug               string
+	BroadcastUrl       string
+	BroadcastUrlFormat string
+}
+
+// Claims the broadcast most overdue for a poll, moving its next_poll_at on, so
+// that with several servers each feed is polled once per interval. Returns no
+// rows when nothing is due.
+func (q *Queries) ClaimBroadcastForPolling(ctx context.Context) (ClaimBroadcastForPollingRow, error) {
+	row := q.db.QueryRow(ctx, claimBroadcastForPolling)
+	var i ClaimBroadcastForPollingRow
+	err := row.Scan(
+		&i.ID,
+		&i.Uuid,
+		&i.Slug,
+		&i.BroadcastUrl,
+		&i.BroadcastUrlFormat,
+	)
+	return i, err
+}
+
 const countUserObsSlots = `-- name: CountUserObsSlots :one
 SELECT COUNT(*) FROM user_obs_slots WHERE user_id = $1
 `
@@ -221,9 +270,11 @@ SELECT b.id, b.uuid, b.slug, b.name, b.description, b.broadcast_url, b.broadcast
        b.poll_interval_seconds, b.poll_start_time, b.poll_end_time,
        b.lexicon, b.board_layout, b.letter_distribution, b.challenge_rule,
        b.last_polled_at, b.creator_id, b.active, b.created_at, b.updated_at,
-       u.username as creator_username
+       u.username as creator_username,
+       COALESCE(f.current_round, 0)::int AS feed_current_round
 FROM broadcasts b
 JOIN users u ON b.creator_id = u.id
+LEFT JOIN broadcast_feeds f ON f.broadcast_id = b.id
 WHERE b.active = true
 ORDER BY b.created_at DESC
 `
@@ -249,6 +300,7 @@ type GetActiveBroadcastsRow struct {
 	CreatedAt           pgtype.Timestamptz
 	UpdatedAt           pgtype.Timestamptz
 	CreatorUsername     string
+	FeedCurrentRound    int32
 }
 
 func (q *Queries) GetActiveBroadcasts(ctx context.Context) ([]GetActiveBroadcastsRow, error) {
@@ -281,6 +333,7 @@ func (q *Queries) GetActiveBroadcasts(ctx context.Context) ([]GetActiveBroadcast
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.CreatorUsername,
+			&i.FeedCurrentRound,
 		); err != nil {
 			return nil, err
 		}
@@ -297,9 +350,11 @@ SELECT b.id, b.uuid, b.slug, b.name, b.description, b.broadcast_url, b.broadcast
        b.poll_interval_seconds, b.poll_start_time, b.poll_end_time,
        b.lexicon, b.board_layout, b.letter_distribution, b.challenge_rule,
        b.last_polled_at, b.creator_id, b.active, b.created_at, b.updated_at,
-       u.username as creator_username
+       u.username as creator_username,
+       COALESCE(f.current_round, 0)::int AS feed_current_round
 FROM broadcasts b
 JOIN users u ON b.creator_id = u.id
+LEFT JOIN broadcast_feeds f ON f.broadcast_id = b.id
 ORDER BY b.active DESC, b.created_at DESC
 `
 
@@ -324,6 +379,7 @@ type GetAllBroadcastsRow struct {
 	CreatedAt           pgtype.Timestamptz
 	UpdatedAt           pgtype.Timestamptz
 	CreatorUsername     string
+	FeedCurrentRound    int32
 }
 
 func (q *Queries) GetAllBroadcasts(ctx context.Context) ([]GetAllBroadcastsRow, error) {
@@ -356,6 +412,7 @@ func (q *Queries) GetAllBroadcasts(ctx context.Context) ([]GetAllBroadcastsRow, 
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.CreatorUsername,
+			&i.FeedCurrentRound,
 		); err != nil {
 			return nil, err
 		}
@@ -553,6 +610,53 @@ func (q *Queries) GetBroadcastDirectors(ctx context.Context, broadcastID int32) 
 		return nil, err
 	}
 	return items, nil
+}
+
+const getBroadcastFeedBySlug = `-- name: GetBroadcastFeedBySlug :one
+SELECT f.format, f.raw_gz, f.content_hash
+FROM broadcast_feeds f
+JOIN broadcasts b ON b.id = f.broadcast_id
+WHERE b.slug = $1 AND f.raw_gz IS NOT NULL
+`
+
+type GetBroadcastFeedBySlugRow struct {
+	Format      string
+	RawGz       []byte
+	ContentHash string
+}
+
+func (q *Queries) GetBroadcastFeedBySlug(ctx context.Context, slug string) (GetBroadcastFeedBySlugRow, error) {
+	row := q.db.QueryRow(ctx, getBroadcastFeedBySlug, slug)
+	var i GetBroadcastFeedBySlugRow
+	err := row.Scan(&i.Format, &i.RawGz, &i.ContentHash)
+	return i, err
+}
+
+const getBroadcastFeedStatus = `-- name: GetBroadcastFeedStatus :one
+SELECT fetched_at, changed_at, last_error, last_error_at, consecutive_failures
+FROM broadcast_feeds
+WHERE broadcast_id = $1
+`
+
+type GetBroadcastFeedStatusRow struct {
+	FetchedAt           pgtype.Timestamptz
+	ChangedAt           pgtype.Timestamptz
+	LastError           string
+	LastErrorAt         pgtype.Timestamptz
+	ConsecutiveFailures int32
+}
+
+func (q *Queries) GetBroadcastFeedStatus(ctx context.Context, broadcastID int32) (GetBroadcastFeedStatusRow, error) {
+	row := q.db.QueryRow(ctx, getBroadcastFeedStatus, broadcastID)
+	var i GetBroadcastFeedStatusRow
+	err := row.Scan(
+		&i.FetchedAt,
+		&i.ChangedAt,
+		&i.LastError,
+		&i.LastErrorAt,
+		&i.ConsecutiveFailures,
+	)
+	return i, err
 }
 
 const getBroadcastGameAnnotatorInfo = `-- name: GetBroadcastGameAnnotatorInfo :one
@@ -888,53 +992,25 @@ func (q *Queries) GetBroadcastSlotGame(ctx context.Context, arg GetBroadcastSlot
 	return i, err
 }
 
-const getBroadcastsForPolling = `-- name: GetBroadcastsForPolling :many
-SELECT id, uuid, slug, broadcast_url, broadcast_url_format, poll_interval_seconds,
-       poll_start_time, poll_end_time, last_polled_at
-FROM broadcasts
-WHERE active = true
+const getBroadcastVersion = `-- name: GetBroadcastVersion :one
+SELECT b.games_version, COALESCE(f.content_hash, '')::text AS feed_hash
+FROM broadcasts b
+LEFT JOIN broadcast_feeds f ON f.broadcast_id = b.id
+WHERE b.slug = $1
 `
 
-type GetBroadcastsForPollingRow struct {
-	ID                  int32
-	Uuid                uuid.UUID
-	Slug                string
-	BroadcastUrl        string
-	BroadcastUrlFormat  string
-	PollIntervalSeconds int32
-	PollStartTime       pgtype.Timestamptz
-	PollEndTime         pgtype.Timestamptz
-	LastPolledAt        pgtype.Timestamptz
+type GetBroadcastVersionRow struct {
+	GamesVersion int64
+	FeedHash     string
 }
 
-func (q *Queries) GetBroadcastsForPolling(ctx context.Context) ([]GetBroadcastsForPollingRow, error) {
-	rows, err := q.db.Query(ctx, getBroadcastsForPolling)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []GetBroadcastsForPollingRow
-	for rows.Next() {
-		var i GetBroadcastsForPollingRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.Uuid,
-			&i.Slug,
-			&i.BroadcastUrl,
-			&i.BroadcastUrlFormat,
-			&i.PollIntervalSeconds,
-			&i.PollStartTime,
-			&i.PollEndTime,
-			&i.LastPolledAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
+// What a broadcast's cached responses depend on: the stored feed, and the
+// claims, slots and annotations (games_version).
+func (q *Queries) GetBroadcastVersion(ctx context.Context, slug string) (GetBroadcastVersionRow, error) {
+	row := q.db.QueryRow(ctx, getBroadcastVersion, slug)
+	var i GetBroadcastVersionRow
+	err := row.Scan(&i.GamesVersion, &i.FeedHash)
+	return i, err
 }
 
 const getLatestAnnotationForUser = `-- name: GetLatestAnnotationForUser :one
@@ -1403,6 +1479,47 @@ func (q *Queries) ListUserObsSlots(ctx context.Context, userID int64) ([]ListUse
 	return items, nil
 }
 
+const markBroadcastFeedUnchanged = `-- name: MarkBroadcastFeedUnchanged :execrows
+UPDATE broadcast_feeds
+SET fetched_at = NOW(), last_error = '', consecutive_failures = 0
+WHERE broadcast_id = $1 AND content_hash = $2
+`
+
+type MarkBroadcastFeedUnchangedParams struct {
+	BroadcastID int32
+	ContentHash string
+}
+
+// Records a successful poll that fetched what is already stored. Returns 0
+// rows when the stored feed differs (or there is none), and the caller saves.
+func (q *Queries) MarkBroadcastFeedUnchanged(ctx context.Context, arg MarkBroadcastFeedUnchangedParams) (int64, error) {
+	result, err := q.db.Exec(ctx, markBroadcastFeedUnchanged, arg.BroadcastID, arg.ContentHash)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const recordBroadcastFeedError = `-- name: RecordBroadcastFeedError :exec
+INSERT INTO broadcast_feeds (broadcast_id, last_error, last_error_at, consecutive_failures)
+VALUES ($1, $2, NOW(), 1)
+ON CONFLICT (broadcast_id) DO UPDATE
+SET last_error = EXCLUDED.last_error,
+    last_error_at = NOW(),
+    consecutive_failures = broadcast_feeds.consecutive_failures + 1
+`
+
+type RecordBroadcastFeedErrorParams struct {
+	BroadcastID int32
+	LastError   string
+}
+
+// Keeps the stored feed: pages go on serving it.
+func (q *Queries) RecordBroadcastFeedError(ctx context.Context, arg RecordBroadcastFeedErrorParams) error {
+	_, err := q.db.Exec(ctx, recordBroadcastFeedError, arg.BroadcastID, arg.LastError)
+	return err
+}
+
 const removeBroadcastAnnotator = `-- name: RemoveBroadcastAnnotator :exec
 DELETE FROM broadcast_annotators
 WHERE broadcast_id = $1 AND user_id = $2
@@ -1430,6 +1547,40 @@ type RemoveBroadcastDirectorParams struct {
 
 func (q *Queries) RemoveBroadcastDirector(ctx context.Context, arg RemoveBroadcastDirectorParams) error {
 	_, err := q.db.Exec(ctx, removeBroadcastDirector, arg.BroadcastID, arg.UserID)
+	return err
+}
+
+const saveBroadcastFeed = `-- name: SaveBroadcastFeed :exec
+INSERT INTO broadcast_feeds (broadcast_id, format, raw_gz, content_hash, current_round,
+    fetched_at, changed_at)
+VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
+ON CONFLICT (broadcast_id) DO UPDATE
+SET format = EXCLUDED.format,
+    raw_gz = EXCLUDED.raw_gz,
+    content_hash = EXCLUDED.content_hash,
+    current_round = EXCLUDED.current_round,
+    fetched_at = NOW(),
+    changed_at = NOW(),
+    last_error = '',
+    consecutive_failures = 0
+`
+
+type SaveBroadcastFeedParams struct {
+	BroadcastID  int32
+	Format       string
+	RawGz        []byte
+	ContentHash  string
+	CurrentRound int32
+}
+
+func (q *Queries) SaveBroadcastFeed(ctx context.Context, arg SaveBroadcastFeedParams) error {
+	_, err := q.db.Exec(ctx, saveBroadcastFeed,
+		arg.BroadcastID,
+		arg.Format,
+		arg.RawGz,
+		arg.ContentHash,
+		arg.CurrentRound,
+	)
 	return err
 }
 
@@ -1472,6 +1623,12 @@ SET name = $2,
     letter_distribution = $11,
     challenge_rule = $12,
     active = $13,
+    -- Poll a new feed URL, format or interval within the poller's next tick.
+    next_poll_at = CASE
+        WHEN broadcast_url IS DISTINCT FROM $4
+          OR broadcast_url_format IS DISTINCT FROM $5
+          OR poll_interval_seconds IS DISTINCT FROM $6
+        THEN NULL ELSE next_poll_at END,
     updated_at = NOW()
 WHERE slug = $1
 `

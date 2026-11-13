@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -12,10 +13,17 @@ import (
 	"sync"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/nats-io/nats.go"
 	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/woogles-io/liwords/pkg/entity"
+	"github.com/woogles-io/liwords/pkg/stores/models"
 	"github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
@@ -45,54 +53,105 @@ func (bs *BroadcastService) StartPoller(ctx context.Context) {
 	log.Info().Msg("broadcast-poller-started")
 }
 
-func (bs *BroadcastService) runPollerCycle(ctx context.Context) {
-	broadcasts, err := bs.queries.GetBroadcastsForPolling(ctx)
-	if err != nil {
-		log.Err(err).Msg("broadcast-poller-get-broadcasts-failed")
-		return
-	}
+// maxPollsPerCycle bounds one cycle's polls, so a backlog (after downtime,
+// say) is spread over a few cycles.
+const maxPollsPerCycle = 20
 
-	now := time.Now()
-	for _, b := range broadcasts {
-		if b.PollStartTime.Valid && now.Before(b.PollStartTime.Time) {
-			continue
+// runPollerCycle polls every broadcast that is due, claiming each one so that
+// no other server polls it in the same interval.
+func (bs *BroadcastService) runPollerCycle(ctx context.Context) {
+	for range maxPollsPerCycle {
+		if ctx.Err() != nil {
+			return
 		}
-		if b.PollEndTime.Valid && now.After(b.PollEndTime.Time) {
-			continue
+		b, err := bs.queries.ClaimBroadcastForPolling(ctx)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return
 		}
-		if b.LastPolledAt.Valid {
-			nextPoll := b.LastPolledAt.Time.Add(time.Duration(b.PollIntervalSeconds) * time.Second)
-			if now.Before(nextPoll) {
-				continue
-			}
+		if err != nil {
+			log.Err(err).Msg("broadcast-poller-claim-failed")
+			return
 		}
-		if err := bs.pollBroadcast(ctx, b.ID, b.Uuid.String(), b.Slug, b.BroadcastUrl, b.BroadcastUrlFormat); err != nil {
+		if _, err := bs.pollBroadcast(ctx, b.ID, b.Uuid.String(), b.Slug, b.BroadcastUrl, b.BroadcastUrlFormat); err != nil {
 			log.Err(err).Str("slug", b.Slug).Msg("broadcast-poll-failed")
 		}
 	}
 }
 
-// pollBroadcast fetches the feed for one broadcast, updates the cache, persists
-// last_polled_at, and publishes a NATS update. Also used by TriggerPoll RPC.
-func (bs *BroadcastService) pollBroadcast(ctx context.Context, id int32, broadcastUUID, slug, url, format string) error {
-	divs, err := bs.fetchAndCacheAllDivisions(slug, url, format)
+// pollBroadcast fetches one broadcast's feed and stores it. When it changed,
+// viewers are told over NATS. A failed fetch is recorded and leaves the
+// stored feed in place. Also used by the TriggerPoll RPC.
+func (bs *BroadcastService) pollBroadcast(ctx context.Context, id int32, broadcastUUID, slug, url, format string) (changed bool, err error) {
+	ctx, span := otel.Tracer("broadcast-poller").Start(ctx, "broadcast.poll",
+		trace.WithAttributes(attribute.String("broadcast.slug", slug)))
+	defer func() {
+		span.SetAttributes(attribute.Bool("feed.changed", changed))
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
+			if rerr := bs.queries.RecordBroadcastFeedError(ctx, models.RecordBroadcastFeedErrorParams{
+				BroadcastID: id,
+				LastError:   err.Error(),
+			}); rerr != nil {
+				log.Err(rerr).Str("slug", slug).Msg("broadcast-record-feed-error-failed")
+			}
+		}
+		span.End()
+	}()
+
+	raw, err := fetchURL(ctx, url)
 	if err != nil {
-		return err
+		return false, err
+	}
+	span.SetAttributes(attribute.Int("feed.bytes", len(raw)))
+	hash := feedHash(format, raw)
+
+	n, err := bs.queries.MarkBroadcastFeedUnchanged(ctx, models.MarkBroadcastFeedUnchangedParams{
+		BroadcastID: id,
+		ContentHash: hash,
+	})
+	if err != nil {
+		return false, err
+	}
+	if n == 0 {
+		// Parse before storing, so a feed we can't read never replaces one
+		// we can.
+		divs, err := parseFeed(raw, format)
+		if err != nil {
+			return false, fmt.Errorf("parse feed: %w", err)
+		}
+		gz, err := gzipBytes(raw)
+		if err != nil {
+			return false, err
+		}
+		f := newParsedFeed(hash, divs)
+		currentRound := 0
+		if fd := f.division(""); fd != nil {
+			currentRound = fd.CurrentRound
+		}
+		if err := bs.queries.SaveBroadcastFeed(ctx, models.SaveBroadcastFeedParams{
+			BroadcastID:  id,
+			Format:       format,
+			RawGz:        gz,
+			ContentHash:  hash,
+			CurrentRound: int32(currentRound),
+		}); err != nil {
+			return false, err
+		}
+		span.SetAttributes(attribute.Int("feed.gz_bytes", len(gz)))
+		bs.parsedFeeds.Add(slug, f)
+		changed = true
+		if bs.natsConn != nil {
+			publishBroadcastUpdate(bs.natsConn, broadcastUUID, slug, int32(currentRound))
+		}
 	}
 
-	// Bust RPC response caches so the next viewer request picks up new feed scores.
-	bs.invalidateSlugCaches(slug)
-
+	// Older servers schedule polls from last_polled_at.
 	if err := bs.queries.UpdateBroadcastLastPolled(ctx, id); err != nil {
 		log.Err(err).Str("slug", slug).Msg("broadcast-update-last-polled-failed")
 	}
-
-	if bs.natsConn != nil {
-		publishBroadcastUpdate(bs.natsConn, broadcastUUID, slug, divs)
-	}
-
-	log.Debug().Str("slug", slug).Int("numDivisions", len(divs)).Msg("broadcast-polled")
-	return nil
+	log.Debug().Str("slug", slug).Bool("changed", changed).Msg("broadcast-polled")
+	return changed, nil
 }
 
 // aiaCertCache caches intermediate certificates fetched via the Authority
@@ -177,16 +236,16 @@ func verifyWithAIAFallback(cs tls.ConnectionState) error {
 
 var broadcastHTTPClient = &http.Client{
 	Timeout: 30 * time.Second,
-	Transport: &http.Transport{
+	Transport: otelhttp.NewTransport(&http.Transport{
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: true, //nolint:gosec // verified manually via VerifyConnection below
 			VerifyConnection:   verifyWithAIAFallback,
 		},
-	},
+	}),
 }
 
-func fetchURL(feedURL string) ([]byte, error) {
-	req, err := http.NewRequest(http.MethodGet, cacheBustedURL(feedURL, time.Now()), nil)
+func fetchURL(ctx context.Context, feedURL string) ([]byte, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, cacheBustedURL(feedURL, time.Now()), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -221,18 +280,7 @@ func cacheBustedURL(feedURL string, now time.Time) string {
 	return u.String()
 }
 
-func publishBroadcastUpdate(nc *nats.Conn, broadcastUUID, slug string, divs map[string]*FeedData) {
-	// Use the first (alphabetically) division's current round for the event.
-	currentRound := int32(0)
-	firstName := ""
-	for name := range divs {
-		if firstName == "" || name < firstName {
-			firstName = name
-		}
-	}
-	if fd, ok := divs[firstName]; ok {
-		currentRound = int32(fd.CurrentRound)
-	}
+func publishBroadcastUpdate(nc *nats.Conn, broadcastUUID, slug string, currentRound int32) {
 	evt := entity.WrapEvent(&ipc.BroadcastUpdatedEvent{
 		Slug:         slug,
 		CurrentRound: currentRound,

@@ -24,7 +24,7 @@ an in-process mutex. Everything below is what is still in the way.
 | 2 | Tournament store | Per-server cache and in-process mutex; two servers overwrite each other | blocker, correctness | large |
 | 2a | COP pairing | Runs for seconds under the tournament lock | correctness with two servers | medium |
 | 3 | Event-stream API | Queue-subscribed, so each server sees only some events | correctness | small |
-| 4 | Broadcast feed cache | Only the server that polls refreshes; others stale up to 30 min | staleness | small |
+| 4 | Broadcast feeds | Only the server that polls refreshes; others stale up to 30 min | staleness | small |
 | 5 | Shutdown | Moves in flight are killed; NATS keeps delivering during shutdown | lost moves on every deploy | medium |
 | 6 | Version skew | Old and new code run side by side during a deploy | process | ongoing |
 | 7 | Background jobs | Run once per server | duplicate work, not correctness | medium |
@@ -301,23 +301,32 @@ a move being computed is lost: a real-time bot game then ends when the bot's
 clock runs out, and a correspondence game waits for an admin's
 `UnfreezeBot`. Worth a drain like the API's, in the macondo repo.
 
-## 4. Broadcast feed cache
+## 4. Broadcast feeds
 
-The broadcast poller (`pkg/broadcasts/poller.go`) runs every 30s on every
-server. Whether a broadcast is due is decided by `last_polled_at` in the
-database, which is shared, so only one server polls each feed. That server
-refreshes its in-memory feed cache and drops its RPC response caches. The
-other server does neither: its feed cache lives 30 minutes (`feedCacheTTL`),
-so its viewers can see scores up to 30 minutes old.
+Before: the broadcast poller (`pkg/broadcasts/poller.go`) ran every 30s on
+every server, and `last_polled_at` decided whether a feed was due, without
+claiming it. The server that polled kept the parsed feed in memory for 30
+minutes; another server kept serving its own copy, up to 30 minutes old.
+Nothing was stored, so on a cache miss a viewer's request fetched the
+director's feed itself, and a broadcast whose feed URL went away showed no
+pairings or standings.
 
-Fix, either:
+**Status (2026-11-12): done in code** (`pkg/broadcasts/feed_store.go`):
 
-- each server refreshes its own feed cache from the NATS update that
-  `publishBroadcastUpdate` already sends with the divisions in it; or
-- poll on every server, keeping the feed cache per server, and use
-  `last_polled_at` only for display.
-
-The first avoids hitting the external feed once per server.
+- The poller claims each due broadcast (`ClaimBroadcastForPolling`, `FOR
+  UPDATE SKIP LOCKED` on `next_poll_at`), so each feed is fetched once per
+  interval whatever the number of servers. It is one of the tickers of
+  section 7 and can move to the worker as is.
+- It stores the feed, gzipped, in `broadcast_feeds` under a hash of its
+  content, and writes it only when the hash changes. Failures are recorded
+  there too and shown in the director panel; the stored feed stays.
+- Request paths never fetch. Each server keeps parsed feeds under their hash
+  and checks the hash in the database before using one. Ended broadcasts are
+  served from their last stored feed.
+- `BROADCAST_UPDATED` goes out only when the feed changed.
+- The short response caches are keyed by the feed hash and
+  `broadcasts.games_version` (bumped on claims, slots and finished
+  annotations), so they are correct on every server.
 
 ## 5. Shutdown and draining
 
@@ -402,7 +411,7 @@ What runs on every API server today, and what happens with two:
 | Correspondence adjudicator | 60s | Same. |
 | Seek expiry | 10 min | Safe: one SQL delete. |
 | Channel monitor | 5s | Per-server logging. Fine. |
-| Broadcast poller | 30s | See section 4. |
+| Broadcast poller | 30s | Safe: each feed is claimed by one server (section 4). |
 | Analysis job reclaim | 30s | Safe: one SQL update. |
 | VDO stream poller | ~60s, jittered | Duplicate calls to VDO.Ninja; deactivation is idempotent. |
 | Client record pruner | daily | Safe (says so in its comment). |

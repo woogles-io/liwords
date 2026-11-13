@@ -716,8 +716,13 @@ type GetBroadcastResponse struct {
 	AnnotatorUsernames []string               `protobuf:"bytes,4,rep,name=annotator_usernames,json=annotatorUsernames,proto3" json:"annotator_usernames,omitempty"`
 	TotalRounds        int32                  `protobuf:"varint,5,opt,name=total_rounds,json=totalRounds,proto3" json:"total_rounds,omitempty"`
 	Divisions          []string               `protobuf:"bytes,6,rep,name=divisions,proto3" json:"divisions,omitempty"` // all available divisions from the feed
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// The stored feed: when it was last fetched, and the last fetch error, if
+	// the fetches since have failed. Pages keep showing the stored feed.
+	FeedFetchedAt *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=feed_fetched_at,json=feedFetchedAt,proto3" json:"feed_fetched_at,omitempty"`
+	FeedError     string                 `protobuf:"bytes,8,opt,name=feed_error,json=feedError,proto3" json:"feed_error,omitempty"`
+	FeedErrorAt   *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=feed_error_at,json=feedErrorAt,proto3" json:"feed_error_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GetBroadcastResponse) Reset() {
@@ -788,6 +793,27 @@ func (x *GetBroadcastResponse) GetTotalRounds() int32 {
 func (x *GetBroadcastResponse) GetDivisions() []string {
 	if x != nil {
 		return x.Divisions
+	}
+	return nil
+}
+
+func (x *GetBroadcastResponse) GetFeedFetchedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.FeedFetchedAt
+	}
+	return nil
+}
+
+func (x *GetBroadcastResponse) GetFeedError() string {
+	if x != nil {
+		return x.FeedError
+	}
+	return ""
+}
+
+func (x *GetBroadcastResponse) GetFeedErrorAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.FeedErrorAt
 	}
 	return nil
 }
@@ -3692,14 +3718,18 @@ const file_proto_broadcast_service_broadcast_service_proto_rawDesc = "" +
 	"\x04slug\x18\x02 \x01(\tR\x04slug\"E\n" +
 	"\x13GetBroadcastRequest\x12\x12\n" +
 	"\x04slug\x18\x01 \x01(\tR\x04slug\x12\x1a\n" +
-	"\bdivision\x18\x02 \x01(\tR\bdivision\"\xb1\x02\n" +
+	"\bdivision\x18\x02 \x01(\tR\bdivision\"\xd4\x03\n" +
 	"\x14GetBroadcastResponse\x12:\n" +
 	"\tbroadcast\x18\x01 \x01(\v2\x1c.broadcast_service.BroadcastR\tbroadcast\x12<\n" +
 	"\aplayers\x18\x02 \x03(\v2\".broadcast_service.BroadcastPlayerR\aplayers\x12-\n" +
 	"\x12director_usernames\x18\x03 \x03(\tR\x11directorUsernames\x12/\n" +
 	"\x13annotator_usernames\x18\x04 \x03(\tR\x12annotatorUsernames\x12!\n" +
 	"\ftotal_rounds\x18\x05 \x01(\x05R\vtotalRounds\x12\x1c\n" +
-	"\tdivisions\x18\x06 \x03(\tR\tdivisions\"`\n" +
+	"\tdivisions\x18\x06 \x03(\tR\tdivisions\x12B\n" +
+	"\x0ffeed_fetched_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\rfeedFetchedAt\x12\x1d\n" +
+	"\n" +
+	"feed_error\x18\b \x01(\tR\tfeedError\x12>\n" +
+	"\rfeed_error_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\vfeedErrorAt\"`\n" +
 	"\x18GetBroadcastGamesRequest\x12\x12\n" +
 	"\x04slug\x18\x01 \x01(\tR\x04slug\x12\x14\n" +
 	"\x05round\x18\x02 \x01(\x05R\x05round\x12\x1a\n" +
@@ -4005,76 +4035,78 @@ var file_proto_broadcast_service_broadcast_service_proto_depIdxs = []int32{
 	59, // 4: broadcast_service.CreateBroadcastRequest.poll_end_time:type_name -> google.protobuf.Timestamp
 	1,  // 5: broadcast_service.GetBroadcastResponse.broadcast:type_name -> broadcast_service.Broadcast
 	3,  // 6: broadcast_service.GetBroadcastResponse.players:type_name -> broadcast_service.BroadcastPlayer
-	2,  // 7: broadcast_service.GetBroadcastGamesResponse.games:type_name -> broadcast_service.BroadcastRoundGame
-	59, // 8: broadcast_service.UpdateBroadcastRequest.poll_start_time:type_name -> google.protobuf.Timestamp
-	59, // 9: broadcast_service.UpdateBroadcastRequest.poll_end_time:type_name -> google.protobuf.Timestamp
-	1,  // 10: broadcast_service.GetActiveBroadcastsResponse.broadcasts:type_name -> broadcast_service.Broadcast
-	1,  // 11: broadcast_service.GetAllBroadcastsResponse.broadcasts:type_name -> broadcast_service.Broadcast
-	2,  // 12: broadcast_service.GetMyClaimedGamesResponse.games:type_name -> broadcast_service.BroadcastRoundGame
-	0,  // 13: broadcast_service.StreamSlot.target_kind:type_name -> broadcast_service.StreamSlotTargetKind
-	35, // 14: broadcast_service.ListMyStreamSlotsResponse.slots:type_name -> broadcast_service.StreamSlot
-	0,  // 15: broadcast_service.PointStreamSlotRequest.target_kind:type_name -> broadcast_service.StreamSlotTargetKind
-	34, // 16: broadcast_service.ListSlotsResponse.slots:type_name -> broadcast_service.BroadcastSlot
-	59, // 17: broadcast_service.BroadcastGameStat.completed_at:type_name -> google.protobuf.Timestamp
-	54, // 18: broadcast_service.GetBroadcastGameStatsResponse.stats:type_name -> broadcast_service.BroadcastGameStat
-	54, // 19: broadcast_service.GetBroadcastAllGamesResponse.stats:type_name -> broadcast_service.BroadcastGameStat
-	4,  // 20: broadcast_service.BroadcastService.CreateBroadcast:input_type -> broadcast_service.CreateBroadcastRequest
-	6,  // 21: broadcast_service.BroadcastService.GetBroadcast:input_type -> broadcast_service.GetBroadcastRequest
-	8,  // 22: broadcast_service.BroadcastService.GetBroadcastGames:input_type -> broadcast_service.GetBroadcastGamesRequest
-	10, // 23: broadcast_service.BroadcastService.UpdateBroadcast:input_type -> broadcast_service.UpdateBroadcastRequest
-	12, // 24: broadcast_service.BroadcastService.ClaimGame:input_type -> broadcast_service.ClaimGameRequest
-	14, // 25: broadcast_service.BroadcastService.UnclaimGame:input_type -> broadcast_service.UnclaimGameRequest
-	16, // 26: broadcast_service.BroadcastService.AddBroadcastDirectors:input_type -> broadcast_service.AddBroadcastDirectorsRequest
-	18, // 27: broadcast_service.BroadcastService.RemoveBroadcastDirectors:input_type -> broadcast_service.RemoveBroadcastDirectorsRequest
-	20, // 28: broadcast_service.BroadcastService.AddBroadcastAnnotators:input_type -> broadcast_service.AddBroadcastAnnotatorsRequest
-	22, // 29: broadcast_service.BroadcastService.RemoveBroadcastAnnotators:input_type -> broadcast_service.RemoveBroadcastAnnotatorsRequest
-	24, // 30: broadcast_service.BroadcastService.GetActiveBroadcasts:input_type -> broadcast_service.GetActiveBroadcastsRequest
-	26, // 31: broadcast_service.BroadcastService.GetAllBroadcasts:input_type -> broadcast_service.GetAllBroadcastsRequest
-	28, // 32: broadcast_service.BroadcastService.TriggerPoll:input_type -> broadcast_service.TriggerPollRequest
-	30, // 33: broadcast_service.BroadcastService.GetMyClaimedGames:input_type -> broadcast_service.GetMyClaimedGamesRequest
-	32, // 34: broadcast_service.BroadcastService.GetBroadcastGameContext:input_type -> broadcast_service.GetBroadcastGameContextRequest
-	44, // 35: broadcast_service.BroadcastService.ListSlots:input_type -> broadcast_service.ListSlotsRequest
-	50, // 36: broadcast_service.BroadcastService.GetSlotCurrentGame:input_type -> broadcast_service.GetSlotCurrentGameRequest
-	46, // 37: broadcast_service.BroadcastService.CreateSlot:input_type -> broadcast_service.CreateSlotRequest
-	48, // 38: broadcast_service.BroadcastService.AssignSlot:input_type -> broadcast_service.AssignSlotRequest
-	52, // 39: broadcast_service.BroadcastService.DeleteSlot:input_type -> broadcast_service.DeleteSlotRequest
-	55, // 40: broadcast_service.BroadcastService.GetBroadcastGameStats:input_type -> broadcast_service.GetBroadcastGameStatsRequest
-	57, // 41: broadcast_service.BroadcastService.GetBroadcastAllGames:input_type -> broadcast_service.GetBroadcastAllGamesRequest
-	36, // 42: broadcast_service.BroadcastService.ListMyStreamSlots:input_type -> broadcast_service.ListMyStreamSlotsRequest
-	38, // 43: broadcast_service.BroadcastService.CreateStreamSlot:input_type -> broadcast_service.CreateStreamSlotRequest
-	40, // 44: broadcast_service.BroadcastService.PointStreamSlot:input_type -> broadcast_service.PointStreamSlotRequest
-	42, // 45: broadcast_service.BroadcastService.DeleteStreamSlot:input_type -> broadcast_service.DeleteStreamSlotRequest
-	5,  // 46: broadcast_service.BroadcastService.CreateBroadcast:output_type -> broadcast_service.CreateBroadcastResponse
-	7,  // 47: broadcast_service.BroadcastService.GetBroadcast:output_type -> broadcast_service.GetBroadcastResponse
-	9,  // 48: broadcast_service.BroadcastService.GetBroadcastGames:output_type -> broadcast_service.GetBroadcastGamesResponse
-	11, // 49: broadcast_service.BroadcastService.UpdateBroadcast:output_type -> broadcast_service.UpdateBroadcastResponse
-	13, // 50: broadcast_service.BroadcastService.ClaimGame:output_type -> broadcast_service.ClaimGameResponse
-	15, // 51: broadcast_service.BroadcastService.UnclaimGame:output_type -> broadcast_service.UnclaimGameResponse
-	17, // 52: broadcast_service.BroadcastService.AddBroadcastDirectors:output_type -> broadcast_service.AddBroadcastDirectorsResponse
-	19, // 53: broadcast_service.BroadcastService.RemoveBroadcastDirectors:output_type -> broadcast_service.RemoveBroadcastDirectorsResponse
-	21, // 54: broadcast_service.BroadcastService.AddBroadcastAnnotators:output_type -> broadcast_service.AddBroadcastAnnotatorsResponse
-	23, // 55: broadcast_service.BroadcastService.RemoveBroadcastAnnotators:output_type -> broadcast_service.RemoveBroadcastAnnotatorsResponse
-	25, // 56: broadcast_service.BroadcastService.GetActiveBroadcasts:output_type -> broadcast_service.GetActiveBroadcastsResponse
-	27, // 57: broadcast_service.BroadcastService.GetAllBroadcasts:output_type -> broadcast_service.GetAllBroadcastsResponse
-	29, // 58: broadcast_service.BroadcastService.TriggerPoll:output_type -> broadcast_service.TriggerPollResponse
-	31, // 59: broadcast_service.BroadcastService.GetMyClaimedGames:output_type -> broadcast_service.GetMyClaimedGamesResponse
-	33, // 60: broadcast_service.BroadcastService.GetBroadcastGameContext:output_type -> broadcast_service.GetBroadcastGameContextResponse
-	45, // 61: broadcast_service.BroadcastService.ListSlots:output_type -> broadcast_service.ListSlotsResponse
-	51, // 62: broadcast_service.BroadcastService.GetSlotCurrentGame:output_type -> broadcast_service.GetSlotCurrentGameResponse
-	47, // 63: broadcast_service.BroadcastService.CreateSlot:output_type -> broadcast_service.CreateSlotResponse
-	49, // 64: broadcast_service.BroadcastService.AssignSlot:output_type -> broadcast_service.AssignSlotResponse
-	53, // 65: broadcast_service.BroadcastService.DeleteSlot:output_type -> broadcast_service.DeleteSlotResponse
-	56, // 66: broadcast_service.BroadcastService.GetBroadcastGameStats:output_type -> broadcast_service.GetBroadcastGameStatsResponse
-	58, // 67: broadcast_service.BroadcastService.GetBroadcastAllGames:output_type -> broadcast_service.GetBroadcastAllGamesResponse
-	37, // 68: broadcast_service.BroadcastService.ListMyStreamSlots:output_type -> broadcast_service.ListMyStreamSlotsResponse
-	39, // 69: broadcast_service.BroadcastService.CreateStreamSlot:output_type -> broadcast_service.CreateStreamSlotResponse
-	41, // 70: broadcast_service.BroadcastService.PointStreamSlot:output_type -> broadcast_service.PointStreamSlotResponse
-	43, // 71: broadcast_service.BroadcastService.DeleteStreamSlot:output_type -> broadcast_service.DeleteStreamSlotResponse
-	46, // [46:72] is the sub-list for method output_type
-	20, // [20:46] is the sub-list for method input_type
-	20, // [20:20] is the sub-list for extension type_name
-	20, // [20:20] is the sub-list for extension extendee
-	0,  // [0:20] is the sub-list for field type_name
+	59, // 7: broadcast_service.GetBroadcastResponse.feed_fetched_at:type_name -> google.protobuf.Timestamp
+	59, // 8: broadcast_service.GetBroadcastResponse.feed_error_at:type_name -> google.protobuf.Timestamp
+	2,  // 9: broadcast_service.GetBroadcastGamesResponse.games:type_name -> broadcast_service.BroadcastRoundGame
+	59, // 10: broadcast_service.UpdateBroadcastRequest.poll_start_time:type_name -> google.protobuf.Timestamp
+	59, // 11: broadcast_service.UpdateBroadcastRequest.poll_end_time:type_name -> google.protobuf.Timestamp
+	1,  // 12: broadcast_service.GetActiveBroadcastsResponse.broadcasts:type_name -> broadcast_service.Broadcast
+	1,  // 13: broadcast_service.GetAllBroadcastsResponse.broadcasts:type_name -> broadcast_service.Broadcast
+	2,  // 14: broadcast_service.GetMyClaimedGamesResponse.games:type_name -> broadcast_service.BroadcastRoundGame
+	0,  // 15: broadcast_service.StreamSlot.target_kind:type_name -> broadcast_service.StreamSlotTargetKind
+	35, // 16: broadcast_service.ListMyStreamSlotsResponse.slots:type_name -> broadcast_service.StreamSlot
+	0,  // 17: broadcast_service.PointStreamSlotRequest.target_kind:type_name -> broadcast_service.StreamSlotTargetKind
+	34, // 18: broadcast_service.ListSlotsResponse.slots:type_name -> broadcast_service.BroadcastSlot
+	59, // 19: broadcast_service.BroadcastGameStat.completed_at:type_name -> google.protobuf.Timestamp
+	54, // 20: broadcast_service.GetBroadcastGameStatsResponse.stats:type_name -> broadcast_service.BroadcastGameStat
+	54, // 21: broadcast_service.GetBroadcastAllGamesResponse.stats:type_name -> broadcast_service.BroadcastGameStat
+	4,  // 22: broadcast_service.BroadcastService.CreateBroadcast:input_type -> broadcast_service.CreateBroadcastRequest
+	6,  // 23: broadcast_service.BroadcastService.GetBroadcast:input_type -> broadcast_service.GetBroadcastRequest
+	8,  // 24: broadcast_service.BroadcastService.GetBroadcastGames:input_type -> broadcast_service.GetBroadcastGamesRequest
+	10, // 25: broadcast_service.BroadcastService.UpdateBroadcast:input_type -> broadcast_service.UpdateBroadcastRequest
+	12, // 26: broadcast_service.BroadcastService.ClaimGame:input_type -> broadcast_service.ClaimGameRequest
+	14, // 27: broadcast_service.BroadcastService.UnclaimGame:input_type -> broadcast_service.UnclaimGameRequest
+	16, // 28: broadcast_service.BroadcastService.AddBroadcastDirectors:input_type -> broadcast_service.AddBroadcastDirectorsRequest
+	18, // 29: broadcast_service.BroadcastService.RemoveBroadcastDirectors:input_type -> broadcast_service.RemoveBroadcastDirectorsRequest
+	20, // 30: broadcast_service.BroadcastService.AddBroadcastAnnotators:input_type -> broadcast_service.AddBroadcastAnnotatorsRequest
+	22, // 31: broadcast_service.BroadcastService.RemoveBroadcastAnnotators:input_type -> broadcast_service.RemoveBroadcastAnnotatorsRequest
+	24, // 32: broadcast_service.BroadcastService.GetActiveBroadcasts:input_type -> broadcast_service.GetActiveBroadcastsRequest
+	26, // 33: broadcast_service.BroadcastService.GetAllBroadcasts:input_type -> broadcast_service.GetAllBroadcastsRequest
+	28, // 34: broadcast_service.BroadcastService.TriggerPoll:input_type -> broadcast_service.TriggerPollRequest
+	30, // 35: broadcast_service.BroadcastService.GetMyClaimedGames:input_type -> broadcast_service.GetMyClaimedGamesRequest
+	32, // 36: broadcast_service.BroadcastService.GetBroadcastGameContext:input_type -> broadcast_service.GetBroadcastGameContextRequest
+	44, // 37: broadcast_service.BroadcastService.ListSlots:input_type -> broadcast_service.ListSlotsRequest
+	50, // 38: broadcast_service.BroadcastService.GetSlotCurrentGame:input_type -> broadcast_service.GetSlotCurrentGameRequest
+	46, // 39: broadcast_service.BroadcastService.CreateSlot:input_type -> broadcast_service.CreateSlotRequest
+	48, // 40: broadcast_service.BroadcastService.AssignSlot:input_type -> broadcast_service.AssignSlotRequest
+	52, // 41: broadcast_service.BroadcastService.DeleteSlot:input_type -> broadcast_service.DeleteSlotRequest
+	55, // 42: broadcast_service.BroadcastService.GetBroadcastGameStats:input_type -> broadcast_service.GetBroadcastGameStatsRequest
+	57, // 43: broadcast_service.BroadcastService.GetBroadcastAllGames:input_type -> broadcast_service.GetBroadcastAllGamesRequest
+	36, // 44: broadcast_service.BroadcastService.ListMyStreamSlots:input_type -> broadcast_service.ListMyStreamSlotsRequest
+	38, // 45: broadcast_service.BroadcastService.CreateStreamSlot:input_type -> broadcast_service.CreateStreamSlotRequest
+	40, // 46: broadcast_service.BroadcastService.PointStreamSlot:input_type -> broadcast_service.PointStreamSlotRequest
+	42, // 47: broadcast_service.BroadcastService.DeleteStreamSlot:input_type -> broadcast_service.DeleteStreamSlotRequest
+	5,  // 48: broadcast_service.BroadcastService.CreateBroadcast:output_type -> broadcast_service.CreateBroadcastResponse
+	7,  // 49: broadcast_service.BroadcastService.GetBroadcast:output_type -> broadcast_service.GetBroadcastResponse
+	9,  // 50: broadcast_service.BroadcastService.GetBroadcastGames:output_type -> broadcast_service.GetBroadcastGamesResponse
+	11, // 51: broadcast_service.BroadcastService.UpdateBroadcast:output_type -> broadcast_service.UpdateBroadcastResponse
+	13, // 52: broadcast_service.BroadcastService.ClaimGame:output_type -> broadcast_service.ClaimGameResponse
+	15, // 53: broadcast_service.BroadcastService.UnclaimGame:output_type -> broadcast_service.UnclaimGameResponse
+	17, // 54: broadcast_service.BroadcastService.AddBroadcastDirectors:output_type -> broadcast_service.AddBroadcastDirectorsResponse
+	19, // 55: broadcast_service.BroadcastService.RemoveBroadcastDirectors:output_type -> broadcast_service.RemoveBroadcastDirectorsResponse
+	21, // 56: broadcast_service.BroadcastService.AddBroadcastAnnotators:output_type -> broadcast_service.AddBroadcastAnnotatorsResponse
+	23, // 57: broadcast_service.BroadcastService.RemoveBroadcastAnnotators:output_type -> broadcast_service.RemoveBroadcastAnnotatorsResponse
+	25, // 58: broadcast_service.BroadcastService.GetActiveBroadcasts:output_type -> broadcast_service.GetActiveBroadcastsResponse
+	27, // 59: broadcast_service.BroadcastService.GetAllBroadcasts:output_type -> broadcast_service.GetAllBroadcastsResponse
+	29, // 60: broadcast_service.BroadcastService.TriggerPoll:output_type -> broadcast_service.TriggerPollResponse
+	31, // 61: broadcast_service.BroadcastService.GetMyClaimedGames:output_type -> broadcast_service.GetMyClaimedGamesResponse
+	33, // 62: broadcast_service.BroadcastService.GetBroadcastGameContext:output_type -> broadcast_service.GetBroadcastGameContextResponse
+	45, // 63: broadcast_service.BroadcastService.ListSlots:output_type -> broadcast_service.ListSlotsResponse
+	51, // 64: broadcast_service.BroadcastService.GetSlotCurrentGame:output_type -> broadcast_service.GetSlotCurrentGameResponse
+	47, // 65: broadcast_service.BroadcastService.CreateSlot:output_type -> broadcast_service.CreateSlotResponse
+	49, // 66: broadcast_service.BroadcastService.AssignSlot:output_type -> broadcast_service.AssignSlotResponse
+	53, // 67: broadcast_service.BroadcastService.DeleteSlot:output_type -> broadcast_service.DeleteSlotResponse
+	56, // 68: broadcast_service.BroadcastService.GetBroadcastGameStats:output_type -> broadcast_service.GetBroadcastGameStatsResponse
+	58, // 69: broadcast_service.BroadcastService.GetBroadcastAllGames:output_type -> broadcast_service.GetBroadcastAllGamesResponse
+	37, // 70: broadcast_service.BroadcastService.ListMyStreamSlots:output_type -> broadcast_service.ListMyStreamSlotsResponse
+	39, // 71: broadcast_service.BroadcastService.CreateStreamSlot:output_type -> broadcast_service.CreateStreamSlotResponse
+	41, // 72: broadcast_service.BroadcastService.PointStreamSlot:output_type -> broadcast_service.PointStreamSlotResponse
+	43, // 73: broadcast_service.BroadcastService.DeleteStreamSlot:output_type -> broadcast_service.DeleteStreamSlotResponse
+	48, // [48:74] is the sub-list for method output_type
+	22, // [22:48] is the sub-list for method input_type
+	22, // [22:22] is the sub-list for extension type_name
+	22, // [22:22] is the sub-list for extension extendee
+	0,  // [0:22] is the sub-list for field type_name
 }
 
 func init() { file_proto_broadcast_service_broadcast_service_proto_init() }

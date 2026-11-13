@@ -117,6 +117,8 @@ type Broadcast struct {
 	Active              bool
 	CreatedAt           pgtype.Timestamptz
 	UpdatedAt           pgtype.Timestamptz
+	NextPollAt          pgtype.Timestamptz
+	GamesVersion        int64
 }
 
 type BroadcastAnnotator struct {
@@ -127,6 +129,19 @@ type BroadcastAnnotator struct {
 type BroadcastDirector struct {
 	BroadcastID int32
 	UserID      int32
+}
+
+type BroadcastFeed struct {
+	BroadcastID         int32
+	Format              string
+	RawGz               []byte
+	ContentHash         string
+	CurrentRound        int32
+	FetchedAt           pgtype.Timestamptz
+	ChangedAt           pgtype.Timestamptz
+	LastError           string
+	LastErrorAt         pgtype.Timestamptz
+	ConsecutiveFailures int32
 }
 
 type BroadcastGame struct {

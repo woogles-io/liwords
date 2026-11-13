@@ -149,7 +149,7 @@ type OBSHandler struct {
 	natsConn     *nats.Conn
 	definer      Definer // may be nil; used for symbol+definition in last_play
 
-	// broadcastSvc gives access to the tournament feed cache (getCachedFeed)
+	// broadcastSvc gives access to the stored tournament feeds (feed)
 	// for the slot-mode tournament-standings fields. Same package as
 	// BroadcastService, so its unexported methods are callable directly.
 	broadcastSvc *BroadcastService
@@ -231,8 +231,8 @@ func (h *OBSHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			if berr != nil {
 				log.Err(berr).Str("slug", slug).Msg("obs-slot-broadcast-lookup-error")
 			}
-			h.augmentSlotFields(&data, slug, slotRow.Division, slotRow.Round, slotRow.TableNumber,
-				broadcastRow.Name, broadcastRow.BroadcastUrl, broadcastRow.BroadcastUrlFormat)
+			h.augmentSlotFields(ctx, &data, slug, slotRow.Division, slotRow.Round, slotRow.TableNumber,
+				broadcastRow.Name)
 			value = obsFieldValue(data, suffix)
 		}
 	}
@@ -303,12 +303,11 @@ func (h *OBSHandler) loadGameOBSData(ctx context.Context, gameUUID string) (OBSD
 // augmentSlotFields fills OBSData's tournament-standings fields for a
 // broadcast slot. division/round/tableNumber and tournamentName are always
 // applied; the feed lookup (record/place/spread/rating) is best-effort and
-// silently falls back to placeholders when the URL/format is missing or the
-// feed fetch fails.
-func (h *OBSHandler) augmentSlotFields(data *OBSData, slug, division string, round, table int32, tournamentName, broadcastURL, broadcastURLFormat string) {
+// falls back to placeholders when there's no broadcast or no stored feed.
+func (h *OBSHandler) augmentSlotFields(ctx context.Context, data *OBSData, slug, division string, round, table int32, tournamentName string) {
 	var fd *FeedData
-	if broadcastURL != "" && broadcastURLFormat != "" {
-		fd = h.broadcastSvc.getCachedFeed(slug, division, broadcastURL, broadcastURLFormat)
+	if slug != "" {
+		fd = h.broadcastSvc.feed(ctx, slug).division(division)
 	}
 	applyTournamentFields(data, fd, division, round, table, tournamentName, data.P1Name, data.P2Name)
 }
@@ -597,10 +596,10 @@ func (h *OBSHandler) reloadDoc(stream *obsStream, gameUUID string) (OBSData, boo
 
 	switch mode {
 	case obsStreamModeSlot:
-		h.augmentSlotFields(&data, target.broadcastSlug, target.division, target.round, target.table,
-			target.broadcastName, target.broadcastURL, target.broadcastURLFormat)
+		h.augmentSlotFields(ctx, &data, target.broadcastSlug, target.division, target.round, target.table,
+			target.broadcastName)
 	case obsStreamModeUserSlot:
-		h.applyTargetFields(&data, doc, target, trackedUsername)
+		h.applyTargetFields(ctx, &data, doc, target, trackedUsername)
 	}
 	return data, true
 }
@@ -1061,7 +1060,7 @@ func (h *OBSHandler) serveUserSlot(w http.ResponseWriter, r *http.Request, usern
 	} else if data, doc, err := h.loadGameOBSData(ctx, target.gameUUID); err != nil {
 		value = obsPlaceholder
 	} else {
-		h.applyTargetFields(&data, doc, target, username)
+		h.applyTargetFields(ctx, &data, doc, target, username)
 		value = obsFieldValue(data, suffix)
 	}
 
@@ -1073,9 +1072,8 @@ func (h *OBSHandler) serveUserSlot(w http.ResponseWriter, r *http.Request, usern
 // tournament standings whenever a broadcast is behind the game, and
 // opponent_name for a slot following its owner's own annotations (the only
 // case where "the tracked player" is well defined).
-func (h *OBSHandler) applyTargetFields(data *OBSData, doc *ipc.GameDocument, t streamSlotTarget, username string) {
-	h.augmentSlotFields(data, t.broadcastSlug, t.division, t.round, t.table,
-		t.broadcastName, t.broadcastURL, t.broadcastURLFormat)
+func (h *OBSHandler) applyTargetFields(ctx context.Context, data *OBSData, doc *ipc.GameDocument, t streamSlotTarget, username string) {
+	h.augmentSlotFields(ctx, data, t.broadcastSlug, t.division, t.round, t.table, t.broadcastName)
 	if t.targetKind == targetKindLatestAnnotation {
 		data.OpponentName = opponentName(doc, t.userUUID, username)
 	}

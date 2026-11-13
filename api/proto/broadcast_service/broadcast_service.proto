@@ -82,6 +82,11 @@ message GetBroadcastResponse {
   repeated string annotator_usernames = 4;
   int32 total_rounds = 5;
   repeated string divisions = 6; // all available divisions from the feed
+  // The stored feed: when it was last fetched, and the last fetch error, if
+  // the fetches since have failed. Pages keep showing the stored feed.
+  google.protobuf.Timestamp feed_fetched_at = 7;
+  string feed_error = 8;
+  google.protobuf.Timestamp feed_error_at = 9;
 }
 
 message GetBroadcastGamesRequest {

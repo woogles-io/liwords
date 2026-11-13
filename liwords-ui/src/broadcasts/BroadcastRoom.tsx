@@ -556,6 +556,9 @@ export const BroadcastRoom: React.FC = () => {
             divisions={broadcastData.divisions ?? []}
             activeDivision={activeDivision}
             activeRound={activeRound}
+            feedFetchedAt={broadcastData.feedFetchedAt}
+            feedError={broadcastData.feedError}
+            feedErrorAt={broadcastData.feedErrorAt}
           />
         )}
       </div>
