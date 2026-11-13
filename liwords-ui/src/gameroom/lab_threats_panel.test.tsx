@@ -22,6 +22,8 @@ const lab = vi.hoisted(() => ({
   last: undefined as object | undefined,
   lastId: 0,
   made: [] as Array<number>,
+  // the inference a count made with one answers with
+  inferred: undefined as object | undefined,
   // what a step of ms 0 lists, as the wasm would from the racks weighed
   listing: undefined as object | undefined,
 }));
@@ -32,7 +34,10 @@ vi.mock("../wasm/lab", () => ({
     // taken for the last test's, let go late
     if (request.op === "threats_new") {
       lab.made.push(++lab.lastId);
-      return { id: lab.lastId };
+      return {
+        id: lab.lastId,
+        ...(lab.inferred ? { inferred: lab.inferred } : {}),
+      };
     }
     // each step takes the next answer set, the last one again once none is
     // left
@@ -183,6 +188,7 @@ beforeEach(() => {
   lab.last = undefined;
   lab.listing = undefined;
   lab.made.length = 0;
+  lab.inferred = undefined;
   shown = null;
 });
 
@@ -322,6 +328,9 @@ describe("ThreatsPanel", () => {
 
   it("infers the opponent's leave from their last move when asked", async () => {
     lab.answers.push(answer());
+    const tiles = Array.from({ length: 27 }, () => ({ held: 0.2, prior: 0.2 }));
+    tiles[17] = { held: 0.62, prior: 0.18 };
+    lab.inferred = { count: 3, leaves: [], tiles };
     mount(
       { infer: true },
       position({
@@ -339,6 +348,10 @@ describe("ThreatsPanel", () => {
       }),
     );
     await screen.findByText("Opponent's leave inferred from their last move.");
+    // what the inference says of the tiles, once the count has it
+    await screen.findByText(
+      "Against nothing inferred, likelier to hold Q 62.0% (18.0%).",
+    );
     await waitFor(() => expect(threatsRequests()).toHaveLength(1));
     const args = lab.calls.find((c) => c.op === "threats_new")!.args as {
       request: string;

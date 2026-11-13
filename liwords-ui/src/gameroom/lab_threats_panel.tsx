@@ -10,11 +10,13 @@ import { getLoadableFiles } from "../wasm/loader";
 import { wolgesLetterToLiwordsLetter } from "./analyzer";
 import {
   ColumnName,
+  Inferred,
   LabPosition,
   NOTHING_TO_INFER,
   PanelFrame,
   SimSettings,
   inferRequest,
+  inferredTilesText,
   knownTiles,
   toAnalyzerMove,
   wasmBoard,
@@ -52,6 +54,8 @@ type Counted = {
   // the count held in the lab's worker, let go once the board is not shown
   id?: number;
   answer?: ThreatsAnswer;
+  // the opponent's leave as inferred for the count, if it was
+  inferred?: Inferred;
   // false while the count goes on, its answer still firming up
   done?: boolean;
   error?: string;
@@ -185,14 +189,18 @@ export const ThreatsPanel = (props: ThreatsPanelProps) => {
           // time, each step's answer shown, till every rack is counted or
           // the seconds asked are spent
           let id: number | undefined;
+          let inferred: Inferred | undefined;
           try {
-            ({ id } = await labCall<{ id: number }>({
+            ({ id, inferred } = await labCall<{
+              id: number;
+              inferred?: Inferred;
+            }>({
               op: "threats_new",
               args: { request: request(board!)!, infer },
             }));
             const until = Date.now() + seconds! * 1000;
             for (;;) {
-              if (!current) return;
+              if (!current) break;
               const left = until - Date.now();
               const answer = await labCall<ThreatsAnswer>({
                 op: "threats_step",
@@ -204,7 +212,9 @@ export const ThreatsPanel = (props: ThreatsPanelProps) => {
               });
               if (!current) break;
               const done = answer.exact || left <= THREATS_STEP_MS;
-              setCounted((m) => new Map(m).set(key!, { id, answer, done }));
+              setCounted((m) =>
+                new Map(m).set(key!, { id, answer, inferred, done }),
+              );
               if (done) break;
             }
           } catch (e) {
@@ -392,6 +402,12 @@ export const ThreatsPanel = (props: ThreatsPanelProps) => {
     ) : (
       <React.Fragment>
         {note && <div>{note}</div>}
+        {shown?.inferred?.tiles &&
+          inferredTilesText(shown.inferred.tiles, lab.alphabet) && (
+            <div>
+              {`Against nothing inferred, ${inferredTilesText(shown.inferred.tiles, lab.alphabet)}.`}
+            </div>
+          )}
         {line(nowKey, afterKey ? "Now: " : "")}
         {line(afterKey, "After the tiles placed: ")}
       </React.Fragment>

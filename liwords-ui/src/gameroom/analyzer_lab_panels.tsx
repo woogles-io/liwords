@@ -1212,9 +1212,45 @@ type MadeSim = {
 
 // An inference of the opponent's leave: how many leaves it holds, and the
 // likeliest, each with its weight, the weights of them all summing to 1.
-type Inferred = {
+export type Inferred = {
   count: number;
   leaves: Array<{ tiles: Array<number>; weight: number }>;
+  // by tile (0 the blank), the chance the opponent's rack holds one: as
+  // inferred (held), and with nothing inferred (prior); in wasms that give it
+  tiles?: Array<{ held: number; prior: number }>;
+};
+
+// How many tiles the inference is said to make likelier, and how many less
+// likely, each way the ones it moves most.
+const INFERRED_TILES_SHOWN = 3;
+
+// What the inference says of the tiles: those it makes the opponent likelier
+// to hold, and those less, each with its chance as inferred and with nothing
+// inferred; empty when the wasm gives no tiles or the inference moves none.
+export const inferredTilesText = (
+  tiles: Inferred["tiles"],
+  alphabet: Alphabet,
+) => {
+  if (!tiles) return "";
+  const moved = tiles
+    .map((t, tile) => ({ tile, ...t, by: t.held - t.prior }))
+    .filter((t) => t.by !== 0);
+  const side = (more: boolean) =>
+    moved
+      .filter((t) => t.by > 0 === more)
+      .sort((a, b) => (more ? b.by - a.by : a.by - b.by))
+      .slice(0, INFERRED_TILES_SHOWN)
+      .map(
+        (t) =>
+          `${machineWordToRunes([t.tile], alphabet, false, true)} ${percent(t.held)} (${percent(t.prior)})`,
+      )
+      .join(", ");
+  return [
+    side(true) && `likelier to hold ${side(true)}`,
+    side(false) && `less likely ${side(false)}`,
+  ]
+    .filter(Boolean)
+    .join("; ");
 };
 
 // The request that infers the opponent's leave from their last move, as the
@@ -2488,6 +2524,9 @@ const SimDetails = (props: SimDetailsProps) => {
                 `${machineWordToRunes(l.tiles, lab.alphabet, false, true) || "(none)"} ${percent(l.weight)}`,
             )
             .join(", ")}
+          {inferred.tiles &&
+            inferredTilesText(inferred.tiles, lab.alphabet) &&
+            `. Against nothing inferred, ${inferredTilesText(inferred.tiles, lab.alphabet)}`}
         </div>
       )}
       {view === "move" ? (
