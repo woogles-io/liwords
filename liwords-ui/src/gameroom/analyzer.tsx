@@ -37,6 +37,7 @@ import {
   useLabSim,
   usePublishLabHooks,
 } from "./analyzer_lab_panels";
+import { InferPanel } from "./lab_infer_panel";
 import { ThreatsPanel } from "./lab_threats_panel";
 import { defaultLetterDistribution } from "../lobby/sought_game_interactions";
 import {
@@ -1251,6 +1252,8 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
       <div className="suggestions" style={props.style}>
         {labView === "endgame" ? (
           <EndgamePanel lab={labPosition} onClose={() => setLabView(null)} />
+        ) : labView === "infer" ? (
+          <InferPanel lab={labPosition} onClose={() => setLabView(null)} />
         ) : labView === "threats" ? (
           <ThreatsPanel
             lab={labPosition}

@@ -24,7 +24,6 @@ import {
   EndgamePanel,
   LabPosition,
   SimPanel,
-  inferredTilesText,
   lastMoveOf,
   useLabRoom,
   useLabSim,
@@ -50,8 +49,6 @@ const lab = vi.hoisted(() => ({
       { tiles: [1, 5], weight: 0.25 },
       { tiles: [], weight: 0.125 },
     ],
-    // by tile: the inference moves none
-    tiles: Array.from({ length: 27 }, () => ({ held: 0.25, prior: 0.25 })),
   },
 }));
 vi.mock("../wasm/lab", () => ({
@@ -3199,23 +3196,5 @@ describe("the opponent's last move, to infer their leave from", () => {
     expect(at(GameEvent_Type.PHONY_TILES_RETURNED)).toBeNull();
     expect(at(GameEvent_Type.TILE_PLACEMENT_MOVE, 0)).toBeNull();
     expect(lastMoveOf([], 0, letters(), 15)).toBeNull();
-  });
-});
-
-describe("inferredTilesText", () => {
-  it("says the tiles the inference moves most, each way, against nothing inferred", () => {
-    const tiles = Array.from({ length: 27 }, () => ({ held: 0.2, prior: 0.2 }));
-    tiles[17] = { held: 0.62, prior: 0.18 }; // Q
-    tiles[5] = { held: 0.2, prior: 0.55 }; // E
-    tiles[19] = { held: 0.4, prior: 0.3 }; // S
-    expect(inferredTilesText(tiles, StandardEnglishAlphabet)).toBe(
-      "likelier to hold Q 62.0% (18.0%), S 40.0% (30.0%); less likely E 20.0% (55.0%)",
-    );
-  });
-
-  it("says nothing when the inference moves no tile", () => {
-    expect(
-      inferredTilesText([{ held: 0.5, prior: 0.5 }], StandardEnglishAlphabet),
-    ).toBe("");
   });
 });

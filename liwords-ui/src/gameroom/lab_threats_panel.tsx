@@ -16,7 +16,6 @@ import {
   PanelFrame,
   SimSettings,
   inferRequest,
-  inferredTilesText,
   knownTiles,
   toAnalyzerMove,
   wasmBoard,
@@ -402,12 +401,6 @@ export const ThreatsPanel = (props: ThreatsPanelProps) => {
     ) : (
       <React.Fragment>
         {note && <div>{note}</div>}
-        {shown?.inferred &&
-          inferredTilesText(shown.inferred.tiles, lab.alphabet) && (
-            <div>
-              {`Against nothing inferred, ${inferredTilesText(shown.inferred.tiles, lab.alphabet)}.`}
-            </div>
-          )}
         {line(nowKey, afterKey ? "Now: " : "")}
         {line(afterKey, "After the tiles placed: ")}
       </React.Fragment>

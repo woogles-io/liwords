@@ -23,6 +23,7 @@ import {
   CaretRightOutlined,
   CloseOutlined,
   ExperimentOutlined,
+  EyeOutlined,
   FlagOutlined,
   OrderedListOutlined,
   PauseOutlined,
@@ -90,7 +91,7 @@ import {
 } from "./analyzer_lab";
 import { LabHooks, publishLabHooks } from "./lab_hooks";
 
-export type LabView = "sim" | "endgame" | "threats";
+export type LabView = "sim" | "endgame" | "threats" | "infer";
 
 // A play as the wasm writes one, with no equity. A play given to a sim may
 // add a challenge's bonus to its score, or be challenged off the board: it
@@ -1215,47 +1216,15 @@ type MadeSim = {
 export type Inferred = {
   count: number;
   leaves: Array<{ tiles: Array<number>; weight: number }>;
-  // by tile (0 the blank), the chance the opponent's rack holds one: as
-  // inferred (held), and with nothing inferred (prior)
-  tiles: Array<{ held: number; prior: number }>;
-};
-
-// How many tiles the inference is said to make likelier, and how many less
-// likely, each way the ones it moves most.
-const INFERRED_TILES_SHOWN = 3;
-
-// What the inference says of the tiles: those it makes the opponent likelier
-// to hold, and those less, each with its chance as inferred and with nothing
-// inferred; empty when the inference moves none.
-export const inferredTilesText = (
-  tiles: Inferred["tiles"],
-  alphabet: Alphabet,
-) => {
-  const moved = tiles
-    .map((t, tile) => ({ tile, ...t, by: t.held - t.prior }))
-    .filter((t) => t.by !== 0);
-  const side = (more: boolean) =>
-    moved
-      .filter((t) => t.by > 0 === more)
-      .sort((a, b) => (more ? b.by - a.by : a.by - b.by))
-      .slice(0, INFERRED_TILES_SHOWN)
-      .map(
-        (t) =>
-          `${machineWordToRunes([t.tile], alphabet, false, true)} ${percent(t.held)} (${percent(t.prior)})`,
-      )
-      .join(", ");
-  return [
-    side(true) && `likelier to hold ${side(true)}`,
-    side(false) && `less likely ${side(false)}`,
-  ]
-    .filter(Boolean)
-    .join("; ");
 };
 
 // The request that infers the opponent's leave from their last move, as the
 // player to move sees it, with the settings' fuzz and how many of the
 // likeliest leaves it lists.
-export const inferRequest = (lab: LabPosition, settings: SimSettings) =>
+export const inferRequest = (
+  lab: LabPosition,
+  settings: Pick<SimSettings, "fuzz" | "list">,
+) =>
   lab.lastMove
     ? JSON.stringify({
         rack: lab.rack,
@@ -1299,6 +1268,10 @@ export type SimSettings = {
   workers: number;
 };
 
+// wolges's own fuzz (infer::FUZZ): how far below the best a move the opponent
+// made may score by equity and still be weighed as one they chose
+export const DEFAULT_FUZZ = 3.105;
+
 // The settings until the user sets others: wolges's own fuzz (infer::FUZZ)
 // and its alpha (the one in twenty move_picker's paired_z splits); the
 // wasm's own list of none; one worker.
@@ -1308,7 +1281,7 @@ const defaultSimSettings: SimSettings = {
   unpruned: false,
   opponentsPass: false,
   infer: false,
-  fuzz: 3.105,
+  fuzz: DEFAULT_FUZZ,
   list: 0,
   alpha: 0.05,
   workers: 1,
@@ -2523,8 +2496,6 @@ const SimDetails = (props: SimDetailsProps) => {
                 `${machineWordToRunes(l.tiles, lab.alphabet, false, true) || "(none)"} ${percent(l.weight)}`,
             )
             .join(", ")}
-          {inferredTilesText(inferred.tiles, lab.alphabet) &&
-            `. Against nothing inferred, ${inferredTilesText(inferred.tiles, lab.alphabet)}`}
         </div>
       )}
       {view === "move" ? (
@@ -3243,6 +3214,16 @@ export const LabButtons = (props: LabButtonsProps) => {
           aria-label="Threats"
           type={view === "threats" ? "primary" : "default"}
           onClick={() => setView(view === "threats" ? null : "threats")}
+        />
+      </Tooltip>
+      <Tooltip title="What the opponent kept, from their last move">
+        <Button
+          shape="circle"
+          size="small"
+          icon={<EyeOutlined />}
+          aria-label="Inference"
+          type={view === "infer" ? "primary" : "default"}
+          onClick={() => setView(view === "infer" ? null : "infer")}
         />
       </Tooltip>
       <Tooltip title="Solve the endgame">

@@ -431,7 +431,8 @@ p.streak-loss {
 
   // how the threats tint the board, how many plays they list, and how long
   // they weigh the racks
-  .lab-threat-settings {
+  .lab-threat-settings,
+  .lab-infer-settings {
     align-items: center;
     display: flex;
     flex-wrap: wrap;
@@ -446,7 +447,8 @@ p.streak-loss {
   }
 
   // the opponent's plays: the move on the left, its numbers on the right
-  .lab-threat-plays {
+  .lab-threat-plays,
+  .lab-infer-tiles {
     th:first-child {
       text-align: left;
     }

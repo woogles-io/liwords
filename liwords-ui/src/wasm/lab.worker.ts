@@ -72,6 +72,10 @@ export type LabRequest =
       op: "run";
       args: { job: number; ms: number; prune?: boolean; alpha?: number };
     }
+  // what the opponent likely kept, from their last move: how many leaves,
+  // the likeliest, and by tile the chance their rack holds one, as inferred
+  // and with nothing inferred
+  | { op: "infer"; args: { request: string } }
   // the bytes the wasm holds now, as an endgame's memory cap counts them
   | { op: "held" }
   | { op: "stop" }
@@ -163,23 +167,18 @@ const later = (next: () => void) => {
 // inference made, its handle given in place of the known tiles, and let go
 // once the sim has its leaves, which the sim keeps. An inference of no leaves
 // (as when the bag is empty) leaves the request as it was. The inference's
-// count, likeliest leaves and what it says of each tile come back with the
-// call's own result.
+// count and likeliest leaves come back with the call's own result.
 const inferring = <T>(
   wolges: Wolges,
   request: string,
   infer: string | undefined,
   call: (request: string) => T,
-): {
-  result: T;
-  inferred?: { count: number; leaves: unknown; tiles: unknown };
-} => {
+): { result: T; inferred?: { count: number; leaves: unknown } } => {
   if (infer === undefined) return { result: call(request) };
-  const { handle, count, leaves, tiles } = JSON.parse(wolges.infer(infer)) as {
+  const { handle, count, leaves } = JSON.parse(wolges.infer(infer)) as {
     handle: number;
     count: number;
     leaves: unknown;
-    tiles: unknown;
   };
   try {
     const result = call(
@@ -191,7 +190,7 @@ const inferring = <T>(
           })
         : request,
     );
-    return { result, inferred: { count, leaves, tiles } };
+    return { result, inferred: { count, leaves } };
   } finally {
     wolges.infer_free(handle);
   }
@@ -305,6 +304,13 @@ const handle = async (req: LabRequest): Promise<unknown> => {
       return prepare(wolges, req.args.files);
     case "held":
       return wolges.memory_held();
+    case "infer": {
+      const { handle, ...inferred } = JSON.parse(
+        wolges.infer(req.args.request),
+      ) as { handle: number };
+      wolges.infer_free(handle);
+      return inferred;
+    }
     case "analyze":
       return JSON.parse(wolges.analyze(req.args.request));
     case "threats_new": {
