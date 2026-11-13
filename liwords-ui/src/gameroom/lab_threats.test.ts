@@ -39,6 +39,16 @@ describe("threatHeat", () => {
     ]);
   });
 
+  it("tints by the chance to play there at all, where the wasm gives it", () => {
+    const reached = [
+      [null, { best: 40, chance: 0.1, expected: 10, reach: 0.6 }],
+    ];
+    expect(threatHeat(reached, "chance")).toEqual([
+      undefined,
+      { level: 0.6, label: "60" },
+    ]);
+  });
+
   it("tints by the chance, as a percent", () => {
     expect(threatHeat(squares, "chance")).toEqual([
       undefined,
