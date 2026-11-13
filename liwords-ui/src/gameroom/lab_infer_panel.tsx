@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { InputNumber } from "antd";
+import { InputNumber, Tooltip } from "antd";
 import { machineLetterToRune } from "../constants/alphabets";
 import { labCall } from "../wasm/lab";
 import { getLoadableFiles } from "../wasm/loader";
@@ -87,6 +87,9 @@ export const InferPanel = (props: InferPanelProps) => {
 
   const shown = found && found.key === key ? found : undefined;
   const inference = shown?.inference;
+  // whether the inference makes any tile likelier or less likely: not when
+  // they kept nothing, as after playing or exchanging their whole rack
+  const moved = !!inference?.tiles.some((t) => t.held !== t.prior);
   const rune = (tile: number) =>
     machineLetterToRune(
       wolgesLetterToLiwordsLetter(tile),
@@ -111,7 +114,11 @@ export const InferPanel = (props: InferPanelProps) => {
                     )
                     .join(", ")}`
                 : ""
-            }.`;
+            }.${
+              moved
+                ? ""
+                : " That moves no tile: each is as likely as by the tiles unseen alone."
+            }`;
 
   return (
     <PanelFrame
@@ -124,29 +131,33 @@ export const InferPanel = (props: InferPanelProps) => {
       onClose={onClose}
     >
       <div className="lab-infer-settings">
-        <label>
-          Fuzz
-          <InputNumber
-            size="small"
-            aria-label="Fuzz"
-            min={0}
-            value={fuzz}
-            onChange={(v) => setFuzz(v)}
-          />
-        </label>
-        <label>
-          Leaves listed
-          <InputNumber
-            size="small"
-            aria-label="Leaves listed"
-            min={0}
-            precision={0}
-            value={listed}
-            onChange={(v) => setListed(v)}
-          />
-        </label>
+        <Tooltip title="How loosely the leave's equity predicts the move: each this many points the move falls below a rack's best make that rack e (2.718) times less likely to have made it; 0 keeps only the racks the move was best for">
+          <label>
+            Fuzz
+            <InputNumber
+              size="small"
+              aria-label="Fuzz"
+              min={0}
+              value={fuzz}
+              onChange={(v) => setFuzz(v)}
+            />
+          </label>
+        </Tooltip>
+        <Tooltip title="How many of the likeliest leaves to name; the tiles are counted over every leave either way">
+          <label>
+            Leaves listed
+            <InputNumber
+              size="small"
+              aria-label="Leaves listed"
+              min={0}
+              precision={0}
+              value={listed}
+              onChange={(v) => setListed(v)}
+            />
+          </label>
+        </Tooltip>
       </div>
-      {inference && (
+      {inference && moved && (
         <table className="lab-infer-tiles">
           <thead>
             <tr>

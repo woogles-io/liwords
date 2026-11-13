@@ -128,6 +128,20 @@ describe("InferPanel", () => {
     ]);
   });
 
+  it("says so when the inference moves no tile, with no table", async () => {
+    const tiles = Array.from({ length: 27 }, () => ({ held: 0.2, prior: 0.2 }));
+    lab.inference = { count: 1, leaves: [{ tiles: [], weight: 1 }], tiles };
+    render(
+      <Store>
+        <InferPanel lab={position()} onClose={() => {}} />
+      </Store>,
+    );
+    await screen.findByText(
+      "From their last move, 1 leave they may have kept; the likeliest: (none) 100.0%. That moves no tile: each is as likely as by the tiles unseen alone.",
+    );
+    expect(document.querySelector(".lab-infer-tiles")).toBeNull();
+  });
+
   it("infers again with the fuzz asked", async () => {
     render(
       <Store>

@@ -1268,8 +1268,9 @@ export type SimSettings = {
   workers: number;
 };
 
-// wolges's own fuzz (infer::FUZZ): how far below the best a move the opponent
-// made may score by equity and still be weighed as one they chose
+// wolges's own fuzz (infer::FUZZ): the points of equity the opponent's move
+// falls below a rack's best that make that rack e times less likely to have
+// made it
 export const DEFAULT_FUZZ = 3.105;
 
 // The settings until the user sets others: wolges's own fuzz (infer::FUZZ)
