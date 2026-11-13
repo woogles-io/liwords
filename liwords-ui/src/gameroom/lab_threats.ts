@@ -4,13 +4,13 @@ import { useSyncExternalStore } from "react";
 // answers: each empty square's best score of a play placing a tile on it, the
 // chance the opponent holds a play doing that, and the expected score of
 // their best play through it (a rack with none there scoring 0), and the
-// chance they hold any play placing a tile on it (reach, in wasms that give
-// it); null where a tile is.
+// chance they hold any play placing a tile on it (reach); null where a tile
+// is.
 export type ThreatSquare = {
   best: number;
   chance: number;
   expected: number;
-  reach?: number;
+  reach: number;
 };
 
 // A play the opponent may make, as the wasm writes one (its score in
@@ -62,8 +62,7 @@ export type LabThreats = {
 };
 
 // How the squares are tinted: by the best score through each, scaled to the
-// board's best, or by the chance the opponent can play there at all (where
-// the wasm gives only the chance of the best score there, by that).
+// board's best, or by the chance the opponent can play there at all.
 export type ThreatTint = "score" | "chance";
 
 // Each square's tint and its number, by the way asked.
@@ -78,8 +77,8 @@ export const threatHeat = (
     return tint === "score"
       ? { level: top ? s.best / top : 0, label: String(s.best) }
       : {
-          level: s.reach ?? s.chance,
-          label: `${Math.round((s.reach ?? s.chance) * 100)}`,
+          level: s.reach,
+          label: `${Math.round(s.reach * 100)}`,
         };
   });
 };

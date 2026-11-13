@@ -402,7 +402,7 @@ export const ThreatsPanel = (props: ThreatsPanelProps) => {
     ) : (
       <React.Fragment>
         {note && <div>{note}</div>}
-        {shown?.inferred?.tiles &&
+        {shown?.inferred &&
           inferredTilesText(shown.inferred.tiles, lab.alphabet) && (
             <div>
               {`Against nothing inferred, ${inferredTilesText(shown.inferred.tiles, lab.alphabet)}.`}

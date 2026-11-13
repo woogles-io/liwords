@@ -31,6 +31,7 @@ const wasm = vi.hoisted(() => ({
       handle: 4,
       count: 3,
       leaves: [{ tiles: [1], weight: 1 }],
+      tiles: [{ held: 0.5, prior: 0.25 }],
     }),
   ),
   infer_free: vi.fn(),
@@ -324,7 +325,11 @@ describe("the lab's worker", () => {
     });
     expect(wasm.infer_free).toHaveBeenCalledWith(4);
     expect(made.result).toMatchObject({
-      inferred: { count: 3, leaves: [{ tiles: [1], weight: 1 }] },
+      inferred: {
+        count: 3,
+        leaves: [{ tiles: [1], weight: 1 }],
+        tiles: [{ held: 0.5, prior: 0.25 }],
+      },
     });
     // for a sim made, through sim_set
     wasm.sim_set.mockReturnValueOnce(simAnswer("running", "running"));
@@ -567,7 +572,11 @@ describe("the lab's worker", () => {
     expect(wasm.infer_free).toHaveBeenCalledWith(4);
     expect(inferred.result).toEqual({
       id: expect.any(Number),
-      inferred: { count: 3, leaves: [{ tiles: [1], weight: 1 }] },
+      inferred: {
+        count: 3,
+        leaves: [{ tiles: [1], weight: 1 }],
+        tiles: [{ held: 0.5, prior: 0.25 }],
+      },
     });
 
     await send(4, "threats_free", { id });

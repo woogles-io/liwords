@@ -1216,8 +1216,8 @@ export type Inferred = {
   count: number;
   leaves: Array<{ tiles: Array<number>; weight: number }>;
   // by tile (0 the blank), the chance the opponent's rack holds one: as
-  // inferred (held), and with nothing inferred (prior); in wasms that give it
-  tiles?: Array<{ held: number; prior: number }>;
+  // inferred (held), and with nothing inferred (prior)
+  tiles: Array<{ held: number; prior: number }>;
 };
 
 // How many tiles the inference is said to make likelier, and how many less
@@ -1226,12 +1226,11 @@ const INFERRED_TILES_SHOWN = 3;
 
 // What the inference says of the tiles: those it makes the opponent likelier
 // to hold, and those less, each with its chance as inferred and with nothing
-// inferred; empty when the wasm gives no tiles or the inference moves none.
+// inferred; empty when the inference moves none.
 export const inferredTilesText = (
   tiles: Inferred["tiles"],
   alphabet: Alphabet,
 ) => {
-  if (!tiles) return "";
   const moved = tiles
     .map((t, tile) => ({ tile, ...t, by: t.held - t.prior }))
     .filter((t) => t.by !== 0);
@@ -2524,8 +2523,7 @@ const SimDetails = (props: SimDetailsProps) => {
                 `${machineWordToRunes(l.tiles, lab.alphabet, false, true) || "(none)"} ${percent(l.weight)}`,
             )
             .join(", ")}
-          {inferred.tiles &&
-            inferredTilesText(inferred.tiles, lab.alphabet) &&
+          {inferredTilesText(inferred.tiles, lab.alphabet) &&
             `. Against nothing inferred, ${inferredTilesText(inferred.tiles, lab.alphabet)}`}
         </div>
       )}

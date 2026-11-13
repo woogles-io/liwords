@@ -50,6 +50,8 @@ const lab = vi.hoisted(() => ({
       { tiles: [1, 5], weight: 0.25 },
       { tiles: [], weight: 0.125 },
     ],
+    // by tile: the inference moves none
+    tiles: Array.from({ length: 27 }, () => ({ held: 0.25, prior: 0.25 })),
   },
 }));
 vi.mock("../wasm/lab", () => ({
@@ -3211,8 +3213,7 @@ describe("inferredTilesText", () => {
     );
   });
 
-  it("says nothing when the wasm gives no tiles, or none moves", () => {
-    expect(inferredTilesText(undefined, StandardEnglishAlphabet)).toBe("");
+  it("says nothing when the inference moves no tile", () => {
     expect(
       inferredTilesText([{ held: 0.5, prior: 0.5 }], StandardEnglishAlphabet),
     ).toBe("");

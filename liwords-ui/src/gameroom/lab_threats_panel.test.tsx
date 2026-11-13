@@ -106,12 +106,17 @@ const settings = (more: Partial<SimSettings> = {}): SimSettings => ({
 // SEA at 8H across, scoring 12, and AS at H8 down, scoring 9
 const answer = (more: Partial<ThreatsAnswer> = {}): ThreatsAnswer => {
   const squares: ThreatsAnswer["squares"] = Array.from({ length: 15 }, () =>
-    Array.from({ length: 15 }, () => ({ best: 0, chance: 0, expected: 0 })),
+    Array.from({ length: 15 }, () => ({
+      best: 0,
+      chance: 0,
+      expected: 0,
+      reach: 0,
+    })),
   );
-  squares[7][7] = { best: 12, chance: 0.5, expected: 6 };
-  squares[7][8] = { best: 12, chance: 0.5, expected: 6 };
-  squares[7][9] = { best: 12, chance: 0.5, expected: 6 };
-  squares[8][7] = { best: 9, chance: 0.75, expected: 5 };
+  squares[7][7] = { best: 12, chance: 0.5, expected: 6, reach: 0.5 };
+  squares[7][8] = { best: 12, chance: 0.5, expected: 6, reach: 0.5 };
+  squares[7][9] = { best: 12, chance: 0.5, expected: 6, reach: 0.5 };
+  squares[8][7] = { best: 9, chance: 0.5, expected: 5, reach: 0.75 };
   return {
     racks: 4,
     count: 2,

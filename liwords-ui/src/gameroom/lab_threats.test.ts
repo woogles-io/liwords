@@ -22,11 +22,13 @@ const answer = (more: Partial<ThreatsAnswer> = {}): ThreatsAnswer => ({
 });
 
 describe("threatHeat", () => {
+  // the chance of each square's best score apart from the chance to play
+  // there at all, which the chance tint shows
   const squares = [
-    [null, { best: 40, chance: 0.5, expected: 10 }],
+    [null, { best: 40, chance: 0.1, expected: 10, reach: 0.5 }],
     [
-      { best: 0, chance: 0, expected: 0 },
-      { best: 10, chance: 0.25, expected: 2 },
+      { best: 0, chance: 0, expected: 0, reach: 0 },
+      { best: 10, chance: 0.05, expected: 2, reach: 0.25 },
     ],
   ];
 
@@ -39,17 +41,7 @@ describe("threatHeat", () => {
     ]);
   });
 
-  it("tints by the chance to play there at all, where the wasm gives it", () => {
-    const reached = [
-      [null, { best: 40, chance: 0.1, expected: 10, reach: 0.6 }],
-    ];
-    expect(threatHeat(reached, "chance")).toEqual([
-      undefined,
-      { level: 0.6, label: "60" },
-    ]);
-  });
-
-  it("tints by the chance, as a percent", () => {
+  it("tints by the chance to play there at all, as a percent", () => {
     expect(threatHeat(squares, "chance")).toEqual([
       undefined,
       { level: 0.5, label: "50" },
