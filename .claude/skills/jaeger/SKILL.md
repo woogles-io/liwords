@@ -66,9 +66,13 @@ consider adding a subcommand.
   `host.name` inside the `bus.drain` span's time window.
 - `cache.Get` is used by more than one cache. `otel.scope.name` tells them apart:
   `tournament-cache`, `game-cache`.
-- Operation names over 256 characters aren't indexed. Many sqlc query spans are
-  named `query -- name: X :one` followed by the SQL, so a long one can't be found
-  by name. Use the calling RPC span, or `trace` to see queries inside a request.
+- Query spans are named after the sqlc query: `query ListActiveGames`,
+  `prepare ListActiveGames` (batched ones too). SQL that sqlc didn't generate is
+  named after its first 100 characters, whitespace collapsed. The full SQL is in
+  the `db.query.text` tag. Spans recorded before that change are named after the
+  whole statement (`query -- name: X :one` then the SQL), and operation names
+  over 256 characters aren't indexed, so for those use the calling RPC span, or
+  `trace` to see queries inside a request.
 
 Useful operations: RPCs (`tournament_service.TournamentService/GetTournament`),
 `gameplay.HandleEvent` (a move, from NATS), `nats.publish.*` (the NATS handler's

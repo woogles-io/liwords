@@ -230,7 +230,13 @@ func main() {
 		panic(err)
 	}
 	dbCfg.MaxConns = 25
-	dbCfg.ConnConfig.Tracer = otelpgx.NewTracer(otelpgx.WithIncludeQueryParameters())
+	dbCfg.ConnConfig.Tracer = otelpgx.NewTracer(
+		otelpgx.WithIncludeQueryParameters(),
+		// Name spans "query ListActiveGames" rather than after the whole SQL,
+		// which Jaeger cannot index past 256 characters.
+		otelpgx.WithTrimSQLInSpanName(),
+		otelpgx.WithSpanNameFunc(pgxSpanName),
+	)
 	dbPool, err := pgxpool.NewWithConfig(ctx, dbCfg)
 
 	router := http.NewServeMux()
