@@ -20,6 +20,7 @@ import "./index.css";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { TransportProvider } from "@connectrpc/connect-query";
 import { transport } from "./utils/hooks/connect";
+import { shouldRetryQuery } from "./utils/query_retry";
 
 declare global {
   interface Window {
@@ -70,7 +71,9 @@ window.console.info(
 const container = document.getElementById("root");
 const root = createRoot(container!);
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { retry: shouldRetryQuery } },
+});
 
 root.render(
   <React.StrictMode>

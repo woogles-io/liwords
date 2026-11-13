@@ -12,6 +12,7 @@ import (
 	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/hashicorp/golang-lru/v2/expirable"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/nats-io/nats.go"
 	"github.com/rs/zerolog/log"
@@ -181,6 +182,11 @@ func (bs *BroadcastService) CreateBroadcast(ctx context.Context, req *connect.Re
 		CreatorID:           int32(u.ID),
 	})
 	if err != nil {
+		if pgErr := (*pgconn.PgError)(nil); errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			// Slugs are unique ignoring case.
+			return nil, connect.NewError(connect.CodeAlreadyExists,
+				fmt.Errorf("a broadcast with slug %q already exists", req.Msg.Slug))
+		}
 		log.Err(err).Str("slug", req.Msg.Slug).Msg("create-broadcast-failed")
 		return nil, apiserver.InternalErr(err)
 	}
@@ -1276,7 +1282,7 @@ func (bs *BroadcastService) UpdateBroadcast(ctx context.Context, req *connect.Re
 	}
 
 	if err := bs.queries.UpdateBroadcast(ctx, models.UpdateBroadcastParams{
-		Slug:                req.Msg.Slug,
+		Slug:                broadcast.Slug, // as stored; the request's may differ in case
 		Name:                req.Msg.Name,
 		Description:         pgtype.Text{String: req.Msg.Description, Valid: req.Msg.Description != ""},
 		BroadcastUrl:        req.Msg.BroadcastUrl,
