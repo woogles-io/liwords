@@ -80,6 +80,11 @@ def fetch(args):
 
 
 def span_name(op):
+    # "query ListActiveGames" since spans were named after the sqlc query;
+    # "query -- name: ListActiveGames :many\nSELECT ..." before that.
+    m = re.fullmatch(r"(?:query|prepare) (\w+)", op)
+    if m and not m.group(1).isupper():
+        return "q:" + m.group(1)
     m = re.search(r"name: (\w+)", op)
     if m:
         return "q:" + m.group(1)
