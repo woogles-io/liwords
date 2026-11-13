@@ -1321,12 +1321,33 @@ func (t *ClassicDivision) pairRoundWithCOP(round int, keptPlayers map[string]boo
 		return nil, fmt.Errorf("failed to convert division to COP request: %w", err)
 	}
 
-	// Players in kept pairings are out of the field for this round.
-	for i, p := range t.Players.Persons {
-		if keptPlayers[p.Id] && !p.Suspended {
-			pairRequest.RemovedPlayers = append(pairRequest.RemovedPlayers, int32(i))
-			pairRequest.ValidPlayers--
+	// The kept pairings go to COP as this round's prepaired pairings, a bye as
+	// the player's own index and every other player -1, so the players in
+	// them stay in the standings COP weighs while it pairs only the rest.
+	// Players still to pair are what make the round prepaired: with none, COP
+	// has nothing to pair.
+	if len(keptPlayers) > 0 {
+		prepaired := make([]int32, len(t.Players.Persons))
+		unpaired := 0
+		for i, p := range t.Players.Persons {
+			prepaired[i] = -1
+			if !keptPlayers[p.Id] || p.Suspended {
+				if !p.Suspended {
+					unpaired++
+				}
+				continue
+			}
+			opp, err := t.opponentOf(p.Id, round)
+			if err != nil {
+				return nil, err
+			}
+			prepaired[i] = int32(t.PlayerIndexMap[opp])
 		}
+		if unpaired == 0 {
+			return newPairingsMessage(), nil
+		}
+		pairRequest.DivisionPairings = append(pairRequest.DivisionPairings,
+			&pb.RoundPairings{Pairings: prepaired})
 	}
 
 	// Set the seed for reproducibility
@@ -1339,6 +1360,10 @@ func (t *ClassicDivision) pairRoundWithCOP(round int, keptPlayers map[string]boo
 
 	if pairResponse.ErrorCode != pb.PairError_SUCCESS {
 		log.Error().Str("error", pairResponse.ErrorMessage).Msg("COP pairing failed")
+		if len(keptPlayers) > 0 {
+			// what a director can do about it, before cop's own words
+			return nil, fmt.Errorf("COP pairing failed: the kept pairings conflict with a rule COP will not break, such as the leader playing second in the last round; keep fewer pairings or pair the round by hand. COP says: %s", pairResponse.ErrorMessage)
+		}
 		return nil, fmt.Errorf("COP pairing failed: %s", pairResponse.ErrorMessage)
 	}
 

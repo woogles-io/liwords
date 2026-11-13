@@ -5048,24 +5048,41 @@ func TestClassicDivisionKeepPairingsCOP(t *testing.T) {
 	err = pairAndPlayWithBye(tc, []string{"a", "c", "b", "e", "d", "g", "f", "i"}, []int{30, 20, 10, 5}, "h", pb.TournamentGameResult_BYE, 1)
 	is.NoErr(err)
 
-	// COP sees the players in kept pairings as removed, and pairs the rest
-	// among themselves.
+	// COP gets the kept pairings as the round's prepaired pairings, keeps the
+	// players in them in its standings, and pairs the rest: here the leader,
+	// a, still meets i, second, as king of the hill wants in the last round.
 	is.NoErr(tc.DeletePairings(2))
-	_, err = tc.SetPairing("a", "b", 2, pb.TournamentGameResult_NO_RESULT)
+	_, err = tc.SetPairing("d", "b", 2, pb.TournamentGameResult_NO_RESULT)
 	is.NoErr(err)
 	_, err = tc.SetPairing("c", "c", 2, pb.TournamentGameResult_BYE)
 	is.NoErr(err)
-	before, err := keptPairingKeys(tc, 2, "a", "b", "c")
+	before, err := keptPairingKeys(tc, 2, "d", "b", "c")
 	is.NoErr(err)
 	_, err = tc.PairRoundKeepingPairings(2)
 	is.NoErr(err)
-	after, err := keptPairingKeys(tc, 2, "a", "b", "c")
+	after, err := keptPairingKeys(tc, 2, "d", "b", "c")
 	is.NoErr(err)
 	is.Equal(before, after)
 	is.NoErr(pairedOnce(tc, 2))
-	for _, p := range []string{"d", "e", "f", "g", "h", "i"} {
+	for _, p := range []string{"a", "e", "f", "g", "h", "i"} {
 		opp, err := tc.opponentOf(p, 2)
 		is.NoErr(err)
-		is.True(opp != p && opp != "a" && opp != "b" && opp != "c")
+		is.True(opp != p && opp != "d" && opp != "b" && opp != "c")
 	}
+	opp, err := tc.opponentOf("a", 2)
+	is.NoErr(err)
+	is.Equal(opp, "i")
+
+	// Kept pairings that keep the leader from second in the last round are
+	// refused, with COP's reason, and the round's pairings stay as they were.
+	is.NoErr(tc.DeletePairings(2))
+	_, err = tc.SetPairing("a", "b", 2, pb.TournamentGameResult_NO_RESULT)
+	is.NoErr(err)
+	before, err = keptPairingKeys(tc, 2, "a", "b")
+	is.NoErr(err)
+	_, err = tc.PairRoundKeepingPairings(2)
+	is.True(err != nil && strings.Contains(err.Error(), "the kept pairings conflict with a rule COP will not break"))
+	after, err = keptPairingKeys(tc, 2, "a", "b")
+	is.NoErr(err)
+	is.Equal(before, after)
 }
