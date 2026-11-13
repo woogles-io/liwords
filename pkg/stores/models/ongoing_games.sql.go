@@ -60,7 +60,7 @@ func (q *Queries) DeleteOngoingGame(ctx context.Context, gameUuid string) error 
 }
 
 const getOngoingGame = `-- name: GetOngoingGame :one
-SELECT game_uuid, play_state, on_turn, lexicon, letter_distribution, board_layout, variant, challenge_rule, player0_id, player1_id, timers, meta_events, ready_flag, started, game_mode, game_type, tournament_id, league_id, season_id, league_division_id, created_at, updated_at FROM ongoing_games WHERE game_uuid = $1
+SELECT game_uuid, play_state, on_turn, lexicon, letter_distribution, board_layout, variant, challenge_rule, player0_id, player1_id, timers, meta_events, ready_flag, started, game_mode, game_type, tournament_id, league_id, season_id, league_division_id, created_at, updated_at, player0_starting_rating, player0_starting_rating_provisional, player1_starting_rating, player1_starting_rating_provisional FROM ongoing_games WHERE game_uuid = $1
 `
 
 func (q *Queries) GetOngoingGame(ctx context.Context, gameUuid string) (OngoingGame, error) {
@@ -89,6 +89,10 @@ func (q *Queries) GetOngoingGame(ctx context.Context, gameUuid string) (OngoingG
 		&i.LeagueDivisionID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Player0StartingRating,
+		&i.Player0StartingRatingProvisional,
+		&i.Player1StartingRating,
+		&i.Player1StartingRatingProvisional,
 	)
 	return i, err
 }
@@ -1071,6 +1075,8 @@ INSERT INTO ongoing_games (
     timers, meta_events, ready_flag, started,
     game_mode, game_type, tournament_id,
     league_id, season_id, league_division_id,
+    player0_starting_rating, player0_starting_rating_provisional,
+    player1_starting_rating, player1_starting_rating_provisional,
     created_at, updated_at
 ) VALUES (
     $1, $2, $3,
@@ -1085,6 +1091,8 @@ INSERT INTO ongoing_games (
     $13,
     $14, $15, $16,
     $17, $18, $19,
+    $20, $21,
+    $22, $23,
     now(), now()
 )
 ON CONFLICT (game_uuid) DO UPDATE SET
@@ -1099,29 +1107,39 @@ ON CONFLICT (game_uuid) DO UPDATE SET
     -- UpdateGame stopped writing it). The value in the INSERT above therefore
     -- applies only when the row is first created.
     started = EXCLUDED.started,
+    -- The starting ratings never change once set. A row created before they
+    -- were stored gets them from the first save that has them.
+    player0_starting_rating = COALESCE(ongoing_games.player0_starting_rating, EXCLUDED.player0_starting_rating),
+    player0_starting_rating_provisional = COALESCE(ongoing_games.player0_starting_rating_provisional, EXCLUDED.player0_starting_rating_provisional),
+    player1_starting_rating = COALESCE(ongoing_games.player1_starting_rating, EXCLUDED.player1_starting_rating),
+    player1_starting_rating_provisional = COALESCE(ongoing_games.player1_starting_rating_provisional, EXCLUDED.player1_starting_rating_provisional),
     updated_at = now()
 `
 
 type UpsertOngoingGameParams struct {
-	GameUuid           string
-	PlayState          int16
-	OnTurn             pgtype.Int2
-	Lexicon            string
-	LetterDistribution string
-	BoardLayout        string
-	Variant            string
-	ChallengeRule      int16
-	Player0ID          int32
-	Player1ID          int32
-	Timers             []byte
-	MetaEvents         []byte
-	Started            bool
-	GameMode           int16
-	GameType           int16
-	TournamentID       pgtype.Text
-	LeagueID           pgtype.UUID
-	SeasonID           pgtype.UUID
-	LeagueDivisionID   pgtype.UUID
+	GameUuid                         string
+	PlayState                        int16
+	OnTurn                           pgtype.Int2
+	Lexicon                          string
+	LetterDistribution               string
+	BoardLayout                      string
+	Variant                          string
+	ChallengeRule                    int16
+	Player0ID                        int32
+	Player1ID                        int32
+	Timers                           []byte
+	MetaEvents                       []byte
+	Started                          bool
+	GameMode                         int16
+	GameType                         int16
+	TournamentID                     pgtype.Text
+	LeagueID                         pgtype.UUID
+	SeasonID                         pgtype.UUID
+	LeagueDivisionID                 pgtype.UUID
+	Player0StartingRating            pgtype.Float4
+	Player0StartingRatingProvisional pgtype.Bool
+	Player1StartingRating            pgtype.Float4
+	Player1StartingRatingProvisional pgtype.Bool
 }
 
 // The single write path for a live game's row.
@@ -1159,6 +1177,10 @@ func (q *Queries) UpsertOngoingGame(ctx context.Context, arg UpsertOngoingGamePa
 		arg.LeagueID,
 		arg.SeasonID,
 		arg.LeagueDivisionID,
+		arg.Player0StartingRating,
+		arg.Player0StartingRatingProvisional,
+		arg.Player1StartingRating,
+		arg.Player1StartingRatingProvisional,
 	)
 	return err
 }

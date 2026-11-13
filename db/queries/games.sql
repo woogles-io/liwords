@@ -42,8 +42,13 @@ SELECT
         SELECT array_agg(t.event ORDER BY t.turn_idx)
         FROM game_turns t
         WHERE t.game_uuid = g.uuid
-    ) END::jsonb[] AS turn_events
+    ) END::jsonb[] AS turn_events,
+    -- In the same statement as the rest, for the same reason as the turns.
+    -- A finished game has no ongoing row, and these come back NULL.
+    og.player0_starting_rating, og.player0_starting_rating_provisional,
+    og.player1_starting_rating, og.player1_starting_rating_provisional
 FROM games g
+LEFT JOIN ongoing_games og ON og.game_uuid = g.uuid
 WHERE g.uuid = @uuid;
 
 -- name: GetGameOwner :one
@@ -454,7 +459,9 @@ INSERT INTO game_players (
     original_request_id,
     league_season_id,
     updated_at,
-    game_mode
+    game_mode,
+    starting_rating,
+    starting_rating_provisional
 ) VALUES
     -- Player 0
     (
@@ -471,7 +478,9 @@ INSERT INTO game_players (
         @original_request_id,
         @league_season_id,
         @updated_at,
-        @game_mode
+        @game_mode,
+        @player0_starting_rating,
+        @player0_starting_rating_provisional
     ),
     -- Player 1
     (
@@ -488,7 +497,9 @@ INSERT INTO game_players (
         @original_request_id,
         @league_season_id,
         @updated_at,
-        @game_mode
+        @game_mode,
+        @player1_starting_rating,
+        @player1_starting_rating_provisional
     )
 ON CONFLICT (game_uuid, player_id) DO NOTHING;
 

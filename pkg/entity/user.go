@@ -4,6 +4,7 @@ import (
 	"errors"
 	"math"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -98,22 +99,51 @@ const RatingDeviationConfidence = float64(glicko.MinimumRatingDeviation + 30)
 
 // RelevantRating returns the rating from a Ratings object given a rating key.
 func RelevantRating(ratings Ratings, ratingKey VariantKey) string {
+	return RelevantRatingValue(ratings, ratingKey).String()
+}
 
-	unknownRating := "?"
-
-	if ratings.Data == nil {
-		// This is an unrated user. Use default rating.
-		return strconv.Itoa(glicko.InitialRating) + unknownRating
-	}
+// RelevantRatingValue is the rating RelevantRating displays, as a number.
+func RelevantRatingValue(ratings Ratings, ratingKey VariantKey) StartingRating {
 	ratdict, ok := ratings.Data[ratingKey]
-	if ok {
-		if ratdict.RatingDeviation <= RatingDeviationConfidence {
-			unknownRating = ""
-		}
-		return strconv.Itoa(int(math.Round(ratdict.Rating))) + unknownRating
+	if !ok {
+		// An unrated user, or one with no rating in this variant, has the
+		// default rating.
+		return StartingRating{Rating: float64(glicko.InitialRating), Provisional: true}
 	}
-	// User has no rating in this particular variant.
-	return strconv.Itoa(glicko.InitialRating) + unknownRating
+	return StartingRating{
+		Rating:      ratdict.Rating,
+		Provisional: ratdict.RatingDeviation > RatingDeviationConfidence,
+	}
+}
+
+// StartingRating is a player's rating in a game's variant as of the start of
+// the game.
+type StartingRating struct {
+	Rating float64
+	// Provisional is true when the rating is not yet confident, which it is
+	// displayed with a "?" for.
+	Provisional bool
+}
+
+// String is the rating as players see it: rounded, with "?" if provisional.
+func (r StartingRating) String() string {
+	s := strconv.Itoa(int(math.Round(r.Rating)))
+	if r.Provisional {
+		s += "?"
+	}
+	return s
+}
+
+// ParseDisplayRating reads back a rating that String wrote, such as the ones
+// in a game's quickdata. It returns nil for anything else, like "UnratedAnon"
+// or an empty string. The rating comes back rounded, as it was displayed.
+func ParseDisplayRating(s string) *StartingRating {
+	provisional := strings.HasSuffix(s, "?")
+	n, err := strconv.Atoi(strings.TrimSuffix(s, "?"))
+	if err != nil {
+		return nil
+	}
+	return &StartingRating{Rating: float64(n), Provisional: provisional}
 }
 
 // GetRelevantRating gets a displayable rating for this user, based on the passed-in
@@ -123,6 +153,16 @@ func (u *User) GetRelevantRating(ratingKey VariantKey) string {
 		return "UnratedAnon"
 	}
 	return RelevantRating(u.Profile.Ratings, ratingKey)
+}
+
+// GetStartingRating is GetRelevantRating as a number, or nil for a user with
+// no profile, whose rating GetRelevantRating gives as "UnratedAnon".
+func (u *User) GetStartingRating(ratingKey VariantKey) *StartingRating {
+	if u.Profile == nil {
+		return nil
+	}
+	r := RelevantRatingValue(u.Profile.Ratings, ratingKey)
+	return &r
 }
 
 // GetRating gets a full Glicko-225 rating for this user, based on the

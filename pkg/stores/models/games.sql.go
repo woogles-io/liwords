@@ -323,8 +323,13 @@ SELECT
         SELECT array_agg(t.event ORDER BY t.turn_idx)
         FROM game_turns t
         WHERE t.game_uuid = g.uuid
-    ) END::jsonb[] AS turn_events
+    ) END::jsonb[] AS turn_events,
+    -- In the same statement as the rest, for the same reason as the turns.
+    -- A finished game has no ongoing row, and these come back NULL.
+    og.player0_starting_rating, og.player0_starting_rating_provisional,
+    og.player1_starting_rating, og.player1_starting_rating_provisional
 FROM games g
+LEFT JOIN ongoing_games og ON og.game_uuid = g.uuid
 WHERE g.uuid = $2
 `
 
@@ -334,34 +339,38 @@ type GetGameWithTurnsParams struct {
 }
 
 type GetGameWithTurnsRow struct {
-	ID               int32
-	CreatedAt        pgtype.Timestamptz
-	UpdatedAt        pgtype.Timestamptz
-	DeletedAt        pgtype.Timestamptz
-	Uuid             pgtype.Text
-	Player0ID        pgtype.Int4
-	Player1ID        pgtype.Int4
-	Timers           entity.Timers
-	Started          pgtype.Bool
-	GameEndReason    pgtype.Int4
-	WinnerIdx        pgtype.Int4
-	LoserIdx         pgtype.Int4
-	History          []byte
-	Stats            entity.Stats
-	Quickdata        entity.Quickdata
-	TournamentData   entity.TournamentData
-	TournamentID     pgtype.Text
-	ReadyFlag        pgtype.Int8
-	MetaEvents       entity.MetaEventData
-	Type             pgtype.Int4
-	GameRequest      entity.GameRequest
-	PlayerOnTurn     pgtype.Int4
-	LeagueID         pgtype.UUID
-	SeasonID         pgtype.UUID
-	LeagueDivisionID pgtype.UUID
-	HistoryS3Key     pgtype.Text
-	LastKnownRacks   []string
-	TurnEvents       [][]byte
+	ID                               int32
+	CreatedAt                        pgtype.Timestamptz
+	UpdatedAt                        pgtype.Timestamptz
+	DeletedAt                        pgtype.Timestamptz
+	Uuid                             pgtype.Text
+	Player0ID                        pgtype.Int4
+	Player1ID                        pgtype.Int4
+	Timers                           entity.Timers
+	Started                          pgtype.Bool
+	GameEndReason                    pgtype.Int4
+	WinnerIdx                        pgtype.Int4
+	LoserIdx                         pgtype.Int4
+	History                          []byte
+	Stats                            entity.Stats
+	Quickdata                        entity.Quickdata
+	TournamentData                   entity.TournamentData
+	TournamentID                     pgtype.Text
+	ReadyFlag                        pgtype.Int8
+	MetaEvents                       entity.MetaEventData
+	Type                             pgtype.Int4
+	GameRequest                      entity.GameRequest
+	PlayerOnTurn                     pgtype.Int4
+	LeagueID                         pgtype.UUID
+	SeasonID                         pgtype.UUID
+	LeagueDivisionID                 pgtype.UUID
+	HistoryS3Key                     pgtype.Text
+	LastKnownRacks                   []string
+	TurnEvents                       [][]byte
+	Player0StartingRating            pgtype.Float4
+	Player0StartingRatingProvisional pgtype.Bool
+	Player1StartingRating            pgtype.Float4
+	Player1StartingRatingProvisional pgtype.Bool
 }
 
 // this is not even a uuid, sigh.
@@ -418,6 +427,10 @@ func (q *Queries) GetGameWithTurns(ctx context.Context, arg GetGameWithTurnsPara
 		&i.HistoryS3Key,
 		&i.LastKnownRacks,
 		&i.TurnEvents,
+		&i.Player0StartingRating,
+		&i.Player0StartingRatingProvisional,
+		&i.Player1StartingRating,
+		&i.Player1StartingRatingProvisional,
 	)
 	return i, err
 }
@@ -1053,7 +1066,9 @@ INSERT INTO game_players (
     original_request_id,
     league_season_id,
     updated_at,
-    game_mode
+    game_mode,
+    starting_rating,
+    starting_rating_provisional
 ) VALUES
     -- Player 0
     (
@@ -1070,7 +1085,9 @@ INSERT INTO game_players (
         $10,
         $11,
         $12,
-        $13
+        $13,
+        $14,
+        $15
     ),
     -- Player 1
     (
@@ -1078,7 +1095,7 @@ INSERT INTO game_players (
         $8,
         1,
         $9,
-        $14,
+        $16,
         $5,
         $6,
         $7,
@@ -1087,26 +1104,32 @@ INSERT INTO game_players (
         $10,
         $11,
         $12,
-        $13
+        $13,
+        $17,
+        $18
     )
 ON CONFLICT (game_uuid, player_id) DO NOTHING
 `
 
 type InsertGamePlayersParams struct {
-	GameUuid          string
-	Player0ID         int32
-	Player0Score      int32
-	Player0Won        pgtype.Bool
-	GameEndReason     int16
-	CreatedAt         pgtype.Timestamptz
-	GameType          int16
-	Player1ID         int32
-	Player1Score      int32
-	OriginalRequestID pgtype.Text
-	LeagueSeasonID    pgtype.UUID
-	UpdatedAt         pgtype.Timestamptz
-	GameMode          int16
-	Player1Won        pgtype.Bool
+	GameUuid                         string
+	Player0ID                        int32
+	Player0Score                     int32
+	Player0Won                       pgtype.Bool
+	GameEndReason                    int16
+	CreatedAt                        pgtype.Timestamptz
+	GameType                         int16
+	Player1ID                        int32
+	Player1Score                     int32
+	OriginalRequestID                pgtype.Text
+	LeagueSeasonID                   pgtype.UUID
+	UpdatedAt                        pgtype.Timestamptz
+	GameMode                         int16
+	Player0StartingRating            pgtype.Float4
+	Player0StartingRatingProvisional pgtype.Bool
+	Player1Won                       pgtype.Bool
+	Player1StartingRating            pgtype.Float4
+	Player1StartingRatingProvisional pgtype.Bool
 }
 
 func (q *Queries) InsertGamePlayers(ctx context.Context, arg InsertGamePlayersParams) error {
@@ -1124,7 +1147,11 @@ func (q *Queries) InsertGamePlayers(ctx context.Context, arg InsertGamePlayersPa
 		arg.LeagueSeasonID,
 		arg.UpdatedAt,
 		arg.GameMode,
+		arg.Player0StartingRating,
+		arg.Player0StartingRatingProvisional,
 		arg.Player1Won,
+		arg.Player1StartingRating,
+		arg.Player1StartingRatingProvisional,
 	)
 	return err
 }

@@ -176,6 +176,7 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Game, error) {
 		TournamentData: &g.TournamentData,
 		GameReq:        gamereq,
 	}
+	entGame.StartingRatings = loadedStartingRatings(row, entGame.Quickdata)
 	if s.timerModuleCreator != nil {
 		entGame.SetTimerModule(s.timerModuleCreator())
 		log.Info().Int64("Now", entGame.TimerModule().Now()).Msg("set timer module from creator")
@@ -2169,6 +2170,9 @@ func (s *DBStore) InsertGamePlayers(ctx context.Context, g *entity.Game) error {
 		gameMode = int16(g.GameReq.GameMode)
 	}
 
+	p0Rating, p0Provisional := startingRatingParams(g.StartingRatings[0])
+	p1Rating, p1Provisional := startingRatingParams(g.StartingRatings[1])
+
 	return s.queries.InsertGamePlayers(ctx, models.InsertGamePlayersParams{
 		GameUuid:          g.GameID(),
 		Player0ID:         int32(g.PlayerDBIDs[0]),
@@ -2184,5 +2188,10 @@ func (s *DBStore) InsertGamePlayers(ctx context.Context, g *entity.Game) error {
 		LeagueSeasonID:    leagueSeasonID,
 		UpdatedAt:         pgtype.Timestamptz{Time: g.LastUpdatedAt, Valid: true},
 		GameMode:          gameMode,
+
+		Player0StartingRating:            p0Rating,
+		Player0StartingRatingProvisional: p0Provisional,
+		Player1StartingRating:            p1Rating,
+		Player1StartingRatingProvisional: p1Provisional,
 	})
 }

@@ -20,6 +20,8 @@ INSERT INTO ongoing_games (
     timers, meta_events, ready_flag, started,
     game_mode, game_type, tournament_id,
     league_id, season_id, league_division_id,
+    player0_starting_rating, player0_starting_rating_provisional,
+    player1_starting_rating, player1_starting_rating_provisional,
     created_at, updated_at
 ) VALUES (
     @game_uuid, @play_state, @on_turn,
@@ -34,6 +36,8 @@ INSERT INTO ongoing_games (
     @started,
     @game_mode, @game_type, @tournament_id,
     @league_id, @season_id, @league_division_id,
+    @player0_starting_rating, @player0_starting_rating_provisional,
+    @player1_starting_rating, @player1_starting_rating_provisional,
     now(), now()
 )
 ON CONFLICT (game_uuid) DO UPDATE SET
@@ -48,6 +52,12 @@ ON CONFLICT (game_uuid) DO UPDATE SET
     -- UpdateGame stopped writing it). The value in the INSERT above therefore
     -- applies only when the row is first created.
     started = EXCLUDED.started,
+    -- The starting ratings never change once set. A row created before they
+    -- were stored gets them from the first save that has them.
+    player0_starting_rating = COALESCE(ongoing_games.player0_starting_rating, EXCLUDED.player0_starting_rating),
+    player0_starting_rating_provisional = COALESCE(ongoing_games.player0_starting_rating_provisional, EXCLUDED.player0_starting_rating_provisional),
+    player1_starting_rating = COALESCE(ongoing_games.player1_starting_rating, EXCLUDED.player1_starting_rating),
+    player1_starting_rating_provisional = COALESCE(ongoing_games.player1_starting_rating_provisional, EXCLUDED.player1_starting_rating_provisional),
     updated_at = now();
 
 -- name: GetOngoingGame :one

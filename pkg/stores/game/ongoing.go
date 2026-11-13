@@ -121,6 +121,9 @@ func ongoingParams(g *entity.Game) (models.UpsertOngoingGameParams, error) {
 		divisionID = pgtype.UUID{Bytes: *g.LeagueDivisionID, Valid: true}
 	}
 
+	p0Rating, p0Provisional := startingRatingParams(g.StartingRatings[0])
+	p1Rating, p1Provisional := startingRatingParams(g.StartingRatings[1])
+
 	return models.UpsertOngoingGameParams{
 		GameUuid: g.GameID(),
 
@@ -151,6 +154,12 @@ func ongoingParams(g *entity.Game) (models.UpsertOngoingGameParams, error) {
 		LeagueID:         leagueID,
 		SeasonID:         seasonID,
 		LeagueDivisionID: divisionID,
+
+		// Written only while the row has none: see the query.
+		Player0StartingRating:            p0Rating,
+		Player0StartingRatingProvisional: p0Provisional,
+		Player1StartingRating:            p1Rating,
+		Player1StartingRatingProvisional: p1Provisional,
 	}, nil
 }
 
