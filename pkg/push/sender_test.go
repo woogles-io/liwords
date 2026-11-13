@@ -156,6 +156,9 @@ func TestSendSignsAndEncrypts(t *testing.T) {
 	is.Equal(r.header.Get("Content-Encoding"), "aes128gcm")
 	is.Equal(r.header.Get("TTL"), "172800") // 48h
 	is.True(len(r.body) > 0)
+	// Mozilla's push service refuses a body over 2744 bytes for Firefox on
+	// Android, and over 4028 for the rest.
+	is.True(len(r.body) <= 2744)
 
 	authz := r.header.Get("Authorization")
 	is.True(strings.HasPrefix(authz, "vapid t="))
