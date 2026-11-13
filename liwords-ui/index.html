@@ -43,6 +43,29 @@
         background: #2e2e2e;
         color-scheme: dark;
       }
+      /* The splash inside #root, shown until React renders over it. */
+      .boot-splash {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .boot-splash img {
+        width: 96px;
+        height: 96px;
+        animation: boot-splash-pulse 1.6s ease-in-out infinite;
+      }
+      @keyframes boot-splash-pulse {
+        50% {
+          opacity: 0.5;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .boot-splash img {
+          animation: none;
+        }
+      }
     </style>
     <link rel="icon" href="/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -205,7 +228,16 @@
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
-    <div id="root"></div>
+    <!--
+      The dog shows until the app renders: React's first render replaces
+      everything inside #root. If it stays up, the page itself arrived and the
+      app's own code is what never ran.
+    -->
+    <div id="root">
+      <div class="boot-splash">
+        <img src="/logo192.png" alt="Loading Woogles.io" />
+      </div>
+    </div>
     <!--
       At the end of body rather than in head, so the background above can paint
       while it loads. It still runs before the bundle: the bundle's scripts are
