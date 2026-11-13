@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"connectrpc.com/connect"
+	"github.com/jackc/pgx/v5"
 
 	"github.com/woogles-io/liwords/pkg/apiserver"
 	"github.com/woogles-io/liwords/pkg/auth/rbac"
@@ -140,10 +141,16 @@ func (ms *ModService) ChangeEmail(ctx context.Context, req *connect.Request[pb.C
 		return nil, err
 	}
 	err = ChangeEmail(ctx, ms.userStore, applierUserId, req.Msg.UserId, req.Msg.Email)
-	if err != nil {
+	switch {
+	case err == nil:
+		return connect.NewResponse(&pb.ChangeEmailResponse{}), nil
+	case errors.Is(err, user.ErrInvalidEmail), errors.Is(err, user.ErrEmailTaken):
 		return nil, apiserver.InvalidArg(err.Error())
+	case errors.Is(err, pgx.ErrNoRows):
+		return nil, apiserver.InvalidArg("no such user")
+	default:
+		return nil, apiserver.InternalErr(err)
 	}
-	return connect.NewResponse(&pb.ChangeEmailResponse{}), nil
 }
 
 // ListEmailChanges lists a user's email changes, newest first. It takes the

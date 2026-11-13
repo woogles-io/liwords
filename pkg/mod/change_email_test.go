@@ -34,7 +34,7 @@ func TestChangeEmail(t *testing.T) {
 	defer pool.Close()
 	q := models.New(pool)
 	svc := &ModService{userStore: us, queries: q}
-	is.NoErr(us.SetPersonalInfo(ctx, "Hacker", "hacker@woogles.io", fullProfile.FirstName,
+	is.NoErr(us.SetPersonalInfo(ctx, "Hacker", fullProfile.FirstName,
 		fullProfile.LastName, fullProfile.BirthDate, fullProfile.CountryCode, fullProfile.About))
 
 	change := func(email string) error {
@@ -120,7 +120,7 @@ func TestListEmailChanges(t *testing.T) {
 	defer pool.Close()
 	q := models.New(pool)
 	svc := &ModService{userStore: us, queries: q}
-	is.NoErr(us.AddEmailChange(ctx, "Hacker", "old@woogles.io", "hacker@woogles.io", "Hacker"))
+	is.NoErr(us.ChangeEmail(ctx, "Hacker", "changed@woogles.io", "Hacker"))
 
 	list := func() (*connect.Response[ms.ListEmailChangesResponse], error) {
 		return svc.ListEmailChanges(ctx, connect.NewRequest(&ms.ListEmailChangesRequest{UserId: "Hacker"}))
@@ -137,8 +137,8 @@ func TestListEmailChanges(t *testing.T) {
 	is.NoErr(err)
 	is.Equal(len(resp.Msg.Changes), 1)
 	c := resp.Msg.Changes[0]
-	is.Equal(c.OldEmail, "old@woogles.io")
-	is.Equal(c.NewEmail, "hacker@woogles.io")
+	is.Equal(c.OldEmail, "hacker@woogles.io")
+	is.Equal(c.NewEmail, "changed@woogles.io")
 	is.Equal(c.ChangedByUserId, "Hacker")
 	is.Equal(c.ChangedByUsername, "Hacker")
 	is.True(time.Since(c.ChangedAt.AsTime()) < time.Minute)

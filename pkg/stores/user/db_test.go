@@ -256,7 +256,9 @@ func TestSet(t *testing.T) {
 	newEmail := "cesar@wolges.io"
 	newLastName := "del lunar"
 	newAbout := "manegar of wolges"
-	err = ustore.SetPersonalInfo(ctx, cesar.UUID, newEmail, "", newLastName, "", "", newAbout)
+	err = ustore.ChangeEmail(ctx, cesar.UUID, newEmail, cesar.UUID)
+	is.NoErr(err)
+	err = ustore.SetPersonalInfo(ctx, cesar.UUID, "", newLastName, "", "", newAbout)
 	is.NoErr(err)
 	cesar, err = ustore.Get(ctx, "cesar")
 	is.NoErr(err)

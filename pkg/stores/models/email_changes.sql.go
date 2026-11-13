@@ -38,6 +38,19 @@ func (q *Queries) AddEmailChange(ctx context.Context, arg AddEmailChangeParams) 
 	return result.RowsAffected(), nil
 }
 
+const getUserEmailForUpdate = `-- name: GetUserEmailForUpdate :one
+SELECT email FROM users WHERE uuid = $1 FOR UPDATE
+`
+
+// Locks the user's row until the transaction ends, so the email recorded as
+// the old one is still the user's when the new one is written.
+func (q *Queries) GetUserEmailForUpdate(ctx context.Context, uuid string) (string, error) {
+	row := q.db.QueryRow(ctx, getUserEmailForUpdate, uuid)
+	var email string
+	err := row.Scan(&email)
+	return email, err
+}
+
 const listEmailChanges = `-- name: ListEmailChanges :many
 SELECT ec.old_email, ec.new_email, ec.changed_at,
        cb.uuid AS changed_by_uuid, cb.username AS changed_by_username
