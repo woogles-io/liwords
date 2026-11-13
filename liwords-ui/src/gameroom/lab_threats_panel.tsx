@@ -36,6 +36,9 @@ import {
 // lists, and a second, as long as Every first move takes.
 const DEFAULT_COUNT = 15;
 const DEFAULT_SECONDS = 1;
+// how long each step of the count weighs racks for, so the answer shows as it
+// firms up rather than only when the seconds are spent
+const THREATS_STEP_MS = 100;
 
 // A board the threats are counted on: the position's own, or with the tiles
 // the player has placed on it, the rest of their rack theirs and the tiles
@@ -47,6 +50,8 @@ type ThreatBoard = {
 
 type Counted = {
   answer?: ThreatsAnswer;
+  // false while the count goes on, its answer still firming up
+  done?: boolean;
   error?: string;
 };
 
@@ -138,7 +143,6 @@ export const ThreatsPanel = (props: ThreatsPanelProps) => {
           ...(infer ? {} : { known: known.tiles }),
           // every play, so a square's own plays are there to list however
           // far down they rank; the list is cut to the count asked here
-          ms: seconds * 1000,
         });
   const keyOf = (board: ThreatBoard | null) => {
     const r = board && request(board);
@@ -165,18 +169,37 @@ export const ThreatsPanel = (props: ThreatsPanelProps) => {
           args: { files: getLoadableFiles(lab.loadableKey) },
         });
         for (const [key, board] of todo) {
-          let result: Counted;
+          // every play listed first, then the racks weighed a step at a
+          // time, each step's answer shown, till every rack is counted or
+          // the seconds asked are spent
+          let id: number | undefined;
           try {
-            const { answer } = await labCall<{ answer: ThreatsAnswer }>({
-              op: "threats",
+            ({ id } = await labCall<{ id: number }>({
+              op: "threats_new",
               args: { request: request(board!)!, infer },
-            });
-            result = { answer };
+            }));
+            const until = Date.now() + seconds! * 1000;
+            for (;;) {
+              if (!current) return;
+              const left = until - Date.now();
+              const answer = await labCall<ThreatsAnswer>({
+                op: "threats_step",
+                args: { id, ms: Math.max(0, Math.min(THREATS_STEP_MS, left)) },
+              });
+              if (!current) return;
+              const done = answer.exact || left <= THREATS_STEP_MS;
+              setCounted((m) => new Map(m).set(key!, { answer, done }));
+              if (done) break;
+            }
           } catch (e) {
-            result = { error: e instanceof Error ? e.message : String(e) };
+            if (!current) return;
+            const error = e instanceof Error ? e.message : String(e);
+            setCounted((m) => new Map(m).set(key!, { error }));
+          } finally {
+            if (id !== undefined) {
+              void labCall({ op: "threats_free", args: { id } });
+            }
           }
-          if (!current) return;
-          setCounted((m) => new Map(m).set(key!, result));
         }
       } catch (e) {
         if (!current) return;
@@ -267,7 +290,7 @@ export const ThreatsPanel = (props: ThreatsPanelProps) => {
       ? "Counting..."
       : c.error
         ? `Could not count the threats: ${c.error}`
-        : threatsSummary(c.answer!, lab.unseen.length);
+        : threatsSummary(c.answer!, lab.unseen.length, !c.done);
     return (
       <div>
         {label}

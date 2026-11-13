@@ -105,14 +105,18 @@ export const percentText = (x: number) => `${(x * 100).toFixed(1)}%`;
 
 // The status line for an answer: the opponent's best on average, the chance
 // of a whole rack, from how many tiles unseen; "~" and how much was counted
-// exactly when time ran out.
-export const threatsSummary = (answer: ThreatsAnswer, unseen: number) => {
+// exactly when time ran out, or so far while still counting.
+export const threatsSummary = (
+  answer: ThreatsAnswer,
+  unseen: number,
+  counting = false,
+) => {
   const about = answer.exact ? "" : "~";
   const bingo =
     answer.bingo === null ? "" : `, bingo ${about}${percentText(answer.bingo)}`;
   const cut = answer.exact
     ? ""
-    : `; time ran out: ${percentText(answer.covered)} of racks counted, ${answer.samples} more drawn`;
+    : `; ${counting ? "counting" : "time ran out"}: ${percentText(answer.covered)} of racks counted, ${answer.samples} more drawn`;
   return `Opponent's best ${about}${answer.expected_best.toFixed(1)} on average${bingo}, from ${unseen} unseen${cut}`;
 };
 

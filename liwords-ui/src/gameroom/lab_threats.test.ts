@@ -93,4 +93,16 @@ describe("threatsSummary", () => {
       "Opponent's best ~38.4 on average, bingo ~27.0%, from 60 unseen; time ran out: 62.5% of racks counted, 300 more drawn",
     );
   });
+
+  it("says so while still counting", () => {
+    expect(
+      threatsSummary(
+        answer({ exact: false, covered: 0.5, samples: 10 }),
+        60,
+        true,
+      ),
+    ).toBe(
+      "Opponent's best ~38.4 on average, bingo ~27.0%, from 60 unseen; counting: 50.0% of racks counted, 10 more drawn",
+    );
+  });
 });

@@ -367,8 +367,10 @@ const multi = async (request: LabRequest): Promise<unknown> => {
         await Promise.all(Array.from({ length: n }, (_, w) => call(w, request)))
       )[0];
     case "analyze":
-    // a threats call makes no job: one worker answers it as a whole
-    case "threats":
+    // a threats count is no job: one worker holds it, apart from the jobs
+    case "threats_new":
+    case "threats_step":
+    case "threats_free":
       return call(0, request);
     case "endgame": {
       freeSims();

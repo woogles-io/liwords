@@ -23,9 +23,14 @@ export type LabRequest =
   | { op: "prepare"; args: { files: Array<LabFile> } }
   // the position's plays, best first, as many as the request's count asks
   | { op: "analyze"; args: { request: string } }
-  // what the opponent may play next, by score alone; with an inference's
-  // request, from racks starting with the leave inferred, as a sim's does
-  | { op: "threats"; args: { request: string; infer?: string } }
+  // what the opponent may play next, by score alone: every play listed, then
+  // the racks weighed a step at a time, each step answering as the whole
+  // count stands; with an inference's request, from racks starting with the
+  // leave inferred, as a sim's does. One count is held at a time, apart from
+  // any job; a new one lets the last go.
+  | { op: "threats_new"; args: { request: string; infer?: string } }
+  | { op: "threats_step"; args: { id: number; ms: number } }
+  | { op: "threats_free"; args: { id: number } }
   // an endgame; a pre-endgame on as many workers as parts says, if fewer than
   // the lab's (lab.ts), which a worker reads no further
   | { op: "endgame"; args: { request: string; parts?: number } }
@@ -119,6 +124,12 @@ const nameOf = (cacheKey: string) =>
 const loaded = new Map<string, number>();
 let job: Job | null = null;
 let lastJobId = 0;
+// The threats count held, as its id and the wasm's handle.
+let threats: { id: number; handle: number } | null = null;
+const freeThreats = (wolges: Wolges) => {
+  if (threats) wolges.threats_free(threats.handle);
+  threats = null;
+};
 let running = false;
 // Each run starts a new chain of steps; an older chain sees it and ends.
 let chainId = 0;
@@ -237,7 +248,10 @@ const prepare = async (wolges: Wolges, files: Array<LabFile>) => {
   const unwanted = [...loaded.keys()].filter(
     (cacheKey) => !wanted.has(cacheKey),
   );
-  if (unwanted.length) freeJob(wolges);
+  if (unwanted.length) {
+    freeJob(wolges);
+    freeThreats(wolges);
+  }
   for (const cacheKey of unwanted) {
     if (cacheKey.startsWith("klv/")) wolges.evict_klv(nameOf(cacheKey));
     else wolges.evict_kwg(nameOf(cacheKey));
@@ -270,19 +284,30 @@ const handle = async (req: LabRequest): Promise<unknown> => {
       return prepare(wolges, req.args.files);
     case "analyze":
       return JSON.parse(wolges.analyze(req.args.request));
-    case "threats": {
-      // threats comes with the wasm after the one this page is built with;
-      // until then, the call fails as one to anything the wasm lacks does
-      const { threats } = wolges as { threats?: (request: string) => string };
-      if (!threats) throw new Error("this wasm has no threats");
-      const { result, inferred } = inferring(
+    case "threats_new": {
+      freeThreats(wolges);
+      const { result: handle, inferred } = inferring(
         wolges,
         req.args.request,
         req.args.infer,
-        threats,
+        wolges.threats_new,
       );
-      return { answer: JSON.parse(result), ...(inferred ? { inferred } : {}) };
+      threats = { id: ++lastJobId, handle };
+      return { id: threats.id, ...(inferred ? { inferred } : {}) };
     }
+    case "threats_step":
+      if (!threats || threats.id !== req.args.id) {
+        throw new Error("no such threats count");
+      }
+      return JSON.parse(
+        wolges.threats_step(
+          threats.handle,
+          JSON.stringify({ ms: req.args.ms }),
+        ),
+      );
+    case "threats_free":
+      if (threats && threats.id === req.args.id) freeThreats(wolges);
+      return undefined;
     case "endgame":
       freeJob(wolges);
       job = {

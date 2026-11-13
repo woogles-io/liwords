@@ -19,11 +19,18 @@ import { ThreatsPanel } from "./lab_threats_panel";
 const lab = vi.hoisted(() => ({
   calls: [] as Array<{ op: string; args?: { request?: string } }>,
   answers: [] as Array<object>,
+  last: undefined as object | undefined,
 }));
 vi.mock("../wasm/lab", () => ({
   labCall: async (request: { op: string; args?: { request?: string } }) => {
     lab.calls.push(request);
-    if (request.op === "threats") return { answer: lab.answers.shift() };
+    if (request.op === "threats_new") return { id: lab.calls.length };
+    // each step takes the next answer set, the last one again once none is
+    // left
+    if (request.op === "threats_step") {
+      lab.last = lab.answers.shift() ?? lab.last;
+      return lab.last;
+    }
     return undefined;
   },
   labParts: () => 1,
@@ -143,7 +150,7 @@ const Placer = () => {
 
 const threatsRequests = () =>
   lab.calls
-    .filter((c) => c.op === "threats")
+    .filter((c) => c.op === "threats_new")
     .map((c) => JSON.parse(c.args!.request!));
 
 const mount = (more: Partial<SimSettings> = {}, at = position()) =>
@@ -158,6 +165,7 @@ const mount = (more: Partial<SimSettings> = {}, at = position()) =>
 beforeEach(() => {
   lab.calls.length = 0;
   lab.answers.length = 0;
+  lab.last = undefined;
   shown = null;
 });
 
@@ -175,7 +183,6 @@ describe("ThreatsPanel", () => {
         rules: "CrosswordGame",
         rack: [A, B, E],
         known: [],
-        ms: 1000,
       },
     ]);
     expect(screen.getByText("SEA")).toBeTruthy();
@@ -268,10 +275,9 @@ describe("ThreatsPanel", () => {
     lab.answers.push(answer());
     mount({ infer: true });
     await screen.findByText(/^Not inferred:/);
-    await waitFor(() => expect(lab.calls.at(-1)?.op).toBe("threats"));
-    expect(
-      (lab.calls.at(-1)?.args as { infer?: string } | undefined)?.infer,
-    ).toBeUndefined();
+    await waitFor(() => expect(threatsRequests()).toHaveLength(1));
+    const made = lab.calls.find((c) => c.op === "threats_new")!;
+    expect((made.args as { infer?: string }).infer).toBeUndefined();
   });
 
   it("infers the opponent's leave from their last move when asked", async () => {
@@ -293,8 +299,11 @@ describe("ThreatsPanel", () => {
       }),
     );
     await screen.findByText("Opponent's leave inferred from their last move.");
-    await waitFor(() => expect(lab.calls.at(-1)?.op).toBe("threats"));
-    const args = lab.calls.at(-1)!.args as { request: string; infer: string };
+    await waitFor(() => expect(threatsRequests()).toHaveLength(1));
+    const args = lab.calls.find((c) => c.op === "threats_new")!.args as {
+      request: string;
+      infer: string;
+    };
     expect(JSON.parse(args.infer).play.word).toEqual([B, E]);
     expect(JSON.parse(args.request).known).toBeUndefined();
   });
@@ -302,7 +311,10 @@ describe("ThreatsPanel", () => {
   it("marks the chances of an answer cut short", async () => {
     lab.answers.push(answer({ exact: false, covered: 0.5, samples: 20 }));
     mount();
-    await screen.findByText(/time ran out: 50.0% of racks counted/);
+    // once the seconds are spent
+    await screen.findByText(/time ran out: 50.0% of racks counted/, undefined, {
+      timeout: 3000,
+    });
     expect(screen.getByText("~50.0%")).toBeTruthy();
   });
 
