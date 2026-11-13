@@ -167,6 +167,11 @@ p.streak-loss {
           font-size: 16px;
           color: m($button-text);
         }
+
+        // an outlined button, whose icon the color above would hide
+        button.ant-btn-icon-only.computer-analysis-btn.legacy {
+          color: m($gray-medium);
+        }
       }
     }
 
