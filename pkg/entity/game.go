@@ -294,9 +294,14 @@ type Game struct {
 // The bytes are captured when the move is played rather than when it is saved,
 // because the history is mutated in between -- ComputeGameStats edits it during
 // the end-of-game sequence -- and the log must record the event as it happened.
+//
+// Each row is written in both encodings for one release: Event as protojson,
+// which the release before this one reads, and EventBin as binary proto, which
+// this one reads when it is there.
 type PendingTurn struct {
-	Idx   int32
-	Event []byte
+	Idx      int32
+	Event    []byte
+	EventBin []byte
 }
 
 // StageTurns queues rows to be written to game_turns by the next save.

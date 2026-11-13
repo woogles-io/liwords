@@ -155,8 +155,9 @@ func (h *HistoryArchiver) ArchiveAndCleanup(ctx context.Context, g *entity.Game)
 func assembleHistory(g *entity.Game, turns []models.GetGameTurnsRow) (*macondopb.GameHistory, error) {
 	events := make([]*macondopb.GameEvent, len(turns))
 	for i, t := range turns {
-		evt := &macondopb.GameEvent{}
-		if err := protojson.Unmarshal(t.Event, evt); err != nil {
+		// Binary or protojson, depending on when the row was written.
+		evt, err := xwordbridge.DecodeTurn(t.Event)
+		if err != nil {
 			return nil, fmt.Errorf("unmarshal turn %d: %w", t.TurnIdx, err)
 		}
 		events[i] = evt

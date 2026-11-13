@@ -39,10 +39,11 @@ SELECT
     g.game_request, g.player_on_turn, g.league_id, g.season_id, g.league_division_id,
     g.history_s3_key, g.last_known_racks,
     CASE WHEN @with_turns::boolean THEN (
-        SELECT array_agg(t.event ORDER BY t.turn_idx)
+        -- Binary when the row has it; see GetGameTurns.
+        SELECT array_agg(COALESCE(t.event_bin, convert_to(t.event::text, 'UTF8')) ORDER BY t.turn_idx)
         FROM game_turns t
         WHERE t.game_uuid = g.uuid
-    ) END::jsonb[] AS turn_events
+    ) END::bytea[] AS turn_events
 FROM games g
 WHERE g.uuid = @uuid;
 
