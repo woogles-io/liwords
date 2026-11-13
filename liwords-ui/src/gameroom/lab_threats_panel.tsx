@@ -156,6 +156,11 @@ export const ThreatsPanel = (props: ThreatsPanelProps) => {
   const countRef = useRef(count);
   countRef.current = count;
 
+  // The counts so far, read when the boards change: each step's answer
+  // changes them, and must not cut short the count it came from.
+  const countedRef = useRef(counted);
+  countedRef.current = counted;
+
   // Count each board not yet counted, the position's first; one call at a
   // time, as the worker takes them.
   useEffect(() => {
@@ -163,7 +168,9 @@ export const ThreatsPanel = (props: ThreatsPanelProps) => {
       [nowKey, now],
       [afterKey, after],
     ] as const;
-    const todo = wanted.filter(([key]) => key !== null && !counted.has(key));
+    const todo = wanted.filter(
+      ([key]) => key !== null && !countedRef.current.has(key),
+    );
     if (!todo.length) return;
     let current = true;
     (async () => {
@@ -231,7 +238,7 @@ export const ThreatsPanel = (props: ThreatsPanelProps) => {
     };
     // the boards and the request follow from the keys
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nowKey, afterKey, counted, lab.loadableKey]);
+  }, [nowKey, afterKey, lab.loadableKey]);
 
   // Each count held is let go once its board is no longer counted, and all
   // of them when the panel closes.

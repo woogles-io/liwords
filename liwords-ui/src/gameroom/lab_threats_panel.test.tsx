@@ -20,21 +20,31 @@ const lab = vi.hoisted(() => ({
   calls: [] as Array<{ op: string; args?: { request?: string } }>,
   answers: [] as Array<object>,
   last: undefined as object | undefined,
+  lastId: 0,
+  made: [] as Array<number>,
   // what a step of ms 0 lists, as the wasm would from the racks weighed
   listing: undefined as object | undefined,
 }));
 vi.mock("../wasm/lab", () => ({
   labCall: async (request: { op: string; args?: { request?: string } }) => {
     lab.calls.push(request);
-    if (request.op === "threats_new") return { id: lab.calls.length };
+    // ids never given twice, as the worker's, so a test's count is never
+    // taken for the last test's, let go late
+    if (request.op === "threats_new") {
+      lab.made.push(++lab.lastId);
+      return { id: lab.lastId };
+    }
     // each step takes the next answer set, the last one again once none is
     // left
     if (request.op === "threats_step") {
-      if ((request.args as { ms: number }).ms === 0 && lab.listing) {
-        return lab.listing;
-      }
-      lab.last = lab.answers.shift() ?? lab.last;
-      return lab.last;
+      // the answer taken when the step is asked, then given a while after,
+      // as the worker's is, letting the page render between steps
+      const given =
+        (request.args as { ms: number }).ms === 0 && lab.listing
+          ? lab.listing
+          : (lab.last = lab.answers.shift() ?? lab.last);
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      return given;
     }
     return undefined;
   },
@@ -172,6 +182,7 @@ beforeEach(() => {
   lab.answers.length = 0;
   lab.last = undefined;
   lab.listing = undefined;
+  lab.made.length = 0;
   shown = null;
 });
 
@@ -269,15 +280,12 @@ describe("ThreatsPanel", () => {
     place(new Set([{ row: 0, col: 0, letter: B }]));
     await waitFor(() => expect(threatsRequests()).toHaveLength(2));
     unmount();
-    const freed = lab.calls
-      .filter((c) => c.op === "threats_free")
-      .map((c) => (c.args as unknown as { id: number }).id);
-    expect(freed.sort()).toEqual(
+    const freed = () =>
       lab.calls
-        .map((c, i) => (c.op === "threats_new" ? i + 1 : 0))
-        .filter(Boolean)
-        .sort(),
-    );
+        .filter((c) => c.op === "threats_free")
+        .map((c) => (c.args as unknown as { id: number }).id)
+        .sort();
+    await waitFor(() => expect(freed()).toEqual([...lab.made].sort()));
   });
 
   it("counts the board after the tiles placed too, beside now", async () => {
@@ -338,6 +346,28 @@ describe("ThreatsPanel", () => {
     };
     expect(JSON.parse(args.infer).play.word).toEqual([B, E]);
     expect(JSON.parse(args.request).known).toBeUndefined();
+  });
+
+  it("steps the count on till it is exact, holding it after", async () => {
+    lab.answers.push(
+      answer({ exact: false, covered: 0.5, samples: 20 }),
+      answer({ expected_best: 9 }),
+    );
+    mount();
+    await screen.findByText("Opponent's best 9.0 on average, from 4 unseen");
+    expect(
+      lab.calls.filter(
+        (c) => c.op === "threats_step" && (c.args as { ms: number }).ms > 0,
+      ),
+    ).toHaveLength(2);
+    // this count is held, whatever the last test lets go late
+    expect(
+      lab.calls.some(
+        (c) =>
+          c.op === "threats_free" &&
+          lab.made.includes((c.args as unknown as { id: number }).id),
+      ),
+    ).toBe(false);
   });
 
   it("marks the chances of an answer cut short", async () => {
