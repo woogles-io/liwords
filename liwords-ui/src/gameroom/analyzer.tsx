@@ -1147,17 +1147,23 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
         shape="circle"
         icon={<BulbOutlined />}
         type="primary"
-        onClick={handleExaminer}
-        disabled={autoMode || examinerLoading || showComputerAnalysis}
+        onClick={() => {
+          // from the computer's analysis, back to the analyzer's own
+          setShowComputerAnalysis(false);
+          handleExaminer();
+        }}
+        disabled={autoMode || examinerLoading}
       />
       <div className="auto-controls">
         <p className="auto-label">Auto</p>
         <Switch
           checked={autoMode}
-          onChange={toggleAutoMode}
+          onChange={() => {
+            setShowComputerAnalysis(false);
+            toggleAutoMode();
+          }}
           className="auto-toggle"
           size="small"
-          disabled={showComputerAnalysis}
         />
       </div>
       {gameDone && !variant?.includes("wordsmog") && (
