@@ -263,7 +263,7 @@ func StartGame(ctx context.Context, stores *stores.Stores, eventChan chan<- *ent
 	// A correspondence game starts as soon as its seek is accepted, so the
 	// player on the first turn may not be there to see it.
 	if entGame.IsCorrespondence() {
-		pushTurn(entGame, stores, "")
+		pushTurn(ctx, entGame, stores, "")
 	}
 
 	evt := entGame.HistoryRefresherEvent()
@@ -319,7 +319,7 @@ func players(entGame *entity.Game) []string {
 // pushTurn sends a web push to the player now on turn in a correspondence
 // game, unless that is who just acted, as after a challenge that leaves the
 // turn with the challenger.
-func pushTurn(entGame *entity.Game, stores *stores.Stores, actedBy string) {
+func pushTurn(ctx context.Context, entGame *entity.Game, stores *stores.Stores, actedBy string) {
 	if stores.PushSender == nil {
 		return
 	}
@@ -333,8 +333,9 @@ func pushTurn(entGame *entity.Game, stores *stores.Stores, actedBy string) {
 			opponent = p.Nickname
 		}
 	}
-	stores.PushSender.Notify(onTurn, push.TurnMessage(entGame.GameID(),
-		opponent, entGame.Timers.Deadline(entGame.Game.PlayerOnTurn())))
+	stores.PushSender.Notify(ctx, onTurn, push.TurnMessage(entGame.GameID(),
+		opponent, entGame.Timers.Deadline(entGame.Game.PlayerOnTurn())),
+		attribute.String("game.id", entGame.GameID()))
 }
 
 // sorts MLs in place.
@@ -902,7 +903,7 @@ func handleEventAfterLockingGame(ctx context.Context, stores *stores.Stores, use
 			}
 			// A league game's page shows its live score and whose turn it is.
 			sendLeagueGameUpdated(entGame, false)
-			pushTurn(entGame, stores, userID)
+			pushTurn(ctx, entGame, stores, userID)
 		}
 
 	}

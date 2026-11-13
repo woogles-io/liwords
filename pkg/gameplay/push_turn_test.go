@@ -1,6 +1,7 @@
 package gameplay_test
 
 import (
+	"context"
 	"encoding/json"
 	"slices"
 	"sync"
@@ -9,6 +10,7 @@ import (
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/domino14/word-golib/tilemapping"
 	"github.com/matryer/is"
+	"go.opentelemetry.io/otel/attribute"
 
 	"github.com/woogles-io/liwords/pkg/gameplay"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
@@ -25,7 +27,7 @@ type recordingPusher struct {
 	calls []pushCall
 }
 
-func (r *recordingPusher) Notify(userUUID string, payload []byte) {
+func (r *recordingPusher) Notify(_ context.Context, userUUID string, payload []byte, _ ...attribute.KeyValue) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.calls = append(r.calls, pushCall{userUUID, payload})

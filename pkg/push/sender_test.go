@@ -17,6 +17,8 @@ import (
 	"testing"
 	"time"
 
+	tracenoop "go.opentelemetry.io/otel/trace/noop"
+
 	"github.com/matryer/is"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -144,7 +146,7 @@ func TestSendSignsAndEncrypts(t *testing.T) {
 	}}
 	s := testSender(t, q, srv)
 
-	s.send(context.Background(), "u1", []byte(`{"gameId":"g1"}`))
+	s.send(context.Background(), tracenoop.Span{}, "u1", []byte(`{"gameId":"g1"}`))
 
 	requests := ps.received()
 	is.Equal(len(requests), 1)
@@ -203,7 +205,7 @@ func TestGoneSubscriptionsAreDeleted(t *testing.T) {
 	}}
 	s := testSender(t, q, srv)
 
-	s.send(context.Background(), "u1", []byte(`{}`))
+	s.send(context.Background(), tracenoop.Span{}, "u1", []byte(`{}`))
 
 	is.Equal(len(ps.received()), 6)
 	is.Equal(q.deleted, []string{srv.URL + "/gone404", srv.URL + "/gone410"})
@@ -217,7 +219,7 @@ func TestNotifySendsInTheBackground(t *testing.T) {
 	}}
 	s := testSender(t, q, srv)
 
-	s.Notify("u1", []byte(`{}`))
+	s.Notify(context.Background(), "u1", []byte(`{}`))
 	for range 2 {
 		select {
 		case <-ps.got:
@@ -435,12 +437,15 @@ func TestNewerSendToADeviceCancelsTheOlder(t *testing.T) {
 
 	var first, second sync.WaitGroup
 	first.Add(1)
-	go func() { defer first.Done(); s.send(context.Background(), "u1", []byte(`{"turn":1}`)) }()
+	go func() { defer first.Done(); s.send(context.Background(), tracenoop.Span{}, "u1", []byte(`{"turn":1}`)) }()
 	is.Equal(<-h.started, endpoint)
 
 	// The newer send cancels the one still waiting, then is answered.
 	second.Add(1)
-	go func() { defer second.Done(); s.send(context.Background(), "u1", []byte(`{"turn":2}`)) }()
+	go func() {
+		defer second.Done()
+		s.send(context.Background(), tracenoop.Span{}, "u1", []byte(`{"turn":2}`))
+	}()
 	is.Equal(<-h.started, endpoint)
 	first.Wait()
 	// The canceled send, finishing, leaves the newer one's entry alone.
@@ -462,7 +467,7 @@ func TestSendsToOtherDevicesDoNotCancel(t *testing.T) {
 	var wg sync.WaitGroup
 	for _, u := range []string{"u1", "u2"} {
 		wg.Add(1)
-		go func() { defer wg.Done(); s.send(context.Background(), u, []byte(`{}`)) }()
+		go func() { defer wg.Done(); s.send(context.Background(), tracenoop.Span{}, u, []byte(`{}`)) }()
 	}
 	<-h.started
 	<-h.started

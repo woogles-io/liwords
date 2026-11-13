@@ -15,9 +15,15 @@ import (
 
 	webpush "github.com/SherClockHolmes/webpush-go"
 	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/woogles-io/liwords/pkg/stores/models"
 )
+
+var tracer = otel.Tracer("push")
 
 var (
 	errBadKeys = errors.New("a push subscription needs its p256dh and auth keys")
@@ -98,21 +104,39 @@ func (s *Sender) Unsubscribe(ctx context.Context, userUUID, endpoint string) err
 }
 
 // Notify sends payload to every browser the user subscribed. It returns at
-// once; the sending happens in the background.
-func (s *Sender) Notify(userUUID string, payload []byte) {
-	go s.send(context.Background(), userUUID, payload)
+// once; the sending happens in the background, traced as its own push.Send
+// trace linked to the caller's span, with attrs on its root span.
+func (s *Sender) Notify(ctx context.Context, userUUID string, payload []byte, attrs ...attribute.KeyValue) {
+	link := trace.LinkFromContext(ctx)
+	go func() {
+		ctx, span := tracer.Start(context.Background(), "push.Send",
+			trace.WithNewRoot(),
+			trace.WithLinks(link),
+			trace.WithAttributes(append(attrs, attribute.String("user.id", userUUID))...))
+		defer span.End()
+		s.send(ctx, span, userUUID, payload)
+	}()
 }
 
-func (s *Sender) send(ctx context.Context, userUUID string, payload []byte) {
+func (s *Sender) send(ctx context.Context, span trace.Span, userUUID string, payload []byte) {
 	subs, err := s.queries.GetPushSubscriptions(ctx, userUUID)
 	if err != nil {
 		log.Err(err).Str("userID", userUUID).Msg("web-push-get-subscriptions")
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "get subscriptions failed")
 		return
 	}
+	counts := map[string]int{}
 	for _, sub := range subs {
 		sendCtx, done := s.startSend(ctx, sub.Endpoint)
-		s.sendOne(sendCtx, sub, payload)
+		counts[s.sendOne(sendCtx, sub, payload)]++
 		done()
+	}
+	span.SetAttributes(attribute.Int("push.devices", len(subs)))
+	for _, o := range []string{outcomeSent, outcomeGone, outcomeRefused, outcomeFailed, outcomeSuperseded} {
+		if counts[o] > 0 {
+			span.SetAttributes(attribute.Int("push."+o, counts[o]))
+		}
 	}
 }
 
@@ -138,13 +162,34 @@ func (s *Sender) startSend(ctx context.Context, endpoint string) (context.Contex
 	}
 }
 
-func (s *Sender) sendOne(ctx context.Context, sub models.GetPushSubscriptionsRow, payload []byte) {
+// Outcomes of one send, as the push.outcome span attribute and the counts on
+// the push.Send span.
+const (
+	outcomeSent       = "sent"
+	outcomeGone       = "gone"
+	outcomeRefused    = "refused"
+	outcomeFailed     = "failed"
+	outcomeSuperseded = "superseded"
+)
+
+func (s *Sender) sendOne(ctx context.Context, sub models.GetPushSubscriptionsRow, payload []byte) string {
 	// An endpoint's path is the subscription's secret, so only its host is
-	// logged.
+	// logged, and traced.
 	host := ""
 	if u, err := url.Parse(sub.Endpoint); err == nil {
 		host = u.Host
 	}
+	ctx, span := tracer.Start(ctx, "push.SendOne",
+		trace.WithSpanKind(trace.SpanKindClient),
+		trace.WithAttributes(attribute.String("push.service", host)))
+	defer span.End()
+	outcome := s.post(ctx, span, host, sub, payload)
+	span.SetAttributes(attribute.String("push.outcome", outcome))
+	return outcome
+}
+
+func (s *Sender) post(ctx context.Context, span trace.Span, host string,
+	sub models.GetPushSubscriptionsRow, payload []byte) string {
 	// The push library writes its padding into the message's spare capacity,
 	// so every send gets its own copy.
 	message := slices.Clone(payload)
@@ -170,21 +215,28 @@ func (s *Sender) sendOne(ctx context.Context, sub models.GetPushSubscriptionsRow
 		if errors.Is(err, context.Canceled) {
 			// A newer push to this device took its place.
 			log.Debug().Str("pushService", host).Msg("web-push-superseded")
-			return
+			return outcomeSuperseded
 		}
 		log.Err(err).Str("pushService", host).Msg("web-push-send")
-		return
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "send failed")
+		return outcomeFailed
 	}
 	defer resp.Body.Close()
+	span.SetAttributes(attribute.Int("http.response.status_code", resp.StatusCode))
 	switch {
 	case resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusGone:
 		// The browser dropped the subscription.
 		if err := s.queries.DeletePushSubscription(ctx, sub.Endpoint); err != nil {
 			log.Err(err).Str("pushService", host).Msg("web-push-delete-subscription")
 		}
+		return outcomeGone
 	case resp.StatusCode < 200 || resp.StatusCode >= 300:
 		log.Error().Int("status", resp.StatusCode).Str("pushService", host).Msg("web-push-refused")
+		span.SetStatus(codes.Error, "push service refused")
+		return outcomeRefused
 	}
+	return outcomeSent
 }
 
 // subscriber is the subject as the push library wants it: the library adds
