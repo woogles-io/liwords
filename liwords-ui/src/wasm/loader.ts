@@ -1,4 +1,5 @@
 import { Unrace } from "../utils/unrace";
+import { importWolges } from "./wolges";
 
 // Good enough for now. If need to reload, just refresh the whole page.
 class Loadable {
@@ -257,7 +258,7 @@ export const getLoadableFiles = (loadableKey: string) =>
 // A wasm with sims refuses to drop a lexicon while a live sim made with it holds
 // it, and throws to say so. That lexicon is still loaded, so it stays cached.
 const dropUnneeded = (
-  wolges: typeof import("wolges-wasm"),
+  wolges: Awaited<ReturnType<typeof importWolges>>,
   cachedStuffs: { [cacheKey: string]: boolean },
   needed: Set<string>,
 ) => {
@@ -292,7 +293,7 @@ const dropUnneeded = (
 export const getWolges = async (loadableKey: string) =>
   unrace.run(async () => {
     // Allow these files to start loading.
-    const wolgesPromise = import("wolges-wasm");
+    const wolgesPromise = importWolges();
     const effectiveLoadables = loadablesByKey[loadableKey] ?? [];
     for (const loadable of effectiveLoadables) {
       loadable.startFetch();

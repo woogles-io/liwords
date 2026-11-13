@@ -27,7 +27,11 @@ import {
 } from "../gen/api/proto/vendored/macondo/macondo_pb";
 import { GameType } from "../gen/api/proto/ipc/omgwords_pb";
 import { ComputerAnalysis } from "./computer_analysis";
-import { ANALYZER_LAB_KEY } from "./analyzer_lab";
+import {
+  ANALYZER_LAB_KEY,
+  ANALYZER_LAB_WHAT_IF_KEY,
+  exchangesBySeat,
+} from "./analyzer_lab";
 import {
   EndgamePanel,
   LabButtons,
@@ -37,6 +41,9 @@ import {
   useLabSim,
   usePublishLabHooks,
 } from "./analyzer_lab_panels";
+import { InferPanel } from "./lab_infer_panel";
+import { ThreatsPanel } from "./lab_threats_panel";
+import { WhatIfBar } from "./what_if_buttons";
 import { defaultLetterDistribution } from "../lobby/sought_game_interactions";
 import {
   useExaminableGameContextStoreContext,
@@ -160,7 +167,7 @@ export const liwordsLetterToWolgesLetter = (i: number) => {
   return i;
 };
 
-const wolgesLabelsToLetter = (runes: string, alphabet: Alphabet) => {
+export const wolgesLabelsToLetter = (runes: string, alphabet: Alphabet) => {
   const resp = runesToMachineWord(runes, alphabet);
   return resp.map(liwordsLetterToWolgesLetter);
 };
@@ -314,6 +321,7 @@ export const parseExaminableGameContext = (
     onturn,
     players,
     alphabet,
+    turns,
   } = examinableGameContext;
 
   const letterDistribution = defaultLetterDistribution(lexicon);
@@ -349,6 +357,9 @@ export const parseExaminableGameContext = (
     lexicon: getLexiconKey(loadableKey),
     leave: getLeaveKey(loadableKey),
     rules,
+    // the exchanges the player to move has made, which a rule capping them
+    // counts
+    exchanges: exchangesBySeat(turns)[onturn] ?? 0,
   };
 
   return {
@@ -1067,6 +1078,9 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
 
   const [analyzerLab] = useLocalStorageBool(ANALYZER_LAB_KEY);
   const [labHooks, setLabHooks] = useLocalStorageBool("analyzerLabHooks");
+  const [labWhatIf, setLabWhatIf] = useLocalStorageBool(
+    ANALYZER_LAB_WHAT_IF_KEY,
+  );
   const [labView, setLabView] = useState<LabView | null>(null);
   // The lab opens wherever the analyzer does, which a player's own game in
   // play never shows.
@@ -1134,14 +1148,6 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
   );
   const analyzerControls = (
     <div className="analyzer-controls">
-      {labOpen && (
-        <LabButtons
-          view={labView}
-          setView={setLabView}
-          hooks={labHooks}
-          setHooks={setLabHooks}
-        />
-      )}
       <Button
         className="analyze-trigger"
         shape="circle"
@@ -1246,6 +1252,14 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
       <div className="suggestions" style={props.style}>
         {labView === "endgame" ? (
           <EndgamePanel lab={labPosition} onClose={() => setLabView(null)} />
+        ) : labView === "infer" ? (
+          <InferPanel lab={labPosition} onClose={() => setLabView(null)} />
+        ) : labView === "threats" ? (
+          <ThreatsPanel
+            lab={labPosition}
+            settings={labSim.settings}
+            onClose={() => setLabView(null)}
+          />
         ) : (
           <SimPanel
             lab={labPosition}
@@ -1258,6 +1272,19 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
     ) : null;
   const analyzerContainer = (
     <div className="analyzer-container">
+      {labOpen && (
+        <LabButtons
+          view={labView}
+          setView={setLabView}
+          hooks={labHooks}
+          setHooks={setLabHooks}
+          whatIf={labWhatIf}
+          setWhatIf={setLabWhatIf}
+        />
+      )}
+      {labOpen && (
+        <WhatIfBar lexicon={lexicon} variant={variant} on={labWhatIf} />
+      )}
       {labPanel ? (
         labPanel
       ) : !examinerLoading ? (

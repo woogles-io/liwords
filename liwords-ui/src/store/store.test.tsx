@@ -3,12 +3,27 @@ import { act, renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ActionType } from "../actions/actions";
 import { MatchUserSchema } from "../gen/api/proto/ipc/omgseeks_pb";
+import { GameHistoryRefresherSchema } from "../gen/api/proto/ipc/omgwords_pb";
+import {
+  GameEventSchema,
+  GameEvent_Direction,
+  GameEvent_Type,
+  GameHistorySchema,
+  PlayerInfoSchema,
+} from "../gen/api/proto/vendored/macondo/macondo_pb";
+import {
+  StandardEnglishAlphabet,
+  runesToMachineWord,
+} from "../constants/alphabets";
 import { ChatEntityType } from "./constants";
 import { SoughtGame } from "./reducers/lobby_reducer";
 import {
   LOBBY_QUEUE_MS,
   Store,
   useChatStoreContext,
+  useExaminableGameContextStoreContext,
+  useExamineStoreContext,
+  useGameContextStoreContext,
   useLobbyStoreContext,
 } from "./store";
 
@@ -160,5 +175,89 @@ describe("the lobby store", () => {
       vi.advanceTimersByTime(LOBBY_QUEUE_MS);
     });
     expect(result.current.lobbyContext.soughtGames).toEqual([]);
+  });
+});
+
+describe("the moves made up while examining", () => {
+  const useWhatIfStores = () => ({
+    game: useGameContextStoreContext(),
+    examinable: useExaminableGameContextStoreContext(),
+    examine: useExamineStoreContext(),
+  });
+
+  // two players, no move yet, both racks known
+  const load = (
+    dispatch: (a: { actionType: ActionType; payload: unknown }) => void,
+  ) =>
+    dispatch({
+      actionType: ActionType.RefreshHistory,
+      payload: create(GameHistoryRefresherSchema, {
+        history: create(GameHistorySchema, {
+          players: [
+            create(PlayerInfoSchema, { nickname: "a", userId: "a1" }),
+            create(PlayerInfoSchema, { nickname: "b", userId: "b1" }),
+          ],
+          lastKnownRacks: ["ABCDEFG", "HIJKLMN"],
+          uid: "g1",
+        }),
+      }),
+    });
+
+  const play = create(GameEventSchema, {
+    type: GameEvent_Type.TILE_PLACEMENT_MOVE,
+    playerIndex: 0,
+    rack: "ABCDEFG",
+    row: 7,
+    column: 7,
+    direction: GameEvent_Direction.HORIZONTAL,
+    playedTiles: "AB",
+    score: 8,
+    cumulative: 8,
+  });
+
+  it("plays them on top of the turn examined, and lets them go", () => {
+    const { result } = renderHook(useWhatIfStores, { wrapper: Store });
+    act(() => load(result.current.game.dispatchGameContext));
+    act(() => result.current.examine.handleExamineStart());
+    act(() => result.current.examine.playWhatIf([play]));
+    const after = result.current.examinable.gameContext;
+    expect(after.board.letterAt(7, 7)).not.toBe(0);
+    expect(after.players[0].score).toBe(8);
+    expect(after.onturn).toBe(1);
+    expect(after.players[1].onturn).toBe(true);
+    // the tiles played off the rack, none drawn
+    expect(after.players[0].currentRack).toHaveLength(5);
+    // the game's own position is untouched
+    expect(result.current.game.gameContext.board.letterAt(7, 7)).toBe(0);
+    act(() => result.current.examine.takeBackWhatIf());
+    expect(result.current.examinable.gameContext.board.letterAt(7, 7)).toBe(0);
+    act(() => result.current.examine.playWhatIf([play]));
+    // another turn examined lets them go
+    act(() => result.current.examine.handleExamineFirst());
+    expect(result.current.examine.whatIf).toEqual([]);
+  });
+
+  it("adds the tiles drawn, and an emptied bag leaves the other the rest", () => {
+    const { result } = renderHook(useWhatIfStores, { wrapper: Store });
+    act(() => load(result.current.game.dispatchGameContext));
+    act(() => result.current.examine.handleExamineStart());
+    const pool = result.current.examinable.gameContext.pool;
+    // draw the two tiles that leave just seven unseen beside the mover's rack
+    const unseen = Object.values(pool).reduce((a, b) => a + b, 0);
+    expect(unseen).toBeGreaterThan(16);
+    act(() =>
+      result.current.examine.playWhatIf(
+        [play],
+        runesToMachineWord("OP", StandardEnglishAlphabet),
+      ),
+    );
+    const after = result.current.examinable.gameContext;
+    expect(after.players[0].currentRack).toEqual(
+      runesToMachineWord("CDEFGOP", StandardEnglishAlphabet),
+    );
+    // a full bag: the other keeps their own rack
+    expect(after.players[1].currentRack).toEqual(
+      runesToMachineWord("HIJKLMN", StandardEnglishAlphabet),
+    );
   });
 });

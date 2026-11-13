@@ -7,6 +7,8 @@ import { MachineLetter, MachineWord } from "../utils/cwgame/common";
 
 // Turns the analyzer lab on.
 export const ANALYZER_LAB_KEY = "enableAnalyzerLab";
+// Shows the lab's what-if row, and lets the rack under the board be set.
+export const ANALYZER_LAB_WHAT_IF_KEY = "analyzerLabWhatIf";
 
 // The scoreless turns in a row at the end of the turns, counted as the server
 // counts them again when a phony comes off (pkg/cwgame): a pass, an exchange,
@@ -56,6 +58,18 @@ export const passesAtEnd = (turns: Array<GameEvent>) => {
   return count;
 };
 
+// Each seat's exchanges so far, by seat, which an endgame with two or more
+// tiles in the bag is told of.
+export const exchangesBySeat = (turns: Array<GameEvent>) => {
+  const exchanges = [0, 0];
+  for (const t of turns) {
+    if (t.type === GameEvent_Type.EXCHANGE && t.playerIndex in exchanges) {
+      exchanges[t.playerIndex]++;
+    }
+  }
+  return exchanges;
+};
+
 // The tiles the player to move cannot see. The pool holds every tile off the
 // board, that player's own rack too.
 export const unseenBy = (pool: TileDistribution, rack: MachineWord) => {
@@ -80,6 +94,11 @@ export const endgameBag = (unseenCount: number, rackLength: number) => {
   return bag;
 };
 
+// The solver's table, in MiB, each endgame reserves from its first step
+// rather than growing it; the wasm holds it to half the endgame's memory, and
+// a wasm without it ignores it.
+export const ENDGAME_RESERVE_MB = 16;
+
 // The most memory an endgame may use, in MiB, by what the device says it has;
 // a browser that says nothing gets the least of them.
 export const endgameMemoryMb = () => {
@@ -92,12 +111,29 @@ export const endgameMemoryMb = () => {
 
 export type SimStat = { mean: number; variance: number };
 
+// A statistic over fewer iterations than the candidate's rollouts, its own
+// n with it.
+export type SimCountedStat = SimStat & { n: number };
+
+// A sim's candidate: where it stands, its rollouts, their chance to win and
+// equity (the change in spread, the leaves left counted), that equity's two
+// parts (spread, in points alone; leaves, the mover's left less the
+// opponent's), and the objective the sim prunes on; with a play to compare
+// against, each less that play's on the iterations both ran.
 export type SimCandidate = {
   play: unknown;
   state: "running" | "paused" | "pruned";
   n: number;
   win: SimStat;
   equity: SimStat;
+  spread?: SimStat;
+  leaves?: SimStat;
+  objective?: SimStat;
+  against?: {
+    win: SimCountedStat;
+    equity: SimCountedStat;
+    objective: SimCountedStat;
+  };
 };
 
 // The order a sim's candidates are shown in: by the chance to win, then by

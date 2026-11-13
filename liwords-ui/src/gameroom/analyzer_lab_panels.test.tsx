@@ -9,14 +9,22 @@ import {
 } from "@testing-library/react";
 import { useRef } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { create } from "@bufbuild/protobuf";
 import { StandardEnglishAlphabet } from "../constants/alphabets";
+import {
+  GameEventSchema,
+  GameEvent_Direction,
+  GameEvent_Type,
+} from "../gen/api/proto/vendored/macondo/macondo_pb";
 import { Store } from "../store/store";
 import { LabEvent } from "../wasm/lab";
+import { OUT_OF_MEMORY, OUT_OF_MEMORY_ALONE } from "../wasm/lab_errors";
 import { AnalyzerMove } from "./analyzer";
 import {
   EndgamePanel,
   LabPosition,
   SimPanel,
+  lastMoveOf,
   useLabRoom,
   useLabSim,
 } from "./analyzer_lab_panels";
@@ -28,21 +36,50 @@ const lab = vi.hoisted(() => ({
   calls: [] as Array<{ op: string; args?: object }>,
   listeners: new Set<(e: LabEvent) => void>(),
   top: [] as Array<object>,
+  // each file's size in bytes, as the worker loads it
+  sizes: {} as Record<string, number>,
+  // the workers a sim runs on
+  parts: 1,
+  // the bytes a worker holds once an endgame is made
+  held: 1,
+  // what an inference of the opponent's leave finds
+  inferred: {
+    count: 120,
+    leaves: [
+      { tiles: [1, 5], weight: 0.25 },
+      { tiles: [], weight: 0.125 },
+    ],
+  },
 }));
 vi.mock("../wasm/lab", () => ({
   labCall: async (request: { op: string; args?: { plays?: string } }) => {
     lab.calls.push(request);
     if (request.op === "analyze") return lab.top;
+    if (request.op === "prepare") return lab.sizes;
     if (request.op === "endgame") return 1;
+    if (request.op === "held") return lab.held;
     if (request.op === "sim") {
-      const plays = JSON.parse(request.args!.plays!) as Array<object>;
-      return { job: 1, added: plays.map((play) => ({ play, was: "absent" })) };
+      const args = request.args as { plays: string; infer?: string };
+      const plays = JSON.parse(args.plays) as Array<object>;
+      return {
+        job: 1,
+        added: plays.map((play) => ({ play, was: "absent" })),
+        ...(args.infer ? { inferred: lab.inferred } : {}),
+      };
+    }
+    if (request.op === "set") {
+      const args = request.args as { infer?: string };
+      return args.infer ? { inferred: lab.inferred } : {};
     }
     if (["add", "remove", "pause", "resume"].includes(request.op)) {
       const plays = JSON.parse(request.args!.plays!) as Array<object>;
       return plays.map((play) => ({ play, was: "absent" }));
     }
     return undefined;
+  },
+  labParts: () => lab.parts,
+  setLabParts: (n: number) => {
+    lab.parts = n;
   },
   onLabEvent: (listener: (e: LabEvent) => void) => {
     lab.listeners.add(listener);
@@ -150,6 +187,19 @@ const position = (
   },
   leave: "CSW24",
   challengeable: false,
+  challengeBonus: 5,
+  exchanges: [1, 2],
+  lastMove: {
+    board: [[0]],
+    play: {
+      action: "play",
+      down: false,
+      lane: 7,
+      idx: 7,
+      word: [B, E],
+      score: 8,
+    },
+  },
   names: ["andy", "wolges"],
   key: JSON.stringify(unseen),
   ...more,
@@ -187,9 +237,12 @@ let dueAtNextFrame = new Map<number, FrameRequestCallback>();
 beforeEach(() => {
   lab.calls.length = 0;
   lab.listeners.clear();
+  lab.parts = 1;
+  lab.held = 1;
   board.placed.length = 0;
   clock.now = 0;
   lab.top = [];
+  lab.sizes = {};
   page.scored.length = 0;
   page.answer = undefined;
   tentative.placedTiles = new Set();
@@ -261,6 +314,74 @@ describe("the endgame panel", () => {
     expect(request.scores).toEqual([300, 290]);
   });
 
+  it("values every first move of an empty bag once stopped, in the seconds asked", async () => {
+    render(
+      <Store>
+        <EndgamePanel
+          lab={position([A, B, E, I, I, I, I])}
+          onClose={() => {}}
+        />
+      </Store>,
+    );
+    const answer = {
+      bag: 0,
+      steps: 2,
+      exact: false,
+      play: across(7, 7, [B, A]),
+      value: 12,
+      spread: 22,
+      depth: 3,
+      line: [{ play: across(7, 7, [B, A]), value: 12 }],
+    };
+    await step(answer);
+    // not while it solves
+    const every = () =>
+      screen.getByRole("button", { name: "Every first move" });
+    expect(every()).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Stop" }));
+    expect(every()).toBeEnabled();
+    fireEvent.click(every());
+    fireEvent.change(
+      await screen.findByRole("spinbutton", { name: "Seconds" }),
+      {
+        target: { value: "2.5" },
+      },
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Value every first move" }),
+    );
+    await waitFor(() =>
+      expect(lab.calls.find((c) => c.op === "values")?.args).toEqual({
+        job: 1,
+        ms: 2500,
+      }),
+    );
+    emit({
+      job: 1,
+      answer: {
+        ...answer,
+        candidates: [
+          { play: across(7, 7, [B, A]), win: 1, value: 12, exact: true },
+          {
+            play: { action: "exchange", tiles: [] },
+            win: 0,
+            value: -15,
+            exact: false,
+          },
+        ],
+      },
+      done: false,
+    });
+    expect(headRow()).toBe("ScoreLeaveWinValue");
+    expect(bodyRows()).toEqual([
+      "andy8HBA10AEEII+12",
+      "Every first move:",
+      "8HBA10AEEIIwins+12",
+      // at least that, to the depth it got to
+      "Pass0AABEEIIloses~-15",
+    ]);
+  });
+
   it("weighs a tile in the bag by each tile it may be", async () => {
     render(
       <Store>
@@ -279,6 +400,8 @@ describe("the endgame panel", () => {
       spread: 14.875,
       depth: 2,
       win: 0.75,
+      endgames: 40,
+      moves: [3, 9],
       tiles: [
         { tile: E, count: 2, value: 6 },
         { tile: I, count: 4, value: -3 },
@@ -289,18 +412,28 @@ describe("the endgame panel", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        "Expected value +4.88, wins 75.0%, depth 2 after 0 s, solving",
+        "Expected value +4.88, wins 75.0%, pass 2, 3 of 9 moves valued, 40 endgames after 0 s, solving",
       ),
     ).toBeInTheDocument();
     expect(screen.getByText("Unseen: ABEEIIII")).toBeInTheDocument();
+    // one tile in the bag is no question of what either player knows
+    expect(screen.queryByText("Blind")).not.toBeInTheDocument();
+    const made = lab.calls.find((c) => c.op === "endgame");
+    const request = JSON.parse((made?.args as { request: string }).request);
+    expect(request.model).toBeUndefined();
+    expect(request.exchanges).toBeUndefined();
     expect(bodyRows()).toEqual([
-      "andy8HBA10AEEII+4.88",
-      "E in the bag (2)+6",
-      "I in the bag (4)-3",
+      "andy8HBA10AEEII75.0%+4.88",
+      // the lead now 10: the game won with either tile
+      "8H BA, with the bag holding:",
+      "E (2)wins+6",
+      "I (4)wins-3",
     ]);
+    // each tile the play would draw, a way into what follows
+    expect(screen.getAllByLabelText("Go in")).toHaveLength(2);
   });
 
-  it("shows no value before its first depth, nor any move", async () => {
+  it("shows no value before its first step, nor any move", async () => {
     render(
       <Store>
         <EndgamePanel
@@ -309,19 +442,479 @@ describe("the endgame panel", () => {
         />
       </Store>,
     );
-    // a tile in the bag, at depth 0: no value or win yet
+    // a tile in the bag, before any step: no value or win yet
     await step({
       bag: 1,
-      steps: 1,
+      steps: 0,
+      nodes: 0,
       exact: false,
-      play: across(7, 7, [B, A]),
+      play: null,
       spread: 10,
       depth: 0,
+      endgames: 0,
       tiles: [],
     });
     expect(screen.getByText("Solving...")).toBeInTheDocument();
     expect(bodyRows()).toEqual([]);
     expect(screen.queryByText(/NaN|undefined/)).not.toBeInTheDocument();
+  });
+
+  it("shows how far a step got when it ends before any move has a value", async () => {
+    render(
+      <Store>
+        <EndgamePanel
+          lab={position([A, B, E, E, I, I, I, I, I, I, I])}
+          onClose={() => {}}
+        />
+      </Store>,
+    );
+    // four tiles in the bag, steps that valued no move yet
+    await step({
+      bag: 4,
+      steps: 3,
+      nodes: 700,
+      exact: false,
+      play: null,
+      spread: 10,
+      depth: 0,
+      endgames: 40,
+      moves: [0, 31],
+      draws: [],
+      candidates: [],
+    });
+    expect(
+      screen.getByText(
+        "Solving: first pass, 0 of 31 moves valued, 40 endgames after 0 s",
+      ),
+    ).toBeInTheDocument();
+    expect(bodyRows()).toEqual([]);
+    expect(screen.queryByText(/NaN|undefined/)).not.toBeInTheDocument();
+    // still stepping
+    expect(screen.getByRole("button", { name: "Stop" })).toBeInTheDocument();
+  });
+
+  it("shows the best of the moves valued so far in a pre-endgame's first pass", async () => {
+    render(
+      <Store>
+        <EndgamePanel
+          lab={position([A, B, E, E, I, I, I, I])}
+          onClose={() => {}}
+        />
+      </Store>,
+    );
+    await step({
+      bag: 1,
+      steps: 1,
+      nodes: 50,
+      exact: false,
+      play: across(7, 7, [B, A]),
+      value: 2,
+      spread: 12,
+      depth: 0,
+      win: 0.5,
+      endgames: 6,
+      moves: [2, 9],
+      tiles: [],
+    });
+    expect(
+      screen.getByText(
+        "Expected value +2.00, wins 50.0%, first pass, 2 of 9 moves valued, 6 endgames after 0 s, solving",
+      ),
+    ).toBeInTheDocument();
+    expect(bodyRows()).toEqual(["andy8HBA10AEEII50.0%+2.00"]);
+  });
+
+  it("lists every move valued with a tile in the bag, each with its tiles, and shows the tiles of the one picked", async () => {
+    render(
+      <Store>
+        <EndgamePanel
+          lab={position([A, B, E, E, I, I, I, I])}
+          onClose={() => {}}
+        />
+      </Store>,
+    );
+    await step({
+      bag: 1,
+      steps: 3,
+      exact: true,
+      play: across(7, 7, [B, A]),
+      value: 4,
+      spread: 14,
+      depth: 127,
+      win: 1,
+      endgames: 40,
+      moves: [9, 9],
+      tiles: [
+        { tile: E, count: 2, value: 6 },
+        { tile: I, count: 4, value: 3 },
+      ],
+      candidates: [
+        {
+          play: across(7, 7, [B, A]),
+          value: 4,
+          exact: true,
+          tiles: [
+            { tile: E, count: 2, value: 6 },
+            { tile: I, count: 4, value: 3 },
+          ],
+        },
+        {
+          play: { action: "exchange", tiles: [] },
+          value: -9,
+          exact: true,
+          tiles: [
+            { tile: E, count: 2, value: -10 },
+            { tile: I, count: 4, value: -9 },
+          ],
+        },
+      ],
+    });
+    // the lead now 10: the pass wins with I and ties with E
+    expect(bodyRows()).toEqual([
+      "andy8HBA10AEEII100.0%+4.00",
+      "Pass0AABEEII83.3%-9.00",
+      "8H BA, with the bag holding:",
+      "E (2)wins+6",
+      "I (4)wins+3",
+    ]);
+    fireEvent.click(screen.getByRole("button", { name: "Draws of Pass" }));
+    expect(bodyRows()).toEqual([
+      "andy8HBA10AEEII100.0%+4.00",
+      "Pass0AABEEII83.3%-9.00",
+      "Pass, with the bag holding:",
+      "E (2)ties-10",
+      "I (4)wins-9",
+    ]);
+    // picking is not placing
+    expect(board.placed).toEqual([]);
+  });
+
+  it("says how many workers a pre-endgame runs on, as many as a sim", async () => {
+    lab.parts = 3;
+    render(
+      <Store>
+        <EndgamePanel
+          lab={position([A, B, E, E, I, I, I, I, I])}
+          onClose={() => {}}
+        />
+      </Store>,
+    );
+    await step({
+      bag: 2,
+      steps: 1,
+      nodes: 90,
+      exact: true,
+      play: across(7, 7, [B, A]),
+      value: 3.5,
+      spread: 13.5,
+      depth: 127,
+      win: 0.6,
+      endgames: 12,
+      moves: [9, 9],
+      draws: [],
+      candidates: [],
+    });
+    expect(
+      screen.getByText(
+        "Expected value +3.50, wins 60.0%, searched to the end, 12 endgames after 0 s, exact; on 3 workers",
+      ),
+    ).toBeInTheDocument();
+    // the device's 256 MiB shared by the three
+    const made = lab.calls.find((c) => c.op === "endgame");
+    expect(
+      JSON.parse((made?.args as { request: string }).request).max_memory_mb,
+    ).toBe(85);
+  });
+
+  it("runs on no more workers than leave each a share bigger than the lexicon", async () => {
+    lab.parts = 8;
+    // 256 MiB shared: six of a 40 MiB lexicon fit, seven would not
+    lab.sizes = { "kwg/CSW24": 40 * 2 ** 20 };
+    render(
+      <Store>
+        <EndgamePanel
+          lab={position([A, B, E, E, I, I, I, I, I])}
+          onClose={() => {}}
+        />
+      </Store>,
+    );
+    await waitFor(() =>
+      expect(lab.calls.some((c) => c.op === "endgame")).toBe(true),
+    );
+    const args = lab.calls.find((c) => c.op === "endgame")!.args as {
+      request: string;
+      parts: number;
+    };
+    expect(args.parts).toBe(6);
+    expect(JSON.parse(args.request).max_memory_mb).toBe(42);
+  });
+
+  it("solves again on half the workers when a part has no room, down to one", async () => {
+    lab.parts = 4;
+    render(
+      <Store>
+        <EndgamePanel
+          lab={position([A, B, E, E, I, I, I, I, I])}
+          onClose={() => {}}
+        />
+      </Store>,
+    );
+    const made = () =>
+      lab.calls
+        .filter((c) => c.op === "endgame")
+        .map((c) => {
+          const args = c.args as { request: string; parts: number };
+          return [args.parts, JSON.parse(args.request).max_memory_mb];
+        });
+    await waitFor(() => expect(made()).toEqual([[4, 64]]));
+    const outOfRoom = async (n: number) => {
+      await waitFor(() =>
+        expect(lab.calls.filter((c) => c.op === "run")).toHaveLength(n),
+      );
+      emit({ job: 1, error: OUT_OF_MEMORY });
+    };
+    await outOfRoom(1);
+    await waitFor(() =>
+      expect(made()).toEqual([
+        [4, 64],
+        [2, 128],
+      ]),
+    );
+    await outOfRoom(2);
+    await waitFor(() =>
+      expect(made()).toEqual([
+        [4, 64],
+        [2, 128],
+        [1, 256],
+      ]),
+    );
+    // on one, nothing fewer to try: the error stands, saying so
+    await outOfRoom(3);
+    expect(await screen.findByText(OUT_OF_MEMORY_ALONE)).toBeInTheDocument();
+    expect(made()).toHaveLength(3);
+  });
+
+  it("solves again on as many workers as what each holds leaves room for", async () => {
+    lab.parts = 4;
+    // 100 MiB held each: 256 MiB has room for two parts, not three
+    lab.held = 100 * 2 ** 20;
+    render(
+      <Store>
+        <EndgamePanel
+          lab={position([A, B, E, E, I, I, I, I, I])}
+          onClose={() => {}}
+        />
+      </Store>,
+    );
+    await waitFor(() =>
+      expect(
+        lab.calls
+          .filter((c) => c.op === "endgame")
+          .map((c) => (c.args as { parts: number }).parts),
+      ).toEqual([4, 2]),
+    );
+  });
+
+  it("marks the values not yet searched to the end", async () => {
+    render(
+      <Store>
+        <EndgamePanel
+          lab={position([A, B, E, E, I, I, I, I, I])}
+          onClose={() => {}}
+        />
+      </Store>,
+    );
+    await step({
+      bag: 2,
+      steps: 1,
+      nodes: 90,
+      exact: false,
+      play: across(7, 7, [B, A]),
+      value: 3.5,
+      spread: 13.5,
+      depth: 1,
+      win: 0.6,
+      endgames: 12,
+      moves: [9, 9],
+      draws: [],
+      candidates: [
+        { play: across(7, 7, [B, A]), win: 0.6, value: 3.5, exact: true },
+        {
+          play: { action: "exchange", tiles: [] },
+          win: 0.25,
+          value: -8,
+          exact: false,
+        },
+      ],
+    });
+    expect(bodyRows()).toEqual([
+      "andy8HBA10AEEII60.0%+3.50",
+      "Pass0AABEEII25.0%~-8.00",
+    ]);
+    expect(
+      screen.getByText(
+        "Expected value +3.50, wins 60.0%, pass 1, 9 of 9 moves valued, 12 endgames after 0 s, solving",
+      ),
+    ).toBeInTheDocument();
+    // the best an estimate too
+    await step({
+      bag: 2,
+      steps: 2,
+      nodes: 190,
+      exact: false,
+      play: across(7, 7, [B, A]),
+      value: 3,
+      spread: 13,
+      depth: 2,
+      win: 0.6,
+      endgames: 30,
+      moves: [9, 9],
+      draws: [],
+      candidates: [
+        { play: across(7, 7, [B, A]), win: 0.6, value: 3, exact: false },
+      ],
+    });
+    expect(
+      screen.getByText(
+        "Expected value ~+3.00, wins 60.0%, pass 2, 9 of 9 moves valued, 30 endgames after 0 s, solving",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("shows each play's own sets of tiles, with the chance to win with each, and with both racks known what it then draws", async () => {
+    render(
+      <Store>
+        <EndgamePanel
+          lab={position([A, B, E, E, I, I, I, I, I])}
+          onClose={() => {}}
+        />
+      </Store>,
+    );
+    const draws = [
+      {
+        tiles: [E, I],
+        count: 10,
+        value: 5,
+        win: 0.9,
+        drawn: [
+          { tiles: [E], count: 4, value: 7, win: 1 },
+          { tiles: [I], count: 6, value: 3.67, win: 0.83 },
+        ],
+      },
+      { tiles: [I, I], count: 1, value: -12, win: 0, drawn: [] },
+    ];
+    await step({
+      bag: 2,
+      steps: 4,
+      nodes: 900,
+      exact: true,
+      play: across(7, 7, [B, A]),
+      value: 3.5,
+      spread: 13.5,
+      depth: 127,
+      win: 0.82,
+      endgames: 120,
+      moves: [9, 9],
+      draws,
+      candidates: [
+        {
+          play: across(7, 7, [B, A]),
+          win: 0.82,
+          value: 3.5,
+          exact: true,
+          draws,
+        },
+        {
+          play: { action: "exchange", tiles: [] },
+          win: 0.25,
+          value: -8,
+          exact: true,
+          draws: [
+            { tiles: [E, I], count: 10, value: -7, win: 0.3 },
+            { tiles: [I, I], count: 1, value: -18, win: 0 },
+          ],
+        },
+      ],
+    });
+    expect(bodyRows()).toEqual([
+      "andy8HBA10AEEII82.0%+3.50",
+      "Pass0AABEEII25.0%-8.00",
+      "8H BA, with the bag holding:",
+      "EI (10 deals)90.0%+5.00",
+      "draws E (4 deals)100.0%+7.00",
+      "draws I (6 deals)83.0%+3.67",
+      "II (1 deal)0.0%-12.00",
+    ]);
+    fireEvent.click(screen.getByRole("button", { name: "Draws of Pass" }));
+    expect(bodyRows().slice(2)).toEqual([
+      // a pass draws nothing
+      "Pass, with the bag holding:",
+      "EI (10 deals)30.0%-7.00",
+      "II (1 deal)0.0%-18.00",
+    ]);
+  });
+
+  it("solves a pre-endgame of two tiles in the bag, every play valued, blind or with both racks known", async () => {
+    render(
+      <Store>
+        <EndgamePanel
+          lab={position([A, B, E, E, I, I, I, I, I])}
+          onClose={() => {}}
+        />
+      </Store>,
+    );
+    await step({
+      bag: 2,
+      steps: 4,
+      nodes: 900,
+      exact: true,
+      play: across(7, 7, [B, A]),
+      value: 3.5,
+      spread: 13.5,
+      depth: 127,
+      win: 0.6,
+      endgames: 120,
+      moves: [9, 9],
+      draws: [
+        { tiles: [E, I], count: 10, value: 5 },
+        { tiles: [I, I], count: 1, value: -12 },
+      ],
+      candidates: [
+        { play: across(7, 7, [B, A]), win: 0.6, value: 3.5 },
+        { play: { action: "exchange", tiles: [] }, win: 0.25, value: -8 },
+      ],
+    });
+    expect(
+      screen.getByText("Pre-endgame, 2 tiles in the bag"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Expected value +3.50, wins 60.0%, searched to the end, 120 endgames after 0 s, exact",
+      ),
+    ).toBeInTheDocument();
+    expect(headRow()).toBe("ScoreLeaveWinValue");
+    expect(bodyRows()).toEqual([
+      "andy8HBA10AEEII60.0%+3.50",
+      "Pass0AABEEII25.0%-8.00",
+      // the lead now 10: won with EI in the bag, lost with II
+      "8H BA, with the bag holding:",
+      "EI (10 deals)wins+5.00",
+      "II (1 deal)loses-12.00",
+    ]);
+    // blind by default, with each seat's exchanges
+    const requests = () =>
+      lab.calls
+        .filter((c) => c.op === "endgame")
+        .map((c) => JSON.parse((c.args as { request: string }).request));
+    expect(requests()).toHaveLength(1);
+    expect(requests()[0].model).toBe("info_sets");
+    expect(requests()[0].exchanges).toEqual([1, 2]);
+    // estimates first, labeled, then exact
+    expect(requests()[0].estimates).toBe(true);
+    // both racks known makes another search
+    fireEvent.click(screen.getByText("Racks known"));
+    await waitFor(() => expect(requests()).toHaveLength(2));
+    expect(requests()[1].model).toBe("random_draws");
   });
 
   it("shows how long it has solved, the time going on between its steps", async () => {
@@ -367,7 +960,7 @@ describe("the endgame panel", () => {
     ).toBeInTheDocument();
   });
 
-  it("solves nothing once the other player has gone out, or with two in the bag", async () => {
+  it("solves nothing once the other player has gone out, or without the full rack of the player to move", async () => {
     const { unmount } = render(
       <Store>
         <EndgamePanel lab={position([])} onClose={() => {}} />
@@ -395,12 +988,14 @@ describe("the endgame panel", () => {
     render(
       <Store>
         <EndgamePanel
-          lab={position([A, B, E, E, I, I, I, I, I])}
+          lab={position([A, B, E, E, I, I, I, I, I], { rack: [A, B] })}
           onClose={() => {}}
         />
       </Store>,
     );
-    expect(screen.getByText("The bag holds 2 tiles.")).toBeInTheDocument();
+    expect(
+      screen.getByText("Needs the full rack of the player to move."),
+    ).toBeInTheDocument();
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(lab.calls).toEqual([]);
   });
@@ -507,11 +1102,12 @@ describe("the sim panel", () => {
         />
       </Store>,
     );
-    // the one played among them, but no phony
+    // the one played among them, a phony too
     expect(
       screen.getByText("Static equity until the sim starts."),
     ).toBeInTheDocument();
     expect(bodyRows()).toEqual([
+      `${JSON.stringify(down)}+20.00*`,
       `${JSON.stringify(ab)}+8.00`,
       `${JSON.stringify(ba)}+3.00`,
     ]);
@@ -521,7 +1117,7 @@ describe("the sim panel", () => {
     await start();
     const sim = lab.calls.find((c) => c.op === "sim");
     const { plays, request } = sim?.args as { plays: string; request: string };
-    expect(JSON.parse(plays)).toEqual([ba, ab]);
+    expect(JSON.parse(plays)).toEqual([ba, ab, down]);
     expect(JSON.parse(request).leave).toBe("CSW24");
     // the plies the lab's own, always sent
     expect(JSON.parse(request).plies).toBe(4);
@@ -529,6 +1125,7 @@ describe("the sim panel", () => {
     expect(lab.calls.find((c) => c.op === "run")?.args).toEqual({
       job: 1,
       ms: 8,
+      alpha: 0.05,
     });
 
     // shown by the chance to win
@@ -566,6 +1163,7 @@ describe("the sim panel", () => {
     expect(lab.calls.find((c) => c.op === "run")?.args).toEqual({
       job: 1,
       ms: 16.5,
+      alpha: 0.05,
     });
   });
 
@@ -643,7 +1241,7 @@ describe("the sim panel", () => {
     await waitFor(() =>
       expect(lab.calls[lab.calls.length - 1]).toEqual({
         op: "run",
-        args: { job: 1, ms: 8 },
+        args: { job: 1, ms: 8, alpha: 0.05 },
       }),
     );
     expect(screen.getByRole("button", { name: "Stop" })).toBeInTheDocument();
@@ -809,7 +1407,7 @@ describe("the sim panel", () => {
     expect(board.placed.map((m) => m.jsonKey)).toEqual([JSON.stringify(ba)]);
   });
 
-  it("leaves out the phony listed, naming the words the lexicon lacks", async () => {
+  it("sims the phony listed unchallenged, naming the words the lexicon lacks", async () => {
     const phony = { action: "play", down: true, lane: 7, idx: 7, word: [A, B] };
     render(
       <Store>
@@ -827,16 +1425,89 @@ describe("the sim panel", () => {
         />
       </Store>,
     );
-    expect(
-      screen.getByText("SARKIER is not simmed: CONDS is not in CSW24."),
-    ).toBeInTheDocument();
-    expect(bodyRows()).toHaveLength(2);
+    // as the analyzer shows one: its words starred under it, its equity too
+    expect(bodyRows()).toContain("SARKIER(CONDS*)0.00*");
+    expect(bodyRows()).toHaveLength(3);
     await start();
     const sim = lab.calls.find((c) => c.op === "sim");
     expect(JSON.parse((sim?.args as { plays: string }).plays)).toEqual([
       ba,
       ab,
+      phony,
     ]);
+  });
+
+  it("prunes at the alpha set, and infers at the fuzz set, listing the leaves asked", async () => {
+    render(
+      <Store>
+        <Sim lab={midgame()} moves={[listed(ba), listed(ab)]} />
+      </Store>,
+    );
+    act(() => screen.getByRole("button", { name: "Sim settings" }).click());
+    fireEvent.click(screen.getByText("Infer their leave"));
+    const field = (name: string, value: string) =>
+      fireEvent.change(screen.getByRole("spinbutton", { name }), {
+        target: { value },
+      });
+    field("Fuzz", "2");
+    field("Leaves listed", "5");
+    field("Alpha", "0.01");
+    act(() => screen.getByRole("button", { name: "Apply" }).click());
+    await start();
+    const sim = lab.calls.find((c) => c.op === "sim");
+    expect(JSON.parse((sim?.args as { infer: string }).infer)).toMatchObject({
+      fuzz: 2,
+      list: 5,
+    });
+    expect(lab.calls.find((c) => c.op === "run")?.args).toMatchObject({
+      alpha: 0.01,
+    });
+  });
+
+  it("applies no alpha outside 0 to 1", async () => {
+    render(
+      <Store>
+        <Sim lab={midgame()} moves={[listed(ba), listed(ab)]} />
+      </Store>,
+    );
+    act(() => screen.getByRole("button", { name: "Sim settings" }).click());
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Alpha" }), {
+      target: { value: "1" },
+    });
+    expect(screen.getByRole("button", { name: "Apply" })).toBeDisabled();
+  });
+
+  it("says how many workers the sim runs on, when more than one", async () => {
+    render(
+      <Store>
+        <Sim lab={midgame()} moves={[listed(ba), listed(ab)]} />
+      </Store>,
+    );
+    // one until set; set, the lab runs the next sim on that many
+    vi.stubGlobal("navigator", { ...navigator, hardwareConcurrency: 8 });
+    act(() => screen.getByRole("button", { name: "Sim settings" }).click());
+    expect(screen.getByRole("spinbutton", { name: "Workers" })).toHaveValue(
+      "1",
+    );
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Workers" }), {
+      target: { value: "3" },
+    });
+    act(() => screen.getByRole("button", { name: "Apply" }).click());
+    expect(lab.parts).toBe(3);
+    await start();
+    emit({
+      job: 1,
+      answer: {
+        iterations: 96,
+        candidates: [candidate(ba, 0.5), candidate(ab, 0.4)],
+      },
+      done: false,
+    });
+    expect(
+      screen.getByText(
+        "96 iterations after 0 s, 2 running; 1 ply; on 3 workers",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("is done once fewer than two candidates are left unpruned, and runs on no further", async () => {
@@ -1041,7 +1712,7 @@ describe("the sim panel", () => {
     expect(bodyRows()[3]).toBe("8HAI+4.000");
   });
 
-  it("turns down a phony, naming its words, and a move listed already", async () => {
+  it("adds a phony, naming its words, and turns down a move listed already", async () => {
     placeBE();
     page.answer = {
       ...be,
@@ -1057,19 +1728,137 @@ describe("the sim panel", () => {
     };
     render(
       <Store>
-        <Sim lab={midgame()} moves={[listed(ba), listed(be)]} />
+        <Sim lab={midgame()} moves={[listed(ba)]} />
       </Store>,
     );
     act(() => screen.getByRole("button", { name: "Add" }).click());
-    expect(
-      await screen.findByText("Not added: BAZQPE and UB are not in CSW24."),
-    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(bodyRows()).toContain("8HBE(BAZQPE*, UB*)+50.00*"),
+    );
+    expect(bodyRows()).toHaveLength(2);
     page.answer = undefined;
     act(() => screen.getByRole("button", { name: "Add" }).click());
     expect(
       await screen.findByText("That move is listed already."),
     ).toBeInTheDocument();
     expect(bodyRows()).toHaveLength(2);
+  });
+
+  it("adds points below 0, a score counted short, and a phony as it was left standing", async () => {
+    placeBE();
+    page.answer = {
+      ...be,
+      score: 10,
+      result: "scored",
+      canonical: true,
+      valid: false,
+      invalid_words: [[B, E]],
+      equity: 4,
+    };
+    render(
+      <Store>
+        <Sim lab={midgame()} moves={[listed(ba)]} />
+      </Store>,
+    );
+    const challenged = () =>
+      act(() => screen.getByRole("button", { name: "Challenged" }).click());
+    challenged();
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Points added" }), {
+      target: { value: "-2" },
+    });
+    act(() =>
+      screen.getByRole("button", { name: "Add with the points" }).click(),
+    );
+    await waitFor(() => expect(bodyRows()).toHaveLength(2));
+    expect(bodyRows()).toContain("8HBE -2(BE*)+2.00*");
+    challenged();
+    act(() =>
+      screen.getByRole("button", { name: "Add challenged off" }).click(),
+    );
+    await waitFor(() => expect(bodyRows()).toHaveLength(3));
+    // each marked a phony, with its points or challenged off
+    expect(bodyRows()).toContain("8HBE (challenged off)(BE*)+4.00*");
+    await start();
+    const sim = lab.calls.find((c) => c.op === "sim");
+    expect(JSON.parse((sim?.args as { plays: string }).plays)).toEqual([
+      ba,
+      { ...be, bonus: -2 },
+      { ...be, challenged_off: true },
+    ]);
+    // 0 adds nothing
+    challenged();
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Points added" }), {
+      target: { value: "0" },
+    });
+    expect(
+      screen.getByRole("button", { name: "Add with the points" }),
+    ).toBeDisabled();
+  });
+
+  it("adds the move placed on the board with a challenge's bonus, and challenged off, each a candidate of its own", async () => {
+    placeBE();
+    render(
+      <Store>
+        <Sim lab={midgame()} moves={[listed(ba)]} />
+      </Store>,
+    );
+    const challenged = () =>
+      act(() => screen.getByRole("button", { name: "Challenged" }).click());
+    challenged();
+    // the game's own bonus to begin with
+    expect(
+      screen.getByRole("spinbutton", { name: "Points added" }),
+    ).toHaveValue("5");
+    act(() =>
+      screen.getByRole("button", { name: "Add with the points" }).click(),
+    );
+    await waitFor(() => expect(bodyRows()).toHaveLength(2));
+    expect(bodyRows()).toContain("8HBE +5+9.00");
+    challenged();
+    act(() =>
+      screen.getByRole("button", { name: "Add challenged off" }).click(),
+    );
+    await waitFor(() => expect(bodyRows()).toHaveLength(3));
+    // challenged off: a pass's static equity
+    expect(page.scored).toContainEqual({ action: "exchange", tiles: [] });
+    expect(bodyRows()).toContain("8HBE (challenged off)+4.00");
+
+    await start();
+    const sim = lab.calls.find((c) => c.op === "sim");
+    const plays = JSON.parse((sim?.args as { plays: string }).plays);
+    expect(plays).toEqual([
+      ba,
+      { ...be, bonus: 5 },
+      { ...be, challenged_off: true },
+    ]);
+    // the sim answers with each as it holds it: the bonus in the score, and
+    // the play challenged off flagged, scoring nothing
+    emit({
+      job: 1,
+      answer: {
+        iterations: 32,
+        candidates: [
+          candidate(ba, 0.5),
+          candidate({ ...be, score: 15 }, 0.4),
+          { ...candidate({ ...be, score: 0 }, 0.3), challenged_off: true },
+        ],
+      },
+      done: false,
+    });
+    expect(bodyRows()).toEqual([
+      `${JSON.stringify(ba)}50.0%0.000.0%32`,
+      "8HBE +540.0%0.000.0%32",
+      "8HBE (challenged off)30.0%0.000.0%32",
+    ]);
+    // taken out as it was given
+    act(() => screen.getAllByRole("button", { name: "Take out" })[1].click());
+    await waitFor(() =>
+      expect(lab.calls.some((c) => c.op === "remove")).toBe(true),
+    );
+    const removed = lab.calls.find((c) => c.op === "remove");
+    expect(JSON.parse((removed?.args as { plays: string }).plays)).toEqual([
+      { ...be, bonus: 5 },
+    ]);
   });
 
   it("keeps the rows' order while a row's button has the keyboard", async () => {
@@ -1497,7 +2286,13 @@ describe("the sim panel", () => {
     const analyzed = lab.calls.find((c) => c.op === "analyze");
     expect(
       JSON.parse((analyzed?.args as { request: string }).request),
-    ).toMatchObject({ count: 3, leave: "CSW24", scores: [300, 290] });
+    ).toMatchObject({
+      count: 3,
+      leave: "CSW24",
+      scores: [300, 290],
+      // the player to move's own exchanges
+      exchanges: 1,
+    });
     expect(bodyRows()).toEqual([
       "8HBE+6.00",
       `${JSON.stringify(ba)}+3.00`,
@@ -1563,18 +2358,19 @@ describe("the sim panel", () => {
     act(() => screen.getByRole("button", { name: "Apply" }).click());
   };
 
-  it("makes a sim with the plies and the opponent's tiles set, dropping the one made", async () => {
+  it("changes the plies and the opponent's tiles of the sim made in place, its rollouts kept", async () => {
     render(
       <Store>
         <Sim lab={midgame()} moves={[listed(ba), listed(ab)]} />
       </Store>,
     );
     await start();
-    // plies never set are liwords's own 4, sent with the sim
+    // plies never set are liwords's own 4, sent with the sim, as whether the
+    // opponent passes
     const first = lab.calls.find((c) => c.op === "sim");
-    expect(JSON.parse((first?.args as { request: string }).request).plies).toBe(
-      4,
-    );
+    const made = JSON.parse((first?.args as { request: string }).request);
+    expect(made.plies).toBe(4);
+    expect(made.opponents_pass).toBe(false);
     emit({
       job: 1,
       answer: {
@@ -1584,18 +2380,15 @@ describe("the sim panel", () => {
       done: false,
     });
     setSettings("2", "ie");
-    expect(
-      screen.getByText("Static equity until the sim starts."),
-    ).toBeInTheDocument();
     await waitFor(() =>
-      expect(lab.calls.some((c) => c.op === "free")).toBe(true),
+      expect(lab.calls.some((c) => c.op === "set")).toBe(true),
     );
-    lab.calls.length = 0;
-    await start();
-    const sim = lab.calls.find((c) => c.op === "sim");
-    const request = JSON.parse((sim?.args as { request: string }).request);
-    expect(request.plies).toBe(2);
-    expect(request.known).toEqual([I, E]);
+    const set = lab.calls.find((c) => c.op === "set");
+    expect(set?.args).toEqual({
+      job: 1,
+      request: JSON.stringify({ plies: 2, known: [I, E] }),
+    });
+    expect(lab.calls.some((c) => c.op === "free")).toBe(false);
     // the sim's answer has each candidate's two plies
     const twoPlies = (c: ReturnType<typeof candidate>) => ({
       ...c,
@@ -1604,7 +2397,7 @@ describe("the sim panel", () => {
     emit({
       job: 1,
       answer: {
-        iterations: 32,
+        iterations: 48,
         candidates: [
           twoPlies(candidate(ba, 0.5)),
           twoPlies(candidate(ab, 0.4)),
@@ -1613,8 +2406,64 @@ describe("the sim panel", () => {
       done: false,
     });
     expect(
+      await screen.findByText(
+        "48 iterations after 0 s, 2 running; 2 plies; the opponent holds IE",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("changes nothing of the sim made with tiles the opponent cannot hold", async () => {
+    render(
+      <Store>
+        <Sim lab={midgame()} moves={[listed(ba), listed(ab)]} />
+      </Store>,
+    );
+    await start();
+    setSettings("4", "zz");
+    expect(
+      await screen.findByText(
+        "Not applied: ZZ are not all among the tiles unseen.",
+      ),
+    ).toBeInTheDocument();
+    expect(lab.calls.some((c) => c.op === "set")).toBe(false);
+  });
+
+  it("rolls out to the game's end, and with the opponent passing, which makes a new sim", async () => {
+    render(
+      <Store>
+        <Sim lab={midgame()} moves={[listed(ba), listed(ab)]} />
+      </Store>,
+    );
+    await start();
+    act(() => screen.getByRole("button", { name: "Sim settings" }).click());
+    fireEvent.click(screen.getByText("To the game's end"));
+    expect(screen.getByRole("spinbutton", { name: "Plies" })).toBeDisabled();
+    fireEvent.click(screen.getByText("The opponent passes"));
+    act(() => screen.getByRole("button", { name: "Apply" }).click());
+    expect(
+      screen.getByText("Static equity until the sim starts."),
+    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(lab.calls.some((c) => c.op === "free")).toBe(true),
+    );
+    expect(lab.calls.some((c) => c.op === "set")).toBe(false);
+    lab.calls.length = 0;
+    await start();
+    const sim = lab.calls.find((c) => c.op === "sim");
+    const request = JSON.parse((sim?.args as { request: string }).request);
+    expect(request.plies).toBeNull();
+    expect(request.opponents_pass).toBe(true);
+    emit({
+      job: 1,
+      answer: {
+        iterations: 16,
+        candidates: [candidate(ba, 0.5), candidate(ab, 0.4)],
+      },
+      done: false,
+    });
+    expect(
       screen.getByText(
-        "32 iterations after 0 s, 2 running; 2 plies; the opponent holds IE",
+        "16 iterations after 0 s, 2 running; to the game's end; the opponent passes",
       ),
     ).toBeInTheDocument();
   });
@@ -1715,6 +2564,254 @@ describe("the sim panel", () => {
       `${JSON.stringify(ab)}40.0%0.0%+3.000.010+2.0032`,
     ]);
     expect(rowsOf(tables[4])[0]).toBe(`${JSON.stringify(ba)}33.04.025.0%32`);
+  });
+
+  it("shows each equity's two parts, and each candidate less a move compared with", async () => {
+    render(
+      <Store>
+        <Sim
+          lab={midgame()}
+          moves={[listed(ba, { equity: 3 }), listed(ab, { equity: 2 })]}
+        />
+      </Store>,
+    );
+    await start();
+    const parts = (spread: number, leaves: number) => ({
+      spread: { mean: spread, variance: 4 },
+      leaves: { mean: leaves, variance: 1 },
+      objective: { mean: spread + leaves, variance: 5 },
+    });
+    emit({
+      job: 1,
+      answer: {
+        iterations: 32,
+        candidates: [
+          { ...candidate(ba, 0.5, { equity: 9 }), ...parts(7, 2) },
+          { ...candidate(ab, 0.4, { equity: 3 }), ...parts(4, -1) },
+        ],
+      },
+      done: false,
+    });
+    act(() => screen.getByRole("button", { name: "Details" }).click());
+    const details = document.querySelector(".lab-details")!;
+    const rows = () =>
+      [
+        ...details.querySelectorAll("table")[0].querySelectorAll("tbody tr"),
+      ].map((r) => r.textContent);
+    expect(rows()).toEqual([
+      `${JSON.stringify(ba)}50.0%0.0%+9.000.0+7.00+2.0010+3.0032`,
+      `${JSON.stringify(ab)}40.0%0.0%+3.000.0+4.00-1.0010+2.0032`,
+    ]);
+
+    // compared with BA: the sim is told, and read at once
+    const select = within(details as HTMLElement).getByRole("combobox", {
+      name: "Compare with",
+    });
+    fireEvent.mouseDown(select);
+    act(() =>
+      (
+        [...document.querySelectorAll(".ant-select-item-option")].find(
+          (o) => o.textContent === JSON.stringify(ba),
+        ) as HTMLElement
+      ).click(),
+    );
+    await waitFor(() =>
+      expect(lab.calls.some((c) => c.op === "read")).toBe(true),
+    );
+    expect(lab.calls.find((c) => c.op === "against")?.args).toEqual({
+      job: 1,
+      play: JSON.stringify(ba),
+    });
+    const less = (n: number, win: number, equity: number) => ({
+      win: { n, mean: win, variance: 0.04 * n },
+      equity: { n, mean: equity, variance: 25 * n },
+      objective: { n, mean: equity, variance: 25 * n },
+    });
+    emit({
+      job: 1,
+      answer: {
+        iterations: 32,
+        candidates: [
+          {
+            ...candidate(ba, 0.5, { equity: 9 }),
+            ...parts(7, 2),
+            against: less(32, 0, 0),
+          },
+          {
+            ...candidate(ab, 0.4, { equity: 3 }),
+            ...parts(4, -1),
+            against: less(25, -0.1, -6),
+          },
+        ],
+      },
+      done: false,
+    });
+    expect(rows()[1]).toBe(
+      `${JSON.stringify(ab)}40.0%0.0%+3.000.0+4.00-1.0010+2.0032-10.0%-6.005.00`,
+    );
+    act(() => screen.getByRole("radio", { name: "By move" }).click());
+    expect(
+      [
+        ...details
+          .querySelectorAll(".lab-details-block")[1]
+          .querySelectorAll("li"),
+      ].map((li) => li.textContent),
+    ).toContain(
+      `Less ${JSON.stringify(ba)}, over 25: win -10.0% (SE 20.0%), equity -6.00 (SE 5.00)`,
+    );
+    // and with none
+    fireEvent.mouseDown(select);
+    act(() =>
+      (
+        [...document.querySelectorAll(".ant-select-item-option")].find(
+          (o) => o.textContent === "None",
+        ) as HTMLElement
+      ).click(),
+    );
+    await waitFor(() =>
+      expect(lab.calls.filter((c) => c.op === "against")).toHaveLength(2),
+    );
+    expect(lab.calls.filter((c) => c.op === "against")[1].args).toEqual({
+      job: 1,
+      play: null,
+    });
+  });
+
+  it("compares with no move once the move compared with is taken out", async () => {
+    render(
+      <Store>
+        <Sim lab={midgame()} moves={[listed(ba), listed(ab)]} />
+      </Store>,
+    );
+    await start();
+    emit({
+      job: 1,
+      answer: {
+        iterations: 32,
+        candidates: [candidate(ba, 0.5), candidate(ab, 0.4)],
+      },
+      done: false,
+    });
+    act(() => screen.getByRole("button", { name: "Details" }).click());
+    const details = document.querySelector(".lab-details") as HTMLElement;
+    fireEvent.mouseDown(
+      within(details).getByRole("combobox", { name: "Compare with" }),
+    );
+    act(() =>
+      (
+        [...document.querySelectorAll(".ant-select-item-option")].find(
+          (o) => o.textContent === JSON.stringify(ab),
+        ) as HTMLElement
+      ).click(),
+    );
+    await waitFor(() =>
+      expect(lab.calls.some((c) => c.op === "against")).toBe(true),
+    );
+    // AB, second by the chance to win, taken out
+    act(() => screen.getAllByRole("button", { name: "Take out" })[1].click());
+    await waitFor(() =>
+      expect(lab.calls.some((c) => c.op === "remove")).toBe(true),
+    );
+    const ops = lab.calls.map((c) => c.op);
+    const cleared = ops.lastIndexOf("against");
+    expect(lab.calls[cleared].args).toEqual({ job: 1, play: null });
+    expect(cleared).toBeLessThan(ops.indexOf("remove"));
+  });
+
+  it("infers the opponent's leave from their last move, in place of the tiles known", async () => {
+    render(
+      <Store>
+        <Sim lab={midgame()} moves={[listed(ba), listed(ab)]} />
+      </Store>,
+    );
+    act(() => screen.getByRole("button", { name: "Sim settings" }).click());
+    fireEvent.change(screen.getByPlaceholderText("tiles, ? a blank"), {
+      target: { value: "ie" },
+    });
+    fireEvent.click(screen.getByText("Infer their leave"));
+    expect(screen.getByPlaceholderText("tiles, ? a blank")).toBeDisabled();
+    act(() => screen.getByRole("button", { name: "Apply" }).click());
+    await start();
+    const sim = lab.calls.find((c) => c.op === "sim");
+    const { request, infer } = sim?.args as { request: string; infer: string };
+    expect(JSON.parse(request).known).toEqual([]);
+    expect(JSON.parse(infer)).toEqual({
+      rack: [A, A, B, E, E, I, I],
+      board: [[0]],
+      lexicon: "CSW24",
+      leave: "CSW24",
+      rules: "CrosswordGame",
+      play: midgame().lastMove!.play,
+      fuzz: 3.105,
+      list: 0,
+    });
+    emit({
+      job: 1,
+      answer: {
+        iterations: 32,
+        candidates: [candidate(ba, 0.5), candidate(ab, 0.4)],
+      },
+      done: false,
+    });
+    expect(
+      screen.getByText(
+        "32 iterations after 0 s, 2 running; 1 ply; their leave inferred, 120 leaves",
+      ),
+    ).toBeInTheDocument();
+    act(() => screen.getByRole("button", { name: "Details" }).click());
+    expect(
+      screen.getByText(
+        "Their leave, inferred from 120 leaves, the likeliest: AE 25.0%, (none) 12.5%",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("infers nothing with no play or exchange of the opponent's last, and changes the sim made in place", async () => {
+    const { unmount } = render(
+      <Store>
+        <Sim
+          lab={position([A, B, E, E, I, I, I, I, A, A], { lastMove: null })}
+          moves={[listed(ba), listed(ab)]}
+        />
+      </Store>,
+    );
+    act(() => screen.getByRole("button", { name: "Sim settings" }).click());
+    expect(
+      screen.getByRole("checkbox", { name: /Infer their leave/ }),
+    ).toBeDisabled();
+    expect(
+      screen.getByText("Their last turn is no play or exchange to infer from."),
+    ).toBeInTheDocument();
+    unmount();
+    // a sim made, then told to infer: sim_set, its rollouts kept
+    render(
+      <Store>
+        <Sim lab={midgame()} moves={[listed(ba), listed(ab)]} />
+      </Store>,
+    );
+    await start();
+    emit({
+      job: 1,
+      answer: {
+        iterations: 32,
+        candidates: [candidate(ba, 0.5), candidate(ab, 0.4)],
+      },
+      done: false,
+    });
+    act(() => screen.getByRole("button", { name: "Sim settings" }).click());
+    fireEvent.click(screen.getByText("Infer their leave"));
+    act(() => screen.getByRole("button", { name: "Apply" }).click());
+    await waitFor(() =>
+      expect(lab.calls.some((c) => c.op === "set")).toBe(true),
+    );
+    const set = lab.calls.find((c) => c.op === "set");
+    expect((set?.args as { infer?: string }).infer).toBeDefined();
+    expect(lab.calls.some((c) => c.op === "free")).toBe(false);
+    expect(
+      await screen.findByText(
+        "32 iterations after 0 s, 2 running; 1 ply; their leave inferred, 120 leaves",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("shows a sim's details by move, a block a candidate, a row's when clicked", async () => {
@@ -1916,7 +3013,7 @@ describe("the sim panel", () => {
     await waitFor(() =>
       expect(lab.calls[lab.calls.length - 1]).toEqual({
         op: "run",
-        args: { job: 1, ms: 8 },
+        args: { job: 1, ms: 8, alpha: 0.05 },
       }),
     );
   });
@@ -2015,5 +3112,91 @@ describe("a panel's card", () => {
     render(inCard("score-card"));
     expect(body()).not.toHaveClass("lab-room");
     expect(body().style.getPropertyValue("--lab-room")).toBe("");
+  });
+});
+
+describe("the opponent's last move, to infer their leave from", () => {
+  // CAB across row 8 from H, its A through a tile already there and its B a
+  // blank; the board's letters as liwords keeps them
+  const letters = () => {
+    const l = new Array(225).fill(0);
+    l[7 * 15 + 7] = 3;
+    l[7 * 15 + 8] = A;
+    l[7 * 15 + 9] = B | 0x80;
+    return l;
+  };
+  const event = (more: object) =>
+    create(GameEventSchema, { playerIndex: 1, score: 9, ...more });
+
+  it("takes a play's tiles off the board, the tiles already there left as 0 in its word", () => {
+    const last = lastMoveOf(
+      [
+        event({
+          type: GameEvent_Type.TILE_PLACEMENT_MOVE,
+          row: 7,
+          column: 7,
+          direction: GameEvent_Direction.HORIZONTAL,
+          playedTiles: "C.b",
+        }),
+      ],
+      0,
+      letters(),
+      15,
+    );
+    expect(last?.play).toEqual({
+      action: "play",
+      down: false,
+      lane: 7,
+      idx: 7,
+      word: [3, 0, -B],
+      score: 9,
+    });
+    expect(last?.board[7].slice(7, 10)).toEqual([0, A, 0]);
+    expect(last?.board).toHaveLength(15);
+  });
+
+  it("writes a play down by its column, and an exchange by how many tiles it took", () => {
+    const down = lastMoveOf(
+      [
+        event({
+          type: GameEvent_Type.TILE_PLACEMENT_MOVE,
+          row: 3,
+          column: 7,
+          direction: GameEvent_Direction.VERTICAL,
+          playedTiles: "AB",
+        }),
+      ],
+      0,
+      new Array(225).fill(1),
+      15,
+    );
+    expect(down?.play).toMatchObject({ down: true, lane: 7, idx: 3 });
+    expect(down?.board[3][7]).toBe(0);
+    expect(down?.board[4][7]).toBe(0);
+    expect(down?.board[5][7]).toBe(1);
+    const exchange = lastMoveOf(
+      [event({ type: GameEvent_Type.EXCHANGE, exchanged: "AEI" })],
+      0,
+      letters(),
+      15,
+    );
+    expect(exchange?.play).toEqual({ action: "exchange", tiles: [0, 0, 0] });
+    // hidden, the count from the rack
+    const hidden = lastMoveOf(
+      [event({ type: GameEvent_Type.EXCHANGE, numTilesFromRack: 2 })],
+      0,
+      letters(),
+      15,
+    );
+    expect(hidden?.play).toEqual({ action: "exchange", tiles: [0, 0] });
+  });
+
+  it("is none after a pass, a play challenged off, or the player to move's own turn", () => {
+    const at = (type: GameEvent_Type, playerIndex = 1) =>
+      lastMoveOf([event({ type, playerIndex })], 0, letters(), 15);
+    expect(at(GameEvent_Type.PASS)).toBeNull();
+    expect(at(GameEvent_Type.PHONY_TILES_RETURNED)).toBeNull();
+    expect(at(GameEvent_Type.TILE_PLACEMENT_MOVE, 0)).toBeNull();
+    expect(lastMoveOf([], 0, letters(), 15)).toBeNull();
   });
 });

@@ -1,5 +1,6 @@
 import React, { useLayoutEffect, useState } from "react";
 import { hookLine, useLabHooks } from "./lab_hooks";
+import { useLabThreats } from "./lab_threats";
 
 type Props = {
   gridDim: number;
@@ -43,9 +44,11 @@ const useLineFits = (grid: HTMLDivElement | null) => {
 // analyzer's lab shows hooks; a way no letter fits is marked "-". Those making
 // the word across sit on top and those making the word down below, as many
 // whole tiles as fit with how many more; the board's own square lists them
-// all on hover.
+// all on hover. A square the threats show the opponent's tile on shows that
+// tile instead.
 export const LabHooksOverlay = React.memo((props: Props) => {
   const hooks = useLabHooks();
+  const ghost = useLabThreats()?.ghost;
   const [grid, setGrid] = useState<HTMLDivElement | null>(null);
   const fits = useLineFits(grid);
   if (!hooks || hooks.dim !== props.gridDim) return null;
@@ -59,12 +62,12 @@ export const LabHooksOverlay = React.memo((props: Props) => {
     <div className="lab-hooks" ref={setGrid}>
       {squares.map((square, i) => (
         <div key={i} className="lab-hook">
-          {square?.across && (
+          {!ghost?.has(i) && square?.across && (
             <span className="lab-hook-across">
               {square.across.length ? hookLine(square.across, fits) : "-"}
             </span>
           )}
-          {square?.down && (
+          {!ghost?.has(i) && square?.down && (
             <span className="lab-hook-down">
               {square.down.length ? hookLine(square.down, fits) : "-"}
             </span>

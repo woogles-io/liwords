@@ -7,6 +7,7 @@ import {
 import {
   SimCandidate,
   endgameBag,
+  exchangesBySeat,
   passesAtEnd,
   scorelessTurnsAtEnd,
   simOrder,
@@ -95,5 +96,19 @@ describe("the sim's order", () => {
       "lost, more equity",
       "lost, less equity",
     ]);
+  });
+});
+
+describe("each seat's exchanges", () => {
+  it("counts the exchanges each seat has made, and nothing else", () => {
+    const turns = [
+      create(GameEventSchema, { type: EXCHANGE, playerIndex: 1 }),
+      create(GameEventSchema, { type: PLAY, playerIndex: 0 }),
+      create(GameEventSchema, { type: EXCHANGE, playerIndex: 1 }),
+      create(GameEventSchema, { type: PASS, playerIndex: 0 }),
+      create(GameEventSchema, { type: EXCHANGE, playerIndex: 0 }),
+    ];
+    expect(exchangesBySeat(turns)).toEqual([1, 2]);
+    expect(exchangesBySeat([])).toEqual([0, 0]);
   });
 });

@@ -52,9 +52,13 @@ import {
 } from "../gen/api/proto/ipc/omgseeks_pb";
 import { ServerChallengeResultEvent } from "../gen/api/proto/ipc/omgwords_pb";
 import { message } from "antd";
-import { GameEvent_Type } from "../gen/api/proto/vendored/macondo/macondo_pb";
+import {
+  GameEvent,
+  GameEvent_Type,
+} from "../gen/api/proto/vendored/macondo/macondo_pb";
 import { create } from "@bufbuild/protobuf";
 import { calculateHistoricalTimeBanks } from "../utils/time_bank_calculator";
+import { otherRackAfter } from "../gameroom/what_if";
 
 const MaxChatLength = 150;
 
@@ -243,6 +247,18 @@ type ExamineStoreData = {
   addHandleExaminer: (x: () => void) => void;
   removeHandleExaminer: (x: () => void) => void;
   doneButtonRef: React.MutableRefObject<HTMLButtonElement | null>;
+  // moves made up on top of the turn examined, as events, replayed after it
+  // into the position examined; a move of the game, or another turn
+  // examined, lets them go
+  whatIf: Array<GameEvent>;
+  // a move's events, and the tiles the mover draws after it, if any
+  playWhatIf: (events: Array<GameEvent>, drew?: Array<MachineLetter>) => void;
+  // a player's rack set by hand, taken back as a move made up is
+  setRackWhatIf: (player: number, rack: Array<MachineLetter>) => void;
+  // the steps made up, moves and racks set
+  whatIfSteps: number;
+  takeBackWhatIf: () => void;
+  clearWhatIf: () => void;
 };
 
 const defaultGameState = startingGameState(StandardEnglishAlphabet, [], "");
@@ -428,6 +444,12 @@ const ExamineContext = createContext<ExamineStoreData>({
   addHandleExaminer: defaultFunction,
   removeHandleExaminer: defaultFunction,
   doneButtonRef: { current: null },
+  whatIf: [],
+  playWhatIf: defaultFunction,
+  setRackWhatIf: defaultFunction,
+  whatIfSteps: 0,
+  takeBackWhatIf: defaultFunction,
+  clearWhatIf: defaultFunction,
 });
 
 type Props = {
@@ -456,6 +478,16 @@ const WHERE_TO_ENABLE_EXAMINE_SHORTCUTS = [
   ".play-area",
 ];
 
+// inputs that take no text, where a key stays a shortcut
+const NOT_TEXT_INPUTS = new Set([
+  "button",
+  "checkbox",
+  "radio",
+  "range",
+  "reset",
+  "submit",
+]);
+
 const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
   const gameContextStore = useGameContextStoreContext();
   const gameEndMessageStore = useGameEndMessageStoreContext();
@@ -465,6 +497,17 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
   const shouldTrigger = useCallback(
     (where: Element | null) => {
       if (shortcutsDisabled) {
+        return false;
+      }
+      // a key typed into a text box is text, not a shortcut: the lab's boxes
+      // sit inside the analyzer, where the shortcuts otherwise apply
+      if (
+        where instanceof HTMLElement &&
+        (where.isContentEditable ||
+          (where instanceof HTMLInputElement &&
+            !NOT_TEXT_INPUTS.has(where.type)) ||
+          where instanceof HTMLTextAreaElement)
+      ) {
         return false;
       }
       try {
@@ -549,6 +592,69 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
     [setExaminedTurn, numberOfTurns],
   );
 
+  // Moves made up on top of the turn examined: each made as one or more
+  // events (a play, and the points for going out) and the tiles the mover
+  // draws after it, kept with the turn they were made on and the game's
+  // length then, and let go once either differs.
+  const [whatIfMade, setWhatIfMade] = useState<{
+    base: number;
+    turns: number;
+    moves: Array<{
+      events: Array<GameEvent>;
+      drew: Array<MachineLetter>;
+      // a rack set by hand instead of a move
+      rack?: { player: number; tiles: Array<MachineLetter> };
+    }>;
+  }>({ base: NaN, turns: NaN, moves: [] });
+  const whatIfMoves = useMemo(
+    () =>
+      isExamining &&
+      whatIfMade.base === examinedTurn &&
+      whatIfMade.turns === numberOfTurns
+        ? whatIfMade.moves
+        : [],
+    [isExamining, whatIfMade, examinedTurn, numberOfTurns],
+  );
+  const whatIf = useMemo(
+    () => whatIfMoves.flatMap((m) => m.events),
+    [whatIfMoves],
+  );
+  const playWhatIf = useCallback(
+    (events: Array<GameEvent>, drew: Array<MachineLetter> = []) =>
+      setWhatIfMade({
+        base: examinedTurn,
+        turns: numberOfTurns,
+        moves: [...whatIfMoves, { events, drew }],
+      }),
+    [examinedTurn, numberOfTurns, whatIfMoves],
+  );
+  const setRackWhatIf = useCallback(
+    (player: number, tiles: Array<MachineLetter>) =>
+      setWhatIfMade({
+        base: examinedTurn,
+        turns: numberOfTurns,
+        moves: [
+          ...whatIfMoves,
+          { events: [], drew: [], rack: { player, tiles } },
+        ],
+      }),
+    [examinedTurn, numberOfTurns, whatIfMoves],
+  );
+  const whatIfSteps = whatIfMoves.length;
+  const takeBackWhatIf = useCallback(
+    () =>
+      setWhatIfMade({
+        base: examinedTurn,
+        turns: numberOfTurns,
+        moves: whatIfMoves.slice(0, -1),
+      }),
+    [examinedTurn, numberOfTurns, whatIfMoves],
+  );
+  const clearWhatIf = useCallback(
+    () => setWhatIfMade({ base: NaN, turns: NaN, moves: [] }),
+    [],
+  );
+
   const examinableGameContext = useMemo(() => {
     if (!isExamining) return gameContext;
     const ret = startingGameState(
@@ -566,7 +672,7 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
     ret.uidToPlayerOrder = gameContext.uidToPlayerOrder;
     const replayedTurns = gameContext.turns.slice(0, examinedTurn);
     try {
-      pushTurns(ret, replayedTurns);
+      pushTurns(ret, [...replayedTurns, ...whatIf]);
     } catch {
       message.error({
         content:
@@ -704,11 +810,66 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
       ret.players[i].currentRack = rack;
     }
 
+    // After the moves made up: each player's score as their last one left
+    // it, and the rack they left with the tiles they drew, if any. A draw
+    // that empties the bag leaves the other player holding exactly the tiles
+    // still unseen, whatever they held in the game.
+    for (const { events, drew, rack } of whatIfMoves) {
+      if (rack) {
+        // the other player gives up the tiles the rack set takes from theirs
+        const unseen: Array<MachineLetter> = [];
+        for (const [t, n] of Object.entries(ret.pool)) {
+          for (let i = 0; i < n; ++i) unseen.push(Number(t) as MachineLetter);
+        }
+        const other = ret.players[1 - rack.player];
+        other.currentRack = otherRackAfter(
+          rack.tiles,
+          other.currentRack,
+          unseen,
+        );
+        ret.players[rack.player].currentRack = rack.tiles;
+      }
+      for (const evt of events) {
+        const player = ret.players[evt.playerIndex];
+        player.score = evt.cumulative;
+        if (
+          evt.type !== GameEvent_Type.TILE_PLACEMENT_MOVE &&
+          evt.type !== GameEvent_Type.EXCHANGE
+        ) {
+          continue;
+        }
+        const left = runesToMachineWord(evt.rack, gameContext.alphabet);
+        for (const t of runesToMachineWord(
+          evt.type === GameEvent_Type.EXCHANGE
+            ? evt.exchanged
+            : evt.playedTiles,
+          gameContext.alphabet,
+        )) {
+          if (t === 0) continue;
+          const at = left.indexOf(t & 0x80 ? 0 : t);
+          if (at >= 0) left.splice(at, 1);
+        }
+        player.currentRack = [...left, ...drew];
+        if (!drew.length) continue;
+        const unseen: Array<MachineLetter> = [];
+        for (const [t, n] of Object.entries(ret.pool)) {
+          for (let i = 0; i < n; ++i) unseen.push(Number(t) as MachineLetter);
+        }
+        for (const t of player.currentRack) {
+          const at = unseen.indexOf(t);
+          if (at >= 0) unseen.splice(at, 1);
+        }
+        // the bag empty: the other player holds the rest, a full rack at most
+        const other = ret.players[1 - evt.playerIndex];
+        if (unseen.length <= 7) other.currentRack = unseen;
+      }
+    }
+
     ret.clockController = {
       current: new ClockController(times, doNothing, doNothing),
     };
     return ret;
-  }, [isExamining, examinedTurn, gameContext]);
+  }, [isExamining, examinedTurn, gameContext, whatIf, whatIfMoves]);
   const handleExamineStart =
     examinableGameContext.players.length > 0
       ? handleExamineStartUnconditionally
@@ -842,8 +1003,20 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
       addHandleExaminer,
       removeHandleExaminer,
       doneButtonRef,
+      whatIf,
+      playWhatIf,
+      setRackWhatIf,
+      whatIfSteps,
+      takeBackWhatIf,
+      clearWhatIf,
     }),
     [
+      whatIf,
+      playWhatIf,
+      setRackWhatIf,
+      whatIfSteps,
+      takeBackWhatIf,
+      clearWhatIf,
       isExamining,
       examinedTurn,
       freshExamineSignal,

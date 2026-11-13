@@ -56,7 +56,7 @@ export const roomClass = (name: string) => {
 
 // Whether the page is laid out as on a phone, by what it shows only there: its
 // sticky player cards.
-const phoneLayout = () =>
+export const phoneLayout = () =>
   [
     ...document.querySelectorAll<HTMLElement>(".sticky-player-card-container"),
   ].some((el) => el.getClientRects().length > 0);

@@ -14,14 +14,12 @@
   "files": [
     "wolges_wasm_bg.wasm",
     "wolges_wasm.js",
-    "wolges_wasm_bg.js",
     "wolges_wasm.d.ts",
     "LICENSE.txt"
   ],
   "main": "wolges_wasm.js",
   "types": "wolges_wasm.d.ts",
   "sideEffects": [
-    "./wolges_wasm.js",
     "./snippets/*"
   ]
 }

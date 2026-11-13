@@ -344,12 +344,15 @@ p.streak-loss {
   }
 }
 
-// The analyzer lab, for whoever has turned it on (analyzer_lab.ts).
-.analyzer-controls .lab-controls {
+// The analyzer lab, for whoever has turned it on (analyzer_lab.ts): its
+// switches in a row of their own at the top of the analyzer's body, the
+// card's header too narrow for them beside its title and buttons.
+.analyzer-container > .lab-controls {
   align-items: center;
-  display: inline-flex;
+  display: flex;
+  flex: 0 0 100%;
   gap: 4px;
-  margin-right: 8px;
+  padding: 6px 12px;
 
   // Small circles, on or off: the page's own button rules make every circle
   // 32px tall and give a filled button margins of its own.
@@ -359,13 +362,17 @@ p.streak-loss {
   }
 }
 
-// The card colors its header's icon buttons for a filled button; these are
-// outlined until on.
+// outlined until on
 .game-container
-  .analyzer-card
-  .ant-card-extra
-  .lab-controls
-  button.ant-btn-icon-only.ant-btn-default {
+  :is(.analyzer-card, .score-card)
+  .analyzer-container
+  > .lab-controls
+  button.ant-btn-icon-only.ant-btn-default:not(:disabled),
+.game-container
+  :is(.analyzer-card, .score-card)
+  .analyzer-container
+  .lab-what-if
+  button.ant-btn-icon-only.ant-btn-default:not(:disabled) {
   border-color: m($gray-subtle);
   color: m($gray-medium);
 }
@@ -385,6 +392,56 @@ p.streak-loss {
   // larger room of the two
   &.grow-to-bottom .analyzer-container .suggestions {
     max-height: max(var(--lab-room), var(--grow-room));
+  }
+}
+
+// The what-if row, under the analyzer's buttons, above its list or the lab's
+// panel.
+// The analyzer's body lays out in a row; the lab's switches and the what-if
+// row each take a line of their own above the rest.
+.analyzer-container:has(> .lab-controls),
+.analyzer-container:has(> .lab-what-if) {
+  align-content: flex-start;
+  flex-wrap: wrap;
+}
+
+.analyzer-container .lab-what-if {
+  display: flex;
+  flex: 0 0 100%;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0 12px 6px;
+
+  .lab-what-if-line {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  // small circles, as the lab's own buttons are
+  button.ant-btn-circle.ant-btn-sm {
+    height: 24px;
+    margin: 0;
+  }
+
+  // a button that does nothing now looks it
+  button.ant-btn-icon-only:disabled {
+    opacity: 0.4;
+  }
+
+  // the chat area's gear is larger and gray; this one is drawn as the icons
+  // beside it are
+  .anticon-setting {
+    color: inherit;
+    cursor: inherit;
+    font-size: inherit;
+  }
+
+  // as narrow as a rack typed in them, over the inputs' own full width
+  .ant-input.lab-what-if-draws {
+    flex: none;
+    width: 7em;
   }
 }
 
@@ -413,11 +470,50 @@ p.streak-loss {
     text-align: left;
   }
 
-  // what each player holds, over an endgame's line
+  // what each player holds, over an endgame's line, a long run of tiles
+  // wrapped
   .lab-racks {
     color: m($gray-medium);
+    overflow-wrap: anywhere;
     padding: 0 12px 6px;
     text-align: left;
+  }
+
+  // what each player of a pre-endgame knows once the first move is made
+  .lab-model {
+    display: block;
+    padding: 0 12px 6px;
+    text-align: left;
+  }
+
+  // how the threats tint the board, how many plays they list, and how long
+  // they weigh the racks
+  .lab-threat-settings,
+  .lab-infer-settings {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 0 12px 6px;
+
+    // the row's own labels, not the radio buttons antd also makes labels
+    > label {
+      align-items: center;
+      display: flex;
+      gap: 4px;
+    }
+  }
+
+  // the opponent's plays: the move on the left, its numbers on the right
+  .lab-threat-plays,
+  .lab-infer-tiles {
+    th:first-child {
+      text-align: left;
+    }
+
+    td.lab-n {
+      text-align: right;
+    }
   }
 
   // The lab's rows hold more columns than the analyzer's, so they sit closer.
@@ -473,8 +569,25 @@ p.streak-loss {
     cursor: default;
   }
 
+  // a set of tiles a play then draws, under the set it draws from
+  tr.lab-drawn td.move {
+    padding-left: 1.5em;
+  }
+
+  // a play other than the best whose draws are shown
+  tr.lab-shown td {
+    background-color: m($gray-subtle);
+  }
+
+  // a play's win, which shows its draws
+  td.lab-win button.lab-pick {
+    height: auto;
+    padding: 0;
+  }
+
   td.lab-bingo,
-  td.lab-n {
+  td.lab-n,
+  td.lab-win {
     text-align: right;
   }
 
@@ -585,9 +698,29 @@ p.streak-loss {
     text-align: left;
   }
 
-  // the view, by ply or by move; a table's row shows its move's block
-  .lab-details-view {
+  // the view, by ply or by move, and the move each is compared with; a
+  // table's row shows its move's block
+  .lab-details-controls {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 16px;
     margin-bottom: 8px;
+  }
+
+  .lab-details-inferred {
+    @include type-monospace;
+    margin-bottom: 8px;
+  }
+
+  .lab-details-against {
+    align-items: center;
+    display: flex;
+    gap: 6px;
+
+    .ant-select {
+      min-width: 120px;
+    }
   }
 
   tbody tr {
@@ -1150,7 +1283,8 @@ p.streak-loss {
   // Text that is read rather than played turns back upright, in place.
   &.board-flipped .bonus-label,
   &.board-flipped .tentative-score,
-  &.board-flipped .lab-hook {
+  &.board-flipped .lab-hook,
+  &.board-flipped .lab-threat {
     transform: rotate(180deg);
   }
 
@@ -1198,6 +1332,71 @@ p.streak-loss {
 
 .zomgboard {
   --dim: 21;
+}
+
+// The analyzer lab's threats, over the squares, sized by the container: each
+// empty square tinted by how hot it is, with its number; the opponent's tiles
+// of the play picked; and the squares of the play pointed at, outlined.
+.lab-threats {
+  display: grid;
+  gap: 1px;
+  grid-template-columns: repeat(var(--dim, 15), 1fr);
+  grid-template-rows: repeat(var(--dim, 15), 1fr);
+  height: 100%;
+  left: 0;
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+  width: 100%;
+
+  &.lab-picking {
+    cursor: crosshair;
+    pointer-events: auto;
+  }
+
+  .lab-threat {
+    align-items: center;
+    display: flex;
+    font-weight: 600;
+    justify-content: center;
+    position: relative;
+  }
+
+  .lab-heat {
+    background: m($lab-heat);
+    inset: 0;
+    position: absolute;
+  }
+
+  .lab-heat-label {
+    bottom: 0;
+    color: m($gray-extreme);
+    font-size: 8px;
+    line-height: 1;
+    padding: 1px;
+    position: absolute;
+    right: 0;
+    text-shadow:
+      0 0 2px m($background),
+      0 0 2px m($background),
+      0 0 2px m($background);
+  }
+
+  .lab-ghost {
+    background: m($secondary);
+    border-radius: 2px;
+    color: m($white);
+  }
+
+  .lab-outlined {
+    outline: 2px solid m($gray-extreme);
+    outline-offset: -2px;
+  }
+
+  .lab-narrowed {
+    outline: 2px dashed m($gray-extreme);
+    outline-offset: -2px;
+  }
 }
 
 .board-spaces,
