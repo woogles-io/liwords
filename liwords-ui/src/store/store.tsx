@@ -456,6 +456,16 @@ const WHERE_TO_ENABLE_EXAMINE_SHORTCUTS = [
   ".play-area",
 ];
 
+// inputs that take no text, where a key stays a shortcut
+const NOT_TEXT_INPUTS = new Set([
+  "button",
+  "checkbox",
+  "radio",
+  "range",
+  "reset",
+  "submit",
+]);
+
 const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
   const gameContextStore = useGameContextStoreContext();
   const gameEndMessageStore = useGameEndMessageStoreContext();
@@ -465,6 +475,17 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
   const shouldTrigger = useCallback(
     (where: Element | null) => {
       if (shortcutsDisabled) {
+        return false;
+      }
+      // a key typed into a text box is text, not a shortcut: the lab's boxes
+      // sit inside the analyzer, where the shortcuts otherwise apply
+      if (
+        where instanceof HTMLElement &&
+        (where.isContentEditable ||
+          (where instanceof HTMLInputElement &&
+            !NOT_TEXT_INPUTS.has(where.type)) ||
+          where instanceof HTMLTextAreaElement)
+      ) {
         return false;
       }
       try {
