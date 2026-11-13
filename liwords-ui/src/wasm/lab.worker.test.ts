@@ -197,6 +197,19 @@ describe("the lab's worker", () => {
     expect(wasm.endgame_step).toHaveBeenCalledTimes(1);
   });
 
+  it("stops a pre-endgame the wasm says is out of memory", async () => {
+    wasm.endgame_step
+      .mockReturnValueOnce(JSON.stringify({ exact: false, nodes: 0 }))
+      .mockReturnValueOnce(
+        JSON.stringify({ exact: false, nodes: 0, out_of_memory: true }),
+      );
+    const job = (await send(1, "endgame", { request: '{"model":"info_sets"}' }))
+      .result as number;
+    await send(2, "run", { job, ms: 16 });
+    await vi.waitFor(() => expect(events().some((e) => e.error)).toBe(true));
+    expect(wasm.endgame_step).toHaveBeenCalledTimes(2);
+  });
+
   it("keeps stepping a pre-endgame, whose answers count no nodes", async () => {
     wasm.endgame_step
       .mockReturnValueOnce(JSON.stringify({ exact: false, nodes: 0 }))

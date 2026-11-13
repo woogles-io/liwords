@@ -100,6 +100,9 @@ type Job = {
 };
 type Answer = {
   exact?: boolean;
+  // true when the step stopped short of exact on the memory cap, in wasms
+  // that say so
+  out_of_memory?: boolean;
   nodes?: number;
   iterations?: number;
   candidates?: Array<{ state: string }>;
@@ -235,13 +238,15 @@ const step = async (j: Job, chain: number, ms: number) => {
     // A step of an endgame not yet exact that searched no node stopped on the
     // memory cap, which counts every byte the instance holds, the lexicon too:
     // no step after it can search either. A pre-endgame's answers count no
-    // nodes, searching or not, so tell nothing of it.
+    // nodes, searching or not, so tell nothing of it; a wasm that says when a
+    // step stopped on the cap says so for either.
     if (
       j.kind === "endgame" &&
-      !j.modeled &&
-      !answer.exact &&
-      answer.nodes !== undefined &&
-      answer.nodes === j.nodes
+      (answer.out_of_memory ||
+        (!j.modeled &&
+          !answer.exact &&
+          answer.nodes !== undefined &&
+          answer.nodes === j.nodes))
     ) {
       running = false;
       post({ event: { job: j.id, error: OUT_OF_MEMORY } });
