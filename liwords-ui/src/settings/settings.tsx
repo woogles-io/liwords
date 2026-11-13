@@ -31,6 +31,8 @@ import {
 } from "../gen/api/proto/user_service/user_service_pb";
 import { PersonalInfoResponse } from "../gen/api/proto/user_service/user_service_pb";
 import { API } from "./api";
+import { PushService } from "../gen/api/proto/push_service/push_service_pb";
+import { logOutForgettingDevice } from "../utils/web_push";
 import { create } from "@bufbuild/protobuf";
 import { Integrations } from "./integrations";
 import { RolesPermissions } from "./roles_permissions";
@@ -110,6 +112,7 @@ export const Settings = React.memo(() => {
 
   const profileClient = useClient(ProfileService);
   const authClient = useClient(AuthenticationService);
+  const pushClient = useClient(PushService);
 
   useEffect(() => {
     if (viewer === "" || (!loggedIn && category === Category.Support)) return;
@@ -159,7 +162,7 @@ export const Settings = React.memo(() => {
 
   const handleLogout = useCallback(async () => {
     try {
-      await authClient.logout({});
+      await logOutForgettingDevice(pushClient, () => authClient.logout({}));
       notification.info({
         message: "Success",
         description: "You have been logged out.",
@@ -169,7 +172,7 @@ export const Settings = React.memo(() => {
     } catch (e) {
       flashError(e);
     }
-  }, [authClient, navigate, resetStore, notification]);
+  }, [authClient, pushClient, navigate, resetStore, notification]);
 
   const updatedAvatar = useCallback(
     (avatarUrl: string) => {

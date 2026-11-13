@@ -473,6 +473,22 @@ func (t *Timers) RanOut(idx int, now int64) bool {
 	return tr < (-t.MaxOvertime * 60000)
 }
 
+// Deadline is the last moment (unix ms) at which player idx, who must be on
+// turn, can still move: RanOut is false up to it and true after it.
+func (t *Timers) Deadline(idx int) int64 {
+	if t.ResetToIncrementAfterTurn {
+		deadline := t.TimeOfLastUpdate + int64(t.IncrementSeconds)*1000
+		if len(t.TimeBank) > idx {
+			deadline += t.TimeBank[idx]
+		}
+		return deadline
+	}
+	if idx < 0 || idx >= len(t.TimeRemaining) {
+		return t.TimeOfLastUpdate
+	}
+	return t.TimeOfLastUpdate + int64(t.TimeRemaining[idx]) + int64(t.MaxOvertime)*60000
+}
+
 func (g *Game) TimeStarted() int64 {
 	return g.Timers.TimeStarted
 }

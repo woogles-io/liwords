@@ -66,6 +66,14 @@ type Config struct {
 	TurnstileSecret     string
 	HumanCheckCookieKey string
 
+	// Web push for correspondence turns. Push stays off unless all four are set
+	// and valid (pkg/push reads them), so they are strings: a bad value turns
+	// push off instead of failing the whole parse.
+	VAPIDPublicKey  string
+	VAPIDPrivateKey string `json:"-"` // a secret, kept out of the startup log
+	VAPIDSubject    string
+	PushTTL         string
+
 	Debug                 bool
 	SecureCookies         bool
 	SkipEmailVerification bool
@@ -161,6 +169,12 @@ func (c *Config) Load(args []string) error {
 	// Human check (Cloudflare Turnstile)
 	fs.StringVar(&c.TurnstileSecret, "turnstile-secret", "", "Cloudflare Turnstile secret key for the human check")
 	fs.StringVar(&c.HumanCheckCookieKey, "human-check-cookie-key", "", "HMAC key for the cookie set after a passed human check")
+
+	// Web push (VAPID)
+	fs.StringVar(&c.VAPIDPublicKey, "vapid-public-key", "", "the VAPID public key for web push, made by cmd/vapid-keys")
+	fs.StringVar(&c.VAPIDPrivateKey, "vapid-private-key", "", "the VAPID private key for web push, made by cmd/vapid-keys")
+	fs.StringVar(&c.VAPIDSubject, "vapid-subject", "", "the mailto: or https: contact that push services see")
+	fs.StringVar(&c.PushTTL, "push-ttl", "", "how long a push service keeps a turn notification for an offline device, as a Go duration")
 
 	// For password hashing:
 	fs.IntVar(&c.ArgonConfig.Keylen, "argon-key-len", 32, "the Argon key length")

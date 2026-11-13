@@ -1,5 +1,6 @@
 // Service Worker for Woogles PWA
 // Handles notification clicks to focus/open the app
+// Shows the correspondence turns the server pushes (pkg/push)
 
 self.addEventListener("install", (event) => {
   console.log("Service Worker installing...");
@@ -11,14 +12,68 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(clients.claim());
 });
 
+// The deadline (unix ms) as the device's own date and time, e.g.
+// "Nov 14, 2:30 PM PST", so it is still right whenever it is read; the zone
+// tells apart the two runs of an hour repeated when daylight saving ends.
+const moveBy = (deadline) =>
+  new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZoneName: "short",
+  }).format(new Date(deadline));
+
+// A pushed turn: { gameId, title, body, deadline }. It is always shown, even
+// while that game is open: a push that shows nothing can make the browser
+// show a notice of its own.
+self.addEventListener("push", (event) => {
+  let turn = null;
+  try {
+    turn = event.data ? event.data.json() : null;
+  } catch (e) {
+    console.log("A push without a readable turn:", e);
+  }
+  if (!turn || !turn.gameId) {
+    return;
+  }
+  const body = turn.deadline
+    ? `${turn.body} - move by ${moveBy(turn.deadline)}`
+    : turn.body;
+  event.waitUntil(
+    self.registration.showNotification(turn.title, {
+      body,
+      icon: "/logo192.png",
+      badge: "/favicon.ico",
+      tag: `woogles-turn-${turn.gameId}`,
+      data: { gameId: turn.gameId },
+    }),
+  );
+});
+
 // Handle notification clicks
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
+  const gameId = event.notification.data && event.notification.data.gameId;
 
   event.waitUntil(
     clients
       .matchAll({ type: "window", includeUncontrolled: true })
       .then((clientList) => {
+        // A pushed turn opens its game, in the window already showing it if
+        // there is one.
+        if (gameId) {
+          const path = `/game/${encodeURIComponent(gameId)}`;
+          for (const client of clientList) {
+            if (new URL(client.url).pathname === path && "focus" in client) {
+              return client.focus();
+            }
+          }
+          if (clients.openWindow) {
+            return clients.openWindow(path);
+          }
+          return undefined;
+        }
         // Try to focus an existing window
         for (const client of clientList) {
           if ("focus" in client) {

@@ -3,6 +3,8 @@ package stores
 import (
 	"context"
 
+	"go.opentelemetry.io/otel/attribute"
+
 	"github.com/woogles-io/liwords/pkg/entity"
 )
 
@@ -15,4 +17,13 @@ type LeagueStandingsUpdater interface {
 	// UpdateGameStandings updates league standings for a completed game.
 	// Returns nil if the game is not a league game.
 	UpdateGameStandings(ctx context.Context, g *entity.Game) error
+}
+
+// PushSender sends web push notifications to the browsers a user subscribed.
+// The implementation lives in pkg/push; main sets it only when web push is
+// on, so it is nil otherwise.
+type PushSender interface {
+	// Notify returns at once and sends in the background, traced in a trace
+	// of its own linked to ctx's span; attrs go on that trace's root span.
+	Notify(ctx context.Context, userUUID string, payload []byte, attrs ...attribute.KeyValue)
 }
