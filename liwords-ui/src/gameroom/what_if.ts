@@ -41,11 +41,7 @@ export const RACK_SIZE = 7;
 // placed twice that the game has once is not theirs to place.
 const holdsPlaced = (placed: Set<EphemeralTile>, side: WhatIfSide) => {
   const rack = [...side.rack];
-  const bagTiles = [...side.unseen];
-  for (const t of [...side.rack, ...side.otherRack]) {
-    const at = bagTiles.indexOf(t);
-    if (at >= 0) bagTiles.splice(at, 1);
-  }
+  const bagTiles = bagTilesOf(side);
   let unknown = Math.min(RACK_SIZE - side.rack.length, side.bag);
   for (const { letter } of placed) {
     const t = (letter & 0x80 ? 0 : letter) as MachineLetter;
@@ -171,29 +167,88 @@ export const whatIfExchange = (
   ];
 };
 
-// The tiles the mover draws after a move that takes count tiles off the
-// rack, as asked: exactly that many, the bag allowing, each one still unseen
-// once the mover's own rack (the tiles moved among them) is set aside. Null
-// when the tiles asked are not that.
-export const whatIfDraw = (
-  asked: Array<MachineLetter>,
-  count: number,
+export const otherRackAfter = (
   rack: Array<MachineLetter>,
+  otherRack: Array<MachineLetter>,
   unseen: Array<MachineLetter>,
-  bag: number,
-): Array<MachineLetter> | null => {
-  if (asked.length !== Math.min(count, bag)) return null;
+): Array<MachineLetter> => {
   const pool = [...unseen];
   for (const t of rack) {
     const at = pool.indexOf(t);
     if (at >= 0) pool.splice(at, 1);
   }
+  const kept: Array<MachineLetter> = [];
+  for (const t of otherRack) {
+    const at = pool.indexOf(t);
+    if (at < 0) continue;
+    pool.splice(at, 1);
+    kept.push(t);
+  }
+  return kept;
+};
+
+// The tiles in the bag: those unseen less both racks as known.
+export const bagTilesOf = (side: WhatIfSide) => {
+  const bag = [...side.unseen];
+  for (const t of [...side.rack, ...side.otherRack]) {
+    const at = bag.indexOf(t);
+    if (at >= 0) bag.splice(at, 1);
+  }
+  return bag;
+};
+
+// The rack asked for the mover, as typed: a full rack at most, each tile
+// one not on the board, wherever it is (the mover's rack, the bag, or the
+// other player's rack, which then gives it up). Null when the tiles asked
+// are not that.
+export const whatIfRack = (
+  asked: Array<MachineLetter>,
+  side: WhatIfSide,
+): Array<MachineLetter> | null => {
+  if (asked.length > RACK_SIZE) return null;
+  const pool = [...side.unseen];
   for (const t of asked) {
     const at = pool.indexOf(t);
     if (at < 0) return null;
     pool.splice(at, 1);
   }
   return asked;
+};
+
+// Why whatIfRack refuses the tiles asked, in words; null when it takes them.
+export const whatIfRackRefusal = (
+  asked: Array<MachineLetter>,
+  side: WhatIfSide,
+  alphabet: Alphabet,
+): string | null => {
+  if (asked.length > RACK_SIZE) {
+    return `A rack holds ${RACK_SIZE} tiles at most.`;
+  }
+  const count = (tiles: Array<MachineLetter>, t: MachineLetter) =>
+    tiles.filter((u) => u === t).length;
+  for (const t of new Set(asked)) {
+    const off = count(side.unseen, t);
+    if (count(asked, t) > off) {
+      const rune = machineWordToRunes([t], alphabet);
+      return `Only ${off} ${rune} off the board.`;
+    }
+  }
+  return null;
+};
+
+// A draw of count tiles at random from the tiles in the bag, as many as it
+// holds at most; random() as Math.random, in [0, 1).
+export const randomDraw = (
+  count: number,
+  bagTiles: Array<MachineLetter>,
+  random: () => number = Math.random,
+): Array<MachineLetter> => {
+  const bag = [...bagTiles];
+  const drawn: Array<MachineLetter> = [];
+  while (drawn.length < count && bag.length) {
+    drawn.push(bag.splice(Math.floor(random() * bag.length), 1)[0]);
+  }
+  return drawn;
 };
 
 // The player to move in a position, as a made-up move needs them, and the

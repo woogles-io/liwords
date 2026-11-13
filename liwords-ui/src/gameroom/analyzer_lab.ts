@@ -7,6 +7,8 @@ import { MachineLetter, MachineWord } from "../utils/cwgame/common";
 
 // Turns the analyzer lab on.
 export const ANALYZER_LAB_KEY = "enableAnalyzerLab";
+// Shows the lab's what-if row, and lets the rack under the board be set.
+export const ANALYZER_LAB_WHAT_IF_KEY = "analyzerLabWhatIf";
 
 // The scoreless turns in a row at the end of the turns, counted as the server
 // counts them again when a phony comes off (pkg/cwgame): a pass, an exchange,

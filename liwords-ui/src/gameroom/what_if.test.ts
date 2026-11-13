@@ -11,12 +11,16 @@ import { Board } from "../utils/cwgame/board";
 import { EphemeralTile } from "../utils/cwgame/common";
 import {
   EXCHANGE_MIN_BAG,
+  bagTilesOf,
   exchangeMinBag,
+  otherRackAfter,
   placedOfPlay,
-  whatIfDraw,
+  randomDraw,
   whatIfExchange,
   whatIfPass,
   whatIfPlay,
+  whatIfRack,
+  whatIfRackRefusal,
 } from "./what_if";
 
 const ml = (s: string) => runesToMachineWord(s, StandardEnglishAlphabet);
@@ -142,25 +146,6 @@ describe("whatIfPass", () => {
   });
 });
 
-describe("whatIfDraw", () => {
-  // the mover holds ABE and places AB; unseen: their rack and the rest
-  const unseen = ml("ABECCDQ");
-
-  it("takes as many as the move places, from the tiles unseen", () => {
-    expect(whatIfDraw(ml("CD"), 2, ml("ABE"), unseen, 5)).toEqual(ml("CD"));
-  });
-
-  it("takes only what the bag holds", () => {
-    expect(whatIfDraw(ml("C"), 2, ml("ABE"), unseen, 1)).toEqual(ml("C"));
-    expect(whatIfDraw(ml("CD"), 2, ml("ABE"), unseen, 1)).toBeNull();
-  });
-
-  it("refuses the mover's own tiles, or more of a tile than is unseen", () => {
-    expect(whatIfDraw(ml("AC"), 2, ml("ABE"), unseen, 5)).toBeNull();
-    expect(whatIfDraw(ml("DD"), 2, ml("ABE"), unseen, 5)).toBeNull();
-  });
-});
-
 describe("whatIfExchange", () => {
   it("puts back tiles of the rack, the score as it was", () => {
     expect(
@@ -197,6 +182,49 @@ describe("whatIfExchange", () => {
   it("lets Spanish exchange with a tile in the bag", () => {
     expect(exchangeMinBag("FILE2017")).toBe(1);
     expect(exchangeMinBag("CSW24")).toBe(EXCHANGE_MIN_BAG);
+  });
+});
+
+describe("randomDraw", () => {
+  it("draws from the bag, both racks set aside", () => {
+    const bag = bagTilesOf(side({ unseen: ml("ABEQEXY") }));
+    expect(bag).toEqual(ml("XY"));
+    expect(randomDraw(1, bag, () => 0.99)).toEqual(ml("Y"));
+    expect(randomDraw(5, bag, () => 0)).toEqual(ml("XY"));
+  });
+});
+
+describe("whatIfRack", () => {
+  it("takes any tile off the board, the other player's too", () => {
+    const s = side({ unseen: ml("ABEQEXY") });
+    expect(whatIfRack(ml("XYA"), s)).toEqual(ml("XYA"));
+    // the other player's Q is off the board; a second one is not
+    expect(whatIfRack(ml("Q"), s)).toEqual(ml("Q"));
+    expect(whatIfRack(ml("QQ"), s)).toBeNull();
+    expect(
+      whatIfRack(ml("ABEXYAB"), side({ unseen: ml("ABEXYABEQ") })),
+    ).toEqual(ml("ABEXYAB"));
+    expect(
+      whatIfRack(ml("ABEXYABE"), side({ unseen: ml("ABEXYABEEQ") })),
+    ).toBeNull();
+  });
+});
+
+describe("whatIfRackRefusal", () => {
+  it("says which tile runs out", () => {
+    const s = side({ unseen: ml("ABEQEXY") });
+    expect(whatIfRackRefusal(ml("QX"), s, StandardEnglishAlphabet)).toBeNull();
+    expect(whatIfRackRefusal(ml("XX"), s, StandardEnglishAlphabet)).toBe(
+      "Only 1 X off the board.",
+    );
+  });
+});
+
+describe("otherRackAfter", () => {
+  it("gives up only the tiles the rack set takes from it", () => {
+    // off the board: one Q, two E; the other held QE
+    expect(otherRackAfter(ml("QX"), ml("QE"), ml("QEEX"))).toEqual(ml("E"));
+    expect(otherRackAfter(ml("E"), ml("QE"), ml("QEEX"))).toEqual(ml("QE"));
   });
 });
 

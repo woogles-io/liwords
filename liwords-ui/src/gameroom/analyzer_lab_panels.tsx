@@ -20,6 +20,7 @@ import {
 import {
   AimOutlined,
   BorderInnerOutlined,
+  BranchesOutlined,
   CaretRightOutlined,
   CloseOutlined,
   ExperimentOutlined,
@@ -30,10 +31,10 @@ import {
   PauseOutlined,
   PlusOutlined,
   ProfileOutlined,
-  UnorderedListOutlined,
   QuestionOutlined,
   SettingOutlined,
   SwapOutlined,
+  UnorderedListOutlined,
 } from "@ant-design/icons";
 import {
   Alphabet,
@@ -3240,10 +3241,12 @@ type LabButtonsProps = {
   setView: (view: LabView | null) => void;
   hooks: boolean;
   setHooks: (hooks: boolean) => void;
+  whatIf: boolean;
+  setWhatIf: (whatIf: boolean) => void;
 };
 
 export const LabButtons = (props: LabButtonsProps) => {
-  const { view, setView, hooks, setHooks } = props;
+  const { view, setView, hooks, setHooks, whatIf, setWhatIf } = props;
   return (
     <span className="lab-controls">
       <Tooltip title="Hooks: across on top, down below">
@@ -3253,6 +3256,16 @@ export const LabButtons = (props: LabButtonsProps) => {
           icon={<BorderInnerOutlined />}
           type={hooks ? "primary" : "default"}
           onClick={() => setHooks(!hooks)}
+        />
+      </Tooltip>
+      <Tooltip title="What if: make up moves on top of the position">
+        <Button
+          shape="circle"
+          size="small"
+          icon={<BranchesOutlined />}
+          aria-label="What if"
+          type={whatIf ? "primary" : "default"}
+          onClick={() => setWhatIf(!whatIf)}
         />
       </Tooltip>
       <Tooltip title="Sim these moves">

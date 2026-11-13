@@ -344,12 +344,15 @@ p.streak-loss {
   }
 }
 
-// The analyzer lab, for whoever has turned it on (analyzer_lab.ts).
-.analyzer-controls .lab-controls {
+// The analyzer lab, for whoever has turned it on (analyzer_lab.ts): its
+// switches in a row of their own at the top of the analyzer's body, the
+// card's header too narrow for them beside its title and buttons.
+.analyzer-container > .lab-controls {
   align-items: center;
-  display: inline-flex;
+  display: flex;
+  flex: 0 0 100%;
   gap: 4px;
-  margin-right: 8px;
+  padding: 6px 12px;
 
   // Small circles, on or off: the page's own button rules make every circle
   // 32px tall and give a filled button margins of its own.
@@ -359,13 +362,17 @@ p.streak-loss {
   }
 }
 
-// The card colors its header's icon buttons for a filled button; these are
-// outlined until on.
+// outlined until on
 .game-container
-  .analyzer-card
-  .ant-card-extra
-  .lab-controls
-  button.ant-btn-icon-only.ant-btn-default {
+  :is(.analyzer-card, .score-card)
+  .analyzer-container
+  > .lab-controls
+  button.ant-btn-icon-only.ant-btn-default:not(:disabled),
+.game-container
+  :is(.analyzer-card, .score-card)
+  .analyzer-container
+  .lab-what-if
+  button.ant-btn-icon-only.ant-btn-default:not(:disabled) {
   border-color: m($gray-subtle);
   color: m($gray-medium);
 }
@@ -390,19 +397,27 @@ p.streak-loss {
 
 // The what-if row, under the analyzer's buttons, above its list or the lab's
 // panel.
-// The analyzer's body lays out in a row; the what-if row takes a line of its
-// own above the rest.
+// The analyzer's body lays out in a row; the lab's switches and the what-if
+// row each take a line of their own above the rest.
+.analyzer-container:has(> .lab-controls),
 .analyzer-container:has(> .lab-what-if) {
+  align-content: flex-start;
   flex-wrap: wrap;
 }
 
 .analyzer-container .lab-what-if {
-  align-items: center;
   display: flex;
   flex: 0 0 100%;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 4px;
-  padding: 6px 12px 0;
+  padding: 0 12px 6px;
+
+  .lab-what-if-line {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
 
   // small circles, as the lab's own buttons are
   button.ant-btn-circle.ant-btn-sm {
@@ -410,8 +425,23 @@ p.streak-loss {
     margin: 0;
   }
 
-  .lab-what-if-draws {
-    width: 6em;
+  // a button that does nothing now looks it
+  button.ant-btn-icon-only:disabled {
+    opacity: 0.4;
+  }
+
+  // the chat area's gear is larger and gray; this one is drawn as the icons
+  // beside it are
+  .anticon-setting {
+    color: inherit;
+    cursor: inherit;
+    font-size: inherit;
+  }
+
+  // as narrow as a rack typed in them, over the inputs' own full width
+  .ant-input.lab-what-if-draws {
+    flex: none;
+    width: 7em;
   }
 }
 

@@ -58,6 +58,7 @@ import {
 } from "../gen/api/proto/vendored/macondo/macondo_pb";
 import { create } from "@bufbuild/protobuf";
 import { calculateHistoricalTimeBanks } from "../utils/time_bank_calculator";
+import { otherRackAfter } from "../gameroom/what_if";
 
 const MaxChatLength = 150;
 
@@ -252,6 +253,10 @@ type ExamineStoreData = {
   whatIf: Array<GameEvent>;
   // a move's events, and the tiles the mover draws after it, if any
   playWhatIf: (events: Array<GameEvent>, drew?: Array<MachineLetter>) => void;
+  // a player's rack set by hand, taken back as a move made up is
+  setRackWhatIf: (player: number, rack: Array<MachineLetter>) => void;
+  // the steps made up, moves and racks set
+  whatIfSteps: number;
   takeBackWhatIf: () => void;
   clearWhatIf: () => void;
 };
@@ -441,6 +446,8 @@ const ExamineContext = createContext<ExamineStoreData>({
   doneButtonRef: { current: null },
   whatIf: [],
   playWhatIf: defaultFunction,
+  setRackWhatIf: defaultFunction,
+  whatIfSteps: 0,
   takeBackWhatIf: defaultFunction,
   clearWhatIf: defaultFunction,
 });
@@ -592,7 +599,12 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
   const [whatIfMade, setWhatIfMade] = useState<{
     base: number;
     turns: number;
-    moves: Array<{ events: Array<GameEvent>; drew: Array<MachineLetter> }>;
+    moves: Array<{
+      events: Array<GameEvent>;
+      drew: Array<MachineLetter>;
+      // a rack set by hand instead of a move
+      rack?: { player: number; tiles: Array<MachineLetter> };
+    }>;
   }>({ base: NaN, turns: NaN, moves: [] });
   const whatIfMoves = useMemo(
     () =>
@@ -616,6 +628,19 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
       }),
     [examinedTurn, numberOfTurns, whatIfMoves],
   );
+  const setRackWhatIf = useCallback(
+    (player: number, tiles: Array<MachineLetter>) =>
+      setWhatIfMade({
+        base: examinedTurn,
+        turns: numberOfTurns,
+        moves: [
+          ...whatIfMoves,
+          { events: [], drew: [], rack: { player, tiles } },
+        ],
+      }),
+    [examinedTurn, numberOfTurns, whatIfMoves],
+  );
+  const whatIfSteps = whatIfMoves.length;
   const takeBackWhatIf = useCallback(
     () =>
       setWhatIfMade({
@@ -789,7 +814,21 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
     // it, and the rack they left with the tiles they drew, if any. A draw
     // that empties the bag leaves the other player holding exactly the tiles
     // still unseen, whatever they held in the game.
-    for (const { events, drew } of whatIfMoves) {
+    for (const { events, drew, rack } of whatIfMoves) {
+      if (rack) {
+        // the other player gives up the tiles the rack set takes from theirs
+        const unseen: Array<MachineLetter> = [];
+        for (const [t, n] of Object.entries(ret.pool)) {
+          for (let i = 0; i < n; ++i) unseen.push(Number(t) as MachineLetter);
+        }
+        const other = ret.players[1 - rack.player];
+        other.currentRack = otherRackAfter(
+          rack.tiles,
+          other.currentRack,
+          unseen,
+        );
+        ret.players[rack.player].currentRack = rack.tiles;
+      }
       for (const evt of events) {
         const player = ret.players[evt.playerIndex];
         player.score = evt.cumulative;
@@ -966,12 +1005,16 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
       doneButtonRef,
       whatIf,
       playWhatIf,
+      setRackWhatIf,
+      whatIfSteps,
       takeBackWhatIf,
       clearWhatIf,
     }),
     [
       whatIf,
       playWhatIf,
+      setRackWhatIf,
+      whatIfSteps,
       takeBackWhatIf,
       clearWhatIf,
       isExamining,

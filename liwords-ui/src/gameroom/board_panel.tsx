@@ -80,6 +80,9 @@ import { useLocalStorageBool } from "../utils/use_local_storage";
 import { GameMetadataService } from "../gen/api/proto/game_service/game_service_pb";
 
 import { RackEditor } from "./rack_editor";
+import { ANALYZER_LAB_KEY, ANALYZER_LAB_WHAT_IF_KEY } from "./analyzer_lab";
+import { whatIfRack, whatIfRackRefusal, whatIfSideOf } from "./what_if";
+import { useExamineStoreContext } from "../store/store";
 import {
   shuffleLetters,
   gcgExport,
@@ -143,6 +146,9 @@ type Props = {
   corresGamesWaiting?: number;
   onNextCorresGame?: () => void;
 };
+
+// how long a refused what-if rack's reason shows
+const WHAT_IF_RACK_WARNING_SECONDS = 3;
 
 export const BoardPanel = React.memo((props: Props) => {
   const {
@@ -732,6 +738,13 @@ export const BoardPanel = React.memo((props: Props) => {
 
   const numTurns = examinableGameContext.turns.length;
   // Rack editor prefill when opened with Space; null shows the current rack.
+  // The lab's what-if sets the rack under the board, that of the player to
+  // move, with the same editor the board editor has.
+  const [analyzerLab] = useLocalStorageBool(ANALYZER_LAB_KEY);
+  const [labWhatIf] = useLocalStorageBool(ANALYZER_LAB_WHAT_IF_KEY);
+  const { setRackWhatIf } = useExamineStoreContext();
+  const whatIfRackEditing =
+    !props.boardEditingMode && isExamining && analyzerLab && labWhatIf;
   const [rackEditorPrefill, setRackEditorPrefill] =
     useState<MachineWord | null>(null);
 
@@ -842,6 +855,18 @@ export const BoardPanel = React.memo((props: Props) => {
         }
         if (
           key === " " &&
+          whatIfRackEditing &&
+          !arrowProperties.show &&
+          placedTiles.size === 0
+        ) {
+          // Space opens the rack editor on the rack as it is.
+          evt.preventDefault();
+          setRackEditorPrefill(null);
+          setCurrentMode("EDITING_RACK");
+          return;
+        }
+        if (
+          key === " " &&
           props.boardEditingMode &&
           !arrowProperties.show &&
           placedTiles.size === 0 &&
@@ -933,6 +958,7 @@ export const BoardPanel = React.memo((props: Props) => {
       gameContext.turns,
       props.alphabet,
       props.boardEditingMode,
+      whatIfRackEditing,
       playerMeta,
       username,
       currentMode,
@@ -1470,7 +1496,7 @@ export const BoardPanel = React.memo((props: Props) => {
                 onClick={recallTiles}
               />
             </Tooltip>
-            {props.boardEditingMode && (
+            {(props.boardEditingMode || whatIfRackEditing) && (
               <Tooltip
                 title="Edit Rack (Space)"
                 placement="bottomRight"
@@ -1494,6 +1520,29 @@ export const BoardPanel = React.memo((props: Props) => {
                 currentRack={rackEditorPrefill ?? displayedRack}
                 alphabet={props.alphabet}
                 rackCallback={(rack: MachineWord) => {
+                  if (whatIfRackEditing) {
+                    // a rack made up on the position examined, for the
+                    // player to move, any tile off the board
+                    const of = whatIfSideOf(examinableGameContext);
+                    if (!of) {
+                      setCurrentMode("NORMAL");
+                      return;
+                    }
+                    if (whatIfRack(rack, of.side) === null) {
+                      message.warning({
+                        content: whatIfRackRefusal(
+                          rack,
+                          of.side,
+                          props.alphabet,
+                        ),
+                        duration: WHAT_IF_RACK_WARNING_SECONDS,
+                      });
+                      return;
+                    }
+                    setRackWhatIf(of.side.playerIndex, rack);
+                    setCurrentMode("NORMAL");
+                    return;
+                  }
                   if (props.changeCurrentRack) {
                     props.changeCurrentRack(
                       rack,
