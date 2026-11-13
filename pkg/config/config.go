@@ -66,7 +66,7 @@ type Config struct {
 	TurnstileSecret     string
 	HumanCheckCookieKey string
 
-	// Web push for correspondence turns. Push stays off unless all six are set
+	// Web push for correspondence turns. Push stays off unless all four are set
 	// and valid (pkg/push reads them), so they are strings: a bad value turns
 	// push off instead of failing the whole parse.
 	VAPIDPublicKey  string
