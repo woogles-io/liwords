@@ -301,6 +301,16 @@ describe("ThreatsPanel", () => {
     expect(threatsRequests()).toHaveLength(1);
   });
 
+  it("says a count stopped before its first answer is stopped", async () => {
+    lab.answers.push(answer());
+    mount();
+    fireEvent.click(screen.getByLabelText("Stop"));
+    await screen.findByText("Stopped before a first answer.");
+    await waitFor(() => expect(screen.getByLabelText("Resume")).toBeEnabled());
+    fireEvent.click(screen.getByLabelText("Resume"));
+    await screen.findByText("SEA");
+  });
+
   it("goes on with the same count on Resume after Stop", async () => {
     lab.answers.push(answer({ exact: false, walked: 0.3, plays: [] }));
     mount();

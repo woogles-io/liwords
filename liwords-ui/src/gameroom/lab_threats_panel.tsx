@@ -409,7 +409,9 @@ export const ThreatsPanel = (props: ThreatsPanelProps) => {
     const c = counted.get(key);
     const text =
       !c?.answer && !c?.error
-        ? "Counting..."
+        ? stopped && !counting
+          ? "Stopped before a first answer."
+          : "Counting..."
         : c.error
           ? `Could not count the threats: ${namedTiles(c.error, (t) =>
               machineLetterToRune(
