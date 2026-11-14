@@ -1522,7 +1522,8 @@ export const BoardPanel = React.memo((props: Props) => {
               title="Set the rack"
               open={currentMode === "EDITING_RACK"}
               onCancel={() => setCurrentMode("NORMAL")}
-              width={360}
+              // its tiles' rows, seven tiles wide, inside its padding
+              width={390}
               footer={null}
               destroyOnHidden
             >

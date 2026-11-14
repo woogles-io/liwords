@@ -184,3 +184,70 @@ it("counts the tiles left, and adds none of a tile used up", () => {
   fireEvent.click(cells[ch].querySelector(".tile")!);
   expect(screen.getByRole("textbox")).toHaveValue("?");
 });
+
+// What the independent review asked of the dialog.
+const renderEditor = (
+  rack: Array<number>,
+  callbacks: { use?: () => void; cancel?: () => void } = {},
+  alphabet = StandardSpanishAlphabet,
+) => {
+  const outer = vi.fn();
+  const view = render(
+    <div onKeyDown={outer}>
+      <DndProvider backend={TouchBackend}>
+        <RackEditor
+          rackCallback={callbacks.use ?? (() => {})}
+          cancelCallback={callbacks.cancel ?? (() => {})}
+          currentRack={rack}
+          alphabet={alphabet}
+        />
+      </DndProvider>
+    </div>,
+  );
+  return { ...view, outer };
+};
+
+it("opens on a rack's tiles, not the empty places of tiles out on the board", () => {
+  const rack = runesToMachineWord("AE", StandardSpanishAlphabet);
+  const { container } = renderEditor([rack[0], 0x80, rack[1], 0x80]);
+  expect(container.querySelectorAll(".rack-editor-rack .tile")).toHaveLength(2);
+  expect(screen.getByRole("textbox")).toHaveValue("AE");
+});
+
+it("cancels once on Esc, and keeps its keys from the board", () => {
+  const cancel = vi.fn();
+  const { container, outer } = renderEditor([], { cancel });
+  fireEvent.keyDown(screen.getByRole("textbox"), { key: "a" });
+  fireEvent.keyDown(container.querySelector(".rack-editor-tiles .tile")!, {
+    key: "Escape",
+  });
+  expect(cancel).toHaveBeenCalledTimes(1);
+  expect(outer).not.toHaveBeenCalled();
+});
+
+it("keeps C then H two tiles, and a CH tile one", () => {
+  const a = StandardSpanishAlphabet;
+  const { container } = renderEditor([]);
+  const tiles = container.querySelectorAll(".rack-editor-tiles .tile");
+  fireEvent.click(tiles[runesToMachineWord("C", a)[0]]);
+  fireEvent.click(tiles[runesToMachineWord("H", a)[0]]);
+  fireEvent.click(tiles[runesToMachineWord("[CH]", a)[0]]);
+  expect(screen.getByRole("textbox")).toHaveValue("CH[CH]");
+  // typed on after, the box reads back the same three tiles
+  fireEvent.change(screen.getByRole("textbox"), {
+    target: { value: "CH[CH]A" },
+  });
+  expect(container.querySelectorAll(".rack-editor-rack .tile")).toHaveLength(4);
+});
+
+it("does not use the rack on an Enter an input method is still using", () => {
+  const use = vi.fn();
+  renderEditor([], { use }, StandardGermanAlphabet);
+  const box = screen.getByRole("textbox");
+  fireEvent.compositionStart(box);
+  fireEvent.keyDown(box, { key: "Enter" });
+  expect(use).not.toHaveBeenCalled();
+  fireEvent.compositionEnd(box, { data: "" });
+  fireEvent.keyDown(box, { key: "Enter" });
+  expect(use).toHaveBeenCalledTimes(1);
+});

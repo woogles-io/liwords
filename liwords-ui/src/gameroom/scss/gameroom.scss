@@ -2247,13 +2247,18 @@ p.rune {
   }
 }
 
+// in the tile's own letter color, whatever the theme or tile skin
 .rack-editor-left {
-  color: #ffffff;
+  color: m($background);
   font-size: 10px;
   left: 3px;
   pointer-events: none;
   position: absolute;
   top: 1px;
+
+  @include userTile() {
+    color: ut($tile-text);
+  }
 }
 
 .rack-modal .rack {

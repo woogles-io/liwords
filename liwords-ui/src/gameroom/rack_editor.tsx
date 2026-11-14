@@ -2,6 +2,7 @@ import { InputRef } from "rc-input";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   EmptyBoardSpaceMachineLetter,
+  EmptyRackSpaceMachineLetter,
   isDesignatedBlankMachineLetter,
   MachineLetter,
   MachineWord,
@@ -33,12 +34,19 @@ export const RackEditor = (props: Props) => {
     [props.alphabet],
   );
 
-  // Enter sends this as it is, so a prefilled rack is capped like typed input.
+  // Enter sends this as it is, so a prefilled rack is capped like typed
+  // input; a rack with tiles out on the board has empty places, not tiles.
   const [currentRack, setCurrentRack] = useState(() =>
-    props.currentRack.slice(0, MaxRackLength),
+    props.currentRack
+      .filter((ml) => ml !== EmptyRackSpaceMachineLetter)
+      .slice(0, MaxRackLength),
   );
   const [curRackStr, setCurRackStr] = useState(() =>
-    calculateRackStr(props.currentRack.slice(0, MaxRackLength)),
+    calculateRackStr(
+      props.currentRack
+        .filter((ml) => ml !== EmptyRackSpaceMachineLetter)
+        .slice(0, MaxRackLength),
+    ),
   );
 
   const inputRef = useRef<InputRef>(null);
@@ -57,19 +65,19 @@ export const RackEditor = (props: Props) => {
       setCurrentRack(rack);
       setCurRackStr(calculateRackStr(rack));
     }
-    inputRef.current?.focus();
   };
   // the rack as it stands, a tile of it taken out by a click, or all of it
   const setRack = (rack: MachineWord) => {
     setCurrentRack(rack);
     setCurRackStr(calculateRackStr(rack));
-    inputRef.current?.focus();
   };
+  // (a tile tapped leaves the focus where it is: moving it to the box would
+  // raise a phone's on-screen keyboard at every tap)
   const handleKeyDown = (evt: React.KeyboardEvent) => {
+    // a key an input method is still making a letter with is that letter's
+    if (composing.current || evt.nativeEvent.isComposing) return;
     if (evt.key === "Enter") {
       props.rackCallback(currentRack);
-    } else if (evt.key === "Escape") {
-      props.cancelCallback();
     }
   };
   useEffect(() => {
@@ -115,7 +123,17 @@ export const RackEditor = (props: Props) => {
   };
 
   return (
-    <React.Fragment>
+    // The dialog is drawn in the board's tree, so its keys would reach the
+    // board's own handler: they stop here. Esc anywhere in it cancels.
+    <div
+      className="rack-editor"
+      onKeyDown={(evt) => {
+        evt.stopPropagation();
+        if (evt.key === "Escape" && !evt.nativeEvent.isComposing) {
+          props.cancelCallback();
+        }
+      }}
+    >
       <Input
         ref={inputRef}
         // short enough for the box at any width: the tiles below spell out
@@ -183,6 +201,6 @@ export const RackEditor = (props: Props) => {
           Use this rack
         </Button>
       </div>
-    </React.Fragment>
+    </div>
   );
 };
