@@ -21,6 +21,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { TransportProvider } from "@connectrpc/connect-query";
 import { transport } from "./utils/hooks/connect";
 import { shouldRetryQuery } from "./utils/query_retry";
+import { installCommandPeriodEscape } from "./utils/command_period_escape";
 
 declare global {
   interface Window {
@@ -67,6 +68,8 @@ window.console.info(
   window.addEventListener("resize", resizeFunc);
   resizeFunc();
 }
+
+installCommandPeriodEscape();
 
 const container = document.getElementById("root");
 const root = createRoot(container!);
