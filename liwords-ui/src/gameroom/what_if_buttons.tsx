@@ -5,7 +5,7 @@ import {
   LeftOutlined,
   RightOutlined,
 } from "@ant-design/icons";
-import { machineWordToRunes, runesToMachineWord } from "../constants/alphabets";
+import { machineWordToRunes } from "../constants/alphabets";
 import {
   GameEvent,
   GameEvent_Direction,
@@ -24,6 +24,7 @@ import {
   bagTilesOf,
   exchangeMinBag,
   randomDraw,
+  typedTiles,
   whatIfExchange,
   whatIfPass,
   whatIfPlay,
@@ -158,22 +159,21 @@ export const WhatIfBar = (props: WhatIfBarProps) => {
   const play = over
     ? null
     : whatIfPlay(placedTiles, gameContext.board, gameContext.alphabet, side);
-  const backTiles = runesToMachineWord(
-    back.toUpperCase(),
-    gameContext.alphabet,
-  );
+  // the tiles typed to put back; none while the text holds anything that is
+  // no tile, the box then marked as an error
+  const backTiles = typedTiles(back, gameContext.alphabet);
   const minBag = exchangeMinBag(props.lexicon);
   const canExchange = !over && side.bag >= minBag;
   // tiles placed on the board make the move a play; with none, the tiles
   // typed to exchange make it an exchange
   const swapping = canExchange && placedTiles.size === 0;
   const exchange =
-    swapping && back
+    swapping && back && backTiles
       ? whatIfExchange(backTiles, gameContext.alphabet, side, minBag)
       : null;
   // with tiles in the bag, the draw: as many as the play places, the bag
   // allowing, or as many as the exchange puts back, each a tile still unseen
-  const drawCount = placedTiles.size || backTiles.length;
+  const drawCount = placedTiles.size || (backTiles?.length ?? 0);
   const drawing = side.bag > 0 && (!!play || !!exchange);
   // with tiles in the bag, drawn at random as the move is made; the rack
   // under the board sets them otherwise, after
