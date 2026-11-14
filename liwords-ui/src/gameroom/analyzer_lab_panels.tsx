@@ -973,7 +973,8 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
   });
   const upTo = readPage.key === readKey ? readPage.upTo : DRAWS_PAGE;
   useEffect(() => {
-    if (readKey === undefined || job.job === undefined) return;
+    // a job that failed is freed, or its worker gone: nothing to read
+    if (readKey === undefined || job.job === undefined || job.error) return;
     let current = true;
     labCall<{ rows: Array<EndgameDraw>; total: number } | undefined>({
       op: "draws",
@@ -990,7 +991,7 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
     };
     // the play and job are in readKey; read once more when the solve stops
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [readKey, readTick, readExact, upTo, job.running]);
+  }, [readKey, readTick, readExact, upTo, job.running, job.error]);
   const shownDraws =
     shown?.draws ?? (read && read.key === readKey ? read.draws : undefined);
   // the rows not yet read, offered a page at a time

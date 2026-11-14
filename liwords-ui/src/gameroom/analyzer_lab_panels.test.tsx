@@ -956,6 +956,43 @@ describe("the endgame panel", () => {
     ]);
   });
 
+  it("reads no sets of a job that failed", async () => {
+    lab.draws = { rows: [{ tiles: [E, I], count: 10, value: 5 }], total: 1 };
+    render(
+      <Store>
+        <EndgamePanel
+          lab={position([A, B, E, E, I, I, I, I, I])}
+          onClose={() => {}}
+        />
+      </Store>,
+    );
+    await step({
+      bag: 2,
+      steps: 2,
+      nodes: 90,
+      exact: false,
+      play: across(7, 7, [B, A]),
+      value: 3.5,
+      spread: 13.5,
+      depth: 1,
+      win: 0.6,
+      endgames: 12,
+      moves: [9, 9],
+      candidates: [
+        { play: across(7, 7, [B, A]), win: 0.6, value: 3.5, deals: 11 },
+      ],
+    });
+    await waitFor(() =>
+      expect(lab.calls.some((c) => c.op === "draws")).toBe(true),
+    );
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    const reads = lab.calls.filter((c) => c.op === "draws").length;
+    emit({ job: 1, error: "The wasm failed (unreachable)" });
+    await screen.findByText("The wasm failed (unreachable)");
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(lab.calls.filter((c) => c.op === "draws")).toHaveLength(reads);
+  });
+
   it("solves a pre-endgame of two tiles in the bag, every play valued, blind or with both racks known", async () => {
     lab.draws = {
       rows: [
