@@ -194,32 +194,82 @@ lambda bills per millisecond, and divisions that finish at the same time
 each get their own CPUs.
 
 What exists: `services/cop-lambda`, deployed by hand with SAM as
-`COPPairFunction`, invoked by `PairService.HandlePairRequest` (the RPC
-`cmd/coprunner` calls). Today it has 1,024 MB (about 0.6 vCPU) and a 20 s
-timeout. Over the last 60 days it ran 104 times, averaging 4-6 s, at most
-10.8 s.
+`COPPairFunction`. Its only caller is the API's public
+`PairService.HandlePairRequest` (the function has no URL and no resource
+policy), which TSH and `cmd/coprunner` call without an account. Today it has
+1,024 MB (about 0.6 vCPU) and a 20 s timeout. Over the last 60 days it ran
+104 times, averaging 4-6 s, at most 10.8 s.
 
-What changes:
+**Two functions from the one template.** The pairing job needs more CPU
+than TSH's calls do, and the public RPC has no auth:
 
-- **Memory, which sets the CPU.** Lambda gives 1 vCPU per 1,769 MB, up to 6
-  vCPU at 10,240 MB. Measure the UI defaults (100,000 / 10,000 sims) at 4,
-  6 and 10 GB and take the knee. At 10 GB a 5 s pairing is 50 GB-s, under a
-  tenth of a cent.
-- **Timeout** to 60 s.
-- **Auth and a sims cap on `HandlePairRequest` first.** Anyone can call it
-  today, and at 10 GB that is a cost problem.
-- **Deploy the lambda from CI with the API.** It carries its own copy of
-  COP; deployed by hand, a COP fix reaches the API's tests but not the
+- `COPPairFunction` stays as it is, for `HandlePairRequest`. TSH keeps
+  working without accounts, and what an anonymous caller can spend stays
+  what it is today.
+- A second function, at higher memory, is invoked only by the pairing job,
+  directly through the AWS SDK with the API's IAM role. Nothing outside
+  AWS can call it.
+
+Its memory sets its CPU: Lambda gives 1 vCPU per 1,769 MB, up to 6 vCPU at
+10,240 MB. Measure the UI defaults (100,000 / 10,000 sims) at 4, 6 and 10 GB
+and take the knee. At 10 GB a 5 s pairing is 50 GB-s, under a tenth of a
+cent. Timeout 60 s.
+
+**Auth for `HandlePairRequest`, later and only if it is abused.**
+- Woogles API keys (`X-Api-Key`) already exist, and any account can create
+  one. TSH would send one from its config.
+- To get there: log whether each call carries a key, tell TSH users, then
+  require it.
+- A cap on sims and a limit on calls in flight are the cheaper first steps.
+- None of this is needed for the pairing job.
+
+**Other changes:**
+
+- **Deploy both functions from CI with the API.** They carry their own copy
+  of COP; deployed by hand, a COP fix reaches the API's tests but not the
   pairings.
-- **Logging:** the lambda logs every request as indented JSON. Log sizes and
-  IDs instead.
+- **Logging:** keep logging each request, so pairings can be checked after
+  the fact, as one line of JSON instead of indented. The log group keeps 14
+  days (the last call, on 2026-10-18, has already expired). Raise the
+  retention if we want to look further back.
 - **Dev and tests:** with no function name configured, `cop.COPPair` runs in
-  process, through the same steps.
-- **Permissions:** the API invokes the function with its instance role.
-  `HandlePairRequest` already does, so the permission is likely in place;
-  check it on Fargate, where the task role replaces it.
+  process, through the same steps. The job calls COP through an interface,
+  so tests use a fake.
+- **Permissions:** the API invokes the functions with its instance role.
+  `HandlePairRequest` already does, so the permission is likely in place for
+  the first function. Add the second, and check both on Fargate, where the
+  task role replaces the instance role.
 
 A Go lambda cold-starts in a few hundred milliseconds, small next to COP.
+
+**Tests** (against the test database, with a fake COP client that can be
+held on a channel, and leases short enough to expire within a test):
+
+1. **Mark, don't pair:** the last result of a round before a COP round
+   leaves the round pending with no pairings, and a `pair_round` row. A
+   change that fails after the row is written leaves neither.
+2. **No lock during COP:** with the fake held, another change to the same
+   tournament commits.
+3. **Normal path:** the fake answers; the pairings are applied and
+   published, and the job is done.
+4. **Changed meanwhile:** a score amended while the fake is held throws the
+   first answer away; COP runs again on the new request, and those
+   pairings are applied.
+5. **Paired by hand meanwhile:** the job finishes without touching the
+   director's pairings.
+6. **Server dies mid-call:** the first runner claims the job and stops
+   without finishing. A second runner on the same database doesn't take it
+   while the lease holds, takes it once it expires, and applies the
+   pairings.
+7. **One claim each:** with several runners polling at once, every due job
+   is claimed by exactly one.
+8. **Failures:** a failing COP raises `attempts` and pushes `run_at` back;
+   after the last attempt the directors get the failure through
+   `TakeAutoPairingFailures`.
+9. **Drain:** a draining runner claims nothing new, and the job in flight
+   finishes.
+10. **Old runner, new kind:** a runner without a handler for a kind leaves
+    its rows alone.
 
 "Round complete, next round not yet paired" already exists: MANUAL rounds,
 and lagged rounds whose follow-on pairing failed. `autoStartRounds` logs and
@@ -498,6 +548,10 @@ jobs (
   is more than a minute late.
 - **Manual runs** (resend season-started emails) insert a one-off row.
   `LEAGUE_NOW` testing runs against a local API.
+- **Tests:** schedules compute their next run (`@every`, `@hourly :01`,
+  `@daily 05:00`, in UTC); a schedule runs again after its run; a job that
+  panics is recorded and the runner carries on; claims, leases, expiry and
+  drain are covered by the `pair_round` tests (section 2a).
 
 ### Where the runner runs
 
