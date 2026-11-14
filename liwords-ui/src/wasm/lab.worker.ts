@@ -101,9 +101,9 @@ type Job = {
   modeled?: boolean;
   // the play a sim's candidates are compared with, as the sim takes one
   against?: unknown;
-  // an endgame's last answer sent, when; and the one since, not yet sent
+  // when an endgame's answer was last sent; and whether it has stepped since
   sentAt?: number;
-  unsent?: Answer;
+  unsent?: boolean;
 };
 type Answer = {
   exact?: boolean;
@@ -184,6 +184,10 @@ const stepPort = new MessageChannel();
 // second shows it moving, where one a frame copies a pre-endgame's answer
 // sixty times a second.
 const SEND_EVERY_MS = 250;
+
+// An endgame's whole answer as it stands, read without stepping.
+const whole = (wolges: Wolges, j: Job): Answer =>
+  JSON.parse(wolges.endgame_step(j.handle, JSON.stringify({ ms: 0 })));
 const nextSteps: Array<() => void> = [];
 stepPort.port1.onmessage = () => nextSteps.shift()?.();
 const later = (next: () => void) => {
@@ -251,8 +255,10 @@ const step = async (j: Job, chain: number, ms: number) => {
   try {
     // each step, a sim's or an endgame's, goes on where the last one stopped,
     // so every step runs the same frame
+    // An endgame's step answers in brief, how it stands without its plays; the
+    // whole answer is read when one is sent to the page.
     const request = JSON.stringify(
-      j.kind === "sim" ? { ms, ...pruning(wolges, j) } : { ms },
+      j.kind === "sim" ? { ms, ...pruning(wolges, j) } : { ms, brief: true },
     );
     const answer: Answer = JSON.parse(
       j.kind === "sim"
@@ -274,27 +280,30 @@ const step = async (j: Job, chain: number, ms: number) => {
           answer.nodes === j.nodes))
     ) {
       running = false;
-      post({ event: { job: j.id, error: OUT_OF_MEMORY } });
+      // the memory the instance grew to stays with it: the page lets this
+      // worker go and makes a fresh one for the next job
+      post({ event: { job: j.id, error: OUT_OF_MEMORY }, spent: true });
       return;
     }
     j.nodes = answer.nodes;
     const done = isDone(j, answer);
     if (done) running = false;
-    // An endgame steps a frame at a time, and each answer is copied to the
-    // page: one each SEND_EVERY_MS is enough to show it, and the last is
-    // sent when it is done or stopped.
+    // An endgame steps a frame at a time: its whole answer is read and sent
+    // to the page once each SEND_EVERY_MS, enough to show it, and when it is
+    // done or stopped.
     const now = performance.now();
-    if (
-      j.kind === "endgame" &&
+    if (j.kind !== "endgame") {
+      post({ event: { job: j.id, answer, done } });
+    } else if (
       !done &&
       j.sentAt !== undefined &&
       now - j.sentAt < SEND_EVERY_MS
     ) {
-      j.unsent = answer;
+      j.unsent = true;
     } else {
       j.sentAt = now;
-      j.unsent = undefined;
-      post({ event: { job: j.id, answer, done } });
+      j.unsent = false;
+      post({ event: { job: j.id, answer: whole(wolges, j), done } });
     }
     if (done) return;
   } catch (e) {
@@ -527,8 +536,14 @@ const handle = async (req: LabRequest): Promise<unknown> => {
       running = false;
       // the answer it stopped on, if not yet sent
       if (job?.unsent) {
-        post({ event: { job: job.id, answer: job.unsent, done: false } });
-        job.unsent = undefined;
+        job.unsent = false;
+        post({
+          event: {
+            job: job.id,
+            answer: whole(await wolgesPromise, job),
+            done: false,
+          },
+        });
       }
       return undefined;
     case "free":

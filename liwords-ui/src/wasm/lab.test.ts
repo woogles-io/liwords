@@ -406,3 +406,17 @@ describe("a worker whose wasm panicked", () => {
     expect(ops(1)).toEqual(["held"]);
   });
 });
+
+describe("a worker whose endgame ran out of memory", () => {
+  it("has its error heard, then is let go, the next call made on a fresh one", async () => {
+    setLabPartsForTest(1);
+    await labCall({ op: "held" });
+    made[0].onmessage?.({
+      data: { event: { job: 3, error: "out of memory" }, spent: true },
+    } as MessageEvent);
+    expect(events).toEqual([{ job: 3, error: "out of memory" }]);
+    await labCall({ op: "held" });
+    expect(made).toHaveLength(2);
+    expect(ops(1)).toEqual(["held"]);
+  });
+});

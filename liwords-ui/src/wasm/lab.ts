@@ -111,10 +111,13 @@ const getWorker = (w: number) => {
   if (!worker) {
     worker = new Worker(new URL("./lab.worker.ts", import.meta.url));
     worker.onmessage = (e: MessageEvent) => {
-      const { id, result, error, event, dead } = e.data;
+      const { id, result, error, event, dead, spent } = e.data;
       if (dead) bury(w, worker!);
       if (event) {
         heard(w, event);
+        // a worker whose endgame ran out of memory keeps all it grew to: let
+        // go once its error is heard, so the next call makes a fresh one
+        if (spent) bury(w, worker!);
         return;
       }
       const p = pending.get(id);
