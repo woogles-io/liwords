@@ -379,6 +379,25 @@ describe("a pre-endgame in parts", () => {
     expect(made[1]?.sent.some((m) => m.op === "endgame") ?? false).toBe(false);
   });
 
+  it("passes on the answer a part's error stands with, merged", async () => {
+    setLabPartsForTest(2);
+    const job = await labCall<number>({
+      op: "endgame",
+      args: { request: JSON.stringify({ model: "info_sets" }) },
+    });
+    made[0].event({ job: 12, answer: endgamePart(0, 4, 1), done: false });
+    made[1].event({
+      job: 12,
+      error: "out of memory",
+      answer: { ...endgamePart(1, -2, 0), exact: false },
+    });
+    const failed = events.find((e) => e.error) as LabEvent & {
+      answer?: object;
+    };
+    expect(failed).toMatchObject({ job, error: "out of memory" });
+    expect(failed.answer).toBeDefined();
+  });
+
   it("stops the others on a part's error, and says so", async () => {
     setLabPartsForTest(2);
     const job = await labCall<number>({

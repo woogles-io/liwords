@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { OUT_OF_MEMORY_MOVES } from "./lab_errors";
+import { OUT_OF_MEMORY_DRAWS, OUT_OF_MEMORY_MOVES } from "./lab_errors";
 
 // The worker's module, run in the page's scope: its handler is set on self,
 // and what it posts is caught. The wasm is a fake, each test saying what its
@@ -274,6 +274,27 @@ describe("the lab's worker", () => {
     await send(2, "run", { job, ms: 16 });
     await vi.waitFor(() => expect(events().some((e) => e.error)).toBe(true));
     expect(events().find((e) => e.error)!.error).toBe(OUT_OF_MEMORY_MOVES);
+  });
+
+  it("sends the plays valued so far with the error when each play's sets did not fit", async () => {
+    stepping({
+      exact: false,
+      nodes: 5,
+      out_of_memory: true,
+      out_of_memory_in: "draws",
+      play: { action: "pass" },
+      value: 3,
+    });
+    const job = (await send(1, "endgame", { request: '{"model":"info_sets"}' }))
+      .result as number;
+    await send(2, "run", { job, ms: 16 });
+    await vi.waitFor(() => expect(events().some((e) => e.error)).toBe(true));
+    const e = events().find((e) => e.error) as {
+      error: string;
+      answer?: { value?: number };
+    };
+    expect(e.error).toBe(OUT_OF_MEMORY_DRAWS);
+    expect(e.answer?.value).toBe(3);
   });
 
   it("names a panic in the wasm as one", async () => {

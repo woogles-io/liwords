@@ -241,12 +241,22 @@ const heardEndgame = (
     }
     return;
   }
+  const part = jobs.get(page)!.findIndex((h) => h.worker === worker);
   if (e.error) {
     stopParts(page);
-    emit({ job: page, error: e.error, firstStep: e.firstStep });
+    // an answer sent with the error stands, merged once every part has one
+    if (e.answer) endgame.answers[part] = e.answer as EndgamePartAnswer;
+    const stood = endgame.answers.every((a) => a)
+      ? mergeEndgameAnswers(endgame.answers as Array<EndgamePartAnswer>)
+      : undefined;
+    emit({
+      job: page,
+      error: e.error,
+      firstStep: e.firstStep,
+      ...(e.answer && stood ? { answer: stood } : {}),
+    });
     return;
   }
-  const part = jobs.get(page)!.findIndex((h) => h.worker === worker);
   if (e.answer) endgame.answers[part] = e.answer as EndgamePartAnswer;
   if (endgame.answers.some((a) => !a)) return;
   const answer = mergeEndgameAnswers(

@@ -21,6 +21,7 @@ import { LabEvent } from "../wasm/lab";
 import {
   OUT_OF_MEMORY,
   OUT_OF_MEMORY_ALONE,
+  OUT_OF_MEMORY_DRAWS,
   OUT_OF_MEMORY_MOVES,
 } from "../wasm/lab_errors";
 import { AnalyzerMove } from "./analyzer";
@@ -746,6 +747,44 @@ describe("the endgame panel", () => {
     emit({ job: 1, error: OUT_OF_MEMORY, firstStep: true });
     await waitFor(() => expect(made()).toEqual([4, 4, 2]));
     watch.disconnect();
+  });
+
+  it("keeps the plays valued so far when each play's sets did not fit", async () => {
+    lab.parts = 4;
+    render(
+      <Store>
+        <EndgamePanel
+          lab={position([A, B, E, E, I, I, I, I, I])}
+          onClose={() => {}}
+        />
+      </Store>,
+    );
+    await waitFor(() =>
+      expect(lab.calls.filter((c) => c.op === "run")).toHaveLength(1),
+    );
+    emit({
+      job: 1,
+      error: OUT_OF_MEMORY_DRAWS,
+      answer: {
+        bag: 2,
+        steps: 3,
+        nodes: 90,
+        exact: false,
+        play: across(7, 7, [B, A]),
+        value: 3.5,
+        spread: 13.5,
+        depth: 0,
+        win: 0.6,
+        endgames: 12,
+        moves: [1, 9],
+        candidates: [
+          { play: across(7, 7, [B, A]), win: 0.6, value: 3.5, deals: 11 },
+        ],
+      },
+    } as never);
+    expect(await screen.findByText(OUT_OF_MEMORY_DRAWS)).toBeInTheDocument();
+    expect(bodyRows()[0]).toContain("BA");
+    expect(lab.calls.filter((c) => c.op === "endgame")).toHaveLength(1);
   });
 
   it("says when the first moves alone did not fit, trying no more", async () => {
