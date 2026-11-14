@@ -2197,7 +2197,8 @@ p.rune {
 // the rack being set, one row of seven, kept its height when empty
 .rack-editor-rack {
   display: flex;
-  margin: 12px 0 0;
+  justify-content: center;
+  margin: 12px auto 0;
   min-height: $tile-size-desktop;
 
   .tile {
@@ -2216,7 +2217,8 @@ p.rune {
 .rack-editor-tiles {
   display: flex;
   flex-wrap: wrap;
-  margin: 12px 0;
+  // centered in a dialog wider than its seven tiles a row
+  margin: 12px auto;
   width: 326px;
 
   .tile {

@@ -118,9 +118,11 @@ export const RackEditor = (props: Props) => {
     <React.Fragment>
       <Input
         ref={inputRef}
+        // short enough for the box at any width: the tiles below spell out
+        // the rest
         placeholder={
-          "Enter rack. Use ? or . for blank." +
-          (props.alphabet.name === "spanish" ? " Use [CH] for digraph CH." : "")
+          "Rack, ? for a blank" +
+          (props.alphabet.name === "spanish" ? ", [CH] for CH" : "")
         }
         className="rack"
         value={curRackStr}
