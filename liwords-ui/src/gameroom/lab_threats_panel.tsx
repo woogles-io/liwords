@@ -31,6 +31,7 @@ import {
   publishLabThreats,
   threatHeat,
   threatsSummary,
+  unweighedThreats,
 } from "./lab_threats";
 
 // How many of the opponent's best plays are listed, until the user sets
@@ -317,6 +318,8 @@ export const ThreatsPanel = (props: ThreatsPanelProps) => {
   // does.
   const whole = answer && answer.walked < 1 && shown?.whole;
   const display = whole || answer;
+  // the plays still first listed, no rack weighed: no chance to give
+  const unweighed = !!display && unweighedThreats(display);
 
   // The plays listed: the count's own, or, through a square, as the wasm
   // lists them at once, from the racks already weighed.
@@ -560,8 +563,9 @@ export const ThreatsPanel = (props: ThreatsPanelProps) => {
                 </td>
                 <td className="lab-n">{play.score}</td>
                 <td className="lab-n">
-                  {display!.exact ? "" : "~"}
-                  {percentText(play.chance)}
+                  {unweighed
+                    ? "-"
+                    : `${display!.exact ? "" : "~"}${percentText(play.chance)}`}
                 </td>
               </tr>
             ))}

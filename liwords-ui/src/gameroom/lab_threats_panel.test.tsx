@@ -311,6 +311,16 @@ describe("ThreatsPanel", () => {
     await screen.findByText("SEA");
   });
 
+  it("gives no chance for the plays while they are first listed", async () => {
+    lab.answers.push(
+      answer({ exact: false, walked: 0.2, covered: 0, samples: 0 }),
+    );
+    mount();
+    await screen.findByText(/Listing the opponent's plays: 20.0%/);
+    const row = (await screen.findByText("SEA")).closest("tr")!;
+    expect(row.lastElementChild?.textContent).toBe("-");
+  });
+
   it("goes on with the same count on Resume after Stop", async () => {
     lab.answers.push(answer({ exact: false, walked: 0.3, plays: [] }));
     mount();

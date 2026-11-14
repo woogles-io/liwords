@@ -120,13 +120,18 @@ export const percentText = (x: number) => `${(x * 100).toFixed(1)}%`;
 // exactly when the count was stopped, or so far while it goes on; before
 // that, how much of the plays were listed. While the plays are first listed,
 // before any rack is weighed, how much of them were listed alone.
+// Whether the plays are still first listed, no rack yet weighed: the answer
+// then gives no best, bingo, or chance.
+export const unweighedThreats = (answer: ThreatsAnswer) =>
+  answer.walked < 1 && answer.covered === 0 && answer.samples === 0;
+
 export const threatsSummary = (
   answer: ThreatsAnswer,
   unseen: number,
   counting = false,
 ) => {
   // still listing the plays, no rack weighed yet: no best or bingo to give
-  if (answer.walked < 1 && answer.covered === 0 && answer.samples === 0) {
+  if (unweighedThreats(answer)) {
     return counting
       ? `Listing the opponent's plays: ${percentText(answer.walked)}, from ${unseen} unseen`
       : `Stopped listing the opponent's plays at ${percentText(answer.walked)}, from ${unseen} unseen`;
