@@ -42,6 +42,8 @@ const lab = vi.hoisted(() => ({
   parts: 1,
   // the bytes a worker holds once an endgame is made
   held: 1,
+  // a pre-endgame play's sets, as the worker reads them for it
+  draws: undefined as undefined | { rows: Array<object>; total: number },
   // what an inference of the opponent's leave finds
   inferred: {
     count: 120,
@@ -58,6 +60,7 @@ vi.mock("../wasm/lab", () => ({
     if (request.op === "prepare") return lab.sizes;
     if (request.op === "endgame") return 1;
     if (request.op === "held") return lab.held;
+    if (request.op === "draws") return lab.draws;
     if (request.op === "sim") {
       const args = request.args as { plays: string; infer?: string };
       const plays = JSON.parse(args.plays) as Array<object>;
@@ -239,6 +242,7 @@ beforeEach(() => {
   lab.listeners.clear();
   lab.parts = 1;
   lab.held = 1;
+  lab.draws = undefined;
   board.placed.length = 0;
   clock.now = 0;
   lab.top = [];
@@ -855,6 +859,13 @@ describe("the endgame panel", () => {
   });
 
   it("solves a pre-endgame of two tiles in the bag, every play valued, blind or with both racks known", async () => {
+    lab.draws = {
+      rows: [
+        { tiles: [E, I], count: 10, value: 5 },
+        { tiles: [I, I], count: 1, value: -12 },
+      ],
+      total: 2,
+    };
     render(
       <Store>
         <EndgamePanel
@@ -875,13 +886,16 @@ describe("the endgame panel", () => {
       win: 0.6,
       endgames: 120,
       moves: [9, 9],
-      draws: [
-        { tiles: [E, I], count: 10, value: 5 },
-        { tiles: [I, I], count: 1, value: -12 },
-      ],
+      // the best's sets are not in the answer: each play gives its deals,
+      // and the shown one's sets are read for it
       candidates: [
-        { play: across(7, 7, [B, A]), win: 0.6, value: 3.5 },
-        { play: { action: "exchange", tiles: [] }, win: 0.25, value: -8 },
+        { play: across(7, 7, [B, A]), win: 0.6, value: 3.5, deals: 11 },
+        {
+          play: { action: "exchange", tiles: [] },
+          win: 0.25,
+          value: -8,
+          deals: 11,
+        },
       ],
     });
     expect(
@@ -893,6 +907,13 @@ describe("the endgame panel", () => {
       ),
     ).toBeInTheDocument();
     expect(headRow()).toBe("ScoreLeaveWinValue");
+    // the best's sets, read for it, a page of them
+    await waitFor(() =>
+      expect(
+        lab.calls.find((c) => c.op === "draws")?.args as object,
+      ).toMatchObject({ upTo: 50 }),
+    );
+    await waitFor(() => expect(bodyRows()).toHaveLength(5));
     expect(bodyRows()).toEqual([
       "andy8HBA10AEEII60.0%+3.50",
       "Pass0AABEEII25.0%-8.00",

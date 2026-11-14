@@ -908,10 +908,10 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
         : [];
     return listed.map((c, i) => {
       const tiles = c.tiles ?? (i === 0 ? solved.tiles : undefined);
-      // the best's sets are the answer's where its entry has none, unless its
-      // entry gives its deals: then its sets are read a page at a time, as
-      // every play's are
-      const draws = c.draws ?? (i === 0 && !c.deals ? solved.draws : undefined);
+      // a play's sets are read a page at a time, the best's as any other's
+      // (the answer gives the best none of its own); a part's answer merged
+      // may still give them whole
+      const draws = c.draws;
       return {
         play: c.play,
         move: toAnalyzerMove(c.play, c.value, lab.letters, lab.rack, lab),
