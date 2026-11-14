@@ -39,11 +39,8 @@ import (
 const (
 	MaxMessageLength = 500
 
-	AdjudicateInterval               = 10 * time.Second
-	AdjudicateCorrespondenceInterval = 60 * time.Second
-	GamesCounterInterval             = 60 * time.Minute
-	SeeksExpireInterval              = 10 * time.Minute
-	ChannelMonitorInterval           = 5 * time.Second
+	GamesCounterInterval   = 60 * time.Minute
+	ChannelMonitorInterval = 5 * time.Second
 	// Cancel a game if it hasn't started after this much time.
 	CancelAfter = 60 * time.Second
 )
@@ -65,7 +62,6 @@ type Bus struct {
 
 	// For shutting down without dropping work in progress; see Drain.
 	inFlight    atomic.Int64 // handler goroutines running (trackHandler)
-	draining    atomic.Bool
 	drainChecks chan drainCheck
 	// publish sends the events the loop publishes; natsconn.Publish, but
 	// tests replace it.
@@ -163,16 +159,8 @@ func (b *Bus) ProcessMessages(ctx context.Context) {
 	ctx = b.config.WithContext(ctx)
 	ctx = log.Logger.WithContext(ctx)
 	log := zerolog.Ctx(ctx)
-	// Adjudicate unfinished real-time games every few seconds.
-	adjudicator := time.NewTicker(AdjudicateInterval)
-	defer adjudicator.Stop()
-
-	// Adjudicate correspondence games once a minute
-	correspondenceAdjudicator := time.NewTicker(AdjudicateCorrespondenceInterval)
-	defer correspondenceAdjudicator.Stop()
-
-	seekExpirer := time.NewTicker(SeeksExpireInterval)
-	defer seekExpirer.Stop()
+	// Adjudication and seek expiry are jobs (pkg/jobs), run once across all
+	// servers; see AdjudicateRealtimeGames and the others below.
 
 	channelMonitor := time.NewTicker(ChannelMonitorInterval)
 	defer channelMonitor.Stop()
@@ -438,43 +426,6 @@ outerfor:
 			log.Info().Msg("pubsub context done, breaking")
 			break outerfor
 
-		case <-adjudicator.C:
-			if b.draining.Load() {
-				break
-			}
-			done := b.trackHandler()
-			go func() {
-				defer done()
-				err := b.adjudicateGames(ctx, false) // false = real-time games only
-				if err != nil {
-					log.Err(err).Msg("adjudicate-error")
-				}
-			}()
-
-		case <-correspondenceAdjudicator.C:
-			if b.draining.Load() {
-				break
-			}
-			done := b.trackHandler()
-			go func() {
-				defer done()
-				err := b.adjudicateGames(ctx, true) // true = correspondence games only
-				if err != nil {
-					log.Err(err).Msg("adjudicate-correspondence-error")
-				}
-			}()
-
-		case <-seekExpirer.C:
-			if b.draining.Load() {
-				break
-			}
-			go func() {
-				err := b.stores.SoughtGameStore.ExpireOld(ctx)
-				if err != nil {
-					log.Err(err).Msg("expiration-error")
-				}
-			}()
-
 		case <-channelMonitor.C:
 			go func() {
 				log.Info().
@@ -497,6 +448,24 @@ outerfor:
 	}
 
 	log.Info().Msg("exiting processMessages loop")
+}
+
+// AdjudicateRealtimeGames ends the real-time games whose clocks ran out.
+// A job; its schedule is in cmd/liwords-api/jobs.go.
+func (b *Bus) AdjudicateRealtimeGames(ctx context.Context) error {
+	return b.adjudicateGames(b.config.WithContext(ctx), false)
+}
+
+// AdjudicateCorrespondenceGames ends the correspondence games whose clocks
+// ran out. A job; its schedule is in cmd/liwords-api/jobs.go.
+func (b *Bus) AdjudicateCorrespondenceGames(ctx context.Context) error {
+	return b.adjudicateGames(b.config.WithContext(ctx), true)
+}
+
+// ExpireSeeks deletes old seeks. A job; its schedule is in
+// cmd/liwords-api/jobs.go.
+func (b *Bus) ExpireSeeks(ctx context.Context) error {
+	return b.stores.SoughtGameStore.ExpireOld(b.config.WithContext(ctx))
 }
 
 func (b *Bus) handleNatsRequest(ctx context.Context, topic string,

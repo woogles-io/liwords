@@ -294,6 +294,22 @@ type IntegrationsGlobal struct {
 	LastUpdated     pgtype.Timestamptz
 }
 
+type Job struct {
+	ID         int64
+	Kind       string
+	Key        string
+	Schedule   pgtype.Text
+	RunAt      pgtype.Timestamptz
+	LeaseUntil pgtype.Timestamptz
+	LeaseToken pgtype.UUID
+	DoneAt     pgtype.Timestamptz
+	Attempts   int32
+	LastRunAt  pgtype.Timestamptz
+	LastMs     pgtype.Int4
+	LastError  string
+	CreatedAt  pgtype.Timestamptz
+}
+
 type League struct {
 	ID              int64
 	Uuid            uuid.UUID

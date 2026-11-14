@@ -32,25 +32,13 @@ const (
 	// NatsUserSlotSubjectPrefix is published when a user re-points one of their
 	// stream slots, so live OBS streams rebind to the new target broadcast.
 	NatsUserSlotSubjectPrefix = "obs.userslot."
-	pollerTickInterval        = 30 * time.Second
 )
 
-// StartPoller launches the background feed-polling goroutine.
-// Call once from main after NATS is ready.
-func (bs *BroadcastService) StartPoller(ctx context.Context) {
-	go func() {
-		ticker := time.NewTicker(pollerTickInterval)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-ticker.C:
-				bs.runPollerCycle(ctx)
-			}
-		}
-	}()
-	log.Info().Msg("broadcast-poller-started")
+// PollDue polls the broadcasts that are due. A job; its schedule is in
+// cmd/liwords-api/jobs.go.
+func (bs *BroadcastService) PollDue(ctx context.Context) error {
+	bs.runPollerCycle(ctx)
+	return nil
 }
 
 // maxPollsPerCycle bounds one cycle's polls, so a backlog (after downtime,
