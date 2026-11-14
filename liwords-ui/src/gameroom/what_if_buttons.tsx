@@ -20,6 +20,8 @@ import {
 } from "../store/store";
 import { EphemeralTile } from "../utils/cwgame/common";
 import { getWolges } from "../wasm/loader";
+import { DndProvider } from "react-dnd";
+import MultiBackend, { MultiBackendOptions } from "./dnd-backend";
 import { ExchangeTiles } from "./exchange_tiles";
 import { parseExaminableGameContext, wolgesLabelsToLetter } from "./analyzer";
 import {
@@ -252,17 +254,21 @@ export const WhatIfBar = (props: WhatIfBarProps) => {
           />
         </Tooltip>
         {picking && (
-          <ExchangeTiles
-            tileColorId={0}
-            alphabet={gameContext.alphabet}
-            rack={me.currentRack}
-            modalVisible
-            onCancel={() => setPicking(false)}
-            onOk={(tiles) => {
-              setPicking(false);
-              setBack(machineWordToRunes(tiles, gameContext.alphabet, false));
-            }}
-          />
+          // its tiles are drawn as the board's are, which this row sits apart
+          // from
+          <DndProvider backend={MultiBackend} options={MultiBackendOptions}>
+            <ExchangeTiles
+              tileColorId={0}
+              alphabet={gameContext.alphabet}
+              rack={me.currentRack}
+              modalVisible
+              onCancel={() => setPicking(false)}
+              onOk={(tiles) => {
+                setPicking(false);
+                setBack(machineWordToRunes(tiles, gameContext.alphabet, false));
+              }}
+            />
+          </DndProvider>
         )}
         <Tooltip title={moveTitle}>
           <Button
