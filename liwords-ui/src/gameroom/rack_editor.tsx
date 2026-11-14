@@ -63,9 +63,20 @@ export const RackEditor = (props: Props) => {
     });
   }, [inputRef]);
 
+  // whether a dead key or an input method is making a letter in the box
+  const composing = useRef(false);
   const handleRackEditChange = (evt: React.ChangeEvent<HTMLInputElement>) => {
+    if (composing.current) {
+      // a dead key's accent, or an input method's, before its letter: left
+      // as typed until the letter is made, which takes the accent then
+      setCurRackStr(evt.target.value);
+      return;
+    }
+    readRack(evt.target.value);
+  };
+
+  const readRack = (raw: string) => {
     // strip out any spaces, fix max length, etc.
-    const raw = evt.target.value;
     let out = raw;
     out = out.toLocaleUpperCase();
 
@@ -99,6 +110,13 @@ export const RackEditor = (props: Props) => {
         className="rack"
         value={curRackStr}
         onChange={handleRackEditChange}
+        onCompositionStart={() => {
+          composing.current = true;
+        }}
+        onCompositionEnd={(evt) => {
+          composing.current = false;
+          readRack(evt.currentTarget.value);
+        }}
         onKeyDown={handleKeyDown}
       />
       {/* the rack being set, a tile taken out by a click on it */}

@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { expect, it, vi } from "vitest";
 import {
   runesToMachineWord,
+  StandardGermanAlphabet,
   StandardSpanishAlphabet,
 } from "../constants/alphabets";
 import { DndProvider } from "react-dnd";
@@ -123,5 +124,32 @@ it("takes a tile out of the rack by a click on it, or clears it", () => {
   fireEvent.click(screen.getByRole("button", { name: "Use this rack" }));
   expect(rackCallback).toHaveBeenCalledWith(
     runesToMachineWord("Ñ", StandardSpanishAlphabet),
+  );
+});
+
+// A dead key's accent stays in the box until its letter makes the letter.
+it("keeps a composition's accent until the letter is made", () => {
+  const rackCallback = vi.fn();
+  render(
+    <DndProvider backend={TouchBackend}>
+      <RackEditor
+        rackCallback={rackCallback}
+        cancelCallback={() => {}}
+        currentRack={[]}
+        alphabet={StandardGermanAlphabet}
+      />
+    </DndProvider>,
+  );
+  const box = screen.getByRole("textbox");
+  fireEvent.compositionStart(box);
+  fireEvent.change(box, { target: { value: "\u00a8" } });
+  // the accent is not thrown away mid-composition
+  expect(box).toHaveValue("\u00a8");
+  fireEvent.change(box, { target: { value: "\u00f6" } });
+  fireEvent.compositionEnd(box, { data: "\u00f6" });
+  expect(box).toHaveValue("\u00d6");
+  fireEvent.keyDown(box, { key: "Enter" });
+  expect(rackCallback).toHaveBeenCalledWith(
+    runesToMachineWord("\u00d6", StandardGermanAlphabet),
   );
 });
