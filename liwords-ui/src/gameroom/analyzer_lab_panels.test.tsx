@@ -566,6 +566,34 @@ describe("the endgame panel", () => {
     expect(screen.queryByRole("button", { name: /more play/ })).toBeNull();
   });
 
+  it("counts the plays left to list by how many the answer says there are", async () => {
+    render(
+      <Store>
+        <EndgamePanel
+          lab={position([A, B, E, E, I, I, I, I])}
+          onClose={() => {}}
+        />
+      </Store>,
+    );
+    await step({
+      bag: 1,
+      steps: 3,
+      exact: false,
+      play: across(0, 0, [A]),
+      value: 50,
+      spread: 14,
+      depth: 1,
+      win: 1,
+      candidates_total: 300,
+      candidates: Array.from({ length: 50 }, (_, i) => ({
+        play: across(i % 15, Math.floor(i / 15), [A]),
+        value: 50 - i,
+        exact: false,
+      })),
+    });
+    expect(screen.getByRole("button", { name: "250 more plays" })).toBeTruthy();
+  });
+
   it("lists every move valued with a tile in the bag, each with its tiles, and shows the tiles of the one picked", async () => {
     render(
       <Store>

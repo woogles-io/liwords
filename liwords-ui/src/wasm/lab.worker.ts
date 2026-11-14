@@ -67,6 +67,8 @@ export type LabRequest =
   // an empty bag's endgame, every first move valued on the table its steps
   // kept, in at most ms, without stepping; sent as a step's answer is
   | { op: "values"; args: { job: number; ms: number } }
+  // how many of an endgame's plays its answers give from now, from the best
+  | { op: "list"; args: { job: number; upTo: number } }
   // a pre-endgame play's rows, what it gains for each set the bag may hold,
   // read without stepping; the play as its answer gives it, in JSON; its
   // first upTo rows where given, with how many it has in all. A step's answer
@@ -108,6 +110,10 @@ type Job = {
   against?: unknown;
   // whether a step of it has answered without running out of memory
   stepped?: boolean;
+  // how many of an endgame's plays its answers give, from the best; none
+  // for a part of a pre-endgame in parts, whose answers are merged play by
+  // play and so give every play
+  listed?: number;
   // when an endgame's answer was last sent; and whether it has stepped since
   sentAt?: number;
   unsent?: boolean;
@@ -200,9 +206,21 @@ const stepPort = new MessageChannel();
 // sixty times a second.
 const SEND_EVERY_MS = 250;
 
+// How many of an endgame's plays its answers give at first, as the page
+// lists them: a pre-endgame values every play, tens of thousands of them.
+export const LISTED = 50;
+
+// A read of an endgame without stepping, as asked, its plays as listed.
+const reading = (j: Job, request: object) =>
+  JSON.stringify({
+    ms: 0,
+    ...request,
+    ...(j.listed !== undefined ? { candidates_range: [0, j.listed] } : {}),
+  });
+
 // An endgame's whole answer as it stands, read without stepping.
 const whole = (wolges: Wolges, j: Job): Answer =>
-  JSON.parse(wolges.endgame_step(j.handle, JSON.stringify({ ms: 0 })));
+  JSON.parse(wolges.endgame_step(j.handle, reading(j, {})));
 const nextSteps: Array<() => void> = [];
 stepPort.port1.onmessage = () => nextSteps.shift()?.();
 const later = (next: () => void) => {
@@ -456,7 +474,8 @@ const handle = async (req: LabRequest): Promise<unknown> => {
     }
     case "endgame": {
       freeJob(wolges, true);
-      const modeled = JSON.parse(req.args.request).model !== undefined;
+      const asked = JSON.parse(req.args.request);
+      const modeled = asked.model !== undefined;
       // warmed by the endgame before it where the wasm takes it (the same
       // rules and lexicon, the board holding every tile of the earlier
       // one's); made cold otherwise
@@ -481,6 +500,7 @@ const handle = async (req: LabRequest): Promise<unknown> => {
         // a new endgame has searched none
         nodes: 0,
         modeled,
+        listed: asked.part === undefined ? LISTED : undefined,
       };
       return job.id;
     }
@@ -570,7 +590,7 @@ const handle = async (req: LabRequest): Promise<unknown> => {
                 ...(job.against !== undefined ? { against: job.against } : {}),
               }),
             )
-          : wolges.endgame_step(job.handle, JSON.stringify({ ms: 0 })),
+          : wolges.endgame_step(job.handle, reading(job, {})),
       );
       post({ event: { job: job.id, answer, done: isDone(job, answer) } });
       return undefined;
@@ -582,9 +602,19 @@ const handle = async (req: LabRequest): Promise<unknown> => {
       const answer: Answer = JSON.parse(
         wolges.endgame_step(
           job.handle,
-          JSON.stringify({ ms: 0, first_moves_ms: req.args.ms }),
+          reading(job, { first_moves_ms: req.args.ms }),
         ),
       );
+      post({ event: { job: job.id, answer, done: isDone(job, answer) } });
+      return undefined;
+    }
+    case "list": {
+      if (!job || job.id !== req.args.job || job.kind !== "endgame") {
+        throw new Error("no such endgame");
+      }
+      if (job.listed === undefined) return undefined;
+      job.listed = req.args.upTo;
+      const answer = whole(wolges, job);
       post({ event: { job: job.id, answer, done: isDone(job, answer) } });
       return undefined;
     }
@@ -594,7 +624,7 @@ const handle = async (req: LabRequest): Promise<unknown> => {
       }
       // where the play stands in the answer now, then its rows there
       const now: Answer = JSON.parse(
-        wolges.endgame_step(job.handle, JSON.stringify({ ms: 0 })),
+        wolges.endgame_step(job.handle, reading(job, {})),
       );
       const i = (now.candidates ?? []).findIndex(
         (c) => JSON.stringify(c.play) === req.args.play,
@@ -603,8 +633,7 @@ const handle = async (req: LabRequest): Promise<unknown> => {
       const read: Answer = JSON.parse(
         wolges.endgame_step(
           job.handle,
-          JSON.stringify({
-            ms: 0,
+          reading(job, {
             draws_of: i,
             ...(req.args.upTo !== undefined
               ? { draws_range: [0, req.args.upTo] }

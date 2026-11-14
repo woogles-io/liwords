@@ -186,6 +186,8 @@ type EndgameAnswer = {
   tiles?: Array<EndgameTile>;
   draws?: Array<EndgameDraw>;
   candidates?: Array<EndgameCandidate>;
+  // how many plays there are in all, where the answer gives only the best
+  candidates_total?: number;
 };
 
 // How the game ends for the player to move, leading by this much at the end:
@@ -939,7 +941,10 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
         ? [{ play: solved.play, value: solved.value, win: solved.win }]
         : [];
   }, [solved]);
-  const morePlays = Math.max(0, listed.length - playsUpTo);
+  const morePlays = Math.max(
+    0,
+    (solved?.candidates_total ?? listed.length) - playsUpTo,
+  );
   const plays = useMemo(() => {
     if (!solved) return [];
     return listed.slice(0, playsUpTo).map((c, i) => {
@@ -1218,9 +1223,16 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
                 <Button
                   type="link"
                   size="small"
-                  onClick={() =>
-                    setPlaysPage({ job: job.job, upTo: playsUpTo + PLAYS_PAGE })
-                  }
+                  onClick={() => {
+                    const upTo = playsUpTo + PLAYS_PAGE;
+                    setPlaysPage({ job: job.job, upTo });
+                    if (job.job !== undefined) {
+                      labCall({
+                        op: "list",
+                        args: { job: job.job, upTo },
+                      }).catch(() => {});
+                    }
+                  }}
                 >
                   {`${morePlays} more play${morePlays === 1 ? "" : "s"}`}
                 </Button>

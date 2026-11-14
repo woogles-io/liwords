@@ -188,6 +188,40 @@ describe("the lab's worker", () => {
     );
   });
 
+  it("reads an endgame's best plays, as many as listed, but every play of a part", async () => {
+    stepping({ exact: false, depth: 1 });
+    const job = (await send(1, "endgame", { request: "{}" })).result as number;
+    await send(2, "read", { job });
+    expect(wasm.endgame_step).toHaveBeenLastCalledWith(
+      7,
+      JSON.stringify({ ms: 0, candidates_range: [0, 50] }),
+    );
+    // more listed: read at once, as many as asked
+    await send(3, "list", { job, upTo: 100 });
+    expect(wasm.endgame_step).toHaveBeenLastCalledWith(
+      7,
+      JSON.stringify({ ms: 0, candidates_range: [0, 100] }),
+    );
+    // (no step yet: a read answers as the fake's first, empty)
+    expect(events()[events().length - 1]).toEqual({
+      job,
+      answer: {},
+      done: false,
+    });
+    // a part of a pre-endgame in parts gives every play, to be merged
+    const part = (
+      await send(4, "endgame", { request: '{"model":"x","part":[0,2]}' })
+    ).result as number;
+    await send(5, "read", { job: part });
+    expect(wasm.endgame_step).toHaveBeenLastCalledWith(
+      7,
+      JSON.stringify({ ms: 0 }),
+    );
+    const listed = events().length;
+    await send(6, "list", { job: part, upTo: 100 });
+    expect(events()).toHaveLength(listed);
+  });
+
   it("warms an endgame with the one let go before it, or starts cold", async () => {
     const first = (await send(1, "endgame", { request: '{"a":1}' }))
       .result as number;
@@ -394,7 +428,11 @@ describe("the lab's worker", () => {
     await send(2, "values", { job, ms: 1500 });
     expect(wasm.endgame_step).toHaveBeenCalledWith(
       7,
-      JSON.stringify({ ms: 0, first_moves_ms: 1500 }),
+      JSON.stringify({
+        ms: 0,
+        first_moves_ms: 1500,
+        candidates_range: [0, 50],
+      }),
     );
     expect(events()).toEqual([{ job, answer, done: true }]);
     const sim = (await send(3, "sim", { request: "{}", plays: "[]" }))
@@ -423,12 +461,12 @@ describe("the lab's worker", () => {
     expect(wasm.endgame_step).toHaveBeenNthCalledWith(
       1,
       7,
-      JSON.stringify({ ms: 0 }),
+      JSON.stringify({ ms: 0, candidates_range: [0, 50] }),
     );
     expect(wasm.endgame_step).toHaveBeenNthCalledWith(
       2,
       7,
-      JSON.stringify({ ms: 0, draws_of: 1 }),
+      JSON.stringify({ ms: 0, draws_of: 1, candidates_range: [0, 50] }),
     );
     // a play it does not list has no rows, and it reads no further
     wasm.endgame_step.mockReturnValueOnce(JSON.stringify({ candidates: [] }));
@@ -458,7 +496,12 @@ describe("the lab's worker", () => {
     expect(page.result).toEqual({ rows, total: 9 });
     expect(wasm.endgame_step).toHaveBeenLastCalledWith(
       7,
-      JSON.stringify({ ms: 0, draws_of: 1, draws_range: [0, 1] }),
+      JSON.stringify({
+        ms: 0,
+        draws_of: 1,
+        draws_range: [0, 1],
+        candidates_range: [0, 50],
+      }),
     );
   });
 

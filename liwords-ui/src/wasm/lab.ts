@@ -546,6 +546,12 @@ const multi = async (request: LabRequest): Promise<unknown> => {
         args: { ...request.args, job: j },
       }));
       return undefined;
+    case "list":
+      await each(request.args.job, (j) => ({
+        ...request,
+        args: { ...request.args, job: j },
+      }));
+      return undefined;
     case "peek": {
       // each part's answer against the play given, merged
       const { against } = request.args;
