@@ -908,7 +908,10 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
         : [];
     return listed.map((c, i) => {
       const tiles = c.tiles ?? (i === 0 ? solved.tiles : undefined);
-      const draws = c.draws ?? (i === 0 ? solved.draws : undefined);
+      // the best's sets are the answer's where its entry has none, unless its
+      // entry gives its deals: then its sets are read a page at a time, as
+      // every play's are
+      const draws = c.draws ?? (i === 0 && !c.deals ? solved.draws : undefined);
       return {
         play: c.play,
         move: toAnalyzerMove(c.play, c.value, lab.letters, lab.rack, lab),
