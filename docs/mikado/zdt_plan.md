@@ -503,7 +503,7 @@ jobs (
   id           bigserial primary key,
   kind         text not null,             -- adjudicate_realtime, pair_round, ...
   key          text not null default '',  -- '' for schedules; tournament/division/round for pair_round
-  schedule     text,                      -- '@every 10s', '@hourly :01', '@daily 05:00'; null for one-off jobs
+  schedule     text,                      -- cron, UTC: '*/10 * * * * *', '1 * * * *', '0 5 * * *'; null for one-off jobs
   run_at       timestamptz not null,
   lease_until  timestamptz,
   done_at      timestamptz,               -- one-off jobs only
@@ -516,8 +516,10 @@ jobs (
 ```
 
 - **Schedules** are one row per periodic task, upserted by the runner at
-  startup. After each run, `run_at` moves to the next time the schedule
-  gives.
+  startup, as cron expressions in UTC (seconds optional), so runs happen at
+  known clock times whichever server runs them. After each run, `run_at`
+  moves to the next time the expression gives; a run missed while no server
+  was up happens once, as soon as one is.
 - **One-off jobs** are `pair_round`, email batches, manual runs and,
   later, tournament automation. `done_at` is set when they finish.
 - **Claims:** due rows are claimed with `UPDATE … FOR UPDATE SKIP LOCKED`,
@@ -548,8 +550,7 @@ jobs (
   is more than a minute late.
 - **Manual runs** (resend season-started emails) insert a one-off row.
   `LEAGUE_NOW` testing runs against a local API.
-- **Tests:** schedules compute their next run (`@every`, `@hourly :01`,
-  `@daily 05:00`, in UTC); a schedule runs again after its run; a job that
+- **Tests:** cron schedules compute their next run, in UTC; a schedule runs again after its run; a job that
   panics is recorded and the runner carries on; claims, leases, expiry and
   drain are covered by the `pair_round` tests (section 2a).
 

@@ -83,7 +83,7 @@ func enqueue(t *testing.T, q *models.Queries, kind, key string) {
 	}
 }
 
-func TestScheduleNext(t *testing.T) {
+func TestCronNext(t *testing.T) {
 	at := func(s string) time.Time {
 		tm, err := time.Parse(time.RFC3339, s)
 		if err != nil {
@@ -92,29 +92,63 @@ func TestScheduleNext(t *testing.T) {
 		return tm
 	}
 	cases := []struct {
-		s     Schedule
-		str   string
+		expr  string
 		after string
 		want  string
 	}{
-		{Every(10 * time.Second), "@every 10s", "2026-11-14T10:00:00Z", "2026-11-14T10:00:10Z"},
-		{Hourly(1), "@hourly :01", "2026-11-14T10:00:00Z", "2026-11-14T10:01:00Z"},
-		{Hourly(1), "@hourly :01", "2026-11-14T10:01:00Z", "2026-11-14T11:01:00Z"},
-		{Hourly(1), "@hourly :01", "2026-11-14T23:30:00Z", "2026-11-15T00:01:00Z"},
-		{Daily(5, 0), "@daily 05:00", "2026-11-14T04:59:59Z", "2026-11-14T05:00:00Z"},
-		{Daily(5, 0), "@daily 05:00", "2026-11-14T05:00:00Z", "2026-11-15T05:00:00Z"},
-		// Times in other zones are read as the instant they are.
-		{Daily(5, 0), "@daily 05:00", "2026-11-14T01:00:00-05:00", "2026-11-15T05:00:00Z"},
-		{Daily(0, 0), "@daily 00:00", "2026-12-31T12:00:00Z", "2027-01-01T00:00:00Z"},
+		{"*/10 * * * * *", "2026-11-14T10:00:00Z", "2026-11-14T10:00:10Z"},
+		{"*/10 * * * * *", "2026-11-14T10:00:03Z", "2026-11-14T10:00:10Z"},
+		{"*/30 * * * * *", "2026-11-14T10:00:59Z", "2026-11-14T10:01:00Z"},
+		{"* * * * *", "2026-11-14T10:00:30Z", "2026-11-14T10:01:00Z"},
+		{"*/10 * * * *", "2026-11-14T10:05:00Z", "2026-11-14T10:10:00Z"},
+		{"1 * * * *", "2026-11-14T10:00:00Z", "2026-11-14T10:01:00Z"},
+		{"1 * * * *", "2026-11-14T10:01:00Z", "2026-11-14T11:01:00Z"},
+		{"0 5 * * *", "2026-11-14T04:59:59Z", "2026-11-14T05:00:00Z"},
+		{"0 5 * * *", "2026-11-14T05:00:00Z", "2026-11-15T05:00:00Z"},
+		// UTC, whatever zone the time is given in.
+		{"0 5 * * *", "2026-11-14T01:00:00-05:00", "2026-11-15T05:00:00Z"},
+		{"0 0 * * *", "2026-12-31T12:00:00Z", "2027-01-01T00:00:00Z"},
 	}
 	for _, c := range cases {
-		if c.s.String() != c.str {
-			t.Errorf("String() = %q, want %q", c.s.String(), c.str)
+		s := Cron(c.expr)
+		if s.String() != c.expr {
+			t.Errorf("String() = %q, want %q", s.String(), c.expr)
 		}
-		if got := c.s.Next(at(c.after)); !got.Equal(at(c.want)) {
-			t.Errorf("%s after %s: got %s, want %s", c.str, c.after, got.UTC().Format(time.RFC3339), c.want)
+		if got := s.Next(at(c.after)); !got.Equal(at(c.want)) {
+			t.Errorf("%q after %s: got %s, want %s", c.expr, c.after, got.UTC().Format(time.RFC3339), c.want)
 		}
 	}
+}
+
+func TestCronEvery(t *testing.T) {
+	good := map[time.Duration]string{
+		10 * time.Second: "*/10 * * * * *",
+		30 * time.Second: "*/30 * * * * *",
+		time.Minute:      "0 */1 * * * *",
+		5 * time.Minute:  "0 */5 * * * *",
+		time.Hour:        "0 */60 * * * *",
+	}
+	for d, want := range good {
+		got, err := CronEvery(d)
+		if err != nil || got != want {
+			t.Errorf("CronEvery(%v) = %q, %v; want %q", d, got, err, want)
+		}
+		Cron(got) // parses
+	}
+	for _, d := range []time.Duration{0, 7 * time.Second, 90 * time.Second, 7 * time.Minute, 2 * time.Hour, 1500 * time.Millisecond} {
+		if got, err := CronEvery(d); err == nil {
+			t.Errorf("CronEvery(%v) = %q, want an error", d, got)
+		}
+	}
+}
+
+func TestCronRejectsBadExpression(t *testing.T) {
+	defer func() {
+		if recover() == nil {
+			t.Fatal("no panic")
+		}
+	}()
+	Cron("every ten seconds")
 }
 
 // A schedule runs, and runs again after each run.
@@ -122,12 +156,12 @@ func TestScheduleRunsAgain(t *testing.T) {
 	_, q := setupDB(t)
 	var runs atomic.Int32
 	r := NewRunner(q, fast)
-	r.Schedule("tick", Every(100*time.Millisecond), func(ctx context.Context, job Job) error {
+	r.Schedule("tick", Cron("* * * * * *"), func(ctx context.Context, job Job) error {
 		runs.Add(1)
 		return nil
 	})
 	start(t, r)
-	eventually(t, 3*time.Second, "3 runs", func() bool { return runs.Load() >= 3 })
+	eventually(t, 5*time.Second, "3 runs", func() bool { return runs.Load() >= 3 })
 
 	j := getJob(t, q, "tick", "")
 	if !j.LastRunAt.Valid || j.LastError != "" || j.DoneAt.Valid || j.Attempts > 1 {
@@ -147,14 +181,14 @@ func TestScheduleKeepsNextRunAcrossRestart(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	register(Daily(5, 0))
+	register(Cron("0 5 * * *"))
 	first := getJob(t, q, "daily", "").RunAt.Time
 	time.Sleep(10 * time.Millisecond)
-	register(Daily(5, 0))
+	register(Cron("0 5 * * *"))
 	if again := getJob(t, q, "daily", "").RunAt.Time; !again.Equal(first) {
 		t.Fatalf("same schedule moved its run: %v → %v", first, again)
 	}
-	register(Hourly(1))
+	register(Cron("1 * * * *"))
 	if changed := getJob(t, q, "daily", "").RunAt.Time; changed.Equal(first) {
 		t.Fatal("changed schedule kept the old run")
 	}

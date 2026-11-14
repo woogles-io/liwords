@@ -308,14 +308,15 @@ func (e *StreamNotFoundError) Error() string {
 	return "stream key not found: " + e.StreamKey
 }
 
-// PollInterval is how often PollActiveStreams should run.
+// PollInterval is how often PollActiveStreams should run: the configured
+// interval, which the job's cron schedule is made from.
 func (s *VDOWebhookService) PollInterval() time.Duration {
 	return time.Duration(s.pollingIntervalSeconds) * time.Second
 }
 
 // PollActiveStreams checks every active stream's health, spread over 30
-// seconds, and returns when all checks are done. Run every PollInterval, as
-// a job (pkg/jobs).
+// seconds, and returns when all checks are done. A job, run every
+// PollInterval; its schedule is in cmd/liwords-api/jobs.go.
 func (s *VDOWebhookService) PollActiveStreams(ctx context.Context) error {
 	s.pollActiveStreams(ctx)
 	return nil

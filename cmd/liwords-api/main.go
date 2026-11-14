@@ -590,13 +590,15 @@ func main() {
 	var jobRunner *jobs.Runner
 	if cfg.RunJobs {
 		jobRunner = jobs.NewRunner(stores.Queries, jobs.Options{})
-		registerJobs(jobRunner, jobDeps{
+		if err := registerJobs(jobRunner, jobDeps{
 			bus:        pubsubBus,
 			analysis:   analysisService,
 			broadcasts: broadcastService,
 			vdo:        vdoWebhookService,
 			users:      stores.UserStore,
-		})
+		}); err != nil {
+			log.Fatal().Err(err).Msg("register-jobs")
+		}
 		go func() {
 			jobsCtx := log.Logger.WithContext(cfg.WithContext(ctx))
 			if err := jobRunner.Run(jobsCtx); err != nil {

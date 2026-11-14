@@ -12,7 +12,7 @@ import (
 const clientRecordRetention = 180 * 24 * time.Hour
 
 // pruneClientRecords deletes client records that haven't been seen within
-// the retention window. Run daily, as a job.
+// the retention window. A job; its schedule is in jobs.go.
 func pruneClientRecords(us user.Store) func(context.Context) error {
 	return func(ctx context.Context) error {
 		n, err := us.PruneClients(ctx, time.Now().Add(-clientRecordRetention))

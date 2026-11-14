@@ -518,7 +518,8 @@ func (s *AnalysisService) FailJob(
 }
 
 // ReclaimStaleJobs gives back analysis jobs whose workers stopped reporting,
-// so another worker can take them. Run every 30s, as a job (pkg/jobs).
+// so another worker can take them. A job; its schedule is in
+// cmd/liwords-api/jobs.go.
 func (s *AnalysisService) ReclaimStaleJobs(ctx context.Context) error {
 	return s.queries.ReclaimStaleJobs(ctx)
 }

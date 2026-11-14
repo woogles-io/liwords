@@ -32,18 +32,14 @@ const (
 	// NatsUserSlotSubjectPrefix is published when a user re-points one of their
 	// stream slots, so live OBS streams rebind to the new target broadcast.
 	NatsUserSlotSubjectPrefix = "obs.userslot."
-	pollerTickInterval        = 30 * time.Second
 )
 
-// PollDue polls the broadcasts that are due. Run every pollerTickInterval, as
-// a job (pkg/jobs).
+// PollDue polls the broadcasts that are due. A job; its schedule is in
+// cmd/liwords-api/jobs.go.
 func (bs *BroadcastService) PollDue(ctx context.Context) error {
 	bs.runPollerCycle(ctx)
 	return nil
 }
-
-// PollInterval is how often PollDue should run.
-const PollInterval = pollerTickInterval
 
 // maxPollsPerCycle bounds one cycle's polls, so a backlog (after downtime,
 // say) is spread over a few cycles.

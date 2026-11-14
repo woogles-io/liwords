@@ -3,9 +3,11 @@ package jobs
 import (
 	"fmt"
 	"time"
+
+	"github.com/robfig/cron/v3"
 )
 
-// A Schedule says when a scheduled job runs next. Times are in UTC.
+// A Schedule says when a scheduled job runs next.
 type Schedule interface {
 	// Next is the first run strictly after the given time.
 	Next(after time.Time) time.Time
@@ -14,57 +16,49 @@ type Schedule interface {
 	String() string
 }
 
-// Every runs a job d after its previous run ended.
-func Every(d time.Duration) Schedule {
-	if d <= 0 {
-		panic("jobs: Every needs a positive duration")
+// cronParser reads standard five-field cron expressions, with an optional
+// leading seconds field.
+var cronParser = cron.NewParser(
+	cron.SecondOptional | cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow)
+
+// Cron is a schedule from a cron expression, in UTC: five fields (minute,
+// hour, day of month, month, day of week), or six with seconds first.
+//
+//	Cron("*/10 * * * * *")  every 10 seconds, at :00, :10, :20...
+//	Cron("*/30 * * * * *")  every 30 seconds
+//	Cron("1 * * * *")       hourly at :01
+//	Cron("0 5 * * *")       daily at 05:00 UTC
+//
+// Runs happen at these clock times, whichever server runs them, so a job's
+// runs line up with its schedule in the logs. A run missed while no server
+// was running happens once, as soon as one is, and the next is at the next
+// time the expression gives. Panics on an invalid expression: schedules are
+// fixed in code.
+func Cron(expr string) Schedule {
+	s, err := cronParser.Parse(expr)
+	if err != nil {
+		panic(fmt.Sprintf("jobs: bad cron expression %q: %v", expr, err))
 	}
-	return every(d)
+	return cronSchedule{expr: expr, s: s}
 }
 
-type every time.Duration
-
-func (e every) Next(after time.Time) time.Time { return after.Add(time.Duration(e)) }
-func (e every) String() string                 { return "@every " + time.Duration(e).String() }
-
-// Hourly runs a job each hour at the given minute.
-func Hourly(minute int) Schedule {
-	if minute < 0 || minute > 59 {
-		panic("jobs: Hourly minute out of range")
-	}
-	return hourly(minute)
+type cronSchedule struct {
+	expr string
+	s    cron.Schedule
 }
 
-type hourly int
+func (c cronSchedule) Next(after time.Time) time.Time { return c.s.Next(after.UTC()) }
+func (c cronSchedule) String() string                 { return c.expr }
 
-func (h hourly) Next(after time.Time) time.Time {
-	after = after.UTC()
-	t := after.Truncate(time.Hour).Add(time.Duration(h) * time.Minute)
-	if !t.After(after) {
-		t = t.Add(time.Hour)
+// CronEvery is the cron expression for running every d, at times lined up
+// with the clock. d must be a whole number of seconds dividing a minute, or
+// a whole number of minutes dividing an hour.
+func CronEvery(d time.Duration) (string, error) {
+	switch {
+	case d >= time.Second && d < time.Minute && d%time.Second == 0 && time.Minute%d == 0:
+		return fmt.Sprintf("*/%d * * * * *", int(d/time.Second)), nil
+	case d >= time.Minute && d <= time.Hour && d%time.Minute == 0 && time.Hour%d == 0:
+		return fmt.Sprintf("0 */%d * * * *", int(d/time.Minute)), nil
 	}
-	return t
+	return "", fmt.Errorf("jobs: %v can't be a cron interval: use whole seconds dividing a minute, or whole minutes dividing an hour", d)
 }
-
-func (h hourly) String() string { return fmt.Sprintf("@hourly :%02d", int(h)) }
-
-// Daily runs a job each day at the given UTC time.
-func Daily(hour, minute int) Schedule {
-	if hour < 0 || hour > 23 || minute < 0 || minute > 59 {
-		panic("jobs: Daily time out of range")
-	}
-	return daily{hour, minute}
-}
-
-type daily struct{ hour, minute int }
-
-func (d daily) Next(after time.Time) time.Time {
-	after = after.UTC()
-	t := time.Date(after.Year(), after.Month(), after.Day(), d.hour, d.minute, 0, 0, time.UTC)
-	if !t.After(after) {
-		t = t.AddDate(0, 0, 1)
-	}
-	return t
-}
-
-func (d daily) String() string { return fmt.Sprintf("@daily %02d:%02d", d.hour, d.minute) }

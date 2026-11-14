@@ -39,11 +39,8 @@ import (
 const (
 	MaxMessageLength = 500
 
-	AdjudicateInterval               = 10 * time.Second
-	AdjudicateCorrespondenceInterval = 60 * time.Second
-	GamesCounterInterval             = 60 * time.Minute
-	SeeksExpireInterval              = 10 * time.Minute
-	ChannelMonitorInterval           = 5 * time.Second
+	GamesCounterInterval   = 60 * time.Minute
+	ChannelMonitorInterval = 5 * time.Second
 	// Cancel a game if it hasn't started after this much time.
 	CancelAfter = 60 * time.Second
 )
@@ -454,18 +451,19 @@ outerfor:
 }
 
 // AdjudicateRealtimeGames ends the real-time games whose clocks ran out.
-// Run every AdjudicateInterval, as a job.
+// A job; its schedule is in cmd/liwords-api/jobs.go.
 func (b *Bus) AdjudicateRealtimeGames(ctx context.Context) error {
 	return b.adjudicateGames(b.config.WithContext(ctx), false)
 }
 
 // AdjudicateCorrespondenceGames ends the correspondence games whose clocks
-// ran out. Run every AdjudicateCorrespondenceInterval, as a job.
+// ran out. A job; its schedule is in cmd/liwords-api/jobs.go.
 func (b *Bus) AdjudicateCorrespondenceGames(ctx context.Context) error {
 	return b.adjudicateGames(b.config.WithContext(ctx), true)
 }
 
-// ExpireSeeks deletes old seeks. Run every SeeksExpireInterval, as a job.
+// ExpireSeeks deletes old seeks. A job; its schedule is in
+// cmd/liwords-api/jobs.go.
 func (b *Bus) ExpireSeeks(ctx context.Context) error {
 	return b.stores.SoughtGameStore.ExpireOld(b.config.WithContext(ctx))
 }
