@@ -526,8 +526,10 @@ const useLabJob = <T,>(start: (() => Promise<number>) | null, key: string) => {
       setState((s) => ({
         ...s,
         answer: (e.answer as T) ?? s.answer,
-        error: e.error,
-        firstStep: e.firstStep,
+        // an answer heard after an error (a part's reply to the stop the
+        // error sent) leaves the error standing
+        error: e.error ?? s.error,
+        firstStep: e.error ? e.firstStep : s.firstStep,
         // a step that was under way when a stop was sent leaves it stopped
         running: s.running && !e.done && !e.error,
       }));
@@ -572,7 +574,12 @@ const useLabJob = <T,>(start: (() => Promise<number>) | null, key: string) => {
     const { job } = state;
     if (job === undefined) return;
     const ms = await frameMs();
-    setState((s) => ({ ...s, running: true }));
+    setState((s) => ({
+      ...s,
+      running: true,
+      error: undefined,
+      firstStep: undefined,
+    }));
     labCall({ op: "run", args: { job, ms } }).catch((e) =>
       setState((s) => ({ ...s, running: false, error: String(e) })),
     );
@@ -806,6 +813,9 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
   // the solve tried once more, on a fresh worker, after running out of
   // memory on its first step
   const [retried, setRetried] = useState<string>();
+  // another solve, or this one come back to, starts with its retry unspent:
+  // only the solve it was made for, still shown, is retried
+  if (retried !== undefined && retried !== jobKey) setRetried(undefined);
   const againKey = `${jobKey}/again`;
   const job = useLabJob<EndgameAnswer>(
     solvable

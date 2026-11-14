@@ -727,7 +727,14 @@ describe("the endgame panel", () => {
       characterData: true,
     });
     await runs(1);
-    emit({ job: 1, error: OUT_OF_MEMORY, firstStep: true });
+    // with a part's answer to the stop the error sent, heard after it
+    // before a render
+    act(() =>
+      [
+        { job: 1, error: OUT_OF_MEMORY, firstStep: true },
+        { job: 1, answer: { bag: 2, steps: 0 } as never },
+      ].forEach((e) => lab.listeners.forEach((listener) => listener(e))),
+    );
     await runs(2);
     expect(made()).toEqual([4, 4]);
     expect(shownError).not.toHaveBeenCalled();
@@ -735,6 +742,36 @@ describe("the endgame panel", () => {
     emit({ job: 1, error: OUT_OF_MEMORY, firstStep: true });
     await waitFor(() => expect(made()).toEqual([4, 4, 2]));
     watch.disconnect();
+  });
+
+  it("tries once more again on a position come back to", async () => {
+    lab.parts = 4;
+    const p = position([A, B, E, E, I, I, I, I, I]);
+    const q = position([A, B, E, E, I, I, I, I, E]);
+    const panel = (at: typeof p) => (
+      <Store>
+        <EndgamePanel lab={at} onClose={() => {}} />
+      </Store>
+    );
+    const { rerender } = render(panel(p));
+    const made = () =>
+      lab.calls
+        .filter((c) => c.op === "endgame")
+        .map((c) => (c.args as { parts: number }).parts);
+    const runs = (n: number) =>
+      waitFor(() =>
+        expect(lab.calls.filter((c) => c.op === "run")).toHaveLength(n),
+      );
+    await runs(1);
+    emit({ job: 1, error: OUT_OF_MEMORY, firstStep: true });
+    await runs(2);
+    rerender(panel(q));
+    await runs(3);
+    rerender(panel(p));
+    await runs(4);
+    emit({ job: 1, error: OUT_OF_MEMORY, firstStep: true });
+    await runs(5);
+    expect(made()).toEqual([4, 4, 4, 4, 4]);
   });
 
   it("solves again on as many workers as what each holds leaves room for", async () => {
