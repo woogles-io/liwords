@@ -33,6 +33,9 @@ type Props = {
   onCancel: () => void;
   onOk: (tilesToExchange: MachineWord) => void;
   modalVisible: boolean;
+  // no unseen tiles shown: the game's pool is not the position's, nor
+  // anything to show, when the exchange is made up on a position examined
+  omitPool?: boolean;
 };
 
 // The set of selected rack positions is the single source of truth for both
@@ -351,14 +354,16 @@ export const ExchangeTiles = React.memo((props: Props) => {
         />
       </div>
 
-      <Pool
-        omitCard={true}
-        pool={gameContext?.pool}
-        currentRack={props.rack}
-        poolFormat={poolFormat}
-        setPoolFormat={setPoolFormat}
-        alphabet={props.alphabet}
-      />
+      {!props.omitPool && (
+        <Pool
+          omitCard={true}
+          pool={gameContext?.pool}
+          currentRack={props.rack}
+          poolFormat={poolFormat}
+          setPoolFormat={setPoolFormat}
+          alphabet={props.alphabet}
+        />
+      )}
     </Modal>
   );
 });

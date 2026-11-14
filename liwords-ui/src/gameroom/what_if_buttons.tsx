@@ -262,6 +262,7 @@ export const WhatIfBar = (props: WhatIfBarProps) => {
               alphabet={gameContext.alphabet}
               rack={me.currentRack}
               modalVisible
+              omitPool
               onCancel={() => setPicking(false)}
               onOk={(tiles) => {
                 setPicking(false);
