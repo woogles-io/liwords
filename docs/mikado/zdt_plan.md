@@ -27,7 +27,7 @@ an in-process mutex. Everything below is what is still in the way.
 | 4 | Broadcast feeds | Only the server that polls refreshes; others stale up to 30 min | staleness | small |
 | 5 | Shutdown | Moves in flight are killed; NATS keeps delivering during shutdown | lost moves on every deploy | medium |
 | 6 | Version skew | Old and new code run side by side during a deploy | process | ongoing |
-| 7 | Background jobs | Run once per server | duplicate work, not correctness | medium |
+| 7 | Background jobs | Loops run once per server; maintenance runs in a separate, partly wired container | duplicate work; league game events dropped | medium |
 | 8 | Socket server | Already overlaps on deploy; clients reconnect | acceptable | none now |
 
 ## 1. Deploy infrastructure
@@ -146,94 +146,144 @@ using an answer only for an identical request. It is correct, but covers only
 the callers that are wrapped, keeps the finishing game waiting, and loses the
 change if the server stops mid-COP.
 
-**Plan: a durable pairing job (transactional outbox).**
+**Plan: a pairing job, with COP on the lambda and no lock held while
+pairing.**
 
 1. **Mark, don't pair.** When the division would pair a COP round,
    `pairRoundWithCOP` records the round as pending instead of calling COP.
    Every caller goes through it, so one change covers them all. Other pairing
    methods are cheap and stay inline.
 2. **Write the job in the same transaction as the change.** A `pair_round`
-   row (tournament, division, round, `run_at = now`) in `tournament_jobs`,
-   saved with the change that made the round pairable. The result and the
-   promise to pair it commit together or not at all, so a job survives a
-   deploy or a crash. The lock goes back to being held for milliseconds.
-   After the commit, the server publishes a wake message (below).
-3. **The job runner pairs.** It claims the job with a lease, loads the
-   tournament without the lock, builds the `PairRequest` and runs COP, in
-   process or on the lambda. Then it takes `LockForChange`, builds the request
-   again, and:
-   - if it is equal, applies the pairings, marks the job done, commits, and
-     publishes the pairings;
-   - if not (a director amended a score meanwhile), runs COP again. Nothing
-     waits on it, so there is no fallback to computing under the lock.
-   A job that keeps failing is reported to the directors through the
-   existing auto-pairing failure path (`TakeAutoPairingFailures`).
-4. **Pending state in the UI:** "Pairing round N…" until the pairings arrive.
+   row (tournament, division, round) in `jobs` (section 7), saved with the
+   change that made the round pairable, and already claimed by the server
+   writing it (`lease_until = now + 60 s`). The result and the promise to
+   pair it commit together or not at all, so the job survives a deploy or a
+   crash. The lock goes back to being held for milliseconds.
+3. **The same server pairs, right after the commit,** in a goroutine the
+   drain (section 5) waits for:
+   1. It builds the `PairRequest` from the state it just committed, and
+      invokes the COP lambda. No lock is held; the server only waits on the
+      call, and uses no CPU for it.
+   2. It takes `LockForChange`, loads the division and builds the request
+      again:
+      - equal: applies the pairings, marks the job done, commits, and
+        publishes the pairings;
+      - the round is already paired (a director paired it by hand): marks
+        the job done;
+      - otherwise (a director amended a score meanwhile): back to step 1
+        with the new request, up to 3 times.
+   3. On a failure (lambda error or timeout) it records `attempts` and
+      `last_error`, sets `run_at` with backoff and clears the lease. After
+      several failures the directors are told through the existing
+      auto-pairing failure path (`TakeAutoPairingFailures`).
+4. **The job runner is the backstop.** It claims `pair_round` jobs that are
+   due and unclaimed, or whose lease expired because a server stopped or
+   died mid-call, and runs the same steps. COP is a pure function of the
+   request, so running it twice is harmless.
+5. **Pending state in the UI:** "Pairing round N…" until the pairings arrive.
 
-**The job runner (`pkg/jobs`).** `pair_round` is its first kind; tournament
-automation (scheduled round starts, ready deadlines and so on) adds more kinds
-to the same table and runner later.
+There is no wake message and no polling on the normal path: the server that
+made the round pairable starts pairing at once. The runner only picks up
+what a server dropped, so its polling interval bounds recovery, not normal
+latency.
 
-```sql
-tournament_jobs (
-  id            bigserial primary key,
-  tournament_id uuid,
-  kind          text not null,              -- pair_round, ...
-  division      text not null default '',
-  round         int  not null default -1,
-  run_at        timestamptz not null,
-  lease_until   timestamptz,
-  done_at       timestamptz,
-  attempts      int not null default 0,
-  last_error    text,
-  unique (tournament_id, kind, division, round)
-);
-```
+**COP on the lambda.** COP needs a lot of CPU for a few seconds, a few times
+per tournament round. On the API servers it competes with moves for two
+cores; on an always-on worker we would pay for cores that sit idle. The
+lambda bills per millisecond, and divisions that finish at the same time
+each get their own CPUs.
 
-- **No fixed polling.** One goroutine sleeps until the next job is due
-  (`min(coalesce(lease_until, run_at))` over jobs not done), or until a wake
-  message arrives, and at most 5 minutes as a safety net. A `pair_round` job
-  is due at once, so with the wake message COP starts milliseconds after the
-  result commits. Idle cost: one indexed query every 5 minutes.
-- **Wake messages.** Whoever enqueues a job publishes
-  `tournament.jobs.wake` on NATS after the commit. Runners subscribe with a
-  plain subscription, not a queue group, so every runner hears it. A lost
-  wake delays a job by at most the safety-net sleep.
-- **Claims and leases.** Due jobs are claimed with `UPDATE … FOR UPDATE SKIP
-  LOCKED`, setting `lease_until = now + 30 s` (COP takes about 5 s). The
-  claim commits before the job runs: no transaction stays open across COP.
-  Each job goes to exactly one runner; if a runner dies mid-job its lease
-  expires and another takes it.
-- **Idempotent handlers.** Every handler re-checks the state under
-  `LockForChange`; pairing a round that is already paired is a no-op. So a
-  duplicate run or a retry after a lost lease is harmless.
-- **Shutdown.** On drain (section 5) the runner stops claiming. A job in
-  flight finishes or its lease expires.
+What exists: `services/cop-lambda`, deployed by hand with SAM as
+`COPPairFunction`. Its only caller is the API's public
+`PairService.HandlePairRequest` (the function has no URL and no resource
+policy), which TSH and `cmd/coprunner` call without an account. Today it has
+1,024 MB (about 0.6 vCPU) and a 20 s timeout. Over the last 60 days it ran
+104 times, averaging 4-6 s, at most 10.8 s.
 
-**Where it runs.**
+**Two functions from the one template.** The pairing job needs more CPU
+than TSH's calls do, and the public RPC has no auth:
 
-1. **Until the worker service exists:** in every API server. The runner is
-   built for several at once, so this is safe on one server and on two.
-2. **Then:** only in the worker service (section 7), behind a mode flag. API
-   servers only enqueue and wake. COP's CPU moves off the API servers with
-   it, or to the lambda. The worker then needs overlapping deploys, or
-   pairing waits out its restart.
+- `COPPairFunction` stays as it is, for `HandlePairRequest`. TSH keeps
+  working without accounts, and what an anonymous caller can spend stays
+  what it is today.
+- A second function, at higher memory, is invoked only by the pairing job,
+  directly through the AWS SDK with the API's IAM role. Nothing outside
+  AWS can call it.
+
+Its memory sets its CPU: Lambda gives 1 vCPU per 1,769 MB, up to 6 vCPU at
+10,240 MB. Measure the UI defaults (100,000 / 10,000 sims) at 4, 6 and 10 GB
+and take the knee. At 10 GB a 5 s pairing is 50 GB-s, under a tenth of a
+cent. Timeout 60 s.
+
+**Auth for `HandlePairRequest`, later and only if it is abused.**
+- Woogles API keys (`X-Api-Key`) already exist, and any account can create
+  one. TSH would send one from its config.
+- To get there: log whether each call carries a key, tell TSH users, then
+  require it.
+- A cap on sims and a limit on calls in flight are the cheaper first steps.
+- None of this is needed for the pairing job.
+
+**Other changes:**
+
+- **Deploy both functions from CI with the API.** They carry their own copy
+  of COP; deployed by hand, a COP fix reaches the API's tests but not the
+  pairings.
+- **Logging:** keep logging each request, so pairings can be checked after
+  the fact, as one line of JSON instead of indented. The log group keeps 14
+  days (the last call, on 2026-10-18, has already expired). Raise the
+  retention if we want to look further back.
+- **Dev and tests:** with no function name configured, `cop.COPPair` runs in
+  process, through the same steps. The job calls COP through an interface,
+  so tests use a fake.
+- **Permissions:** the API invokes the functions with its instance role.
+  `HandlePairRequest` already does, so the permission is likely in place for
+  the first function. Add the second, and check both on Fargate, where the
+  task role replaces the instance role.
+
+A Go lambda cold-starts in a few hundred milliseconds, small next to COP.
+
+**Tests** (against the test database, with a fake COP client that can be
+held on a channel, and leases short enough to expire within a test):
+
+1. **Mark, don't pair:** the last result of a round before a COP round
+   leaves the round pending with no pairings, and a `pair_round` row. A
+   change that fails after the row is written leaves neither.
+2. **No lock during COP:** with the fake held, another change to the same
+   tournament commits.
+3. **Normal path:** the fake answers; the pairings are applied and
+   published, and the job is done.
+4. **Changed meanwhile:** a score amended while the fake is held throws the
+   first answer away; COP runs again on the new request, and those
+   pairings are applied.
+5. **Paired by hand meanwhile:** the job finishes without touching the
+   director's pairings.
+6. **Server dies mid-call:** the first runner claims the job and stops
+   without finishing. A second runner on the same database doesn't take it
+   while the lease holds, takes it once it expires, and applies the
+   pairings.
+7. **One claim each:** with several runners polling at once, every due job
+   is claimed by exactly one.
+8. **Failures:** a failing COP raises `attempts` and pushes `run_at` back;
+   after the last attempt the directors get the failure through
+   `TakeAutoPairingFailures`.
+9. **Drain:** a draining runner claims nothing new, and the job in flight
+   finishes.
+10. **Old runner, new kind:** a runner without a handler for a kind leaves
+    its rows alone.
 
 "Round complete, next round not yet paired" already exists: MANUAL rounds,
 and lagged rounds whose follow-on pairing failed. `autoStartRounds` logs and
 carries on when the next round can't open, so the round start just waits for
 the job.
 
-Before COP moves to the lambda, `HandlePairRequest` needs auth and a cap on
-sims; today anyone can call it.
-
 Later, the same outbox could make bus publishes survive a crash between
 commit and publish. Not needed now: clients refetch when they reconnect.
 
-**Status (2026-11-11): planned.** Needed before two servers share the lock
-(step 5 below); with one server, COP under the lock blocks other changes for
-a few seconds, as it always has. It runs in the API servers first because the
-worker service comes later.
+**Status (2026-11-13): planned.** Revised from the 2026-11-11 plan: COP runs
+on the lambda, the server that commits the change starts the pairing, and
+there is no NATS wake message. Needed before two servers share the lock
+(step 6 of the order of work); with one server, COP under the lock blocks
+other changes for a few seconds, as it always has.
 
 ## 3. Event-stream API subscriptions
 
@@ -315,8 +365,8 @@ pairings or standings.
 
 - The poller claims each due broadcast (`ClaimBroadcastForPolling`, `FOR
   UPDATE SKIP LOCKED` on `next_poll_at`), so each feed is fetched once per
-  interval whatever the number of servers. It is one of the tickers of
-  section 7 and can move to the worker as is.
+  interval whatever the number of servers. It becomes a schedule in
+  `pkg/jobs` (section 7) as is.
 - It stores the feed, gzipped, in `broadcast_feeds` under a hash of its
   content, and writes it only when the hash changes. Failures are recorded
   there too and shown in the director panel; the stored feed stays.
@@ -403,44 +453,134 @@ This belongs in the contributor docs once the first overlapping deploy ships.
 
 ## 7. Background jobs
 
-What runs on every API server today, and what happens with two:
+Background work runs two ways today, and neither runs once.
+
+**Loops inside every API server:**
 
 | Job | Interval | With two servers |
 |---|---|---|
 | Real-time adjudicator (`bus.adjudicateGames`) | 10s | Safe: acts only under the game lock and re-checks. Twice the query load; after #2159 that is one 114ms query per server per tick. |
 | Correspondence adjudicator | 60s | Same. |
-| Seek expiry | 10 min | Safe: one SQL delete. |
-| Channel monitor | 5s | Per-server logging. Fine. |
-| Broadcast poller | 30s | Safe: each feed is claimed by one server (section 4). |
 | Analysis job reclaim | 30s | Safe: one SQL update. |
+| Broadcast poller | 30s | Safe: each feed is claimed by one server (section 4). |
 | VDO stream poller | ~60s, jittered | Duplicate calls to VDO.Ninja; deactivation is idempotent. |
+| Seek expiry | 10 min | Safe: one SQL delete. |
 | Client record pruner | daily | Safe (says so in its comment). |
-| Shadow summary | hourly | Per-server counters. Fine. |
+| Channel monitor | 5s | Per-server logging. Stays per server. |
+| Shadow summary | hourly | Per-server counters. Stays per server. |
 
-None of these is a correctness problem with two servers once section 4 is
-fixed. A separate worker service (the same binary in a worker mode, its own
-ECS service, one task) would remove the duplicate work and give these jobs one
-owner. It is worth doing, but after sections 1-5.
+**Maintenance tasks** (`cmd/maintenance`): a separate container, started by
+two EventBridge rules (`aws/cfn/maintenance-tasks.yaml`).
 
-Background work then comes in two kinds:
+| Rule | Tasks | Run time, last 7 days |
+|---|---|---|
+| Hourly at :01 UTC | blog RSS (calls the API with the admin key), sub badges, league hourly runner, archive sweep | usually 3 s, up to 7 min |
+| Daily at 05:00 UTC | Patreon token refresh, cancelled games, monitoring streams, expired sessions, unverified users, league unstarted-game reminder | about 30 s, once 4 min |
+| By hand | resend season-started emails | |
 
-- **Tickers** (the table above) are safe on every server and move to the
-  worker only to stop running twice.
-- **Durable jobs** must run once and survive deploys: rows in
-  `tournament_jobs`, run by the job runner of section 2a. The first kind is
-  COP pairing (`pair_round`); tournament automation adds more
-  (`docs/automated_tournaments_plan.md` §3.2). The runner starts out in the
-  API servers and moves to the worker with the tickers.
+Two problems with the maintenance container:
 
-The worker must use overlapping deploys (min 100% / max 200%, like the socket
-service), not stop-then-start. For tickers a 30-60 s gap would only delay a
-timeout, but durable jobs would wait it out: a 15 s "next round" countdown
-would take a minute, and a round's COP pairings would wait for the restart.
-Two workers running briefly during a deploy is safe, because jobs are claimed
-with `SKIP LOCKED` leases.
+- **It builds its own partial copy of the API's wiring.** The league hourly
+  runner starts league games with an event channel that a goroutine drains
+  (`cmd/maintenance/league_tasks.go`), so the events for those games never
+  reach a socket.
+- **Its long runs are email loops.** The 7-minute runs send 215
+  registration-open emails, 2 s apart, with nothing recording which went
+  out. That is fine in a container nobody stops; anything that restarts on
+  deploys would lose the rest of the loop.
 
-The scheduled maintenance tasks (`aws/cfn/maintenance-tasks.yaml`) already run
-as their own ECS task and are not affected.
+Coming: COP pairing (`pair_round`, section 2a) and tournament automation
+(scheduled round starts, ready deadlines;
+`docs/automated_tournaments_plan.md` §3.2).
+
+### One mechanism: `pkg/jobs`
+
+One table and one runner for everything above except the two per-server
+monitors.
+
+```sql
+jobs (
+  id           bigserial primary key,
+  kind         text not null,             -- adjudicate_realtime, pair_round, ...
+  key          text not null default '',  -- '' for schedules; tournament/division/round for pair_round
+  schedule     text,                      -- '@every 10s', '@hourly :01', '@daily 05:00'; null for one-off jobs
+  run_at       timestamptz not null,
+  lease_until  timestamptz,
+  done_at      timestamptz,               -- one-off jobs only
+  attempts     int not null default 0,
+  last_run_at  timestamptz,
+  last_ms      int,
+  last_error   text,
+  unique (kind, key)
+);
+```
+
+- **Schedules** are one row per periodic task, upserted by the runner at
+  startup. After each run, `run_at` moves to the next time the schedule
+  gives.
+- **One-off jobs** are `pair_round`, email batches, manual runs and,
+  later, tournament automation. `done_at` is set when they finish.
+- **Claims:** due rows are claimed with `UPDATE … FOR UPDATE SKIP LOCKED`,
+  setting `lease_until`, the pattern the broadcast poller uses. The claim
+  commits before the job runs. A runner only claims the kinds it has
+  handlers for, so an old server in a deploy leaves a new kind alone.
+- **No fixed polling.** The runner sleeps until the earliest `run_at`, at
+  most 30 s. The real-time adjudicator, every 10 s, is the most frequent
+  thing it wakes for. `pair_round` doesn't wait for it (section 2a).
+- **Concurrency:** each job runs in its own goroutine, up to a cap, so a
+  long email batch doesn't delay adjudication. A job can't overlap itself:
+  its row is claimed.
+- **Leases are renewed while a job runs.** A runner that dies loses its
+  leases when they expire (30 s, 60 s for `pair_round`), and another
+  runner takes the jobs.
+- **Every handler must be safe to run twice.** Most already are:
+  adjudication and pairing re-check under their locks, and the cleanups are
+  single statements. League emails need rework: one row per recipient
+  batch, marked as sent.
+- **Panics are recovered per job** and recorded as the job's error. The API
+  has no panic-recovery middleware, so an unrecovered panic in a job would
+  take the whole process down.
+- **Drain:** on SIGTERM the runner stops claiming and gives running jobs the
+  drain's time (section 5). A job still running after that is picked up
+  again when its lease expires.
+- **Visibility:** each run is a `job.run` span tagged with its kind, and the
+  row keeps the last run, duration and error. Alert when the oldest due job
+  is more than a minute late.
+- **Manual runs** (resend season-started emails) insert a one-off row.
+  `LEAGUE_NOW` testing runs against a local API.
+- **Tests:** schedules compute their next run (`@every`, `@hourly :01`,
+  `@daily 05:00`, in UTC); a schedule runs again after its run; a job that
+  panics is recorded and the runner carries on; claims, leases, expiry and
+  drain are covered by the `pair_round` tests (section 2a).
+
+### Where the runner runs
+
+**Recommended: inside the API servers, behind a flag (`JOBS_RUNNER`, on by
+default).** With COP on the lambda (section 2a), nothing left needs much CPU.
+Running in the API is the same wiring, so jobs send events like any request
+(the league games' dropped events are fixed by this alone). It costs nothing
+extra and doesn't wait on the infrastructure in section 1. With two API
+servers both run it; claims make each job run once.
+
+**Later, if needed: a worker service.** The same image with only the runner
+(`JOBS_RUNNER` on there, off in the API servers), its own ECS service, one
+task, overlapping deploys. A deploy change, not a code change. Worth it if
+jobs start to slow requests. It costs about $9/month at 0.25 vCPU and 0.5 GB
+on Fargate, and Fargate bills the reserved size, not wake-ups.
+
+To check before moving the maintenance tasks: the maintenance task role
+(`liwordsMaintenanceTaskRole`) grants SES for email. The API's role needs the
+same.
+
+### Order
+
+1. **`pkg/jobs` and the `jobs` table**, running in the API servers, with the
+   API's loops as schedules. The loops go away.
+2. **Maintenance tasks as schedules.** Check one run of each, then disable
+   the EventBridge rules. `cmd/maintenance` is kept only to insert manual
+   runs.
+3. **COP `pair_round` on the lambda** (section 2a).
+4. **League emails in resumable batches.**
 
 ## 8. Socket server
 
@@ -457,22 +597,25 @@ some jitter, so a deploy doesn't reconnect every client in the same second.
 
 ## Order of work
 
-1. **Measure tournaments** (section 2, step 0): the `Cache.Get` span.
-2. **Small fixes, each safe on one server:**
-   - event-stream subscriptions (section 3);
-   - broadcast feed refresh (section 4);
-   - draining: health check, NATS drain, tracked handlers, `stopTimeout`
-     (section 5). This one helps immediately: deploys stop killing moves.
-3. **Tournaments without the cache**, with a lock per tournament (section 2).
-   Then COP pairing as a job outside the lock (section 2a).
-4. **Infrastructure:** Fargate (or dynamic ports), overlapping deploys, load
-   balancer timings (section 1).
-5. **Two API servers on staging:** bots playing real-time games and a
+1. **Measure tournaments** (section 2, step 0): the `Cache.Get` span. Done.
+2. **Small fixes, each safe on one server:** event-stream subscriptions
+   (section 3), broadcast feeds (section 4), draining (section 5). Done;
+   `stopTimeout` waits for step 5.
+3. **Tournaments without the cache**, with a lock per tournament (section
+   2). Done.
+4. **Jobs and COP off the lock** (sections 7 and 2a): `pkg/jobs` in the API
+   servers with the API's loops, then the maintenance tasks, then COP
+   `pair_round` on the lambda, then resumable league emails.
+5. **Infrastructure:** Fargate (or dynamic ports), overlapping deploys, load
+   balancer timings, `stopTimeout` (section 1).
+6. **Two API servers on staging:** bots playing real-time games and a
    tournament round while deploying, then killing a server mid-game.
-6. **Production:** overlapping deploys first, then two servers.
-7. **Worker service** for the background jobs (section 7).
+7. **Production:** overlapping deploys first, then two servers.
 
-The version-skew rules (section 6) apply from step 4 on.
+A separate worker service is no longer a step: the runner moves out of the
+API servers only if jobs start to slow requests (section 7).
+
+The version-skew rules (section 6) apply from step 5 on.
 
 ## Not covered yet
 
