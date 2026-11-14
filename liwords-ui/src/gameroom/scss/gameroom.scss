@@ -2195,11 +2195,13 @@ p.rune {
 }
 
 // the rack being set, one row of seven, kept its height when empty
+// in the grid's own box, its tiles in the grid's columns from the left, the
+// slots it has not filled left empty
 .rack-editor-rack {
   display: flex;
-  justify-content: center;
   margin: 12px auto 0;
   min-height: $tile-size-desktop;
+  width: 326px;
 
   .tile {
     cursor: pointer;
