@@ -211,6 +211,10 @@ const END_DEPTH = 127;
 // A pre-endgame play's rows read for it at a time, from each part.
 const DRAWS_PAGE = 50;
 
+// How many of a pre-endgame's plays are listed at first, and how many more on
+// each "more": a pre-endgame values every play, tens of thousands of them.
+const PLAYS_PAGE = 50;
+
 // What each player knows in a pre-endgame of two or more tiles in the bag
 // once the first move is made: nothing more, each choosing blind over every
 // split of the tiles they cannot see until the bag empties; or both racks.
@@ -921,15 +925,24 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
   // the best first, or the best alone where the answer lists no other. The
   // best's own tiles or sets are the answer's where its entry has none. With
   // an empty bag, every first move once valued, beside the line.
-  const plays = useMemo(() => {
+  // how many of the plays are listed, a page more on each "more"
+  const [playsPage, setPlaysPage] = useState<{ job?: number; upTo: number }>({
+    upTo: PLAYS_PAGE,
+  });
+  const playsUpTo = playsPage.job === job.job ? playsPage.upTo : PLAYS_PAGE;
+  const listed: Array<EndgameCandidate> = useMemo(() => {
     if (!solved) return [];
     if (solved.bag === 0 && !solved.candidates?.length) return [];
-    const listed: Array<EndgameCandidate> = solved.candidates?.length
+    return solved.candidates?.length
       ? solved.candidates
       : solved.play
         ? [{ play: solved.play, value: solved.value, win: solved.win }]
         : [];
-    return listed.map((c, i) => {
+  }, [solved]);
+  const morePlays = Math.max(0, listed.length - playsUpTo);
+  const plays = useMemo(() => {
+    if (!solved) return [];
+    return listed.slice(0, playsUpTo).map((c, i) => {
       const tiles = c.tiles ?? (i === 0 ? solved.tiles : undefined);
       // a play's sets are read a page at a time, the best's as any other's
       // (the answer gives the best none of its own); a part's answer merged
@@ -948,7 +961,7 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
         sets: !!(draws?.length || c.deals),
       };
     });
-  }, [solved, lab, lead]);
+  }, [solved, listed, playsUpTo, lab, lead]);
   // the play whose tiles or sets are shown, the best unless another is picked
   const [picked, setPicked] = useState<string>();
   const shown =
@@ -1199,6 +1212,21 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
               </tr>
             );
           })}
+          {morePlays > 0 && (
+            <tr className="lab-tile">
+              <td colSpan={7}>
+                <Button
+                  type="link"
+                  size="small"
+                  onClick={() =>
+                    setPlaysPage({ job: job.job, upTo: playsUpTo + PLAYS_PAGE })
+                  }
+                >
+                  {`${morePlays} more play${morePlays === 1 ? "" : "s"}`}
+                </Button>
+              </td>
+            </tr>
+          )}
           {shown ? (
             <tr className="lab-tile lab-draws-head">
               <td className="lab-who" />

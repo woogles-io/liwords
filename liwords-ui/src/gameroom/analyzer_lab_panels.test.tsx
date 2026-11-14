@@ -533,6 +533,39 @@ describe("the endgame panel", () => {
     expect(bodyRows()).toEqual(["andy8HBA10AEEII50.0%+2.00"]);
   });
 
+  it("lists a pre-endgame's plays a page at a time", async () => {
+    render(
+      <Store>
+        <EndgamePanel
+          lab={position([A, B, E, E, I, I, I, I])}
+          onClose={() => {}}
+        />
+      </Store>,
+    );
+    await step({
+      bag: 1,
+      steps: 3,
+      exact: false,
+      play: across(0, 0, [A]),
+      value: 120,
+      spread: 14,
+      depth: 1,
+      win: 1,
+      candidates: Array.from({ length: 120 }, (_, i) => ({
+        play: across(i % 15, Math.floor(i / 15), [A]),
+        value: 120 - i,
+        exact: false,
+      })),
+    });
+    const plays = () => bodyRows().filter((r) => r.endsWith(".00")).length;
+    expect(plays()).toBe(50);
+    fireEvent.click(screen.getByRole("button", { name: "70 more plays" }));
+    expect(plays()).toBe(100);
+    fireEvent.click(screen.getByRole("button", { name: "20 more plays" }));
+    expect(plays()).toBe(120);
+    expect(screen.queryByRole("button", { name: /more play/ })).toBeNull();
+  });
+
   it("lists every move valued with a tile in the bag, each with its tiles, and shows the tiles of the one picked", async () => {
     render(
       <Store>
