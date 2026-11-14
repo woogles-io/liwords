@@ -251,3 +251,22 @@ it("does not use the rack on an Enter an input method is still using", () => {
   fireEvent.keyDown(box, { key: "Enter" });
   expect(use).toHaveBeenCalledTimes(1);
 });
+
+it("uses the rack on Enter after a tile tap took the focus from the box", () => {
+  const use = vi.fn();
+  const { container } = renderEditor([], { use });
+  const tile = container.querySelector(".rack-editor-tiles .tile")!;
+  fireEvent.click(tile);
+  fireEvent.keyDown(tile, { key: "Enter" });
+  expect(use).toHaveBeenCalledTimes(1);
+});
+
+it("does not use the rack on the Enter Safari sends as a composition ends", () => {
+  const use = vi.fn();
+  renderEditor([], { use });
+  fireEvent.keyDown(screen.getByRole("textbox"), {
+    key: "Enter",
+    keyCode: 229,
+  });
+  expect(use).not.toHaveBeenCalled();
+});

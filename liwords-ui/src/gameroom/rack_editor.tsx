@@ -71,13 +71,27 @@ export const RackEditor = (props: Props) => {
     setCurrentRack(rack);
     setCurRackStr(calculateRackStr(rack));
   };
-  // (a tile tapped leaves the focus where it is: moving it to the box would
-  // raise a phone's on-screen keyboard at every tap)
+  // (a tile tapped is not given the focus to the box: that would raise a
+  // phone's on-screen keyboard at every tap. Enter and Esc are heard from
+  // anywhere in the dialog instead.)
   const handleKeyDown = (evt: React.KeyboardEvent) => {
+    // the dialog is drawn in the board's tree, so its keys would reach the
+    // board's own handler: they stop here
+    evt.stopPropagation();
     // a key an input method is still making a letter with is that letter's
-    if (composing.current || evt.nativeEvent.isComposing) return;
+    // (Safari ends the composition before the keydown of the Enter that
+    // ends it, which it marks with key code 229)
+    if (
+      composing.current ||
+      evt.nativeEvent.isComposing ||
+      evt.keyCode === 229
+    ) {
+      return;
+    }
     if (evt.key === "Enter") {
       props.rackCallback(currentRack);
+    } else if (evt.key === "Escape") {
+      props.cancelCallback();
     }
   };
   useEffect(() => {
@@ -123,17 +137,7 @@ export const RackEditor = (props: Props) => {
   };
 
   return (
-    // The dialog is drawn in the board's tree, so its keys would reach the
-    // board's own handler: they stop here. Esc anywhere in it cancels.
-    <div
-      className="rack-editor"
-      onKeyDown={(evt) => {
-        evt.stopPropagation();
-        if (evt.key === "Escape" && !evt.nativeEvent.isComposing) {
-          props.cancelCallback();
-        }
-      }}
-    >
+    <div className="rack-editor" onKeyDown={handleKeyDown}>
       <Input
         ref={inputRef}
         // short enough for the box at any width: the tiles below spell out
@@ -152,7 +156,6 @@ export const RackEditor = (props: Props) => {
           composing.current = false;
           readRack(evt.currentTarget.value);
         }}
-        onKeyDown={handleKeyDown}
       />
       {/* the rack being set, a tile taken out by a click on it */}
       <div className="rack-editor-rack">
