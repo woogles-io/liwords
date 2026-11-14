@@ -245,20 +245,20 @@ const inferring = <T>(
 
 // An endgame let go, its table kept to warm the next endgame made on this
 // worker (a what-if's, after a move made on it): the wasm's warm_from, which
-// takes it. Anything else made, or another lexicon loaded, drops it.
+// takes it. A sim or threats made, or another lexicon loaded, drops it.
 let warm: number | undefined;
 const dropWarm = (wolges: Wolges) => {
   if (warm !== undefined) wolges.endgame_free(warm);
   warm = undefined;
 };
 
-// The job held let go; an endgame of no bag model (an empty bag's, or one
-// tile's) is kept to warm the next one when keepWarm says so.
+// The job held let go; an endgame is kept to warm the next one when keepWarm
+// says so.
 const freeJob = (wolges: Wolges, keepWarm = false) => {
   running = false;
   if (!job) return;
   if (job.kind === "sim") wolges.sim_free(job.handle);
-  else if (keepWarm && !job.modeled) {
+  else if (keepWarm) {
     dropWarm(wolges);
     warm = job.handle;
   } else wolges.endgame_free(job.handle);
@@ -431,6 +431,7 @@ const handle = async (req: LabRequest): Promise<unknown> => {
     case "analyze":
       return JSON.parse(wolges.analyze(req.args.request));
     case "threats_new": {
+      dropWarm(wolges);
       const { result: handle, inferred } = inferring(
         wolges,
         req.args.request,
@@ -456,11 +457,11 @@ const handle = async (req: LabRequest): Promise<unknown> => {
     case "endgame": {
       freeJob(wolges, true);
       const modeled = JSON.parse(req.args.request).model !== undefined;
-      // warmed by the endgame before it where the wasm takes it (both bags
-      // empty, the same rules and lexicon, the board holding every tile of
-      // the earlier one's); made cold otherwise
+      // warmed by the endgame before it where the wasm takes it (the same
+      // rules and lexicon, the board holding every tile of the earlier
+      // one's); made cold otherwise
       let handle: number | undefined;
-      if (warm !== undefined && !modeled) {
+      if (warm !== undefined) {
         try {
           handle = wolges.endgame_new(
             JSON.stringify({

@@ -205,13 +205,29 @@ describe("the lab's worker", () => {
     await send(4, "free", { job: 2 });
     await send(5, "endgame", { request: '{"c":3}' });
     expect(wasm.endgame_new).toHaveBeenLastCalledWith('{"c":3}');
-    // a pre-endgame (a bag model) neither keeps nor takes a table
-    wasm.endgame_new.mockClear();
+    // a pre-endgame (a bag model) keeps and takes a table too
     await send(6, "free", { job: 3 });
     await send(7, "endgame", { request: '{"model":"info_sets"}' });
-    expect(wasm.endgame_new).toHaveBeenCalledTimes(1);
-    expect(wasm.endgame_new).toHaveBeenCalledWith('{"model":"info_sets"}');
+    expect(wasm.endgame_new).toHaveBeenLastCalledWith(
+      JSON.stringify({ model: "info_sets", warm_from: 7 }),
+    );
+    await send(8, "free", { job: 4 });
+    await send(9, "endgame", { request: '{"d":4}' });
+    expect(wasm.endgame_new).toHaveBeenLastCalledWith(
+      JSON.stringify({ d: 4, warm_from: 7 }),
+    );
     wasm.endgame_new.mockImplementation(() => 7);
+  });
+
+  it("lets the endgame kept to warm go when threats are made", async () => {
+    const first = (await send(1, "endgame", { request: '{"a":1}' }))
+      .result as number;
+    await send(2, "free", { job: first });
+    expect(wasm.endgame_free).not.toHaveBeenCalled();
+    await send(3, "threats_new", { request: '{"rack":[1]}' });
+    expect(wasm.endgame_free).toHaveBeenCalledWith(7);
+    await send(4, "endgame", { request: '{"b":2}' });
+    expect(wasm.endgame_new).toHaveBeenLastCalledWith('{"b":2}');
   });
 
   it("stops an endgame whose step searched no node, out of memory", async () => {
