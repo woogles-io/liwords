@@ -550,9 +550,10 @@ jobs (
   is more than a minute late.
 - **Manual runs** (resend season-started emails) insert a one-off row.
   `LEAGUE_NOW` testing runs against a local API.
-- **Tests:** cron schedules compute their next run, in UTC; a schedule runs again after its run; a job that
-  panics is recorded and the runner carries on; claims, leases, expiry and
-  drain are covered by the `pair_round` tests (section 2a).
+- **Tests:** cron schedules compute their next run, in UTC; a schedule runs
+  again after its run; a job that panics is recorded and the runner carries
+  on; claims, leases, expiry and drain are covered by the `pair_round` tests
+  (section 2a).
 
 **Status (2026-11-14):** step 1 below in code (`pkg/jobs`,
 `cmd/liwords-api/jobs.go`). Each API server runs a runner unless started
