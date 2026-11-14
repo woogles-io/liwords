@@ -207,6 +207,9 @@ const dealsText = (count: number) =>
 // The depth a pre-endgame's answer gives once searched to the end.
 const END_DEPTH = 127;
 
+// A pre-endgame play's rows read for it at a time, from each part.
+const DRAWS_PAGE = 50;
+
 // What each player knows in a pre-endgame of two or more tiles in the bag
 // once the first move is made: nothing more, each choosing blind over every
 // split of the tiles they cannot see until the bag empties; or both racks.
@@ -910,6 +913,7 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
   const [read, setRead] = useState<{
     key: string;
     draws: Array<EndgameDraw>;
+    total: number;
   }>();
   const readKey =
     shown && !shown.tiles && !shown.draws && shown.sets && job.job !== undefined
@@ -918,15 +922,22 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
   const readPlay = shown ? JSON.stringify(shown.play) : undefined;
   const readTick = Math.floor(ranMs / 1000);
   const readExact = !!solved?.exact;
+  // how many of its rows each part reads, a page more on each "more"
+  const [readPage, setReadPage] = useState<{ key?: string; upTo: number }>({
+    upTo: DRAWS_PAGE,
+  });
+  const upTo = readPage.key === readKey ? readPage.upTo : DRAWS_PAGE;
   useEffect(() => {
     if (readKey === undefined || job.job === undefined) return;
     let current = true;
-    labCall<Array<EndgameDraw> | undefined>({
+    labCall<{ rows: Array<EndgameDraw>; total: number } | undefined>({
       op: "draws",
-      args: { job: job.job, play: readPlay! },
+      args: { job: job.job, play: readPlay!, upTo },
     })
-      .then((draws) => {
-        if (current && draws) setRead({ key: readKey, draws });
+      .then((got) => {
+        if (current && got) {
+          setRead({ key: readKey, draws: got.rows, total: got.total });
+        }
       })
       .catch(() => {});
     return () => {
@@ -934,9 +945,14 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
     };
     // the play and job are in readKey
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [readKey, readTick, readExact]);
+  }, [readKey, readTick, readExact, upTo]);
   const shownDraws =
     shown?.draws ?? (read && read.key === readKey ? read.draws : undefined);
+  // the rows not yet read, offered a page at a time
+  const moreDraws =
+    !shown?.draws && read && read.key === readKey
+      ? read.total - read.draws.length
+      : 0;
 
   // the players by who moves first in the line: the player to move, then the
   // other
@@ -1190,6 +1206,21 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
                 ))}
               </React.Fragment>
             ))}
+          {moreDraws > 0 && (
+            <tr className="lab-tile">
+              <td colSpan={7}>
+                <Button
+                  type="link"
+                  size="small"
+                  onClick={() =>
+                    setReadPage({ key: readKey, upTo: upTo + DRAWS_PAGE })
+                  }
+                >
+                  {`${moreDraws} more draw${moreDraws === 1 ? "" : "s"}`}
+                </Button>
+              </td>
+            </tr>
+          )}
         </tbody>
       </table>
     </PanelFrame>

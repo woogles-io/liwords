@@ -64,9 +64,10 @@ export type LabRequest =
   // kept, in at most ms, without stepping; sent as a step's answer is
   | { op: "values"; args: { job: number; ms: number } }
   // a pre-endgame play's rows, what it gains for each set the bag may hold,
-  // read without stepping; the play as its answer gives it, in JSON. A step's
-  // answer gives each play's deals, not its rows.
-  | { op: "draws"; args: { job: number; play: string } }
+  // read without stepping; the play as its answer gives it, in JSON; its
+  // first upTo rows where given, with how many it has in all. A step's answer
+  // gives each play's deals, not its rows.
+  | { op: "draws"; args: { job: number; play: string; upTo?: number } }
   // a sim's answer as it stands, compared with the play given in place of the
   // one it is compared with, answered and not sent
   | { op: "peek"; args: { job: number; against: string } }
@@ -112,7 +113,12 @@ type Answer = {
   out_of_memory?: boolean;
   nodes?: number;
   iterations?: number;
-  candidates?: Array<{ state: string; play?: unknown; draws?: unknown }>;
+  candidates?: Array<{
+    state: string;
+    play?: unknown;
+    draws?: unknown;
+    draws_total?: number;
+  }>;
 };
 
 // How a sim prunes its candidates, told to it at every step: wolges's own
@@ -517,9 +523,21 @@ const handle = async (req: LabRequest): Promise<unknown> => {
       );
       if (i < 0) return undefined;
       const read: Answer = JSON.parse(
-        wolges.endgame_step(job.handle, JSON.stringify({ ms: 0, draws_of: i })),
+        wolges.endgame_step(
+          job.handle,
+          JSON.stringify({
+            ms: 0,
+            draws_of: i,
+            ...(req.args.upTo !== undefined
+              ? { draws_range: [0, req.args.upTo] }
+              : {}),
+          }),
+        ),
       );
-      return read.candidates?.[i]?.draws;
+      const c = read.candidates?.[i];
+      if (!c?.draws) return undefined;
+      const rows = c.draws as Array<unknown>;
+      return { rows, total: c.draws_total ?? rows.length };
     }
     case "run": {
       if (!job || job.id !== req.args.job) throw new Error("no such job");

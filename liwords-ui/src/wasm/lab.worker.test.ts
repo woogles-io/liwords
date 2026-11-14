@@ -320,7 +320,7 @@ describe("the lab's worker", () => {
       );
     const job = (await send(1, "endgame", { request: "{}" })).result as number;
     const read = await send(2, "draws", { job, play: JSON.stringify(ba) });
-    expect(read.result).toEqual(rows);
+    expect(read.result).toEqual({ rows, total: 1 });
     expect(wasm.endgame_step).toHaveBeenNthCalledWith(
       1,
       7,
@@ -337,6 +337,30 @@ describe("the lab's worker", () => {
       (await send(3, "draws", { job, play: JSON.stringify(ba) })).result,
     ).toBeUndefined();
     expect(wasm.endgame_step).toHaveBeenCalledTimes(3);
+
+    // a page of them, with how many it has in all
+    wasm.endgame_step
+      .mockReturnValueOnce(
+        JSON.stringify({ candidates: [{ play: pass }, { play: ba }] }),
+      )
+      .mockReturnValueOnce(
+        JSON.stringify({
+          candidates: [
+            { play: pass },
+            { play: ba, draws: rows, draws_total: 9 },
+          ],
+        }),
+      );
+    const page = await send(4, "draws", {
+      job,
+      play: JSON.stringify(ba),
+      upTo: 1,
+    });
+    expect(page.result).toEqual({ rows, total: 9 });
+    expect(wasm.endgame_step).toHaveBeenLastCalledWith(
+      7,
+      JSON.stringify({ ms: 0, draws_of: 1, draws_range: [0, 1] }),
+    );
   });
 
   it("steps an endgame the same frame every step, whatever its bag and depth", async () => {
