@@ -35,23 +35,15 @@ const (
 	pollerTickInterval        = 30 * time.Second
 )
 
-// StartPoller launches the background feed-polling goroutine.
-// Call once from main after NATS is ready.
-func (bs *BroadcastService) StartPoller(ctx context.Context) {
-	go func() {
-		ticker := time.NewTicker(pollerTickInterval)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-ticker.C:
-				bs.runPollerCycle(ctx)
-			}
-		}
-	}()
-	log.Info().Msg("broadcast-poller-started")
+// PollDue polls the broadcasts that are due. Run every pollerTickInterval, as
+// a job (pkg/jobs).
+func (bs *BroadcastService) PollDue(ctx context.Context) error {
+	bs.runPollerCycle(ctx)
+	return nil
 }
+
+// PollInterval is how often PollDue should run.
+const PollInterval = pollerTickInterval
 
 // maxPollsPerCycle bounds one cycle's polls, so a backlog (after downtime,
 // say) is spread over a few cycles.

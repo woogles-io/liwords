@@ -59,6 +59,7 @@ import (
 	"github.com/woogles-io/liwords/pkg/gameplay"
 	"github.com/woogles-io/liwords/pkg/humancheck"
 	"github.com/woogles-io/liwords/pkg/integrations"
+	"github.com/woogles-io/liwords/pkg/jobs"
 	"github.com/woogles-io/liwords/pkg/league"
 	"github.com/woogles-io/liwords/pkg/memento"
 	"github.com/woogles-io/liwords/pkg/mod"
@@ -584,11 +585,25 @@ func main() {
 		streamRoute(middlewares.Then(pubsubBus.EventAPIServerInstance())))
 
 	go pubsubBus.ProcessMessages(ctx)
-	go vdoWebhookService.Start(ctx)
-	go analysisService.StartReclaimWorker(ctx)
-	go pruneClientRecords(ctx, stores.UserStore)
 	go gamestore.RunShadowSummary(ctx, cfg, time.Hour)
-	broadcastService.StartPoller(ctx)
+
+	var jobRunner *jobs.Runner
+	if cfg.RunJobs {
+		jobRunner = jobs.NewRunner(stores.Queries, jobs.Options{})
+		registerJobs(jobRunner, jobDeps{
+			bus:        pubsubBus,
+			analysis:   analysisService,
+			broadcasts: broadcastService,
+			vdo:        vdoWebhookService,
+			users:      stores.UserStore,
+		})
+		go func() {
+			jobsCtx := log.Logger.WithContext(cfg.WithContext(ctx))
+			if err := jobRunner.Run(jobsCtx); err != nil {
+				log.Error().Err(err).Msg("jobs-runner-failed")
+			}
+		}()
+	}
 
 	go func() {
 		signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
@@ -605,6 +620,12 @@ func main() {
 		}); err != nil {
 			// Error from closing listeners, or context timeout:
 			log.Error().Msgf("HTTP server Shutdown: %v", err)
+		}
+		// Then jobs, which send events through the bus too.
+		if jobRunner != nil {
+			if err := jobRunner.Drain(ctx); err != nil {
+				log.Error().Err(err).Msg("jobs-drain-on-shutdown")
+			}
 		}
 		// Then moves and other socket messages: stop taking them, and
 		// finish the ones in progress (see pkg/bus/drain.go).

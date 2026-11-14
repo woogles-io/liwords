@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"math"
 	"strings"
-	"time"
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
@@ -518,21 +517,10 @@ func (s *AnalysisService) FailJob(
 	return connect.NewResponse(&pb.FailJobResponse{Accepted: true}), nil
 }
 
-// StartReclaimWorker reclaims stale jobs in background
-func (s *AnalysisService) StartReclaimWorker(ctx context.Context) {
-	ticker := time.NewTicker(30 * time.Second)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-			if err := s.queries.ReclaimStaleJobs(ctx); err != nil {
-				log.Error().Err(err).Msg("failed to reclaim stale jobs")
-			}
-		}
-	}
+// ReclaimStaleJobs gives back analysis jobs whose workers stopped reporting,
+// so another worker can take them. Run every 30s, as a job (pkg/jobs).
+func (s *AnalysisService) ReclaimStaleJobs(ctx context.Context) error {
+	return s.queries.ReclaimStaleJobs(ctx)
 }
 
 // RequestAnalysis handles user request to analyze their game

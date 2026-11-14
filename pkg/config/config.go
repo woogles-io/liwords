@@ -78,6 +78,7 @@ type Config struct {
 	SecureCookies         bool
 	SkipEmailVerification bool
 	RunMigrations         bool
+	RunJobs               bool
 	QuitAfterMigration    bool
 
 	// Phase 2 migration flags
@@ -130,6 +131,7 @@ func (c *Config) Load(args []string) error {
 	fs.BoolVar(&c.SecureCookies, "secure-cookies", false, "use Secure flag on cookies (set to true for HTTPS/production)")
 	fs.BoolVar(&c.SkipEmailVerification, "skip-email-verification", false, "skip email verification for new user registrations (for dev/testing)")
 	fs.BoolVar(&c.RunMigrations, "run-migrations", false, "run database migrations on startup")
+	fs.BoolVar(&c.RunJobs, "run-jobs", true, "run background jobs (pkg/jobs) in this process")
 	fs.BoolVar(&c.QuitAfterMigration, "quit-after-migration", false, "quit after running migrations (for dedicated migration tasks)")
 	fs.BoolVar(&c.DualWriteTurns, "dual-write-turns", false, "dual-write game events to game_turns alongside history bytea (migration phase 2)")
 	fs.BoolVar(&c.WriteOngoingGames, "write-ongoing-games", false, "maintain the ongoing_games row for each live game, in the same transaction as the save")

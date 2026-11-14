@@ -553,6 +553,12 @@ jobs (
   panics is recorded and the runner carries on; claims, leases, expiry and
   drain are covered by the `pair_round` tests (section 2a).
 
+**Status (2026-11-14):** step 1 below in code (`pkg/jobs`,
+`cmd/liwords-api/jobs.go`). Each API server runs a runner unless started
+with `-run-jobs=false`; the API's loops are schedules, and the channel
+monitor and shadow summary stay per server. Shutdown drains the runner
+after HTTP and before the bus, since jobs send events through the bus.
+
 ### Where the runner runs
 
 **Recommended: inside the API servers, behind a flag (`JOBS_RUNNER`, on by

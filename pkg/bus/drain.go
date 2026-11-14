@@ -19,8 +19,7 @@ package bus
 //
 //  1. Stop the subscriptions. Messages NATS already sent us still arrive; new
 //     ones go to the other servers in the queue groups, or, with one server,
-//     nowhere (as they did while the server was down anyway). Adjudication
-//     and seek expiry stop starting.
+//     nowhere (as they did while the server was down anyway).
 //  2. Wait until the loop has taken everything buffered.
 //  3. Wait until every handler is done and the loop has published every
 //     event. Handlers still publish: the NATS connection stays open, so it
@@ -34,6 +33,9 @@ package bus
 // could hold while the loop was still in the middle of one.
 //
 // ProcessMessages must keep running until Drain returns.
+//
+// Jobs (pkg/jobs) such as adjudication also send events through the bus, so
+// the job runner must be drained first.
 //
 // Drain records a "bus.drain" span with an event as each step finishes. The
 // messages it waited for are the spans from the same host (host.name) inside
@@ -83,7 +85,6 @@ func (b *Bus) Drain(ctx context.Context) (err error) {
 		}
 	}()
 
-	b.draining.Store(true)
 	for _, sub := range b.subscriptions {
 		if err := sub.Drain(); err != nil {
 			return err
