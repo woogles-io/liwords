@@ -9,6 +9,12 @@ export const OUT_OF_MEMORY =
 export const OUT_OF_MEMORY_ALONE =
   "Out of memory: the solve has no room to search, even on one worker.";
 
+// The cap reached before the first moves were all listed: the position's
+// moves alone need more memory than the device allows, on any number of
+// workers, however often it is tried.
+export const OUT_OF_MEMORY_MOVES =
+  "Out of memory: this position has more first moves than the memory allows.";
+
 // A wasm error names a tile by its number ("too many tile 17"): the tile's
 // letter in its place, as the page shows tiles.
 export const namedTiles = (text: string, rune: (tile: number) => string) =>

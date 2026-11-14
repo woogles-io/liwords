@@ -18,7 +18,11 @@ import {
 } from "../gen/api/proto/vendored/macondo/macondo_pb";
 import { Store } from "../store/store";
 import { LabEvent } from "../wasm/lab";
-import { OUT_OF_MEMORY, OUT_OF_MEMORY_ALONE } from "../wasm/lab_errors";
+import {
+  OUT_OF_MEMORY,
+  OUT_OF_MEMORY_ALONE,
+  OUT_OF_MEMORY_MOVES,
+} from "../wasm/lab_errors";
 import { AnalyzerMove } from "./analyzer";
 import {
   EndgamePanel,
@@ -742,6 +746,24 @@ describe("the endgame panel", () => {
     emit({ job: 1, error: OUT_OF_MEMORY, firstStep: true });
     await waitFor(() => expect(made()).toEqual([4, 4, 2]));
     watch.disconnect();
+  });
+
+  it("says when the first moves alone did not fit, trying no more", async () => {
+    lab.parts = 4;
+    render(
+      <Store>
+        <EndgamePanel
+          lab={position([A, B, E, E, I, I, I, I, I])}
+          onClose={() => {}}
+        />
+      </Store>,
+    );
+    await waitFor(() =>
+      expect(lab.calls.filter((c) => c.op === "run")).toHaveLength(1),
+    );
+    emit({ job: 1, error: OUT_OF_MEMORY_MOVES, firstStep: true });
+    expect(await screen.findByText(OUT_OF_MEMORY_MOVES)).toBeInTheDocument();
+    expect(lab.calls.filter((c) => c.op === "endgame")).toHaveLength(1);
   });
 
   it("tries once more again on a position come back to", async () => {

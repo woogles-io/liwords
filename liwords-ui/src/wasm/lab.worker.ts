@@ -8,7 +8,7 @@
 // {event: {job, error}}. A job freed, by a request or by the next job made,
 // says so as {event: {job, freed: true}}.
 
-import { OUT_OF_MEMORY } from "./lab_errors";
+import { OUT_OF_MEMORY, OUT_OF_MEMORY_MOVES } from "./lab_errors";
 import { importWolges } from "./wolges";
 
 // The wasm is imported, not loaded statically: a static import would make this
@@ -113,6 +113,9 @@ type Answer = {
   // true when the step stopped short of exact on the memory cap, in wasms
   // that say so
   out_of_memory?: boolean;
+  // where the cap was reached, in wasms that say so: "moves" while the first
+  // moves were still being listed
+  out_of_memory_in?: string;
   nodes?: number;
   iterations?: number;
   candidates?: Array<{
@@ -305,7 +308,14 @@ const step = async (j: Job, chain: number, ms: number) => {
       // the memory the instance grew to stays with it: the page lets this
       // worker go and makes a fresh one for the next job
       post({
-        event: { job: j.id, error: OUT_OF_MEMORY, firstStep: !j.stepped },
+        event: {
+          job: j.id,
+          error:
+            answer.out_of_memory_in === "moves"
+              ? OUT_OF_MEMORY_MOVES
+              : OUT_OF_MEMORY,
+          firstStep: !j.stepped,
+        },
         spent: true,
       });
       return;
