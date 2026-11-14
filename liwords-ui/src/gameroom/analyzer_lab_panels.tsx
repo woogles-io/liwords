@@ -500,6 +500,9 @@ const ranText = (ms: number) => {
 };
 
 type JobState<T> = {
+  // the key the state is of: until the job of a new key is made, the last
+  // key's state is still the one held
+  key?: string;
   job?: number;
   answer?: T;
   error?: string;
@@ -514,7 +517,7 @@ type JobState<T> = {
 const useLabJob = <T,>(start: (() => Promise<number>) | null, key: string) => {
   const [state, setState] = useState<JobState<T>>({ running: false });
   useEffect(() => {
-    setState({ running: false });
+    setState({ key, running: false });
     if (!start) return;
     let current = true;
     let job: number | undefined;
@@ -539,11 +542,12 @@ const useLabJob = <T,>(start: (() => Promise<number>) | null, key: string) => {
         job = made;
         const ms = await frameMs();
         if (!current) return;
-        setState({ job, running: true });
+        setState({ key, job, running: true });
         await labCall({ op: "run", args: { job, ms } });
       } catch (e) {
         if (current) {
           setState({
+            key,
             running: false,
             error: e instanceof Error ? e.message : String(e),
           });
@@ -802,6 +806,7 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
   // the solve tried once more, on a fresh worker, after running out of
   // memory on its first step
   const [retried, setRetried] = useState<string>();
+  const againKey = `${jobKey}/again`;
   const job = useLabJob<EndgameAnswer>(
     solvable
       ? async () => {
@@ -857,7 +862,7 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
           return made;
         }
       : null,
-    `${jobKey}${retried === jobKey ? "/again" : ""}`,
+    retried === jobKey ? againKey : jobKey,
   );
   // a part out of room (the endgame's own graph and table not fitting beside
   // the lexicon): solved again on half the workers, each with twice the
@@ -866,12 +871,19 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
   // let go since, so the solve is tried once more, on a fresh worker
   // nothing failed from the player's side: the solve only starts cold, so
   // no error is shown while it does
+  // the job's state is of this solve, not the one before it, still held
+  // until the job of this one is made
+  const ours = job.key === jobKey || job.key === againKey;
   const retrying =
-    job.error === OUT_OF_MEMORY && !!job.firstStep && retried !== jobKey;
-  const jobError = retrying ? undefined : job.error;
+    ours &&
+    job.error === OUT_OF_MEMORY &&
+    !!job.firstStep &&
+    job.key === jobKey;
+  const jobError = ours && !retrying ? job.error : undefined;
   if (retrying) {
-    setRetried(jobKey);
+    if (retried !== jobKey) setRetried(jobKey);
   } else if (
+    ours &&
     job.error === OUT_OF_MEMORY &&
     madeOn > 1 &&
     workers > madeOn / 2
@@ -962,13 +974,13 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
           setRead({ key: readKey, draws: got.rows, total: got.total });
         }
       })
-      .catch(() => {});
+      .catch((e) => console.error("reading the sets failed", e));
     return () => {
       current = false;
     };
-    // the play and job are in readKey
+    // the play and job are in readKey; read once more when the solve stops
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [readKey, readTick, readExact, upTo]);
+  }, [readKey, readTick, readExact, upTo, job.running]);
   const shownDraws =
     shown?.draws ?? (read && read.key === readKey ? read.draws : undefined);
   // the rows not yet read, offered a page at a time

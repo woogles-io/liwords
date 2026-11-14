@@ -698,6 +698,45 @@ describe("the endgame panel", () => {
     expect(made()).toHaveLength(3);
   });
 
+  it("tries once more on as many workers, no error shown, when the first step had no room", async () => {
+    lab.parts = 4;
+    render(
+      <Store>
+        <EndgamePanel
+          lab={position([A, B, E, E, I, I, I, I, I])}
+          onClose={() => {}}
+        />
+      </Store>,
+    );
+    const made = () =>
+      lab.calls
+        .filter((c) => c.op === "endgame")
+        .map((c) => (c.args as { parts: number }).parts);
+    const runs = (n: number) =>
+      waitFor(() =>
+        expect(lab.calls.filter((c) => c.op === "run")).toHaveLength(n),
+      );
+    // any render showing the error, however briefly, is caught
+    const shownError = vi.fn();
+    const watch = new MutationObserver(() => {
+      if (document.body.textContent?.includes(OUT_OF_MEMORY)) shownError();
+    });
+    watch.observe(document.body, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+    });
+    await runs(1);
+    emit({ job: 1, error: OUT_OF_MEMORY, firstStep: true });
+    await runs(2);
+    expect(made()).toEqual([4, 4]);
+    expect(shownError).not.toHaveBeenCalled();
+    // out of room on its first step again: on half the workers
+    emit({ job: 1, error: OUT_OF_MEMORY, firstStep: true });
+    await waitFor(() => expect(made()).toEqual([4, 4, 2]));
+    watch.disconnect();
+  });
+
   it("solves again on as many workers as what each holds leaves room for", async () => {
     lab.parts = 4;
     // 100 MiB held each: 256 MiB has room for two parts, not three

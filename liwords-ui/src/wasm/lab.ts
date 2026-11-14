@@ -149,12 +149,10 @@ const bury = (w: number, worker: Worker) => {
     pending.delete(id);
     p.reject(new Error("The lab's worker failed and was started again."));
   }
+  // a job in parts loses the part on this worker: the others, of no use
+  // alone, are freed
   for (const [page, held] of jobs) {
-    if (held.some((h) => h.worker === w)) {
-      jobs.delete(page);
-      sims.delete(page);
-      endgames.delete(page);
-    }
+    if (held.some((h) => h.worker === w)) freeParts(page, w);
   }
 };
 
@@ -347,7 +345,7 @@ const stopParts = (page: number) => {
   }
 };
 
-// The sim's parts freed but the one already gone.
+// A job's parts freed but the one already gone.
 const freeParts = (page: number, gone?: number) => {
   for (const h of jobs.get(page) ?? []) {
     if (h.worker !== gone) {

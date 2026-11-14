@@ -419,4 +419,16 @@ describe("a worker whose endgame ran out of memory", () => {
     expect(made).toHaveLength(2);
     expect(ops(1)).toEqual(["held"]);
   });
+
+  it("frees a pre-endgame's other parts, of no use alone", async () => {
+    setLabPartsForTest(2);
+    await labCall<number>({
+      op: "endgame",
+      args: { request: JSON.stringify({ model: "random_draws" }), parts: 2 },
+    });
+    made[1].onmessage?.({
+      data: { event: { job: 12, error: "out of memory" }, spent: true },
+    } as MessageEvent);
+    expect(ops(0)).toContain("free");
+  });
 });
