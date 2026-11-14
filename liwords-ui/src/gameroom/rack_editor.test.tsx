@@ -153,3 +153,34 @@ it("keeps a composition's accent until the letter is made", () => {
     runesToMachineWord("\u00d6", StandardGermanAlphabet),
   );
 });
+
+// Each grid tile says how many are left: the game's, less those on the board
+// and in the rack being set; one with none left is dimmed and adds nothing.
+it("counts the tiles left, and adds none of a tile used up", () => {
+  const alphabet = StandardSpanishAlphabet;
+  const ch = runesToMachineWord("[CH]", alphabet)[0];
+  const board = new Array(225).fill(0);
+  // the one CH on the board, and a blank played as an A
+  board[0] = ch;
+  board[1] = runesToMachineWord("A", alphabet)[0] | 0x80;
+  const { container } = render(
+    <DndProvider backend={TouchBackend}>
+      <RackEditor
+        rackCallback={() => {}}
+        cancelCallback={() => {}}
+        currentRack={runesToMachineWord("?", alphabet)}
+        alphabet={alphabet}
+        boardLetters={board}
+      />
+    </DndProvider>,
+  );
+  const cells = container.querySelectorAll(
+    ".rack-editor-tiles .rack-editor-tile",
+  );
+  // both blanks gone: one on the board, one in the rack
+  expect(cells[0].className).toContain("rack-editor-none");
+  expect(cells[0].textContent).toContain("0");
+  expect(cells[ch].className).toContain("rack-editor-none");
+  fireEvent.click(cells[ch].querySelector(".tile")!);
+  expect(screen.getByRole("textbox")).toHaveValue("?");
+});

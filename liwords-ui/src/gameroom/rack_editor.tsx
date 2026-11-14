@@ -1,6 +1,11 @@
 import { InputRef } from "rc-input";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { MachineLetter, MachineWord } from "../utils/cwgame/common";
+import {
+  EmptyBoardSpaceMachineLetter,
+  isDesignatedBlankMachineLetter,
+  MachineLetter,
+  MachineWord,
+} from "../utils/cwgame/common";
 import {
   Alphabet,
   machineWordToRunes,
@@ -16,6 +21,8 @@ type Props = {
   alphabet: Alphabet;
   // the tiles' color, as the rack's
   tileColorId?: number;
+  // the board's tiles, so the grid can say how many of each are left
+  boardLetters?: Array<MachineLetter>;
 };
 
 const MaxRackLength = 7;
@@ -35,6 +42,14 @@ export const RackEditor = (props: Props) => {
   );
 
   const inputRef = useRef<InputRef>(null);
+  // how many of each tile are left for the rack: the game's, less those on
+  // the board (a blank played counts as a blank) and in the rack being set
+  const left = props.alphabet.letters.map((l) => l.count);
+  for (const ml of props.boardLetters ?? []) {
+    if (ml === EmptyBoardSpaceMachineLetter) continue;
+    left[isDesignatedBlankMachineLetter(ml) ? 0 : ml]--;
+  }
+  for (const ml of currentRack) left[ml]--;
   // a tile clicked joins the rack, as if typed, while it has room
   const addTile = (letter: MachineLetter) => {
     if (currentRack.length < MaxRackLength) {
@@ -138,16 +153,22 @@ export const RackEditor = (props: Props) => {
           the keyboard cannot type is a click away */}
       <div className="rack-editor-tiles">
         {props.alphabet.letters.map((letter, idx) => (
-          <Tile
-            lastPlayed={false}
-            playerOfTile={props.tileColorId ?? 0}
-            alphabet={props.alphabet}
-            letter={idx}
-            value={letter.score}
-            grabbable={false}
+          <div
+            className={`rack-editor-tile${left[idx] > 0 ? "" : " rack-editor-none"}`}
             key={`rack_${letter.rune}`}
-            onClick={() => addTile(idx)}
-          />
+          >
+            <Tile
+              lastPlayed={false}
+              playerOfTile={props.tileColorId ?? 0}
+              alphabet={props.alphabet}
+              letter={idx}
+              value={letter.score}
+              grabbable={false}
+              onClick={left[idx] > 0 ? () => addTile(idx) : undefined}
+            />
+            {/* how many are left, as the unseen tiles count them */}
+            <span className="rack-editor-left">{Math.max(0, left[idx])}</span>
+          </div>
         ))}
       </div>
       {/* what Enter and Esc do, for a pointer */}

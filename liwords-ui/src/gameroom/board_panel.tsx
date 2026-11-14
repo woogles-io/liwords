@@ -1528,6 +1528,7 @@ export const BoardPanel = React.memo((props: Props) => {
             >
               <RackEditor
                 tileColorId={tileColorId}
+                boardLetters={props.board.letters}
                 currentRack={rackEditorPrefill ?? displayedRack}
                 alphabet={props.alphabet}
                 rackCallback={(rack: MachineWord) => {
