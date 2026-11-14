@@ -787,6 +787,30 @@ describe("the endgame panel", () => {
     expect(lab.calls.filter((c) => c.op === "endgame")).toHaveLength(1);
   });
 
+  it("shows no value of an answer whose value is null", async () => {
+    render(
+      <Store>
+        <EndgamePanel
+          lab={position([A, B, E, E, I, I, I, I, I])}
+          onClose={() => {}}
+        />
+      </Store>,
+    );
+    await step({
+      bag: 2,
+      steps: 1,
+      nodes: 1,
+      exact: false,
+      play: null,
+      value: null,
+      spread: 0,
+      depth: 0,
+      line: [],
+    });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(screen.queryByText(/Expected value/)).toBeNull();
+  });
+
   it("says when the first moves alone did not fit, trying no more", async () => {
     lab.parts = 4;
     render(

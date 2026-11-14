@@ -175,7 +175,8 @@ type EndgameAnswer = {
   nodes: number;
   exact: boolean;
   play: WasmPlay | null;
-  value?: number;
+  // none (absent or null) till a first depth is searched
+  value?: number | null;
   spread: number;
   depth: number;
   line?: Array<{ play: WasmPlay; value: number }>;
@@ -904,7 +905,7 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
   // the answer from its first step on, the best so far: before that, it has
   // no value or win to give
   const solved =
-    answer && answer.steps > 0 && answer.value !== undefined
+    answer && answer.steps > 0 && typeof answer.value === "number"
       ? (answer as EndgameAnswer & { value: number })
       : undefined;
   const ranMs = useRunMs(job.job, job.running);
