@@ -2,7 +2,7 @@ import { isMac } from "./cwgame/common";
 
 // On a Mac, Cmd+. is Esc: it cancels, as it does in the Mac's own dialogs.
 // The page hears it as an Escape keydown sent where the Cmd+. was, so every
-// dialog, editor and field that Esc closes or cancels takes it too, with no
+// dialog, editor, and field that Esc closes or cancels takes it too, with no
 // handler of its own changed. Other platforms are left alone (Win+. opens
 // the emoji panel there).
 export const commandPeriodEscape = (e: KeyboardEvent) => {
