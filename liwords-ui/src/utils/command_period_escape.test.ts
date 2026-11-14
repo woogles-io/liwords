@@ -40,3 +40,11 @@ it("leaves every other key alone, Cmd+Shift+. and plain . included", () => {
   press({ key: ",", metaKey: true });
   expect(heard.map((h) => h.key)).toEqual([".", ".", ","]);
 });
+
+it("leaves Cmd+. to an input method that is composing", () => {
+  document.addEventListener("keydown", commandPeriodEscape, true);
+  document.body.addEventListener("keydown", listen);
+  const e = press({ key: ".", metaKey: true, isComposing: true });
+  expect(e.defaultPrevented).toBe(false);
+  expect(heard.map((h) => h.key)).toEqual(["."]);
+});

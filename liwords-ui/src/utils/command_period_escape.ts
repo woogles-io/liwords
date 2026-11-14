@@ -9,6 +9,8 @@ export const commandPeriodEscape = (e: KeyboardEvent) => {
   if (e.key !== "." || !e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) {
     return;
   }
+  // while an input method composes, Cmd+. is its own to cancel the composition
+  if (e.isComposing) return;
   e.preventDefault();
   e.stopPropagation();
   (e.target ?? document).dispatchEvent(
