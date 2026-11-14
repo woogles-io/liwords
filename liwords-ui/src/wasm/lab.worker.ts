@@ -236,11 +236,25 @@ const inferring = <T>(
   }
 };
 
-const freeJob = (wolges: Wolges) => {
+// An endgame let go, its table kept to warm the next endgame made on this
+// worker (a what-if's, after a move made on it): the wasm's warm_from, which
+// takes it. Anything else made, or another lexicon loaded, drops it.
+let warm: number | undefined;
+const dropWarm = (wolges: Wolges) => {
+  if (warm !== undefined) wolges.endgame_free(warm);
+  warm = undefined;
+};
+
+// The job held let go; an endgame of no bag model (an empty bag's, or one
+// tile's) is kept to warm the next one when keepWarm says so.
+const freeJob = (wolges: Wolges, keepWarm = false) => {
   running = false;
   if (!job) return;
   if (job.kind === "sim") wolges.sim_free(job.handle);
-  else wolges.endgame_free(job.handle);
+  else if (keepWarm && !job.modeled) {
+    dropWarm(wolges);
+    warm = job.handle;
+  } else wolges.endgame_free(job.handle);
   post({ event: { job: job.id, freed: true } });
   job = null;
 };
@@ -336,6 +350,7 @@ const prepare = async (wolges: Wolges, files: Array<LabFile>) => {
   );
   if (unwanted.length) {
     freeJob(wolges);
+    dropWarm(wolges);
     freeThreats(wolges);
   }
   for (const cacheKey of unwanted) {
@@ -402,19 +417,39 @@ const handle = async (req: LabRequest): Promise<unknown> => {
       threats.delete(req.args.id);
       return undefined;
     }
-    case "endgame":
-      freeJob(wolges);
+    case "endgame": {
+      freeJob(wolges, true);
+      const modeled = JSON.parse(req.args.request).model !== undefined;
+      // warmed by the endgame before it where the wasm takes it (both bags
+      // empty, the same rules and lexicon, the board holding every tile of
+      // the earlier one's); made cold otherwise
+      let handle: number | undefined;
+      if (warm !== undefined && !modeled) {
+        try {
+          handle = wolges.endgame_new(
+            JSON.stringify({
+              ...JSON.parse(req.args.request),
+              warm_from: warm,
+            }),
+          );
+        } catch {
+          handle = undefined;
+        }
+      }
+      dropWarm(wolges);
       job = {
         id: ++lastJobId,
         kind: "endgame",
-        handle: wolges.endgame_new(req.args.request),
+        handle: handle ?? wolges.endgame_new(req.args.request),
         // a new endgame has searched none
         nodes: 0,
-        modeled: JSON.parse(req.args.request).model !== undefined,
+        modeled,
       };
       return job.id;
+    }
     case "sim": {
       freeJob(wolges);
+      dropWarm(wolges);
       const { result: handle, inferred } = inferring(
         wolges,
         req.args.request,
@@ -571,7 +606,7 @@ const handle = async (req: LabRequest): Promise<unknown> => {
       }
       return undefined;
     case "free":
-      if (job && job.id === req.args.job) freeJob(wolges);
+      if (job && job.id === req.args.job) freeJob(wolges, true);
       return undefined;
   }
 };

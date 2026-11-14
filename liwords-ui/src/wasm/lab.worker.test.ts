@@ -179,11 +179,38 @@ describe("the lab's worker", () => {
     );
 
     await send(4, "free", { job });
-    expect(wasm.endgame_free).toHaveBeenCalledWith(7);
+    // its table is kept to warm the next endgame, and let go by a sim
+    expect(wasm.endgame_free).not.toHaveBeenCalled();
     expect(events()[events().length - 1]).toEqual({ job, freed: true });
     expect((await send(5, "run", { job, ms: 50, alpha: 0.05 })).error).toBe(
       "no such job",
     );
+  });
+
+  it("warms an endgame with the one let go before it, or starts cold", async () => {
+    const first = (await send(1, "endgame", { request: '{"a":1}' }))
+      .result as number;
+    await send(2, "free", { job: first });
+    // the next is made warm, and the earlier table goes with it
+    await send(3, "endgame", { request: '{"b":2}' });
+    expect(wasm.endgame_new).toHaveBeenLastCalledWith(
+      JSON.stringify({ b: 2, warm_from: 7 }),
+    );
+    expect(wasm.endgame_free).toHaveBeenCalledWith(7);
+    // one the wasm will not warm is made cold
+    wasm.endgame_new.mockImplementationOnce(() => {
+      throw "not warmable";
+    });
+    await send(4, "free", { job: 2 });
+    await send(5, "endgame", { request: '{"c":3}' });
+    expect(wasm.endgame_new).toHaveBeenLastCalledWith('{"c":3}');
+    // a pre-endgame (a bag model) neither keeps nor takes a table
+    wasm.endgame_new.mockClear();
+    await send(6, "free", { job: 3 });
+    await send(7, "endgame", { request: '{"model":"info_sets"}' });
+    expect(wasm.endgame_new).toHaveBeenCalledTimes(1);
+    expect(wasm.endgame_new).toHaveBeenCalledWith('{"model":"info_sets"}');
+    wasm.endgame_new.mockImplementation(() => 7);
   });
 
   it("stops an endgame whose step searched no node, out of memory", async () => {
