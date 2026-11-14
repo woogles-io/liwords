@@ -358,6 +358,11 @@ export const Chat = React.memo((props: Props) => {
     // since its top does not depend on its own height.
     ro.observe(chatTab);
     if (chatTab.parentElement) ro.observe(chatTab.parentElement);
+    // The chat's card shrinks when a card below it takes room (the
+    // analyzer's, grow_to_window_bottom.ts), which moves the input up
+    // without resizing it or the list.
+    const card = chatTab.closest(".ant-card");
+    if (card) ro.observe(card);
     window.addEventListener("resize", measure);
     return () => {
       ro.disconnect();
