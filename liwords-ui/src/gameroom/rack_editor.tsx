@@ -44,6 +44,12 @@ export const RackEditor = (props: Props) => {
     }
     inputRef.current?.focus();
   };
+  // the rack as it stands, a tile of it taken out by a click, or all of it
+  const setRack = (rack: MachineWord) => {
+    setCurrentRack(rack);
+    setCurRackStr(calculateRackStr(rack));
+    inputRef.current?.focus();
+  };
   const handleKeyDown = (evt: React.KeyboardEvent) => {
     if (evt.key === "Enter") {
       props.rackCallback(currentRack);
@@ -95,6 +101,21 @@ export const RackEditor = (props: Props) => {
         onChange={handleRackEditChange}
         onKeyDown={handleKeyDown}
       />
+      {/* the rack being set, a tile taken out by a click on it */}
+      <div className="rack-editor-rack">
+        {currentRack.map((letter, idx) => (
+          <Tile
+            lastPlayed={false}
+            playerOfTile={props.tileColorId ?? 0}
+            alphabet={props.alphabet}
+            letter={letter}
+            value={props.alphabet.letters[letter]?.score ?? 0}
+            grabbable={false}
+            key={`set_${idx}`}
+            onClick={() => setRack(currentRack.filter((_, at) => at !== idx))}
+          />
+        ))}
+      </div>
       {/* every tile, the blank first, for a rack clicked together: a letter
           the keyboard cannot type is a click away */}
       <div className="rack-editor-tiles">
@@ -113,6 +134,9 @@ export const RackEditor = (props: Props) => {
       </div>
       {/* what Enter and Esc do, for a pointer */}
       <div className="rack-editor-buttons">
+        <Button onClick={() => setRack([])} disabled={!currentRack.length}>
+          Clear
+        </Button>
         <Button onClick={props.cancelCallback}>Cancel</Button>
         <Button type="primary" onClick={() => props.rackCallback(currentRack)}>
           Use this rack

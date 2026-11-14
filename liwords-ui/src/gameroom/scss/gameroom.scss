@@ -2194,6 +2194,24 @@ p.rune {
   }
 }
 
+// the rack being set, one row of seven, kept its height when empty
+.rack-editor-rack {
+  display: flex;
+  margin: 12px 0 0;
+  min-height: $tile-size-desktop;
+
+  .tile {
+    cursor: pointer;
+    height: $tile-size-desktop;
+    margin: 0 2px 0 0;
+    width: $tile-size-desktop;
+
+    p.rune {
+      font-size: 30px;
+    }
+  }
+}
+
 // the rack editor's tiles, laid out as the blank picker's
 .rack-editor-tiles {
   display: flex;
@@ -2222,6 +2240,11 @@ p.rune {
   display: flex;
   gap: 8px;
   justify-content: flex-end;
+
+  // Clear stands apart, at the left
+  > :first-child {
+    margin-right: auto;
+  }
 }
 
 .blank-selector {

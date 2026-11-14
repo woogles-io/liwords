@@ -97,3 +97,31 @@ it("uses the rack typed, or cancels, by its buttons", () => {
   fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
   expect(cancelCallback).toHaveBeenCalledTimes(1);
 });
+
+// A rack it opens with full can be emptied, or a tile taken out, by a click.
+it("takes a tile out of the rack by a click on it, or clears it", () => {
+  const rackCallback = vi.fn();
+  const { container } = render(
+    <DndProvider backend={TouchBackend}>
+      <RackEditor
+        rackCallback={rackCallback}
+        cancelCallback={() => {}}
+        currentRack={runesToMachineWord("AEIOUSR", StandardSpanishAlphabet)}
+        alphabet={StandardSpanishAlphabet}
+      />
+    </DndProvider>,
+  );
+  const rackTiles = () => container.querySelectorAll(".rack-editor-rack .tile");
+  expect(rackTiles()).toHaveLength(7);
+  fireEvent.click(rackTiles()[1]);
+  expect(screen.getByRole("textbox")).toHaveValue("AIOUSR");
+  fireEvent.click(screen.getByRole("button", { name: "Clear" }));
+  expect(screen.getByRole("textbox")).toHaveValue("");
+  expect(rackTiles()).toHaveLength(0);
+  const tiles = container.querySelectorAll(".rack-editor-tiles .tile");
+  fireEvent.click(tiles[runesToMachineWord("Ñ", StandardSpanishAlphabet)[0]]);
+  fireEvent.click(screen.getByRole("button", { name: "Use this rack" }));
+  expect(rackCallback).toHaveBeenCalledWith(
+    runesToMachineWord("Ñ", StandardSpanishAlphabet),
+  );
+});
