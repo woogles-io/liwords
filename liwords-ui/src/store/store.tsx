@@ -488,6 +488,16 @@ const NOT_TEXT_INPUTS = new Set([
   "submit",
 ]);
 
+// Whether a key pressed there is text, not a shortcut: a text box's, as the
+// lab's boxes inside the analyzer are. The board's typing field is the
+// board's, not a text box: its keys are the board's keys.
+export const isTextEntry = (where: Element | null) =>
+  where instanceof HTMLElement &&
+  !where.classList.contains("board-typing-field") &&
+  (where.isContentEditable ||
+    (where instanceof HTMLInputElement && !NOT_TEXT_INPUTS.has(where.type)) ||
+    where instanceof HTMLTextAreaElement);
+
 const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
   const gameContextStore = useGameContextStoreContext();
   const gameEndMessageStore = useGameEndMessageStoreContext();
@@ -499,17 +509,7 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
       if (shortcutsDisabled) {
         return false;
       }
-      // a key typed into a text box is text, not a shortcut: the lab's boxes
-      // sit inside the analyzer, where the shortcuts otherwise apply
-      if (
-        where instanceof HTMLElement &&
-        (where.isContentEditable ||
-          (where instanceof HTMLInputElement &&
-            !NOT_TEXT_INPUTS.has(where.type)) ||
-          where instanceof HTMLTextAreaElement)
-      ) {
-        return false;
-      }
+      if (isTextEntry(where)) return false;
       try {
         return (
           where &&

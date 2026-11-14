@@ -309,3 +309,24 @@ it("never focuses the typing field from a tap or a click", () => {
     container.querySelector(".board-typing-field"),
   );
 });
+
+it("types a composed letter under Caps Lock as a tile, not a blank", () => {
+  const { container } = typeable(StandardGermanAlphabet, "ÜEIOARS");
+  const panel = container.querySelector(".board-container")!;
+  fireEvent.keyDown(panel, { key: "Dead", altKey: true });
+  const field = container.querySelector<HTMLInputElement>(
+    ".board-typing-field",
+  )!;
+  // Caps Lock makes the composed letter capital; no Shift was held
+  fireEvent.keyDown(field, { key: "U", isComposing: true });
+  field.value = "Ü";
+  fireEvent.compositionEnd(field, { data: "Ü" });
+  expect(placed).toEqual(["ü"]);
+});
+
+it("leaves the board's typing field named for a screen reader", () => {
+  const { container } = typeable(StandardEnglishAlphabet, "AEIOURS");
+  const field = container.querySelector(".board-typing-field")!;
+  expect(field.getAttribute("aria-hidden")).toBeNull();
+  expect(field.getAttribute("aria-label")).toBe("Board");
+});

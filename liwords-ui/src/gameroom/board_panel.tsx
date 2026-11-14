@@ -776,11 +776,15 @@ export const BoardPanel = React.memo((props: Props) => {
   // key's) reaches the board as typed. Its keys still come to the board's
   // own handler, as before; a tap or a click never focuses it.
   const typingField = useRef<HTMLInputElement>(null);
-  // whether the last keydown typed its own character
+  // whether the last keydown typed its own character; and whether Shift was
+  // held for it, which a character composed from it takes (a letter's case
+  // says only Caps Lock)
   const keydownTyped = useRef(false);
+  const keydownShift = useRef(false);
 
   const keydown = useCallback(
     (evt: React.KeyboardEvent) => {
+      keydownShift.current = evt.shiftKey;
       if (evt.nativeEvent.isComposing || evt.key === "Process") {
         // An input method is still making a character (a dead key's accent,
         // a compose sequence): the typing field types it once it is made.
@@ -1018,9 +1022,12 @@ export const BoardPanel = React.memo((props: Props) => {
     const text = field.value;
     field.value = "";
     if (keydownTyped.current || !isTileKey(text, props.alphabet)) return;
+    // Shift as held for the keys that made it, so Caps Lock makes no blank,
+    // as it makes none for a-z
+    const shiftKey = keydownShift.current;
     keydown({
-      key: text,
-      shiftKey: text !== text.toLowerCase(),
+      key: shiftKey ? text.toUpperCase() : text.toLowerCase(),
+      shiftKey,
       ctrlKey: false,
       altKey: false,
       metaKey: false,
@@ -1506,7 +1513,9 @@ export const BoardPanel = React.memo((props: Props) => {
         // no on-screen keyboard for it: it is only ever focused by a key
         inputMode="none"
         tabIndex={-1}
-        aria-hidden
+        // a screen reader, in blindfold mode above all, hears it as the
+        // board it types on
+        aria-label="Board"
         autoComplete="off"
         autoCorrect="off"
         autoCapitalize="off"
