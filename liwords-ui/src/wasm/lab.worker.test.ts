@@ -197,9 +197,14 @@ describe("the lab's worker", () => {
         job,
         error:
           "Out of memory: the solve has no room to search. Use fewer workers.",
+        firstStep: false,
       },
     ]);
     expect(stepCalls()).toHaveLength(2);
+    // after a step that answered: no first-step retry
+    expect(
+      (events().find((e) => e.error) as { firstStep?: boolean }).firstStep,
+    ).toBe(false);
     // and the page is told to let this worker go, its memory with it
     expect(posted.some((m) => (m as { spent?: boolean }).spent)).toBe(true);
   });
@@ -212,6 +217,10 @@ describe("the lab's worker", () => {
     await send(2, "run", { job, ms: 16 });
     await vi.waitFor(() => expect(events().some((e) => e.error)).toBe(true));
     expect(wasm.endgame_step).toHaveBeenCalledTimes(1);
+    // on its first step: worth one try on a fresh worker
+    expect(
+      (events().find((e) => e.error) as { firstStep?: boolean }).firstStep,
+    ).toBe(true);
   });
 
   it("stops a pre-endgame the wasm says is out of memory", async () => {

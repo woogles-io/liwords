@@ -503,6 +503,8 @@ type JobState<T> = {
   job?: number;
   answer?: T;
   error?: string;
+  // the error came on the job's first step
+  firstStep?: boolean;
   running: boolean;
 };
 
@@ -522,6 +524,7 @@ const useLabJob = <T,>(start: (() => Promise<number>) | null, key: string) => {
         ...s,
         answer: (e.answer as T) ?? s.answer,
         error: e.error,
+        firstStep: e.firstStep,
         // a step that was under way when a stop was sent leaves it stopped
         running: s.running && !e.done && !e.error,
       }));
@@ -795,6 +798,10 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
     : 1;
   // the workers the job shown was made on, which an error of it is from
   const [madeOn, setMadeOn] = useState(workers);
+  const jobKey = modeled ? `${lab.key}/${model}/${workers}` : lab.key;
+  // the solve tried once more, on a fresh worker, after running out of
+  // memory on its first step
+  const [retried, setRetried] = useState<string>();
   const job = useLabJob<EndgameAnswer>(
     solvable
       ? async () => {
@@ -850,12 +857,25 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
           return made;
         }
       : null,
-    modeled ? `${lab.key}/${model}/${workers}` : lab.key,
+    `${jobKey}${retried === jobKey ? "/again" : ""}`,
   );
   // a part out of room (the endgame's own graph and table not fitting beside
   // the lexicon): solved again on half the workers, each with twice the
   // share, until it fits or runs on one
-  if (job.error === OUT_OF_MEMORY && madeOn > 1 && workers > madeOn / 2) {
+  // out of memory on its first step: the worker an earlier job left full,
+  // let go since, so the solve is tried once more, on a fresh worker
+  // nothing failed from the player's side: the solve only starts cold, so
+  // no error is shown while it does
+  const retrying =
+    job.error === OUT_OF_MEMORY && !!job.firstStep && retried !== jobKey;
+  const jobError = retrying ? undefined : job.error;
+  if (retrying) {
+    setRetried(jobKey);
+  } else if (
+    job.error === OUT_OF_MEMORY &&
+    madeOn > 1 &&
+    workers > madeOn / 2
+  ) {
     setCap({ lexicon: lab.loadableKey, workers: Math.floor(madeOn / 2) });
   }
   const { answer } = job;
@@ -990,12 +1010,12 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
     status = goneOutText(lab);
   } else if (bag === null) {
     status = "Needs the full rack of the player to move.";
-  } else if (job.error || valuesError) {
+  } else if (jobError || valuesError) {
     status = (
       <span className="analyzer-error">
-        {job.error === OUT_OF_MEMORY && madeOn === 1
+        {jobError === OUT_OF_MEMORY && madeOn === 1
           ? OUT_OF_MEMORY_ALONE
-          : (job.error ?? valuesError)}
+          : (jobError ?? valuesError)}
       </span>
     );
   } else if (!solved || !solved.play) {
@@ -1018,7 +1038,7 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
       title={bagTitle(bag)}
       status={status}
       running={job.running}
-      canResume={job.job !== undefined && !answer?.exact && !job.error}
+      canResume={job.job !== undefined && !answer?.exact && !jobError}
       stop={job.stop}
       resume={job.resume}
       onClose={onClose}

@@ -102,6 +102,8 @@ type Job = {
   modeled?: boolean;
   // the play a sim's candidates are compared with, as the sim takes one
   against?: unknown;
+  // whether a step of it has answered without running out of memory
+  stepped?: boolean;
   // when an endgame's answer was last sent; and whether it has stepped since
   sentAt?: number;
   unsent?: boolean;
@@ -288,10 +290,14 @@ const step = async (j: Job, chain: number, ms: number) => {
       running = false;
       // the memory the instance grew to stays with it: the page lets this
       // worker go and makes a fresh one for the next job
-      post({ event: { job: j.id, error: OUT_OF_MEMORY }, spent: true });
+      post({
+        event: { job: j.id, error: OUT_OF_MEMORY, firstStep: !j.stepped },
+        spent: true,
+      });
       return;
     }
     j.nodes = answer.nodes;
+    j.stepped = true;
     const done = isDone(j, answer);
     if (done) running = false;
     // An endgame steps a frame at a time: its whole answer is read and sent

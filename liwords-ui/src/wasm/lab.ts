@@ -30,6 +30,9 @@ export type LabEvent = {
   answer?: unknown;
   done?: boolean;
   error?: string;
+  // an endgame out of memory on its first step: the worker an earlier job
+  // left full, so worth one try on a fresh one
+  firstStep?: boolean;
   freed?: boolean;
 };
 
@@ -242,7 +245,7 @@ const heardEndgame = (
   }
   if (e.error) {
     stopParts(page);
-    emit({ job: page, error: e.error });
+    emit({ job: page, error: e.error, firstStep: e.firstStep });
     return;
   }
   const part = jobs.get(page)!.findIndex((h) => h.worker === worker);
