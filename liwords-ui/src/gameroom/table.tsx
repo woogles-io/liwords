@@ -928,7 +928,14 @@ export const Table = React.memo((props: Props) => {
     setIsObserver(observer);
     setPlayerNames(gameInfo.players.map((p) => p.nickname));
     // If we are not the observer, tell the server we're ready for the game to start.
-    if (gameInfo.gameEndReason === GameEndReason.NONE && !observer) {
+    // A game that ended while the page was open still has no end reason in
+    // gameInfo, which is replaced on entering analysis: the game context says
+    // it is over.
+    if (
+      gameInfo.gameEndReason === GameEndReason.NONE &&
+      !gameDone &&
+      !observer
+    ) {
       const evt = create(ReadyForGameSchema);
       evt.gameId = gameID;
       sendSocketMsg(
@@ -938,7 +945,7 @@ export const Table = React.memo((props: Props) => {
         ),
       );
     }
-  }, [userID, gameInfo, gameID, sendSocketMsg]);
+  }, [userID, gameInfo, gameID, gameDone, sendSocketMsg]);
 
   const enableHoverDefine = gameDone || isObserver;
   const gameChatChannel = `chat.${isObserver ? "gametv" : "game"}${
