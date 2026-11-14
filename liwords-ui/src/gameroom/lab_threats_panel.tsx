@@ -58,6 +58,8 @@ type Counted = {
   inferred?: Inferred;
   // false while the count goes on, its answer still firming up
   done?: boolean;
+  // how many plays its answer was asked to list
+  listing?: number;
   error?: string;
 };
 
@@ -159,6 +161,8 @@ export const ThreatsPanel = (props: ThreatsPanelProps) => {
   // count lists again without counting again.
   const countRef = useRef(count);
   countRef.current = count;
+  const secondsRef = useRef(seconds);
+  secondsRef.current = seconds;
 
   // The counts so far, read when the boards change: each step's answer
   // changes them, and must not cut short the count it came from.
@@ -202,18 +206,19 @@ export const ThreatsPanel = (props: ThreatsPanelProps) => {
             for (;;) {
               if (!current) break;
               const left = until - Date.now();
+              const listing = countRef.current ?? DEFAULT_COUNT;
               const answer = await labCall<ThreatsAnswer>({
                 op: "threats_step",
                 args: {
                   id,
                   ms: Math.max(0, Math.min(THREATS_STEP_MS, left)),
-                  count: countRef.current ?? DEFAULT_COUNT,
+                  count: listing,
                 },
               });
               if (!current) break;
               const done = answer.exact || left <= THREATS_STEP_MS;
               setCounted((m) =>
-                new Map(m).set(key!, { id, answer, inferred, done }),
+                new Map(m).set(key!, { id, answer, inferred, done, listing }),
               );
               if (done) break;
             }
@@ -283,48 +288,78 @@ export const ThreatsPanel = (props: ThreatsPanelProps) => {
   }, [shownKey]);
 
   // The plays listed: the count's own, or, through a square or for a count
-  // other than the one counted with, as the wasm lists them from the racks
-  // already weighed, weighing no more.
+  // other than the one counted with, as the wasm lists them. Through a
+  // square, it lists them at once, from the racks already weighed. For
+  // another count, it lists every play again, a step at a time, its answer
+  // shown as it goes, till it is exact or the seconds asked are spent.
   const [listed, setListed] = useState<{
     id: number;
     square: number | null;
     count: number;
     plays: Array<ThreatPlay>;
+    // the answer listed again for another count, and whether it is done
+    answer?: ThreatsAnswer;
+    done?: boolean;
   } | null>(null);
   const shownId = shown?.id;
   const shownDone = !!shown?.done;
-  const countedWith = answer?.plays.length;
+  const countedWith = shown?.listing;
   useEffect(() => {
     setListed(null);
     if (shownId === undefined || !shownDone || count === null) return;
     if (square === null && count === countedWith) return;
     let current = true;
-    labCall<ThreatsAnswer>({
-      op: "threats_step",
-      args: {
-        id: shownId,
-        ms: 0,
-        count,
-        ...(square === null
-          ? {}
-          : {
-              square: [Math.floor(square / lab.dim), square % lab.dim] as [
-                number,
-                number,
-              ],
-            }),
-      },
-    }).then(
-      (a) =>
-        current && setListed({ id: shownId, square, count, plays: a.plays }),
-      () => {},
-    );
+    (async () => {
+      const until = Date.now() + (secondsRef.current ?? DEFAULT_SECONDS) * 1000;
+      for (;;) {
+        const left = until - Date.now();
+        const a = await labCall<ThreatsAnswer>({
+          op: "threats_step",
+          args: {
+            id: shownId,
+            ms:
+              square === null
+                ? Math.max(0, Math.min(THREATS_STEP_MS, left))
+                : 0,
+            count,
+            ...(square === null
+              ? {}
+              : {
+                  square: [Math.floor(square / lab.dim), square % lab.dim] as [
+                    number,
+                    number,
+                  ],
+                }),
+          },
+        });
+        if (!current) return;
+        if (square !== null) {
+          setListed({ id: shownId, square, count, plays: a.plays });
+          return;
+        }
+        const done = a.exact || left <= THREATS_STEP_MS;
+        setListed({
+          id: shownId,
+          square,
+          count,
+          plays: a.plays,
+          answer: a,
+          done,
+        });
+        if (done) return;
+      }
+    })().catch(() => {});
     return () => {
       current = false;
     };
     // the plays the count gave are read once it is done, not on each change
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shownId, shownDone, square, count, lab.dim]);
+  // the shown board's answer listed again for another count, if it is
+  const relisted =
+    listed && listed.id === shownId && listed.answer
+      ? { answer: listed.answer, done: !!listed.done }
+      : undefined;
   const plays = useMemo(
     () =>
       listed && listed.id === shownId && listed.square === square
@@ -395,7 +430,9 @@ export const ThreatsPanel = (props: ThreatsPanelProps) => {
               true,
             ),
           )}`
-        : threatsSummary(c.answer!, lab.unseen.length, !c.done);
+        : key === shownKey && relisted
+          ? threatsSummary(relisted.answer, lab.unseen.length, !relisted.done)
+          : threatsSummary(c.answer!, lab.unseen.length, !c.done);
     return (
       <div>
         {label}
@@ -529,7 +566,7 @@ export const ThreatsPanel = (props: ThreatsPanelProps) => {
                 </td>
                 <td className="lab-n">{play.score}</td>
                 <td className="lab-n">
-                  {answer.exact ? "" : "~"}
+                  {(relisted?.answer ?? answer).exact ? "" : "~"}
                   {percentText(play.chance)}
                 </td>
               </tr>

@@ -120,6 +120,7 @@ const answer = (more: Partial<ThreatsAnswer> = {}): ThreatsAnswer => {
     covered: 1,
     samples: 0,
     list_ms: 1,
+    walked: 1,
     exact: true,
     plays: [
       {
@@ -266,7 +267,7 @@ describe("ThreatsPanel", () => {
     lab.answers.push(answer());
     mount();
     await screen.findByText("SEA");
-    lab.listing = answer({ plays: [answer().plays[0]] });
+    lab.answers.push(answer({ plays: [answer().plays[0]] }));
     fireEvent.change(screen.getByLabelText("Plays listed"), {
       target: { value: "1" },
     });
@@ -274,8 +275,31 @@ describe("ThreatsPanel", () => {
     expect(threatsRequests()).toHaveLength(1);
     expect(lab.calls.at(-1)).toEqual({
       op: "threats_step",
-      args: { id: expect.any(Number), ms: 0, count: 1 },
+      args: { id: expect.any(Number), ms: 100, count: 1 },
     });
+  });
+
+  it("lists every play again a step at a time for a larger count, saying how far", async () => {
+    lab.answers.push(answer({ plays: [answer().plays[0]] }));
+    mount();
+    await screen.findByText("SEA");
+    expect(screen.queryByText("AS")).toBeNull();
+    // the listing begun again: the plays so far, then every play
+    lab.answers.push(
+      answer({ exact: false, walked: 0.4, plays: [answer().plays[0]] }),
+      answer(),
+    );
+    const steps = () => lab.calls.filter((c) => c.op === "threats_step").length;
+    const before = steps();
+    fireEvent.change(screen.getByLabelText("Plays listed"), {
+      target: { value: "20" },
+    });
+    await screen.findByText(
+      "Opponent's best ~10.5 on average, from 4 unseen; listing 40.0%",
+    );
+    await screen.findByText("AS");
+    screen.getByText("Opponent's best 10.5 on average, from 4 unseen");
+    expect(steps() - before).toBe(2);
   });
 
   it("lets each count go once its board is gone, and all on closing", async () => {

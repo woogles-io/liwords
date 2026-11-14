@@ -15,6 +15,7 @@ const answer = (more: Partial<ThreatsAnswer> = {}): ThreatsAnswer => ({
   covered: 1,
   samples: 0,
   list_ms: 3,
+  walked: 1,
   exact: true,
   plays: [],
   squares: [],
@@ -73,6 +74,20 @@ describe("leaveAfter", () => {
 });
 
 describe("threatsSummary", () => {
+  it("says how much of the plays are listed while listing", () => {
+    expect(
+      threatsSummary(answer({ exact: false, walked: 0.25 }), 60, true),
+    ).toBe(
+      "Opponent's best ~38.4 on average, bingo ~27.0%, from 60 unseen; listing 25.0%",
+    );
+  });
+
+  it("says how much of the plays were listed when time ran out", () => {
+    expect(threatsSummary(answer({ exact: false, walked: 0.25 }), 60)).toBe(
+      "Opponent's best ~38.4 on average, bingo ~27.0%, from 60 unseen; time ran out: 25.0% of plays listed",
+    );
+  });
+
   it("says the expected best, the bingo chance and the tiles unseen", () => {
     expect(threatsSummary(answer(), 25)).toBe(
       "Opponent's best 38.4 on average, bingo 27.0%, from 25 unseen",
