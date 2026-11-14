@@ -4,6 +4,7 @@ import {
   DoubleLeftOutlined,
   LeftOutlined,
   RightOutlined,
+  SwapOutlined,
 } from "@ant-design/icons";
 import { machineWordToRunes } from "../constants/alphabets";
 import {
@@ -19,6 +20,7 @@ import {
 } from "../store/store";
 import { EphemeralTile } from "../utils/cwgame/common";
 import { getWolges } from "../wasm/loader";
+import { ExchangeTiles } from "./exchange_tiles";
 import { parseExaminableGameContext, wolgesLabelsToLetter } from "./analyzer";
 import {
   bagTilesOf,
@@ -118,6 +120,8 @@ export const WhatIfBar = (props: WhatIfBarProps) => {
   } = useExamineStoreContext();
   // the tiles the mover puts back in an exchange, as typed (? a blank)
   const [back, setBack] = useState("");
+  // the tiles to put back picked by tapping, as the game's exchange picks them
+  const [picking, setPicking] = useState(false);
   // a single click with nothing to play or exchange says, in the exchange
   // box, that a double click passes, for a moment
   const [passHint, setPassHint] = useState(false);
@@ -236,6 +240,30 @@ export const WhatIfBar = (props: WhatIfBarProps) => {
             onChange={(e) => setBack(e.target.value)}
           />
         </Tooltip>
+        <Tooltip title="Pick the tiles to put back from the rack">
+          <Button
+            shape="circle"
+            size="small"
+            icon={<SwapOutlined />}
+            aria-label="Pick the tiles to exchange"
+            // a rack not known has no tiles to tap: its exchange is typed
+            disabled={!swapping || me.currentRack.length === 0}
+            onClick={() => setPicking(true)}
+          />
+        </Tooltip>
+        {picking && (
+          <ExchangeTiles
+            tileColorId={0}
+            alphabet={gameContext.alphabet}
+            rack={me.currentRack}
+            modalVisible
+            onCancel={() => setPicking(false)}
+            onOk={(tiles) => {
+              setPicking(false);
+              setBack(machineWordToRunes(tiles, gameContext.alphabet, false));
+            }}
+          />
+        )}
         <Tooltip title={moveTitle}>
           <Button
             shape="circle"
