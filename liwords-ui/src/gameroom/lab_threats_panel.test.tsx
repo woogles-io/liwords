@@ -279,27 +279,41 @@ describe("ThreatsPanel", () => {
     });
   });
 
-  it("lists every play again a step at a time for a larger count, saying how far", async () => {
+  it("lists every play again for a larger count, the whole list kept till then", async () => {
     lab.answers.push(answer({ plays: [answer().plays[0]] }));
     mount();
     await screen.findByText("SEA");
     expect(screen.queryByText("AS")).toBeNull();
-    // the listing begun again: the plays so far, then every play
-    lab.answers.push(
-      answer({ exact: false, walked: 0.4, plays: [answer().plays[0]] }),
-      answer(),
-    );
-    const steps = () => lab.calls.filter((c) => c.op === "threats_step").length;
-    const before = steps();
+    // the listing begun again, none of the plays listed so far
+    lab.answers.push(answer({ exact: false, walked: 0.4, plays: [] }));
     fireEvent.change(screen.getByLabelText("Plays listed"), {
       target: { value: "20" },
     });
     await screen.findByText(
       "Opponent's best ~10.5 on average, from 4 unseen; listing 40.0%",
     );
+    // the whole list stays while the plays are listed again
+    expect(screen.getByText("SEA")).toBeTruthy();
+    // then every play
+    lab.answers.push(answer());
     await screen.findByText("AS");
     screen.getByText("Opponent's best 10.5 on average, from 4 unseen");
-    expect(steps() - before).toBe(2);
+    expect(threatsRequests()).toHaveLength(1);
+  });
+
+  it("goes on with the same count on Resume after Stop", async () => {
+    lab.answers.push(answer({ exact: false, walked: 0.3, plays: [] }));
+    mount();
+    await screen.findByText(/listing 30.0%/);
+    fireEvent.click(screen.getByLabelText("Stop"));
+    await screen.findByText(/stopped: 30.0% of plays listed/);
+    // the step under way when stopped ends first
+    await waitFor(() => expect(screen.getByLabelText("Resume")).toBeEnabled());
+    lab.answers.push(answer());
+    fireEvent.click(screen.getByLabelText("Resume"));
+    await screen.findByText("SEA");
+    expect(threatsRequests()).toHaveLength(1);
+    screen.getByLabelText("Count again");
   });
 
   it("lets each count go once its board is gone, and all on closing", async () => {
@@ -315,6 +329,34 @@ describe("ThreatsPanel", () => {
         .map((c) => (c.args as unknown as { id: number }).id)
         .sort();
     await waitFor(() => expect(freed()).toEqual([...lab.made].sort()));
+  });
+
+  it("lets a count go as soon as its board is no longer shown", async () => {
+    lab.answers.push(answer());
+    mount();
+    await screen.findByText("SEA");
+    place(new Set([{ row: 0, col: 0, letter: B }]));
+    await waitFor(() => expect(threatsRequests()).toHaveLength(2));
+    const placedCount = lab.made[1];
+    place(new Set([{ row: 0, col: 1, letter: B }]));
+    await waitFor(() => expect(threatsRequests()).toHaveLength(3));
+    await waitFor(() =>
+      expect(
+        lab.calls.some(
+          (c) =>
+            c.op === "threats_free" &&
+            (c.args as unknown as { id: number }).id === placedCount,
+        ),
+      ).toBe(true),
+    );
+    // the position's own count, still shown, is kept
+    expect(
+      lab.calls.some(
+        (c) =>
+          c.op === "threats_free" &&
+          (c.args as unknown as { id: number }).id === lab.made[0],
+      ),
+    ).toBe(false);
   });
 
   it("counts the board after the tiles placed too, beside now", async () => {
@@ -402,10 +444,9 @@ describe("ThreatsPanel", () => {
   it("marks the chances of an answer cut short", async () => {
     lab.answers.push(answer({ exact: false, covered: 0.5, samples: 20 }));
     mount();
-    // once the seconds are spent
-    await screen.findByText(/time ran out: 50.0% of racks counted/, undefined, {
-      timeout: 3000,
-    });
+    await screen.findByText(/counting: 50.0% of racks counted/);
+    fireEvent.click(screen.getByLabelText("Stop"));
+    await screen.findByText(/stopped: 50.0% of racks counted/);
     expect(screen.getByText("~50.0%")).toBeTruthy();
   });
 

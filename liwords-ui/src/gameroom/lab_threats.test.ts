@@ -82,9 +82,9 @@ describe("threatsSummary", () => {
     );
   });
 
-  it("says how much of the plays were listed when time ran out", () => {
+  it("says how much of the plays were listed when stopped", () => {
     expect(threatsSummary(answer({ exact: false, walked: 0.25 }), 60)).toBe(
-      "Opponent's best ~38.4 on average, bingo ~27.0%, from 60 unseen; time ran out: 25.0% of plays listed",
+      "Opponent's best ~38.4 on average, bingo ~27.0%, from 60 unseen; stopped: 25.0% of plays listed",
     );
   });
 
@@ -100,14 +100,14 @@ describe("threatsSummary", () => {
     );
   });
 
-  it("marks an answer cut short, with how much it counted", () => {
+  it("marks an answer stopped short, with how much it counted", () => {
     expect(
       threatsSummary(
         answer({ exact: false, covered: 0.625, samples: 300 }),
         60,
       ),
     ).toBe(
-      "Opponent's best ~38.4 on average, bingo ~27.0%, from 60 unseen; time ran out: 62.5% of racks counted, 300 more drawn",
+      "Opponent's best ~38.4 on average, bingo ~27.0%, from 60 unseen; stopped: 62.5% of racks counted, 300 more drawn",
     );
   });
 

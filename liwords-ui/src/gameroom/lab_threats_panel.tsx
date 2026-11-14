@@ -33,13 +33,11 @@ import {
   threatsSummary,
 } from "./lab_threats";
 
-// How many of the opponent's best plays are listed, and how long the racks
-// they may hold are weighed, until the user sets others: the 15 the analyzer
-// lists, and a second, as long as Every first move takes.
+// How many of the opponent's best plays are listed, until the user sets
+// another: the 15 the analyzer lists.
 const DEFAULT_COUNT = 15;
-const DEFAULT_SECONDS = 1;
-// how long each step of the count weighs racks for, so the answer shows as it
-// firms up rather than only when the seconds are spent
+// how long each step of the count runs for, so the answer shows as it firms
+// up
 const THREATS_STEP_MS = 100;
 
 // A board the threats are counted on: the position's own, or with the tiles
@@ -56,10 +54,12 @@ type Counted = {
   answer?: ThreatsAnswer;
   // the opponent's leave as inferred for the count, if it was
   inferred?: Inferred;
-  // false while the count goes on, its answer still firming up
+  // false till every play is listed and every rack counted
   done?: boolean;
   // how many plays its answer was asked to list
   listing?: number;
+  // the last answer that had every play listed
+  whole?: ThreatsAnswer;
   error?: string;
 };
 
@@ -100,7 +100,6 @@ export const ThreatsPanel = (props: ThreatsPanelProps) => {
   const { placedTiles } = useTentativeTileContext();
   const [tint, setTint] = useState<ThreatTint>("score");
   const [count, setCount] = useState<number | null>(DEFAULT_COUNT);
-  const [seconds, setSeconds] = useState<number | null>(DEFAULT_SECONDS);
   const [listShown, setListShown] = useState(() => !phoneLayout());
   const [picking, setPicking] = useState(false);
   const [square, setSquare] = useState<number | null>(null);
@@ -108,6 +107,11 @@ export const ThreatsPanel = (props: ThreatsPanelProps) => {
   const [picked, setPicked] = useState<ThreatPlay | null>(null);
   const [counted, setCounted] = useState(() => new Map<string, Counted>());
   const [counting, setCounting] = useState(false);
+  // the count stopped by the user, till resumed or the board changes; going
+  // says each resume, so the count goes on
+  const [stopped, setStopped] = useState(false);
+  const stoppedRef = useRef(false);
+  const [going, setGoing] = useState(0);
   // each count again gives the racks drawn another seed
   const [round, setRound] = useState(0);
 
@@ -141,7 +145,7 @@ export const ThreatsPanel = (props: ThreatsPanelProps) => {
             ? `Opponent holds ${settings.known.toUpperCase()}.`
             : undefined;
   const request = (board: ThreatBoard) =>
-    "error" in known || seconds === null
+    "error" in known
       ? null
       : JSON.stringify({
           board: wasmBoard(board.letters, lab.dim),
@@ -161,25 +165,39 @@ export const ThreatsPanel = (props: ThreatsPanelProps) => {
   // count lists again without counting again.
   const countRef = useRef(count);
   countRef.current = count;
-  const secondsRef = useRef(seconds);
-  secondsRef.current = seconds;
+
+  // another board is counted, not stopped; the counts of boards no longer
+  // shown are let go, as they hold the worker's memory
+  useEffect(() => {
+    stoppedRef.current = false;
+    setStopped(false);
+    setCounted((m) => {
+      const kept = [...m].filter(([key]) => key === nowKey || key === afterKey);
+      return kept.length === m.size ? m : new Map(kept);
+    });
+  }, [nowKey, afterKey]);
 
   // The counts so far, read when the boards change: each step's answer
   // changes them, and must not cut short the count it came from.
   const countedRef = useRef(counted);
   countedRef.current = counted;
 
-  // Count each board not yet counted, the position's first; one call at a
-  // time, as the worker takes them.
+  // Count each board not yet counted, or not yet exact, or counted for
+  // another number of plays, the position's first; one call at a time, as
+  // the worker takes them. A count made is kept, and goes on from where it
+  // was: stopped, or its board left and come back to.
   useEffect(() => {
+    const listing = () => countRef.current ?? DEFAULT_COUNT;
     const wanted = [
       [nowKey, now],
       [afterKey, after],
     ] as const;
-    const todo = wanted.filter(
-      ([key]) => key !== null && !countedRef.current.has(key),
-    );
-    if (!todo.length) return;
+    const todo = wanted.filter(([key]) => {
+      if (key === null) return false;
+      const c = countedRef.current.get(key);
+      return !c || (!c.error && (!c.done || c.listing !== listing()));
+    });
+    if (!todo.length || stoppedRef.current) return;
     let current = true;
     (async () => {
       setCounting(true);
@@ -189,36 +207,49 @@ export const ThreatsPanel = (props: ThreatsPanelProps) => {
           args: { files: getLoadableFiles(lab.loadableKey) },
         });
         for (const [key, board] of todo) {
-          // every play listed first, then the racks weighed a step at a
-          // time, each step's answer shown, till every rack is counted or
-          // the seconds asked are spent
-          let id: number | undefined;
-          let inferred: Inferred | undefined;
+          // every play listed, and the racks weighed, a step at a time, each
+          // step's answer shown, till every play is listed and every rack
+          // counted, or the count is stopped
+          const was = countedRef.current.get(key!);
+          let id = was?.id;
+          let inferred = was?.inferred;
           try {
-            ({ id, inferred } = await labCall<{
-              id: number;
-              inferred?: Inferred;
-            }>({
-              op: "threats_new",
-              args: { request: request(board!)!, infer },
-            }));
-            const until = Date.now() + seconds! * 1000;
+            if (id === undefined) {
+              ({ id, inferred } = await labCall<{
+                id: number;
+                inferred?: Inferred;
+              }>({
+                op: "threats_new",
+                args: { request: request(board!)!, infer },
+              }));
+              if (!current) {
+                void labCall({ op: "threats_free", args: { id } });
+                return;
+              }
+              const made = { id, inferred };
+              setCounted((m) => new Map(m).set(key!, made));
+            }
             for (;;) {
-              if (!current) break;
-              const left = until - Date.now();
-              const listing = countRef.current ?? DEFAULT_COUNT;
+              if (!current || stoppedRef.current) break;
+              const asked = listing();
               const answer = await labCall<ThreatsAnswer>({
                 op: "threats_step",
-                args: {
-                  id,
-                  ms: Math.max(0, Math.min(THREATS_STEP_MS, left)),
-                  count: listing,
-                },
+                args: { id, ms: THREATS_STEP_MS, count: asked },
               });
               if (!current) break;
-              const done = answer.exact || left <= THREATS_STEP_MS;
+              const done = answer.exact;
+              // every play listed (a wasm without walked lists them all
+              // at once)
+              const whole = !(answer.walked < 1);
               setCounted((m) =>
-                new Map(m).set(key!, { id, answer, inferred, done, listing }),
+                new Map(m).set(key!, {
+                  id,
+                  answer,
+                  inferred,
+                  done,
+                  listing: asked,
+                  whole: whole ? answer : m.get(key!)?.whole,
+                }),
               );
               if (done) break;
             }
@@ -228,13 +259,7 @@ export const ThreatsPanel = (props: ThreatsPanelProps) => {
               setCounted((m) => new Map(m).set(key!, { id, error }));
             }
           }
-          // a count cut off by a new board is never shown
-          if (!current) {
-            if (id !== undefined) {
-              void labCall({ op: "threats_free", args: { id } });
-            }
-            return;
-          }
+          if (!current || stoppedRef.current) return;
         }
       } catch (e) {
         if (!current) return;
@@ -253,7 +278,7 @@ export const ThreatsPanel = (props: ThreatsPanelProps) => {
     };
     // the boards and the request follow from the keys
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nowKey, afterKey, lab.loadableKey]);
+  }, [nowKey, afterKey, lab.loadableKey, count, going]);
 
   // Each count held is let go once its board is no longer counted, and all
   // of them when the panel closes.
@@ -287,91 +312,54 @@ export const ThreatsPanel = (props: ThreatsPanelProps) => {
     setSquare(null);
   }, [shownKey]);
 
-  // The plays listed: the count's own, or, through a square or for a count
-  // other than the one counted with, as the wasm lists them. Through a
-  // square, it lists them at once, from the racks already weighed. For
-  // another count, it lists every play again, a step at a time, its answer
-  // shown as it goes, till it is exact or the seconds asked are spent.
+  // What is shown of the count: its answer, or, while a larger count lists
+  // every play again, the last answer that had them all, till the new one
+  // does.
+  const whole = answer && answer.walked < 1 && shown?.whole;
+  const display = whole || answer;
+
+  // The plays listed: the count's own, or, through a square, as the wasm
+  // lists them at once, from the racks already weighed.
   const [listed, setListed] = useState<{
     id: number;
-    square: number | null;
+    square: number;
     count: number;
     plays: Array<ThreatPlay>;
-    // the answer listed again for another count, and whether it is done
-    answer?: ThreatsAnswer;
-    done?: boolean;
   } | null>(null);
   const shownId = shown?.id;
-  const shownDone = !!shown?.done;
-  const countedWith = shown?.listing;
   useEffect(() => {
     setListed(null);
-    if (shownId === undefined || !shownDone || count === null) return;
-    if (square === null && count === countedWith) return;
+    if (shownId === undefined || count === null || square === null) return;
     let current = true;
-    (async () => {
-      const until = Date.now() + (secondsRef.current ?? DEFAULT_SECONDS) * 1000;
-      for (;;) {
-        const left = until - Date.now();
-        const a = await labCall<ThreatsAnswer>({
-          op: "threats_step",
-          args: {
-            id: shownId,
-            ms:
-              square === null
-                ? Math.max(0, Math.min(THREATS_STEP_MS, left))
-                : 0,
-            count,
-            ...(square === null
-              ? {}
-              : {
-                  square: [Math.floor(square / lab.dim), square % lab.dim] as [
-                    number,
-                    number,
-                  ],
-                }),
-          },
-        });
-        if (!current) return;
-        if (square !== null) {
-          setListed({ id: shownId, square, count, plays: a.plays });
-          return;
-        }
-        const done = a.exact || left <= THREATS_STEP_MS;
-        setListed({
-          id: shownId,
-          square,
-          count,
-          plays: a.plays,
-          answer: a,
-          done,
-        });
-        if (done) return;
-      }
-    })().catch(() => {});
+    labCall<ThreatsAnswer>({
+      op: "threats_step",
+      args: {
+        id: shownId,
+        ms: 0,
+        count,
+        square: [Math.floor(square / lab.dim), square % lab.dim],
+      },
+    }).then(
+      (a) =>
+        current && setListed({ id: shownId, square, count, plays: a.plays }),
+      () => {},
+    );
     return () => {
       current = false;
     };
-    // the plays the count gave are read once it is done, not on each change
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [shownId, shownDone, square, count, lab.dim]);
-  // the shown board's answer listed again for another count, if it is
-  const relisted =
-    listed && listed.id === shownId && listed.answer
-      ? { answer: listed.answer, done: !!listed.done }
-      : undefined;
+  }, [shownId, square, count, lab.dim]);
   const plays = useMemo(
     () =>
       listed && listed.id === shownId && listed.square === square
         ? listed.plays
         : // till the wasm lists them, those of the count's own plays
-          (answer?.plays ?? [])
+          (display?.plays ?? [])
             .filter(
               (p) =>
                 square === null || playSquares(p, lab.dim).includes(square),
             )
             .slice(0, count ?? 0),
-    [listed, shownId, square, answer, count, lab.dim],
+    [listed, shownId, square, display, count, lab.dim],
   );
 
   const rows = useMemo(
@@ -399,13 +387,13 @@ export const ThreatsPanel = (props: ThreatsPanelProps) => {
   // the board shows the answer listed
   const [publisher] = useState(() => Symbol("threats"));
   useEffect(() => {
-    if (!answer) {
+    if (!display) {
       publishLabThreats(publisher, null);
       return;
     }
     publishLabThreats(publisher, {
       dim: lab.dim,
-      heat: threatHeat(answer.squares, tint),
+      heat: threatHeat(display.squares, tint),
       ghost: picked ? ghostOf(picked, lab) : new Map(),
       outline: new Set(pointed ? playSquares(pointed, lab.dim) : []),
       square,
@@ -413,26 +401,25 @@ export const ThreatsPanel = (props: ThreatsPanelProps) => {
       // picking goes on, so a click on another square moves the list to it
       pick: setSquare,
     });
-  }, [publisher, answer, tint, picked, pointed, square, picking, lab]);
+  }, [publisher, display, tint, picked, pointed, square, picking, lab]);
   useEffect(() => () => publishLabThreats(publisher, null), [publisher]);
 
   const line = (key: string | null, label: string) => {
     if (!key) return null;
     const c = counted.get(key);
-    const text = !c
-      ? "Counting..."
-      : c.error
-        ? `Could not count the threats: ${namedTiles(c.error, (t) =>
-            machineLetterToRune(
-              wolgesLetterToLiwordsLetter(t),
-              lab.alphabet,
-              false,
-              true,
-            ),
-          )}`
-        : key === shownKey && relisted
-          ? threatsSummary(relisted.answer, lab.unseen.length, !relisted.done)
-          : threatsSummary(c.answer!, lab.unseen.length, !c.done);
+    const text =
+      !c?.answer && !c?.error
+        ? "Counting..."
+        : c.error
+          ? `Could not count the threats: ${namedTiles(c.error, (t) =>
+              machineLetterToRune(
+                wolgesLetterToLiwordsLetter(t),
+                lab.alphabet,
+                false,
+                true,
+              ),
+            )}`
+          : threatsSummary(c!.answer!, lab.unseen.length, !c!.done && !stopped);
     return (
       <div>
         {label}
@@ -440,6 +427,13 @@ export const ThreatsPanel = (props: ThreatsPanelProps) => {
       </div>
     );
   };
+  // a count stopped before it was done, to resume
+  const unfinished =
+    stopped &&
+    [nowKey, afterKey].some((key) => {
+      const c = key ? counted.get(key) : undefined;
+      return key !== null && !c?.error && !c?.done;
+    });
   const status =
     lab.unseen.length === 0 ? (
       "Nothing is unseen: the opponent holds no tiles."
@@ -455,14 +449,22 @@ export const ThreatsPanel = (props: ThreatsPanelProps) => {
     <PanelFrame
       title="Threats"
       status={status}
-      running={false}
+      running={counting}
       canResume={!counting && !!nowKey && lab.unseen.length > 0}
-      stop={() => {}}
-      resume={() => {
-        setCounted(new Map());
-        setRound((r) => r + 1);
+      stop={() => {
+        stoppedRef.current = true;
+        setStopped(true);
       }}
-      resumeLabel="Count again"
+      resume={() => {
+        stoppedRef.current = false;
+        setStopped(false);
+        if (unfinished) setGoing((n) => n + 1);
+        else {
+          setCounted(new Map());
+          setRound((r) => r + 1);
+        }
+      }}
+      resumeLabel={unfinished ? "Resume" : "Count again"}
       onClose={onClose}
       buttons={
         <React.Fragment>
@@ -522,18 +524,8 @@ export const ThreatsPanel = (props: ThreatsPanelProps) => {
             onChange={(v) => setCount(v)}
           />
         </label>
-        <label>
-          Seconds
-          <InputNumber
-            size="small"
-            aria-label="Seconds"
-            min={0}
-            value={seconds}
-            onChange={(v) => setSeconds(v)}
-          />
-        </label>
       </div>
-      {listShown && answer && (
+      {listShown && display && (
         <table className="lab-threat-plays">
           <thead>
             <tr>
@@ -566,7 +558,7 @@ export const ThreatsPanel = (props: ThreatsPanelProps) => {
                 </td>
                 <td className="lab-n">{play.score}</td>
                 <td className="lab-n">
-                  {(relisted?.answer ?? answer).exact ? "" : "~"}
+                  {display!.exact ? "" : "~"}
                   {percentText(play.chance)}
                 </td>
               </tr>
