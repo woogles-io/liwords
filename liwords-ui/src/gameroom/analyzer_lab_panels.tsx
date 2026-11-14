@@ -1539,6 +1539,10 @@ export const useLabSim = (
 ) => {
   const [allEdits, setAllEdits] = useState(() => new Map<string, SimEdits>());
   const [sim, setSim] = useState<MadeSim | null>(null);
+  // The job of the sim last made. Events of other jobs (an endgame's, of
+  // megabytes) are not handed to setSim: an update that leaves the state as
+  // it was is still kept until the panel next renders, its event with it.
+  const simJob = useRef<number | undefined>(undefined);
   const [settings, setSettings] = useState(defaultSimSettings);
   const [starting, setStarting] = useState(false);
   const startingRef = useRef(false);
@@ -1571,7 +1575,8 @@ export const useLabSim = (
 
   useEffect(
     () =>
-      onLabEvent((e) =>
+      onLabEvent((e) => {
+        if (e.job !== simJob.current) return;
         setSim((s) => {
           if (!s || e.job !== s.job) return s;
           // another job has taken the worker, and this one is gone
@@ -1584,8 +1589,8 @@ export const useLabSim = (
             running: s.running && !e.done && !e.error,
             done: !!e.done,
           };
-        }),
-      ),
+        });
+      }),
     [],
   );
 
@@ -1742,6 +1747,7 @@ export const useLabSim = (
       });
       // A play is held as the sim writes it, which can differ from how it was
       // given: a one-tile play written down is held across.
+      simJob.current = job;
       setSim({
         key: at,
         job,
