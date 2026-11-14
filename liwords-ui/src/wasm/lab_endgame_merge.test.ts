@@ -97,6 +97,32 @@ describe("a pre-endgame's parts merged", () => {
     });
   });
 
+  it("weighs by each part's deals where its answer gives no rows", () => {
+    const merged = mergeEndgameAnswers([
+      part(0, {
+        candidates: [
+          { play: ba, value: 4, win: 1, exact: true, deals: 3 },
+          { play: pass, value: 1, win: 0.5, exact: true, deals: 3 },
+        ],
+      }),
+      part(1, {
+        candidates: [
+          { play: pass, value: 2, win: 1, exact: true, deals: 1 },
+          { play: ba, value: -20, win: 0, exact: true, deals: 1 },
+        ],
+      }),
+    ]);
+    // the same plays as with the rows: BA 0.75 and -2, the pass 0.625 and
+    // 1.25, each over 4 deals, and no rows
+    expect(
+      merged.candidates?.map((c) => [c.play, c.win, c.value, c.deals, c.draws]),
+    ).toEqual([
+      [ba, 0.75, -2, 4, undefined],
+      [pass, 0.625, 1.25, 4, undefined],
+    ]);
+    expect(merged.draws).toBeUndefined();
+  });
+
   it("is exact only once every part is, a play estimated in any part estimated", () => {
     const merged = mergeEndgameAnswers([
       part(0, {

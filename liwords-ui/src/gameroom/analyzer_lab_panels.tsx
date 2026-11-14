@@ -155,6 +155,9 @@ type EndgameCandidate = {
   value: number;
   exact?: boolean;
   tiles?: Array<EndgameTile>;
+  // with two or more in the bag, the deals its sets cover, in place of the
+  // sets themselves, which are read for the play shown
+  deals?: number;
   draws?: Array<EndgameDraw>;
 };
 
@@ -892,6 +895,8 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
         exact: c.exact,
         tiles: tiles?.length ? tiles : undefined,
         draws: draws?.length ? draws : undefined,
+        // whether it has sets to show, given or to be read
+        sets: !!(draws?.length || c.deals),
       };
     });
   }, [solved, lab, lead]);
@@ -899,7 +904,39 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
   const [picked, setPicked] = useState<string>();
   const shown =
     plays.find((p) => p.move.jsonKey === picked) ??
-    plays.find((p) => p.tiles || p.draws);
+    plays.find((p) => p.tiles || p.sets);
+  // the shown play's sets where its answer gives none: read for it, again
+  // each second while the solve runs, and once more when it is exact
+  const [read, setRead] = useState<{
+    key: string;
+    draws: Array<EndgameDraw>;
+  }>();
+  const readKey =
+    shown && !shown.tiles && !shown.draws && shown.sets && job.job !== undefined
+      ? `${job.job}/${shown.move.jsonKey}`
+      : undefined;
+  const readPlay = shown ? JSON.stringify(shown.play) : undefined;
+  const readTick = Math.floor(ranMs / 1000);
+  const readExact = !!solved?.exact;
+  useEffect(() => {
+    if (readKey === undefined || job.job === undefined) return;
+    let current = true;
+    labCall<Array<EndgameDraw> | undefined>({
+      op: "draws",
+      args: { job: job.job, play: readPlay! },
+    })
+      .then((draws) => {
+        if (current && draws) setRead({ key: readKey, draws });
+      })
+      .catch(() => {});
+    return () => {
+      current = false;
+    };
+    // the play and job are in readKey
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [readKey, readTick, readExact]);
+  const shownDraws =
+    shown?.draws ?? (read && read.key === readKey ? read.draws : undefined);
 
   // the players by who moves first in the line: the player to move, then the
   // other
@@ -1073,7 +1110,7 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
                 <td className="move-score">{m.score}</td>
                 <td className="move-leave">{runes(m.leave)}</td>
                 <td className="lab-win">
-                  {p.tiles || p.draws ? (
+                  {p.tiles || p.sets ? (
                     // the win picks the play whose deals are shown below
                     <Tooltip title="Show what it gains for each draw">
                       <Button
@@ -1119,37 +1156,40 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
               <td className="move-equity">{signed(t.value)}</td>
             </tr>
           ))}
-          {shown?.draws?.map((d) => (
-            <React.Fragment key={d.tiles.join(",")}>
-              <tr className="lab-tile">
-                <td className="lab-who">
-                  {!d.drawn && goInButton(shown.play, d.tiles)}
-                </td>
-                <td className="move-coords" />
-                <td className="move" colSpan={3}>
-                  {runes(d.tiles)}
-                  {dealsText(d.count)}
-                </td>
-                <td className="lab-win">
-                  {d.win === undefined ? endText(d.value) : percent(d.win)}
-                </td>
-                <td className="move-equity">{signed(d.value, 2)}</td>
-              </tr>
-              {d.drawn?.map((r) => (
-                // with both racks known, what the play then draws from the set
-                <tr key={r.tiles.join(",")} className="lab-tile lab-drawn">
-                  <td className="lab-who">{goInButton(shown.play, r.tiles)}</td>
+          {shown &&
+            shownDraws?.map((d) => (
+              <React.Fragment key={d.tiles.join(",")}>
+                <tr className="lab-tile">
+                  <td className="lab-who">
+                    {!d.drawn && goInButton(shown.play, d.tiles)}
+                  </td>
                   <td className="move-coords" />
                   <td className="move" colSpan={3}>
-                    {`draws ${runes(r.tiles)}`}
-                    {dealsText(r.count)}
+                    {runes(d.tiles)}
+                    {dealsText(d.count)}
                   </td>
-                  <td className="lab-win">{percent(r.win)}</td>
-                  <td className="move-equity">{signed(r.value, 2)}</td>
+                  <td className="lab-win">
+                    {d.win === undefined ? endText(d.value) : percent(d.win)}
+                  </td>
+                  <td className="move-equity">{signed(d.value, 2)}</td>
                 </tr>
-              ))}
-            </React.Fragment>
-          ))}
+                {d.drawn?.map((r) => (
+                  // with both racks known, what the play then draws from the set
+                  <tr key={r.tiles.join(",")} className="lab-tile lab-drawn">
+                    <td className="lab-who">
+                      {goInButton(shown.play, r.tiles)}
+                    </td>
+                    <td className="move-coords" />
+                    <td className="move" colSpan={3}>
+                      {`draws ${runes(r.tiles)}`}
+                      {dealsText(r.count)}
+                    </td>
+                    <td className="lab-win">{percent(r.win)}</td>
+                    <td className="move-equity">{signed(r.value, 2)}</td>
+                  </tr>
+                ))}
+              </React.Fragment>
+            ))}
         </tbody>
       </table>
     </PanelFrame>

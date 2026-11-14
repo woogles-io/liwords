@@ -510,6 +510,16 @@ const multi = async (request: LabRequest): Promise<unknown> => {
         args: { job: j },
       }));
       return undefined;
+    case "draws": {
+      // each part's rows of the play, for the sets it values, together
+      const rows = await each<Array<unknown> | undefined>(
+        request.args.job,
+        (j) => ({ ...request, args: { ...request.args, job: j } }),
+      );
+      return rows.every((r) => r === undefined)
+        ? undefined
+        : rows.flatMap((r) => r ?? []);
+    }
     case "values":
       await each(request.args.job, (j) => ({
         ...request,

@@ -63,6 +63,10 @@ export type LabRequest =
   // an empty bag's endgame, every first move valued on the table its steps
   // kept, in at most ms, without stepping; sent as a step's answer is
   | { op: "values"; args: { job: number; ms: number } }
+  // a pre-endgame play's rows, what it gains for each set the bag may hold,
+  // read without stepping; the play as its answer gives it, in JSON. A step's
+  // answer gives each play's deals, not its rows.
+  | { op: "draws"; args: { job: number; play: string } }
   // a sim's answer as it stands, compared with the play given in place of the
   // one it is compared with, answered and not sent
   | { op: "peek"; args: { job: number; against: string } }
@@ -105,7 +109,7 @@ type Answer = {
   out_of_memory?: boolean;
   nodes?: number;
   iterations?: number;
-  candidates?: Array<{ state: string }>;
+  candidates?: Array<{ state: string; play?: unknown; draws?: unknown }>;
 };
 
 // How a sim prunes its candidates, told to it at every step: wolges's own
@@ -467,6 +471,23 @@ const handle = async (req: LabRequest): Promise<unknown> => {
       );
       post({ event: { job: job.id, answer, done: isDone(job, answer) } });
       return undefined;
+    }
+    case "draws": {
+      if (!job || job.id !== req.args.job || job.kind !== "endgame") {
+        throw new Error("no such endgame");
+      }
+      // where the play stands in the answer now, then its rows there
+      const now: Answer = JSON.parse(
+        wolges.endgame_step(job.handle, JSON.stringify({ ms: 0 })),
+      );
+      const i = (now.candidates ?? []).findIndex(
+        (c) => JSON.stringify(c.play) === req.args.play,
+      );
+      if (i < 0) return undefined;
+      const read: Answer = JSON.parse(
+        wolges.endgame_step(job.handle, JSON.stringify({ ms: 0, draws_of: i })),
+      );
+      return read.candidates?.[i]?.draws;
     }
     case "run": {
       if (!job || job.id !== req.args.job) throw new Error("no such job");
