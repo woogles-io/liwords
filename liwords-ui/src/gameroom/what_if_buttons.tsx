@@ -18,7 +18,10 @@ import {
   useExamineStoreContext,
   useTentativeTileContext,
 } from "../store/store";
-import { EphemeralTile } from "../utils/cwgame/common";
+import {
+  EmptyRackSpaceMachineLetter,
+  EphemeralTile,
+} from "../utils/cwgame/common";
 import { getWolges } from "../wasm/loader";
 import { DndProvider } from "react-dnd";
 import MultiBackend, { MultiBackendOptions } from "./dnd-backend";
@@ -254,13 +257,16 @@ export const WhatIfBar = (props: WhatIfBarProps) => {
           />
         </Tooltip>
         {picking && (
-          // its tiles are drawn as the board's are, which this row sits apart
-          // from
+          // its tiles are drag sources, and this row sits outside the
+          // board's DndProvider
           <DndProvider backend={MultiBackend} options={MultiBackendOptions}>
             <ExchangeTiles
               tileColorId={0}
               alphabet={gameContext.alphabet}
-              rack={me.currentRack}
+              // the empty places of tiles out on the board are no tiles
+              rack={me.currentRack.filter(
+                (t) => t !== EmptyRackSpaceMachineLetter,
+              )}
               modalVisible
               omitPool
               onCancel={() => setPicking(false)}
