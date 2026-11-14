@@ -1,18 +1,21 @@
 import { InputRef } from "rc-input";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { MachineWord } from "../utils/cwgame/common";
+import { MachineLetter, MachineWord } from "../utils/cwgame/common";
 import {
   Alphabet,
   machineWordToRunes,
   runesToMachineWord,
 } from "../constants/alphabets";
-import { Input } from "antd";
+import { Button, Input } from "antd";
+import Tile from "./tile";
 
 type Props = {
   rackCallback: (rack: MachineWord) => void;
   cancelCallback: () => void;
   currentRack: MachineWord;
   alphabet: Alphabet;
+  // the tiles' color, as the rack's
+  tileColorId?: number;
 };
 
 const MaxRackLength = 7;
@@ -32,6 +35,15 @@ export const RackEditor = (props: Props) => {
   );
 
   const inputRef = useRef<InputRef>(null);
+  // a tile clicked joins the rack, as if typed, while it has room
+  const addTile = (letter: MachineLetter) => {
+    if (currentRack.length < MaxRackLength) {
+      const rack = [...currentRack, letter];
+      setCurrentRack(rack);
+      setCurRackStr(calculateRackStr(rack));
+    }
+    inputRef.current?.focus();
+  };
   const handleKeyDown = (evt: React.KeyboardEvent) => {
     if (evt.key === "Enter") {
       props.rackCallback(currentRack);
@@ -71,7 +83,7 @@ export const RackEditor = (props: Props) => {
   };
 
   return (
-    <>
+    <React.Fragment>
       <Input
         ref={inputRef}
         placeholder={
@@ -83,6 +95,29 @@ export const RackEditor = (props: Props) => {
         onChange={handleRackEditChange}
         onKeyDown={handleKeyDown}
       />
-    </>
+      {/* every tile, the blank first, for a rack clicked together: a letter
+          the keyboard cannot type is a click away */}
+      <div className="rack-editor-tiles">
+        {props.alphabet.letters.map((letter, idx) => (
+          <Tile
+            lastPlayed={false}
+            playerOfTile={props.tileColorId ?? 0}
+            alphabet={props.alphabet}
+            letter={idx}
+            value={letter.score}
+            grabbable={false}
+            key={`rack_${letter.rune}`}
+            onClick={() => addTile(idx)}
+          />
+        ))}
+      </div>
+      {/* what Enter and Esc do, for a pointer */}
+      <div className="rack-editor-buttons">
+        <Button onClick={props.cancelCallback}>Cancel</Button>
+        <Button type="primary" onClick={() => props.rackCallback(currentRack)}>
+          Use this rack
+        </Button>
+      </div>
+    </React.Fragment>
   );
 };

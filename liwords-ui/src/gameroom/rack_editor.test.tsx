@@ -4,6 +4,8 @@ import {
   runesToMachineWord,
   StandardSpanishAlphabet,
 } from "../constants/alphabets";
+import { DndProvider } from "react-dnd";
+import { TouchBackend } from "react-dnd-touch-backend";
 import { RackEditor } from "./rack_editor";
 
 // Enter sends the rack the editor holds, so a rack it opens with is capped to
@@ -13,12 +15,14 @@ it("sends at most seven tiles on Enter, a digraph counting as one", () => {
   expect(rack.length).toBe(8);
   const rackCallback = vi.fn();
   render(
-    <RackEditor
-      rackCallback={rackCallback}
-      cancelCallback={() => {}}
-      currentRack={rack}
-      alphabet={StandardSpanishAlphabet}
-    />,
+    <DndProvider backend={TouchBackend}>
+      <RackEditor
+        rackCallback={rackCallback}
+        cancelCallback={() => {}}
+        currentRack={rack}
+        alphabet={StandardSpanishAlphabet}
+      />
+    </DndProvider>,
   );
 
   fireEvent.keyDown(screen.getByRole("textbox"), { key: "Enter" });
@@ -31,15 +35,65 @@ it("sends a full rack it opens with unchanged", () => {
   expect(rack.length).toBe(7);
   const rackCallback = vi.fn();
   render(
-    <RackEditor
-      rackCallback={rackCallback}
-      cancelCallback={() => {}}
-      currentRack={rack}
-      alphabet={StandardSpanishAlphabet}
-    />,
+    <DndProvider backend={TouchBackend}>
+      <RackEditor
+        rackCallback={rackCallback}
+        cancelCallback={() => {}}
+        currentRack={rack}
+        alphabet={StandardSpanishAlphabet}
+      />
+    </DndProvider>,
   );
 
   fireEvent.keyDown(screen.getByRole("textbox"), { key: "Enter" });
 
   expect(rackCallback).toHaveBeenCalledWith(rack);
+});
+
+// A tile clicked joins the rack, so a letter the keyboard cannot type, or a
+// digraph, is a click away; a full rack takes no more.
+it("adds a clicked tile to the rack, up to seven", () => {
+  const rackCallback = vi.fn();
+  const { container } = render(
+    <DndProvider backend={TouchBackend}>
+      <RackEditor
+        rackCallback={rackCallback}
+        cancelCallback={() => {}}
+        currentRack={runesToMachineWord("AEIOUS", StandardSpanishAlphabet)}
+        alphabet={StandardSpanishAlphabet}
+      />
+    </DndProvider>,
+  );
+  const tiles = container.querySelectorAll(".rack-editor-tiles .tile");
+  const ch = runesToMachineWord("[CH]", StandardSpanishAlphabet)[0];
+  fireEvent.click(tiles[ch]);
+  fireEvent.click(tiles[ch]);
+  expect(screen.getByRole("textbox")).toHaveValue("AEIOUS[CH]");
+  fireEvent.click(screen.getByRole("button", { name: "Use this rack" }));
+  expect(rackCallback).toHaveBeenCalledWith(
+    runesToMachineWord("AEIOUS[CH]", StandardSpanishAlphabet),
+  );
+});
+
+// What Enter and Esc do, a pointer can do with the editor's two buttons.
+it("uses the rack typed, or cancels, by its buttons", () => {
+  const rack = runesToMachineWord("[CH]AEIOUS", StandardSpanishAlphabet);
+  const rackCallback = vi.fn();
+  const cancelCallback = vi.fn();
+  render(
+    <DndProvider backend={TouchBackend}>
+      <RackEditor
+        rackCallback={rackCallback}
+        cancelCallback={cancelCallback}
+        currentRack={rack}
+        alphabet={StandardSpanishAlphabet}
+      />
+    </DndProvider>,
+  );
+
+  fireEvent.click(screen.getByRole("button", { name: "Use this rack" }));
+  expect(rackCallback).toHaveBeenCalledWith(rack);
+
+  fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+  expect(cancelCallback).toHaveBeenCalledTimes(1);
 });

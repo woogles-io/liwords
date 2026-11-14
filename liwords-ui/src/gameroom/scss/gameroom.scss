@@ -2194,6 +2194,36 @@ p.rune {
   }
 }
 
+// the rack editor's tiles, laid out as the blank picker's
+.rack-editor-tiles {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 12px 0;
+  width: 326px;
+
+  .tile {
+    height: $tile-size-desktop;
+    margin: 0 2px 2px 0;
+    width: $tile-size-desktop;
+
+    p.rune {
+      font-size: 30px;
+    }
+  }
+}
+
+.rack-modal .rack {
+  margin: 0;
+  width: 100%;
+}
+
+.rack-editor-buttons {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
 .blank-selector {
   display: flex;
   flex-wrap: wrap;
