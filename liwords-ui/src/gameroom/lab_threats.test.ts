@@ -74,6 +74,23 @@ describe("leaveAfter", () => {
 });
 
 describe("threatsSummary", () => {
+  it("gives no best or bingo while the plays are first listed, no rack weighed", () => {
+    const listing = answer({
+      exact: false,
+      walked: 0.138,
+      covered: 0,
+      samples: 0,
+      expected_best: 0,
+      bingo: 0,
+    });
+    expect(threatsSummary(listing, 52, true)).toBe(
+      "Listing the opponent's plays: 13.8%, from 52 unseen",
+    );
+    expect(threatsSummary(listing, 52)).toBe(
+      "Stopped listing the opponent's plays at 13.8%, from 52 unseen",
+    );
+  });
+
   it("says how much of the plays are listed while listing", () => {
     expect(
       threatsSummary(answer({ exact: false, walked: 0.25 }), 60, true),

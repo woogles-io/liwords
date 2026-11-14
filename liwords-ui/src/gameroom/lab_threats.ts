@@ -118,12 +118,19 @@ export const percentText = (x: number) => `${(x * 100).toFixed(1)}%`;
 // The status line for an answer: the opponent's best on average, the chance
 // of a whole rack, from how many tiles unseen; "~" and how much was counted
 // exactly when the count was stopped, or so far while it goes on; before
-// that, how much of the plays were listed.
+// that, how much of the plays were listed. While the plays are first listed,
+// before any rack is weighed, how much of them were listed alone.
 export const threatsSummary = (
   answer: ThreatsAnswer,
   unseen: number,
   counting = false,
 ) => {
+  // still listing the plays, no rack weighed yet: no best or bingo to give
+  if (answer.walked < 1 && answer.covered === 0 && answer.samples === 0) {
+    return counting
+      ? `Listing the opponent's plays: ${percentText(answer.walked)}, from ${unseen} unseen`
+      : `Stopped listing the opponent's plays at ${percentText(answer.walked)}, from ${unseen} unseen`;
+  }
   const about = answer.exact ? "" : "~";
   const bingo =
     answer.bingo === null ? "" : `, bingo ${about}${percentText(answer.bingo)}`;
