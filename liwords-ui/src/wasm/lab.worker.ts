@@ -101,6 +101,9 @@ type Job = {
   modeled?: boolean;
   // the play a sim's candidates are compared with, as the sim takes one
   against?: unknown;
+  // an endgame's last answer sent, when; and the one since, not yet sent
+  sentAt?: number;
+  unsent?: Answer;
 };
 type Answer = {
   exact?: boolean;
@@ -176,6 +179,11 @@ let chainId = 0;
 // requests that came in meanwhile get in first. A timeout would do the same,
 // but browsers make a chain of timeouts wait 4 ms or more each.
 const stepPort = new MessageChannel();
+
+// How often a running endgame's answer is sent to the page, at most: four a
+// second shows it moving, where one a frame copies a pre-endgame's answer
+// sixty times a second.
+const SEND_EVERY_MS = 250;
 const nextSteps: Array<() => void> = [];
 stepPort.port1.onmessage = () => nextSteps.shift()?.();
 const later = (next: () => void) => {
@@ -272,7 +280,22 @@ const step = async (j: Job, chain: number, ms: number) => {
     j.nodes = answer.nodes;
     const done = isDone(j, answer);
     if (done) running = false;
-    post({ event: { job: j.id, answer, done } });
+    // An endgame steps a frame at a time, and each answer is copied to the
+    // page: one each SEND_EVERY_MS is enough to show it, and the last is
+    // sent when it is done or stopped.
+    const now = performance.now();
+    if (
+      j.kind === "endgame" &&
+      !done &&
+      j.sentAt !== undefined &&
+      now - j.sentAt < SEND_EVERY_MS
+    ) {
+      j.unsent = answer;
+    } else {
+      j.sentAt = now;
+      j.unsent = undefined;
+      post({ event: { job: j.id, answer, done } });
+    }
     if (done) return;
   } catch (e) {
     running = false;
@@ -502,6 +525,11 @@ const handle = async (req: LabRequest): Promise<unknown> => {
     }
     case "stop":
       running = false;
+      // the answer it stopped on, if not yet sent
+      if (job?.unsent) {
+        post({ event: { job: job.id, answer: job.unsent, done: false } });
+        job.unsent = undefined;
+      }
       return undefined;
     case "free":
       if (job && job.id === req.args.job) freeJob(wolges);

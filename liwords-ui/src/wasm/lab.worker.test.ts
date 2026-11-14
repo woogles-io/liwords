@@ -224,6 +224,40 @@ describe("the lab's worker", () => {
     expect(posted.some((m) => (m as { dead?: boolean }).dead)).toBe(true);
   });
 
+  it("sends a running endgame's answers a few times a second, the last when done", async () => {
+    wasm.endgame_step
+      .mockReturnValueOnce(JSON.stringify({ exact: false, nodes: 0, steps: 1 }))
+      .mockReturnValueOnce(JSON.stringify({ exact: false, nodes: 0, steps: 2 }))
+      .mockReturnValueOnce(JSON.stringify({ exact: false, nodes: 0, steps: 3 }))
+      .mockReturnValueOnce(JSON.stringify({ exact: true, nodes: 0, steps: 4 }));
+    const job = (await send(1, "endgame", { request: '{"model":"info_sets"}' }))
+      .result as number;
+    await send(2, "run", { job, ms: 16 });
+    await vi.waitFor(() => expect(events().some((e) => e.done)).toBe(true));
+    expect(wasm.endgame_step).toHaveBeenCalledTimes(4);
+    // the first, then (the two between come within the same quarter second)
+    // the last, done
+    expect(
+      events().map((e) => (e.answer as { steps: number } | undefined)?.steps),
+    ).toEqual([1, 4]);
+  });
+
+  it("sends the answer a stopped endgame stopped on, if not yet sent", async () => {
+    wasm.endgame_step.mockImplementation(() =>
+      JSON.stringify({ exact: false, nodes: 0, steps: 1 }),
+    );
+    const job = (await send(1, "endgame", { request: '{"model":"info_sets"}' }))
+      .result as number;
+    await send(2, "run", { job, ms: 16 });
+    await vi.waitFor(() =>
+      expect(wasm.endgame_step.mock.calls.length).toBeGreaterThan(2),
+    );
+    const before = events().length;
+    await send(3, "stop", {});
+    expect(events().length).toBe(before + 1);
+    wasm.endgame_step.mockReset();
+  });
+
   it("keeps stepping a pre-endgame, whose answers count no nodes", async () => {
     wasm.endgame_step
       .mockReturnValueOnce(JSON.stringify({ exact: false, nodes: 0 }))
