@@ -299,14 +299,16 @@ const step = async (j: Job, chain: number, ms: number) => {
     // memory cap, which counts every byte the instance holds, the lexicon too:
     // no step after it can search either. A pre-endgame's answers count no
     // nodes, searching or not, so tell nothing of it; a wasm that says when a
-    // step stopped on the cap says so for either.
+    // step stopped on the cap says so for either, and is taken at its word
+    // (a step it stopped for time searches no node either).
     if (
       j.kind === "endgame" &&
-      (answer.out_of_memory ||
-        (!j.modeled &&
+      (answer.out_of_memory !== undefined
+        ? answer.out_of_memory
+        : !j.modeled &&
           !answer.exact &&
           answer.nodes !== undefined &&
-          answer.nodes === j.nodes))
+          answer.nodes === j.nodes)
     ) {
       running = false;
       // the memory the instance grew to stays with it: the page lets this

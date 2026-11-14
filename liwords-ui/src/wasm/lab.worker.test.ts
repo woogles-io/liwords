@@ -297,6 +297,18 @@ describe("the lab's worker", () => {
     expect(e.answer?.value).toBe(3);
   });
 
+  it("takes a wasm that says it is not out of memory at its word", async () => {
+    stepping(
+      { exact: false, nodes: 5, out_of_memory: false },
+      { exact: false, nodes: 5, out_of_memory: false },
+      { exact: true, nodes: 9, out_of_memory: false },
+    );
+    const job = (await send(1, "endgame", { request: "{}" })).result as number;
+    await send(2, "run", { job, ms: 16 });
+    await vi.waitFor(() => expect(stepCalls().length).toBeGreaterThan(2));
+    expect(events().some((e) => e.error)).toBe(false);
+  });
+
   it("names a panic in the wasm as one", async () => {
     wasm.endgame_step.mockImplementationOnce(() => {
       throw new WebAssembly.RuntimeError("unreachable");
