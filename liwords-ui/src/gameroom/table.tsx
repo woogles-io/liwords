@@ -346,6 +346,16 @@ const ChatAreaDiv: React.FC<{
   );
 };
 
+// Whether a player opening the game room tells the server they are ready:
+// only while the game goes on. A game that ended while the page was open
+// still has no end reason in its gameInfo, which is replaced on entering
+// analysis; the game context says it is over.
+export const readyToSend = (
+  gameEndReason: GameEndReason,
+  gameDone: boolean,
+  observer: boolean,
+) => gameEndReason === GameEndReason.NONE && !gameDone && !observer;
+
 export const Table = React.memo((props: Props) => {
   const { gameID } = useParams();
   const ownsAnnotatedGame = useOwnsAnnotatedGame(gameID, props.annotated);
@@ -928,14 +938,7 @@ export const Table = React.memo((props: Props) => {
     setIsObserver(observer);
     setPlayerNames(gameInfo.players.map((p) => p.nickname));
     // If we are not the observer, tell the server we're ready for the game to start.
-    // A game that ended while the page was open still has no end reason in
-    // gameInfo, which is replaced on entering analysis: the game context says
-    // it is over.
-    if (
-      gameInfo.gameEndReason === GameEndReason.NONE &&
-      !gameDone &&
-      !observer
-    ) {
+    if (readyToSend(gameInfo.gameEndReason, gameDone, observer)) {
       const evt = create(ReadyForGameSchema);
       evt.gameId = gameID;
       sendSocketMsg(
