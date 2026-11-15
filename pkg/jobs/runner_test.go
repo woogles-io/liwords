@@ -475,10 +475,44 @@ func TestDrainTimeoutCancelsJobs(t *testing.T) {
 	if err := r.Drain(ctx); !errors.Is(err, context.DeadlineExceeded) {
 		t.Fatalf("Drain: %v", err)
 	}
+	// The job has returned by the time Drain does, so the events it sent
+	// are in the bus before the bus drains.
 	select {
 	case <-cancelled:
-	case <-time.After(time.Second):
-		t.Fatal("job not cancelled")
+	default:
+		t.Fatal("Drain returned before the cancelled job did")
+	}
+	// Recorded as a failed attempt, to be retried.
+	eventually(t, time.Second, "cancelled run recorded", func() bool {
+		j := getJob(t, q, "stuck", "a")
+		return j.LastError == context.Canceled.Error() && !j.DoneAt.Valid
+	})
+}
+
+// A job that ignores its context holds Drain only cancelGrace past its
+// deadline.
+func TestDrainDoesNotWaitForStuckJobs(t *testing.T) {
+	_, q := setupDB(t)
+	started := make(chan struct{})
+	release := make(chan struct{})
+	defer close(release)
+	r := NewRunner(q, fast)
+	r.Handle("ignores-ctx", func(ctx context.Context, job Job) error {
+		close(started)
+		<-release
+		return nil
+	})
+	go r.Run(context.Background())
+	enqueue(t, q, "ignores-ctx", "a")
+	<-started
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+	begin := time.Now()
+	if err := r.Drain(ctx); !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("Drain: %v", err)
+	}
+	if took := time.Since(begin); took > 100*time.Millisecond+cancelGrace+500*time.Millisecond {
+		t.Fatalf("Drain took %v", took)
 	}
 }
 

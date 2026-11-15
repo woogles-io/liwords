@@ -625,9 +625,11 @@ func main() {
 		}
 		// Then jobs, which send events through the bus too.
 		if jobRunner != nil {
-			if err := jobRunner.Drain(ctx); err != nil {
+			jobsCtx, cancelJobs := context.WithTimeout(ctx, jobsDrainBudget)
+			if err := jobRunner.Drain(jobsCtx); err != nil {
 				log.Error().Err(err).Msg("jobs-drain-on-shutdown")
 			}
+			cancelJobs()
 		}
 		// Then moves and other socket messages: stop taking them, and
 		// finish the ones in progress (see pkg/bus/drain.go).

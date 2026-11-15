@@ -545,9 +545,14 @@ func runHandler(ctx context.Context, h Handler, job Job) (err error) {
 	return h(ctx, job)
 }
 
+// cancelGrace is how long Drain waits for cancelled jobs to return, so the
+// events they send still reach the bus before it drains.
+const cancelGrace = time.Second
+
 // Drain stops claiming and waits for the running jobs. If ctx ends first,
-// it cancels their contexts and returns ctx's error; their rows are taken
-// again once their leases expire.
+// it cancels their contexts, waits up to cancelGrace for them to return, and
+// returns ctx's error. A cancelled run is recorded like a failed one: a
+// schedule runs again at its next time, a one-off job is retried.
 func (r *Runner) Drain(ctx context.Context) error {
 	ctx, span := tracer.Start(ctx, "jobs.drain")
 	defer span.End()
@@ -570,10 +575,19 @@ func (r *Runner) Drain(ctx context.Context) error {
 		r.mu.Lock()
 		r.cancelJobs()
 		r.mu.Unlock()
+		cancelled := len(r.slots)
 		span.RecordError(ctx.Err())
 		span.SetStatus(codes.Error, ctx.Err().Error())
-		span.SetAttributes(attribute.Int("jobs.cancelled", len(r.slots)))
-		log.Warn().Int("running", len(r.slots)).Msg("jobs-drain-timed-out")
+		span.SetAttributes(attribute.Int("jobs.cancelled", cancelled))
+		select {
+		case <-done:
+		case <-time.After(cancelGrace):
+			// Handlers that ignore their context. Their rows are taken
+			// again once their leases expire.
+			span.SetAttributes(attribute.Int("jobs.still_running", len(r.slots)))
+		}
+		log.Warn().Int("cancelled", cancelled).Int("still-running", len(r.slots)).
+			Msg("jobs-drain-timed-out")
 		return ctx.Err()
 	}
 }
