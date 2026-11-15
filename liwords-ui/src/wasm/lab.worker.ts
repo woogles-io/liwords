@@ -134,6 +134,14 @@ type Answer = {
     draws?: unknown;
     draws_total?: number;
   }>;
+  // the play named by draws_of where the answer does not give it among its
+  // plays, with its rows
+  drawn?: {
+    index: number;
+    play?: unknown;
+    draws?: unknown;
+    draws_total?: number;
+  };
 };
 
 // How a sim prunes its candidates, told to it at every step: wolges's own
@@ -622,26 +630,33 @@ const handle = async (req: LabRequest): Promise<unknown> => {
       if (!job || job.id !== req.args.job || job.kind !== "endgame") {
         throw new Error("no such endgame");
       }
-      // where the play stands in the answer now, then its rows there
-      const now: Answer = JSON.parse(
-        wolges.endgame_step(job.handle, reading(job, {})),
-      );
-      const i = (now.candidates ?? []).findIndex(
-        (c) => JSON.stringify(c.play) === req.args.play,
-      );
-      if (i < 0) return undefined;
-      const read: Answer = JSON.parse(
-        wolges.endgame_step(
-          job.handle,
-          reading(job, {
-            draws_of: i,
-            ...(req.args.upTo !== undefined
-              ? { draws_range: [0, req.args.upTo] }
-              : {}),
-          }),
-        ),
-      );
-      const c = read.candidates?.[i];
+      // the play's rows, named by the play itself, with none of the plays:
+      // the wasm gives them as "drawn" where the play is not among the plays
+      // the answer gives, and on the play otherwise
+      let read: Answer;
+      try {
+        read = JSON.parse(
+          wolges.endgame_step(
+            job.handle,
+            JSON.stringify({
+              ms: 0,
+              draws_of: JSON.parse(req.args.play),
+              ...(req.args.upTo !== undefined
+                ? { draws_range: [0, req.args.upTo] }
+                : {}),
+              candidates_range: [0, 0],
+            }),
+          ),
+        );
+      } catch {
+        // a play the endgame does not value
+        return undefined;
+      }
+      const c =
+        read.drawn ??
+        (read.candidates ?? []).find(
+          (c) => JSON.stringify(c.play) === req.args.play,
+        );
       if (!c?.draws) return undefined;
       const rows = c.draws as Array<unknown>;
       return { rows, total: c.draws_total ?? rows.length };

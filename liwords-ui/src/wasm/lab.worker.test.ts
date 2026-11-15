@@ -442,53 +442,46 @@ describe("the lab's worker", () => {
     );
   });
 
-  it("reads a pre-endgame play's rows by where it stands, without stepping", async () => {
+  it("reads a pre-endgame play's rows by the play itself, without stepping", async () => {
     const ba = { action: "play", word: [2, 1] };
-    const pass = { action: "exchange", tiles: [] };
     const rows = [{ tiles: [5, 9], count: 3, value: 4 }];
-    wasm.endgame_step
-      .mockReturnValueOnce(
-        JSON.stringify({ candidates: [{ play: pass }, { play: ba }] }),
-      )
-      .mockReturnValueOnce(
-        JSON.stringify({
-          candidates: [{ play: pass }, { play: ba, draws: rows }],
-        }),
-      );
+    // given apart from the plays, none of which the read asks for
+    wasm.endgame_step.mockReturnValueOnce(
+      JSON.stringify({
+        candidates: [],
+        drawn: { index: 70, play: ba, draws: rows },
+      }),
+    );
     const job = (await send(1, "endgame", { request: "{}" })).result as number;
     const read = await send(2, "draws", { job, play: JSON.stringify(ba) });
     expect(read.result).toEqual({ rows, total: 1 });
-    expect(wasm.endgame_step).toHaveBeenNthCalledWith(
-      1,
+    expect(wasm.endgame_step).toHaveBeenCalledTimes(1);
+    expect(wasm.endgame_step).toHaveBeenLastCalledWith(
       7,
-      JSON.stringify({ ms: 0, candidates_range: [0, 50] }),
+      JSON.stringify({ ms: 0, draws_of: ba, candidates_range: [0, 0] }),
     );
-    expect(wasm.endgame_step).toHaveBeenNthCalledWith(
-      2,
-      7,
-      JSON.stringify({ ms: 0, draws_of: 1, candidates_range: [0, 50] }),
+    // given on the play, where the answer gives it among its plays
+    wasm.endgame_step.mockReturnValueOnce(
+      JSON.stringify({ candidates: [{ play: ba, draws: rows }] }),
     );
-    // a play it does not list has no rows, and it reads no further
-    wasm.endgame_step.mockReturnValueOnce(JSON.stringify({ candidates: [] }));
     expect(
       (await send(3, "draws", { job, play: JSON.stringify(ba) })).result,
+    ).toEqual({ rows, total: 1 });
+    // a play the endgame does not value has no rows
+    wasm.endgame_step.mockImplementationOnce(() => {
+      throw "no such play";
+    });
+    expect(
+      (await send(4, "draws", { job, play: JSON.stringify(ba) })).result,
     ).toBeUndefined();
-    expect(wasm.endgame_step).toHaveBeenCalledTimes(3);
 
     // a page of them, with how many it has in all
-    wasm.endgame_step
-      .mockReturnValueOnce(
-        JSON.stringify({ candidates: [{ play: pass }, { play: ba }] }),
-      )
-      .mockReturnValueOnce(
-        JSON.stringify({
-          candidates: [
-            { play: pass },
-            { play: ba, draws: rows, draws_total: 9 },
-          ],
-        }),
-      );
-    const page = await send(4, "draws", {
+    wasm.endgame_step.mockReturnValueOnce(
+      JSON.stringify({
+        drawn: { index: 1, play: ba, draws: rows, draws_total: 9 },
+      }),
+    );
+    const page = await send(5, "draws", {
       job,
       play: JSON.stringify(ba),
       upTo: 1,
@@ -498,10 +491,24 @@ describe("the lab's worker", () => {
       7,
       JSON.stringify({
         ms: 0,
-        draws_of: 1,
+        draws_of: ba,
         draws_range: [0, 1],
-        candidates_range: [0, 50],
+        candidates_range: [0, 0],
       }),
+    );
+    // a part of a pre-endgame in parts reads them the same way
+    wasm.endgame_step.mockReturnValueOnce(
+      JSON.stringify({ drawn: { index: 3, play: ba, draws: rows } }),
+    );
+    const part = (
+      await send(6, "endgame", { request: '{"model":"x","part":[1,2]}' })
+    ).result as number;
+    expect(
+      (await send(7, "draws", { job: part, play: JSON.stringify(ba) })).result,
+    ).toEqual({ rows, total: 1 });
+    expect(wasm.endgame_step).toHaveBeenLastCalledWith(
+      7,
+      JSON.stringify({ ms: 0, draws_of: ba, candidates_range: [0, 0] }),
     );
   });
 
