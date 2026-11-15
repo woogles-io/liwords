@@ -95,7 +95,8 @@ linked to the poll that claimed it, with the job's queries under it. Tags:
 `job.kind`, `job.key`, `job.schedule`, `job.attempt`, `job.lag_ms` (how late it
 started), `job.outcome` (`done`, `ran`, `retry`, `given_up`, `lease_lost`,
 `unrecorded`) and `job.next_run_at`; events `lease lost`, `lease renew failed`.
-Which server ran each: `jaeger_es.py tag job.run host.name --where job.kind=<kind>`.
+What one server ran: `jaeger_es.py tag job.run job.kind --where host.name=<host>`
+(`tag` groups by span tags only, not `host.name`).
 Slow or late runs: `jaeger_es.py slow job.run --show job.kind`.
 
 ## Raw queries
