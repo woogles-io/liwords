@@ -120,6 +120,24 @@ func TestCronNext(t *testing.T) {
 	}
 }
 
+// A server whose clock is behind the database's finishes a run before, by
+// its own clock, the time it was due. The next run must still be the next
+// slot, not the one just run.
+func TestNextRunWithSlowClock(t *testing.T) {
+	s := Cron("*/10 * * * * *")
+	due := time.Date(2026, 11, 15, 12, 0, 10, 0, time.UTC)
+
+	slowNow := due.Add(-150 * time.Millisecond)
+	if got, want := nextRun(s, due, slowNow), due.Add(10*time.Second); !got.Equal(want) {
+		t.Errorf("slow clock: next run %v, want %v", got, want)
+	}
+	// A run that went past later slots skips them.
+	lateNow := due.Add(23 * time.Second)
+	if got, want := nextRun(s, due, lateNow), due.Add(30*time.Second); !got.Equal(want) {
+		t.Errorf("long run: next run %v, want %v", got, want)
+	}
+}
+
 func TestCronEvery(t *testing.T) {
 	good := map[time.Duration]string{
 		10 * time.Second: "*/10 * * * * *",

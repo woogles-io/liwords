@@ -36,7 +36,7 @@ WHERE id IN (
     LIMIT @max_jobs
     FOR UPDATE SKIP LOCKED
 )
-RETURNING id, kind, key, schedule, attempts;
+RETURNING id, kind, key, schedule, run_at, attempts;
 
 -- name: RenewJobLease :execrows
 -- Returns 0 rows when the lease was lost: it expired and another runner

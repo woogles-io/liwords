@@ -52,6 +52,9 @@ type Job struct {
 	// Attempt is 1 for the first run of a one-off job and goes up with each
 	// retry. Schedules always get 1.
 	Attempt int32
+
+	// runAt is the time the row was due when it was claimed.
+	runAt time.Time
 }
 
 // Handler does a job's work. A returned error, or a panic, is recorded on
@@ -329,7 +332,7 @@ func (r *Runner) run(ctx context.Context, row models.ClaimDueJobsRow, token uuid
 		r.Wake()
 	}()
 	k := r.kinds[row.Kind]
-	job := Job{ID: row.ID, Kind: row.Kind, Key: row.Key, Attempt: row.Attempts}
+	job := Job{ID: row.ID, Kind: row.Kind, Key: row.Key, Attempt: row.Attempts, runAt: row.RunAt.Time}
 	if k.schedule != nil {
 		job.Attempt = 1
 	}
@@ -432,7 +435,7 @@ func (r *Runner) finish(ctx context.Context, k *kindConfig, job Job, token pgtyp
 	switch {
 	case k.schedule != nil:
 		n, err = r.q.FinishScheduledRun(ctx, models.FinishScheduledRunParams{
-			NextRunAt:  pgtype.Timestamptz{Time: k.schedule.Next(time.Now()), Valid: true},
+			NextRunAt:  pgtype.Timestamptz{Time: nextRun(k.schedule, job.runAt, time.Now()), Valid: true},
 			LastMs:     lastMs,
 			LastError:  lastError,
 			ID:         job.ID,
@@ -510,4 +513,16 @@ func (r *Runner) Drain(ctx context.Context) error {
 		log.Warn().Int("running", len(r.slots)).Msg("jobs-drain-timed-out")
 		return ctx.Err()
 	}
+}
+
+// nextRun is a schedule's next run after the one due at runAt. Due times are
+// compared with the database clock but computed with this server's: a server
+// whose clock is behind the database's would otherwise get back the time it
+// just ran, and run it again. Counting from the later of the two never
+// repeats a run.
+func nextRun(s Schedule, runAt, now time.Time) time.Time {
+	if runAt.After(now) {
+		return s.Next(runAt)
+	}
+	return s.Next(now)
 }

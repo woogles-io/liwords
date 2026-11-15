@@ -26,7 +26,7 @@ WHERE id IN (
     LIMIT $4
     FOR UPDATE SKIP LOCKED
 )
-RETURNING id, kind, key, schedule, attempts
+RETURNING id, kind, key, schedule, run_at, attempts
 `
 
 type ClaimDueJobsParams struct {
@@ -41,6 +41,7 @@ type ClaimDueJobsRow struct {
 	Kind     string
 	Key      string
 	Schedule pgtype.Text
+	RunAt    pgtype.Timestamptz
 	Attempts int32
 }
 
@@ -65,6 +66,7 @@ func (q *Queries) ClaimDueJobs(ctx context.Context, arg ClaimDueJobsParams) ([]C
 			&i.Kind,
 			&i.Key,
 			&i.Schedule,
+			&i.RunAt,
 			&i.Attempts,
 		); err != nil {
 			return nil, err
