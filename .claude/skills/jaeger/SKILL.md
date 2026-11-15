@@ -88,6 +88,16 @@ Tournament store (`otel.scope.name=tournament-store`): `tournament.Get`,
 and, on loads that decode divisions, `tournament.divisions_bytes`. For full
 loads per tournament: `jaeger_es.py tag tournament.Get tournament.key`.
 
+Background jobs (`pkg/jobs`, `otel.scope.name=jobs`): each wake of a server's
+runner is a `jobs.poll` trace (tags `jobs.claimed`, `jobs.sleep_ms`), with the
+claim and next-due queries under it. Each run is its own `job.run` trace,
+linked to the poll that claimed it, with the job's queries under it. Tags:
+`job.kind`, `job.key`, `job.schedule`, `job.attempt`, `job.lag_ms` (how late it
+started), `job.outcome` (`done`, `ran`, `retry`, `given_up`, `lease_lost`,
+`unrecorded`) and `job.next_run_at`; events `lease lost`, `lease renew failed`.
+Which server ran each: `jaeger_es.py tag job.run host.name --where job.kind=<kind>`.
+Slow or late runs: `jaeger_es.py slow job.run --show job.kind`.
+
 ## Raw queries
 
 ```bash

@@ -14,6 +14,12 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/sdk/trace/tracetest"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/woogles-io/liwords/pkg/stores/common"
 	"github.com/woogles-io/liwords/pkg/stores/models"
@@ -517,4 +523,69 @@ func TestEnqueueDeduplicates(t *testing.T) {
 	enqueue(t, q, "again", "k")
 	r.Wake()
 	eventually(t, 2*time.Second, "second run", func() bool { return runs.Load() == 2 })
+}
+
+// Each poll is a jobs.poll trace; each run is its own job.run trace, linked
+// to the poll that claimed it, with how it ended.
+func TestSpans(t *testing.T) {
+	rec := tracetest.NewSpanRecorder()
+	prev := otel.GetTracerProvider()
+	otel.SetTracerProvider(sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(rec)))
+	defer otel.SetTracerProvider(prev)
+
+	_, q := setupDB(t)
+	r := NewRunner(q, fast)
+	r.Handle("once", func(ctx context.Context, job Job) error {
+		if job.Key == "fails" {
+			return errors.New("lambda timed out")
+		}
+		return nil
+	}, MaxAttempts(2), Backoff(func(int32) time.Duration { return 20 * time.Millisecond }))
+	start(t, r)
+	enqueue(t, q, "once", "ok")
+	enqueue(t, q, "once", "fails")
+	eventually(t, 3*time.Second, "both done", func() bool {
+		return getJob(t, q, "once", "ok").DoneAt.Valid && getJob(t, q, "once", "fails").DoneAt.Valid
+	})
+
+	polls := map[trace.SpanID]bool{}
+	var runs []sdktrace.ReadOnlySpan
+	eventually(t, time.Second, "three job.run spans", func() bool {
+		runs = runs[:0]
+		for _, s := range rec.Ended() {
+			switch s.Name() {
+			case "jobs.poll":
+				polls[s.SpanContext().SpanID()] = true
+			case "job.run":
+				runs = append(runs, s)
+			}
+		}
+		return len(runs) == 3
+	})
+
+	outcomes := map[string]int{}
+	for _, s := range runs {
+		attrs := map[attribute.Key]attribute.Value{}
+		for _, a := range s.Attributes() {
+			attrs[a.Key] = a.Value
+		}
+		if s.Parent().IsValid() {
+			t.Errorf("job.run has a parent; want its own trace")
+		}
+		if len(s.Links()) != 1 || !polls[s.Links()[0].SpanContext.SpanID()] {
+			t.Errorf("job.run links %v, want the jobs.poll that claimed it", s.Links())
+		}
+		if _, ok := attrs["job.lag_ms"]; !ok {
+			t.Errorf("job.run has no job.lag_ms")
+		}
+		key, outcome := attrs["job.key"].AsString(), attrs["job.outcome"].AsString()
+		outcomes[key+":"+outcome]++
+		if (outcome == outcomeDone) != (s.Status().Code == codes.Unset) {
+			t.Errorf("%s/%s has status %v", key, outcome, s.Status())
+		}
+	}
+	want := map[string]int{"ok:done": 1, "fails:retry": 1, "fails:given_up": 1}
+	if fmt.Sprint(outcomes) != fmt.Sprint(want) {
+		t.Errorf("outcomes %v, want %v", outcomes, want)
+	}
 }

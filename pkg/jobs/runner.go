@@ -39,6 +39,7 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/woogles-io/liwords/pkg/stores/models"
 )
@@ -86,6 +87,8 @@ func (o Options) withDefaults() Options {
 	}
 	return o
 }
+
+var tracer = otel.Tracer("jobs")
 
 // errorPause is how long the runner waits after the database fails it.
 const errorPause = 5 * time.Second
@@ -231,21 +234,9 @@ func (r *Runner) Run(ctx context.Context) error {
 	log := zerolog.Ctx(ctx)
 	log.Info().Strs("kinds", r.kindNames).Msg("jobs-runner-started")
 	for {
-		full, err := r.claimAndStart(ctx)
-		if errors.Is(err, errDraining) {
+		sleep, draining := r.poll(ctx)
+		if draining {
 			return nil
-		}
-		var sleep time.Duration
-		switch {
-		case err != nil:
-			log.Err(err).Msg("jobs-claim-failed")
-			sleep = errorPause
-		case full:
-			// More may be due; a finishing job frees a slot and wakes the
-			// runner.
-			sleep = r.opts.MaxSleep
-		default:
-			sleep = r.untilNextDue(ctx)
 		}
 		t := time.NewTimer(sleep)
 		select {
@@ -261,17 +252,46 @@ func (r *Runner) Run(ctx context.Context) error {
 
 var errDraining = errors.New("draining")
 
+// poll claims and starts due jobs, and says how long to sleep before the
+// next poll. Each poll is a jobs.poll trace, whose claim and next-due queries
+// are its children; each job it starts is a job.run trace linked to it.
+func (r *Runner) poll(ctx context.Context) (sleep time.Duration, draining bool) {
+	ctx, span := tracer.Start(ctx, "jobs.poll", trace.WithNewRoot())
+	defer span.End()
+	claimed, full, err := r.claimAndStart(ctx)
+	span.SetAttributes(attribute.Int("jobs.claimed", claimed))
+	switch {
+	case errors.Is(err, errDraining):
+		span.SetAttributes(attribute.Bool("jobs.draining", true))
+		return 0, true
+	case err != nil:
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		zerolog.Ctx(ctx).Err(err).Msg("jobs-claim-failed")
+		sleep = errorPause
+	case full:
+		// More may be due; a finishing job frees a slot and wakes the
+		// runner.
+		span.SetAttributes(attribute.Bool("jobs.full", true))
+		sleep = r.opts.MaxSleep
+	default:
+		sleep = r.untilNextDue(ctx)
+	}
+	span.SetAttributes(attribute.Int64("jobs.sleep_ms", sleep.Milliseconds()))
+	return sleep, false
+}
+
 // claimAndStart claims as many due jobs as there are free slots and starts
 // them. full is true when every slot is taken afterwards.
-func (r *Runner) claimAndStart(ctx context.Context) (full bool, err error) {
+func (r *Runner) claimAndStart(ctx context.Context) (claimed int, full bool, err error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if r.draining {
-		return false, errDraining
+		return 0, false, errDraining
 	}
 	free := cap(r.slots) - len(r.slots)
 	if free == 0 {
-		return true, nil
+		return 0, true, nil
 	}
 	token := uuid.New()
 	rows, err := r.q.ClaimDueJobs(ctx, models.ClaimDueJobsParams{
@@ -281,14 +301,14 @@ func (r *Runner) claimAndStart(ctx context.Context) (full bool, err error) {
 		MaxJobs:      int32(free),
 	})
 	if err != nil {
-		return false, err
+		return 0, false, err
 	}
 	for _, row := range rows {
 		r.slots <- struct{}{}
 		r.running.Add(1)
 		go r.run(ctx, row, token)
 	}
-	return len(rows) == free, nil
+	return len(rows), len(rows) == free, nil
 }
 
 // untilNextDue is how long until a row can next be claimed, at most
@@ -339,12 +359,23 @@ func (r *Runner) run(ctx context.Context, row models.ClaimDueJobsRow, token uuid
 
 	jobCtx, cancel := context.WithCancel(r.jobsCtx)
 	defer cancel()
-	jobCtx, span := otel.Tracer("jobs").Start(jobCtx, "job.run")
+	start := time.Now()
+	jobCtx, span := tracer.Start(jobCtx, "job.run",
+		trace.WithNewRoot(),
+		trace.WithSpanKind(trace.SpanKindConsumer),
+		trace.WithLinks(trace.LinkFromContext(ctx)),
+		trace.WithAttributes(
+			attribute.Int64("job.id", job.ID),
+			attribute.String("job.kind", job.Kind),
+			attribute.String("job.key", job.Key),
+			attribute.Int("job.attempt", int(job.Attempt)),
+			// How long after it was due the job started: time spent
+			// waiting for a runner, a free slot or an expired lease.
+			attribute.Int64("job.lag_ms", start.Sub(job.runAt).Milliseconds())))
+	if k.schedule != nil {
+		span.SetAttributes(attribute.String("job.schedule", k.schedule.String()))
+	}
 	defer span.End()
-	span.SetAttributes(
-		attribute.String("job.kind", job.Kind),
-		attribute.String("job.key", job.Key),
-		attribute.Int("job.attempt", int(job.Attempt)))
 	logger := zerolog.Ctx(ctx).With().Str("job-kind", job.Kind).Str("job-key", job.Key).
 		Int32("job-attempt", job.Attempt).Logger()
 	jobCtx = logger.WithContext(jobCtx)
@@ -352,9 +383,9 @@ func (r *Runner) run(ctx context.Context, row models.ClaimDueJobsRow, token uuid
 	pgToken := pgtype.UUID{Bytes: token, Valid: true}
 	stopRenewing := r.renewLease(jobCtx, cancel, job, pgToken, &logger)
 
-	start := time.Now()
+	handlerStart := time.Now()
 	err := runHandler(jobCtx, k.handler, job)
-	elapsed := time.Since(start)
+	elapsed := time.Since(handlerStart)
 	lostLease := stopRenewing()
 
 	if err != nil {
@@ -367,14 +398,21 @@ func (r *Runner) run(ctx context.Context, row models.ClaimDueJobsRow, token uuid
 	if lostLease {
 		// Another runner may have the row now; its outcome is not ours to
 		// record.
-		span.SetAttributes(attribute.Bool("job.lease_lost", true))
+		span.SetAttributes(attribute.String("job.outcome", outcomeLeaseLost))
 		return
 	}
 
 	finishCtx, cancelFinish := context.WithTimeout(context.WithoutCancel(jobCtx), finishTimeout)
 	defer cancelFinish()
-	if ferr := r.finish(finishCtx, k, job, pgToken, elapsed, err); ferr != nil {
+	outcome, next, ferr := r.finish(finishCtx, k, job, pgToken, elapsed, err)
+	if ferr != nil {
+		span.AddEvent("finish failed", trace.WithAttributes(attribute.String("error", ferr.Error())))
 		logger.Err(ferr).Msg("job-finish-failed")
+		outcome = outcomeUnrecorded
+	}
+	span.SetAttributes(attribute.String("job.outcome", outcome))
+	if !next.IsZero() {
+		span.SetAttributes(attribute.String("job.next_run_at", next.UTC().Format(time.RFC3339Nano)))
 	}
 }
 
@@ -404,11 +442,14 @@ func (r *Runner) renewLease(ctx context.Context, cancelJob context.CancelFunc, j
 			})
 			if err != nil {
 				// Try again next tick; the lease outlasts two misses.
+				trace.SpanFromContext(ctx).AddEvent("lease renew failed",
+					trace.WithAttributes(attribute.String("error", err.Error())))
 				logger.Err(err).Msg("job-lease-renew-failed")
 				continue
 			}
 			if n == 0 {
 				lost.Store(true)
+				trace.SpanFromContext(ctx).AddEvent("lease lost")
 				logger.Warn().Msg("job-lease-lost")
 				cancelJob()
 				return
@@ -422,8 +463,20 @@ func (r *Runner) renewLease(ctx context.Context, cancelJob context.CancelFunc, j
 	}
 }
 
+// Outcomes of a run, in the job.run span's job.outcome.
+const (
+	outcomeDone       = "done"       // a one-off job succeeded
+	outcomeRan        = "ran"        // a schedule ran (see the span status for errors)
+	outcomeRetry      = "retry"      // a one-off job failed and will be retried
+	outcomeGivenUp    = "given_up"   // a one-off job failed its last attempt
+	outcomeLeaseLost  = "lease_lost" // another runner may have the row; nothing recorded
+	outcomeUnrecorded = "unrecorded" // recording the outcome failed; the lease will expire
+)
+
+// finish records a run's outcome on its row. next is when the row is due
+// again, if it is.
 func (r *Runner) finish(ctx context.Context, k *kindConfig, job Job, token pgtype.UUID,
-	elapsed time.Duration, runErr error) error {
+	elapsed time.Duration, runErr error) (outcome string, next time.Time, err error) {
 
 	lastMs := pgtype.Int4{Int32: int32(min(elapsed.Milliseconds(), math.MaxInt32)), Valid: true}
 	lastError := ""
@@ -431,17 +484,22 @@ func (r *Runner) finish(ctx context.Context, k *kindConfig, job Job, token pgtyp
 		lastError = runErr.Error()
 	}
 	var n int64
-	var err error
 	switch {
 	case k.schedule != nil:
+		outcome = outcomeRan
+		next = nextRun(k.schedule, job.runAt, time.Now())
 		n, err = r.q.FinishScheduledRun(ctx, models.FinishScheduledRunParams{
-			NextRunAt:  pgtype.Timestamptz{Time: nextRun(k.schedule, job.runAt, time.Now()), Valid: true},
+			NextRunAt:  pgtype.Timestamptz{Time: next, Valid: true},
 			LastMs:     lastMs,
 			LastError:  lastError,
 			ID:         job.ID,
 			LeaseToken: token,
 		})
 	case runErr == nil || job.Attempt >= k.maxAttempts:
+		outcome = outcomeDone
+		if runErr != nil {
+			outcome = outcomeGivenUp
+		}
 		n, err = r.q.FinishJob(ctx, models.FinishJobParams{
 			LastMs:     lastMs,
 			LastError:  lastError,
@@ -453,8 +511,11 @@ func (r *Runner) finish(ctx context.Context, k *kindConfig, job Job, token pgtyp
 			k.onGiveUp(ctx, job, runErr)
 		}
 	default:
+		outcome = outcomeRetry
+		wait := k.backoff(job.Attempt)
+		next = time.Now().Add(wait)
 		n, err = r.q.RetryJob(ctx, models.RetryJobParams{
-			RetryInSeconds: k.backoff(job.Attempt).Seconds(),
+			RetryInSeconds: wait.Seconds(),
 			LastMs:         lastMs,
 			LastError:      lastError,
 			ID:             job.ID,
@@ -462,12 +523,13 @@ func (r *Runner) finish(ctx context.Context, k *kindConfig, job Job, token pgtyp
 		})
 	}
 	if err != nil {
-		return err
+		return "", time.Time{}, err
 	}
 	if n == 0 {
 		zerolog.Ctx(ctx).Warn().Msg("job-lease-lost-before-finish")
+		return outcomeLeaseLost, time.Time{}, nil
 	}
-	return nil
+	return outcome, next, nil
 }
 
 // runHandler runs h, turning a panic into an error, so one bad job can't
@@ -487,7 +549,7 @@ func runHandler(ctx context.Context, h Handler, job Job) (err error) {
 // it cancels their contexts and returns ctx's error; their rows are taken
 // again once their leases expire.
 func (r *Runner) Drain(ctx context.Context) error {
-	ctx, span := otel.Tracer("jobs").Start(ctx, "jobs.drain")
+	ctx, span := tracer.Start(ctx, "jobs.drain")
 	defer span.End()
 	r.mu.Lock()
 	r.draining = true
@@ -510,6 +572,7 @@ func (r *Runner) Drain(ctx context.Context) error {
 		r.mu.Unlock()
 		span.RecordError(ctx.Err())
 		span.SetStatus(codes.Error, ctx.Err().Error())
+		span.SetAttributes(attribute.Int("jobs.cancelled", len(r.slots)))
 		log.Warn().Int("running", len(r.slots)).Msg("jobs-drain-timed-out")
 		return ctx.Err()
 	}
