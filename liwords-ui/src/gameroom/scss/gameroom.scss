@@ -1237,6 +1237,19 @@ p.streak-loss {
 //     padding: 0;
 // }
 
+// the board's typing field: focused and typed into, never seen
+.board-typing-field {
+  border: 0;
+  height: 1px;
+  left: 0;
+  opacity: 0;
+  padding: 0;
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+  width: 1px;
+}
+
 .board-container {
   user-select: none;
   text-align: center;
@@ -2191,6 +2204,90 @@ p.rune {
   .point-value {
     font-size: $point-size-laptop;
     padding: 0 2px 5px;
+  }
+}
+
+// the rack being set, one row of seven, kept its height when empty
+// in the grid's own box, its tiles in the grid's columns from the left, the
+// slots it has not filled left empty
+.rack-editor-rack {
+  display: flex;
+  margin: 12px auto 0;
+  min-height: $tile-size-desktop;
+  width: 326px;
+
+  .tile {
+    cursor: pointer;
+    height: $tile-size-desktop;
+    margin: 0 2px 0 0;
+    width: $tile-size-desktop;
+
+    p.rune {
+      font-size: 30px;
+    }
+  }
+}
+
+// the rack editor's tiles, laid out as the blank picker's
+.rack-editor-tiles {
+  display: flex;
+  flex-wrap: wrap;
+  // centered in a dialog wider than its seven tiles a row
+  margin: 12px auto;
+  width: 326px;
+
+  .tile {
+    height: $tile-size-desktop;
+    margin: 0 2px 2px 0;
+    width: $tile-size-desktop;
+
+    p.rune {
+      font-size: 30px;
+    }
+  }
+}
+
+// a grid tile with how many are left in its corner; none left, dimmed
+.rack-editor-tile {
+  position: relative;
+
+  &.rack-editor-none {
+    opacity: 0.3;
+
+    .tile {
+      cursor: default;
+    }
+  }
+}
+
+// in the tile's own letter color, whatever the theme or tile skin
+.rack-editor-left {
+  color: m($background);
+  font-size: 10px;
+  left: 3px;
+  pointer-events: none;
+  position: absolute;
+  top: 1px;
+
+  @include userTile() {
+    color: ut($tile-text);
+  }
+}
+
+.rack-modal .rack {
+  margin: 0;
+  width: 100%;
+}
+
+.rack-editor-buttons {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+
+  // Clear stands apart, at the left
+  > :first-child {
+    margin-right: auto;
   }
 }
 

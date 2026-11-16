@@ -1,5 +1,9 @@
 import { create } from "@bufbuild/protobuf";
-import { Alphabet, machineWordToRunes } from "../constants/alphabets";
+import {
+  Alphabet,
+  machineWordToRunes,
+  runesToMachineWord,
+} from "../constants/alphabets";
 import {
   GameEvent,
   GameEventSchema,
@@ -299,4 +303,15 @@ export const placedOfPlay = (play: {
     });
   });
   return placed;
+};
+
+// The tiles a box's text names, in either case; none (null) while it holds
+// anything that is no tile, such as a dead key's accent mid-composition or a
+// digit, so the box can say so instead of the page failing.
+export const typedTiles = (text: string, alphabet: Alphabet) => {
+  try {
+    return runesToMachineWord(text.toUpperCase(), alphabet);
+  } catch {
+    return null;
+  }
 };

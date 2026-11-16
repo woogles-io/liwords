@@ -18,6 +18,7 @@ import {
 import { ChatEntityType } from "./constants";
 import { SoughtGame } from "./reducers/lobby_reducer";
 import {
+  isTextEntry,
   LOBBY_QUEUE_MS,
   Store,
   useChatStoreContext,
@@ -259,5 +260,21 @@ describe("the moves made up while examining", () => {
     expect(after.players[1].currentRack).toEqual(
       runesToMachineWord("HIJKLMN", StandardEnglishAlphabet),
     );
+  });
+});
+
+describe("where a key is text, not a shortcut", () => {
+  it("is a text box, but not the board's typing field", () => {
+    const input = document.createElement("input");
+    expect(isTextEntry(input)).toBe(true);
+    const field = document.createElement("input");
+    field.className = "board-typing-field";
+    expect(isTextEntry(field)).toBe(false);
+    const box = document.createElement("input");
+    box.type = "checkbox";
+    expect(isTextEntry(box)).toBe(false);
+    expect(isTextEntry(document.createElement("textarea"))).toBe(true);
+    expect(isTextEntry(document.createElement("div"))).toBe(false);
+    expect(isTextEntry(null)).toBe(false);
   });
 });

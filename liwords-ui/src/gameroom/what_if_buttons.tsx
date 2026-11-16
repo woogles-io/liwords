@@ -4,8 +4,9 @@ import {
   DoubleLeftOutlined,
   LeftOutlined,
   RightOutlined,
+  SwapOutlined,
 } from "@ant-design/icons";
-import { machineWordToRunes, runesToMachineWord } from "../constants/alphabets";
+import { machineWordToRunes } from "../constants/alphabets";
 import {
   GameEvent,
   GameEvent_Direction,
@@ -17,13 +18,20 @@ import {
   useExamineStoreContext,
   useTentativeTileContext,
 } from "../store/store";
-import { EphemeralTile } from "../utils/cwgame/common";
+import {
+  EmptyRackSpaceMachineLetter,
+  EphemeralTile,
+} from "../utils/cwgame/common";
 import { getWolges } from "../wasm/loader";
+import { DndProvider } from "react-dnd";
+import MultiBackend, { MultiBackendOptions } from "./dnd-backend";
+import { ExchangeTiles } from "./exchange_tiles";
 import { parseExaminableGameContext, wolgesLabelsToLetter } from "./analyzer";
 import {
   bagTilesOf,
   exchangeMinBag,
   randomDraw,
+  typedTiles,
   whatIfExchange,
   whatIfPass,
   whatIfPlay,
@@ -117,6 +125,8 @@ export const WhatIfBar = (props: WhatIfBarProps) => {
   } = useExamineStoreContext();
   // the tiles the mover puts back in an exchange, as typed (? a blank)
   const [back, setBack] = useState("");
+  // the tiles to put back picked by tapping, as the game's exchange picks them
+  const [picking, setPicking] = useState(false);
   // a single click with nothing to play or exchange says, in the exchange
   // box, that a double click passes, for a moment
   const [passHint, setPassHint] = useState(false);
@@ -158,22 +168,21 @@ export const WhatIfBar = (props: WhatIfBarProps) => {
   const play = over
     ? null
     : whatIfPlay(placedTiles, gameContext.board, gameContext.alphabet, side);
-  const backTiles = runesToMachineWord(
-    back.toUpperCase(),
-    gameContext.alphabet,
-  );
+  // the tiles typed to put back; none while the text holds anything that is
+  // no tile, the box then marked as an error
+  const backTiles = typedTiles(back, gameContext.alphabet);
   const minBag = exchangeMinBag(props.lexicon);
   const canExchange = !over && side.bag >= minBag;
   // tiles placed on the board make the move a play; with none, the tiles
   // typed to exchange make it an exchange
   const swapping = canExchange && placedTiles.size === 0;
   const exchange =
-    swapping && back
+    swapping && back && backTiles
       ? whatIfExchange(backTiles, gameContext.alphabet, side, minBag)
       : null;
   // with tiles in the bag, the draw: as many as the play places, the bag
   // allowing, or as many as the exchange puts back, each a tile still unseen
-  const drawCount = placedTiles.size || backTiles.length;
+  const drawCount = placedTiles.size || (backTiles?.length ?? 0);
   const drawing = side.bag > 0 && (!!play || !!exchange);
   // with tiles in the bag, drawn at random as the move is made; the rack
   // under the board sets them otherwise, after
@@ -236,6 +245,38 @@ export const WhatIfBar = (props: WhatIfBarProps) => {
             onChange={(e) => setBack(e.target.value)}
           />
         </Tooltip>
+        <Tooltip title="Pick the tiles to put back from the rack">
+          <Button
+            shape="circle"
+            size="small"
+            icon={<SwapOutlined />}
+            aria-label="Pick the tiles to exchange"
+            // a rack not known has no tiles to tap: its exchange is typed
+            disabled={!swapping || me.currentRack.length === 0}
+            onClick={() => setPicking(true)}
+          />
+        </Tooltip>
+        {picking && (
+          // its tiles are drag sources, and this row sits outside the
+          // board's DndProvider
+          <DndProvider backend={MultiBackend} options={MultiBackendOptions}>
+            <ExchangeTiles
+              tileColorId={0}
+              alphabet={gameContext.alphabet}
+              // the empty places of tiles out on the board are no tiles
+              rack={me.currentRack.filter(
+                (t) => t !== EmptyRackSpaceMachineLetter,
+              )}
+              modalVisible
+              omitPool
+              onCancel={() => setPicking(false)}
+              onOk={(tiles) => {
+                setPicking(false);
+                setBack(machineWordToRunes(tiles, gameContext.alphabet, false));
+              }}
+            />
+          </DndProvider>
+        )}
         <Tooltip title={moveTitle}>
           <Button
             shape="circle"

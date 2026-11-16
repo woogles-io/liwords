@@ -49,6 +49,7 @@ import {
   retainedLeave,
 } from "../utils/cwgame/game_event";
 import { Board } from "../utils/cwgame/board";
+import { isAltTileKey, isTileKey } from "../utils/cwgame/typing";
 import { encodeToSocketFmt } from "../utils/protobuf";
 import { isSpanish, sharedEnableAutoShuffle } from "../store/constants";
 import { BlankSelector } from "./blank_selector";
@@ -769,9 +770,37 @@ export const BoardPanel = React.memo((props: Props) => {
     [arrowProperties, board, handleUnsetHover, setArrowProperties],
   );
 
+  // The board's typing field: a hidden text field the board's keys go to once
+  // a key has been pressed on the board, so a character the OS makes from
+  // several keys (a dead key's ü, Alt+0228, an input method's, a compose
+  // key's) reaches the board as typed. Its keys still come to the board's
+  // own handler, as before; a tap or a click never focuses it.
+  const typingField = useRef<HTMLInputElement>(null);
+  // whether the last keydown typed its own character; and whether Shift was
+  // held for it, which a character composed from it takes (a letter's case
+  // says only Caps Lock)
+  const keydownTyped = useRef(false);
+  const keydownShift = useRef(false);
+
   const keydown = useCallback(
     (evt: React.KeyboardEvent) => {
-      if (evt.ctrlKey || evt.altKey || evt.metaKey) {
+      keydownShift.current = evt.shiftKey;
+      if (evt.nativeEvent.isComposing || evt.key === "Process") {
+        // An input method is still making a character (a dead key's accent,
+        // a compose sequence): the typing field types it once it is made.
+        keydownTyped.current = false;
+        return;
+      }
+      // A character made with Alt/Opt (AltGr is Ctrl+Alt) is typed as itself
+      // when it is one of this game's tiles: Opt+a is a Norwegian game's Å.
+      const altTile =
+        evt.altKey && !evt.metaKey && isAltTileKey(evt.key, props.alphabet);
+      // whether this key types its own character, so the text it leaves in
+      // the typing field is not typed again
+      keydownTyped.current =
+        altTile ||
+        (evt.key.length === 1 && !evt.ctrlKey && !evt.altKey && !evt.metaKey);
+      if ((evt.ctrlKey || evt.altKey || evt.metaKey) && !altTile) {
         // Alt+3 should not challenge. Ignore Ctrl, Alt/Opt, and Win/Cmd.
         return;
       }
@@ -984,6 +1013,28 @@ export const BoardPanel = React.memo((props: Props) => {
       handleChallengeShortcut,
     ],
   );
+
+  // What the typing field holds, typed as a key on the board would be, unless
+  // the key that left it there typed it already; the field is then emptied.
+  const typeFromField = useCallback(() => {
+    const field = typingField.current;
+    if (!field) return;
+    const text = field.value;
+    field.value = "";
+    if (keydownTyped.current || !isTileKey(text, props.alphabet)) return;
+    // Shift as held for the keys that made it, so Caps Lock makes no blank,
+    // as it makes none for a-z
+    const shiftKey = keydownShift.current;
+    keydown({
+      key: shiftKey ? text.toUpperCase() : text.toLowerCase(),
+      shiftKey,
+      ctrlKey: false,
+      altKey: false,
+      metaKey: false,
+      nativeEvent: { isComposing: false },
+      preventDefault: () => {},
+    } as unknown as React.KeyboardEvent);
+  }, [keydown, props.alphabet]);
 
   const handleTileDrop = useCallback(
     (row: number, col: number, rackIndex = -1, tileIndex = -1) => {
@@ -1207,6 +1258,11 @@ export const BoardPanel = React.memo((props: Props) => {
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<Element>) => {
+      // A key pressed on the board itself: the keys after it go through the
+      // typing field, still to this handler.
+      if (e.target === e.currentTarget && currentMode !== "EDITING_RACK") {
+        typingField.current?.focus({ preventScroll: true });
+      }
       if (drawingCanBeEnabled) {
         // To activate a drawing hotkey, type 0, then the hotkey.
         if (currentMode === "NORMAL" || currentMode === "DRAWING_HOTKEY") {
@@ -1268,8 +1324,9 @@ export const BoardPanel = React.memo((props: Props) => {
   // Just put this in onKeyPress to block all typeable keys so that typos from
   // placing a tile not on rack also do not trigger type-to-find on firefox.
   const preventFirefoxTypeToSearch = useCallback(
-    (e: { preventDefault: () => void }) => {
-      if (currentMode !== "EDITING_RACK") {
+    (e: { preventDefault: () => void; target: EventTarget }) => {
+      // the typing field takes its keys' characters, to type them
+      if (currentMode !== "EDITING_RACK" && e.target !== typingField.current) {
         e.preventDefault();
       }
     },
@@ -1450,6 +1507,24 @@ export const BoardPanel = React.memo((props: Props) => {
       tabIndex={-1}
       role="textbox"
     >
+      <input
+        ref={typingField}
+        className="board-typing-field"
+        // no on-screen keyboard for it: it is only ever focused by a key
+        inputMode="none"
+        tabIndex={-1}
+        // a screen reader, in blindfold mode above all, hears it as the
+        // board it types on
+        aria-label="Board"
+        autoComplete="off"
+        autoCorrect="off"
+        autoCapitalize="off"
+        spellCheck={false}
+        onInput={(e) => {
+          if (!(e.nativeEvent as InputEvent).isComposing) typeFromField();
+        }}
+        onCompositionEnd={typeFromField}
+      />
       <GameBoard
         tileColorId={tileColorId}
         gridSize={props.board.dim}
@@ -1515,8 +1590,21 @@ export const BoardPanel = React.memo((props: Props) => {
                 />
               </Tooltip>
             )}
-            {currentMode === "EDITING_RACK" ? (
+            {/* the rack set in a dialog, as the blank is designated: typed,
+                or tile by tile from the alphabet's */}
+            <Modal
+              className="rack-modal"
+              title="Set the rack"
+              open={currentMode === "EDITING_RACK"}
+              onCancel={() => setCurrentMode("NORMAL")}
+              // its tiles' rows, seven tiles wide, inside its padding
+              width={390}
+              footer={null}
+              destroyOnHidden
+            >
               <RackEditor
+                tileColorId={tileColorId}
+                boardLetters={props.board.letters}
                 currentRack={rackEditorPrefill ?? displayedRack}
                 alphabet={props.alphabet}
                 rackCallback={(rack: MachineWord) => {
@@ -1553,17 +1641,16 @@ export const BoardPanel = React.memo((props: Props) => {
                 }}
                 cancelCallback={() => setCurrentMode("NORMAL")}
               />
-            ) : (
-              <Rack
-                tileColorId={tileColorId}
-                letters={displayedRack}
-                grabbable
-                returnToRack={returnToRack}
-                onTileClick={clickToBoard}
-                rearrangeRack={rearrangeRack}
-                alphabet={props.alphabet}
-              />
-            )}
+            </Modal>
+            <Rack
+              tileColorId={tileColorId}
+              letters={displayedRack}
+              grabbable
+              returnToRack={returnToRack}
+              onTileClick={clickToBoard}
+              rearrangeRack={rearrangeRack}
+              alphabet={props.alphabet}
+            />
             <Tooltip
               title="Shuffle &uarr;"
               placement="bottomLeft"

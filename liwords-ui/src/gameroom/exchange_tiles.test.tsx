@@ -44,6 +44,7 @@ async function renderExchangeTiles(
   callback: (t: MachineWord) => void,
   rack: MachineWord = [1, 2, 5, 8, 12, 12, 12], // ABEHLLL
   alphabet: Alphabet = StandardEnglishAlphabet,
+  omitPool = false,
 ) {
   const ret = render(
     <DndProvider backend={TouchBackend}>
@@ -54,6 +55,7 @@ async function renderExchangeTiles(
         onOk={callback}
         onCancel={() => {}}
         modalVisible={true}
+        omitPool={omitPool}
       />
     </DndProvider>,
   );
@@ -284,4 +286,18 @@ it("slides nothing where the user asks for less motion", async () => {
     unstub();
     delete (HTMLElement.prototype as { animate?: unknown }).animate;
   }
+});
+
+// Made up on a position examined, the exchange shows no unseen tiles: the
+// game's pool is not that position's.
+it("shows the unseen tiles only where asked", async () => {
+  await renderExchangeTiles(() => {}, undefined, undefined, true);
+  expect(document.querySelector(".ant-modal-body")?.textContent).not.toMatch(
+    /Opponent has|vowels|consonants/i,
+  );
+  cleanup();
+  await renderExchangeTiles(() => {});
+  expect(document.querySelector(".ant-modal-body")?.textContent).toMatch(
+    /vowels/i,
+  );
 });
