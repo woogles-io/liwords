@@ -23,6 +23,26 @@ const wolgesPromise = importWolges();
 
 type Wolges = Awaited<typeof wolgesPromise>;
 
+// An inference made on one worker for every worker: its bytes, which each
+// takes in as its own, and its count and likeliest leaves, as made.
+export type SharedInference = {
+  bytes: Uint8Array;
+  count: number;
+  leaves: unknown;
+};
+
+// A wasm's inference given as bytes and taken in again, which a wasm before
+// it lacks: a call to it there throws, and each worker infers for itself.
+type Sharing = {
+  infer_export?: (handle: number) => Uint8Array;
+  infer_import?: (bytes: Uint8Array) => number;
+};
+const sharingOf = (wolges: Wolges) => {
+  const { infer_export, infer_import } = wolges as unknown as Sharing;
+  if (!infer_export || !infer_import) throw new Error("no inference sharing");
+  return { infer_export, infer_import };
+};
+
 // A wasm's board pruning, which a wasm before it lacks: a call to it there
 // throws, and the page goes on with the full lexicon.
 type Pruning = {
@@ -62,7 +82,15 @@ export type LabRequest =
   | { op: "endgame"; args: { request: string; parts?: number } }
   // a sim of the plays given; with an inference's request, the opponent's
   // leave inferred, as infer takes one, and dealt in each iteration
-  | { op: "sim"; args: { request: string; plays: string; infer?: string } }
+  | {
+      op: "sim";
+      args: {
+        request: string;
+        plays: string;
+        infer?: string;
+        shared?: SharedInference;
+      };
+    }
   // plays joining a sim, or leaving it; each answers as the sim holds it
   | { op: "add"; args: { job: number; plays: string } }
   | { op: "remove"; args: { job: number; plays: string } }
@@ -71,7 +99,18 @@ export type LabRequest =
   | { op: "resume"; args: { job: number; plays: string } }
   // a sim's plies or the opponent's tiles changed in place, its rollouts kept,
   // answering as a step does
-  | { op: "set"; args: { job: number; request: string; infer?: string } }
+  | {
+      op: "set";
+      args: {
+        job: number;
+        request: string;
+        infer?: string;
+        shared?: SharedInference;
+      };
+    }
+  // an inference made once, its whole self given as bytes, for every worker
+  // to take in place of making its own
+  | { op: "infer_share"; args: { request: string } }
   // the play each of a sim's candidates is compared with in its answers, on
   // the iterations both ran, or none
   | { op: "against"; args: { job: number; play: string | null } }
@@ -268,13 +307,18 @@ const inferring = <T>(
   request: string,
   infer: string | undefined,
   call: (request: string) => T,
+  shared?: SharedInference,
 ): { result: T; inferred?: { count: number; leaves: unknown } } => {
-  if (infer === undefined) return { result: call(request) };
-  const { handle, count, leaves } = JSON.parse(wolges.infer(infer)) as {
-    handle: number;
-    count: number;
-    leaves: unknown;
-  };
+  if (infer === undefined && shared === undefined) {
+    return { result: call(request) };
+  }
+  const { handle, count, leaves } = shared
+    ? { ...shared, handle: sharingOf(wolges).infer_import(shared.bytes) }
+    : (JSON.parse(wolges.infer(infer!)) as {
+        handle: number;
+        count: number;
+        leaves: unknown;
+      });
   try {
     const result = call(
       count > 0
@@ -492,6 +536,17 @@ const handle = async (req: LabRequest): Promise<unknown> => {
     case "kbwg_evict":
       if (pruned.delete(req.args.key)) wolges.evict_kwg(req.args.key);
       return undefined;
+    case "infer_share": {
+      const { infer_export } = sharingOf(wolges);
+      const { handle, count, leaves } = JSON.parse(
+        wolges.infer(req.args.request),
+      ) as { handle: number; count: number; leaves: unknown };
+      try {
+        return { bytes: infer_export(handle), count, leaves };
+      } finally {
+        wolges.infer_free(handle);
+      }
+    }
     case "infer": {
       const { handle, ...inferred } = JSON.parse(
         wolges.infer(req.args.request),
@@ -565,6 +620,7 @@ const handle = async (req: LabRequest): Promise<unknown> => {
         req.args.request,
         req.args.infer,
         wolges.sim_new,
+        req.args.shared,
       );
       let added: unknown;
       try {
@@ -602,6 +658,7 @@ const handle = async (req: LabRequest): Promise<unknown> => {
         req.args.request,
         req.args.infer,
         (request) => wolges.sim_set(handle, request),
+        req.args.shared,
       );
       const answer: Answer = JSON.parse(result);
       post({ event: { job: job.id, answer, done: isDone(job, answer) } });

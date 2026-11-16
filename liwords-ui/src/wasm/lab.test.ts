@@ -231,6 +231,35 @@ describe("a sim in parts", () => {
     expect(asked("infer").lexicon).toBe("CSW24");
   });
 
+  it("makes a sim's inference once, on the first worker, for every part", async () => {
+    const shared = { bytes: new Uint8Array([7]), count: 3, leaves: [] };
+    const plain = answer;
+    answer = (w, m) => (m.op === "infer_share" ? shared : plain(w, m));
+    setLabPartsForTest(2);
+    await labCall({
+      op: "sim",
+      args: { request: "{}", plays: "[]", infer: '{"board":"A"}' },
+    });
+    expect(ops(0).filter((op) => op === "infer_share")).toHaveLength(1);
+    expect(ops(1)).not.toContain("infer_share");
+    for (const w of [0, 1]) {
+      expect(lastOf(w, "sim")?.args?.shared).toEqual(shared);
+      expect(lastOf(w, "sim")?.args?.infer).toBeUndefined();
+    }
+  });
+
+  it("leaves each part to infer for itself when none can be shared", async () => {
+    setLabPartsForTest(2);
+    await labCall({
+      op: "sim",
+      args: { request: "{}", plays: "[]", infer: '{"board":"A"}' },
+    });
+    for (const w of [0, 1]) {
+      expect(lastOf(w, "sim")?.args?.infer).toBe('{"board":"A"}');
+      expect(lastOf(w, "sim")?.args?.shared).toBeUndefined();
+    }
+  });
+
   it("goes on with the full lexicon when the board cannot be pruned", async () => {
     setLabPartsForTest(2);
     await labCall({

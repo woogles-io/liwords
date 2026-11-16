@@ -40,6 +40,8 @@ const wasm = vi.hoisted(() => ({
     }),
   ),
   infer_free: vi.fn(),
+  infer_export: vi.fn(() => new Uint8Array([7, 7])),
+  infer_import: vi.fn(() => 6),
   stitched_z: vi.fn((iterations: number, alpha: number) => iterations + alpha),
   threats_new: vi.fn((_request: string) => 7),
   threats_step: vi.fn((_handle: number, _request: string) =>
@@ -609,6 +611,29 @@ describe("the lab's worker", () => {
     await send(7, "read", { job });
     expect(requests()[requests().length - 1].against).toBeUndefined();
     wasm.sim_step.mockReset();
+  });
+
+  it("makes an inference once as bytes, and takes one given in place of its own", async () => {
+    const shared = (await send(1, "infer_share", { request: "the inference" }))
+      .result as { bytes: Uint8Array; count: number };
+    expect(wasm.infer).toHaveBeenCalledWith("the inference");
+    expect(wasm.infer_export).toHaveBeenCalledWith(4);
+    expect(wasm.infer_free).toHaveBeenCalledWith(4);
+    expect(shared).toMatchObject({ bytes: new Uint8Array([7, 7]), count: 3 });
+    wasm.infer.mockClear();
+    const made = await send(2, "sim", {
+      request: JSON.stringify({ plies: 2, known: [] }),
+      plays: "[]",
+      shared,
+    });
+    expect(wasm.infer).not.toHaveBeenCalled();
+    expect(wasm.infer_import).toHaveBeenCalledWith(shared.bytes);
+    expect(JSON.parse(wasm.sim_new.mock.calls[0][0] as string)).toEqual({
+      plies: 2,
+      inferred: 6,
+    });
+    expect(wasm.infer_free).toHaveBeenCalledWith(6);
+    expect(made.result).toMatchObject({ inferred: { count: 3 } });
   });
 
   it("infers the opponent's leave for a sim, giving the sim its handle and letting it go", async () => {

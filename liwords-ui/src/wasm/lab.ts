@@ -1,4 +1,4 @@
-import type { LabRequest } from "./lab.worker";
+import type { LabRequest, SharedInference } from "./lab.worker";
 import { EndgamePartAnswer, mergeEndgameAnswers } from "./lab_endgame_merge";
 import {
   PartAnswer,
@@ -427,6 +427,38 @@ const onPruned = (request: string, w: number, flag = false) => {
     : request;
 };
 
+// A sim's inference, asked of its n workers: made once, on the first worker,
+// and given to each as bytes in place of each making its own. A wasm that
+// cannot share one, or a failure, leaves each worker to infer for itself.
+const sharedFor = async (
+  infer: string | undefined,
+  n: number,
+): Promise<SharedInference | undefined> => {
+  if (infer === undefined || n < 2) return undefined;
+  try {
+    const shared = await call<SharedInference>(0, {
+      op: "infer_share",
+      args: { request: onPruned(infer, 0) },
+    });
+    return shared?.bytes instanceof Uint8Array ? shared : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+// A part's inference: the one shared, or its own made on the board's pruned
+// lexicon where held.
+const inferOf = (
+  infer: string | undefined,
+  shared: SharedInference | undefined,
+  w: number,
+) =>
+  shared
+    ? { infer: undefined, shared }
+    : infer !== undefined
+      ? { infer: onPruned(infer, w) }
+      : {};
+
 // A job on n workers (the first n) from one request: the board's pruned
 // lexicon built once, on the first worker, from the full one, unless held
 // already, and loaded on each, the request then naming it. A third board's
@@ -549,6 +581,7 @@ const multi = async (request: LabRequest): Promise<unknown> => {
       freeSims();
       const seed = rand53();
       const base = await prunedFor(JSON.parse(request.args.request), n);
+      const shared = await sharedFor(request.args.infer, n);
       const made = await Promise.all(
         Array.from({ length: n }, (_, w) =>
           call<{
@@ -560,9 +593,7 @@ const multi = async (request: LabRequest): Promise<unknown> => {
             args: {
               ...request.args,
               request: JSON.stringify({ ...base, seed, part: w, parts: n }),
-              ...(request.args.infer !== undefined
-                ? { infer: onPruned(request.args.infer, w) }
-                : {}),
+              ...inferOf(request.args.infer, shared, w),
             },
           }),
         ),
@@ -611,13 +642,10 @@ const multi = async (request: LabRequest): Promise<unknown> => {
     }
     case "set": {
       const { infer } = request.args;
+      const shared = await sharedFor(infer, partsOf(request.args.job).length);
       const results = await each<unknown>(request.args.job, (j, w) => ({
         ...request,
-        args: {
-          ...request.args,
-          job: j,
-          ...(infer !== undefined ? { infer: onPruned(infer, w) } : {}),
-        },
+        args: { ...request.args, job: j, ...inferOf(infer, shared, w) },
       }));
       return results[0];
     }
