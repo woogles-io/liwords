@@ -22,6 +22,18 @@ import { importWolges } from "./wolges";
 const wolgesPromise = importWolges();
 
 type Wolges = Awaited<typeof wolgesPromise>;
+
+// A wasm's board pruning, which a wasm before it lacks: a call to it there
+// throws, and the page goes on with the full lexicon.
+type Pruning = {
+  build_kbwg?: (request: string) => Uint8Array;
+  precache_kbwg?: (key: string, bytes: Uint8Array) => void;
+};
+const pruningOf = (wolges: Wolges) => {
+  const { build_kbwg, precache_kbwg } = wolges as unknown as Pruning;
+  if (!build_kbwg || !precache_kbwg) throw new Error("no board pruning");
+  return { build_kbwg, precache_kbwg };
+};
 type LabFile = { cacheKey: string; path: string };
 export type LabRequest =
   // the files a job needs loaded, answered with each one's size in bytes
@@ -90,6 +102,11 @@ export type LabRequest =
   | { op: "infer"; args: { request: string } }
   // the bytes the wasm holds now, as an endgame's memory cap counts them
   | { op: "held" }
+  // a board's pruned lexicon, built once from the full one and answered as
+  // its bytes, for every worker to load in its place
+  | { op: "kbwg_build"; args: { request: string } }
+  // a pruned lexicon loaded under its key, the one loaded before let go
+  | { op: "kbwg_load"; args: { key: string; bytes: Uint8Array } }
   | { op: "stop" }
   | { op: "free"; args: { job: number } };
 type Job = {
@@ -193,6 +210,8 @@ const nameOf = (cacheKey: string) =>
 // The cache keys loaded, as the page's loader names them, each with its
 // size in bytes.
 const loaded = new Map<string, number>();
+// the key of the pruned lexicon this worker holds, if any
+let pruned: string | undefined;
 let job: Job | null = null;
 let lastJobId = 0;
 // The threats counts held, each id's wasm handle.
@@ -424,6 +443,10 @@ const prepare = async (wolges: Wolges, files: Array<LabFile>) => {
     dropWarm(wolges);
     freeThreats(wolges);
   }
+  if (unwanted.length && pruned !== undefined) {
+    wolges.evict_kwg(pruned);
+    pruned = undefined;
+  }
   for (const cacheKey of unwanted) {
     if (cacheKey.startsWith("klv/")) wolges.evict_klv(nameOf(cacheKey));
     else wolges.evict_kwg(nameOf(cacheKey));
@@ -456,6 +479,20 @@ const handle = async (req: LabRequest): Promise<unknown> => {
       return prepare(wolges, req.args.files);
     case "held":
       return wolges.memory_held();
+    case "kbwg_build":
+      return pruningOf(wolges).build_kbwg(req.args.request);
+    case "kbwg_load": {
+      if (pruned === req.args.key) return undefined;
+      const { precache_kbwg } = pruningOf(wolges);
+      // the jobs made on the pruned lexicon before go with it
+      freeJob(wolges);
+      dropWarm(wolges);
+      if (pruned !== undefined) wolges.evict_kwg(pruned);
+      pruned = undefined;
+      precache_kbwg(req.args.key, req.args.bytes);
+      pruned = req.args.key;
+      return undefined;
+    }
     case "infer": {
       const { handle, ...inferred } = JSON.parse(
         wolges.infer(req.args.request),

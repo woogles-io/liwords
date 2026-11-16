@@ -61,6 +61,8 @@ export const setLabPartsForTest = (n: number) => {
   parts = n;
   workers.forEach((w) => w?.terminate());
   workers = [];
+  prunedOn.clear();
+  lastPruned = undefined;
   pending.clear();
   sims.clear();
   endgames.clear();
@@ -144,6 +146,7 @@ const bury = (w: number, worker: Worker) => {
   if (workers[w] !== worker) return;
   worker.terminate();
   workers[w] = undefined;
+  prunedOn.delete(w);
   for (const [id, p] of pending) {
     if (p.worker !== w) continue;
     pending.delete(id);
@@ -394,6 +397,45 @@ const rand53 = () =>
   Math.floor(Math.random() * 2 ** 21) * 2 ** 32 +
   Math.floor(Math.random() * 2 ** 32);
 
+// The board's pruned lexicon each worker holds, by worker; and the last one
+// built, its key and bytes, loaded on a worker that lacks it without
+// building it again.
+const prunedOn = new Map<number, string>();
+let lastPruned: { key: string; bytes: Uint8Array } | undefined;
+
+// A job on n workers from one request: the board's pruned lexicon built once,
+// on the first worker, from the full one, and loaded on every worker, the
+// request then naming it. Keyed by the lexicon, the rules and the exact
+// board, never used for another board. A wasm that cannot prune, or a prune
+// that fails, leaves the request on the full lexicon.
+const prunedFor = async (base: Record<string, unknown>, n: number) => {
+  if (n < 2) return base;
+  const { lexicon, rules, board } = base;
+  const key = `kbwg:${JSON.stringify([lexicon, rules, board])}`;
+  try {
+    if (lastPruned?.key !== key) {
+      const bytes = await call<Uint8Array>(0, {
+        op: "kbwg_build",
+        args: { request: JSON.stringify({ lexicon, rules, board }) },
+      });
+      if (!(bytes instanceof Uint8Array)) return base;
+      lastPruned = { key, bytes };
+    }
+    const { bytes } = lastPruned;
+    await Promise.all(
+      Array.from({ length: n }, async (_, w) => {
+        if (prunedOn.get(w) === key) return;
+        prunedOn.delete(w);
+        await call(w, { op: "kbwg_load", args: { key, bytes } });
+        prunedOn.set(w, key);
+      }),
+    );
+  } catch {
+    return base;
+  }
+  return { ...base, lexicon: key, pruned: true };
+};
+
 const multi = async (request: LabRequest): Promise<unknown> => {
   const n = labParts();
   switch (request.op) {
@@ -413,9 +455,10 @@ const multi = async (request: LabRequest): Promise<unknown> => {
       return call(0, request);
     case "endgame": {
       freeSims();
-      const base = JSON.parse(request.args.request);
+      const asked = JSON.parse(request.args.request);
       const k = Math.min(n, request.args.parts ?? n);
-      if (base.model !== undefined && k > 1) {
+      if (asked.model !== undefined && k > 1) {
+        const base = await prunedFor(asked, k);
         // part k of n values the bag's sets whose index is k mod n
         const made = await Promise.all(
           Array.from({ length: k }, (_, w) =>
@@ -447,7 +490,7 @@ const multi = async (request: LabRequest): Promise<unknown> => {
     case "sim": {
       freeSims();
       const seed = rand53();
-      const base = JSON.parse(request.args.request);
+      const base = await prunedFor(JSON.parse(request.args.request), n);
       const made = await Promise.all(
         Array.from({ length: n }, (_, w) =>
           call<{
