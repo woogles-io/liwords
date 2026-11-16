@@ -149,6 +149,11 @@ change if the server stops mid-COP.
 **Plan: a pairing job, with COP on the lambda and no lock held while
 pairing.**
 
+(Amended 2026-11-16: the job is a plain `pkg/jobs` row, due at once, and the
+server wakes its own runner, which claims it within milliseconds. No
+pre-claimed lease or separate goroutine; see "Moving work without losing it
+midstream" in section 7.)
+
 1. **Mark, don't pair.** When the division would pair a COP round,
    `pairRoundWithCOP` records the round as pending instead of calling COP.
    Every caller goes through it, so one change covers them all. Other pairing
@@ -537,8 +542,8 @@ jobs (
   runner takes the jobs.
 - **Every handler must be safe to run twice.** Most already are:
   adjudication and pairing re-check under their locks, and the cleanups are
-  single statements. League emails need rework: one row per recipient
-  batch, marked as sent.
+  single statements. League emails need rework: one outbox row per
+  email, marked as sent (below).
 - **Panics are recovered per job** and recorded as the job's error. The API
   has no panic-recovery middleware, so an unrecovered panic in a job would
   take the whole process down.
@@ -548,14 +553,14 @@ jobs (
 - **Visibility:** each run is a `job.run` span tagged with its kind, and the
   row keeps the last run, duration and error. Alert when the oldest due job
   is more than a minute late.
-- **Manual runs** (resend season-started emails) insert a one-off row.
+- **Manual runs** set a schedule's `run_at` to now (below).
   `LEAGUE_NOW` testing runs against a local API.
 - **Tests:** cron schedules compute their next run, in UTC; a schedule runs
   again after its run; a job that panics is recorded and the runner carries
   on; claims, leases, expiry and drain are covered by the `pair_round` tests
   (section 2a).
 
-**Status (2026-11-14):** step 1 below in code (`pkg/jobs`,
+**Status (2026-11-16):** step 1 below deployed (`pkg/jobs`,
 `cmd/liwords-api/jobs.go`). Each API server runs a runner unless started
 with `-run-jobs=false`; the API's loops are schedules, and the channel
 monitor and shadow summary stay per server. Shutdown drains the runner
@@ -563,7 +568,7 @@ after HTTP and before the bus, since jobs send events through the bus.
 
 ### Where the runner runs
 
-**Recommended: inside the API servers, behind a flag (`JOBS_RUNNER`, on by
+**Recommended: inside the API servers, behind a flag (`RUN_JOBS`, on by
 default).** With COP on the lambda (section 2a), nothing left needs much CPU.
 Running in the API is the same wiring, so jobs send events like any request
 (the league games' dropped events are fixed by this alone). It costs nothing
@@ -571,27 +576,153 @@ extra and doesn't wait on the infrastructure in section 1. With two API
 servers both run it; claims make each job run once.
 
 **Later, if needed: a worker service.** The same image with only the runner
-(`JOBS_RUNNER` on there, off in the API servers), its own ECS service, one
+(`RUN_JOBS` on there, off in the API servers), its own ECS service, one
 task, overlapping deploys. A deploy change, not a code change. Worth it if
 jobs start to slow requests. It costs about $9/month at 0.25 vCPU and 0.5 GB
 on Fargate, and Fargate bills the reserved size, not wake-ups.
 
-To check before moving the maintenance tasks: the maintenance task role
-(`liwordsMaintenanceTaskRole`) grants SES for email. The API's role needs the
-same.
+The API already has SES: it runs with no task role, and the EC2 instance
+role (`ecsInstanceRole`) carries the `SendSESemail` policy (checked
+2026-11-15). Recheck on Fargate, where a task role replaces it.
+
+### Moving work without losing it midstream
+
+The runner gives a job's work back when it is cut off: a drain that runs out
+of time cancels the job and hands the row back, due at once; a server that
+dies loses its lease after 30 s. Either way the job runs again **from the
+start**, on whichever server claims it. Nothing is lost only if every
+handler is **resumable**: run again from the start, it finishes what was left
+and repeats nothing that was done. The drain gives jobs 5 s, so anything
+longer than that will be cut off on most deploys.
+
+The way to get there is the same everywhere: **the database records what is
+done, one item at a time, and the job reads it to know what is left.** A
+loop that keeps its progress only in memory (`for _, user := range users {
+send; sleep 2s }`) is what loses work.
+
+**What each maintenance task needs:**
+
+| Task | Resumable as it is? | Change |
+|---|---|---|
+| Expired sessions, cancelled games, monitoring streams | Yes: one `DELETE` each | none |
+| Unverified users | Yes: one transaction | none |
+| Sub badges | Yes: one fetch, then one transaction | none |
+| Archive sweep | Yes: each game archived is no longer picked | none |
+| Patreon token refresh | Yes: a refreshed row's `last_updated` moves, so it isn't picked again | the 2 s sleeps watch ctx |
+| Org titles refresh (SG, ABSP) | Yes: refetch and overwrite | none |
+| Blog RSS | Yes: `SetSingleAnnouncement` replaces | call the config service in process, not over HTTP with the admin key |
+| League: close season | Mostly: force-finish picks unfinished games, outcomes are recomputed, and `COMPLETED` is set last | `MarkSeasonClosed` in the same transaction as `COMPLETED` |
+| League: prepare divisions | To check: `divisions_prepared_at` is set after, separately | mark in the same transaction, or check divisions exist |
+| League: open registration | **No.** The next season is created, then emails go out in a goroutine. Cut off there, the rerun sees the season exists and skips, and the rest of the emails never go | email outbox (below) |
+| League: starting soon | **No, the other way.** Emails go out, then it is marked. Cut off there, the rerun emails everyone again | email outbox |
+| League: start season | **No.** The season is set `ACTIVE`, then games are created one pair at a time (minutes, for a big season), then it is marked started. Cut off mid-creation, the rerun sees `ACTIVE` and skips: the rest of the games are never created. Started emails are sent after, and lost the same way | resumable game creation, and the outbox |
+| League: unstarted-game reminders | Sends then nothing records it, so a rerun inside the 8-hour window emails again | email outbox |
+
+**The email outbox.** One table, one row per email:
+
+```sql
+email_outbox (
+  id          bigserial primary key,
+  dedupe_key  text not null unique,  -- 'league:<season>:started:<user>'
+  recipient   text not null,
+  subject     text not null,
+  body        text not null,
+  created_at  timestamptz not null default now(),
+  sent_at     timestamptz,
+  attempts    int not null default 0,
+  last_error  text
+)
+```
+
+- **Writing:** the code that decides to email writes the rows (rendered,
+  `ON CONFLICT (dedupe_key) DO NOTHING`) **in the same transaction as the
+  change that calls for them**: the new season and its registration-open
+  emails commit together, or neither does. Then it enqueues a
+  `send_emails` job and wakes the runner.
+- **Sending:** `send_emails` sends the unsent rows oldest first, one every
+  2 s as today, and marks each row sent as soon as SES accepts it. Cut off,
+  the rest stay unsent and the next run carries on. A schedule every minute
+  is the backstop for a wake that was missed.
+- **What can still go wrong:** SES accepts an email and the server dies
+  before marking it. That one email goes out twice; nothing is lost. SES has
+  no idempotency key, so this is as good as it gets.
+- **Dedupe keys** make the senders safe to run twice: rerunning the
+  reminders inside their window adds no rows, so no second email.
+- **Failures:** an SES error raises `attempts` on that row and moves on; a
+  row is given up after 5. Bounces are SES's business, as today.
+- Sent rows are deleted after 30 days, by the same daily run.
+- Discord posts (registration open, season started) are one per event; they
+  go through the same table with a `discord:` key and an empty recipient,
+  so they aren't lost or doubled either.
+- Registration and unregistration confirmations are sent while the player
+  waits for the RPC; they stay as they are.
+
+**Resumable game creation.** Pairings are deterministic (seeded by season
+and division), so the job can tell which games already exist:
+
+- The season gets a `games_created_at`. Start season becomes: set
+  `ACTIVE` (as today); create the games that don't exist yet, skipping any
+  pair with a game in that division already; when all exist, set
+  `games_created_at` and write the started emails, in one transaction.
+- The task looks for `ACTIVE` seasons with `games_created_at` null, not only
+  `SCHEDULED` ones, so a cut-off start carries on where it stopped.
+- The rollback to `SCHEDULED` on a failure goes: it left the games already
+  created in place, and the rerun created them again. Now the job just runs
+  again.
+- The event channel is the API's own, so started games reach the players'
+  sockets (today their events are thrown away).
+
+**COP `pair_round` (section 2a), the same way.**
+
+- The pairing job's row is written by `jobs.Enqueue` with the tournament
+  change's transaction (`LockForChange` already runs the change in one), so
+  the result that makes the round pairable and the promise to pair it commit
+  together. Then the server wakes its runner; with one server it claims the
+  job within milliseconds.
+- This replaces "the same server pairs in a goroutine" in 2a: the runner
+  already drains, retries, recovers from a dead server, and traces each run.
+- Cut off mid-call by a deploy, the job runs again on the new server and
+  calls COP again. COP is a pure function of the request, so that costs
+  time, not correctness.
+- Applying the pairings is one locked change that checks the request is
+  still the same (2a, step 3.2), so a pairing that arrives after a director
+  paired by hand, or after a score changed, is thrown away, not applied.
+- A job is only enqueued again once done, so a change made while a round is
+  being paired relies on that check: the job sees the request changed, and
+  calls COP again itself.
+
+**Switching over without running anything twice.** The maintenance tasks
+register only when `MAINTENANCE_JOBS` is set (off by default):
+
+1. Deploy with it off. Nothing changes.
+2. Disable the two EventBridge rules, between runs (say at :30).
+3. Set `MAINTENANCE_JOBS=1` and redeploy. Each task's first run is at its
+   next scheduled time (hourly `1 * * * *`, daily `0 5 * * *`).
+4. Check one hourly and one daily run in `jobs` and Jaeger. To go back,
+   unset the flag and re-enable the rules.
+
+Manual runs: `UPDATE jobs SET run_at = now() WHERE kind = '…'` (the runner
+picks it up within 30 s). `resend-season-started-emails` goes away: the
+outbox is what it worked around.
 
 ### Order
 
-1. **`pkg/jobs` and the `jobs` table**, running in the API servers, with the
-   API's loops as schedules. The loops go away.
-2. **Maintenance tasks as schedules.** Check one run of each, then disable
-   the EventBridge rules. `cmd/maintenance` is kept only to insert manual
-   runs.
-3. **COP `pair_round` on the lambda** (section 2a). `Enqueue` leaves a job that isn't done
-   alone, including one running, so a change made while a round is being
-   paired must not rely on enqueueing again: the job compares the request it
-   sent with the state after the call (step 3 of 2a) and retries itself.
-4. **League emails in resumable batches.**
+1. **`pkg/jobs` and the `jobs` table**, with the API's loops as schedules.
+   Done (#2277, deployed 2026-11-16).
+2. **Email outbox and `send_emails`.** Move every league email loop and
+   Discord post onto it. Works even while the maintenance container still
+   runs the league tasks: it writes rows, the API sends them.
+3. **Resumable season start** (`games_created_at`, skip existing games), and
+   the close and prepare marks in the same transaction as their change.
+4. **Maintenance tasks as schedules** behind `MAINTENANCE_JOBS`, switched
+   over as above.
+5. **Delete `cmd/maintenance`**, its Dockerfile, build steps and cfn
+   template. Deleting the AWS stack, task definition and
+   `liwordsMaintenanceTaskRole` waits for an OK.
+6. **COP `pair_round` on the lambda** (section 2a, as amended above).
+
+Each of 2-4 is safe alone: today's container keeps running until step 4
+turns it off.
 
 ## 8. Socket server
 
