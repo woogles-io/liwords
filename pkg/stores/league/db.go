@@ -88,6 +88,7 @@ type Store interface {
 	GetDivisionCrosstableGames(ctx context.Context, divisionID uuid.UUID) ([]models.GetDivisionCrosstableGamesRow, error)
 	GetUnfinishedLeagueGames(ctx context.Context, seasonID uuid.UUID) ([]models.GetUnfinishedLeagueGamesRow, error)
 	GetUnfinishedDivisionGames(ctx context.Context, divisionID uuid.UUID) ([]models.GetUnfinishedDivisionGamesRow, error)
+	GetDivisionGamePlayers(ctx context.Context, divisionID uuid.UUID) ([]models.GetDivisionGamePlayersRow, error)
 	ForceFinishGame(ctx context.Context, arg models.ForceFinishGameParams) error
 	GetForceFinishedGamesMissingPlayers(ctx context.Context, seasonID pgtype.UUID) ([]models.GetForceFinishedGamesMissingPlayersRow, error)
 	GetGameLeagueInfo(ctx context.Context, gameUUID string) (models.GetGameLeagueInfoRow, error)
@@ -449,6 +450,10 @@ func (s *DBStore) GetUnfinishedLeagueGames(ctx context.Context, seasonID uuid.UU
 
 func (s *DBStore) GetUnfinishedDivisionGames(ctx context.Context, divisionID uuid.UUID) ([]models.GetUnfinishedDivisionGamesRow, error) {
 	return s.queries.GetUnfinishedDivisionGames(ctx, pgtype.UUID{Bytes: divisionID, Valid: true})
+}
+
+func (s *DBStore) GetDivisionGamePlayers(ctx context.Context, divisionID uuid.UUID) ([]models.GetDivisionGamePlayersRow, error) {
+	return s.queries.GetDivisionGamePlayers(ctx, pgtype.UUID{Bytes: divisionID, Valid: true})
 }
 
 // SeasonStandingsSnapshot is a single repeatable-read view of everything

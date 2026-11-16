@@ -368,6 +368,7 @@ type LeagueSeason struct {
 	StartingSoonNotificationSentAt pgtype.Timestamptz
 	PromotionFormula               int32
 	RegistrationNoticePending      bool
+	GamesCreatedAt                 pgtype.Timestamptz
 }
 
 type LeagueStanding struct {

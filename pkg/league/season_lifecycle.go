@@ -221,9 +221,9 @@ func (slm *SeasonLifecycleManager) QueueSeasonStartingSoonNotices(
 }
 
 // QueueSeasonStartedNotices writes the emails and Discord post for a season
-// that has started, and marks the season started (started_at) in the same
-// transaction. It reports whether it wrote them: false if the season was
-// marked started before.
+// whose games have all been created, and marks them created
+// (games_created_at, and started_at) in the same transaction. It reports
+// whether it wrote them: false if the season was marked before.
 func (slm *SeasonLifecycleManager) QueueSeasonStartedNotices(
 	ctx context.Context,
 	leagueID uuid.UUID,
@@ -237,7 +237,7 @@ func (slm *SeasonLifecycleManager) QueueSeasonStartedNotices(
 	if err != nil {
 		return false, fmt.Errorf("failed to get season: %w", err)
 	}
-	if season.StartedAt.Valid {
+	if season.GamesCreatedAt.Valid {
 		return false, nil
 	}
 	playerAssignments, err := slm.buildPlayerAssignments(ctx, seasonID)

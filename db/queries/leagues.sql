@@ -136,11 +136,13 @@ SET starting_soon_notification_sent_at = NOW(), updated_at = NOW()
 WHERE uuid = $1 AND starting_soon_notification_sent_at IS NULL;
 
 -- name: ClaimSeasonStartedNotice :execrows
--- Sets started_at, in the transaction that writes the season-started
--- messages. 0 rows: they were written already.
+-- Marks every game of the season created (games_created_at, and started_at
+-- if unset), in the transaction that writes the season-started messages.
+-- 0 rows: they were written already.
 UPDATE league_seasons
-SET started_at = NOW(), updated_at = NOW()
-WHERE uuid = $1 AND started_at IS NULL;
+SET games_created_at = NOW(), started_at = COALESCE(started_at, NOW()),
+    updated_at = NOW()
+WHERE uuid = $1 AND games_created_at IS NULL;
 
 -- name: MarkSeasonComplete :exec
 UPDATE league_seasons
@@ -232,7 +234,9 @@ WHERE prev_s.league_id = $1
 SELECT lr.*, u.uuid as user_uuid, u.username FROM league_registrations lr
 JOIN users u ON lr.user_id = u.id
 WHERE lr.division_id = $1
-ORDER BY lr.registration_date;
+-- user_id breaks ties: season start pairs players by their place in this
+-- order, and a start cut off partway must pair them the same way again.
+ORDER BY lr.registration_date, lr.user_id;
 
 -- name: UpdatePlayerDivision :exec
 UPDATE league_registrations
@@ -529,7 +533,7 @@ FROM league_registrations lr
 JOIN users u ON lr.user_id = u.id
 JOIN league_divisions d ON d.uuid = lr.division_id
 WHERE lr.division_id = ANY(@division_ids::uuid[])
-ORDER BY d.division_number, lr.registration_date;
+ORDER BY d.division_number, lr.registration_date, lr.user_id;
 
 -- name: GetUnfinishedGamesForDivisions :many
 -- Batched GetUnfinishedDivisionGames for a whole season. Adds league_division_id
@@ -987,3 +991,9 @@ SET winner_idx = CASE WHEN g.player0_id = @cheater_id THEN 1 ELSE 0 END,
     updated_at = NOW()
 FROM games_to_penalize gtp
 WHERE g.uuid = gtp.game_uuid;
+
+-- name: GetDivisionGamePlayers :many
+-- The two players of every game in a division, to skip pairs that already
+-- have one when a season start carries on after being cut off.
+SELECT player0_id, player1_id FROM games
+WHERE league_division_id = $1;

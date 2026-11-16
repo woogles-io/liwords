@@ -174,12 +174,36 @@ func (ssm *SeasonStartManager) createGamesForDivision(
 		Int("pairingsCount", len(pairings)).
 		Msg("generated-pairings-for-division")
 
+	// A start cut off partway left some of these games created already. Each
+	// pair plays once, so a pair with a game in this division is done.
+	existing, err := ssm.store.GetDivisionGamePlayers(ctx, division.Uuid)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get existing games: %w", err)
+	}
+	type pairKey struct{ a, b int32 }
+	keyOf := func(x, y int32) pairKey {
+		if x > y {
+			x, y = y, x
+		}
+		return pairKey{x, y}
+	}
+	played := make(map[pairKey]bool, len(existing))
+	for _, g := range existing {
+		played[keyOf(g.Player0ID.Int32, g.Player1ID.Int32)] = true
+	}
+
 	// Create games for each pairing
 	gamesCreated := 0
 	for i, pairing := range pairings {
 		// Get player registrations
+		if err := ctx.Err(); err != nil {
+			return gamesCreated, err
+		}
 		player1Reg := registrations[pairing.Player1Index]
 		player2Reg := registrations[pairing.Player2Index]
+		if played[keyOf(player1Reg.UserID, player2Reg.UserID)] {
+			continue
+		}
 
 		// Look up user entities using the UUIDs from the JOIN
 		user1, err := ssm.stores.UserStore.GetByUUID(ctx, player1Reg.UserUuid)
@@ -232,7 +256,11 @@ func (ssm *SeasonStartManager) createGamesForDivision(
 				Int("gamesCreated", gamesCreated).
 				Dur("sleeping", delayBetweenBatches).
 				Msg("batch-complete-sleeping")
-			time.Sleep(delayBetweenBatches)
+			select {
+			case <-ctx.Done():
+				return gamesCreated, ctx.Err()
+			case <-time.After(delayBetweenBatches):
+			}
 		}
 	}
 
