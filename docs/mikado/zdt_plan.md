@@ -459,7 +459,7 @@ Background work runs two ways today, and neither runs once.
 
 | Job | Interval | With two servers |
 |---|---|---|
-| Real-time adjudicator (`bus.adjudicateGames`) | 10s | Safe: acts only under the game lock and re-checks. Twice the query load; after #2159 that is one 114ms query per server per tick. |
+| Real-time adjudicator (`bus.adjudicateGames`) | 10s | Safe: acts only under the game lock and re-checks. Twice the query load: one query per server per tick, about 10ms from `ongoing_games` (68 real-time games, 2026-11-16). |
 | Correspondence adjudicator | 60s | Same. |
 | Analysis job reclaim | 30s | Safe: one SQL update. |
 | Broadcast poller | 30s | Safe: each feed is claimed by one server (section 4). |
@@ -503,7 +503,7 @@ jobs (
   id           bigserial primary key,
   kind         text not null,             -- adjudicate_realtime, pair_round, ...
   key          text not null default '',  -- '' for schedules; tournament/division/round for pair_round
-  schedule     text,                      -- '@every 10s', '@hourly :01', '@daily 05:00'; null for one-off jobs
+  schedule     text,                      -- cron, UTC: '*/10 * * * * *', '1 * * * *', '0 5 * * *'; null for one-off jobs
   run_at       timestamptz not null,
   lease_until  timestamptz,
   done_at      timestamptz,               -- one-off jobs only
@@ -516,8 +516,10 @@ jobs (
 ```
 
 - **Schedules** are one row per periodic task, upserted by the runner at
-  startup. After each run, `run_at` moves to the next time the schedule
-  gives.
+  startup, as cron expressions in UTC (seconds optional), so runs happen at
+  known clock times whichever server runs them. After each run, `run_at`
+  moves to the next time the expression gives; a run missed while no server
+  was up happens once, as soon as one is.
 - **One-off jobs** are `pair_round`, email batches, manual runs and,
   later, tournament automation. `done_at` is set when they finish.
 - **Claims:** due rows are claimed with `UPDATE … FOR UPDATE SKIP LOCKED`,
@@ -525,8 +527,8 @@ jobs (
   commits before the job runs. A runner only claims the kinds it has
   handlers for, so an old server in a deploy leaves a new kind alone.
 - **No fixed polling.** The runner sleeps until the earliest `run_at`, at
-  most 30 s. The real-time adjudicator, every 10 s, is the most frequent
-  thing it wakes for. `pair_round` doesn't wait for it (section 2a).
+  most 30 s. The most frequent jobs (the real-time adjudicator, broadcast
+  polls, analysis reclaim) run every 30 s, at :00 and :30. `pair_round` doesn't wait for it (section 2a).
 - **Concurrency:** each job runs in its own goroutine, up to a cap, so a
   long email batch doesn't delay adjudication. A job can't overlap itself:
   its row is claimed.
@@ -548,10 +550,16 @@ jobs (
   is more than a minute late.
 - **Manual runs** (resend season-started emails) insert a one-off row.
   `LEAGUE_NOW` testing runs against a local API.
-- **Tests:** schedules compute their next run (`@every`, `@hourly :01`,
-  `@daily 05:00`, in UTC); a schedule runs again after its run; a job that
-  panics is recorded and the runner carries on; claims, leases, expiry and
-  drain are covered by the `pair_round` tests (section 2a).
+- **Tests:** cron schedules compute their next run, in UTC; a schedule runs
+  again after its run; a job that panics is recorded and the runner carries
+  on; claims, leases, expiry and drain are covered by the `pair_round` tests
+  (section 2a).
+
+**Status (2026-11-14):** step 1 below in code (`pkg/jobs`,
+`cmd/liwords-api/jobs.go`). Each API server runs a runner unless started
+with `-run-jobs=false`; the API's loops are schedules, and the channel
+monitor and shadow summary stay per server. Shutdown drains the runner
+after HTTP and before the bus, since jobs send events through the bus.
 
 ### Where the runner runs
 
@@ -579,7 +587,10 @@ same.
 2. **Maintenance tasks as schedules.** Check one run of each, then disable
    the EventBridge rules. `cmd/maintenance` is kept only to insert manual
    runs.
-3. **COP `pair_round` on the lambda** (section 2a).
+3. **COP `pair_round` on the lambda** (section 2a). `Enqueue` leaves a job that isn't done
+   alone, including one running, so a change made while a round is being
+   paired must not rely on enqueueing again: the job compares the request it
+   sent with the state after the call (step 3 of 2a) and retries itself.
 4. **League emails in resumable batches.**
 
 ## 8. Socket server

@@ -60,6 +60,12 @@ func endStreamsOnShutdown(srv *http.Server) (wrap func(http.Handler) http.Handle
 	}
 }
 
+// jobsDrainBudget caps the job runner's drain, for the same reason. Most
+// jobs take milliseconds; the ones that don't (the VDO poll spreads its
+// checks over 30s) are cancelled and handed back, due at once, so another
+// server (or this one's replacement, once it starts) runs them again.
+const jobsDrainBudget = 5 * time.Second
+
 // shutdownHTTP runs srv.Shutdown for at most httpShutdownBudget.
 func shutdownHTTP(ctx context.Context, srv *http.Server) error {
 	ctx, cancel := context.WithTimeout(ctx, httpShutdownBudget)

@@ -3,10 +3,12 @@ package vdowebhook
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"math/rand"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -307,47 +309,31 @@ func (e *StreamNotFoundError) Error() string {
 	return "stream key not found: " + e.StreamKey
 }
 
-// Start begins the polling loop that checks active stream health
-// Runs continuously until context is cancelled
-func (s *VDOWebhookService) Start(ctx context.Context) {
-	log.Info().Msg("vdo-polling-service-started")
-
-	for {
-		select {
-		case <-ctx.Done():
-			log.Info().Msg("vdo-polling-service-stopped")
-			return
-		case <-time.After(s.getJitteredInterval()):
-			// Poll all active streams in a separate goroutine to avoid blocking
-			go s.pollActiveStreams(ctx)
-		}
-	}
+// PollInterval is how often PollActiveStreams should run: the configured
+// interval, which the job's cron schedule is made from.
+func (s *VDOWebhookService) PollInterval() time.Duration {
+	return time.Duration(s.pollingIntervalSeconds) * time.Second
 }
 
-// getJitteredInterval returns a random duration around the configured midpoint with ±25% jitter
-// This prevents thundering herd and spreads API load on VDO.Ninja
-// For example, with 60s midpoint: returns 45-75 seconds (60 ± 15)
-func (s *VDOWebhookService) getJitteredInterval() time.Duration {
-	midpoint := time.Duration(s.pollingIntervalSeconds) * time.Second
-	// Jitter is ±25% of the midpoint
-	jitterRange := s.pollingIntervalSeconds / 2 // 50% range (±25%)
-	jitter := time.Duration(rand.Intn(jitterRange+1)) * time.Second
-	// Subtract 25% from midpoint, then add random jitter from 0 to 50%
-	base := midpoint - (midpoint / 4) // midpoint - 25%
-	return base + jitter
+// PollActiveStreams checks every active stream's health, spread over 30
+// seconds, and returns when all checks are done. A job, run every
+// PollInterval; its schedule is in cmd/liwords-api/jobs.go.
+func (s *VDOWebhookService) PollActiveStreams(ctx context.Context) error {
+	return s.pollActiveStreams(ctx)
 }
 
-// pollActiveStreams fetches all active streams and spreads API checks over 30 seconds
-func (s *VDOWebhookService) pollActiveStreams(ctx context.Context) {
+// pollActiveStreams fetches all active streams and spreads API checks over 30
+// seconds. A failed check is logged; the error returned is a failure to list
+// the streams, or the poll being cut off before every check ran.
+func (s *VDOWebhookService) pollActiveStreams(ctx context.Context) error {
 	streams, err := s.tournamentStore.GetActiveMonitoringStreams(ctx)
 	if err != nil {
-		log.Error().Err(err).Msg("vdo-poll-get-active-streams-error")
-		return
+		return fmt.Errorf("list active monitoring streams: %w", err)
 	}
 
 	if len(streams) == 0 {
 		log.Debug().Msg("vdo-poll-no-active-streams")
-		return
+		return nil
 	}
 
 	log.Info().Int("count", len(streams)).Msg("vdo-poll-checking-active-streams")
@@ -355,18 +341,26 @@ func (s *VDOWebhookService) pollActiveStreams(ctx context.Context) {
 	// Spread requests evenly over 30 seconds to avoid bursts
 	delayBetween := 30 * time.Second / time.Duration(len(streams))
 
+	var wg sync.WaitGroup
 	for i, stream := range streams {
 		// Calculate staggered delay for this stream
 		delay := time.Duration(i) * delayBetween
 		// Add small random jitter (0-2 seconds) to each request
 		delay += time.Duration(rand.Intn(2000)) * time.Millisecond
 
-		// Launch goroutine with delay
+		wg.Add(1)
 		go func(streamData tournament.ActiveMonitoringStream, d time.Duration) {
-			time.Sleep(d)
+			defer wg.Done()
+			select {
+			case <-time.After(d):
+			case <-ctx.Done():
+				return
+			}
 			s.checkStream(ctx, streamData)
 		}(stream, delay)
 	}
+	wg.Wait()
+	return ctx.Err()
 }
 
 // checkStream polls VDO.Ninja API to verify stream is still active
