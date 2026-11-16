@@ -410,13 +410,16 @@ let lastPruned: { key: string; bytes: Uint8Array } | undefined;
 // that fails, leaves the request on the full lexicon.
 const prunedFor = async (base: Record<string, unknown>, n: number) => {
   if (n < 2) return base;
-  const { lexicon, rules, board } = base;
+  // built under the cap the job's request gives each worker, never past it
+  const { lexicon, rules, board, max_memory_mb } = base;
   const key = `kbwg:${JSON.stringify([lexicon, rules, board])}`;
   try {
     if (lastPruned?.key !== key) {
       const bytes = await call<Uint8Array>(0, {
         op: "kbwg_build",
-        args: { request: JSON.stringify({ lexicon, rules, board }) },
+        args: {
+          request: JSON.stringify({ lexicon, rules, board, max_memory_mb }),
+        },
       });
       if (!(bytes instanceof Uint8Array)) return base;
       lastPruned = { key, bytes };

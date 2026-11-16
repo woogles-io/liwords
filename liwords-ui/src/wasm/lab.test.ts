@@ -136,7 +136,12 @@ describe("a sim in parts", () => {
     const bytes = new Uint8Array([1, 2, 3]);
     const plain = answer;
     answer = (w, m) => (m.op === "kbwg_build" ? bytes : plain(w, m));
-    const position = { lexicon: "CSW24", rules: "CrosswordGame", board: ["A"] };
+    const position = {
+      lexicon: "CSW24",
+      rules: "CrosswordGame",
+      board: ["A"],
+      max_memory_mb: 128,
+    };
     const sim = () =>
       labCall({
         op: "sim",
@@ -146,6 +151,10 @@ describe("a sim in parts", () => {
     await sim();
     expect(ops(0).filter((op) => op === "kbwg_build")).toHaveLength(1);
     expect(ops(1)).not.toContain("kbwg_build");
+    // under the cap each worker's job is given
+    expect(
+      JSON.parse(lastOf(0, "kbwg_build")!.args!.request as string),
+    ).toEqual(position);
     const key = lastOf(0, "kbwg_load")!.args!.key as string;
     for (const w of [0, 1]) {
       expect(lastOf(w, "kbwg_load")?.args).toEqual({ key, bytes });
