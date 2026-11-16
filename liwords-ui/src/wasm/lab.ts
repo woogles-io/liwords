@@ -743,10 +743,49 @@ const multi = async (request: LabRequest): Promise<unknown> => {
   }
 };
 
+// A request on one worker: as it was, but on its board's pruned lexicon as
+// a job on many workers is, built for a sim, an endgame, or a threats count,
+// and taken where held by an analysis or an inference.
+const single = async (request: LabRequest): Promise<unknown> => {
+  switch (request.op) {
+    case "sim":
+    case "endgame":
+    case "threats_new": {
+      const asked = JSON.parse(request.args.request);
+      const base = await prunedFor(asked, 1, request.op !== "threats_new");
+      const { infer } = request.args as { infer?: string };
+      return call(0, {
+        ...request,
+        args: {
+          ...request.args,
+          request: JSON.stringify(base),
+          ...(infer !== undefined ? { infer: onPruned(infer, 0) } : {}),
+        },
+      } as LabRequest);
+    }
+    case "set": {
+      const { infer } = request.args;
+      return call(0, {
+        ...request,
+        args: {
+          ...request.args,
+          ...(infer !== undefined ? { infer: onPruned(infer, 0) } : {}),
+        },
+      });
+    }
+    case "analyze":
+    case "infer":
+      return call(0, {
+        ...request,
+        args: { ...request.args, request: onPruned(request.args.request, 0) },
+      });
+    default:
+      return call(0, request);
+  }
+};
+
 export const labCall = <T = undefined>(request: LabRequest): Promise<T> =>
-  labParts() > 1
-    ? (multi(request) as Promise<T>)
-    : (call<T>(0, request) as Promise<T>);
+  (labParts() > 1 ? multi(request) : single(request)) as Promise<T>;
 
 export const onLabEvent = (listener: (e: LabEvent) => void) => {
   listeners.add(listener);

@@ -99,6 +99,31 @@ describe("the lab on one worker", () => {
   });
 });
 
+describe("the lab on one worker, pruned", () => {
+  it("builds a board's pruned lexicon for a sim on one worker, and an analysis takes it", async () => {
+    const plain = answer;
+    answer = (w, m) =>
+      m.op === "kbwg_build" ? new Uint8Array([1]) : plain(w, m);
+    setLabPartsForTest(1);
+    const position = { lexicon: "CSW24", rules: "R", board: ["A"] };
+    await labCall({
+      op: "sim",
+      args: { request: JSON.stringify(position), plays: "[]" },
+    });
+    const sim = JSON.parse(lastOf(0, "sim")!.args!.request as string);
+    expect(sim).toMatchObject({ pruned: true });
+    expect(sim.lexicon).toMatch(/^kbwg:/);
+    await labCall({
+      op: "analyze",
+      args: { request: JSON.stringify(position) },
+    });
+    expect(
+      JSON.parse(lastOf(0, "analyze")!.args!.request as string).lexicon,
+    ).toBe(sim.lexicon);
+    expect(ops(0).filter((op) => op === "kbwg_build")).toHaveLength(1);
+  });
+});
+
 describe("a sim in parts", () => {
   const start = async () => {
     setLabPartsForTest(2);
