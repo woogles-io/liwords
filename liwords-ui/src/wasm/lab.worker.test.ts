@@ -40,6 +40,8 @@ const wasm = vi.hoisted(() => ({
     }),
   ),
   infer_free: vi.fn(),
+  precache_kbwg: vi.fn(),
+  build_kbwg: vi.fn(() => new Uint8Array([1])),
   infer_export: vi.fn(() => new Uint8Array([7, 7])),
   infer_import: vi.fn(() => 6),
   stitched_z: vi.fn((iterations: number, alpha: number) => iterations + alpha),
@@ -126,6 +128,19 @@ afterEach(async () => {
 });
 
 describe("the lab's worker", () => {
+  it("keeps a board's pruned lexicon when the files change, till told to let it go", async () => {
+    await send(1, "kbwg_load", { key: "kbwg:a", bytes: new Uint8Array([1]) });
+    expect(wasm.precache_kbwg).toHaveBeenCalledWith(
+      "kbwg:a",
+      new Uint8Array([1]),
+    );
+    await send(2, "prepare", { files: [{ cacheKey: "kwg/one", path: "x" }] });
+    await send(3, "prepare", { files: [{ cacheKey: "kwg/two", path: "y" }] });
+    expect(wasm.evict_kwg).not.toHaveBeenCalledWith("kbwg:a");
+    await send(4, "kbwg_evict", { key: "kbwg:a" });
+    expect(wasm.evict_kwg).toHaveBeenCalledWith("kbwg:a");
+  });
+
   it("loads a job's files, and drops the last job's", async () => {
     await send(1, "prepare", {
       files: [{ cacheKey: "kwg/CSW24", path: "/wasm/2024/CSW24.kwg" }],

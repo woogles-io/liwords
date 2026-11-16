@@ -516,10 +516,9 @@ const prepare = async (wolges: Wolges, files: Array<LabFile>) => {
     dropWarm(wolges);
     freeThreats(wolges);
   }
+  // the pruned lexicons stay: the page keeps track of them, and lets them go
   if (unwanted.length) {
     dropInfer(wolges);
-    for (const key of pruned) wolges.evict_kwg(key);
-    pruned.clear();
   }
   for (const cacheKey of unwanted) {
     if (cacheKey.startsWith("klv/")) wolges.evict_klv(nameOf(cacheKey));
