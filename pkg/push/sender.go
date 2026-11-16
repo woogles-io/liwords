@@ -162,6 +162,12 @@ func (s *Sender) startSend(ctx context.Context, endpoint string) (context.Contex
 	}
 }
 
+// recordSize is the size the library pads every encrypted body to. Its
+// default, 4096, is over what Mozilla's push service takes: 4028 bytes, or
+// 2744 for Firefox on Android, whose pushes it relays through FCM. Over that
+// it answers 413, so every Firefox push failed. A turn is far smaller.
+const recordSize = 2048
+
 // Outcomes of one send, as the push.outcome span attribute and the counts on
 // the push.Send span.
 const (
@@ -202,6 +208,7 @@ func (s *Sender) post(ctx context.Context, span trace.Span, host string,
 			HTTPClient:      s.client,
 			Subscriber:      s.subscriber(),
 			TTL:             int(s.settings.TTL / time.Second),
+			RecordSize:      recordSize,
 			VAPIDPublicKey:  s.settings.PublicKey,
 			VAPIDPrivateKey: s.settings.PrivateKey,
 		})
