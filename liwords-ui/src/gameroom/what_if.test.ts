@@ -16,6 +16,7 @@ import {
   otherRackAfter,
   placedOfPlay,
   randomDraw,
+  typedTiles,
   whatIfExchange,
   whatIfPass,
   whatIfPlay,
@@ -236,5 +237,17 @@ describe("placedOfPlay", () => {
       { row: 5, col: 3, letter: 1 },
       { row: 7, col: 3, letter: 2 | 0x80 },
     ]);
+  });
+});
+
+describe("the tiles a box's text names", () => {
+  it("reads tiles in either case, and is null on anything that is no tile", () => {
+    expect(typedTiles("ab?", StandardEnglishAlphabet)).toEqual(
+      runesToMachineWord("AB?", StandardEnglishAlphabet),
+    );
+    // a dead key's accent, as typed before its letter, and a digit
+    expect(typedTiles("\u00a8", StandardEnglishAlphabet)).toBeNull();
+    expect(typedTiles("a1", StandardEnglishAlphabet)).toBeNull();
+    expect(typedTiles("", StandardEnglishAlphabet)).toEqual([]);
   });
 });
