@@ -618,7 +618,8 @@ describe("the lab's worker", () => {
       .result as { bytes: Uint8Array; count: number };
     expect(wasm.infer).toHaveBeenCalledWith("the inference");
     expect(wasm.infer_export).toHaveBeenCalledWith(4);
-    expect(wasm.infer_free).toHaveBeenCalledWith(4);
+    // kept for the next ask of the same board and settings
+    expect(wasm.infer_free).not.toHaveBeenCalledWith(4);
     expect(shared).toMatchObject({ bytes: new Uint8Array([7, 7]), count: 3 });
     wasm.infer.mockClear();
     const made = await send(2, "sim", {
@@ -636,6 +637,17 @@ describe("the lab's worker", () => {
     expect(made.result).toMatchObject({ inferred: { count: 3 } });
   });
 
+  it("keeps one inference for the panel, a sim, and a threats count of the same board and settings", async () => {
+    await send(1, "infer", { request: "same" });
+    await send(2, "sim", { request: "{}", plays: "[]", infer: "same" });
+    await send(3, "threats_new", { request: "{}", infer: "same" });
+    expect(wasm.infer).toHaveBeenCalledTimes(1);
+    expect(wasm.infer_free).not.toHaveBeenCalled();
+    await send(4, "infer", { request: "other" });
+    expect(wasm.infer).toHaveBeenCalledTimes(2);
+    expect(wasm.infer_free).toHaveBeenCalledWith(4);
+  });
+
   it("infers the opponent's leave for a sim, giving the sim its handle and letting it go", async () => {
     const made = await send(1, "sim", {
       request: JSON.stringify({ plies: 2, known: [] }),
@@ -647,7 +659,7 @@ describe("the lab's worker", () => {
       plies: 2,
       inferred: 4,
     });
-    expect(wasm.infer_free).toHaveBeenCalledWith(4);
+    expect(wasm.infer_free).not.toHaveBeenCalled();
     expect(made.result).toMatchObject({
       inferred: { count: 3, leaves: [{ tiles: [1], weight: 1 }] },
     });
@@ -663,7 +675,9 @@ describe("the lab's worker", () => {
       plies: 2,
       inferred: 4,
     });
-    expect(wasm.infer_free).toHaveBeenCalledTimes(2);
+    // another inference asked: the one kept let go, the new one kept
+    expect(wasm.infer_free).toHaveBeenCalledTimes(1);
+    expect(wasm.infer_free).toHaveBeenCalledWith(4);
     expect(set.result).toMatchObject({ inferred: { count: 3 } });
   });
 
@@ -674,7 +688,7 @@ describe("the lab's worker", () => {
     const request = JSON.stringify({ plies: 2, known: [] });
     await send(1, "sim", { request, plays: "[]", infer: "{}" });
     expect(wasm.sim_new).toHaveBeenCalledWith(request);
-    expect(wasm.infer_free).toHaveBeenCalledWith(5);
+    expect(wasm.infer_free).not.toHaveBeenCalled();
   });
 
   it("answers a sim's numbers against a play without stepping or sending them", async () => {
@@ -908,7 +922,7 @@ describe("the lab's worker", () => {
     expect(wasm.threats_new).toHaveBeenLastCalledWith(
       '{"rack":[1],"inferred":4}',
     );
-    expect(wasm.infer_free).toHaveBeenCalledWith(4);
+    expect(wasm.infer_free).not.toHaveBeenCalled();
     expect(inferred.result).toEqual({
       id: expect.any(Number),
       inferred: { count: 3, leaves: [{ tiles: [1], weight: 1 }] },

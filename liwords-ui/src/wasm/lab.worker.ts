@@ -297,6 +297,33 @@ const later = (next: () => void) => {
   stepPort.port2.postMessage(null);
 };
 
+// The last inference made on this worker, kept by its request, which names
+// the board and the settings: the panel's, a sim's, and a threats count's on
+// the same board and settings take this one, and a request of another board
+// or settings lets it go and makes its own.
+type Kept = {
+  request: string;
+  handle: number;
+  answer: { count: number; leaves: unknown };
+};
+let kept: Kept | undefined;
+const dropInfer = (wolges: Wolges) => {
+  if (kept) wolges.infer_free(kept.handle);
+  kept = undefined;
+};
+const inferKept = (wolges: Wolges, request: string): Kept => {
+  if (kept?.request !== request) {
+    dropInfer(wolges);
+    const { handle, ...answer } = JSON.parse(wolges.infer(request)) as {
+      handle: number;
+      count: number;
+      leaves: unknown;
+    };
+    kept = { request, handle, answer };
+  }
+  return kept;
+};
+
 // A sim's request, with the opponent's leave inferred when asked: the
 // inference made, its handle given in place of the known tiles, and let go
 // once the sim has its leaves, which the sim keeps. An inference of no leaves
@@ -312,13 +339,13 @@ const inferring = <T>(
   if (infer === undefined && shared === undefined) {
     return { result: call(request) };
   }
-  const { handle, count, leaves } = shared
+  // one given is this call's own, let go after; one kept stays kept
+  const own = shared !== undefined;
+  const { handle, count, leaves } = own
     ? { ...shared, handle: sharingOf(wolges).infer_import(shared.bytes) }
-    : (JSON.parse(wolges.infer(infer!)) as {
-        handle: number;
-        count: number;
-        leaves: unknown;
-      });
+    : (({ handle, answer }) => ({ handle, ...answer }))(
+        inferKept(wolges, infer!),
+      );
   try {
     const result = call(
       count > 0
@@ -331,7 +358,7 @@ const inferring = <T>(
     );
     return { result, inferred: { count, leaves } };
   } finally {
-    wolges.infer_free(handle);
+    if (own) wolges.infer_free(handle);
   }
 };
 
@@ -490,6 +517,7 @@ const prepare = async (wolges: Wolges, files: Array<LabFile>) => {
     freeThreats(wolges);
   }
   if (unwanted.length) {
+    dropInfer(wolges);
     for (const key of pruned) wolges.evict_kwg(key);
     pruned.clear();
   }
@@ -538,22 +566,11 @@ const handle = async (req: LabRequest): Promise<unknown> => {
       return undefined;
     case "infer_share": {
       const { infer_export } = sharingOf(wolges);
-      const { handle, count, leaves } = JSON.parse(
-        wolges.infer(req.args.request),
-      ) as { handle: number; count: number; leaves: unknown };
-      try {
-        return { bytes: infer_export(handle), count, leaves };
-      } finally {
-        wolges.infer_free(handle);
-      }
+      const { handle, answer } = inferKept(wolges, req.args.request);
+      return { bytes: infer_export(handle), ...answer };
     }
-    case "infer": {
-      const { handle, ...inferred } = JSON.parse(
-        wolges.infer(req.args.request),
-      ) as { handle: number };
-      wolges.infer_free(handle);
-      return inferred;
-    }
+    case "infer":
+      return inferKept(wolges, req.args.request).answer;
     case "analyze":
       return JSON.parse(wolges.analyze(req.args.request));
     case "threats_new": {
