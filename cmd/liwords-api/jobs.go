@@ -33,7 +33,10 @@ func registerJobs(r *jobs.Runner, d jobDeps) error {
 	schedule := func(kind, expr string, f func(context.Context) error) {
 		r.Schedule(kind, jobs.Cron(expr), func(ctx context.Context, _ jobs.Job) error { return f(ctx) })
 	}
-	schedule("adjudicate_realtime_games", "*/10 * * * * *", d.bus.AdjudicateRealtimeGames)
+	// A fallback: a player's client ends the game when the opponent's clock
+	// runs out. This catches games no client is watching, and cancels games
+	// never started (bus.CancelAfter).
+	schedule("adjudicate_realtime_games", "*/30 * * * * *", d.bus.AdjudicateRealtimeGames)
 	schedule("adjudicate_correspondence_games", "* * * * *", d.bus.AdjudicateCorrespondenceGames)
 	schedule("expire_seeks", "*/10 * * * *", d.bus.ExpireSeeks)
 	schedule("reclaim_analysis_jobs", "*/30 * * * * *", d.analysis.ReclaimStaleJobs)

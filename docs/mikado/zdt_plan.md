@@ -527,8 +527,8 @@ jobs (
   commits before the job runs. A runner only claims the kinds it has
   handlers for, so an old server in a deploy leaves a new kind alone.
 - **No fixed polling.** The runner sleeps until the earliest `run_at`, at
-  most 30 s. The real-time adjudicator, every 10 s, is the most frequent
-  thing it wakes for. `pair_round` doesn't wait for it (section 2a).
+  most 30 s. The most frequent jobs (the real-time adjudicator, broadcast
+  polls, analysis reclaim) run every 30 s, at :00 and :30. `pair_round` doesn't wait for it (section 2a).
 - **Concurrency:** each job runs in its own goroutine, up to a cap, so a
   long email batch doesn't delay adjudication. A job can't overlap itself:
   its row is claimed.
