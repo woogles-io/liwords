@@ -8,7 +8,11 @@ import (
 	"github.com/woogles-io/liwords/pkg/analysis"
 	"github.com/woogles-io/liwords/pkg/broadcasts"
 	"github.com/woogles-io/liwords/pkg/bus"
+	"github.com/woogles-io/liwords/pkg/config"
+	"github.com/woogles-io/liwords/pkg/emailer"
 	"github.com/woogles-io/liwords/pkg/jobs"
+	"github.com/woogles-io/liwords/pkg/notify"
+	"github.com/woogles-io/liwords/pkg/outbox"
 	"github.com/woogles-io/liwords/pkg/user"
 	"github.com/woogles-io/liwords/pkg/vdowebhook"
 )
@@ -26,6 +30,7 @@ type jobDeps struct {
 	broadcasts *broadcasts.BroadcastService
 	vdo        *vdowebhook.VDOWebhookService
 	users      user.Store
+	outbox     *outbox.Sender
 }
 
 // vdoPollOffset is how long after each interval boundary the VDO poll runs.
@@ -46,6 +51,10 @@ func registerJobs(r *jobs.Runner, d jobDeps) error {
 	schedule("reclaim_analysis_jobs", "*/30 * * * * *", d.analysis.ReclaimStaleJobs)
 	schedule("poll_broadcasts", "*/30 * * * * *", d.broadcasts.PollDue)
 	schedule("prune_client_records", "0 5 * * *", pruneClientRecords(d.users))
+	// Emails and Discord posts written to the outbox (league notices). One
+	// run sends all that is waiting, 2 s apart; a run cut off by a deploy
+	// leaves the rest for the next.
+	schedule("send_outbox", "* * * * *", d.outbox.Send)
 
 	// Set by VDO_POLLING_INTERVAL_SECONDS (300 in production): at :00:17,
 	// :05:17 and so on, off the minute boundaries when other people's
@@ -57,4 +66,21 @@ func registerJobs(r *jobs.Runner, d jobDeps) error {
 	}
 	schedule("poll_vdo_streams", vdoExpr, d.vdo.PollActiveStreams)
 	return nil
+}
+
+// outboxChannels sends outbox messages: emails through SES, league posts to
+// the league Discord webhook (dropped when none is configured, as before).
+func outboxChannels(cfg *config.Config) map[string]outbox.SendFunc {
+	return map[string]outbox.SendFunc{
+		outbox.ChannelEmail: func(_ context.Context, m outbox.Message) error {
+			_, err := emailer.SendSimpleMessage(cfg.EmailDebugMode, m.Recipient, m.Subject, m.Body)
+			return err
+		},
+		outbox.ChannelLeagueDiscord: func(_ context.Context, m outbox.Message) error {
+			if cfg.LeagueDiscordToken == "" {
+				return nil
+			}
+			return notify.Send(m.Body, cfg.LeagueDiscordToken)
+		},
+	}
 }

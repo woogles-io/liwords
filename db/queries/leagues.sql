@@ -34,8 +34,8 @@ WHERE uuid = $1;
 -- Season operations
 
 -- name: CreateSeason :one
-INSERT INTO league_seasons (uuid, league_id, season_number, start_date, end_date, status, promotion_formula)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+INSERT INTO league_seasons (uuid, league_id, season_number, start_date, end_date, status, promotion_formula, registration_notice_pending)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 RETURNING *;
 
 -- name: GetSeason :one
@@ -118,6 +118,29 @@ WHERE uuid = $1;
 UPDATE league_seasons
 SET starting_soon_notification_sent_at = NOW(), updated_at = NOW()
 WHERE uuid = $1;
+
+-- name: ClaimRegistrationNotice :execrows
+-- Clears registration_notice_pending, in the transaction that writes the
+-- registration-open messages. 0 rows: they were written already.
+UPDATE league_seasons
+SET registration_notice_pending = FALSE,
+    registration_opened_at = COALESCE(registration_opened_at, NOW()),
+    updated_at = NOW()
+WHERE uuid = $1 AND registration_notice_pending;
+
+-- name: ClaimStartingSoonNotice :execrows
+-- Sets starting_soon_notification_sent_at, in the transaction that writes
+-- the starting-soon messages. 0 rows: they were written already.
+UPDATE league_seasons
+SET starting_soon_notification_sent_at = NOW(), updated_at = NOW()
+WHERE uuid = $1 AND starting_soon_notification_sent_at IS NULL;
+
+-- name: ClaimSeasonStartedNotice :execrows
+-- Sets started_at, in the transaction that writes the season-started
+-- messages. 0 rows: they were written already.
+UPDATE league_seasons
+SET started_at = NOW(), updated_at = NOW()
+WHERE uuid = $1 AND started_at IS NULL;
 
 -- name: MarkSeasonComplete :exec
 UPDATE league_seasons

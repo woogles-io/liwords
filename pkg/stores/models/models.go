@@ -367,6 +367,7 @@ type LeagueSeason struct {
 	RegistrationOpenedAt           pgtype.Timestamptz
 	StartingSoonNotificationSentAt pgtype.Timestamptz
 	PromotionFormula               int32
+	RegistrationNoticePending      bool
 }
 
 type LeagueStanding struct {
@@ -446,6 +447,19 @@ type OngoingGame struct {
 	LeagueDivisionID   pgtype.UUID
 	CreatedAt          pgtype.Timestamptz
 	UpdatedAt          pgtype.Timestamptz
+}
+
+type Outbox struct {
+	ID        int64
+	DedupeKey string
+	Channel   string
+	Recipient string
+	Subject   string
+	Body      string
+	CreatedAt pgtype.Timestamptz
+	SentAt    pgtype.Timestamptz
+	Attempts  int32
+	LastError string
 }
 
 type Permission struct {

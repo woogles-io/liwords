@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -54,9 +53,6 @@ func RunLeagueLifecycleTasks(
 	result := &LifecycleRunnerResult{}
 	now := clock.Now()
 
-	// WaitGroup to ensure background notification tasks complete before returning
-	var wg sync.WaitGroup
-
 	// Get league
 	dbLeague, err := allStores.LeagueStore.GetLeagueByUUID(ctx, leagueUUID)
 	if err != nil {
@@ -87,6 +83,14 @@ func RunLeagueLifecycleTasks(
 	}
 
 	lifecycleMgr := NewSeasonLifecycleManager(allStores, clock)
+
+	// Seasons whose registration-open messages are still to be written.
+	var pendingNotices []uuid.UUID
+	for _, season := range allSeasons {
+		if season.RegistrationNoticePending {
+			pendingNotices = append(pendingNotices, season.Uuid)
+		}
+	}
 
 	// TASK 1: Close current season (if end time has passed and not already closed)
 	if hasCurrentSeason && currentSeason.Status == int32(pb.SeasonStatus_SEASON_ACTIVE) {
@@ -204,48 +208,25 @@ func RunLeagueLifecycleTasks(
 				if err != nil {
 					log.Error().Err(err).Str("leagueID", dbLeague.Uuid.String()).Msg("Failed to open registration")
 				} else if openResult != nil {
-					if markErr := allStores.LeagueStore.MarkRegistrationOpened(ctx, openResult.NextSeasonID); markErr != nil {
-						log.Warn().Err(markErr).Str("seasonID", openResult.NextSeasonID.String()).Msg("Failed to mark registration opened timestamp")
-					}
-
 					log.Info().
 						Str("nextSeasonID", openResult.NextSeasonID.String()).
 						Int32("seasonNumber", openResult.NextSeasonNumber).
 						Time("startDate", openResult.StartDate).
 						Msg("✓ Registration opened successfully")
-
-					// Send registration open notifications (email + Discord)
-					wg.Add(1)
-					go func(seasonID uuid.UUID, seasonNumber int32) {
-						defer wg.Done()
-						// Get current season registrants
-						currentRegistrants, err := allStores.LeagueStore.GetSeasonRegistrations(ctx, seasonID)
-						if err != nil {
-							log.Error().Err(err).Str("seasonID", seasonID.String()).Msg("Failed to get current registrants")
-							return
-						}
-
-						// Get previous season registrants (not in current)
-						previousRegistrants, err := allStores.LeagueStore.GetPreviousSeasonRegistrantsNotInCurrent(ctx, models.GetPreviousSeasonRegistrantsNotInCurrentParams{
-							LeagueID:     dbLeague.Uuid,
-							SeasonNumber: seasonNumber - 1,
-						})
-						if err != nil {
-							log.Warn().Err(err).Msg("Failed to get previous season registrants (continuing anyway)")
-						}
-
-						// Send bulk email
-						SendRegistrationOpenEmail(ctx, cfg, allStores.UserStore, dbLeague.Name, dbLeague.Slug, int(seasonNumber), currentRegistrants, previousRegistrants)
-
-						// Send Discord notification
-						SendRegistrationOpenDiscord(cfg, dbLeague.Name, dbLeague.Slug, int(seasonNumber))
-					}(openResult.NextSeasonID, openResult.NextSeasonNumber)
-
+					pendingNotices = append(pendingNotices, openResult.NextSeasonID)
 					result.TasksRun++
 					result.RegistrationOpened = true
 					result.NextSeasonCreated = true
 				}
 			}
+		}
+	}
+
+	// Registration-open emails and Discord post, for the season just opened
+	// and any whose run stopped before writing them.
+	for _, seasonID := range pendingNotices {
+		if _, err := lifecycleMgr.QueueRegistrationOpenNotices(ctx, dbLeague.Uuid, seasonID); err != nil {
+			log.Error().Err(err).Str("seasonID", seasonID.String()).Msg("Failed to queue registration-open notices")
 		}
 	}
 
@@ -267,17 +248,13 @@ func RunLeagueLifecycleTasks(
 					Time("startTime", startTime).
 					Msg("Sending season starting soon notifications...")
 
-				err := lifecycleMgr.SendSeasonStartingSoonNotification(ctx, cfg, dbLeague.Uuid, season.Uuid)
+				written, err := lifecycleMgr.QueueSeasonStartingSoonNotices(ctx, dbLeague.Uuid, season.Uuid)
 				if err != nil {
-					log.Error().Err(err).Str("seasonID", season.Uuid.String()).Msg("Failed to send notifications")
-				} else {
-					if markErr := allStores.LeagueStore.MarkStartingSoonNotificationSent(ctx, season.Uuid); markErr != nil {
-						log.Warn().Err(markErr).Str("seasonID", season.Uuid.String()).Msg("Failed to mark notification as sent")
-					}
-
+					log.Error().Err(err).Str("seasonID", season.Uuid.String()).Msg("Failed to queue notifications")
+				} else if written {
 					log.Info().
 						Str("seasonID", season.Uuid.String()).
-						Msg("✓ Season starting soon notifications sent")
+						Msg("✓ Season starting soon notifications queued")
 					result.TasksRun++
 					result.StartingSoonNotification = true
 				}
@@ -329,24 +306,15 @@ func RunLeagueLifecycleTasks(
 					continue
 				}
 
-				// Mark as started for idempotency
-				if markErr := allStores.LeagueStore.MarkSeasonStarted(ctx, season.Uuid); markErr != nil {
-					log.Warn().Err(markErr).Str("seasonID", season.Uuid.String()).Msg("Failed to mark season as started")
-				}
-
 				log.Info().
 					Str("seasonID", startResult.SeasonID.String()).
 					Int("totalGames", gameResult.TotalGamesCreated).
 					Msg("✓ Successfully started season and created games")
 
-				// Send season started notifications
-				err = lifecycleMgr.SendSeasonStartedNotification(ctx, cfg, dbLeague.Uuid, season.Uuid)
-				if err != nil {
-					log.Error().Err(err).Str("seasonID", season.Uuid.String()).Msg("Failed to send season started notifications")
+				// Marks the season started, with its emails and Discord post.
+				if _, err := lifecycleMgr.QueueSeasonStartedNotices(ctx, dbLeague.Uuid, season.Uuid); err != nil {
+					log.Error().Err(err).Str("seasonID", season.Uuid.String()).Msg("Failed to queue season started notifications")
 				}
-
-				// Send Discord notification for season start
-				SendSeasonStartedDiscord(cfg, dbLeague.Name, dbLeague.Slug, int(season.SeasonNumber))
 
 				result.TasksRun++
 				result.SeasonStarted = true
@@ -359,8 +327,6 @@ func RunLeagueLifecycleTasks(
 		}
 	}
 
-	// Wait for all background notification tasks to complete before returning
-	wg.Wait()
 
 	return result, nil
 }

@@ -3,29 +3,34 @@ package notify
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/rs/zerolog/log"
 )
 
+// Post sends message to a Discord webhook, logging any error.
 func Post(message string, token string) {
-	requestBody, err := json.Marshal(map[string]string{"content": message})
-	// Errors should not be fatal, just log them
-	if err != nil {
-		log.Err(err).Str("error", err.Error()).Msg("mod-action-discord-notification-marshal")
+	if err := Send(message, token); err != nil {
+		log.Err(err).Msg("notification-post-error")
 		return
 	}
+	log.Debug().Msg("discord-notification-sent-successfully")
+}
 
-	// Send synchronously to ensure it completes before caller exits
-	// (important for short-lived processes like maintenance tasks)
-	resp, err := http.Post(token, "application/json", bytes.NewBuffer(requestBody))
-	// Errors should not be fatal, just log them
+// Send sends message to a Discord webhook (token is the webhook URL).
+func Send(message string, token string) error {
+	requestBody, err := json.Marshal(map[string]string{"content": message})
 	if err != nil {
-		log.Err(err).Str("error", err.Error()).Msg("notification-post-error")
-	} else if resp.StatusCode != 204 { // No Content
-		// We do not expect any other response
-		log.Err(err).Str("status", resp.Status).Msg("notification-post-bad-response")
-	} else {
-		log.Debug().Msg("discord-notification-sent-successfully")
+		return err
 	}
+	resp, err := http.Post(token, "application/json", bytes.NewBuffer(requestBody))
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusNoContent {
+		return fmt.Errorf("discord webhook: %s", resp.Status)
+	}
+	return nil
 }
