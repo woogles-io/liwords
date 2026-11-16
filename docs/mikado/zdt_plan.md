@@ -613,36 +613,39 @@ send; sleep 2s }`) is what loses work.
 | Blog RSS | Yes: `SetSingleAnnouncement` replaces | call the config service in process, not over HTTP with the admin key |
 | League: close season | Mostly: force-finish picks unfinished games, outcomes are recomputed, and `COMPLETED` is set last | `MarkSeasonClosed` in the same transaction as `COMPLETED` |
 | League: prepare divisions | To check: `divisions_prepared_at` is set after, separately | mark in the same transaction, or check divisions exist |
-| League: open registration | **No.** The next season is created, then emails go out in a goroutine. Cut off there, the rerun sees the season exists and skips, and the rest of the emails never go | email outbox (below) |
-| League: starting soon | **No, the other way.** Emails go out, then it is marked. Cut off there, the rerun emails everyone again | email outbox |
+| League: open registration | **No.** The next season is created, then emails go out in a goroutine. Cut off there, the rerun sees the season exists and skips, and the rest of the emails never go | outbox (below) |
+| League: starting soon | **No, the other way.** Emails go out, then it is marked. Cut off there, the rerun emails everyone again | outbox |
 | League: start season | **No.** The season is set `ACTIVE`, then games are created one pair at a time (minutes, for a big season), then it is marked started. Cut off mid-creation, the rerun sees `ACTIVE` and skips: the rest of the games are never created. Started emails are sent after, and lost the same way | resumable game creation, and the outbox |
-| League: unstarted-game reminders | Sends then nothing records it, so a rerun inside the 8-hour window emails again | email outbox |
+| League: unstarted-game reminders | Sends then nothing records it, so a rerun inside the 8-hour window emails again | outbox |
 
-**The email outbox.** One table, one row per email:
+**The outbox.** One table, one row per message, emails and Discord posts
+alike (`channel`):
 
 ```sql
-email_outbox (
+outbox (
   id          bigserial primary key,
   dedupe_key  text not null unique,  -- 'league:<season>:started:<user>'
-  recipient   text not null,
+  channel     text not null,         -- 'email', 'league_discord'
+  recipient   text not null,         -- an email address; '' for Discord
   subject     text not null,
   body        text not null,
   created_at  timestamptz not null default now(),
   sent_at     timestamptz,
   attempts    int not null default 0,
-  last_error  text
+  last_error  text not null default ''
 )
 ```
 
 - **Writing:** the code that decides to email writes the rows (rendered,
-  `ON CONFLICT (dedupe_key) DO NOTHING`) **in the same transaction as the
-  change that calls for them**: the new season and its registration-open
-  emails commit together, or neither does. Then it enqueues a
-  `send_emails` job and wakes the runner.
-- **Sending:** `send_emails` sends the unsent rows oldest first, one every
-  2 s as today, and marks each row sent as soon as SES accepts it. Cut off,
-  the rest stay unsent and the next run carries on. A schedule every minute
-  is the backstop for a wake that was missed.
+  `ON CONFLICT (dedupe_key) DO NOTHING`) **in one transaction with the mark
+  that says they were written** (`starting_soon_notification_sent_at`,
+  `started_at`, or clearing `registration_notice_pending`, which is set when
+  the runner creates the season). A run cut off before that commit writes
+  them on the next run; after it, never again.
+- **Sending:** `send_outbox`, a schedule every minute, sends the unsent
+  rows oldest first, one every 2 s as today, and marks each row sent as soon
+  as SES accepts it. Cut off, the rest stay unsent and the next run carries
+  on. League notices can wait a minute, so there is no wake.
 - **What can still go wrong:** SES accepts an email and the server dies
   before marking it. That one email goes out twice; nothing is lost. SES has
   no idempotency key, so this is as good as it gets.
@@ -651,9 +654,9 @@ email_outbox (
 - **Failures:** an SES error raises `attempts` on that row and moves on; a
   row is given up after 5. Bounces are SES's business, as today.
 - Sent rows are deleted after 30 days, by the same daily run.
-- Discord posts (registration open, season started) are one per event; they
-  go through the same table with a `discord:` key and an empty recipient,
-  so they aren't lost or doubled either.
+- Discord posts (registration open, season started) are one per event, on
+  the `league_discord` channel with a `league:<season>:<notice>:discord`
+  key, so they aren't lost or doubled either.
 - Registration and unregistration confirmations are sent while the player
   waits for the RPC; they stay as they are.
 
@@ -713,7 +716,7 @@ deployed in groups.
 1. **`pkg/jobs` and the `jobs` table**, with the API's loops as schedules.
    Done (#2277, deployed 2026-11-16).
 2. **Deploy 1, maintenance and leagues:**
-   1. **Email outbox and `send_emails`.** Every league email loop and
+   1. **Outbox and `send_outbox`.** Every league email loop and
       Discord post moves onto it.
    2. **Resumable season start** (`games_created_at`, skip existing games),
       and the close and prepare marks in the same transaction as their
