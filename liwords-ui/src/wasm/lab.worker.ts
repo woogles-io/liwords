@@ -12,6 +12,7 @@ import {
   OUT_OF_MEMORY,
   OUT_OF_MEMORY_DRAWS,
   OUT_OF_MEMORY_MOVES,
+  SIM_OUT_OF_MEMORY,
 } from "./lab_errors";
 import { importWolges } from "./wolges";
 
@@ -321,6 +322,14 @@ const step = async (j: Job, chain: number, ms: number) => {
         : wolges.endgame_step(j.handle, request),
     );
     j.iterations = answer.iterations;
+    // A sim's step with no room left under its cap: no step after it has
+    // room either, and the memory grown stays with the worker, which the page
+    // lets go.
+    if (j.kind === "sim" && answer.out_of_memory) {
+      running = false;
+      post({ event: { job: j.id, error: SIM_OUT_OF_MEMORY }, spent: true });
+      return;
+    }
     // A step of an endgame not yet exact that searched no node stopped on the
     // memory cap, which counts every byte the instance holds, the lexicon too:
     // no step after it can search either. A pre-endgame's answers count no

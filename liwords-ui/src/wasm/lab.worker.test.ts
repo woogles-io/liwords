@@ -1,5 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { OUT_OF_MEMORY_DRAWS, OUT_OF_MEMORY_MOVES } from "./lab_errors";
+import {
+  OUT_OF_MEMORY_DRAWS,
+  OUT_OF_MEMORY_MOVES,
+  SIM_OUT_OF_MEMORY,
+} from "./lab_errors";
 
 // The worker's module, run in the page's scope: its handler is set on self,
 // and what it posts is caught. The wasm is a fake, each test saying what its
@@ -707,6 +711,25 @@ describe("the lab's worker", () => {
     expect((await send(4, "run", { job, ms: 100, alpha: 0.05 })).error).toBe(
       "no such job",
     );
+  });
+
+  it("stops a sim the wasm says is out of memory, the worker let go", async () => {
+    wasm.sim_step
+      .mockReturnValueOnce(simAnswer("running", "running"))
+      .mockReturnValueOnce(
+        JSON.stringify({
+          candidates: [{ state: "running" }, { state: "running" }],
+          out_of_memory: true,
+        }),
+      )
+      .mockReturnValue(simAnswer("running", "running"));
+    const { job } = (await send(1, "sim", { request: "{}", plays: "[]" }))
+      .result as { job: number };
+    await send(2, "run", { job, ms: 16, alpha: 0.05 });
+    await vi.waitFor(() => expect(events().some((e) => e.error)).toBe(true));
+    expect(events().find((e) => e.error)?.error).toBe(SIM_OUT_OF_MEMORY);
+    expect(wasm.sim_step).toHaveBeenCalledTimes(2);
+    expect(posted.some((m) => (m as { spent?: boolean }).spent)).toBe(true);
   });
 
   it("frees a sim whose plays the wasm turns down", async () => {

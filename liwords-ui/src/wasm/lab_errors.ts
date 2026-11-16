@@ -20,6 +20,11 @@ export const OUT_OF_MEMORY_MOVES =
 export const OUT_OF_MEMORY_DRAWS =
   "Out of memory keeping each play's sets: stopped at the plays valued so far.";
 
+// A sim's step with no room left under its memory cap: the numbers stand at
+// the iterations run so far.
+export const SIM_OUT_OF_MEMORY =
+  "Out of memory: the sim stopped at the iterations run so far.";
+
 // A wasm error names a tile by its number ("too many tile 17"): the tile's
 // letter in its place, as the page shows tiles.
 export const namedTiles = (text: string, rune: (tile: number) => string) =>

@@ -1780,6 +1780,12 @@ export const useLabSim = (
             plies: settings.plies,
             known: known.tiles,
             opponents_pass: settings.opponentsPass,
+            // the device's allowance shared by the workers the sim runs on,
+            // as an endgame's is
+            max_memory_mb: Math.max(
+              1,
+              Math.floor(endgameMemoryMb() / labParts()),
+            ),
           }),
           plays: JSON.stringify(plays.map((m) => JSON.parse(m.jsonKey))),
           ...(infer ? { infer } : {}),
