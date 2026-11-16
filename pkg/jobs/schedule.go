@@ -51,14 +51,27 @@ func (c cronSchedule) Next(after time.Time) time.Time { return c.s.Next(after.UT
 func (c cronSchedule) String() string                 { return c.expr }
 
 // CronEvery is the cron expression for running every d, at times lined up
-// with the clock. d must be a whole number of seconds dividing a minute, or
-// a whole number of minutes dividing an hour.
-func CronEvery(d time.Duration) (string, error) {
+// with the clock, offset seconds past each one. d must be a whole number of
+// seconds dividing a minute, or a whole number of minutes dividing an hour;
+// offset a whole number of seconds, less than d and less than a minute.
+//
+//	CronEvery(5*time.Minute, 17*time.Second)  at :00:17, :05:17, :10:17...
+//
+// An offset keeps a job that calls an outside service off the minute
+// boundaries, when many other people's scheduled jobs call it too.
+func CronEvery(d, offset time.Duration) (string, error) {
+	if offset < 0 || offset%time.Second != 0 || offset >= time.Minute || offset >= d {
+		return "", fmt.Errorf("jobs: offset %v must be whole seconds, under a minute and under %v", offset, d)
+	}
+	sec := int(offset / time.Second)
 	switch {
 	case d >= time.Second && d < time.Minute && d%time.Second == 0 && time.Minute%d == 0:
-		return fmt.Sprintf("*/%d * * * * *", int(d/time.Second)), nil
+		if sec == 0 {
+			return fmt.Sprintf("*/%d * * * * *", int(d/time.Second)), nil
+		}
+		return fmt.Sprintf("%d/%d * * * * *", sec, int(d/time.Second)), nil
 	case d >= time.Minute && d <= time.Hour && d%time.Minute == 0 && time.Hour%d == 0:
-		return fmt.Sprintf("0 */%d * * * *", int(d/time.Minute)), nil
+		return fmt.Sprintf("%d */%d * * * *", sec, int(d/time.Minute)), nil
 	}
 	return "", fmt.Errorf("jobs: %v can't be a cron interval: use whole seconds dividing a minute, or whole minutes dividing an hour", d)
 }

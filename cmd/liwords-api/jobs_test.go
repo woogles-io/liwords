@@ -8,10 +8,14 @@ import (
 )
 
 // The API's schedules parse (jobs.Cron panics otherwise), with the VDO
-// interval production uses.
+// interval production uses and the shortest one the offset allows.
 func TestRegisterJobs(t *testing.T) {
 	r := jobs.NewRunner(nil, jobs.Options{})
 	if err := registerJobs(r, jobDeps{vdo: vdowebhook.NewVDOWebhookService(nil, 300)}); err != nil {
+		t.Fatal(err)
+	}
+	r = jobs.NewRunner(nil, jobs.Options{})
+	if err := registerJobs(r, jobDeps{vdo: vdowebhook.NewVDOWebhookService(nil, 20)}); err != nil {
 		t.Fatal(err)
 	}
 }

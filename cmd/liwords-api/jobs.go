@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/woogles-io/liwords/pkg/analysis"
 	"github.com/woogles-io/liwords/pkg/broadcasts"
@@ -27,6 +28,9 @@ type jobDeps struct {
 	users      user.Store
 }
 
+// vdoPollOffset is how long after each interval boundary the VDO poll runs.
+const vdoPollOffset = 17 * time.Second
+
 // registerJobs registers the API's scheduled jobs on r. Schedules are cron
 // expressions in UTC (jobs.Cron); six fields have seconds first.
 func registerJobs(r *jobs.Runner, d jobDeps) error {
@@ -43,8 +47,11 @@ func registerJobs(r *jobs.Runner, d jobDeps) error {
 	schedule("poll_broadcasts", "*/30 * * * * *", d.broadcasts.PollDue)
 	schedule("prune_client_records", "0 5 * * *", pruneClientRecords(d.users))
 
-	// Set by VDO_POLLING_INTERVAL_SECONDS (300 in production).
-	vdoExpr, err := jobs.CronEvery(d.vdo.PollInterval())
+	// Set by VDO_POLLING_INTERVAL_SECONDS (300 in production): at :00:17,
+	// :05:17 and so on, off the minute boundaries when other people's
+	// scheduled jobs call VDO.Ninja too. Each poll also spreads its checks
+	// over 30s.
+	vdoExpr, err := jobs.CronEvery(d.vdo.PollInterval(), vdoPollOffset)
 	if err != nil {
 		return fmt.Errorf("vdo polling interval: %w", err)
 	}

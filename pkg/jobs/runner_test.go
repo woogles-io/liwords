@@ -145,24 +145,54 @@ func TestNextRunWithSlowClock(t *testing.T) {
 }
 
 func TestCronEvery(t *testing.T) {
-	good := map[time.Duration]string{
-		10 * time.Second: "*/10 * * * * *",
-		30 * time.Second: "*/30 * * * * *",
-		time.Minute:      "0 */1 * * * *",
-		5 * time.Minute:  "0 */5 * * * *",
-		time.Hour:        "0 */60 * * * *",
+	type in struct{ d, offset time.Duration }
+	good := map[in]string{
+		{10 * time.Second, 0}:                "*/10 * * * * *",
+		{30 * time.Second, 0}:                "*/30 * * * * *",
+		{30 * time.Second, 17 * time.Second}: "17/30 * * * * *",
+		{time.Minute, 0}:                     "0 */1 * * * *",
+		{5 * time.Minute, 0}:                 "0 */5 * * * *",
+		{5 * time.Minute, 17 * time.Second}:  "17 */5 * * * *",
+		{time.Hour, 59 * time.Second}:        "59 */60 * * * *",
 	}
-	for d, want := range good {
-		got, err := CronEvery(d)
+	for in, want := range good {
+		got, err := CronEvery(in.d, in.offset)
 		if err != nil || got != want {
-			t.Errorf("CronEvery(%v) = %q, %v; want %q", d, got, err, want)
+			t.Errorf("CronEvery(%v, %v) = %q, %v; want %q", in.d, in.offset, got, err, want)
 		}
 		Cron(got) // parses
 	}
-	for _, d := range []time.Duration{0, 7 * time.Second, 90 * time.Second, 7 * time.Minute, 2 * time.Hour, 1500 * time.Millisecond} {
-		if got, err := CronEvery(d); err == nil {
-			t.Errorf("CronEvery(%v) = %q, want an error", d, got)
+	bad := []in{
+		{0, 0}, {7 * time.Second, 0}, {90 * time.Second, 0}, {7 * time.Minute, 0},
+		{2 * time.Hour, 0}, {1500 * time.Millisecond, 0},
+		{30 * time.Second, 30 * time.Second}, // not less than d
+		{5 * time.Minute, time.Minute},       // not under a minute
+		{5 * time.Minute, 1500 * time.Millisecond},
+		{5 * time.Minute, -time.Second},
+	}
+	for _, in := range bad {
+		if got, err := CronEvery(in.d, in.offset); err == nil {
+			t.Errorf("CronEvery(%v, %v) = %q, want an error", in.d, in.offset, got)
 		}
+	}
+
+	// The offset moves every run, not just the first.
+	next := func(expr string, from time.Time) []time.Time {
+		var ts []time.Time
+		for range 3 {
+			from = Cron(expr).Next(from)
+			ts = append(ts, from)
+		}
+		return ts
+	}
+	from := time.Date(2026, 11, 16, 12, 0, 0, 0, time.UTC)
+	if got := next("17/30 * * * * *", from); !got[0].Equal(from.Add(17*time.Second)) ||
+		!got[1].Equal(from.Add(47*time.Second)) || !got[2].Equal(from.Add(77*time.Second)) {
+		t.Errorf("17/30 runs at %v", got)
+	}
+	if got := next("17 */5 * * * *", from); !got[0].Equal(from.Add(17*time.Second)) ||
+		!got[1].Equal(from.Add(5*time.Minute+17*time.Second)) {
+		t.Errorf("17 */5 runs at %v", got)
 	}
 }
 
