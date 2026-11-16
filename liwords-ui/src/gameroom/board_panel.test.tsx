@@ -75,10 +75,10 @@ it.skip("renders a game board panel", async () => {
 
 it("opens the rack editor on Space in board editing mode", () => {
   const { container } = renderBoardPanel(true);
-  expect(container.querySelector("input.rack")).toBeNull();
+  expect(document.querySelector("input.rack")).toBeNull();
   const panel = container.querySelector(".board-container")!;
   fireEvent.keyDown(panel, { key: " " });
-  const input = container.querySelector("input.rack") as HTMLInputElement;
+  const input = document.querySelector("input.rack") as HTMLInputElement;
   expect(input).toBeTruthy();
   // No previous turn, so the editor opens empty.
   expect(input.value).toBe("");
@@ -89,7 +89,7 @@ it("does not open the rack editor on Space outside the editor", () => {
   fireEvent.keyDown(container.querySelector(".board-container")!, {
     key: " ",
   });
-  expect(container.querySelector("input.rack")).toBeNull();
+  expect(document.querySelector("input.rack")).toBeNull();
 });
 
 it("keeps Space advancing the placement arrow in board editing mode", () => {
@@ -102,7 +102,7 @@ it("keeps Space advancing the placement arrow in board editing mode", () => {
   fireEvent.keyDown(container.querySelector(".board-container")!, {
     key: " ",
   });
-  expect(container.querySelector("input.rack")).toBeNull();
+  expect(document.querySelector("input.rack")).toBeNull();
   expect(selectedIndex()).toBeGreaterThan(0);
 });
 

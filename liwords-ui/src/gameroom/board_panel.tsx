@@ -1515,8 +1515,21 @@ export const BoardPanel = React.memo((props: Props) => {
                 />
               </Tooltip>
             )}
-            {currentMode === "EDITING_RACK" ? (
+            {/* the rack set in a dialog, as the blank is designated: typed,
+                or tile by tile from the alphabet's */}
+            <Modal
+              className="rack-modal"
+              title="Set the rack"
+              open={currentMode === "EDITING_RACK"}
+              onCancel={() => setCurrentMode("NORMAL")}
+              // its tiles' rows, seven tiles wide, inside its padding
+              width={390}
+              footer={null}
+              destroyOnHidden
+            >
               <RackEditor
+                tileColorId={tileColorId}
+                boardLetters={props.board.letters}
                 currentRack={rackEditorPrefill ?? displayedRack}
                 alphabet={props.alphabet}
                 rackCallback={(rack: MachineWord) => {
@@ -1553,17 +1566,16 @@ export const BoardPanel = React.memo((props: Props) => {
                 }}
                 cancelCallback={() => setCurrentMode("NORMAL")}
               />
-            ) : (
-              <Rack
-                tileColorId={tileColorId}
-                letters={displayedRack}
-                grabbable
-                returnToRack={returnToRack}
-                onTileClick={clickToBoard}
-                rearrangeRack={rearrangeRack}
-                alphabet={props.alphabet}
-              />
-            )}
+            </Modal>
+            <Rack
+              tileColorId={tileColorId}
+              letters={displayedRack}
+              grabbable
+              returnToRack={returnToRack}
+              onTileClick={clickToBoard}
+              rearrangeRack={rearrangeRack}
+              alphabet={props.alphabet}
+            />
             <Tooltip
               title="Shuffle &uarr;"
               placement="bottomLeft"
