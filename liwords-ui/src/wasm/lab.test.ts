@@ -285,6 +285,29 @@ describe("a sim in parts", () => {
     }
   });
 
+  it("builds no pruned lexicon the wasm says does not pay, asked for the searches to run", async () => {
+    const plain = answer;
+    answer = (w, m) =>
+      m.op === "prune_pays"
+        ? false
+        : m.op === "kbwg_build"
+          ? new Uint8Array([1])
+          : plain(w, m);
+    setLabPartsForTest(2);
+    const position = { lexicon: "CSW24", rules: "R", board: ["A"] };
+    await labCall({
+      op: "sim",
+      args: { request: JSON.stringify(position), plays: "[]" },
+    });
+    expect(
+      JSON.parse(lastOf(0, "prune_pays")!.args!.request as string),
+    ).toEqual({ rules: "R", board: ["A"], uses: 2 });
+    expect(ops(0)).not.toContain("kbwg_build");
+    expect(JSON.parse(lastOf(1, "sim")!.args!.request as string).lexicon).toBe(
+      "CSW24",
+    );
+  });
+
   it("goes on with the full lexicon when the board cannot be pruned", async () => {
     setLabPartsForTest(2);
     await labCall({

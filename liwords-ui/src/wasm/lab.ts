@@ -475,6 +475,12 @@ const prunedFor = async (
     if (!held) {
       // built under the cap the job's request gives each worker, never past it
       const { lexicon, rules, board, max_memory_mb } = base;
+      // built only when the wasm says the n searches on it pay for it
+      const pays = await call<boolean>(0, {
+        op: "prune_pays",
+        args: { request: JSON.stringify({ rules, board, uses: n }) },
+      });
+      if (pays === false) return base;
       const bytes = await call<Uint8Array>(0, {
         op: "kbwg_build",
         args: {

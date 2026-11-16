@@ -144,6 +144,9 @@ export type LabRequest =
   // a board's pruned lexicon, built once from the full one and answered as
   // its bytes, for every worker to load in its place
   | { op: "kbwg_build"; args: { request: string } }
+  // whether a board's pruned lexicon pays for the searches to be run on it,
+  // as the wasm judges; a wasm that cannot judge says it does
+  | { op: "prune_pays"; args: { request: string } }
   // a pruned lexicon loaded under its key, beside any loaded before
   | { op: "kbwg_load"; args: { key: string; bytes: Uint8Array } }
   // a pruned lexicon's key let go: the jobs made on it keep it till freed
@@ -552,6 +555,12 @@ const handle = async (req: LabRequest): Promise<unknown> => {
       return prepare(wolges, req.args.files);
     case "held":
       return wolges.memory_held();
+    case "prune_pays": {
+      const { prune_pays } = wolges as unknown as {
+        prune_pays?: (request: string) => boolean;
+      };
+      return prune_pays ? prune_pays(req.args.request) : true;
+    }
     case "kbwg_build":
       return pruningOf(wolges).build_kbwg(req.args.request);
     case "kbwg_load": {
