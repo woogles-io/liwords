@@ -69,6 +69,15 @@ SET lease_until = NULL, lease_token = NULL,
     last_run_at = NOW(), last_ms = @last_ms, last_error = @last_error
 WHERE id = @id AND lease_token = @lease_token;
 
+-- name: ReleaseJob :execrows
+-- Gives back a claimed row without recording a run, for a job cut off by a
+-- shutdown. Its run_at is unchanged, so it is due at once, and the attempt
+-- does not count.
+UPDATE jobs
+SET lease_until = NULL, lease_token = NULL,
+    attempts = GREATEST(attempts - 1, 0)
+WHERE id = @id AND lease_token = @lease_token;
+
 -- name: NextJobDueInMs :one
 -- How long until a row of the given kinds can next be claimed, in
 -- milliseconds, or a day when there are none. Computed in the database, so

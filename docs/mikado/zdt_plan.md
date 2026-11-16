@@ -587,7 +587,10 @@ same.
 2. **Maintenance tasks as schedules.** Check one run of each, then disable
    the EventBridge rules. `cmd/maintenance` is kept only to insert manual
    runs.
-3. **COP `pair_round` on the lambda** (section 2a).
+3. **COP `pair_round` on the lambda** (section 2a). `Enqueue` leaves a job that isn't done
+   alone, including one running, so a change made while a round is being
+   paired must not rely on enqueueing again: the job compares the request it
+   sent with the state after the call (step 3 of 2a) and retries itself.
 4. **League emails in resumable batches.**
 
 ## 8. Socket server

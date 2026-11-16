@@ -88,7 +88,9 @@ func (o Options) withDefaults() Options {
 	return o
 }
 
-var tracer = otel.Tracer("jobs")
+// tracer is looked up on each use, so a tracer provider set later (in
+// tests, more than once) takes effect.
+func tracer() trace.Tracer { return otel.Tracer("jobs") }
 
 // errorPause is how long the runner waits after the database fails it.
 const errorPause = 5 * time.Second
@@ -127,7 +129,8 @@ func OnGiveUp(f func(ctx context.Context, job Job, err error)) HandleOption {
 }
 
 func defaultBackoff(attempt int32) time.Duration {
-	d := 30 * time.Second * time.Duration(math.Pow(2, float64(attempt-1)))
+	// 30s << 5 is past the cap; a larger shift would overflow.
+	d := 30 * time.Second << min(max(attempt-1, 0), 5)
 	return min(d, 10*time.Minute)
 }
 
@@ -147,7 +150,11 @@ type Runner struct {
 	// draining, nothing more is claimed or started.
 	mu       sync.Mutex
 	draining bool
-	running  sync.WaitGroup
+	// stopClaims ends a claim query in progress, so Drain need not wait
+	// for one stuck on the database to get mu.
+	stopClaimsCtx context.Context
+	stopClaims    context.CancelFunc
+	running       sync.WaitGroup
 
 	// jobsCtx is the parent of every job's context. Drain cancels it when
 	// its own context ends with jobs still running.
@@ -160,15 +167,18 @@ type Runner struct {
 // NewRunner makes a runner that uses q.
 func NewRunner(q *models.Queries, opts Options) *Runner {
 	ctx, cancel := context.WithCancel(context.Background())
+	stopCtx, stop := context.WithCancel(context.Background())
 	opts = opts.withDefaults()
 	return &Runner{
-		q:          q,
-		opts:       opts,
-		kinds:      map[string]*kindConfig{},
-		wake:       make(chan struct{}, 1),
-		slots:      make(chan struct{}, opts.Concurrency),
-		jobsCtx:    ctx,
-		cancelJobs: cancel,
+		stopClaimsCtx: stopCtx,
+		stopClaims:    stop,
+		q:             q,
+		opts:          opts,
+		kinds:         map[string]*kindConfig{},
+		wake:          make(chan struct{}, 1),
+		slots:         make(chan struct{}, opts.Concurrency),
+		jobsCtx:       ctx,
+		cancelJobs:    cancel,
 	}
 }
 
@@ -228,10 +238,23 @@ func (r *Runner) Run(ctx context.Context) error {
 	r.cancelJobs()
 	r.jobsCtx, r.cancelJobs = context.WithCancel(context.WithoutCancel(ctx))
 	r.mu.Unlock()
-	if err := r.upsertSchedules(ctx); err != nil {
-		return err
-	}
 	log := zerolog.Ctx(ctx)
+	// Without its schedules registered the runner can't run anything, and
+	// the server would serve on without adjudicating games. Keep trying.
+	for {
+		err := r.upsertSchedules(ctx)
+		if err == nil {
+			break
+		}
+		log.Err(err).Msg("jobs-register-schedules-failed")
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-r.stopClaimsCtx.Done():
+			return nil
+		case <-time.After(errorPause):
+		}
+	}
 	log.Info().Strs("kinds", r.kindNames).Msg("jobs-runner-started")
 	for {
 		sleep, draining := r.poll(ctx)
@@ -256,7 +279,7 @@ var errDraining = errors.New("draining")
 // next poll. Each poll is a jobs.poll trace, whose claim and next-due queries
 // are its children; each job it starts is a job.run trace linked to it.
 func (r *Runner) poll(ctx context.Context) (sleep time.Duration, draining bool) {
-	ctx, span := tracer.Start(ctx, "jobs.poll", trace.WithNewRoot())
+	ctx, span := tracer().Start(ctx, "jobs.poll", trace.WithNewRoot())
 	defer span.End()
 	claimed, full, err := r.claimAndStart(ctx)
 	span.SetAttributes(attribute.Int("jobs.claimed", claimed))
@@ -294,13 +317,21 @@ func (r *Runner) claimAndStart(ctx context.Context) (claimed int, full bool, err
 		return 0, true, nil
 	}
 	token := uuid.New()
-	rows, err := r.q.ClaimDueJobs(ctx, models.ClaimDueJobsParams{
+	claimCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	defer context.AfterFunc(r.stopClaimsCtx, cancel)()
+	rows, err := r.q.ClaimDueJobs(claimCtx, models.ClaimDueJobsParams{
 		LeaseSeconds: r.opts.Lease.Seconds(),
 		LeaseToken:   pgtype.UUID{Bytes: token, Valid: true},
 		Kinds:        r.kindNames,
 		MaxJobs:      int32(free),
 	})
 	if err != nil {
+		if r.stopClaimsCtx.Err() != nil {
+			// Rows the cancelled query may have claimed anyway are taken
+			// again once their leases expire.
+			return 0, false, errDraining
+		}
 		return 0, false, err
 	}
 	for _, row := range rows {
@@ -357,10 +388,11 @@ func (r *Runner) run(ctx context.Context, row models.ClaimDueJobsRow, token uuid
 		job.Attempt = 1
 	}
 
-	jobCtx, cancel := context.WithCancel(r.jobsCtx)
+	parent := r.jobsCtx
+	jobCtx, cancel := context.WithCancel(parent)
 	defer cancel()
 	start := time.Now()
-	jobCtx, span := tracer.Start(jobCtx, "job.run",
+	jobCtx, span := tracer().Start(jobCtx, "job.run",
 		trace.WithNewRoot(),
 		trace.WithSpanKind(trace.SpanKindConsumer),
 		trace.WithLinks(trace.LinkFromContext(ctx)),
@@ -404,7 +436,17 @@ func (r *Runner) run(ctx context.Context, row models.ClaimDueJobsRow, token uuid
 
 	finishCtx, cancelFinish := context.WithTimeout(context.WithoutCancel(jobCtx), finishTimeout)
 	defer cancelFinish()
-	outcome, next, ferr := r.finish(finishCtx, k, job, pgToken, elapsed, err)
+	var outcome string
+	var next time.Time
+	var ferr error
+	if err != nil && parent.Err() != nil {
+		// Cut off by a shutdown: give the row back as it was, due now, so
+		// another server runs it at once, and the attempt doesn't count.
+		outcome = outcomeReleased
+		_, ferr = r.q.ReleaseJob(finishCtx, models.ReleaseJobParams{ID: job.ID, LeaseToken: pgToken})
+	} else {
+		outcome, next, ferr = r.finish(finishCtx, k, job, pgToken, elapsed, err)
+	}
 	if ferr != nil {
 		span.AddEvent("finish failed", trace.WithAttributes(attribute.String("error", ferr.Error())))
 		logger.Err(ferr).Msg("job-finish-failed")
@@ -435,11 +477,15 @@ func (r *Runner) renewLease(ctx context.Context, cancelJob context.CancelFunc, j
 				return
 			case <-t.C:
 			}
-			n, err := r.q.RenewJobLease(context.WithoutCancel(ctx), models.RenewJobLeaseParams{
+			// Bounded, so a stuck renewal can't hold the job after its
+			// handler has returned.
+			renewCtx, cancelRenew := context.WithTimeout(context.WithoutCancel(ctx), r.opts.Lease/3)
+			n, err := r.q.RenewJobLease(renewCtx, models.RenewJobLeaseParams{
 				LeaseSeconds: r.opts.Lease.Seconds(),
 				ID:           job.ID,
 				LeaseToken:   token,
 			})
+			cancelRenew()
 			if err != nil {
 				// Try again next tick; the lease outlasts two misses.
 				trace.SpanFromContext(ctx).AddEvent("lease renew failed",
@@ -469,6 +515,7 @@ const (
 	outcomeRan        = "ran"        // a schedule ran (see the span status for errors)
 	outcomeRetry      = "retry"      // a one-off job failed and will be retried
 	outcomeGivenUp    = "given_up"   // a one-off job failed its last attempt
+	outcomeReleased   = "released"   // cut off by a shutdown; handed back, due at once
 	outcomeLeaseLost  = "lease_lost" // another runner may have the row; nothing recorded
 	outcomeUnrecorded = "unrecorded" // recording the outcome failed; the lease will expire
 )
@@ -551,11 +598,13 @@ const cancelGrace = time.Second
 
 // Drain stops claiming and waits for the running jobs. If ctx ends first,
 // it cancels their contexts, waits up to cancelGrace for them to return, and
-// returns ctx's error. A cancelled run is recorded like a failed one: a
-// schedule runs again at its next time, a one-off job is retried.
+// returns ctx's error. A job cut off this way that returns an error is handed
+// back as it was, due at once, so another server runs it straight away; the
+// attempt doesn't count.
 func (r *Runner) Drain(ctx context.Context) error {
-	ctx, span := tracer.Start(ctx, "jobs.drain")
+	ctx, span := tracer().Start(ctx, "jobs.drain")
 	defer span.End()
+	r.stopClaims()
 	r.mu.Lock()
 	r.draining = true
 	running := len(r.slots)

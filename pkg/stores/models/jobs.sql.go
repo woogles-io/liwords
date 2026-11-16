@@ -223,6 +223,29 @@ func (q *Queries) NextJobDueInMs(ctx context.Context, kinds []string) (int64, er
 	return due_in_ms, err
 }
 
+const releaseJob = `-- name: ReleaseJob :execrows
+UPDATE jobs
+SET lease_until = NULL, lease_token = NULL,
+    attempts = GREATEST(attempts - 1, 0)
+WHERE id = $1 AND lease_token = $2
+`
+
+type ReleaseJobParams struct {
+	ID         int64
+	LeaseToken pgtype.UUID
+}
+
+// Gives back a claimed row without recording a run, for a job cut off by a
+// shutdown. Its run_at is unchanged, so it is due at once, and the attempt
+// does not count.
+func (q *Queries) ReleaseJob(ctx context.Context, arg ReleaseJobParams) (int64, error) {
+	result, err := q.db.Exec(ctx, releaseJob, arg.ID, arg.LeaseToken)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const renewJobLease = `-- name: RenewJobLease :execrows
 UPDATE jobs
 SET lease_until = NOW() + make_interval(secs => $1)

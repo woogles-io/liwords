@@ -37,8 +37,7 @@ const (
 // PollDue polls the broadcasts that are due. A job; its schedule is in
 // cmd/liwords-api/jobs.go.
 func (bs *BroadcastService) PollDue(ctx context.Context) error {
-	bs.runPollerCycle(ctx)
-	return nil
+	return bs.runPollerCycle(ctx)
 }
 
 // maxPollsPerCycle bounds one cycle's polls, so a backlog (after downtime,
@@ -46,24 +45,26 @@ func (bs *BroadcastService) PollDue(ctx context.Context) error {
 const maxPollsPerCycle = 20
 
 // runPollerCycle polls every broadcast that is due, claiming each one so that
-// no other server polls it in the same interval.
-func (bs *BroadcastService) runPollerCycle(ctx context.Context) {
+// no other server polls it in the same interval. A failed feed fetch is
+// recorded on its broadcast; the error returned is a failure to claim one,
+// or the cycle being cut off.
+func (bs *BroadcastService) runPollerCycle(ctx context.Context) error {
 	for range maxPollsPerCycle {
-		if ctx.Err() != nil {
-			return
+		if err := ctx.Err(); err != nil {
+			return err
 		}
 		b, err := bs.queries.ClaimBroadcastForPolling(ctx)
 		if errors.Is(err, pgx.ErrNoRows) {
-			return
+			return nil
 		}
 		if err != nil {
-			log.Err(err).Msg("broadcast-poller-claim-failed")
-			return
+			return fmt.Errorf("claim broadcast to poll: %w", err)
 		}
 		if _, err := bs.pollBroadcast(ctx, b.ID, b.Uuid.String(), b.Slug, b.BroadcastUrl, b.BroadcastUrlFormat); err != nil {
 			log.Err(err).Str("slug", b.Slug).Msg("broadcast-poll-failed")
 		}
 	}
+	return nil
 }
 
 // pollBroadcast fetches one broadcast's feed and stores it. When it changed,

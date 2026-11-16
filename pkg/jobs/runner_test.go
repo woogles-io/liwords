@@ -482,11 +482,88 @@ func TestDrainTimeoutCancelsJobs(t *testing.T) {
 	default:
 		t.Fatal("Drain returned before the cancelled job did")
 	}
-	// Recorded as a failed attempt, to be retried.
-	eventually(t, time.Second, "cancelled run recorded", func() bool {
-		j := getJob(t, q, "stuck", "a")
-		return j.LastError == context.Canceled.Error() && !j.DoneAt.Valid
+	// Handed back as it was: due now, unleased, the attempt not counted,
+	// no run recorded.
+	j := getJob(t, q, "stuck", "a")
+	if j.DoneAt.Valid || j.LeaseUntil.Valid || j.Attempts != 0 || j.LastRunAt.Valid ||
+		j.RunAt.Time.After(time.Now()) {
+		t.Fatalf("cut-off row: %+v", j)
+	}
+	// The next runner takes it at once, not after a lease or a backoff.
+	ran := make(chan struct{})
+	r2 := NewRunner(q, fast)
+	r2.Handle("stuck", func(ctx context.Context, job Job) error {
+		if job.Attempt != 1 {
+			t.Errorf("attempt %d, want 1", job.Attempt)
+		}
+		close(ran)
+		return nil
 	})
+	start(t, r2)
+	select {
+	case <-ran:
+	case <-time.After(time.Second):
+		t.Fatal("handed-back job not run")
+	}
+}
+
+// Drain doesn't wait for a claim query stuck on the database.
+func TestDrainDoesNotWaitForStuckClaim(t *testing.T) {
+	pool, q := setupDB(t)
+	r := NewRunner(q, fast)
+	r.Handle("any", func(ctx context.Context, job Job) error { return nil })
+	done := make(chan error, 1)
+	go func() { done <- r.Run(context.Background()) }()
+	eventually(t, 2*time.Second, "runner polling", func() bool {
+		_, err := q.NextJobDueInMs(context.Background(), []string{"any"})
+		return err == nil
+	})
+	time.Sleep(100 * time.Millisecond) // past the schedule upsert
+
+	tx, err := pool.Begin(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer tx.Rollback(context.Background())
+	if _, err := tx.Exec(context.Background(), "LOCK TABLE jobs IN ACCESS EXCLUSIVE MODE"); err != nil {
+		t.Fatal(err)
+	}
+	r.Wake()
+	time.Sleep(200 * time.Millisecond) // the claim is now waiting on the lock
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	drained := make(chan error, 1)
+	go func() { drained <- r.Drain(ctx) }()
+	select {
+	case err := <-drained:
+		if err != nil {
+			t.Fatalf("Drain: %v", err)
+		}
+	case <-time.After(time.Second):
+		tx.Rollback(context.Background()) // let the claim and Drain finish
+		<-drained
+		t.Fatal("Drain waited for the stuck claim")
+	}
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatalf("Run: %v", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("Run did not return")
+	}
+}
+
+func TestDefaultBackoff(t *testing.T) {
+	for attempt, want := range map[int32]time.Duration{
+		1: 30 * time.Second, 2: time.Minute, 3: 2 * time.Minute, 5: 8 * time.Minute,
+		6: 10 * time.Minute, 40: 10 * time.Minute, 1000: 10 * time.Minute,
+	} {
+		if got := defaultBackoff(attempt); got != want {
+			t.Errorf("defaultBackoff(%d) = %v, want %v", attempt, got, want)
+		}
+	}
 }
 
 // A job that ignores its context holds Drain only cancelGrace past its

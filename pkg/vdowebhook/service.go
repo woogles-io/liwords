@@ -3,6 +3,7 @@ package vdowebhook
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"math/rand"
 	"net/http"
@@ -318,21 +319,21 @@ func (s *VDOWebhookService) PollInterval() time.Duration {
 // seconds, and returns when all checks are done. A job, run every
 // PollInterval; its schedule is in cmd/liwords-api/jobs.go.
 func (s *VDOWebhookService) PollActiveStreams(ctx context.Context) error {
-	s.pollActiveStreams(ctx)
-	return nil
+	return s.pollActiveStreams(ctx)
 }
 
-// pollActiveStreams fetches all active streams and spreads API checks over 30 seconds
-func (s *VDOWebhookService) pollActiveStreams(ctx context.Context) {
+// pollActiveStreams fetches all active streams and spreads API checks over 30
+// seconds. A failed check is logged; the error returned is a failure to list
+// the streams, or the poll being cut off before every check ran.
+func (s *VDOWebhookService) pollActiveStreams(ctx context.Context) error {
 	streams, err := s.tournamentStore.GetActiveMonitoringStreams(ctx)
 	if err != nil {
-		log.Error().Err(err).Msg("vdo-poll-get-active-streams-error")
-		return
+		return fmt.Errorf("list active monitoring streams: %w", err)
 	}
 
 	if len(streams) == 0 {
 		log.Debug().Msg("vdo-poll-no-active-streams")
-		return
+		return nil
 	}
 
 	log.Info().Int("count", len(streams)).Msg("vdo-poll-checking-active-streams")
@@ -359,6 +360,7 @@ func (s *VDOWebhookService) pollActiveStreams(ctx context.Context) {
 		}(stream, delay)
 	}
 	wg.Wait()
+	return ctx.Err()
 }
 
 // checkStream polls VDO.Ninja API to verify stream is still active

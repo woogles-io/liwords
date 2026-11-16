@@ -535,6 +535,11 @@ func (b *Bus) adjudicateGames(ctx context.Context, correspondenceOnly bool) erro
 	now := time.Now()
 	log.Debug().Bool("correspondence", correspondenceOnly).Int("num-games", len(games)).Msg("maybe-adjudicating...")
 	for _, g := range games {
+		// A job, which a shutdown can cut off: stop between games, so the
+		// events of the ones handled are sent before the bus drains.
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		gameID := g.Uuid.String
 		if g.Type.Valid && g.Type.Int32 == int32(pb.GameType_ANNOTATED) {
 			continue
@@ -631,6 +636,9 @@ func (b *Bus) adjudicateCorrespondenceGames(ctx context.Context) error {
 	log.Debug().Int("num-games", len(games)).Msg("adjudicating-correspondence-games")
 
 	for _, g := range games {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		// Skip if not started
 		if !g.Started.Valid || !g.Started.Bool {
 			continue
