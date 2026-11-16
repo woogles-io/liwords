@@ -691,15 +691,15 @@ and division), so the job can tell which games already exist:
   being paired relies on that check: the job sees the request changed, and
   calls COP again itself.
 
-**Switching over without running anything twice.** The maintenance tasks
-register only when `MAINTENANCE_JOBS` is set (off by default):
+**Switching over without running anything twice.** No flag: setting one
+is an env change, which is another deploy, and every deploy is an outage
+until section 1. The build with the maintenance schedules has them on.
 
-1. Deploy with it off. Nothing changes.
-2. Disable the two EventBridge rules, between runs (say at :30).
-3. Set `MAINTENANCE_JOBS=1` and redeploy. Each task's first run is at its
-   next scheduled time (hourly `1 * * * *`, daily `0 5 * * *`).
-4. Check one hourly and one daily run in `jobs` and Jaeger. To go back,
-   unset the flag and re-enable the rules.
+1. Disable the two EventBridge rules, between runs (say at :30).
+2. Deploy. Each task's first run is at its next scheduled time (hourly
+   `1 * * * *`, daily `0 5 * * *`).
+3. Check one hourly and one daily run in `jobs` and Jaeger. To go back,
+   re-enable the rules and deploy the previous image.
 
 Manual runs: `UPDATE jobs SET run_at = now() WHERE kind = '…'` (the runner
 picks it up within 30 s). `resend-season-started-emails` goes away: the
@@ -707,22 +707,26 @@ outbox is what it worked around.
 
 ### Order
 
+PRs stay small for review; what costs an outage is a deploy, so they are
+deployed in groups.
+
 1. **`pkg/jobs` and the `jobs` table**, with the API's loops as schedules.
    Done (#2277, deployed 2026-11-16).
-2. **Email outbox and `send_emails`.** Move every league email loop and
-   Discord post onto it. Works even while the maintenance container still
-   runs the league tasks: it writes rows, the API sends them.
-3. **Resumable season start** (`games_created_at`, skip existing games), and
-   the close and prepare marks in the same transaction as their change.
-4. **Maintenance tasks as schedules** behind `MAINTENANCE_JOBS`, switched
-   over as above.
-5. **Delete `cmd/maintenance`**, its Dockerfile, build steps and cfn
-   template. Deleting the AWS stack, task definition and
-   `liwordsMaintenanceTaskRole` waits for an OK.
-6. **COP `pair_round` on the lambda** (section 2a, as amended above).
-
-Each of 2-4 is safe alone: today's container keeps running until step 4
-turns it off.
+2. **Deploy 1, maintenance and leagues:**
+   1. **Email outbox and `send_emails`.** Every league email loop and
+      Discord post moves onto it.
+   2. **Resumable season start** (`games_created_at`, skip existing games),
+      and the close and prepare marks in the same transaction as their
+      change.
+   3. **Maintenance tasks as schedules**, switched over as above.
+3. **Deploy 2: COP `pair_round` on the lambda** (section 2a, as amended
+   above), with the second function's name in the task definition. The
+   function itself deploys with SAM, without an API deploy. It can ride in
+   deploy 1 instead, at the cost of a less clear failure if one of them
+   breaks.
+4. **No deploy:** delete `cmd/maintenance`, its Dockerfile, build steps and
+   cfn template, once deploy 1 has run a day. Deleting the AWS stack, task
+   definition and `liwordsMaintenanceTaskRole` waits for an OK.
 
 ## 8. Socket server
 
