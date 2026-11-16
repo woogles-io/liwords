@@ -29,7 +29,36 @@ Resources:
     Properties:
       LogGroupName: !Sub "/aws/lambda/${COPPairFunction}"
       RetentionInDays: 14
+
+  # Runs COP for the API's pair_round jobs (tournament rounds paired outside
+  # the tournament lock), invoked only by the API with its IAM role. More
+  # memory than COPPairFunction, which TSH reaches through the API's public
+  # PairService without an account: Lambda gives CPU in proportion to
+  # memory, 1 vCPU per 1,769 MB. 6 GB is a first guess; measure the UI
+  # defaults (100,000 / 10,000 sims) at 4, 6 and 10 GB and take the knee.
+  COPPairJobFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: go1.x
+    Properties:
+      FunctionName: "COPPairJobFunction"
+      CodeUri: .
+      Handler: bootstrap
+      Runtime: provided.al2023
+      Architectures:
+        - x86_64
+      MemorySize: 6144
+      Timeout: 60
+
+  COPPairJobFunctionLog:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${COPPairJobFunction}"
+      RetentionInDays: 14
 Outputs:
   COPPairFunction:
     Description: "COP Pair Function ARN"
     Value: !GetAtt COPPairFunction.Arn
+  COPPairJobFunction:
+    Description: "COP Pair Job Function ARN"
+    Value: !GetAtt COPPairJobFunction.Arn

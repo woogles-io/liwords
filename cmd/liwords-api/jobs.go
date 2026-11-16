@@ -5,10 +5,14 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/service/lambda"
+
 	"github.com/woogles-io/liwords/pkg/analysis"
 	"github.com/woogles-io/liwords/pkg/broadcasts"
 	"github.com/woogles-io/liwords/pkg/bus"
+	"github.com/woogles-io/liwords/pkg/config"
 	"github.com/woogles-io/liwords/pkg/jobs"
+	"github.com/woogles-io/liwords/pkg/tournament"
 	"github.com/woogles-io/liwords/pkg/user"
 	"github.com/woogles-io/liwords/pkg/vdowebhook"
 )
@@ -26,6 +30,9 @@ type jobDeps struct {
 	broadcasts *broadcasts.BroadcastService
 	vdo        *vdowebhook.VDOWebhookService
 	users      user.Store
+	// tournaments and copPairer pair COP rounds (pair_round).
+	tournaments tournament.TournamentStore
+	copPairer   tournament.COPPairer
 }
 
 // vdoPollOffset is how long after each interval boundary the VDO poll runs.
@@ -47,6 +54,12 @@ func registerJobs(r *jobs.Runner, d jobDeps) error {
 	schedule("poll_broadcasts", "*/30 * * * * *", d.broadcasts.PollDue)
 	schedule("prune_client_records", "0 5 * * *", pruneClientRecords(d.users))
 
+	// COP rounds left unpaired by a tournament change (pkg/tournament,
+	// DeferCOPPairing). Enqueued with the change, so the runner is woken
+	// rather than waiting for its next poll.
+	r.Handle(tournament.PairRoundJobKind, tournament.PairRoundJob(d.tournaments, d.copPairer),
+		jobs.MaxAttempts(3), jobs.OnGiveUp(tournament.PairRoundGaveUp(d.tournaments)))
+
 	// Set by VDO_POLLING_INTERVAL_SECONDS (300 in production): at :00:17,
 	// :05:17 and so on, off the minute boundaries when other people's
 	// scheduled jobs call VDO.Ninja too. Each poll also spreads its checks
@@ -57,4 +70,13 @@ func registerJobs(r *jobs.Runner, d jobDeps) error {
 	}
 	schedule("poll_vdo_streams", vdoExpr, d.vdo.PollActiveStreams)
 	return nil
+}
+
+// copPairer runs COP for pair_round jobs: on the Lambda function configured
+// with -cop-pair-job-lambda-function-name, or in this process.
+func copPairer(cfg *config.Config, client *lambda.Client) tournament.COPPairer {
+	if cfg.COPPairJobLambdaFunctionName == "" {
+		return tournament.LocalCOPPairer{}
+	}
+	return tournament.LambdaCOPPairer{Client: client, FunctionName: cfg.COPPairJobLambdaFunctionName}
 }

@@ -33,6 +33,15 @@ type DBStore struct {
 	// local holds each tournament on this server while it is changed. See
 	// LockForChange.
 	local keyedMutex
+	// jobsWake, if set, is called after a save that wrote jobs, so this
+	// server's job runner picks them up at once.
+	jobsWake func()
+}
+
+// SetJobsWake sets the function called after a save that wrote jobs (the
+// job runner's Wake).
+func (s *DBStore) SetJobsWake(f func()) {
+	s.jobsWake = f
 }
 
 // NewDBStore creates a new DB store for tournament managers.
