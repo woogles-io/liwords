@@ -459,7 +459,7 @@ Background work runs two ways today, and neither runs once.
 
 | Job | Interval | With two servers |
 |---|---|---|
-| Real-time adjudicator (`bus.adjudicateGames`) | 10s | Safe: acts only under the game lock and re-checks. Twice the query load; after #2159 that is one 114ms query per server per tick. |
+| Real-time adjudicator (`bus.adjudicateGames`) | 10s | Safe: acts only under the game lock and re-checks. Twice the query load: one query per server per tick, about 10ms from `ongoing_games` (68 real-time games, 2026-11-16). |
 | Correspondence adjudicator | 60s | Same. |
 | Analysis job reclaim | 30s | Safe: one SQL update. |
 | Broadcast poller | 30s | Safe: each feed is claimed by one server (section 4). |
