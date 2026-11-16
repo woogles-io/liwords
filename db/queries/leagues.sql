@@ -993,7 +993,7 @@ FROM games_to_penalize gtp
 WHERE g.uuid = gtp.game_uuid;
 
 -- name: GetDivisionGamePlayers :many
--- The two players of every game in a division, to skip pairs that already
--- have one when a season start carries on after being cut off.
-SELECT player0_id, player1_id FROM games
+-- Every game in a division, with its players and whether it started, for a
+-- season start carrying on after being cut off.
+SELECT uuid, player0_id, player1_id, started FROM games
 WHERE league_division_id = $1;

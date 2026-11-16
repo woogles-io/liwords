@@ -561,17 +561,19 @@ func (q *Queries) GetDivisionCrosstableGames(ctx context.Context, divisionID uui
 }
 
 const getDivisionGamePlayers = `-- name: GetDivisionGamePlayers :many
-SELECT player0_id, player1_id FROM games
+SELECT uuid, player0_id, player1_id, started FROM games
 WHERE league_division_id = $1
 `
 
 type GetDivisionGamePlayersRow struct {
+	Uuid      pgtype.Text
 	Player0ID pgtype.Int4
 	Player1ID pgtype.Int4
+	Started   pgtype.Bool
 }
 
-// The two players of every game in a division, to skip pairs that already
-// have one when a season start carries on after being cut off.
+// Every game in a division, with its players and whether it started, for a
+// season start carrying on after being cut off.
 func (q *Queries) GetDivisionGamePlayers(ctx context.Context, leagueDivisionID pgtype.UUID) ([]GetDivisionGamePlayersRow, error) {
 	rows, err := q.db.Query(ctx, getDivisionGamePlayers, leagueDivisionID)
 	if err != nil {
@@ -581,7 +583,12 @@ func (q *Queries) GetDivisionGamePlayers(ctx context.Context, leagueDivisionID p
 	var items []GetDivisionGamePlayersRow
 	for rows.Next() {
 		var i GetDivisionGamePlayersRow
-		if err := rows.Scan(&i.Player0ID, &i.Player1ID); err != nil {
+		if err := rows.Scan(
+			&i.Uuid,
+			&i.Player0ID,
+			&i.Player1ID,
+			&i.Started,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
