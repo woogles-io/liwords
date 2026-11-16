@@ -611,8 +611,8 @@ send; sleep 2s }`) is what loses work.
 | Patreon token refresh | Yes: a refreshed row's `last_updated` moves, so it isn't picked again | the 2 s sleeps watch ctx |
 | Org titles refresh (SG, ABSP) | Yes: refetch and overwrite | none |
 | Blog RSS | Yes: `SetSingleAnnouncement` replaces | call the config service in process, not over HTTP with the admin key |
-| League: close season | Mostly: force-finish picks unfinished games, outcomes are recomputed, and `COMPLETED` is set last | `MarkSeasonClosed` in the same transaction as `COMPLETED` |
-| League: prepare divisions | To check: `divisions_prepared_at` is set after, separately | mark in the same transaction, or check divisions exist |
+| League: close season | Yes: force-finish picks unfinished games, outcomes are recomputed, and `COMPLETED` is set last. `closed_at` after it is cosmetic | none |
+| League: prepare divisions | Yes: it deletes any divisions the season has and builds them again, then sets `SCHEDULED`. `divisions_prepared_at` after it is cosmetic | none |
 | League: open registration | **No.** The next season is created, then emails go out in a goroutine. Cut off there, the rerun sees the season exists and skips, and the rest of the emails never go | outbox (below) |
 | League: starting soon | **No, the other way.** Emails go out, then it is marked. Cut off there, the rerun emails everyone again | outbox |
 | League: start season | **No.** The season is set `ACTIVE`, then games are created one pair at a time (minutes, for a big season), then it is marked started. Cut off mid-creation, the rerun sees `ACTIVE` and skips: the rest of the games are never created. Started emails are sent after, and lost the same way | resumable game creation, and the outbox |
@@ -718,9 +718,7 @@ deployed in groups.
 2. **Deploy 1, maintenance and leagues:**
    1. **Outbox and `send_outbox`.** Every league email loop and
       Discord post moves onto it.
-   2. **Resumable season start** (`games_created_at`, skip existing games),
-      and the close and prepare marks in the same transaction as their
-      change.
+   2. **Resumable season start** (`games_created_at`, skip existing games).
    3. **Maintenance tasks as schedules**, switched over as above.
 3. **Deploy 2: COP `pair_round` on the lambda** (section 2a, as amended
    above), with the second function's name in the task definition. The
