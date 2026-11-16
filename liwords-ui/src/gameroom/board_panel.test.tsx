@@ -4,19 +4,42 @@ import { ChallengeRule } from "../gen/api/proto/vendored/macondo/macondo_pb";
 import { CrosswordGameGridLayout } from "../constants/board_layout";
 import { Board } from "../utils/cwgame/board";
 import { PlayerInfoSchema } from "../gen/api/proto/ipc/omgwords_pb";
-import { StandardEnglishAlphabet } from "../constants/alphabets";
+import {
+  Alphabet,
+  runesToMachineWord,
+  StandardEnglishAlphabet,
+  StandardGermanAlphabet,
+  StandardNorwegianAlphabet,
+} from "../constants/alphabets";
 import { BrowserRouter } from "react-router";
 import { waitFor } from "@testing-library/react";
 import { create } from "@bufbuild/protobuf";
+
+// every key the board hands to tile placement, as it was handed
+const placed = vi.hoisted(() => [] as Array<string>);
+vi.mock("../utils/cwgame/tile_placement", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("../utils/cwgame/tile_placement")>();
+  return {
+    ...actual,
+    handleKeyPress: (...args: Parameters<typeof actual.handleKeyPress>) => {
+      placed.push(args[2]);
+      return actual.handleKeyPress(...args);
+    },
+  };
+});
 
 vi.mock("@connectrpc/connect-query", () => ({
   useQuery: () => ({ data: undefined }),
 }));
 
-function renderBoardPanel(boardEditingMode = false) {
+function renderBoardPanel(
+  boardEditingMode = false,
+  alphabet: Alphabet = StandardEnglishAlphabet,
+  rack: Array<number> = [0, 1, 5, 9, 14, 19, 20],
+) {
   const dummyFunction = () => {};
 
-  const rack = [0, 1, 5, 9, 14, 19, 20];
   const board = new Board(CrosswordGameGridLayout);
   const playerInfo = [
     create(PlayerInfoSchema, {
@@ -45,7 +68,7 @@ function renderBoardPanel(boardEditingMode = false) {
         gameDone={false}
         playerMeta={playerInfo}
         lexicon="NWL20"
-        alphabet={StandardEnglishAlphabet}
+        alphabet={alphabet}
         handleAcceptRematch={dummyFunction}
         handleAcceptAbort={dummyFunction}
         vsBot={false}
@@ -55,7 +78,10 @@ function renderBoardPanel(boardEditingMode = false) {
   );
 }
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  placed.length = 0;
+});
 
 // skip because snapshot comparison isn't working anymore. it's failing due
 // to the auto-generated CSS classes with antdesign.
@@ -212,4 +238,95 @@ it("flips the board on a double tap on the coordinate labels", () => {
   tap();
   expect(board().classList.contains("board-flipped")).toBe(true);
   expect(spins).toEqual([["rotate(0deg)", "rotate(180deg)"]]);
+});
+
+// A board with its arrow on the first square, ready to be typed on.
+const typeable = (alphabet: Alphabet, rack: string) => {
+  const rendered = renderBoardPanel(
+    true,
+    alphabet,
+    runesToMachineWord(rack, alphabet),
+  );
+  fireEvent.click(rendered.container.querySelectorAll(".board-space")[0]);
+  return rendered;
+};
+
+it("types a tile made with Alt/Opt as itself, where the game has it", () => {
+  const { container } = typeable(StandardNorwegianAlphabet, "ÅEIOURS");
+  fireEvent.keyDown(container.querySelector(".board-container")!, {
+    key: "å",
+    altKey: true,
+  });
+  expect(placed).toEqual(["å"]);
+});
+
+it("still ignores Alt/Opt keys that make no tile of the game", () => {
+  const { container } = typeable(StandardEnglishAlphabet, "AEIOURS");
+  const panel = container.querySelector(".board-container")!;
+  fireEvent.keyDown(panel, { key: "å", altKey: true });
+  fireEvent.keyDown(panel, { key: "a", altKey: true });
+  fireEvent.keyDown(panel, { key: "3", altKey: true });
+  expect(placed).toEqual([]);
+});
+
+it("types a character an input method made, from the typing field", () => {
+  const { container } = typeable(StandardGermanAlphabet, "ÜEIOARS");
+  const panel = container.querySelector(".board-container")!;
+  // a dead key on the board moves its keys to the typing field
+  fireEvent.keyDown(panel, { key: "Dead", altKey: true });
+  const field = container.querySelector<HTMLInputElement>(
+    ".board-typing-field",
+  )!;
+  expect(document.activeElement).toBe(field);
+  // the next key makes the ü there, as an input method's composition
+  fireEvent.keyDown(field, { key: "u", isComposing: true });
+  expect(placed).toEqual([]);
+  field.value = "ü";
+  fireEvent.compositionEnd(field, { data: "ü" });
+  fireEvent.input(field);
+  expect(placed).toEqual(["ü"]);
+  expect(field.value).toBe("");
+});
+
+it("does not type a plain key twice through the typing field", () => {
+  const { container } = typeable(StandardEnglishAlphabet, "AEIOURS");
+  const panel = container.querySelector(".board-container")!;
+  fireEvent.keyDown(panel, { key: "a" });
+  const field = container.querySelector<HTMLInputElement>(
+    ".board-typing-field",
+  )!;
+  fireEvent.keyDown(field, { key: "e" });
+  // the e the key leaves in the field is not typed again
+  field.value = "e";
+  fireEvent.input(field);
+  expect(placed).toEqual(["a", "e"]);
+});
+
+it("never focuses the typing field from a tap or a click", () => {
+  const { container } = typeable(StandardEnglishAlphabet, "AEIOURS");
+  fireEvent.click(container.querySelectorAll(".board-space")[20]);
+  expect(document.activeElement).not.toBe(
+    container.querySelector(".board-typing-field"),
+  );
+});
+
+it("types a composed letter under Caps Lock as a tile, not a blank", () => {
+  const { container } = typeable(StandardGermanAlphabet, "ÜEIOARS");
+  const panel = container.querySelector(".board-container")!;
+  fireEvent.keyDown(panel, { key: "Dead", altKey: true });
+  const field = container.querySelector<HTMLInputElement>(
+    ".board-typing-field",
+  )!;
+  // Caps Lock makes the composed letter capital; no Shift was held
+  fireEvent.keyDown(field, { key: "U", isComposing: true });
+  field.value = "Ü";
+  fireEvent.compositionEnd(field, { data: "Ü" });
+  expect(placed).toEqual(["ü"]);
+});
+
+it("leaves the board's typing field named for a screen reader", () => {
+  const { container } = typeable(StandardEnglishAlphabet, "AEIOURS");
+  const field = container.querySelector(".board-typing-field")!;
+  expect(field.getAttribute("aria-hidden")).toBeNull();
+  expect(field.getAttribute("aria-label")).toBe("Board");
 });
