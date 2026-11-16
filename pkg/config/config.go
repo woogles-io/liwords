@@ -166,7 +166,7 @@ func (c *Config) Load(args []string) error {
 	fs.StringVar(&c.TwitchRedirectURI, "twitch-redirect-uri", "", "The Twitch redirect URI")
 
 	// VDO.Ninja monitoring
-	fs.IntVar(&c.VDOPollingIntervalSeconds, "vdo-polling-interval-seconds", 60, "VDO.Ninja stream polling interval midpoint in seconds (with ±25% jitter)")
+	fs.IntVar(&c.VDOPollingIntervalSeconds, "vdo-polling-interval-seconds", 60, "VDO.Ninja stream polling interval in seconds: whole seconds dividing a minute, or whole minutes dividing an hour; the poll runs 17s past each boundary")
 
 	// Human check (Cloudflare Turnstile)
 	fs.StringVar(&c.TurnstileSecret, "turnstile-secret", "", "Cloudflare Turnstile secret key for the human check")
