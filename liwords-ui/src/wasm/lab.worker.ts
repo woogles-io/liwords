@@ -105,8 +105,10 @@ export type LabRequest =
   // a board's pruned lexicon, built once from the full one and answered as
   // its bytes, for every worker to load in its place
   | { op: "kbwg_build"; args: { request: string } }
-  // a pruned lexicon loaded under its key, the one loaded before let go
+  // a pruned lexicon loaded under its key, beside any loaded before
   | { op: "kbwg_load"; args: { key: string; bytes: Uint8Array } }
+  // a pruned lexicon's key let go: the jobs made on it keep it till freed
+  | { op: "kbwg_evict"; args: { key: string } }
   | { op: "stop" }
   | { op: "free"; args: { job: number } };
 type Job = {
@@ -210,8 +212,8 @@ const nameOf = (cacheKey: string) =>
 // The cache keys loaded, as the page's loader names them, each with its
 // size in bytes.
 const loaded = new Map<string, number>();
-// the key of the pruned lexicon this worker holds, if any
-let pruned: string | undefined;
+// the keys of the pruned lexicons this worker holds
+const pruned = new Set<string>();
 let job: Job | null = null;
 let lastJobId = 0;
 // The threats counts held, each id's wasm handle.
@@ -443,9 +445,9 @@ const prepare = async (wolges: Wolges, files: Array<LabFile>) => {
     dropWarm(wolges);
     freeThreats(wolges);
   }
-  if (unwanted.length && pruned !== undefined) {
-    wolges.evict_kwg(pruned);
-    pruned = undefined;
+  if (unwanted.length) {
+    for (const key of pruned) wolges.evict_kwg(key);
+    pruned.clear();
   }
   for (const cacheKey of unwanted) {
     if (cacheKey.startsWith("klv/")) wolges.evict_klv(nameOf(cacheKey));
@@ -482,17 +484,14 @@ const handle = async (req: LabRequest): Promise<unknown> => {
     case "kbwg_build":
       return pruningOf(wolges).build_kbwg(req.args.request);
     case "kbwg_load": {
-      if (pruned === req.args.key) return undefined;
-      const { precache_kbwg } = pruningOf(wolges);
-      // the jobs made on the pruned lexicon before go with it
-      freeJob(wolges);
-      dropWarm(wolges);
-      if (pruned !== undefined) wolges.evict_kwg(pruned);
-      pruned = undefined;
-      precache_kbwg(req.args.key, req.args.bytes);
-      pruned = req.args.key;
+      if (pruned.has(req.args.key)) return undefined;
+      pruningOf(wolges).precache_kbwg(req.args.key, req.args.bytes);
+      pruned.add(req.args.key);
       return undefined;
     }
+    case "kbwg_evict":
+      if (pruned.delete(req.args.key)) wolges.evict_kwg(req.args.key);
+      return undefined;
     case "infer": {
       const { handle, ...inferred } = JSON.parse(
         wolges.infer(req.args.request),

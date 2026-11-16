@@ -168,6 +168,69 @@ describe("a sim in parts", () => {
     expect(ops(1).filter((op) => op === "kbwg_load")).toHaveLength(1);
   });
 
+  it("shares a board's pruned lexicon with every feature on it, and keeps the board before", async () => {
+    const plain = answer;
+    answer = (w, m) =>
+      m.op === "kbwg_build" ? new Uint8Array([1]) : plain(w, m);
+    const at = (board: string) => ({ lexicon: "CSW24", rules: "R", board });
+    const builds = () => ops(0).filter((op) => op === "kbwg_build").length;
+    const asked = (op: string) =>
+      JSON.parse(lastOf(0, op)!.args!.request as string);
+    setLabPartsForTest(2);
+    // an analysis alone builds none
+    await labCall({
+      op: "analyze",
+      args: { request: JSON.stringify(at("A")) },
+    });
+    expect(builds()).toBe(0);
+    expect(asked("analyze").lexicon).toBe("CSW24");
+    // a threats count builds it, on the first worker alone, unflagged
+    await labCall({
+      op: "threats_new",
+      args: { request: JSON.stringify(at("A")) },
+    });
+    expect(builds()).toBe(1);
+    expect(made[1]?.sent.some((m) => m.op === "kbwg_load") ?? false).toBe(
+      false,
+    );
+    const keyA = asked("threats_new").lexicon as string;
+    expect(keyA).toMatch(/^kbwg:/);
+    expect(asked("threats_new").pruned).toBeUndefined();
+    // the analysis and the endgame on that board take it, none built again
+    await labCall({
+      op: "analyze",
+      args: { request: JSON.stringify(at("A")) },
+    });
+    expect(asked("analyze")).toEqual({ ...at("A"), lexicon: keyA });
+    await labCall({
+      op: "endgame",
+      args: { request: JSON.stringify(at("A")) },
+    });
+    expect(asked("endgame")).toEqual({
+      ...at("A"),
+      lexicon: keyA,
+      pruned: true,
+    });
+    expect(builds()).toBe(1);
+    // the next board's, the inference of the board before on that one's
+    await labCall({
+      op: "endgame",
+      args: { request: JSON.stringify(at("B")) },
+    });
+    expect(builds()).toBe(2);
+    await labCall({ op: "infer", args: { request: JSON.stringify(at("A")) } });
+    expect(asked("infer").lexicon).toBe(keyA);
+    expect(ops(0)).not.toContain("kbwg_evict");
+    // a third board's lets the oldest go
+    await labCall({
+      op: "endgame",
+      args: { request: JSON.stringify(at("C")) },
+    });
+    expect(lastOf(0, "kbwg_evict")?.args).toEqual({ key: keyA });
+    await labCall({ op: "infer", args: { request: JSON.stringify(at("A")) } });
+    expect(asked("infer").lexicon).toBe("CSW24");
+  });
+
   it("goes on with the full lexicon when the board cannot be pruned", async () => {
     setLabPartsForTest(2);
     await labCall({

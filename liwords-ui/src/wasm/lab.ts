@@ -61,8 +61,7 @@ export const setLabPartsForTest = (n: number) => {
   parts = n;
   workers.forEach((w) => w?.terminate());
   workers = [];
-  prunedOn.clear();
-  lastPruned = undefined;
+  pruned = [];
   pending.clear();
   sims.clear();
   endgames.clear();
@@ -146,7 +145,7 @@ const bury = (w: number, worker: Worker) => {
   if (workers[w] !== worker) return;
   worker.terminate();
   workers[w] = undefined;
-  prunedOn.delete(w);
+  for (const p of pruned) p.on.delete(w);
   for (const [id, p] of pending) {
     if (p.worker !== w) continue;
     pending.delete(id);
@@ -379,9 +378,11 @@ const partsOf = (job: number) => {
 
 const each = <T>(
   job: number,
-  request: (job: number) => LabRequest,
+  request: (job: number, worker: number) => LabRequest,
 ): Promise<Array<T>> =>
-  Promise.all(partsOf(job).map((h) => call<T>(h.worker, request(h.job))));
+  Promise.all(
+    partsOf(job).map((h) => call<T>(h.worker, request(h.job, h.worker))),
+  );
 
 // The jobs in parts made before this job, freed: a worker holds one job at
 // a time, so a job made on one worker frees the part there, and the whole
@@ -397,24 +398,51 @@ const rand53 = () =>
   Math.floor(Math.random() * 2 ** 21) * 2 ** 32 +
   Math.floor(Math.random() * 2 ** 32);
 
-// The board's pruned lexicon each worker holds, by worker; and the last one
-// built, its key and bytes, loaded on a worker that lacks it without
-// building it again.
-const prunedOn = new Map<number, string>();
-let lastPruned: { key: string; bytes: Uint8Array } | undefined;
+// The boards' pruned lexicons the workers hold, the newest last: the current
+// board's and the one before it, which an inference reads (the board before
+// the opponent's last play). Each has its bytes, loaded on a worker that
+// lacks it without building it again, and the workers it is loaded on.
+type Pruned = { key: string; bytes: Uint8Array; on: Set<number> };
+const PRUNED_KEPT = 2;
+let pruned: Array<Pruned> = [];
 
-// A job on n workers from one request: the board's pruned lexicon built once,
-// on the first worker, from the full one, and loaded on every worker, the
-// request then naming it. Keyed by the lexicon, the rules and the exact
-// board, never used for another board. A wasm that cannot prune, or a prune
-// that fails, leaves the request on the full lexicon.
-const prunedFor = async (base: Record<string, unknown>, n: number) => {
-  if (n < 2) return base;
-  // built under the cap the job's request gives each worker, never past it
-  const { lexicon, rules, board, max_memory_mb } = base;
-  const key = `kbwg:${JSON.stringify([lexicon, rules, board])}`;
+// A board's pruned lexicon is keyed by the lexicon, the rules, and the exact
+// board, never used for another board.
+const prunedKey = (r: Record<string, unknown>) =>
+  `kbwg:${JSON.stringify([r.lexicon, r.rules, r.board])}`;
+
+// A request on its board's pruned lexicon where worker w already holds it,
+// as it was otherwise: none is built for it. flag says it is pruned, for the
+// calls that would prune a full one themselves.
+const onPruned = (request: string, w: number, flag = false) => {
+  let r: Record<string, unknown>;
   try {
-    if (lastPruned?.key !== key) {
+    r = JSON.parse(request);
+  } catch {
+    return request;
+  }
+  const key = prunedKey(r);
+  return pruned.some((p) => p.key === key && p.on.has(w))
+    ? JSON.stringify({ ...r, lexicon: key, ...(flag ? { pruned: true } : {}) })
+    : request;
+};
+
+// A job on n workers (the first n) from one request: the board's pruned
+// lexicon built once, on the first worker, from the full one, unless held
+// already, and loaded on each, the request then naming it. A third board's
+// lets the oldest go. A wasm that cannot prune, or a prune that fails, leaves
+// the request on the full lexicon.
+const prunedFor = async (
+  base: Record<string, unknown>,
+  n: number,
+  flag = true,
+) => {
+  const key = prunedKey(base);
+  try {
+    let held = pruned.find((p) => p.key === key);
+    if (!held) {
+      // built under the cap the job's request gives each worker, never past it
+      const { lexicon, rules, board, max_memory_mb } = base;
       const bytes = await call<Uint8Array>(0, {
         op: "kbwg_build",
         args: {
@@ -422,21 +450,30 @@ const prunedFor = async (base: Record<string, unknown>, n: number) => {
         },
       });
       if (!(bytes instanceof Uint8Array)) return base;
-      lastPruned = { key, bytes };
+      held = { key, bytes, on: new Set() };
+      pruned.push(held);
+      while (pruned.length > PRUNED_KEPT) {
+        // jobs made on it keep it until they are freed
+        const old = pruned.shift()!;
+        await Promise.all(
+          [...old.on].map((w) =>
+            call(w, { op: "kbwg_evict", args: { key: old.key } }),
+          ),
+        );
+      }
     }
-    const { bytes } = lastPruned;
+    const { bytes, on } = held;
     await Promise.all(
       Array.from({ length: n }, async (_, w) => {
-        if (prunedOn.get(w) === key) return;
-        prunedOn.delete(w);
+        if (on.has(w)) return;
         await call(w, { op: "kbwg_load", args: { key, bytes } });
-        prunedOn.set(w, key);
+        on.add(w);
       }),
     );
   } catch {
     return base;
   }
-  return { ...base, lexicon: key, pruned: true };
+  return { ...base, lexicon: key, ...(flag ? { pruned: true } : {}) };
 };
 
 const multi = async (request: LabRequest): Promise<unknown> => {
@@ -447,14 +484,32 @@ const multi = async (request: LabRequest): Promise<unknown> => {
       return (
         await Promise.all(Array.from({ length: n }, (_, w) => call(w, request)))
       )[0];
+    // an analysis or an inference prunes nothing itself, so takes the
+    // board's pruned lexicon where held, never building it
     case "analyze":
+    case "infer":
+      return call(0, {
+        ...request,
+        args: { ...request.args, request: onPruned(request.args.request, 0) },
+      });
     // a threats count is no job: one worker holds it, apart from the jobs
-    case "threats_new":
+    case "threats_new": {
+      // a threats count prunes nothing itself
+      const base = await prunedFor(JSON.parse(request.args.request), 1, false);
+      const { infer } = request.args;
+      return call(0, {
+        ...request,
+        args: {
+          ...request.args,
+          request: JSON.stringify(base),
+          ...(infer !== undefined ? { infer: onPruned(infer, 0) } : {}),
+        },
+      });
+    }
     case "threats_step":
     case "threats_free":
     // each part holds as much as the first, the same lexicon and graph
     case "held":
-    case "infer":
       return call(0, request);
     case "endgame": {
       freeSims();
@@ -484,7 +539,7 @@ const multi = async (request: LabRequest): Promise<unknown> => {
       }
       const job = await call<number>(0, {
         op: "endgame",
-        args: { request: request.args.request },
+        args: { request: JSON.stringify(await prunedFor(asked, 1)) },
       });
       const page = ++lastJob;
       jobs.set(page, [{ worker: 0, job }]);
@@ -505,6 +560,9 @@ const multi = async (request: LabRequest): Promise<unknown> => {
             args: {
               ...request.args,
               request: JSON.stringify({ ...base, seed, part: w, parts: n }),
+              ...(request.args.infer !== undefined
+                ? { infer: onPruned(request.args.infer, w) }
+                : {}),
             },
           }),
         ),
@@ -552,9 +610,14 @@ const multi = async (request: LabRequest): Promise<unknown> => {
       return results[0];
     }
     case "set": {
-      const results = await each<unknown>(request.args.job, (j) => ({
+      const { infer } = request.args;
+      const results = await each<unknown>(request.args.job, (j, w) => ({
         ...request,
-        args: { ...request.args, job: j },
+        args: {
+          ...request.args,
+          job: j,
+          ...(infer !== undefined ? { infer: onPruned(infer, w) } : {}),
+        },
       }));
       return results[0];
     }
