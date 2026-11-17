@@ -444,14 +444,7 @@ func (cs *ConfigService) GetCorrespondenceGameCount(ctx context.Context, req *co
 		return nil, err
 	}
 
-	// Inlined rather than calling game.CountActiveCorrespondenceGames: the game
-	// store imports this package.
-	var count int32
-	if ReadsOngoing(ctx) {
-		count, err = cs.q.CountActiveCorrespondenceGamesFromOngoing(ctx)
-	} else {
-		count, err = cs.q.CountActiveCorrespondenceGames(ctx)
-	}
+	count, err := cs.q.CountActiveCorrespondenceGames(ctx)
 	if err != nil {
 		return nil, err
 	}

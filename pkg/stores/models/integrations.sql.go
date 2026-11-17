@@ -82,39 +82,6 @@ func (q *Queries) GetExpiringGlobalPatreonIntegration(ctx context.Context) ([]by
 	return data, err
 }
 
-const getExpiringPatreonIntegrations = `-- name: GetExpiringPatreonIntegrations :many
-SELECT uuid, integration_name, data
-FROM integrations
-WHERE integration_name = 'patreon'
-AND last_updated + COALESCE((data->>'expires_in')::interval, INTERVAL '0 seconds') <= CURRENT_TIMESTAMP + INTERVAL '14 days'
-`
-
-type GetExpiringPatreonIntegrationsRow struct {
-	Uuid            uuid.UUID
-	IntegrationName string
-	Data            []byte
-}
-
-func (q *Queries) GetExpiringPatreonIntegrations(ctx context.Context) ([]GetExpiringPatreonIntegrationsRow, error) {
-	rows, err := q.db.Query(ctx, getExpiringPatreonIntegrations)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []GetExpiringPatreonIntegrationsRow
-	for rows.Next() {
-		var i GetExpiringPatreonIntegrationsRow
-		if err := rows.Scan(&i.Uuid, &i.IntegrationName, &i.Data); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const getGlobalIntegrationData = `-- name: GetGlobalIntegrationData :one
 SELECT data FROM integrations_global WHERE integration_name = $1
 `

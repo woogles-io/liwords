@@ -473,10 +473,11 @@ SELECT
     winner_idx, loser_idx, history, stats, quickdata,
     tournament_data, tournament_id, ready_flag, meta_events, type,
     game_request, player_on_turn, league_id, season_id, league_division_id
-FROM games
-WHERE league_division_id = $1
-  AND (@include_finished::boolean = true OR game_end_reason = 0)
-ORDER BY created_at;
+FROM games g
+WHERE g.league_division_id = $1
+  AND (@include_finished::boolean = true
+       OR EXISTS (SELECT 1 FROM ongoing_games o WHERE o.game_uuid = g.uuid))
+ORDER BY g.created_at;
 
 -- name: CountDivisionGamesComplete :one
 SELECT COUNT(*) FROM games
@@ -488,21 +489,19 @@ WHERE league_division_id = $1;
 
 -- name: GetUnfinishedLeagueGames :many
 SELECT
-    uuid as game_id,
-    player0_id,
-    player1_id
-FROM games
-WHERE season_id = $1
-  AND game_end_reason = 0;
+    o.game_uuid as game_id,
+    o.player0_id,
+    o.player1_id
+FROM ongoing_games o
+WHERE o.season_id = $1;
 
 -- name: GetUnfinishedDivisionGames :many
 -- Get unfinished games for a specific division (lightweight: just player IDs)
 SELECT
-    player0_id,
-    player1_id
-FROM games
-WHERE league_division_id = $1
-  AND game_end_reason = 0;
+    o.player0_id,
+    o.player1_id
+FROM ongoing_games o
+WHERE o.league_division_id = $1;
 
 -- name: GetStandingsForDivisions :many
 -- Batched GetStandings for a whole season: fetch every listed division's
@@ -538,15 +537,14 @@ ORDER BY d.division_number, lr.registration_date, lr.user_id;
 -- name: GetUnfinishedGamesForDivisions :many
 -- Batched GetUnfinishedDivisionGames for a whole season. Adds league_division_id
 -- to the projection (the single-division query omits it) so the flat result can
--- be split by division. Reuses the idx_games_division_unfinished partial index
--- via = ANY; ordered by division_number to align with the divisions list.
-SELECT g.league_division_id AS division_id,
-       g.player0_id,
-       g.player1_id
-FROM games g
-JOIN league_divisions d ON d.uuid = g.league_division_id
-WHERE g.league_division_id = ANY(@division_ids::uuid[])
-  AND g.game_end_reason = 0
+-- be split by division. Ordered by division_number to align with the
+-- divisions list.
+SELECT o.league_division_id AS division_id,
+       o.player0_id,
+       o.player1_id
+FROM ongoing_games o
+JOIN league_divisions d ON d.uuid = o.league_division_id
+WHERE o.league_division_id = ANY(@division_ids::uuid[])
 ORDER BY d.division_number;
 
 -- name: GetSeasonZeroMoveGames :many
@@ -563,11 +561,11 @@ SELECT
     u_player1.uuid as player1_uuid,
     u_player1.username as player1_username,
     g.league_division_id as division_id
-FROM games g
+FROM ongoing_games o
+JOIN games g ON g.uuid = o.game_uuid
 INNER JOIN users u_player0 ON g.player0_id = u_player0.id
 INNER JOIN users u_player1 ON g.player1_id = u_player1.id
-WHERE g.season_id = $1
-  AND g.game_end_reason = 0
+WHERE o.season_id = $1
   AND (g.timers->>'lu')::bigint = (g.timers->>'ts')::bigint
 ORDER BY g.created_at ASC;
 
@@ -578,38 +576,16 @@ SELECT
     u.uuid as user_uuid,
     u.username,
     COUNT(*) as unstarted_game_count
-FROM games g
+FROM ongoing_games o
+JOIN games g ON g.uuid = o.game_uuid
 INNER JOIN users u ON (
-    (g.player_on_turn = 0 AND u.id = g.player0_id) OR
-    (g.player_on_turn = 1 AND u.id = g.player1_id)
+    (o.on_turn = 0 AND u.id = o.player0_id) OR
+    (o.on_turn = 1 AND u.id = o.player1_id)
 )
-WHERE g.season_id = $1
-  AND g.game_end_reason = 0
+WHERE o.season_id = $1
   AND (g.timers->>'lu')::bigint = (g.timers->>'ts')::bigint
 GROUP BY u.uuid, u.username
 ORDER BY unstarted_game_count DESC, u.username;
-
--- name: ForceFinishGame :exec
-WITH game_update AS (
-    UPDATE games
-    SET game_end_reason = 8,  -- FORCE_FORFEIT
-        winner_idx = $2,
-        loser_idx = $3,
-        updated_at = NOW()
-    WHERE uuid = $1
-    RETURNING uuid, winner_idx, loser_idx
-)
-UPDATE game_players gp
-SET game_end_reason = 8,  -- FORCE_FORFEIT
-    won = CASE
-        WHEN gu.winner_idx IS NULL THEN NULL  -- Tie: both players get NULL
-        WHEN gp.player_index = gu.winner_idx THEN true
-        WHEN gp.player_index = gu.loser_idx THEN false
-        ELSE NULL
-    END,
-    updated_at = NOW()
-FROM game_update gu
-WHERE gp.game_uuid = gu.uuid;
 
 -- name: GetForceFinishedGamesMissingPlayers :many
 -- Find force-finished or adjudicated games in a season that are missing game_players rows
@@ -756,7 +732,7 @@ WHERE gp_player.player_id = (SELECT id FROM users WHERE users.uuid = @user_uuid)
 ORDER BY gp_player.created_at DESC;
 
 -- name: GetPlayerSeasonInProgressGames :many
--- Get in-progress games for a specific player in a season (fast query on indexed fields)
+-- Get in-progress games for a specific player in a season
 SELECT
     g.uuid as game_uuid,
     g.created_at,
@@ -771,12 +747,14 @@ SELECT
     g.history,
     g.timers,
     g.game_request
-FROM games g
+FROM ongoing_games o
+JOIN games g ON g.uuid = o.game_uuid
 INNER JOIN users u_player0 ON g.player0_id = u_player0.id
 INNER JOIN users u_player1 ON g.player1_id = u_player1.id
-WHERE g.season_id = @season_id
-  AND g.game_end_reason = 0
-  AND (u_player0.uuid = @user_uuid OR u_player1.uuid = @user_uuid)
+WHERE o.season_id = @season_id
+  -- On ongoing_games' player indexes, so only this player's games are joined.
+  AND (o.player0_id = (SELECT id FROM users WHERE users.uuid = @user_uuid::text)
+       OR o.player1_id = (SELECT id FROM users WHERE users.uuid = @user_uuid::text))
 ORDER BY g.created_at DESC;
 
 -- name: GetPlayerSeasonOpponents :many
@@ -804,13 +782,13 @@ SELECT
     u.uuid as user_uuid,
     u.username,
     COUNT(*) as low_timebank_game_count
-FROM games g
+FROM ongoing_games o
+JOIN games g ON g.uuid = o.game_uuid
 JOIN users u ON (
-    (g.player_on_turn = 0 AND u.id = g.player0_id) OR
-    (g.player_on_turn = 1 AND u.id = g.player1_id)
+    (o.on_turn = 0 AND u.id = o.player0_id) OR
+    (o.on_turn = 1 AND u.id = o.player1_id)
 )
-WHERE g.league_division_id = @division_id
-  AND g.game_end_reason = 0
+WHERE o.league_division_id = @division_id
   AND g.timers->'tb' IS NOT NULL
   AND jsonb_array_length(g.timers->'tb') = 2
   AND (
@@ -835,13 +813,14 @@ WITH updated AS (
         g.timers,
         -- text[]: jsonb_set takes a path array, and a CASE of bare literals is
         -- text, which made this query fail every time before the cast.
-        (CASE WHEN g.player0_id = @player_id THEN '{tb,0}' ELSE '{tb,1}' END)::text[],
-        to_jsonb((g.timers->'tb'->(CASE WHEN g.player0_id = @player_id THEN 0 ELSE 1 END))::bigint + @additional_ms::bigint)
+        (CASE WHEN o.player0_id = @player_id THEN '{tb,0}' ELSE '{tb,1}' END)::text[],
+        to_jsonb((g.timers->'tb'->(CASE WHEN o.player0_id = @player_id THEN 0 ELSE 1 END))::bigint + @additional_ms::bigint)
     ),
     updated_at = NOW()
-    WHERE g.season_id = @season_id
-      AND g.game_end_reason = 0
-      AND (g.player0_id = @player_id OR g.player1_id = @player_id)
+    FROM ongoing_games o
+    WHERE o.game_uuid = g.uuid
+      AND o.season_id = @season_id
+      AND (o.player0_id = @player_id OR o.player1_id = @player_id)
       AND g.timers->'tb' IS NOT NULL
       AND jsonb_array_length(g.timers->'tb') = 2
     RETURNING g.uuid, g.timers
@@ -866,9 +845,10 @@ WITH updated AS (
         to_jsonb((g.timers->'tb'->1)::bigint + @additional_ms::bigint)
     ),
     updated_at = NOW()
-    WHERE g.season_id = @season_id
-      AND g.game_end_reason = 0
-      AND (g.player0_id = @player_id OR g.player1_id = @player_id)
+    FROM ongoing_games o
+    WHERE o.game_uuid = g.uuid
+      AND o.season_id = @season_id
+      AND (o.player0_id = @player_id OR o.player1_id = @player_id)
       AND g.timers->'tb' IS NOT NULL
       AND jsonb_array_length(g.timers->'tb') = 2
     RETURNING g.uuid, g.timers
@@ -893,8 +873,9 @@ WITH updated AS (
         to_jsonb((g.timers->'tb'->1)::bigint + @additional_ms::bigint)
     ),
     updated_at = NOW()
-    WHERE g.season_id = @season_id
-      AND g.game_end_reason = 0
+    FROM ongoing_games o
+    WHERE o.game_uuid = g.uuid
+      AND o.season_id = @season_id
       AND g.timers->'tb' IS NOT NULL
       AND jsonb_array_length(g.timers->'tb') = 2
     RETURNING g.uuid, g.timers
@@ -909,11 +890,10 @@ SELECT COUNT(*)::bigint FROM updated;
 -- name: GetPlayerUnfinishedSeasonGames :many
 -- Get all unfinished (ongoing) games for a specific player in a season.
 -- Used when cancelling a cheater's results to find games that need to be force-forfeited.
-SELECT uuid as game_id, player0_id, player1_id
-FROM games
-WHERE season_id = @season_id
-  AND (player0_id = @player_id OR player1_id = @player_id)
-  AND game_end_reason = 0;
+SELECT o.game_uuid as game_id, o.player0_id, o.player1_id
+FROM ongoing_games o
+WHERE o.season_id = @season_id
+  AND (o.player0_id = @player_id OR o.player1_id = @player_id);
 
 -- name: GetPlayerLeagueH2H :many
 -- Get head-to-head records for a player against all opponents across all seasons of a league.

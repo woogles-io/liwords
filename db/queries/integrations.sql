@@ -27,12 +27,6 @@ VALUES ($1, $2)
 ON CONFLICT (integration_name)
 DO UPDATE SET data = EXCLUDED.data, last_updated = CURRENT_TIMESTAMP;
 
--- name: GetExpiringPatreonIntegrations :many
-SELECT uuid, integration_name, data
-FROM integrations
-WHERE integration_name = 'patreon'
-AND last_updated + COALESCE((data->>'expires_in')::interval, INTERVAL '0 seconds') <= CURRENT_TIMESTAMP + INTERVAL '14 days';
-
 -- name: GetExpiringGlobalPatreonIntegration :one
 SELECT data
 FROM integrations_global

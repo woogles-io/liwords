@@ -287,6 +287,9 @@ func TestListActive(t *testing.T) {
 
 	// There should be an additional game, so 3 total, from recreateDB()
 	// The first game is cesar vs mina. (see TestGet)
+	// The fixture game was inserted directly, so it has no ongoing row yet;
+	// every live game in production has one.
+	giveLiveGamesRows(t, gstore)
 
 	games, err := gstore.ListActive(context.Background(), "", true)
 	is.NoErr(err)

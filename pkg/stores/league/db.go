@@ -89,7 +89,6 @@ type Store interface {
 	GetUnfinishedLeagueGames(ctx context.Context, seasonID uuid.UUID) ([]models.GetUnfinishedLeagueGamesRow, error)
 	GetUnfinishedDivisionGames(ctx context.Context, divisionID uuid.UUID) ([]models.GetUnfinishedDivisionGamesRow, error)
 	GetDivisionGamePlayers(ctx context.Context, divisionID uuid.UUID) ([]models.GetDivisionGamePlayersRow, error)
-	ForceFinishGame(ctx context.Context, arg models.ForceFinishGameParams) error
 	GetForceFinishedGamesMissingPlayers(ctx context.Context, seasonID pgtype.UUID) ([]models.GetForceFinishedGamesMissingPlayersRow, error)
 	GetGameLeagueInfo(ctx context.Context, gameUUID string) (models.GetGameLeagueInfoRow, error)
 	GetSeasonPlayersWithUnstartedGames(ctx context.Context, seasonID uuid.UUID) ([]models.GetSeasonPlayersWithUnstartedGamesRow, error)
@@ -517,10 +516,6 @@ func (s *DBStore) GetSeasonStandingsSnapshot(ctx context.Context, seasonID uuid.
 		Registrations: registrations,
 		Unfinished:    unfinished,
 	}, nil
-}
-
-func (s *DBStore) ForceFinishGame(ctx context.Context, arg models.ForceFinishGameParams) error {
-	return s.queries.ForceFinishGame(ctx, arg)
 }
 
 func (s *DBStore) GetForceFinishedGamesMissingPlayers(ctx context.Context, seasonID pgtype.UUID) ([]models.GetForceFinishedGamesMissingPlayersRow, error) {
