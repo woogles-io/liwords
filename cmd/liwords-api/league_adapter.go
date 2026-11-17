@@ -18,10 +18,14 @@ type GameCreatorAdapter struct {
 }
 
 func (a *GameCreatorAdapter) InstantiateNewGame(ctx context.Context, users [2]*entity.User,
-	req *pb.GameRequest, tdata *entity.TournamentData) (*entity.Game, error) {
-	return gameplay.InstantiateNewGame(ctx, a.stores.GameStore, a.cfg, users, req, tdata)
+	req *pb.GameRequest, tdata *entity.TournamentData, opts ...gameplay.GameOption) (*entity.Game, error) {
+	return gameplay.InstantiateNewGame(ctx, a.stores.GameStore, a.cfg, users, req, tdata, opts...)
 }
 
 func (a *GameCreatorAdapter) StartGame(ctx context.Context, game *entity.Game) error {
 	return gameplay.StartGame(ctx, a.stores, a.eventChan, game)
+}
+
+func (a *GameCreatorAdapter) GetGame(ctx context.Context, id string) (*entity.Game, error) {
+	return a.stores.GameStore.Get(ctx, id)
 }

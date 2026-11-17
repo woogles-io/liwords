@@ -281,6 +281,9 @@ func (m *mockLeagueStore) GetUnfinishedLeagueGames(ctx context.Context, seasonID
 func (m *mockLeagueStore) GetUnfinishedDivisionGames(ctx context.Context, divisionID uuid.UUID) ([]models.GetUnfinishedDivisionGamesRow, error) {
 	return nil, nil
 }
+func (m *mockLeagueStore) GetDivisionGamePlayers(ctx context.Context, divisionID uuid.UUID) ([]models.GetDivisionGamePlayersRow, error) {
+	return nil, nil
+}
 func (m *mockLeagueStore) GetForceFinishedGamesMissingPlayers(ctx context.Context, seasonID pgtype.UUID) ([]models.GetForceFinishedGamesMissingPlayersRow, error) {
 	return nil, nil
 }
