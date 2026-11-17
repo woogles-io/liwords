@@ -2,8 +2,6 @@ package league
 
 import (
 	"testing"
-
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 func si(userID int32, points, spread, gamesRemaining int) standingInfo {
@@ -119,10 +117,7 @@ func TestMaxFlowWithPGames(t *testing.T) {
 }
 
 func TestUnfinishedGameFromRow(t *testing.T) {
-	g := UnfinishedGameFromRow(
-		pgtype.Int4{Int32: 5, Valid: true},
-		pgtype.Int4{Int32: 7, Valid: true},
-	)
+	g := UnfinishedGameFromRow(5, 7)
 	if g.player0ID != 5 || g.player1ID != 7 {
 		t.Errorf("got %v, want {5, 7}", g)
 	}

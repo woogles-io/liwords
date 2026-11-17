@@ -64,9 +64,9 @@ func (ffm *ForceFinishManager) ForceFinishUnfinishedGames(
 		// - Updates league standings (via injected LeagueStandingsUpdater)
 		// - Sends events to clients
 		// - Archives game history to S3 (synchronously via performEndgameDuties)
-		err := gameplay.AdjudicateGame(ctx, gameRow.GameID.String, ffm.stores)
+		err := gameplay.AdjudicateGame(ctx, gameRow.GameID, ffm.stores)
 		if err != nil {
-			result.Errors = append(result.Errors, fmt.Sprintf("failed to adjudicate game %s: %v", gameRow.GameID.String, err))
+			result.Errors = append(result.Errors, fmt.Sprintf("failed to adjudicate game %s: %v", gameRow.GameID, err))
 			continue
 		}
 

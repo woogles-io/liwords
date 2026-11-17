@@ -2468,7 +2468,7 @@ func (ls *LeagueService) AddSeasonTimeBank(
 		if err != nil {
 			return nil, apiserver.InvalidArg(fmt.Sprintf("user not found: %s", req.Msg.UserId))
 		}
-		playerID := pgtype.Int4{Int32: int32(targetUser.ID), Valid: true}
+		playerID := int32(targetUser.ID)
 
 		if scope == pb.TimeBankScope_TIMEBANK_SCOPE_SINGLE_PLAYER {
 			gamesUpdated, err = ls.store.AddTimeBankSinglePlayer(ctx, models.AddTimeBankSinglePlayerParams{
@@ -2554,7 +2554,7 @@ func (ls *LeagueService) CancelPlayerResults(
 	// Step 1: Force-forfeit any ongoing games where the cheater is a player
 	ongoingGames, err := ls.queries.GetPlayerUnfinishedSeasonGames(ctx, models.GetPlayerUnfinishedSeasonGamesParams{
 		SeasonID: pgtype.UUID{Bytes: seasonID, Valid: true},
-		PlayerID: pgtype.Int4{Int32: cheaterDBID, Valid: true},
+		PlayerID: cheaterDBID,
 	})
 	if err != nil {
 		return nil, apiserver.InternalErr(fmt.Errorf("failed to get unfinished games: %w", err))
@@ -2564,12 +2564,12 @@ func (ls *LeagueService) CancelPlayerResults(
 	for _, gameRow := range ongoingGames {
 		// Determine which player index is the cheater
 		loserIdx := 0
-		if gameRow.Player1ID.Int32 == cheaterDBID {
+		if gameRow.Player1ID == cheaterDBID {
 			loserIdx = 1
 		}
 
-		if err := gameplay.ForfeitGame(ctx, gameRow.GameID.String, loserIdx, ls.stores); err != nil {
-			return nil, apiserver.InternalErr(fmt.Errorf("failed to forfeit game %s: %w", gameRow.GameID.String, err))
+		if err := gameplay.ForfeitGame(ctx, gameRow.GameID, loserIdx, ls.stores); err != nil {
+			return nil, apiserver.InternalErr(fmt.Errorf("failed to forfeit game %s: %w", gameRow.GameID, err))
 		}
 		gamesForfeited++
 	}

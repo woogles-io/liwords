@@ -1,11 +1,7 @@
 // backfill-ongoing-games writes the ongoing_games row for live games that do
-// not have one: games that were already live when WRITE_ONGOING_GAMES went on
-// and have not been saved since. Run it once, by hand, after the flag is on in
-// the API.
-//
-// Never before: a game that ends in between would keep its row, because the
-// save that ended it did not know to delete it. To say that you know this, it
-// refuses to run unless WRITE_ONGOING_GAMES=1 is set for it too.
+// not have one. It was run once when the table was introduced, for the games
+// that were already live then; every game since gets its row when it is
+// created. Run it again only if a check finds a live game without a row.
 //
 // Each game is written under its own game lock, the one every move holds, and
 // skipped if it has ended or already has a row, so it is safe to run again.
@@ -14,9 +10,9 @@
 // DB_PORT, DB_NAME, DB_USER, DB_PASSWORD, DB_SSL_MODE) and MACONDO_DATA_PATH:
 // each game is loaded, which needs its lexicon and letter distribution.
 //
-//	WRITE_ONGOING_GAMES=1 ./backfill-ongoing-games --dry-run
-//	WRITE_ONGOING_GAMES=1 ./backfill-ongoing-games --all
-//	WRITE_ONGOING_GAMES=1 ./backfill-ongoing-games --game-id <uuid>
+//	./backfill-ongoing-games --dry-run
+//	./backfill-ongoing-games --all
+//	./backfill-ongoing-games --game-id <uuid>
 package main
 
 import (
@@ -49,9 +45,6 @@ func main() {
 
 	cfg := &config.Config{}
 	cfg.Load(nil)
-	if !cfg.WriteOngoingGames {
-		log.Fatal().Msg("WRITE_ONGOING_GAMES is not set: turn it on in the API first, then run this with it set")
-	}
 	ctx := cfg.WithContext(log.Logger.WithContext(context.Background()))
 
 	pool, err := pgxpool.New(ctx, cfg.DBConnUri)
