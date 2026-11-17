@@ -200,8 +200,15 @@ jobs:
           username: domino14
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # The binaries are compiled on the runner, not in Docker, so this
+      # restores the Go module and build caches.
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ">=1.22"
+
       - name: Build and Tag Docker Image
-        run: cd deploy && ./build-and-tag.sh
+        run: ./deploy/build-and-tag.sh
 
       - name: Discord notification
         env:

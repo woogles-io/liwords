@@ -1,18 +1,8 @@
-FROM liwords-builder AS build-env
-
-WORKDIR /opt/program/cmd/liwords-api
-
-ARG BUILD_HASH=unknown
-ARG BUILD_DATE=unknown
-
-RUN go build -ldflags  "-X=main.BuildDate=${BUILD_DATE} -X=main.BuildHash=${BUILD_HASH}"
-
-# Build minimal image:
+# Built by deploy/build-and-tag.sh, whose build context holds the binary.
 FROM debian:latest
-COPY --from=build-env /opt/program/cmd/liwords-api/liwords-api /opt/liwords-api
-COPY --from=build-env /opt/program/db /opt/db
-
-RUN apt-get update && apt-get install -y curl
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+COPY db /opt/db
+COPY liwords-api /opt/liwords-api
 
 EXPOSE 8001
 
