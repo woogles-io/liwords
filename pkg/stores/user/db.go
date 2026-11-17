@@ -666,11 +666,20 @@ func (s *DBStore) GetFullBlocks(ctx context.Context, uid uint) ([]*entity.User, 
 	return plist, nil
 }
 
+// maxPrefixResults caps an autocomplete answer. A one- or two-letter prefix
+// matches thousands of users, more than any list shows.
+const maxPrefixResults = 100
+
 // UsersByPrefix is a read-only single-statement query: no explicit transaction needed.
 func (s *DBStore) UsersByPrefix(ctx context.Context, prefix string) ([]*pb.BasicUser, error) {
+	if prefix == "" {
+		// Every user matches; callers show their own defaults for an empty box.
+		return []*pb.BasicUser{}, nil
+	}
 	rows, err := s.queries.UsersByPrefix(ctx, models.UsersByPrefixParams{
 		Prefix:            strings.ToLower(prefix),
 		SuspendActionType: int32(ms.ModActionType_SUSPEND_ACCOUNT),
+		MaxResults:        maxPrefixResults,
 	})
 	if err != nil {
 		return nil, err

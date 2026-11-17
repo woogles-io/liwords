@@ -150,8 +150,15 @@ SELECT COUNT(*) FROM users;
 UPDATE users SET api_key = @api_key WHERE uuid = @uuid;
 
 -- name: UsersByPrefix :many
+-- Usernames starting with @prefix (already lowercased), first in byte order.
+-- In "C" order every string that starts with the prefix sorts at or after it
+-- and before prefix || U+10FFFF, the highest code point, so the matches are
+-- one range of idx_users_username_lower_c. A range rather than LIKE because
+-- usernames contain "_", a LIKE wildcard, and because a LIKE on a parameter
+-- cannot use the index once the prepared statement goes to a generic plan.
 SELECT username, uuid FROM users
-WHERE substr(lower(users.username), 1, length(@prefix::text)) = @prefix
+WHERE lower(users.username) COLLATE "C" >= @prefix::text
+  AND lower(users.username) COLLATE "C" < @prefix::text || chr(1114111)
   AND users.internal_bot IS FALSE
   AND NOT EXISTS(
     SELECT 1 FROM user_actions
@@ -159,7 +166,9 @@ WHERE substr(lower(users.username), 1, length(@prefix::text)) = @prefix
     user_actions.removed_time IS NULL AND
     user_actions.end_time IS NULL AND
     user_actions.action_type = @suspend_action_type
-);
+)
+ORDER BY lower(users.username) COLLATE "C"
+LIMIT @max_results;
 
 -- name: AddFollower :exec
 INSERT INTO followings (user_id, follower_id) VALUES (@target_user, @follower);
