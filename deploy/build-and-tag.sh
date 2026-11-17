@@ -4,8 +4,8 @@
 # The Go binaries are compiled once, here on the host, in a single `go build`
 # so the packages they share are compiled once and the runner's Go build
 # cache (restored by actions/setup-go) is used. The Dockerfiles only copy the
-# finished binaries into debian. Compiling inside Docker instead meant four
-# cold builds of the whole module, one per image, about five minutes.
+# finished binaries into debian. Compiling inside Docker instead meant a
+# cold build of the whole module per image, about five minutes in all.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
