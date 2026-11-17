@@ -243,8 +243,7 @@ jobs:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       AWS_REGION: us-east-2
-      ECS_CLUSTER: woogles-prod
-      TASK_DEFINITION: liwords-db-migration
+      TASK_DEFINITION: liwords-db-migration-fargate
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -282,7 +281,17 @@ jobs:
 
           echo "Using Docker image: $DOCKER_IMAGE"
 
-          # For EC2 launch type, we need to register a new task definition revision
+          # The task definition comes from the liwords-api stack, and the
+          # cluster and network from liwords-base (aws/cfn/fargate).
+          base_output() {
+            aws cloudformation describe-stacks --stack-name liwords-base --region $AWS_REGION \
+              --query "Stacks[0].Outputs[?OutputKey=='$1'].OutputValue" --output text
+          }
+          ECS_CLUSTER=$(base_output ClusterName)
+          NETWORK="awsvpcConfiguration={subnets=[$(base_output Subnets)],securityGroups=[$(base_output TaskSecurityGroupId)],assignPublicIp=ENABLED}"
+          echo "Running $TASK_DEFINITION on $ECS_CLUSTER"
+
+          # Register a revision of the task definition with the new image.
           # Get the current task definition
           TASK_DEF_JSON=$(aws ecs describe-task-definition \
             --task-definition $TASK_DEFINITION \
@@ -308,7 +317,8 @@ jobs:
           TASK_OUTPUT=$(aws ecs run-task \
             --cluster $ECS_CLUSTER \
             --task-definition $NEW_TASK_DEF_ARN \
-            --launch-type EC2 \
+            --launch-type FARGATE \
+            --network-configuration "$NETWORK" \
             --region $AWS_REGION)
 
           # Extract task ARN
@@ -411,6 +421,25 @@ jobs:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
         run: ./scripts/utilities/notify-discord.sh "✗ Database migration FAILED for branch {{GITHUB_REF_NAME}}. Check GitHub Actions logs."
         continue-on-error: true
+
+  # Deploys the images just built to Fargate, after the migrations. Off
+  # until the repository variable FARGATE_DEPLOY is "true"; with it on, the
+  # "production" environment's reviewers (if any) approve each deploy. See
+  # deploy-fargate.yml.
+  deploy_backend:
+    if: ${{ github.ref == 'refs/heads/master' && vars.FARGATE_DEPLOY == 'true' }}
+    needs:
+      - deploy_api_docker
+      - run_db_migration
+    permissions:
+      contents: read
+    uses: ./.github/workflows/deploy-fargate.yml
+    with:
+      image_tag: ${{ github.ref_name }}-gh${{ github.run_number }}
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
 
   build_fe:
     runs-on: ubuntu-latest

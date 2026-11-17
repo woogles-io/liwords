@@ -1,0 +1,133 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  liwords-socket on Fargate: task definition, service and target group.
+  CI updates it with the API, from the same image tag.
+
+# Every socket server subscribes to NATS without a queue group and keeps
+# presence in Redis, so this one can run beside the EC2 one: it just has no
+# clients until /ws is weighted toward it (scripts/fargate/shift-traffic.sh).
+
+Parameters:
+  BaseStackName:
+    Type: String
+    Default: liwords-base
+  ImageTag:
+    Type: String
+    Description: Tag of ghcr.io/woogles-io/liwords-socket, e.g. master-gh2321
+  DesiredCount:
+    Type: Number
+    Default: 1
+  # /ws itself can't be reached this way (the existing /ws rule comes first),
+  # but other paths can: curl -H 'X-Woogles-Target: socket-fargate'
+  # https://woogles.io/ping
+  TestRulePriority:
+    Type: Number
+    Default: 2
+
+Resources:
+  TaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: liwords-socket-fargate
+      RequiresCompatibilities: [FARGATE]
+      NetworkMode: awsvpc
+      RuntimePlatform:
+        CpuArchitecture: X86_64
+        OperatingSystemFamily: LINUX
+      Cpu: "256"
+      Memory: "512"
+      ExecutionRoleArn: { "Fn::ImportValue": !Sub "${BaseStackName}-ExecutionRoleArn" }
+      TaskRoleArn: { "Fn::ImportValue": !Sub "${BaseStackName}-SocketTaskRoleArn" }
+      ContainerDefinitions:
+        - Name: liwords-socket
+          Image: !Sub ghcr.io/woogles-io/liwords-socket:${ImageTag}
+          Essential: true
+          PortMappings:
+            - { ContainerPort: 8087, Protocol: tcp }
+          Ulimits:
+            - { Name: nofile, SoftLimit: 65535, HardLimit: 65535 }
+          # No container health check: the image has no curl. The load
+          # balancer checks /ping.
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: /ecs/liwords-socket
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: fargate
+          Environment:
+            - { Name: NATS_URL, Value: "nats://10.0.0.251:4222" }
+            - { Name: FOLLOWERS_CACHE_SIZE, Value: "0" }
+          Secrets:
+            - Name: SECRET_KEY
+              ValueFrom: !Sub
+                - arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter${Path}/secret-key
+                - Path: { "Fn::ImportValue": !Sub "${BaseStackName}-SecretsPath" }
+
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: woogles-socket-fargate
+      TargetType: ip
+      Protocol: HTTP
+      Port: 8087
+      VpcId: { "Fn::ImportValue": !Sub "${BaseStackName}-VpcId" }
+      HealthCheckPath: /ping
+      HealthCheckIntervalSeconds: 10
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 3
+      UnhealthyThresholdCount: 2
+      Matcher: { HttpCode: "200" }
+      TargetGroupAttributes:
+        - { Key: deregistration_delay.timeout_seconds, Value: "30" }
+      Tags:
+        - { Key: app, Value: liwords }
+
+  TestRule:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      ListenerArn: { "Fn::ImportValue": !Sub "${BaseStackName}-ListenerArn" }
+      Priority: !Ref TestRulePriority
+      Conditions:
+        - Field: http-header
+          HttpHeaderConfig:
+            HttpHeaderName: X-Woogles-Target
+            Values: [socket-fargate]
+      Actions:
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroup
+
+  Service:
+    Type: AWS::ECS::Service
+    DependsOn: TestRule
+    Properties:
+      ServiceName: liwords-socket
+      Cluster: { "Fn::ImportValue": !Sub "${BaseStackName}-ClusterName" }
+      TaskDefinition: !Ref TaskDefinition
+      LaunchType: FARGATE
+      PlatformVersion: LATEST
+      DesiredCount: !Ref DesiredCount
+      DeploymentConfiguration:
+        MaximumPercent: 200
+        MinimumHealthyPercent: 100
+        DeploymentCircuitBreaker: { Enable: true, Rollback: true }
+      HealthCheckGracePeriodSeconds: 30
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          Subnets: !Split [",", { "Fn::ImportValue": !Sub "${BaseStackName}-Subnets" }]
+          SecurityGroups: [{ "Fn::ImportValue": !Sub "${BaseStackName}-TaskSecurityGroupId" }]
+      LoadBalancers:
+        - ContainerName: liwords-socket
+          ContainerPort: 8087
+          TargetGroupArn: !Ref TargetGroup
+      EnableExecuteCommand: true
+      EnableECSManagedTags: true
+      PropagateTags: SERVICE
+      Tags:
+        - { Key: app, Value: liwords }
+
+Outputs:
+  TargetGroupArn:
+    Value: !Ref TargetGroup
+  ServiceName:
+    Value: !GetAtt Service.Name

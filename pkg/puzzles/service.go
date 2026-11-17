@@ -30,18 +30,26 @@ type PuzzleService struct {
 	puzzleStore        PuzzleStore
 	userStore          user.Store
 	puzzleGenSecretKey string
-	ecsCluster         string
-	puzzleGenTaskDef   string
+	puzzleGenTask      ECSTask
 	queries            *models.Queries
 }
 
-func NewPuzzleService(ps PuzzleStore, us user.Store, k, c, td string, q *models.Queries) *PuzzleService {
+// ECSTask says where the puzzle generation task runs: on Fargate, in these
+// subnets and security groups, with a public IP (the VPC has no NAT
+// gateway).
+type ECSTask struct {
+	Cluster        string
+	TaskDefinition string
+	Subnets        []string
+	SecurityGroups []string
+}
+
+func NewPuzzleService(ps PuzzleStore, us user.Store, k string, task ECSTask, q *models.Queries) *PuzzleService {
 	return &PuzzleService{
 		puzzleStore:        ps,
 		userStore:          us,
 		puzzleGenSecretKey: k,
-		ecsCluster:         c,
-		puzzleGenTaskDef:   td,
+		puzzleGenTask:      task,
 		queries:            q,
 	}
 }
@@ -217,7 +225,7 @@ func (ps *PuzzleService) StartPuzzleGenJob(ctx context.Context, req *connect.Req
 	// an ECS task.
 	fmt.Printf("docker compose run --rm -w /opt/program/cmd/puzzlegen app go run . '%s'\n", string(bts))
 
-	err = invokeECSPuzzleGen(ctx, string(bts), ps.ecsCluster, ps.puzzleGenTaskDef)
+	err = invokeECSPuzzleGen(ctx, string(bts), ps.puzzleGenTask)
 	if err != nil {
 		return nil, apiserver.InternalErr(err)
 	}
@@ -246,27 +254,13 @@ func (ps *PuzzleService) GetPuzzleJobLogs(ctx context.Context, req *connect.Requ
 	return connect.NewResponse(&pb.PuzzleJobLogsResponse{Logs: logs}), nil
 }
 
-func invokeECSPuzzleGen(ctx context.Context, arg, cluster, taskdef string) error {
+func invokeECSPuzzleGen(ctx context.Context, arg string, task ECSTask) error {
 	cfg, err := config.LoadDefaultConfig(ctx, config.WithClientLogMode(aws.LogRetries|aws.LogRequestWithBody))
 	if err != nil {
 		return err
 	}
 	svc := ecs.NewFromConfig(cfg)
-	input := &ecs.RunTaskInput{
-		Cluster:        aws.String(cluster),
-		TaskDefinition: aws.String(taskdef),
-		Overrides: &types.TaskOverride{
-			ContainerOverrides: []types.ContainerOverride{
-				{
-					Command: []string{
-						"/opt/puzzle-generator",
-						arg,
-					},
-					Name: aws.String("liwords-puzzlegen"),
-				},
-			},
-		},
-	}
+	input := puzzleGenRunTaskInput(arg, task)
 	result, err := svc.RunTask(ctx, input)
 	if err != nil {
 		var apiErr smithy.APIError
@@ -303,4 +297,30 @@ func boolPtrToPuzzleStatus(b *bool) pb.PuzzleStatus {
 		}
 	}
 	return status
+}
+
+func puzzleGenRunTaskInput(arg string, task ECSTask) *ecs.RunTaskInput {
+	return &ecs.RunTaskInput{
+		Cluster:        aws.String(task.Cluster),
+		TaskDefinition: aws.String(task.TaskDefinition),
+		LaunchType:     types.LaunchTypeFargate,
+		NetworkConfiguration: &types.NetworkConfiguration{
+			AwsvpcConfiguration: &types.AwsVpcConfiguration{
+				Subnets:        task.Subnets,
+				SecurityGroups: task.SecurityGroups,
+				AssignPublicIp: types.AssignPublicIpEnabled,
+			},
+		},
+		Overrides: &types.TaskOverride{
+			ContainerOverrides: []types.ContainerOverride{
+				{
+					Command: []string{
+						"/opt/puzzle-generator",
+						arg,
+					},
+					Name: aws.String("liwords-puzzlegen"),
+				},
+			},
+		},
+	}
 }

@@ -1,0 +1,81 @@
+name: Deploy backend (Fargate)
+
+# Updates the liwords-api and liwords-socket stacks (aws/cfn/fargate) to an
+# image tag: the task definitions, the services, and anything else changed in
+# the templates. CloudFormation waits for the new tasks to be healthy, and the
+# services roll back on their own if they never are.
+#
+# Two switches, both in the repository settings:
+# - The variable FARGATE_DEPLOY must be "true" for master builds to call this.
+# - The "production" environment: give it required reviewers and each deploy
+#   waits for an approval; leave it without any and every master build
+#   deploys.
+#
+# Run it by hand (Actions > Deploy backend (Fargate) > Run workflow) to deploy
+# or roll back to any tag already on ghcr.io.
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Image tag, e.g. master-gh2321"
+        required: true
+        type: string
+  workflow_call:
+    inputs:
+      image_tag:
+        required: true
+        type: string
+    secrets:
+      AWS_ACCESS_KEY_ID:
+        required: true
+      AWS_SECRET_ACCESS_KEY:
+        required: true
+      DISCORD_WEBHOOK:
+        required: false
+
+concurrency:
+  group: deploy-fargate
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      IMAGE_TAG: ${{ inputs.image_tag }}
+      # Stacks that don't exist yet are skipped, not created.
+      REQUIRE_EXISTING: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-2
+
+      - name: Deploy liwords-api
+        run: scripts/fargate/deploy-stack.sh liwords-api aws/cfn/fargate/liwords-api.yaml "ImageTag=$IMAGE_TAG"
+
+      - name: Deploy liwords-socket
+        run: scripts/fargate/deploy-stack.sh liwords-socket aws/cfn/fargate/liwords-socket.yaml "ImageTag=$IMAGE_TAG"
+
+      - name: Discord notification
+        if: success()
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        run: ./scripts/utilities/notify-discord.sh "liwords backend $IMAGE_TAG deployed to Fargate."
+        continue-on-error: true
+
+      - name: Discord notification (failure)
+        if: failure()
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        run: ./scripts/utilities/notify-discord.sh "Fargate deploy of liwords backend $IMAGE_TAG failed."
+        continue-on-error: true
