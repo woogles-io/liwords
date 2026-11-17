@@ -1,7 +1,7 @@
-// Package maintenance holds the periodic site upkeep that used to run in its
-// own container (cmd/maintenance), started by EventBridge rules. It now runs
-// as jobs in the API servers (cmd/liwords-api/jobs.go), with the API's own
-// stores and event channel.
+// Package maintenance holds the periodic site upkeep, run as jobs in the API
+// servers (cmd/liwords-api/jobs.go) with the API's own stores and event
+// channel. It used to run in its own container, started by EventBridge
+// rules.
 //
 // Every task is safe to run again from the start after being cut off by a
 // deploy: each is a single statement or transaction, or picks only the work

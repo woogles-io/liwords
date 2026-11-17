@@ -39,7 +39,7 @@ type LifecycleRunnerResult struct {
 
 // RunLeagueLifecycleTasks executes all automated league lifecycle tasks for a single league
 // This is called by:
-// - cmd/maintenance hourly cron job (production)
+// - the API's league_hourly job, pkg/maintenance (production)
 // - cmd/league-tester TUI (testing)
 func RunLeagueLifecycleTasks(
 	ctx context.Context,

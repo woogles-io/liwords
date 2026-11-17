@@ -720,6 +720,9 @@ deployed in groups.
       Discord post moves onto it.
    2. **Resumable season start** (`games_created_at`, skip existing games).
    3. **Maintenance tasks as schedules**, switched over as above.
+
+   Done (#2288, #2290, #2289; EventBridge rules disabled and deployed
+   2026-11-17, task definition 334).
 3. **Deploy 2: COP `pair_round` on the lambda** (section 2a, as amended
    above), with the second function's name in the task definition. The
    function itself deploys with SAM, without an API deploy. It can ride in
@@ -727,7 +730,8 @@ deployed in groups.
    breaks.
 4. **No deploy:** delete `cmd/maintenance`, its Dockerfile, build steps and
    cfn template, once deploy 1 has run a day. Deleting the AWS stack, task
-   definition and `liwordsMaintenanceTaskRole` waits for an OK.
+   definition and `liwordsMaintenanceTaskRole` waits for an OK. Code removed
+   in #REMOVE_PR; the AWS stack is still up until then.
 
 ## 8. Socket server
 
