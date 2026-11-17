@@ -49,19 +49,7 @@ const (
 	archiveSweepGrace = 10 * time.Minute
 	// Keeps one run short; whatever is left over waits for the next hour.
 	archiveSweepMaxGames = 200
-	// Between Patreon token refreshes, as before.
-	patreonRefreshGap = 2 * time.Second
 )
-
-// sleep waits d, or returns ctx's error if it is done first.
-func sleep(ctx context.Context, d time.Duration) error {
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	case <-time.After(d):
-		return nil
-	}
-}
 
 // BlogRSS shows the newest blog post as the homepage announcement that links
 // to the blog, replacing the one before.
@@ -259,11 +247,11 @@ func (t *Tasks) ArchiveSweep(ctx context.Context) error {
 	return nil
 }
 
-// IntegrationsRefresh refreshes the Patreon tokens that still need one, and
-// the titles of players linked to SG and ABSP.
+// IntegrationsRefresh refreshes the Patreon creator token, and the titles of
+// players linked to SG and ABSP.
 func (t *Tasks) IntegrationsRefresh(ctx context.Context) error {
 	q := t.stores.Queries
-	patreonErr := t.refreshPatreonTokens(ctx)
+	patreonErr := t.refreshPatreonCreatorToken(ctx)
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
@@ -278,86 +266,36 @@ func (t *Tasks) IntegrationsRefresh(ctx context.Context) error {
 	return errors.Join(patreonErr, sgErr, abspErr, organization.RepickProfileTitles(ctx, q))
 }
 
-// refreshPatreonTokens refreshes the tokens of Patreon links made before we
-// stored the Patreon user ID (newer ones need no token), and the global
-// campaign token. A refreshed row's last_updated moves, so a run cut off
-// partway doesn't refresh the same rows again.
-func (t *Tasks) refreshPatreonTokens(ctx context.Context) error {
+// refreshPatreonCreatorToken keeps the creator token alive. Users' own
+// tokens aren't stored: tier checks find their patreon_user_id in the
+// campaign member list, which the creator token fetches.
+func (t *Tasks) refreshPatreonCreatorToken(ctx context.Context) error {
 	q := t.stores.Queries
-	expiring, err := q.GetExpiringPatreonIntegrations(ctx)
+	bts, err := q.GetExpiringGlobalPatreonIntegration(ctx)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil
+	}
 	if err != nil {
 		return err
 	}
-	var errs []error
-	refreshed := 0
-	for _, in := range expiring {
-		var data integrations.PatreonTokenResponse
-		if err := json.Unmarshal(in.Data, &data); err == nil && data.PatreonUserID != "" {
-			continue
-		}
-		if refreshed > 0 {
-			if err := sleep(ctx, patreonRefreshGap); err != nil {
-				return err
-			}
-		}
-		refreshed++
-		if err := t.refreshPatreonToken(ctx, in); err != nil {
-			log.Ctx(ctx).Err(err).Str("integration-uuid", in.Uuid.String()).Msg("patreon-token-refresh-failed")
-			errs = append(errs, err)
-		}
-	}
-
-	bts, err := q.GetExpiringGlobalPatreonIntegration(ctx)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return errors.Join(errs...)
-	}
-	if err != nil {
-		return errors.Join(append(errs, err)...)
-	}
 	var data integrations.PatreonTokenResponse
 	if err := json.Unmarshal(bts, &data); err != nil {
-		return errors.Join(append(errs, err)...)
+		return err
 	}
 	tokres, err := t.oauth.RefreshPatreonToken(data.RefreshToken)
 	if err != nil {
-		return errors.Join(append(errs, fmt.Errorf("global patreon token: %w", err))...)
+		return fmt.Errorf("global patreon token: %w", err)
 	}
 	tokresjson, err := json.Marshal(tokres)
 	if err != nil {
-		return errors.Join(append(errs, err)...)
+		return err
 	}
 	if err := q.AddOrUpdateGlobalIntegration(ctx, models.AddOrUpdateGlobalIntegrationParams{
 		IntegrationName: integrations.PatreonIntegrationName,
 		Data:            tokresjson,
 	}); err != nil {
-		return errors.Join(append(errs, err)...)
-	}
-	log.Ctx(ctx).Info().Int("refreshed", refreshed).Msg("patreon-tokens-refreshed")
-	return errors.Join(errs...)
-}
-
-func (t *Tasks) refreshPatreonToken(ctx context.Context, in models.GetExpiringPatreonIntegrationsRow) error {
-	var data integrations.PatreonTokenResponse
-	if err := json.Unmarshal(in.Data, &data); err != nil {
 		return err
 	}
-	tokres, err := t.oauth.RefreshPatreonToken(data.RefreshToken)
-	if err != nil {
-		return err
-	}
-	// Backfill the patreon_user_id while the token is fresh, so this row
-	// never needs refreshing again.
-	if id, err := integrations.FetchPatreonUserID(tokres.AccessToken); err != nil {
-		log.Ctx(ctx).Err(err).Str("integration-uuid", in.Uuid.String()).Msg("patreon-user-id-fetch-failed")
-	} else {
-		tokres.PatreonUserID = id
-	}
-	tokresjson, err := json.Marshal(tokres)
-	if err != nil {
-		return err
-	}
-	return t.stores.Queries.UpdateIntegrationData(ctx, models.UpdateIntegrationDataParams{
-		Uuid: in.Uuid,
-		Data: tokresjson,
-	})
+	log.Ctx(ctx).Info().Msg("patreon-creator-token-refreshed")
+	return nil
 }
