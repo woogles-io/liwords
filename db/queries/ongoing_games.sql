@@ -48,6 +48,14 @@ ON CONFLICT (game_uuid) DO UPDATE SET
     -- UpdateGame stopped writing it). The value in the INSERT above therefore
     -- applies only when the row is first created.
     started = EXCLUDED.started,
+    -- Filled in, never rewritten. Create writes the row as soon as the game
+    -- exists, and season start tags a game with its league only after that,
+    -- before the StartGame save. Without this the row would keep NULLs and the
+    -- game would be missing from every league listing until it ended.
+    tournament_id = COALESCE(ongoing_games.tournament_id, EXCLUDED.tournament_id),
+    league_id = COALESCE(ongoing_games.league_id, EXCLUDED.league_id),
+    season_id = COALESCE(ongoing_games.season_id, EXCLUDED.season_id),
+    league_division_id = COALESCE(ongoing_games.league_division_id, EXCLUDED.league_division_id),
     updated_at = now();
 
 -- name: GetOngoingGame :one
