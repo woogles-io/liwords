@@ -359,7 +359,7 @@ func TestAddTimeBankKeepsOngoingTimers(t *testing.T) {
 	is.Equal(b, a)
 
 	n, err = gstore.queries.AddTimeBankSinglePlayer(ctx, models.AddTimeBankSinglePlayerParams{
-		PlayerID: pgtype.Int4{Int32: p0, Valid: true}, AdditionalMs: 10, SeasonID: sid})
+		PlayerID: p0, AdditionalMs: 10, SeasonID: sid})
 	is.NoErr(err)
 	is.Equal(n, int64(1))
 	a, b = tbs()
@@ -367,17 +367,56 @@ func TestAddTimeBankKeepsOngoingTimers(t *testing.T) {
 	is.Equal(b, a)
 
 	n, err = gstore.queries.AddTimeBankPlayerAndOpponent(ctx, models.AddTimeBankPlayerAndOpponentParams{
-		PlayerID: pgtype.Int4{Int32: p0, Valid: true}, AdditionalMs: 1, SeasonID: sid})
+		PlayerID: p0, AdditionalMs: 1, SeasonID: sid})
 	is.NoErr(err)
 	is.Equal(n, int64(1))
 	a, b = tbs()
 	is.Equal(a, "[1016, 2006]")
 	is.Equal(b, a)
 
-	// With no ongoing row (writer off), the count is still the games updated.
+	// The games to update are picked from ongoing_games: a game with no row is
+	// not in progress, whatever its games row says, and is left alone.
 	_, err = gstore.dbPool.Exec(ctx, `DELETE FROM ongoing_games`)
 	is.NoErr(err)
 	n, err = gstore.queries.AddTimeBankAllPlayers(ctx, models.AddTimeBankAllPlayersParams{AdditionalMs: 1, SeasonID: sid})
 	is.NoErr(err)
-	is.Equal(n, int64(1))
+	is.Equal(n, int64(0))
+	var tb string
+	is.NoErr(gstore.dbPool.QueryRow(ctx, `SELECT timers->>'tb' FROM games WHERE uuid = $1`, ongoingGID).Scan(&tb))
+	is.Equal(tb, "[1016, 2006]")
+}
+
+// Create writes the ongoing row before season start tags the game with its
+// league; the StartGame save must fill those columns in, or the game is
+// missing from every league listing for its whole life.
+func TestOngoingRowPicksUpLeagueAfterCreate(t *testing.T) {
+	is := is.New(t)
+	ustore, gstore := recreateDB()
+	defer gstore.Disconnect()
+	defer ustore.(*user.DBStore).Disconnect()
+	ctx := testCtx()
+
+	g, err := gstore.Get(ctx, ongoingGID)
+	is.NoErr(err)
+	is.True(g.SeasonID == nil)
+	is.NoErr(gstore.Set(ctx, g)) // the row exists, with no league
+
+	league, season, division := uuid.New(), uuid.New(), uuid.New()
+	g.LeagueID, g.SeasonID, g.LeagueDivisionID = &league, &season, &division
+	is.NoErr(gstore.Set(ctx, g))
+
+	var l, s, d pgtype.UUID
+	is.NoErr(gstore.dbPool.QueryRow(ctx, `SELECT league_id, season_id, league_division_id
+		FROM ongoing_games WHERE game_uuid = $1`, ongoingGID).Scan(&l, &s, &d))
+	is.Equal(uuid.UUID(l.Bytes), league)
+	is.Equal(uuid.UUID(s.Bytes), season)
+	is.Equal(uuid.UUID(d.Bytes), division)
+
+	// Once set, a later save does not move the game to another league.
+	other := uuid.New()
+	g.SeasonID = &other
+	is.NoErr(gstore.Set(ctx, g))
+	is.NoErr(gstore.dbPool.QueryRow(ctx, `SELECT season_id FROM ongoing_games WHERE game_uuid = $1`,
+		ongoingGID).Scan(&s))
+	is.Equal(uuid.UUID(s.Bytes), season)
 }
