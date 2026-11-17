@@ -8,6 +8,9 @@ import (
 	"time"
 
 	"github.com/matryer/is"
+	"go.opentelemetry.io/otel"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 
 	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/jobs"
@@ -193,6 +196,50 @@ type recordingPairer struct {
 func (p recordingPairer) PairCOP(ctx context.Context, req *ipc.PairRequest) (*ipc.PairResponse, error) {
 	*p.last = req
 	return p.heldPairer.PairCOP(ctx, req)
+}
+
+// COP run in process is a cop.pair span under the job's, saying where it
+// ran, the request's size and COP's error code; the job's span says how the
+// run ended.
+func TestCOPJobTraced(t *testing.T) {
+	is := is.New(t)
+	rec := tracetest.NewSpanRecorder()
+	tp := sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(rec))
+	prev := otel.GetTracerProvider()
+	otel.SetTracerProvider(tp)
+	t.Cleanup(func() { otel.SetTracerProvider(prev) })
+
+	ctx, stores, ty, _ := setUpCOPDivision(t)
+	jobCtx, jobSpan := tp.Tracer("test").Start(ctx, "job.run")
+	is.NoErr(tournament.PairRoundJob(stores.TournamentStore, tournament.LocalCOPPairer{})(jobCtx, pairRoundJob(ty, "1")))
+	jobSpan.End()
+
+	attrs := func(s sdktrace.ReadOnlySpan) map[string]string {
+		m := map[string]string{}
+		for _, a := range s.Attributes() {
+			m[string(a.Key)] = a.Value.Emit()
+		}
+		return m
+	}
+	var copSpans []sdktrace.ReadOnlySpan
+	var job map[string]string
+	for _, s := range rec.Ended() {
+		switch s.Name() {
+		case "cop.pair":
+			copSpans = append(copSpans, s)
+		case "job.run":
+			job = attrs(s)
+		}
+	}
+	is.Equal(len(copSpans), 1)
+	is.Equal(copSpans[0].Parent().SpanID(), jobSpan.SpanContext().SpanID())
+	cop := attrs(copSpans[0])
+	is.Equal(cop["cop.where"], "local")
+	is.Equal(cop["cop.players"], "4")
+	is.Equal(cop["cop.division_sims"], "1000")
+	is.Equal(cop["cop.error_code"], "SUCCESS")
+	is.Equal(job["cop.outcome"], "applied")
+	is.Equal(job["cop.runs"], "1")
 }
 
 // When the job gives up, the directors are told the round wasn't paired.

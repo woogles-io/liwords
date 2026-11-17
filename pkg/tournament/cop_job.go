@@ -10,6 +10,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/woogles-io/liwords/pkg/entity"
@@ -100,6 +101,19 @@ const (
 	copChanged              // the request changed while COP ran
 )
 
+// String is the outcome as the job span's cop.outcome records it.
+func (o copOutcome) String() string {
+	switch o {
+	case copApplied:
+		return "applied"
+	case copNotNeeded:
+		return "not_needed"
+	case copChanged:
+		return "changed"
+	}
+	return "unknown"
+}
+
 // PairRoundJob returns the handler of pair_round jobs.
 func PairRoundJob(ts TournamentStore, pairer COPPairer) jobs.Handler {
 	return func(ctx context.Context, job jobs.Job) error {
@@ -110,13 +124,15 @@ func PairRoundJob(ts TournamentStore, pairer COPPairer) jobs.Handler {
 		span := trace.SpanFromContext(ctx)
 		span.SetAttributes(attribute.String("tournament.id", tid),
 			attribute.String("tournament.division", division), attribute.Int("tournament.round", round+1))
-		for range maxRequestChanges {
+		for run := 1; run <= maxRequestChanges; run++ {
+			span.SetAttributes(attribute.Int("cop.runs", run-1))
 			t, err := ts.Get(ctx, tid)
 			if err != nil {
 				return err
 			}
 			cd, ok := copDivision(t, division)
 			if !ok || t.IsFinished || !cd.needsCOPPairing(round) {
+				span.SetAttributes(attribute.String("cop.outcome", "not_needed"))
 				return nil
 			}
 			kept, err := cd.copKeptPlayers(round)
@@ -129,21 +145,20 @@ func PairRoundJob(ts TournamentStore, pairer COPPairer) jobs.Handler {
 			}
 			if req == nil {
 				// Every player still to pair is in a kept pairing.
+				span.SetAttributes(attribute.String("cop.outcome", "nothing_to_pair"))
 				return nil
 			}
-			start := time.Now()
-			resp, err := pairer.PairCOP(ctx, req)
-			span.AddEvent("cop", trace.WithAttributes(attribute.Int64("ms", time.Since(start).Milliseconds())))
+			span.SetAttributes(attribute.Int("cop.runs", run))
+			resp, err := runCOP(ctx, pairer, req, run)
 			if err != nil {
-				return fmt.Errorf("run COP: %w", err)
-			}
-			if resp.ErrorCode != ipc.PairError_SUCCESS {
-				return fmt.Errorf("COP pairing failed: %s", resp.ErrorMessage)
+				span.SetAttributes(attribute.String("cop.outcome", "cop_failed"))
+				return err
 			}
 			outcome, err := applyCOPPairing(ctx, ts, tid, division, round, req, resp)
 			if err != nil {
 				return err
 			}
+			span.SetAttributes(attribute.String("cop.outcome", outcome.String()))
 			if outcome != copChanged {
 				return nil
 			}
@@ -152,6 +167,45 @@ func PairRoundJob(ts TournamentStore, pairer COPPairer) jobs.Handler {
 		}
 		return errors.New("the division kept changing while COP ran")
 	}
+}
+
+// runCOP runs COP on req in a cop.pair span: where it ran, how big the
+// request was, and COP's error code. In process, COP's seconds would
+// otherwise show only as a gap in the job's trace.
+func runCOP(ctx context.Context, pairer COPPairer, req *ipc.PairRequest, run int) (resp *ipc.PairResponse, err error) {
+	ctx, span := tracer.Start(ctx, "cop.pair", trace.WithAttributes(
+		attribute.String("cop.where", copWhere(pairer)),
+		attribute.Int("cop.run", run),
+		attribute.Int("cop.players", int(req.ValidPlayers)),
+		attribute.Int("cop.all_players", int(req.AllPlayers)),
+		attribute.Int("cop.division_sims", int(req.DivisionSims)),
+		attribute.Int("cop.control_loss_sims", int(req.ControlLossSims))))
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
+		}
+		span.End()
+	}()
+	resp, err = pairer.PairCOP(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("run COP: %w", err)
+	}
+	span.SetAttributes(attribute.String("cop.error_code", resp.ErrorCode.String()))
+	if resp.ErrorCode != ipc.PairError_SUCCESS {
+		return nil, fmt.Errorf("COP pairing failed: %s", resp.ErrorMessage)
+	}
+	return resp, nil
+}
+
+func copWhere(pairer COPPairer) string {
+	switch pairer.(type) {
+	case LocalCOPPairer, *LocalCOPPairer:
+		return "local"
+	case LambdaCOPPairer, *LambdaCOPPairer:
+		return "lambda"
+	}
+	return "other"
 }
 
 // PairRoundGaveUp tells the directors that a round couldn't be paired, once
