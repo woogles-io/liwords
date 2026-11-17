@@ -282,7 +282,23 @@ jobs:
 
           echo "Using Docker image: $DOCKER_IMAGE"
 
-          # For EC2 launch type, we need to register a new task definition revision
+          # On Fargate once the liwords-api stack (aws/cfn/fargate) has made
+          # its migration task definition; on the EC2 cluster until then.
+          RUN_ARGS=(--launch-type EC2)
+          if aws ecs describe-task-definition --task-definition liwords-db-migration-fargate \
+              --region $AWS_REGION >/dev/null 2>&1; then
+            base_output() {
+              aws cloudformation describe-stacks --stack-name liwords-base --region $AWS_REGION \
+                --query "Stacks[0].Outputs[?OutputKey=='$1'].OutputValue" --output text
+            }
+            TASK_DEFINITION=liwords-db-migration-fargate
+            ECS_CLUSTER=$(base_output ClusterName)
+            RUN_ARGS=(--launch-type FARGATE --network-configuration
+              "awsvpcConfiguration={subnets=[$(base_output Subnets)],securityGroups=[$(base_output TaskSecurityGroupId)],assignPublicIp=ENABLED}")
+          fi
+          echo "Running $TASK_DEFINITION on $ECS_CLUSTER (${RUN_ARGS[1]})"
+
+          # Register a revision of the task definition with the new image.
           # Get the current task definition
           TASK_DEF_JSON=$(aws ecs describe-task-definition \
             --task-definition $TASK_DEFINITION \
@@ -308,7 +324,7 @@ jobs:
           TASK_OUTPUT=$(aws ecs run-task \
             --cluster $ECS_CLUSTER \
             --task-definition $NEW_TASK_DEF_ARN \
-            --launch-type EC2 \
+            "${RUN_ARGS[@]}" \
             --region $AWS_REGION)
 
           # Extract task ARN

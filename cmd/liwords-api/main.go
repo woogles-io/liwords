@@ -355,7 +355,12 @@ func main() {
 	}
 	leagueService := league.NewLeagueService(stores.LeagueStore, stores.UserStore, cfg, stores.Queries, stores, gameCreatorAdapter)
 	modService := mod.NewModService(stores.UserStore, stores.ChatStore, stores.Queries)
-	puzzleService := puzzles.NewPuzzleService(stores.PuzzleStore, stores.UserStore, cfg.PuzzleGenerationSecretKey, cfg.ECSClusterName, cfg.PuzzleGenerationTaskDefinition, stores.Queries)
+	puzzleService := puzzles.NewPuzzleService(stores.PuzzleStore, stores.UserStore, cfg.PuzzleGenerationSecretKey, puzzles.ECSTask{
+		Cluster:        cfg.ECSClusterName,
+		TaskDefinition: cfg.PuzzleGenerationTaskDefinition,
+		Subnets:        splitList(cfg.PuzzleGenerationSubnets),
+		SecurityGroups: splitList(cfg.PuzzleGenerationSecurityGroups),
+	}, stores.Queries)
 	omgwordsService := omgwords.NewOMGWordsService(stores.UserStore, cfg, stores.GameDocumentStore, stores.AnnotatedGameStore)
 	commentService := comments.NewCommentsService(stores.UserStore, stores.GameStore, stores.CommentsStore, stores.Queries)
 	collectionsService := collections.NewCollectionsService(stores.UserStore, stores.Queries, dbPool)
@@ -692,3 +697,14 @@ func main() {
 // 	}
 // 	return connect.UnaryInterceptorFunc(interceptor)
 // }
+
+// splitList splits a comma-separated flag value, dropping empty items.
+func splitList(s string) []string {
+	var out []string
+	for _, item := range strings.Split(s, ",") {
+		if item = strings.TrimSpace(item); item != "" {
+			out = append(out, item)
+		}
+	}
+	return out
+}

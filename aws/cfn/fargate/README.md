@@ -7,14 +7,19 @@ services until traffic moves over, so nothing has to stop for the move.
 | Stack | Template | Deployed by |
 |---|---|---|
 | `liwords-base` | `base.yaml` | hand, rarely |
-| `liwords-api` | `liwords-api.yaml` | CI on master (once enabled), or by hand |
+| `liwords-api` | `liwords-api.yaml` (also the puzzle generation and migration task definitions) | CI on master (once enabled), or by hand |
 | `liwords-socket` | `liwords-socket.yaml` | CI on master (once enabled), or by hand |
 | `macondo-bot` | `macondo-bot.yaml` | hand (the image is built in the macondo repo) |
 
 ## What is where
 
 - **Cluster** `woogles` (Fargate only). The EC2 cluster `woogles-prod` keeps
-  running the old services, puzzle-generator and the migration task.
+  running the old services until they're scaled down.
+- **On-demand tasks**: `puzzle-generator-fargate`, started by the API
+  (`pkg/puzzles`, with `-puzzle-generation-subnets` set), and
+  `liwords-db-migration-fargate`, which CI runs before each deploy. CI
+  switches the migration to Fargate by itself once that task definition
+  exists.
 - **Network**: VPC `vpc-0fe61cd12246e6ee0`, subnet `subnet-0957a537f7ee06915`
   (us-east-2a, where Postgres, Redis and NATS are). Tasks get public IPs,
   since there is no NAT gateway; the security group `liwords-fargate-tasks`
@@ -77,3 +82,21 @@ also how to roll back. Stacks that don't exist are skipped.
 
 CI deploys through the base stack's `liwordsCfnDeployRole`, so the CI user
 can only start updates of these two stacks.
+
+## Retiring the EC2 instances
+
+Once the API and socket take all traffic on Fargate, a migration has run on
+Fargate, and a puzzle generation job has:
+
+1. Scale the EC2 services (`woogles-api`, `woogles-socket`, `macondo-bot` in
+   `woogles-prod`) to 0, and after a few quiet days delete them and the old
+   target groups (`woogles-api`, `woogles-websocket`).
+2. Set the listener's default action and the `/ws` rule to forward to the
+   Fargate target groups alone.
+3. Set the ECS auto scaling group to 0 and terminate the two instances
+   outside it; then the cluster `woogles-prod`, `ecsInstanceRole`, and the
+   old task definition families.
+4. Keep the `EC2ContainerService-woogles-prod` CloudFormation stack: it owns
+   the VPC, subnets, internet gateway and the security group EFS uses.
+   Remove only its auto scaling group and launch configuration, if at all.
+

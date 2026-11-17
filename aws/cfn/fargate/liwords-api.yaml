@@ -1,6 +1,7 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: >-
-  liwords-api on Fargate: task definition, service and target group. CI
+  liwords-api on Fargate: task definition, service and target group, and the
+  task definitions for puzzle generation and migrations. CI
   updates it on every master build that passes the deploy gate; ImageTag is
   the only parameter that changes per deploy.
 
@@ -99,10 +100,11 @@ Resources:
             - { Name: COP_PAIR_LAMBDA_FUNCTION_NAME, Value: COPPairFunction }
             - { Name: COP_PAIR_JOB_LAMBDA_FUNCTION_NAME, Value: !Ref COPPairJobLambdaFunctionName }
             - { Name: TOURNEY_PDF_LAMBDA_FUNCTION_NAME, Value: TourneyPDFFunction }
-            # puzzle-generator still runs on the EC2 cluster: RunTask in
-            # pkg/puzzles sets no launch type or network configuration.
-            - { Name: ECS_CLUSTER_NAME, Value: woogles-prod }
-            - { Name: PUZZLE_GENERATION_TASK_DEFINITION, Value: puzzle-generator }
+            # The API starts PuzzleGenTaskDefinition (below) on Fargate.
+            - { Name: ECS_CLUSTER_NAME, Value: { "Fn::ImportValue": !Sub "${BaseStackName}-ClusterName" } }
+            - { Name: PUZZLE_GENERATION_TASK_DEFINITION, Value: puzzle-generator-fargate }
+            - { Name: PUZZLE_GENERATION_SUBNETS, Value: { "Fn::ImportValue": !Sub "${BaseStackName}-Subnets" } }
+            - { Name: PUZZLE_GENERATION_SECURITY_GROUPS, Value: { "Fn::ImportValue": !Sub "${BaseStackName}-TaskSecurityGroupId" } }
             - { Name: PATREON_CLIENT_ID, Value: VRup-HOI7HQ7bzBqrN2J4S9y1GRWtZcAW1aot8vdjnGQJv1V9hwItPhhIv-X68Wk }
             - { Name: PATREON_REDIRECT_URI, Value: "https://woogles.io/integrations/patreon/callback" }
             - { Name: TWITCH_CLIENT_ID, Value: j4v7y2d101wijl3kjiuckuxa1lecyy }
@@ -161,6 +163,98 @@ Resources:
             - Name: LEAGUE_DISCORD_TOKEN
               ValueFrom: !Sub
                 - arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter${Path}/league-discord-token
+                - Path: { "Fn::ImportValue": !Sub "${BaseStackName}-SecretsPath" }
+
+  # Run on demand by the API (pkg/puzzles), one task per generation job,
+  # from the same build as the API.
+  PuzzleGenTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: puzzle-generator-fargate
+      RequiresCompatibilities: [FARGATE]
+      NetworkMode: awsvpc
+      RuntimePlatform:
+        CpuArchitecture: X86_64
+        OperatingSystemFamily: LINUX
+      Cpu: "1024"
+      Memory: "2048"
+      ExecutionRoleArn: { "Fn::ImportValue": !Sub "${BaseStackName}-ExecutionRoleArn" }
+      Volumes:
+        - Name: datavol
+          EFSVolumeConfiguration:
+            FilesystemId: fs-d4db50ac
+            RootDirectory: /
+            TransitEncryption: ENABLED
+      ContainerDefinitions:
+        # The API overrides the command with the job's request.
+        - Name: liwords-puzzlegen
+          Image: !Sub ghcr.io/woogles-io/liwords-puzzlegen:${ImageTag}
+          Essential: true
+          MountPoints:
+            - { SourceVolume: datavol, ContainerPath: /datavol, ReadOnly: true }
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: /ecs/liwords-puzzlegen
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: fargate
+          Environment:
+            - { Name: AWS_REGION, Value: !Ref AWS::Region }
+            - { Name: DEBUG, Value: "0" }
+            - { Name: DB_HOST, Value: 10.0.0.76 }
+            - { Name: DB_PORT, Value: "5432" }
+            - { Name: DB_NAME, Value: liwords }
+            - { Name: DB_USER, Value: liwords }
+            - { Name: DB_SSL_MODE, Value: disable }
+            - { Name: MACONDO_DATA_PATH, Value: /datavol/data }
+            - { Name: MACONDO_KWG_PATH_PREFIX, Value: "2024" }
+          Secrets:
+            - Name: DB_PASSWORD
+              ValueFrom: !Sub
+                - arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter${Path}/db-password
+                - Path: { "Fn::ImportValue": !Sub "${BaseStackName}-SecretsPath" }
+
+  # Run by CI before each deploy (build-and-deploy.yml registers a revision
+  # with the new image and runs it), so a deploy's migrations are in before
+  # its code starts.
+  MigrationTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: liwords-db-migration-fargate
+      RequiresCompatibilities: [FARGATE]
+      NetworkMode: awsvpc
+      RuntimePlatform:
+        CpuArchitecture: X86_64
+        OperatingSystemFamily: LINUX
+      Cpu: "256"
+      Memory: "512"
+      ExecutionRoleArn: { "Fn::ImportValue": !Sub "${BaseStackName}-ExecutionRoleArn" }
+      ContainerDefinitions:
+        - Name: db-migration
+          Image: !Sub ghcr.io/woogles-io/liwords-api:${ImageTag}
+          Essential: true
+          Command:
+            - /opt/liwords-api
+            - -db-migrations-path=file:///opt/db/migrations
+            - -run-migrations=true
+            - -quit-after-migration=true
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: /ecs/liwords-db-migration
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: fargate
+          Environment:
+            - { Name: DB_HOST, Value: 10.0.0.76 }
+            - { Name: DB_PORT, Value: "5432" }
+            - { Name: DB_NAME, Value: liwords }
+            - { Name: DB_USER, Value: liwords }
+            - { Name: DB_SSL_MODE, Value: disable }
+            - { Name: DB_MIGRATIONS_PATH, Value: "file:///opt/db/migrations" }
+          Secrets:
+            - Name: DB_PASSWORD
+              ValueFrom: !Sub
+                - arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter${Path}/db-password
                 - Path: { "Fn::ImportValue": !Sub "${BaseStackName}-SecretsPath" }
 
   TargetGroup:
@@ -233,6 +327,10 @@ Resources:
         - { Key: app, Value: liwords }
 
 Outputs:
+  PuzzleGenTaskDefinitionArn:
+    Value: !Ref PuzzleGenTaskDefinition
+  MigrationTaskDefinitionArn:
+    Value: !Ref MigrationTaskDefinition
   TargetGroupArn:
     Value: !Ref TargetGroup
   ServiceName:

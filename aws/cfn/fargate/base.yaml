@@ -37,10 +37,6 @@ Parameters:
   GithubDeployUser:
     Type: String
     Default: GithubActionsUploadUser
-  # The EC2 cluster puzzle-generator still runs on (pkg/puzzles RunTask).
-  LegacyClusterName:
-    Type: String
-    Default: woogles-prod
 
 Resources:
   Cluster:
@@ -191,11 +187,11 @@ Resources:
                 Resource: !Sub arn:aws:ecs:${AWS::Region}:${AWS::AccountId}:task-definition/puzzle-generator*
                 Condition:
                   ArnEquals:
-                    ecs:cluster: !Sub arn:aws:ecs:${AWS::Region}:${AWS::AccountId}:cluster/${LegacyClusterName}
-              # puzzle-generator runs as ecsTaskExecutionRole.
+                    ecs:cluster: !Sub arn:aws:ecs:${AWS::Region}:${AWS::AccountId}:cluster/${ClusterName}
+              # The puzzle generation task runs with only an execution role.
               - Effect: Allow
                 Action: iam:PassRole
-                Resource: !Sub arn:aws:iam::${AWS::AccountId}:role/ecsTaskExecutionRole
+                Resource: !GetAtt ExecutionRole.Arn
                 Condition:
                   StringEquals:
                     iam:PassedToService: ecs-tasks.amazonaws.com
@@ -347,6 +343,14 @@ Resources:
             Condition:
               StringEquals:
                 iam:PassedToService: cloudformation.amazonaws.com
+          # The migration step registers a revision of
+          # liwords-db-migration-fargate with the new image, and runs it.
+          - Effect: Allow
+            Action: iam:PassRole
+            Resource: !GetAtt ExecutionRole.Arn
+            Condition:
+              StringEquals:
+                iam:PassedToService: ecs-tasks.amazonaws.com
           - Effect: Allow
             Action: ecs:DescribeServices
             Resource: !Sub arn:aws:ecs:${AWS::Region}:${AWS::AccountId}:service/${ClusterName}/*
