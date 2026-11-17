@@ -10,7 +10,6 @@ import (
 	"net/url"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -242,22 +241,10 @@ func SubBadgeUpdater() error {
 	return updateBadges(q, dbPool)
 }
 
+// refreshPatreonIntegrationTokens keeps the creator token alive. Users'
+// own tokens aren't stored: tier checks find their patreon_user_id in the
+// campaign member list, which the creator token fetches.
 func refreshPatreonIntegrationTokens(ctx context.Context, q *models.Queries, svc *integrations.OAuthIntegrationService) {
-	expiringIntegrations, err := q.GetExpiringPatreonIntegrations(ctx)
-	if err != nil {
-		panic(err)
-	}
-	for _, integration := range expiringIntegrations {
-		// Tier checks look users up in the campaign member list by
-		// patreon_user_id, so once we have that ID their token is unused.
-		// Only legacy rows linked before we stored it still need one.
-		var integrationData integrations.PatreonTokenResponse
-		if err := json.Unmarshal(integration.Data, &integrationData); err == nil && integrationData.PatreonUserID != "" {
-			continue
-		}
-		refreshPatreonToken(ctx, q, integration, svc)
-		time.Sleep(2 * time.Second)
-	}
 	bts, err := q.GetExpiringGlobalPatreonIntegration(ctx)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -292,44 +279,6 @@ func refreshPatreonIntegrationTokens(ctx context.Context, q *models.Queries, svc
 		return
 	} else {
 		log.Info().Msg("refreshed and saved global integration token")
-	}
-}
-
-func refreshPatreonToken(ctx context.Context, q *models.Queries, integration models.GetExpiringPatreonIntegrationsRow, svc *integrations.OAuthIntegrationService) {
-	var integrationData integrations.PatreonTokenResponse
-
-	if err := json.Unmarshal(integration.Data, &integrationData); err != nil {
-		log.Err(err).Msg("failed to unmarshal integration data")
-		return
-	}
-
-	tokres, err := svc.RefreshPatreonToken(integrationData.RefreshToken)
-	if err != nil {
-		log.Err(err).Str("integration-uuid", integration.Uuid.String()).Msg("failed to refresh patreon token")
-		return
-	}
-	// Backfill the patreon_user_id while the token is fresh, so this row
-	// never needs refreshing again.
-	patreonUserID, err := integrations.FetchPatreonUserID(tokres.AccessToken)
-	if err != nil {
-		log.Err(err).Str("integration-uuid", integration.Uuid.String()).Msg("failed to fetch patreon user id")
-	} else {
-		tokres.PatreonUserID = patreonUserID
-	}
-	tokresjson, err := json.Marshal(tokres)
-	if err != nil {
-		panic(err)
-	}
-
-	err = q.UpdateIntegrationData(ctx, models.UpdateIntegrationDataParams{
-		Uuid: integration.Uuid,
-		Data: tokresjson,
-	})
-	if err != nil {
-		log.Err(err).Str("integration-uuid", integration.Uuid.String()).Msg("failed to update integration data")
-		return
-	} else {
-		log.Info().Str("integration-uuid", integration.Uuid.String()).Msg("refreshed and saved token")
 	}
 }
 
