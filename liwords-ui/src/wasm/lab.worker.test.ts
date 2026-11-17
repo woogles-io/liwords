@@ -1,4 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  OUT_OF_MEMORY_DRAWS,
+  OUT_OF_MEMORY_MOVES,
+  SIM_OUT_OF_MEMORY,
+} from "./lab_errors";
 
 // The worker's module, run in the page's scope: its handler is set on self,
 // and what it posts is caught. The wasm is a fake, each test saying what its
@@ -35,6 +40,10 @@ const wasm = vi.hoisted(() => ({
     }),
   ),
   infer_free: vi.fn(),
+  precache_kbwg: vi.fn(),
+  build_kbwg: vi.fn(() => new Uint8Array([1])),
+  infer_export: vi.fn(() => new Uint8Array([7, 7])),
+  infer_import: vi.fn(() => 6),
   stitched_z: vi.fn((iterations: number, alpha: number) => iterations + alpha),
   threats_new: vi.fn((_request: string) => 7),
   threats_step: vi.fn((_handle: number, _request: string) =>
@@ -67,6 +76,24 @@ const send = async (id: number, op: string, args?: object) => {
 
 const events = () => posted.filter((m) => m.event).map((m) => m.event!);
 
+// A fake endgame's steps: each answers the next of these, the last again once
+// they run out; a read without stepping (ms 0) answers as the last step did.
+const stepping = (...answers: Array<object>) => {
+  let last = "{}";
+  let i = 0;
+  wasm.endgame_step.mockImplementation((_handle: number, request: string) => {
+    if (JSON.parse(request).ms === 0) return last;
+    last = JSON.stringify(answers[Math.min(i++, answers.length - 1)]);
+    return last;
+  });
+};
+
+// the endgame's steps, its reads without stepping left out
+const stepCalls = () =>
+  wasm.endgame_step.mock.calls.filter(
+    ([, request]) => JSON.parse(request as string).ms !== 0,
+  );
+
 // a sim's answer: its candidates, each in the state given
 const simAnswer = (...states: Array<string>) =>
   JSON.stringify({ candidates: states.map((state) => ({ state })) });
@@ -83,6 +110,7 @@ const pruned = {
 
 beforeEach(async () => {
   vi.clearAllMocks();
+  wasm.endgame_step.mockReset();
   posted.length = 0;
   vi.stubGlobal("postMessage", (m: (typeof posted)[number]) => posted.push(m));
   vi.stubGlobal("fetch", (path: string) =>
@@ -100,6 +128,19 @@ afterEach(async () => {
 });
 
 describe("the lab's worker", () => {
+  it("keeps a board's pruned lexicon when the files change, till told to let it go", async () => {
+    await send(1, "kbwg_load", { key: "kbwg:a", bytes: new Uint8Array([1]) });
+    expect(wasm.precache_kbwg).toHaveBeenCalledWith(
+      "kbwg:a",
+      new Uint8Array([1]),
+    );
+    await send(2, "prepare", { files: [{ cacheKey: "kwg/one", path: "x" }] });
+    await send(3, "prepare", { files: [{ cacheKey: "kwg/two", path: "y" }] });
+    expect(wasm.evict_kwg).not.toHaveBeenCalledWith("kbwg:a");
+    await send(4, "kbwg_evict", { key: "kbwg:a" });
+    expect(wasm.evict_kwg).toHaveBeenCalledWith("kbwg:a");
+  });
+
   it("loads a job's files, and drops the last job's", async () => {
     await send(1, "prepare", {
       files: [{ cacheKey: "kwg/CSW24", path: "/wasm/2024/CSW24.kwg" }],
@@ -137,9 +178,7 @@ describe("the lab's worker", () => {
   });
 
   it("steps an endgame until it is exact, then frees it", async () => {
-    wasm.endgame_step
-      .mockReturnValueOnce(JSON.stringify({ exact: false, depth: 3 }))
-      .mockReturnValueOnce(JSON.stringify({ exact: true, depth: 5 }));
+    stepping({ exact: false, depth: 3 }, { exact: true, depth: 5 });
     const made = await send(1, "endgame", { request: "{}" });
     expect(wasm.endgame_new).toHaveBeenCalledWith("{}");
     const job = made.result as number;
@@ -152,9 +191,9 @@ describe("the lab's worker", () => {
     ]);
     expect(wasm.endgame_step).toHaveBeenCalledWith(
       7,
-      JSON.stringify({ ms: 50 }),
+      JSON.stringify({ ms: 50, brief: true }),
     );
-    expect(wasm.endgame_step).toHaveBeenCalledTimes(2);
+    expect(stepCalls()).toHaveLength(2);
 
     // a sim's own calls are no endgame's
     expect((await send(3, "add", { job, plays: "[]" })).error).toBe(
@@ -162,17 +201,92 @@ describe("the lab's worker", () => {
     );
 
     await send(4, "free", { job });
-    expect(wasm.endgame_free).toHaveBeenCalledWith(7);
+    // its table is kept to warm the next endgame, and let go by a sim
+    expect(wasm.endgame_free).not.toHaveBeenCalled();
     expect(events()[events().length - 1]).toEqual({ job, freed: true });
     expect((await send(5, "run", { job, ms: 50, alpha: 0.05 })).error).toBe(
       "no such job",
     );
   });
 
+  it("reads an endgame's best plays, as many as listed, but every play of a part", async () => {
+    stepping({ exact: false, depth: 1 });
+    const job = (await send(1, "endgame", { request: "{}" })).result as number;
+    await send(2, "read", { job });
+    expect(wasm.endgame_step).toHaveBeenLastCalledWith(
+      7,
+      JSON.stringify({ ms: 0, candidates_range: [0, 50] }),
+    );
+    // more listed: read at once, as many as asked
+    await send(3, "list", { job, upTo: 100 });
+    expect(wasm.endgame_step).toHaveBeenLastCalledWith(
+      7,
+      JSON.stringify({ ms: 0, candidates_range: [0, 100] }),
+    );
+    // (no step yet: a read answers as the fake's first, empty)
+    expect(events()[events().length - 1]).toEqual({
+      job,
+      answer: {},
+      done: false,
+    });
+    // a part of a pre-endgame in parts gives every play, to be merged
+    const part = (
+      await send(4, "endgame", { request: '{"model":"x","part":[0,2]}' })
+    ).result as number;
+    await send(5, "read", { job: part });
+    expect(wasm.endgame_step).toHaveBeenLastCalledWith(
+      7,
+      JSON.stringify({ ms: 0 }),
+    );
+    const listed = events().length;
+    await send(6, "list", { job: part, upTo: 100 });
+    expect(events()).toHaveLength(listed);
+  });
+
+  it("warms an endgame with the one let go before it, or starts cold", async () => {
+    const first = (await send(1, "endgame", { request: '{"a":1}' }))
+      .result as number;
+    await send(2, "free", { job: first });
+    // the next is made warm, and the earlier table goes with it
+    await send(3, "endgame", { request: '{"b":2}' });
+    expect(wasm.endgame_new).toHaveBeenLastCalledWith(
+      JSON.stringify({ b: 2, warm_from: 7 }),
+    );
+    expect(wasm.endgame_free).toHaveBeenCalledWith(7);
+    // one the wasm will not warm is made cold
+    wasm.endgame_new.mockImplementationOnce(() => {
+      throw "not warmable";
+    });
+    await send(4, "free", { job: 2 });
+    await send(5, "endgame", { request: '{"c":3}' });
+    expect(wasm.endgame_new).toHaveBeenLastCalledWith('{"c":3}');
+    // a pre-endgame (a bag model) keeps and takes a table too
+    await send(6, "free", { job: 3 });
+    await send(7, "endgame", { request: '{"model":"info_sets"}' });
+    expect(wasm.endgame_new).toHaveBeenLastCalledWith(
+      JSON.stringify({ model: "info_sets", warm_from: 7 }),
+    );
+    await send(8, "free", { job: 4 });
+    await send(9, "endgame", { request: '{"d":4}' });
+    expect(wasm.endgame_new).toHaveBeenLastCalledWith(
+      JSON.stringify({ d: 4, warm_from: 7 }),
+    );
+    wasm.endgame_new.mockImplementation(() => 7);
+  });
+
+  it("lets the endgame kept to warm go when threats are made", async () => {
+    const first = (await send(1, "endgame", { request: '{"a":1}' }))
+      .result as number;
+    await send(2, "free", { job: first });
+    expect(wasm.endgame_free).not.toHaveBeenCalled();
+    await send(3, "threats_new", { request: '{"rack":[1]}' });
+    expect(wasm.endgame_free).toHaveBeenCalledWith(7);
+    await send(4, "endgame", { request: '{"b":2}' });
+    expect(wasm.endgame_new).toHaveBeenLastCalledWith('{"b":2}');
+  });
+
   it("stops an endgame whose step searched no node, out of memory", async () => {
-    wasm.endgame_step
-      .mockReturnValueOnce(JSON.stringify({ exact: false, nodes: 40 }))
-      .mockReturnValueOnce(JSON.stringify({ exact: false, nodes: 40 }));
+    stepping({ exact: false, nodes: 40 });
     const job = (await send(1, "endgame", { request: "{}" })).result as number;
     await send(2, "run", { job, ms: 16 });
     await vi.waitFor(() => expect(events().some((e) => e.error)).toBe(true));
@@ -182,9 +296,16 @@ describe("the lab's worker", () => {
         job,
         error:
           "Out of memory: the solve has no room to search. Use fewer workers.",
+        firstStep: false,
       },
     ]);
-    expect(wasm.endgame_step).toHaveBeenCalledTimes(2);
+    expect(stepCalls()).toHaveLength(2);
+    // after a step that answered: no first-step retry
+    expect(
+      (events().find((e) => e.error) as { firstStep?: boolean }).firstStep,
+    ).toBe(false);
+    // and the page is told to let this worker go, its memory with it
+    expect(posted.some((m) => (m as { spent?: boolean }).spent)).toBe(true);
   });
 
   it("stops an endgame whose first step searched no node", async () => {
@@ -195,19 +316,68 @@ describe("the lab's worker", () => {
     await send(2, "run", { job, ms: 16 });
     await vi.waitFor(() => expect(events().some((e) => e.error)).toBe(true));
     expect(wasm.endgame_step).toHaveBeenCalledTimes(1);
+    // on its first step: worth one try on a fresh worker
+    expect(
+      (events().find((e) => e.error) as { firstStep?: boolean }).firstStep,
+    ).toBe(true);
   });
 
   it("stops a pre-endgame the wasm says is out of memory", async () => {
-    wasm.endgame_step
-      .mockReturnValueOnce(JSON.stringify({ exact: false, nodes: 0 }))
-      .mockReturnValueOnce(
-        JSON.stringify({ exact: false, nodes: 0, out_of_memory: true }),
-      );
+    stepping(
+      { exact: false, nodes: 0 },
+      { exact: false, nodes: 0, out_of_memory: true },
+    );
     const job = (await send(1, "endgame", { request: '{"model":"info_sets"}' }))
       .result as number;
     await send(2, "run", { job, ms: 16 });
     await vi.waitFor(() => expect(events().some((e) => e.error)).toBe(true));
-    expect(wasm.endgame_step).toHaveBeenCalledTimes(2);
+    expect(stepCalls()).toHaveLength(2);
+  });
+
+  it("says when the first moves alone did not fit, not to be tried again", async () => {
+    stepping({
+      exact: false,
+      nodes: 0,
+      out_of_memory: true,
+      out_of_memory_in: "moves",
+    });
+    const job = (await send(1, "endgame", { request: "{}" })).result as number;
+    await send(2, "run", { job, ms: 16 });
+    await vi.waitFor(() => expect(events().some((e) => e.error)).toBe(true));
+    expect(events().find((e) => e.error)!.error).toBe(OUT_OF_MEMORY_MOVES);
+  });
+
+  it("sends the plays valued so far with the error when each play's sets did not fit", async () => {
+    stepping({
+      exact: false,
+      nodes: 5,
+      out_of_memory: true,
+      out_of_memory_in: "draws",
+      play: { action: "pass" },
+      value: 3,
+    });
+    const job = (await send(1, "endgame", { request: '{"model":"info_sets"}' }))
+      .result as number;
+    await send(2, "run", { job, ms: 16 });
+    await vi.waitFor(() => expect(events().some((e) => e.error)).toBe(true));
+    const e = events().find((e) => e.error) as {
+      error: string;
+      answer?: { value?: number };
+    };
+    expect(e.error).toBe(OUT_OF_MEMORY_DRAWS);
+    expect(e.answer?.value).toBe(3);
+  });
+
+  it("takes a wasm that says it is not out of memory at its word", async () => {
+    stepping(
+      { exact: false, nodes: 5, out_of_memory: false },
+      { exact: false, nodes: 5, out_of_memory: false },
+      { exact: true, nodes: 9, out_of_memory: false },
+    );
+    const job = (await send(1, "endgame", { request: "{}" })).result as number;
+    await send(2, "run", { job, ms: 16 });
+    await vi.waitFor(() => expect(stepCalls().length).toBeGreaterThan(2));
+    expect(events().some((e) => e.error)).toBe(false);
   });
 
   it("names a panic in the wasm as one", async () => {
@@ -224,17 +394,48 @@ describe("the lab's worker", () => {
     expect(posted.some((m) => (m as { dead?: boolean }).dead)).toBe(true);
   });
 
+  it("sends a running endgame's answers a few times a second, the last when done", async () => {
+    stepping(
+      { exact: false, nodes: 0, steps: 1 },
+      { exact: false, nodes: 0, steps: 2 },
+      { exact: false, nodes: 0, steps: 3 },
+      { exact: true, nodes: 0, steps: 4 },
+    );
+    const job = (await send(1, "endgame", { request: '{"model":"info_sets"}' }))
+      .result as number;
+    await send(2, "run", { job, ms: 16 });
+    await vi.waitFor(() => expect(events().some((e) => e.done)).toBe(true));
+    expect(stepCalls()).toHaveLength(4);
+    // the first, then (the two between come within the same quarter second)
+    // the last, done
+    expect(
+      events().map((e) => (e.answer as { steps: number } | undefined)?.steps),
+    ).toEqual([1, 4]);
+  });
+
+  it("sends the answer a stopped endgame stopped on, if not yet sent", async () => {
+    stepping({ exact: false, nodes: 0, steps: 1 });
+    const job = (await send(1, "endgame", { request: '{"model":"info_sets"}' }))
+      .result as number;
+    await send(2, "run", { job, ms: 16 });
+    await vi.waitFor(() => expect(stepCalls().length).toBeGreaterThan(2));
+    const before = events().length;
+    await send(3, "stop", {});
+    expect(events().length).toBe(before + 1);
+  });
+
   it("keeps stepping a pre-endgame, whose answers count no nodes", async () => {
-    wasm.endgame_step
-      .mockReturnValueOnce(JSON.stringify({ exact: false, nodes: 0 }))
-      .mockReturnValueOnce(JSON.stringify({ exact: false, nodes: 0 }))
-      .mockReturnValueOnce(JSON.stringify({ exact: true, nodes: 0 }));
+    stepping(
+      { exact: false, nodes: 0 },
+      { exact: false, nodes: 0 },
+      { exact: true, nodes: 0 },
+    );
     const job = (await send(1, "endgame", { request: '{"model":"info_sets"}' }))
       .result as number;
     await send(2, "run", { job, ms: 16 });
     await vi.waitFor(() => expect(events().some((e) => e.done)).toBe(true));
     expect(events().some((e) => e.error)).toBe(false);
-    expect(wasm.endgame_step).toHaveBeenCalledTimes(3);
+    expect(stepCalls()).toHaveLength(3);
   });
 
   it("values an empty bag's every first move without stepping, only for an endgame", async () => {
@@ -248,7 +449,11 @@ describe("the lab's worker", () => {
     await send(2, "values", { job, ms: 1500 });
     expect(wasm.endgame_step).toHaveBeenCalledWith(
       7,
-      JSON.stringify({ ms: 0, first_moves_ms: 1500 }),
+      JSON.stringify({
+        ms: 0,
+        first_moves_ms: 1500,
+        candidates_range: [0, 50],
+      }),
     );
     expect(events()).toEqual([{ job, answer, done: true }]);
     const sim = (await send(3, "sim", { request: "{}", plays: "[]" }))
@@ -258,17 +463,91 @@ describe("the lab's worker", () => {
     );
   });
 
+  it("reads a pre-endgame play's rows by the play itself, without stepping", async () => {
+    const ba = { action: "play", word: [2, 1] };
+    const rows = [{ tiles: [5, 9], count: 3, value: 4 }];
+    // given apart from the plays, none of which the read asks for
+    wasm.endgame_step.mockReturnValueOnce(
+      JSON.stringify({
+        candidates: [],
+        drawn: { index: 70, play: ba, draws: rows },
+      }),
+    );
+    const job = (await send(1, "endgame", { request: "{}" })).result as number;
+    const read = await send(2, "draws", { job, play: JSON.stringify(ba) });
+    expect(read.result).toEqual({ rows, total: 1 });
+    expect(wasm.endgame_step).toHaveBeenCalledTimes(1);
+    expect(wasm.endgame_step).toHaveBeenLastCalledWith(
+      7,
+      JSON.stringify({ ms: 0, draws_of: ba, candidates_range: [0, 0] }),
+    );
+    // given on the play, where the answer gives it among its plays
+    wasm.endgame_step.mockReturnValueOnce(
+      JSON.stringify({ candidates: [{ play: ba, draws: rows }] }),
+    );
+    expect(
+      (await send(3, "draws", { job, play: JSON.stringify(ba) })).result,
+    ).toEqual({ rows, total: 1 });
+    // a play the endgame does not value has no rows
+    wasm.endgame_step.mockImplementationOnce(() => {
+      throw "no such play";
+    });
+    expect(
+      (await send(4, "draws", { job, play: JSON.stringify(ba) })).result,
+    ).toBeUndefined();
+
+    // a page of them, with how many it has in all
+    wasm.endgame_step.mockReturnValueOnce(
+      JSON.stringify({
+        drawn: { index: 1, play: ba, draws: rows, draws_total: 9 },
+      }),
+    );
+    const page = await send(5, "draws", {
+      job,
+      play: JSON.stringify(ba),
+      upTo: 1,
+    });
+    expect(page.result).toEqual({ rows, total: 9 });
+    expect(wasm.endgame_step).toHaveBeenLastCalledWith(
+      7,
+      JSON.stringify({
+        ms: 0,
+        draws_of: ba,
+        draws_range: [0, 1],
+        candidates_range: [0, 0],
+      }),
+    );
+    // a part of a pre-endgame in parts reads them the same way
+    wasm.endgame_step.mockReturnValueOnce(
+      JSON.stringify({ drawn: { index: 3, play: ba, draws: rows } }),
+    );
+    const part = (
+      await send(6, "endgame", { request: '{"model":"x","part":[1,2]}' })
+    ).result as number;
+    expect(
+      (await send(7, "draws", { job: part, play: JSON.stringify(ba) })).result,
+    ).toEqual({ rows, total: 1 });
+    expect(wasm.endgame_step).toHaveBeenLastCalledWith(
+      7,
+      JSON.stringify({ ms: 0, draws_of: ba, candidates_range: [0, 0] }),
+    );
+  });
+
   it("steps an endgame the same frame every step, whatever its bag and depth", async () => {
     const stepsMs = () =>
-      wasm.endgame_step.mock.calls.map(([, r]) => JSON.parse(r as string).ms);
-    const answer = (bag: number, depth: number, exact = false) =>
-      JSON.stringify({ bag, depth, exact });
-    wasm.endgame_step
-      .mockReturnValueOnce(answer(0, 1))
-      .mockReturnValueOnce(answer(0, 1))
-      .mockReturnValueOnce(answer(0, 1))
-      .mockReturnValueOnce(answer(0, 2))
-      .mockReturnValueOnce(answer(0, 2, true));
+      stepCalls().map(([, r]) => JSON.parse(r as string).ms);
+    const answer = (bag: number, depth: number, exact = false) => ({
+      bag,
+      depth,
+      exact,
+    });
+    stepping(
+      answer(0, 1),
+      answer(0, 1),
+      answer(0, 1),
+      answer(0, 2),
+      answer(0, 2, true),
+    );
     const job = (await send(1, "endgame", { request: "{}" })).result as number;
     await send(2, "run", { job, ms: 8, alpha: 0.05 });
     await vi.waitFor(() => expect(events().some((e) => e.done)).toBe(true));
@@ -276,10 +555,7 @@ describe("the lab's worker", () => {
 
     // tiles in the bag: the same
     wasm.endgame_step.mockReset();
-    wasm.endgame_step
-      .mockReturnValueOnce(answer(2, 0))
-      .mockReturnValueOnce(answer(2, 0))
-      .mockReturnValueOnce(answer(2, 127, true));
+    stepping(answer(2, 0), answer(2, 0), answer(2, 127, true));
     const last = (await send(3, "endgame", { request: "{}" })).result as number;
     await send(4, "run", { job: last, ms: 8, alpha: 0.05 });
     await vi.waitFor(() =>
@@ -352,6 +628,41 @@ describe("the lab's worker", () => {
     wasm.sim_step.mockReset();
   });
 
+  it("makes an inference once as bytes, and takes one given in place of its own", async () => {
+    const shared = (await send(1, "infer_share", { request: "the inference" }))
+      .result as { bytes: Uint8Array; count: number };
+    expect(wasm.infer).toHaveBeenCalledWith("the inference");
+    expect(wasm.infer_export).toHaveBeenCalledWith(4);
+    // kept for the next ask of the same board and settings
+    expect(wasm.infer_free).not.toHaveBeenCalledWith(4);
+    expect(shared).toMatchObject({ bytes: new Uint8Array([7, 7]), count: 3 });
+    wasm.infer.mockClear();
+    const made = await send(2, "sim", {
+      request: JSON.stringify({ plies: 2, known: [] }),
+      plays: "[]",
+      shared,
+    });
+    expect(wasm.infer).not.toHaveBeenCalled();
+    expect(wasm.infer_import).toHaveBeenCalledWith(shared.bytes);
+    expect(JSON.parse(wasm.sim_new.mock.calls[0][0] as string)).toEqual({
+      plies: 2,
+      inferred: 6,
+    });
+    expect(wasm.infer_free).toHaveBeenCalledWith(6);
+    expect(made.result).toMatchObject({ inferred: { count: 3 } });
+  });
+
+  it("keeps one inference for the panel, a sim, and a threats count of the same board and settings", async () => {
+    await send(1, "infer", { request: "same" });
+    await send(2, "sim", { request: "{}", plays: "[]", infer: "same" });
+    await send(3, "threats_new", { request: "{}", infer: "same" });
+    expect(wasm.infer).toHaveBeenCalledTimes(1);
+    expect(wasm.infer_free).not.toHaveBeenCalled();
+    await send(4, "infer", { request: "other" });
+    expect(wasm.infer).toHaveBeenCalledTimes(2);
+    expect(wasm.infer_free).toHaveBeenCalledWith(4);
+  });
+
   it("infers the opponent's leave for a sim, giving the sim its handle and letting it go", async () => {
     const made = await send(1, "sim", {
       request: JSON.stringify({ plies: 2, known: [] }),
@@ -363,7 +674,7 @@ describe("the lab's worker", () => {
       plies: 2,
       inferred: 4,
     });
-    expect(wasm.infer_free).toHaveBeenCalledWith(4);
+    expect(wasm.infer_free).not.toHaveBeenCalled();
     expect(made.result).toMatchObject({
       inferred: { count: 3, leaves: [{ tiles: [1], weight: 1 }] },
     });
@@ -379,7 +690,9 @@ describe("the lab's worker", () => {
       plies: 2,
       inferred: 4,
     });
-    expect(wasm.infer_free).toHaveBeenCalledTimes(2);
+    // another inference asked: the one kept let go, the new one kept
+    expect(wasm.infer_free).toHaveBeenCalledTimes(1);
+    expect(wasm.infer_free).toHaveBeenCalledWith(4);
     expect(set.result).toMatchObject({ inferred: { count: 3 } });
   });
 
@@ -390,7 +703,7 @@ describe("the lab's worker", () => {
     const request = JSON.stringify({ plies: 2, known: [] });
     await send(1, "sim", { request, plays: "[]", infer: "{}" });
     expect(wasm.sim_new).toHaveBeenCalledWith(request);
-    expect(wasm.infer_free).toHaveBeenCalledWith(5);
+    expect(wasm.infer_free).not.toHaveBeenCalled();
   });
 
   it("answers a sim's numbers against a play without stepping or sending them", async () => {
@@ -452,6 +765,25 @@ describe("the lab's worker", () => {
     expect((await send(4, "run", { job, ms: 100, alpha: 0.05 })).error).toBe(
       "no such job",
     );
+  });
+
+  it("stops a sim the wasm says is out of memory, the worker let go", async () => {
+    wasm.sim_step
+      .mockReturnValueOnce(simAnswer("running", "running"))
+      .mockReturnValueOnce(
+        JSON.stringify({
+          candidates: [{ state: "running" }, { state: "running" }],
+          out_of_memory: true,
+        }),
+      )
+      .mockReturnValue(simAnswer("running", "running"));
+    const { job } = (await send(1, "sim", { request: "{}", plays: "[]" }))
+      .result as { job: number };
+    await send(2, "run", { job, ms: 16, alpha: 0.05 });
+    await vi.waitFor(() => expect(events().some((e) => e.error)).toBe(true));
+    expect(events().find((e) => e.error)?.error).toBe(SIM_OUT_OF_MEMORY);
+    expect(wasm.sim_step).toHaveBeenCalledTimes(2);
+    expect(posted.some((m) => (m as { spent?: boolean }).spent)).toBe(true);
   });
 
   it("frees a sim whose plays the wasm turns down", async () => {
@@ -605,7 +937,7 @@ describe("the lab's worker", () => {
     expect(wasm.threats_new).toHaveBeenLastCalledWith(
       '{"rack":[1],"inferred":4}',
     );
-    expect(wasm.infer_free).toHaveBeenCalledWith(4);
+    expect(wasm.infer_free).not.toHaveBeenCalled();
     expect(inferred.result).toEqual({
       id: expect.any(Number),
       inferred: { count: 3, leaves: [{ tiles: [1], weight: 1 }] },

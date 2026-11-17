@@ -1,4 +1,4 @@
-import type { LabRequest } from "./lab.worker";
+import type { LabRequest, SharedInference } from "./lab.worker";
 import { EndgamePartAnswer, mergeEndgameAnswers } from "./lab_endgame_merge";
 import {
   PartAnswer,
@@ -30,6 +30,9 @@ export type LabEvent = {
   answer?: unknown;
   done?: boolean;
   error?: string;
+  // an endgame out of memory on its first step: the worker an earlier job
+  // left full, so worth one try on a fresh one
+  firstStep?: boolean;
   freed?: boolean;
 };
 
@@ -58,6 +61,7 @@ export const setLabPartsForTest = (n: number) => {
   parts = n;
   workers.forEach((w) => w?.terminate());
   workers = [];
+  pruned = [];
   pending.clear();
   sims.clear();
   endgames.clear();
@@ -111,10 +115,13 @@ const getWorker = (w: number) => {
   if (!worker) {
     worker = new Worker(new URL("./lab.worker.ts", import.meta.url));
     worker.onmessage = (e: MessageEvent) => {
-      const { id, result, error, event, dead } = e.data;
+      const { id, result, error, event, dead, spent } = e.data;
       if (dead) bury(w, worker!);
       if (event) {
         heard(w, event);
+        // a worker whose endgame ran out of memory keeps all it grew to: let
+        // go once its error is heard, so the next call makes a fresh one
+        if (spent) bury(w, worker!);
         return;
       }
       const p = pending.get(id);
@@ -138,17 +145,16 @@ const bury = (w: number, worker: Worker) => {
   if (workers[w] !== worker) return;
   worker.terminate();
   workers[w] = undefined;
+  for (const p of pruned) p.on.delete(w);
   for (const [id, p] of pending) {
     if (p.worker !== w) continue;
     pending.delete(id);
     p.reject(new Error("The lab's worker failed and was started again."));
   }
+  // a job in parts loses the part on this worker: the others, of no use
+  // alone, are freed
   for (const [page, held] of jobs) {
-    if (held.some((h) => h.worker === w)) {
-      jobs.delete(page);
-      sims.delete(page);
-      endgames.delete(page);
-    }
+    if (held.some((h) => h.worker === w)) freeParts(page, w);
   }
 };
 
@@ -237,12 +243,22 @@ const heardEndgame = (
     }
     return;
   }
+  const part = jobs.get(page)!.findIndex((h) => h.worker === worker);
   if (e.error) {
     stopParts(page);
-    emit({ job: page, error: e.error });
+    // an answer sent with the error stands, merged once every part has one
+    if (e.answer) endgame.answers[part] = e.answer as EndgamePartAnswer;
+    const stood = endgame.answers.every((a) => a)
+      ? mergeEndgameAnswers(endgame.answers as Array<EndgamePartAnswer>)
+      : undefined;
+    emit({
+      job: page,
+      error: e.error,
+      firstStep: e.firstStep,
+      ...(e.answer && stood ? { answer: stood } : {}),
+    });
     return;
   }
-  const part = jobs.get(page)!.findIndex((h) => h.worker === worker);
   if (e.answer) endgame.answers[part] = e.answer as EndgamePartAnswer;
   if (endgame.answers.some((a) => !a)) return;
   const answer = mergeEndgameAnswers(
@@ -341,7 +357,7 @@ const stopParts = (page: number) => {
   }
 };
 
-// The sim's parts freed but the one already gone.
+// A job's parts freed but the one already gone.
 const freeParts = (page: number, gone?: number) => {
   for (const h of jobs.get(page) ?? []) {
     if (h.worker !== gone) {
@@ -362,9 +378,11 @@ const partsOf = (job: number) => {
 
 const each = <T>(
   job: number,
-  request: (job: number) => LabRequest,
+  request: (job: number, worker: number) => LabRequest,
 ): Promise<Array<T>> =>
-  Promise.all(partsOf(job).map((h) => call<T>(h.worker, request(h.job))));
+  Promise.all(
+    partsOf(job).map((h) => call<T>(h.worker, request(h.job, h.worker))),
+  );
 
 // The jobs in parts made before this job, freed: a worker holds one job at
 // a time, so a job made on one worker frees the part there, and the whole
@@ -380,6 +398,122 @@ const rand53 = () =>
   Math.floor(Math.random() * 2 ** 21) * 2 ** 32 +
   Math.floor(Math.random() * 2 ** 32);
 
+// The boards' pruned lexicons the workers hold, the newest last: the current
+// board's and the one before it, which an inference reads (the board before
+// the opponent's last play). Each has its bytes, loaded on a worker that
+// lacks it without building it again, and the workers it is loaded on.
+type Pruned = { key: string; bytes: Uint8Array; on: Set<number> };
+const PRUNED_KEPT = 2;
+let pruned: Array<Pruned> = [];
+
+// A board's pruned lexicon is keyed by the lexicon, the rules, and the exact
+// board, never used for another board.
+const prunedKey = (r: Record<string, unknown>) =>
+  `kbwg:${JSON.stringify([r.lexicon, r.rules, r.board])}`;
+
+// A request on its board's pruned lexicon where worker w already holds it,
+// as it was otherwise: none is built for it. flag says it is pruned, for the
+// calls that would prune a full one themselves.
+const onPruned = (request: string, w: number, flag = false) => {
+  let r: Record<string, unknown>;
+  try {
+    r = JSON.parse(request);
+  } catch {
+    return request;
+  }
+  const key = prunedKey(r);
+  return pruned.some((p) => p.key === key && p.on.has(w))
+    ? JSON.stringify({ ...r, lexicon: key, ...(flag ? { pruned: true } : {}) })
+    : request;
+};
+
+// A sim's inference, asked of its n workers: made once, on the first worker,
+// and given to each as bytes in place of each making its own. A wasm that
+// cannot share one, or a failure, leaves each worker to infer for itself.
+const sharedFor = async (
+  infer: string | undefined,
+  n: number,
+): Promise<SharedInference | undefined> => {
+  if (infer === undefined || n < 2) return undefined;
+  try {
+    const shared = await call<SharedInference>(0, {
+      op: "infer_share",
+      args: { request: onPruned(infer, 0) },
+    });
+    return shared?.bytes instanceof Uint8Array ? shared : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+// A part's inference: the one shared, or its own made on the board's pruned
+// lexicon where held.
+const inferOf = (
+  infer: string | undefined,
+  shared: SharedInference | undefined,
+  w: number,
+) =>
+  shared
+    ? { infer: undefined, shared }
+    : infer !== undefined
+      ? { infer: onPruned(infer, w) }
+      : {};
+
+// A job on n workers (the first n) from one request: the board's pruned
+// lexicon built once, on the first worker, from the full one, unless held
+// already, and loaded on each, the request then naming it. A third board's
+// lets the oldest go. A wasm that cannot prune, or a prune that fails, leaves
+// the request on the full lexicon.
+const prunedFor = async (
+  base: Record<string, unknown>,
+  n: number,
+  flag = true,
+) => {
+  const key = prunedKey(base);
+  try {
+    let held = pruned.find((p) => p.key === key);
+    if (!held) {
+      // built under the cap the job's request gives each worker, never past it
+      const { lexicon, rules, board, max_memory_mb } = base;
+      // built only when the wasm says the n searches on it pay for it
+      const pays = await call<boolean>(0, {
+        op: "prune_pays",
+        args: { request: JSON.stringify({ rules, board, uses: n }) },
+      });
+      if (pays === false) return base;
+      const bytes = await call<Uint8Array>(0, {
+        op: "kbwg_build",
+        args: {
+          request: JSON.stringify({ lexicon, rules, board, max_memory_mb }),
+        },
+      });
+      if (!(bytes instanceof Uint8Array)) return base;
+      held = { key, bytes, on: new Set() };
+      pruned.push(held);
+      while (pruned.length > PRUNED_KEPT) {
+        // jobs made on it keep it until they are freed
+        const old = pruned.shift()!;
+        await Promise.all(
+          [...old.on].map((w) =>
+            call(w, { op: "kbwg_evict", args: { key: old.key } }),
+          ),
+        );
+      }
+    }
+    const { bytes, on } = held;
+    await Promise.all(
+      Array.from({ length: n }, async (_, w) => {
+        if (on.has(w)) return;
+        await call(w, { op: "kbwg_load", args: { key, bytes } });
+        on.add(w);
+      }),
+    );
+  } catch {
+    return base;
+  }
+  return { ...base, lexicon: key, ...(flag ? { pruned: true } : {}) };
+};
+
 const multi = async (request: LabRequest): Promise<unknown> => {
   const n = labParts();
   switch (request.op) {
@@ -388,20 +522,39 @@ const multi = async (request: LabRequest): Promise<unknown> => {
       return (
         await Promise.all(Array.from({ length: n }, (_, w) => call(w, request)))
       )[0];
+    // an analysis or an inference prunes nothing itself, so takes the
+    // board's pruned lexicon where held, never building it
     case "analyze":
+    case "infer":
+      return call(0, {
+        ...request,
+        args: { ...request.args, request: onPruned(request.args.request, 0) },
+      });
     // a threats count is no job: one worker holds it, apart from the jobs
-    case "threats_new":
+    case "threats_new": {
+      // a threats count prunes nothing itself
+      const base = await prunedFor(JSON.parse(request.args.request), 1, false);
+      const { infer } = request.args;
+      return call(0, {
+        ...request,
+        args: {
+          ...request.args,
+          request: JSON.stringify(base),
+          ...(infer !== undefined ? { infer: onPruned(infer, 0) } : {}),
+        },
+      });
+    }
     case "threats_step":
     case "threats_free":
     // each part holds as much as the first, the same lexicon and graph
     case "held":
-    case "infer":
       return call(0, request);
     case "endgame": {
       freeSims();
-      const base = JSON.parse(request.args.request);
+      const asked = JSON.parse(request.args.request);
       const k = Math.min(n, request.args.parts ?? n);
-      if (base.model !== undefined && k > 1) {
+      if (asked.model !== undefined && k > 1) {
+        const base = await prunedFor(asked, k);
         // part k of n values the bag's sets whose index is k mod n
         const made = await Promise.all(
           Array.from({ length: k }, (_, w) =>
@@ -424,7 +577,7 @@ const multi = async (request: LabRequest): Promise<unknown> => {
       }
       const job = await call<number>(0, {
         op: "endgame",
-        args: { request: request.args.request },
+        args: { request: JSON.stringify(await prunedFor(asked, 1)) },
       });
       const page = ++lastJob;
       jobs.set(page, [{ worker: 0, job }]);
@@ -433,7 +586,8 @@ const multi = async (request: LabRequest): Promise<unknown> => {
     case "sim": {
       freeSims();
       const seed = rand53();
-      const base = JSON.parse(request.args.request);
+      const base = await prunedFor(JSON.parse(request.args.request), n);
+      const shared = await sharedFor(request.args.infer, n);
       const made = await Promise.all(
         Array.from({ length: n }, (_, w) =>
           call<{
@@ -445,6 +599,7 @@ const multi = async (request: LabRequest): Promise<unknown> => {
             args: {
               ...request.args,
               request: JSON.stringify({ ...base, seed, part: w, parts: n }),
+              ...inferOf(request.args.infer, shared, w),
             },
           }),
         ),
@@ -492,9 +647,11 @@ const multi = async (request: LabRequest): Promise<unknown> => {
       return results[0];
     }
     case "set": {
-      const results = await each<unknown>(request.args.job, (j) => ({
+      const { infer } = request.args;
+      const shared = await sharedFor(infer, partsOf(request.args.job).length);
+      const results = await each<unknown>(request.args.job, (j, w) => ({
         ...request,
-        args: { ...request.args, job: j },
+        args: { ...request.args, job: j, ...inferOf(infer, shared, w) },
       }));
       return results[0];
     }
@@ -510,7 +667,29 @@ const multi = async (request: LabRequest): Promise<unknown> => {
         args: { job: j },
       }));
       return undefined;
+    case "draws": {
+      // each part's rows of the play, for the sets it values, together, and
+      // how many they hold in all
+      const reads = await each<
+        { rows: Array<unknown>; total: number } | undefined
+      >(request.args.job, (j) => ({
+        ...request,
+        args: { ...request.args, job: j },
+      }));
+      return reads.every((r) => r === undefined)
+        ? undefined
+        : {
+            rows: reads.flatMap((r) => r?.rows ?? []),
+            total: reads.reduce((a, r) => a + (r?.total ?? 0), 0),
+          };
+    }
     case "values":
+      await each(request.args.job, (j) => ({
+        ...request,
+        args: { ...request.args, job: j },
+      }));
+      return undefined;
+    case "list":
       await each(request.args.job, (j) => ({
         ...request,
         args: { ...request.args, job: j },
@@ -570,10 +749,49 @@ const multi = async (request: LabRequest): Promise<unknown> => {
   }
 };
 
+// A request on one worker: as it was, but on its board's pruned lexicon as
+// a job on many workers is, built for a sim, an endgame, or a threats count,
+// and taken where held by an analysis or an inference.
+const single = async (request: LabRequest): Promise<unknown> => {
+  switch (request.op) {
+    case "sim":
+    case "endgame":
+    case "threats_new": {
+      const asked = JSON.parse(request.args.request);
+      const base = await prunedFor(asked, 1, request.op !== "threats_new");
+      const { infer } = request.args as { infer?: string };
+      return call(0, {
+        ...request,
+        args: {
+          ...request.args,
+          request: JSON.stringify(base),
+          ...(infer !== undefined ? { infer: onPruned(infer, 0) } : {}),
+        },
+      } as LabRequest);
+    }
+    case "set": {
+      const { infer } = request.args;
+      return call(0, {
+        ...request,
+        args: {
+          ...request.args,
+          ...(infer !== undefined ? { infer: onPruned(infer, 0) } : {}),
+        },
+      });
+    }
+    case "analyze":
+    case "infer":
+      return call(0, {
+        ...request,
+        args: { ...request.args, request: onPruned(request.args.request, 0) },
+      });
+    default:
+      return call(0, request);
+  }
+};
+
 export const labCall = <T = undefined>(request: LabRequest): Promise<T> =>
-  labParts() > 1
-    ? (multi(request) as Promise<T>)
-    : (call<T>(0, request) as Promise<T>);
+  (labParts() > 1 ? multi(request) : single(request)) as Promise<T>;
 
 export const onLabEvent = (listener: (e: LabEvent) => void) => {
   listeners.add(listener);

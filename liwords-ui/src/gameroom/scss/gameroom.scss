@@ -367,6 +367,18 @@ p.streak-loss {
   }
 }
 
+// Every small circle in the analyzer round: the page's own button rules make
+// every circle 32px tall, which left any the rules above do not name (a set's
+// or a tile's "go in" in a table) an oval.
+.game-container
+  :is(.analyzer-card, .score-card)
+  .analyzer-container
+  button.ant-btn-circle.ant-btn-sm {
+  height: 24px;
+  min-width: 24px;
+  width: 24px;
+}
+
 // outlined until on
 .game-container
   :is(.analyzer-card, .score-card)

@@ -18,7 +18,12 @@ import {
 } from "../gen/api/proto/vendored/macondo/macondo_pb";
 import { Store } from "../store/store";
 import { LabEvent } from "../wasm/lab";
-import { OUT_OF_MEMORY, OUT_OF_MEMORY_ALONE } from "../wasm/lab_errors";
+import {
+  OUT_OF_MEMORY,
+  OUT_OF_MEMORY_ALONE,
+  OUT_OF_MEMORY_DRAWS,
+  OUT_OF_MEMORY_MOVES,
+} from "../wasm/lab_errors";
 import { AnalyzerMove } from "./analyzer";
 import {
   EndgamePanel,
@@ -42,6 +47,8 @@ const lab = vi.hoisted(() => ({
   parts: 1,
   // the bytes a worker holds once an endgame is made
   held: 1,
+  // a pre-endgame play's sets, as the worker reads them for it
+  draws: undefined as undefined | { rows: Array<object>; total: number },
   // what an inference of the opponent's leave finds
   inferred: {
     count: 120,
@@ -58,6 +65,7 @@ vi.mock("../wasm/lab", () => ({
     if (request.op === "prepare") return lab.sizes;
     if (request.op === "endgame") return 1;
     if (request.op === "held") return lab.held;
+    if (request.op === "draws") return lab.draws;
     if (request.op === "sim") {
       const args = request.args as { plays: string; infer?: string };
       const plays = JSON.parse(args.plays) as Array<object>;
@@ -239,6 +247,7 @@ beforeEach(() => {
   lab.listeners.clear();
   lab.parts = 1;
   lab.held = 1;
+  lab.draws = undefined;
   board.placed.length = 0;
   clock.now = 0;
   lab.top = [];
@@ -524,6 +533,67 @@ describe("the endgame panel", () => {
     expect(bodyRows()).toEqual(["andy8HBA10AEEII50.0%+2.00"]);
   });
 
+  it("lists a pre-endgame's plays a page at a time", async () => {
+    render(
+      <Store>
+        <EndgamePanel
+          lab={position([A, B, E, E, I, I, I, I])}
+          onClose={() => {}}
+        />
+      </Store>,
+    );
+    await step({
+      bag: 1,
+      steps: 3,
+      exact: false,
+      play: across(0, 0, [A]),
+      value: 120,
+      spread: 14,
+      depth: 1,
+      win: 1,
+      candidates: Array.from({ length: 120 }, (_, i) => ({
+        play: across(i % 15, Math.floor(i / 15), [A]),
+        value: 120 - i,
+        exact: false,
+      })),
+    });
+    const plays = () => bodyRows().filter((r) => r.endsWith(".00")).length;
+    expect(plays()).toBe(50);
+    fireEvent.click(screen.getByRole("button", { name: "70 more plays" }));
+    expect(plays()).toBe(100);
+    fireEvent.click(screen.getByRole("button", { name: "20 more plays" }));
+    expect(plays()).toBe(120);
+    expect(screen.queryByRole("button", { name: /more play/ })).toBeNull();
+  });
+
+  it("counts the plays left to list by how many the answer says there are", async () => {
+    render(
+      <Store>
+        <EndgamePanel
+          lab={position([A, B, E, E, I, I, I, I])}
+          onClose={() => {}}
+        />
+      </Store>,
+    );
+    await step({
+      bag: 1,
+      steps: 3,
+      exact: false,
+      play: across(0, 0, [A]),
+      value: 50,
+      spread: 14,
+      depth: 1,
+      win: 1,
+      candidates_total: 300,
+      candidates: Array.from({ length: 50 }, (_, i) => ({
+        play: across(i % 15, Math.floor(i / 15), [A]),
+        value: 50 - i,
+        exact: false,
+      })),
+    });
+    expect(screen.getByRole("button", { name: "250 more plays" })).toBeTruthy();
+  });
+
   it("lists every move valued with a tile in the bag, each with its tiles, and shows the tiles of the one picked", async () => {
     render(
       <Store>
@@ -694,6 +764,162 @@ describe("the endgame panel", () => {
     expect(made()).toHaveLength(3);
   });
 
+  it("tries once more on as many workers, no error shown, when the first step had no room", async () => {
+    lab.parts = 4;
+    render(
+      <Store>
+        <EndgamePanel
+          lab={position([A, B, E, E, I, I, I, I, I])}
+          onClose={() => {}}
+        />
+      </Store>,
+    );
+    const made = () =>
+      lab.calls
+        .filter((c) => c.op === "endgame")
+        .map((c) => (c.args as { parts: number }).parts);
+    const runs = (n: number) =>
+      waitFor(() =>
+        expect(lab.calls.filter((c) => c.op === "run")).toHaveLength(n),
+      );
+    // any render showing the error, however briefly, is caught
+    const shownError = vi.fn();
+    const watch = new MutationObserver(() => {
+      if (document.body.textContent?.includes(OUT_OF_MEMORY)) shownError();
+    });
+    watch.observe(document.body, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+    });
+    await runs(1);
+    // with a part's answer to the stop the error sent, heard after it
+    // before a render
+    act(() =>
+      [
+        { job: 1, error: OUT_OF_MEMORY, firstStep: true },
+        { job: 1, answer: { bag: 2, steps: 0 } as never },
+      ].forEach((e) => lab.listeners.forEach((listener) => listener(e))),
+    );
+    await runs(2);
+    expect(made()).toEqual([4, 4]);
+    expect(shownError).not.toHaveBeenCalled();
+    // out of room on its first step again: on half the workers
+    emit({ job: 1, error: OUT_OF_MEMORY, firstStep: true });
+    await waitFor(() => expect(made()).toEqual([4, 4, 2]));
+    watch.disconnect();
+  });
+
+  it("keeps the plays valued so far when each play's sets did not fit", async () => {
+    lab.parts = 4;
+    render(
+      <Store>
+        <EndgamePanel
+          lab={position([A, B, E, E, I, I, I, I, I])}
+          onClose={() => {}}
+        />
+      </Store>,
+    );
+    await waitFor(() =>
+      expect(lab.calls.filter((c) => c.op === "run")).toHaveLength(1),
+    );
+    emit({
+      job: 1,
+      error: OUT_OF_MEMORY_DRAWS,
+      answer: {
+        bag: 2,
+        steps: 3,
+        nodes: 90,
+        exact: false,
+        play: across(7, 7, [B, A]),
+        value: 3.5,
+        spread: 13.5,
+        depth: 0,
+        win: 0.6,
+        endgames: 12,
+        moves: [1, 9],
+        candidates: [
+          { play: across(7, 7, [B, A]), win: 0.6, value: 3.5, deals: 11 },
+        ],
+      },
+    } as never);
+    expect(await screen.findByText(OUT_OF_MEMORY_DRAWS)).toBeInTheDocument();
+    expect(bodyRows()[0]).toContain("BA");
+    expect(lab.calls.filter((c) => c.op === "endgame")).toHaveLength(1);
+  });
+
+  it("shows no value of an answer whose value is null", async () => {
+    render(
+      <Store>
+        <EndgamePanel
+          lab={position([A, B, E, E, I, I, I, I, I])}
+          onClose={() => {}}
+        />
+      </Store>,
+    );
+    await step({
+      bag: 2,
+      steps: 1,
+      nodes: 1,
+      exact: false,
+      play: null,
+      value: null,
+      spread: 0,
+      depth: 0,
+      line: [],
+    });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(screen.queryByText(/Expected value/)).toBeNull();
+  });
+
+  it("says when the first moves alone did not fit, trying no more", async () => {
+    lab.parts = 4;
+    render(
+      <Store>
+        <EndgamePanel
+          lab={position([A, B, E, E, I, I, I, I, I])}
+          onClose={() => {}}
+        />
+      </Store>,
+    );
+    await waitFor(() =>
+      expect(lab.calls.filter((c) => c.op === "run")).toHaveLength(1),
+    );
+    emit({ job: 1, error: OUT_OF_MEMORY_MOVES, firstStep: true });
+    expect(await screen.findByText(OUT_OF_MEMORY_MOVES)).toBeInTheDocument();
+    expect(lab.calls.filter((c) => c.op === "endgame")).toHaveLength(1);
+  });
+
+  it("tries once more again on a position come back to", async () => {
+    lab.parts = 4;
+    const p = position([A, B, E, E, I, I, I, I, I]);
+    const q = position([A, B, E, E, I, I, I, I, E]);
+    const panel = (at: typeof p) => (
+      <Store>
+        <EndgamePanel lab={at} onClose={() => {}} />
+      </Store>
+    );
+    const { rerender } = render(panel(p));
+    const made = () =>
+      lab.calls
+        .filter((c) => c.op === "endgame")
+        .map((c) => (c.args as { parts: number }).parts);
+    const runs = (n: number) =>
+      waitFor(() =>
+        expect(lab.calls.filter((c) => c.op === "run")).toHaveLength(n),
+      );
+    await runs(1);
+    emit({ job: 1, error: OUT_OF_MEMORY, firstStep: true });
+    await runs(2);
+    rerender(panel(q));
+    await runs(3);
+    rerender(panel(p));
+    await runs(4);
+    emit({ job: 1, error: OUT_OF_MEMORY, firstStep: true });
+    await runs(5);
+    expect(made()).toEqual([4, 4, 4, 4, 4]);
+  });
+
   it("solves again on as many workers as what each holds leaves room for", async () => {
     lab.parts = 4;
     // 100 MiB held each: 256 MiB has room for two parts, not three
@@ -854,7 +1080,51 @@ describe("the endgame panel", () => {
     ]);
   });
 
+  it("reads no sets of a job that failed", async () => {
+    lab.draws = { rows: [{ tiles: [E, I], count: 10, value: 5 }], total: 1 };
+    render(
+      <Store>
+        <EndgamePanel
+          lab={position([A, B, E, E, I, I, I, I, I])}
+          onClose={() => {}}
+        />
+      </Store>,
+    );
+    await step({
+      bag: 2,
+      steps: 2,
+      nodes: 90,
+      exact: false,
+      play: across(7, 7, [B, A]),
+      value: 3.5,
+      spread: 13.5,
+      depth: 1,
+      win: 0.6,
+      endgames: 12,
+      moves: [9, 9],
+      candidates: [
+        { play: across(7, 7, [B, A]), win: 0.6, value: 3.5, deals: 11 },
+      ],
+    });
+    await waitFor(() =>
+      expect(lab.calls.some((c) => c.op === "draws")).toBe(true),
+    );
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    const reads = lab.calls.filter((c) => c.op === "draws").length;
+    emit({ job: 1, error: "The wasm failed (unreachable)" });
+    await screen.findByText("The wasm failed (unreachable)");
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(lab.calls.filter((c) => c.op === "draws")).toHaveLength(reads);
+  });
+
   it("solves a pre-endgame of two tiles in the bag, every play valued, blind or with both racks known", async () => {
+    lab.draws = {
+      rows: [
+        { tiles: [E, I], count: 10, value: 5 },
+        { tiles: [I, I], count: 1, value: -12 },
+      ],
+      total: 2,
+    };
     render(
       <Store>
         <EndgamePanel
@@ -875,13 +1145,16 @@ describe("the endgame panel", () => {
       win: 0.6,
       endgames: 120,
       moves: [9, 9],
-      draws: [
-        { tiles: [E, I], count: 10, value: 5 },
-        { tiles: [I, I], count: 1, value: -12 },
-      ],
+      // the best's sets are not in the answer: each play gives its deals,
+      // and the shown one's sets are read for it
       candidates: [
-        { play: across(7, 7, [B, A]), win: 0.6, value: 3.5 },
-        { play: { action: "exchange", tiles: [] }, win: 0.25, value: -8 },
+        { play: across(7, 7, [B, A]), win: 0.6, value: 3.5, deals: 11 },
+        {
+          play: { action: "exchange", tiles: [] },
+          win: 0.25,
+          value: -8,
+          deals: 11,
+        },
       ],
     });
     expect(
@@ -893,6 +1166,13 @@ describe("the endgame panel", () => {
       ),
     ).toBeInTheDocument();
     expect(headRow()).toBe("ScoreLeaveWinValue");
+    // the best's sets, read for it, a page of them
+    await waitFor(() =>
+      expect(
+        lab.calls.find((c) => c.op === "draws")?.args as object,
+      ).toMatchObject({ upTo: 50 }),
+    );
+    await waitFor(() => expect(bodyRows()).toHaveLength(5));
     expect(bodyRows()).toEqual([
       "andy8HBA10AEEII60.0%+3.50",
       "Pass0AABEEII25.0%-8.00",

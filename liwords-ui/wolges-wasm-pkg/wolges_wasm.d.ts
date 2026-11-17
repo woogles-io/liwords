@@ -3,6 +3,8 @@
 
 export function analyze(req_str: string): string;
 
+export function build_kbwg(req_str: string): Uint8Array;
+
 export function do_this_on_startup(): void;
 
 export function endgame_free(handle: number): void;
@@ -19,7 +21,11 @@ export function hooks(req_str: string): string;
 
 export function infer(req_str: string): string;
 
+export function infer_export(handle: number): Uint8Array;
+
 export function infer_free(handle: number): void;
+
+export function infer_import(bytes: Uint8Array | number[]): number;
 
 export function memory_held(): number;
 
@@ -32,6 +38,8 @@ export function precache_kbwg(key: string, value: Uint8Array): void;
 export function precache_klv(key: string, value: Uint8Array): void;
 
 export function precache_kwg(key: string, value: Uint8Array): void;
+
+export function prune_pays(req_str: string): boolean;
 
 export function sim_add(sim: number, plays_str: string): string;
 
@@ -66,6 +74,7 @@ export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembl
 export interface InitOutput {
     readonly memory: WebAssembly.Memory;
     readonly analyze: (a: number, b: number) => [number, number, number, number];
+    readonly build_kbwg: (a: number, b: number) => [number, number, number, number];
     readonly do_this_on_startup: () => void;
     readonly endgame_free: (a: number) => [number, number];
     readonly endgame_new: (a: number, b: number) => [number, number, number];
@@ -74,13 +83,16 @@ export interface InitOutput {
     readonly evict_kwg: (a: number, b: number) => [number, number, number];
     readonly hooks: (a: number, b: number) => [number, number, number, number];
     readonly infer: (a: number, b: number) => [number, number, number, number];
+    readonly infer_export: (a: number) => [number, number, number, number];
     readonly infer_free: (a: number) => [number, number];
+    readonly infer_import: (a: number, b: number) => [number, number, number];
     readonly memory_held: () => number;
     readonly play_score: (a: number, b: number) => [number, number, number, number];
     readonly precache_kblv2: (a: number, b: number, c: any) => [number, number];
     readonly precache_kbwg: (a: number, b: number, c: any) => [number, number];
     readonly precache_klv: (a: number, b: number, c: any) => [number, number];
     readonly precache_kwg: (a: number, b: number, c: any) => [number, number];
+    readonly prune_pays: (a: number, b: number) => [number, number, number];
     readonly sim_add: (a: number, b: number, c: number) => [number, number, number, number];
     readonly sim_free: (a: number) => [number, number];
     readonly sim_new: (a: number, b: number) => [number, number, number];
