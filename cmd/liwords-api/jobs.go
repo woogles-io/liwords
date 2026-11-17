@@ -11,6 +11,7 @@ import (
 	"github.com/woogles-io/liwords/pkg/config"
 	"github.com/woogles-io/liwords/pkg/emailer"
 	"github.com/woogles-io/liwords/pkg/jobs"
+	"github.com/woogles-io/liwords/pkg/maintenance"
 	"github.com/woogles-io/liwords/pkg/notify"
 	"github.com/woogles-io/liwords/pkg/outbox"
 	"github.com/woogles-io/liwords/pkg/user"
@@ -25,12 +26,13 @@ import (
 
 // jobDeps is what the jobs below use.
 type jobDeps struct {
-	bus        *bus.Bus
-	analysis   *analysis.AnalysisService
-	broadcasts *broadcasts.BroadcastService
-	vdo        *vdowebhook.VDOWebhookService
-	users      user.Store
-	outbox     *outbox.Sender
+	bus         *bus.Bus
+	analysis    *analysis.AnalysisService
+	broadcasts  *broadcasts.BroadcastService
+	vdo         *vdowebhook.VDOWebhookService
+	users       user.Store
+	outbox      *outbox.Sender
+	maintenance *maintenance.Tasks
 }
 
 // vdoPollOffset is how long after each interval boundary the VDO poll runs.
@@ -56,6 +58,20 @@ func registerJobs(r *jobs.Runner, d jobDeps) error {
 	// leaves the rest for the next.
 	schedule("send_outbox", "* * * * *", d.outbox.Send)
 
+	// Site upkeep, at the times the EventBridge rules ran it. Each task is
+	// its own job, so one failing or running long doesn't hold up the rest.
+	hourly, daily := "1 * * * *", "0 5 * * *"
+	schedule("blog_rss", hourly, d.maintenance.BlogRSS)
+	schedule("sub_badges", hourly, d.maintenance.SubBadges)
+	schedule("league_hourly", hourly, d.maintenance.LeagueHourly)
+	schedule("archive_sweep", hourly, d.maintenance.ArchiveSweep)
+	schedule("integrations_refresh", daily, d.maintenance.IntegrationsRefresh)
+	schedule("cancelled_games_cleanup", daily, d.maintenance.CancelledGamesCleanup)
+	schedule("monitoring_streams_cleanup", daily, d.maintenance.MonitoringStreamsCleanup)
+	schedule("expired_sessions_cleanup", daily, d.maintenance.ExpiredSessionsCleanup)
+	schedule("unverified_users_cleanup", daily, d.maintenance.UnverifiedUsersCleanup)
+	schedule("league_unstarted_reminders", daily, d.maintenance.LeagueUnstartedReminders)
+
 	// Set by VDO_POLLING_INTERVAL_SECONDS (300 in production): at :00:17,
 	// :05:17 and so on, off the minute boundaries when other people's
 	// scheduled jobs call VDO.Ninja too. Each poll also spreads its checks
@@ -72,15 +88,15 @@ func registerJobs(r *jobs.Runner, d jobDeps) error {
 // the league Discord webhook (dropped when none is configured, as before).
 func outboxChannels(cfg *config.Config) map[string]outbox.SendFunc {
 	return map[string]outbox.SendFunc{
-		outbox.ChannelEmail: func(_ context.Context, m outbox.Message) error {
-			_, err := emailer.SendSimpleMessage(cfg.EmailDebugMode, m.Recipient, m.Subject, m.Body)
+		outbox.ChannelEmail: func(ctx context.Context, m outbox.Message) error {
+			_, err := emailer.SendSimpleMessageCtx(ctx, cfg.EmailDebugMode, m.Recipient, m.Subject, m.Body)
 			return err
 		},
-		outbox.ChannelLeagueDiscord: func(_ context.Context, m outbox.Message) error {
+		outbox.ChannelLeagueDiscord: func(ctx context.Context, m outbox.Message) error {
 			if cfg.LeagueDiscordToken == "" {
 				return nil
 			}
-			return notify.Send(m.Body, cfg.LeagueDiscordToken)
+			return notify.Send(ctx, m.Body, cfg.LeagueDiscordToken)
 		},
 	}
 }

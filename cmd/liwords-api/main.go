@@ -61,6 +61,7 @@ import (
 	"github.com/woogles-io/liwords/pkg/integrations"
 	"github.com/woogles-io/liwords/pkg/jobs"
 	"github.com/woogles-io/liwords/pkg/league"
+	"github.com/woogles-io/liwords/pkg/maintenance"
 	"github.com/woogles-io/liwords/pkg/memento"
 	"github.com/woogles-io/liwords/pkg/mod"
 	"github.com/woogles-io/liwords/pkg/omgwords"
@@ -592,12 +593,13 @@ func main() {
 	if cfg.RunJobs {
 		jobRunner = jobs.NewRunner(stores.Queries, jobs.Options{})
 		if err := registerJobs(jobRunner, jobDeps{
-			bus:        pubsubBus,
-			analysis:   analysisService,
-			broadcasts: broadcastService,
-			vdo:        vdoWebhookService,
-			users:      stores.UserStore,
-			outbox:     outbox.NewSender(stores.Queries, outboxChannels(cfg), 0),
+			bus:         pubsubBus,
+			analysis:    analysisService,
+			broadcasts:  broadcastService,
+			vdo:         vdoWebhookService,
+			users:       stores.UserStore,
+			outbox:      outbox.NewSender(stores.Queries, outboxChannels(cfg), 0),
+			maintenance: maintenance.New(cfg, stores, gameCreatorAdapter, oauthIntegrationService),
 		}); err != nil {
 			log.Fatal().Err(err).Msg("register-jobs")
 		}

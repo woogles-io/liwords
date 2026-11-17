@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"sync"
 	"time"
 
@@ -18,6 +19,7 @@ import (
 
 	"github.com/woogles-io/liwords/pkg/apiserver"
 	"github.com/woogles-io/liwords/pkg/stores/models"
+	"github.com/woogles-io/liwords/pkg/utilities"
 )
 
 //go:generate stringer -type=Tier -linecomment
@@ -62,7 +64,7 @@ const (
 // patreonAPIBase is a var so tests can point it at a fake server.
 var patreonAPIBase = "https://www.patreon.com"
 
-var patreonHTTPClient = &http.Client{Timeout: 15 * time.Second}
+var patreonHTTPClient = &http.Client{Timeout: 15 * time.Second, Transport: utilities.TracedTransport()}
 
 // Use a simple LRU cache to avoid hammering Patreon API
 // in case people refresh etc.
@@ -290,7 +292,7 @@ func (s *OAuthIntegrationService) exchangePatreonCodeForToken(code string) (*Pat
 	return &tokenResp, nil
 }
 
-func (s *OAuthIntegrationService) RefreshPatreonToken(refreshToken string) (*PatreonTokenResponse, error) {
+func (s *OAuthIntegrationService) RefreshPatreonToken(ctx context.Context, refreshToken string) (*PatreonTokenResponse, error) {
 	tokenURL := patreonAPIBase + "/api/oauth2/token"
 
 	data := url.Values{}
@@ -299,7 +301,12 @@ func (s *OAuthIntegrationService) RefreshPatreonToken(refreshToken string) (*Pat
 	data.Set("client_secret", s.cfg.PatreonClientSecret)
 	data.Set("refresh_token", refreshToken)
 
-	resp, err := http.PostForm(tokenURL, data)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, tokenURL, strings.NewReader(data.Encode()))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	resp, err := patreonHTTPClient.Do(req)
 	if err != nil {
 		return nil, err
 	}

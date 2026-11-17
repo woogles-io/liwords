@@ -1,6 +1,7 @@
 package organizations
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -8,6 +9,8 @@ import (
 	"regexp"
 	"sync"
 	"time"
+
+	"github.com/woogles-io/liwords/pkg/utilities"
 )
 
 // SGTitlesURL is the Singapore Scrabble Association's titles list, as one
@@ -44,7 +47,8 @@ func NewSGIntegration() *SGIntegration {
 	return &SGIntegration{
 		TitlesURL: SGTitlesURL,
 		HTTPClient: &http.Client{
-			Timeout: 30 * time.Second,
+			Timeout:   30 * time.Second,
+			Transport: utilities.TracedTransport(),
 		},
 	}
 }
@@ -106,18 +110,25 @@ func parseSGTitles(body []byte) (map[string]sgPlayer, error) {
 // load downloads and parses the titles list, once per instance: a failure is
 // kept too, so that a scheduled refresh of every linked user does not
 // download a broken list again for each of them.
-func (s *SGIntegration) load() (map[string]sgPlayer, error) {
+// Preload downloads the titles list within ctx, so that the download is traced
+// as part of the caller's work rather than the first FetchTitle's.
+func (s *SGIntegration) Preload(ctx context.Context) error {
+	_, err := s.load(ctx)
+	return err
+}
+
+func (s *SGIntegration) load(ctx context.Context) (map[string]sgPlayer, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.players == nil && s.loadErr == nil {
-		s.players, s.loadErr = s.download()
+		s.players, s.loadErr = s.download(ctx)
 	}
 	return s.players, s.loadErr
 }
 
 // download fetches and parses the titles list.
-func (s *SGIntegration) download() (map[string]sgPlayer, error) {
-	req, err := http.NewRequest("GET", s.TitlesURL, nil)
+func (s *SGIntegration) download(ctx context.Context) (map[string]sgPlayer, error) {
+	req, err := http.NewRequestWithContext(ctx, "GET", s.TitlesURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -149,7 +160,7 @@ func (s *SGIntegration) FetchTitle(memberID string, credentials map[string]strin
 	if !ok {
 		return nil, fmt.Errorf("%q is not a membership number", memberID)
 	}
-	players, err := s.load()
+	players, err := s.load(context.Background())
 	if err != nil {
 		return nil, err
 	}
