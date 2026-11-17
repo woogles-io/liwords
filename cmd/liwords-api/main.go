@@ -65,6 +65,7 @@ import (
 	"github.com/woogles-io/liwords/pkg/mod"
 	"github.com/woogles-io/liwords/pkg/omgwords"
 	"github.com/woogles-io/liwords/pkg/organization"
+	"github.com/woogles-io/liwords/pkg/outbox"
 	"github.com/woogles-io/liwords/pkg/pair"
 	pkgprofile "github.com/woogles-io/liwords/pkg/profile"
 	"github.com/woogles-io/liwords/pkg/push"
@@ -596,6 +597,7 @@ func main() {
 			broadcasts: broadcastService,
 			vdo:        vdoWebhookService,
 			users:      stores.UserStore,
+			outbox:     outbox.NewSender(stores.Queries, outboxChannels(cfg), 0),
 		}); err != nil {
 			log.Fatal().Err(err).Msg("register-jobs")
 		}

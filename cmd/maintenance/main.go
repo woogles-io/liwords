@@ -84,9 +84,6 @@ func main() {
 		case "pending-archival-sweep":
 			err := PendingArchivalSweep()
 			log.Err(err).Msg("ran pendingArchivalSweep")
-		case "resend-season-started-emails":
-			err := ResendSeasonStartedEmails()
-			log.Err(err).Msg("ran resendSeasonStartedEmails")
 		default:
 			log.Error().Str("command", command).Msg("command not recognized")
 		}
