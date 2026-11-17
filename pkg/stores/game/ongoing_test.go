@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/matryer/is"
 
@@ -30,15 +29,9 @@ func ongoingCount(t *testing.T, gstore *DBStore) int {
 	return int(n)
 }
 
-// writeOngoingCtx enables the flag for one context only.
-//
-// config.DefaultConfig() returns a package-level singleton *Config, so
-// `cfg := DefaultConfig; cfg.Flag = true` sets that flag for the whole process
-// and every test that runs after. Copy the struct.
-func writeOngoingCtx() context.Context {
-	cfg := *DefaultConfig
-	cfg.WriteOngoingGames = true
-	return cfg.WithContext(context.Background())
+// testCtx carries the default config, as the API's contexts carry its own.
+func testCtx() context.Context {
+	return DefaultConfig.WithContext(context.Background())
 }
 
 func TestOngoingRowFollowsTheGame(t *testing.T) {
@@ -46,7 +39,7 @@ func TestOngoingRowFollowsTheGame(t *testing.T) {
 	ustore, gstore := recreateDB()
 	defer gstore.Disconnect()
 	defer ustore.(*user.DBStore).Disconnect()
-	ctx := writeOngoingCtx()
+	ctx := testCtx()
 
 	is.Equal(ongoingCount(t, gstore), 0)
 
@@ -80,7 +73,7 @@ func TestOngoingRowGoesWhenTheGameEnds(t *testing.T) {
 	ustore, gstore := recreateDB()
 	defer gstore.Disconnect()
 	defer ustore.(*user.DBStore).Disconnect()
-	ctx := writeOngoingCtx()
+	ctx := testCtx()
 
 	entGame, err := gstore.Get(ctx, ongoingGID)
 	is.NoErr(err)
@@ -101,7 +94,7 @@ func TestOngoingSaveDoesNotClobberReadiness(t *testing.T) {
 	ustore, gstore := recreateDB()
 	defer gstore.Disconnect()
 	defer ustore.(*user.DBStore).Disconnect()
-	ctx := writeOngoingCtx()
+	ctx := testCtx()
 
 	entGame, err := gstore.Get(ctx, ongoingGID)
 	is.NoErr(err)
@@ -119,20 +112,6 @@ func TestOngoingSaveDoesNotClobberReadiness(t *testing.T) {
 	row, err := gstore.queries.GetOngoingGame(ctx, ongoingGID)
 	is.NoErr(err)
 	is.Equal(row.ReadyFlag, int64(1))
-}
-
-// Off by default: nothing is written unless the flag says so.
-func TestOngoingWriteIsOffByDefault(t *testing.T) {
-	is := is.New(t)
-	ustore, gstore := recreateDB()
-	defer gstore.Disconnect()
-	defer ustore.(*user.DBStore).Disconnect()
-	ctx := DefaultConfig.WithContext(context.Background())
-
-	entGame, err := gstore.Get(ctx, ongoingGID)
-	is.NoErr(err)
-	is.NoErr(gstore.Set(ctx, entGame))
-	is.Equal(ongoingCount(t, gstore), 0)
 }
 
 // Readiness is accumulated by the database, one bit per player, so a save
@@ -180,14 +159,14 @@ func contains(ids []string, id string) bool {
 	return false
 }
 
-// A game that was live before the flag went on, and is not saved again, gets
+// A game that was live before the table existed, and is not saved again, gets
 // its row from the backfill -- the same row a save would have written.
 func TestOngoingBackfill(t *testing.T) {
 	is := is.New(t)
 	ustore, gstore := recreateDB()
 	defer gstore.Disconnect()
 	defer ustore.(*user.DBStore).Disconnect()
-	ctx := writeOngoingCtx()
+	ctx := testCtx()
 
 	// One player readied before the row existed.
 	_, err := gstore.dbPool.Exec(ctx, "UPDATE games SET ready_flag = 1 WHERE uuid = $1", ongoingGID)
@@ -227,20 +206,19 @@ func TestOngoingBackfillSkipsEndedGames(t *testing.T) {
 	ustore, gstore := recreateDB()
 	defer gstore.Disconnect()
 	defer ustore.(*user.DBStore).Disconnect()
-	ctx := writeOngoingCtx()
+	ctx := testCtx()
 
 	ids, err := gstore.ListLiveGamesWithoutOngoingRow(ctx)
 	is.NoErr(err)
 	is.True(contains(ids, ongoingGID))
 
-	// It ends after the listing was read. Saved with the flag off, so there is
-	// no row for the save to delete.
-	off := DefaultConfig.WithContext(context.Background())
-	entGame, err := gstore.Get(off, ongoingGID)
+	// It ends after the listing was read. It never had a row, so the save
+	// that ends it has none to delete.
+	entGame, err := gstore.Get(ctx, ongoingGID)
 	is.NoErr(err)
 	entGame.SetGameEndReason(pb.GameEndReason_STANDARD)
 	entGame.SetPlaying(macondopb.PlayState_GAME_OVER)
-	is.NoErr(gstore.Set(off, entGame))
+	is.NoErr(gstore.Set(ctx, entGame))
 
 	wrote, err := gstore.BackfillOngoingGame(ctx, ongoingGID)
 	is.NoErr(err)
@@ -252,14 +230,14 @@ func TestOngoingBackfillSkipsEndedGames(t *testing.T) {
 	is.True(!contains(ids, ongoingGID))
 }
 
-// The first save after the flag goes on copies readiness from the games row,
+// The first save of a game without a row copies readiness from the games row,
 // and from then on SetReady keeps both in step.
 func TestOngoingReadinessFollowsTheGame(t *testing.T) {
 	is := is.New(t)
 	ustore, gstore := recreateDB()
 	defer gstore.Disconnect()
 	defer ustore.(*user.DBStore).Disconnect()
-	ctx := writeOngoingCtx()
+	ctx := testCtx()
 
 	_, err := gstore.dbPool.Exec(ctx, "UPDATE games SET ready_flag = 0 WHERE uuid = $1", ongoingGID)
 	is.NoErr(err)
@@ -302,32 +280,20 @@ func TestOngoingRowFromCreation(t *testing.T) {
 	ustore, gstore := recreateDB()
 	defer gstore.Disconnect()
 	defer ustore.(*user.DBStore).Disconnect()
+	ctx := testCtx()
 
-	for _, tc := range []struct {
-		name string
-		ctx  context.Context
-		uid  string
-		want bool
-	}{
-		{"flag on", writeOngoingCtx(), "ongoingCreateOn0000000", true},
-		{"flag off", DefaultConfig.WithContext(context.Background()), "ongoingCreateOff000000", false},
-	} {
-		entGame, err := gstore.Get(tc.ctx, ongoingGID)
-		is.NoErr(err)
-		entGame.History().Uid = tc.uid
-		entGame.Started = false
-		is.NoErr(gstore.Create(tc.ctx, entGame))
+	const uid = "ongoingCreate000000000"
+	entGame, err := gstore.Get(ctx, ongoingGID)
+	is.NoErr(err)
+	entGame.History().Uid = uid
+	entGame.Started = false
+	is.NoErr(gstore.Create(ctx, entGame))
 
-		row, err := gstore.queries.GetOngoingGame(tc.ctx, tc.uid)
-		if !tc.want {
-			is.Equal(err, pgx.ErrNoRows) // tc.name
-			continue
-		}
-		is.NoErr(err)
-		is.Equal(row.Started, false)
-		is.Equal(row.ReadyFlag, int64(0))
-		is.Equal(row.Player0ID, int32(entGame.PlayerDBIDs[0]))
-	}
+	row, err := gstore.queries.GetOngoingGame(ctx, uid)
+	is.NoErr(err)
+	is.Equal(row.Started, false)
+	is.Equal(row.ReadyFlag, int64(0))
+	is.Equal(row.Player0ID, int32(entGame.PlayerDBIDs[0]))
 }
 
 // The fixture's stored timers predate the increment. A load fills it from the
@@ -338,7 +304,7 @@ func TestTimersIncrementFilledOnLoadAndSaved(t *testing.T) {
 	ustore, gstore := recreateDB()
 	defer gstore.Disconnect()
 	defer ustore.(*user.DBStore).Disconnect()
-	ctx := writeOngoingCtx()
+	ctx := testCtx()
 
 	// Strip the key, as every pre-existing row is.
 	_, err := gstore.dbPool.Exec(ctx, `UPDATE games SET timers = timers - 'inc',
@@ -364,7 +330,7 @@ func TestAddTimeBankKeepsOngoingTimers(t *testing.T) {
 	ustore, gstore := recreateDB()
 	defer gstore.Disconnect()
 	defer ustore.(*user.DBStore).Disconnect()
-	ctx := writeOngoingCtx()
+	ctx := testCtx()
 
 	season := uuid.New()
 	_, err := gstore.dbPool.Exec(ctx, `UPDATE games SET season_id = $2,
@@ -393,7 +359,7 @@ func TestAddTimeBankKeepsOngoingTimers(t *testing.T) {
 	is.Equal(b, a)
 
 	n, err = gstore.queries.AddTimeBankSinglePlayer(ctx, models.AddTimeBankSinglePlayerParams{
-		PlayerID: pgtype.Int4{Int32: p0, Valid: true}, AdditionalMs: 10, SeasonID: sid})
+		PlayerID: p0, AdditionalMs: 10, SeasonID: sid})
 	is.NoErr(err)
 	is.Equal(n, int64(1))
 	a, b = tbs()
@@ -401,17 +367,56 @@ func TestAddTimeBankKeepsOngoingTimers(t *testing.T) {
 	is.Equal(b, a)
 
 	n, err = gstore.queries.AddTimeBankPlayerAndOpponent(ctx, models.AddTimeBankPlayerAndOpponentParams{
-		PlayerID: pgtype.Int4{Int32: p0, Valid: true}, AdditionalMs: 1, SeasonID: sid})
+		PlayerID: p0, AdditionalMs: 1, SeasonID: sid})
 	is.NoErr(err)
 	is.Equal(n, int64(1))
 	a, b = tbs()
 	is.Equal(a, "[1016, 2006]")
 	is.Equal(b, a)
 
-	// With no ongoing row (writer off), the count is still the games updated.
+	// The games to update are picked from ongoing_games: a game with no row is
+	// not in progress, whatever its games row says, and is left alone.
 	_, err = gstore.dbPool.Exec(ctx, `DELETE FROM ongoing_games`)
 	is.NoErr(err)
 	n, err = gstore.queries.AddTimeBankAllPlayers(ctx, models.AddTimeBankAllPlayersParams{AdditionalMs: 1, SeasonID: sid})
 	is.NoErr(err)
-	is.Equal(n, int64(1))
+	is.Equal(n, int64(0))
+	var tb string
+	is.NoErr(gstore.dbPool.QueryRow(ctx, `SELECT timers->>'tb' FROM games WHERE uuid = $1`, ongoingGID).Scan(&tb))
+	is.Equal(tb, "[1016, 2006]")
+}
+
+// Create writes the ongoing row before season start tags the game with its
+// league; the StartGame save must fill those columns in, or the game is
+// missing from every league listing for its whole life.
+func TestOngoingRowPicksUpLeagueAfterCreate(t *testing.T) {
+	is := is.New(t)
+	ustore, gstore := recreateDB()
+	defer gstore.Disconnect()
+	defer ustore.(*user.DBStore).Disconnect()
+	ctx := testCtx()
+
+	g, err := gstore.Get(ctx, ongoingGID)
+	is.NoErr(err)
+	is.True(g.SeasonID == nil)
+	is.NoErr(gstore.Set(ctx, g)) // the row exists, with no league
+
+	league, season, division := uuid.New(), uuid.New(), uuid.New()
+	g.LeagueID, g.SeasonID, g.LeagueDivisionID = &league, &season, &division
+	is.NoErr(gstore.Set(ctx, g))
+
+	var l, s, d pgtype.UUID
+	is.NoErr(gstore.dbPool.QueryRow(ctx, `SELECT league_id, season_id, league_division_id
+		FROM ongoing_games WHERE game_uuid = $1`, ongoingGID).Scan(&l, &s, &d))
+	is.Equal(uuid.UUID(l.Bytes), league)
+	is.Equal(uuid.UUID(s.Bytes), season)
+	is.Equal(uuid.UUID(d.Bytes), division)
+
+	// Once set, a later save does not move the game to another league.
+	other := uuid.New()
+	g.SeasonID = &other
+	is.NoErr(gstore.Set(ctx, g))
+	is.NoErr(gstore.dbPool.QueryRow(ctx, `SELECT season_id FROM ongoing_games WHERE game_uuid = $1`,
+		ongoingGID).Scan(&s))
+	is.Equal(uuid.UUID(s.Bytes), season)
 }

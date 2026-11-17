@@ -311,6 +311,7 @@ export const PairRound = (props: { tournamentID: string }) => {
       division: vals.division,
       round: vals.round - 1, // 1-indexed input
       preserveByes: vals.preserveByes,
+      keepPairings: vals.keepPairings,
     };
     try {
       const resp = await tClient.pairRound(obj);
@@ -333,6 +334,14 @@ export const PairRound = (props: { tournamentID: string }) => {
       </Form.Item>
 
       <Form.Item name="preserveByes" label="Preserve byes">
+        <Switch />
+      </Form.Item>
+
+      <Form.Item
+        name="keepPairings"
+        label="Keep existing pairings"
+        valuePropName="checked"
+      >
         <Switch />
       </Form.Item>
 

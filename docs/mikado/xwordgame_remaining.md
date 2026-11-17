@@ -19,8 +19,10 @@ games in S3, stats in ClickHouse, and a `games` table slimmed to metadata,
 moved onto RDS in one planned infrastructure downtime. The graph has a node
 for each step.
 
-1. **`READ_ONGOING_GAMES` on** (rollout step 6 below), then a release later
-   delete the `games` versions of the listing queries and the flag.
+1. ~~**`READ_ONGOING_GAMES` on** (rollout step 6 below), then a release later
+   delete the `games` versions of the listing queries and the flag.~~ Done:
+   on since `liwords-api:331` (2026-11-13); the cleanup removed both flags,
+   so `ongoing_games` is always written and read (rollout step 7).
 2. **Phase 1, the shadow referee**, is the main track. Its gate is met: no
    `shadow-turns-mismatch` or `shadow-load-mismatch` from #2163's deploy on
    2026-11-02 to 2026-11-11, two weekends, with each shadow comparing
@@ -71,23 +73,22 @@ for each step.
 
 ## The life of an `ongoing_games` row
 
-With `WRITE_ONGOING_GAMES` on, each step below is in the same transaction as
-the `games` write it goes with:
+Each step below is in the same transaction as the `games` write it goes with:
 
 | When | Code | The row |
 |---|---|---|
 | A game is created (seek, rematch, tournament or league pairing, bot game) | `Create`, from `InstantiateNewGame` | inserted, `started` false; `ready_flag` copied from `games` |
 | A player readies | `SetReady` | its bit ORed into `ready_flag` |
 | Both are ready, or the game starts without the ready step | `StartGame` → `Set` | `started`, `timers` |
-| Every move, challenge, pass, exchange, meta event | `Set` | `play_state`, `on_turn`, `timers`, `meta_events`, `updated_at` |
+| Every move, challenge, pass, exchange, meta event | `Set` | `play_state`, `on_turn`, `timers`, `meta_events`, `updated_at` (meta events are no longer written to `games`) |
 | The game ends, any way at all (standard, resign, timeout, adjudication, force-finish, abort, cancel) | `Set` with an end reason | **deleted** |
 
 Players, rules, mode, type, tournament and league are written at insert and
 never rewritten. A games row outlives its `ongoing_games` row: it is archived
 to S3, its turn rows deleted, and if it was cancelled it is deleted itself
 two days later. Annotated games and puzzles never have a row; neither is
-created by `Create` or saved by `Set`. Games already live when the flag went
-on get theirs from the backfill.
+created by `Create` or saved by `Set`. Games already live when the table was
+introduced got theirs from the backfill.
 
 ## Rolling out `ongoing_games`
 
@@ -185,6 +186,16 @@ on get theirs from the backfill.
    *Watch:* lobby game counts, correspondence timeouts still firing
    (`adjudicating-after-gameplay-timed-out`), real-time timeouts and
    never-started cancellations.
+   *Done 2026-11-13* with `liwords-api:331`.
+7. **Remove the flags.** After a release with both on, the `games` versions
+   of the listing queries, `listings.go` and both flags are deleted: the
+   `...FromOngoing` queries took the old names, and `ongoing_games` is
+   written by every `Create`, `Set` and `SetReady`. In the same change `Set`
+   stops writing `games.meta_events`, and `Get` reads a live game's meta
+   events from its `ongoing_games` row (a game without one, a finished game,
+   keeps the frozen `games` copy, which nothing reads). The task definitions
+   may keep the two env vars; nothing reads them. There is no rollback to
+   the `games` listings short of a revert.
 
 **Do not turn the flag off and on again** without cleaning up. A game that ends
 while the flag is off keeps its row, and a ready while it is off is missing
@@ -333,10 +344,10 @@ After the game ends:
 They are small: 2.6% of games have any, ~120 MB in all (0.2% sample,
 2026-11-12). Clearing old ones from `games` with a maintenance job would
 update ~340k rows of a 70 GB table to free that, so they stay until the column
-is dropped. Today `Set` writes the full list to both `games.meta_events` and
-`ongoing_games.meta_events`. Once reads move to `ongoing_games`, `Set` can
-stop writing the `games` copy, and the column goes with the other live-game
-columns (step 5).
+is dropped. `Set` writes them to `ongoing_games.meta_events` only, and `Get`
+reads them from there (rollout step 7). The `games` column keeps whatever it
+held before that, unread, until it goes with the other live-game columns
+(step 5).
 
 **Optional: keep the event behind a mod verdict.** Losing the events means a
 moderator reviewing a disputed `NO_PLAY_DENIED_NUDGE` cannot see the denial it
@@ -425,8 +436,6 @@ Evidence-gathering, behind flags, serving nothing:
   the whole position against the live game. On in production.
 - `-shadow-turns-load` — on every load of a live game, rebuild from `game_turns`
   and diff against what is being served. On in production.
-- `-write-ongoing-games` — maintain the `ongoing_games` row inside the save
-  transaction (step 7). Off; nothing reads the table yet.
 
 ## What is left, in order
 
@@ -454,15 +463,17 @@ Evidence-gathering, behind flags, serving nothing:
       both for one release, read `event_bin` when present, then drop `event`.
       `DecodeTurn` already accepts either encoding. Add `cmd/decode-turn` so a
       row can still be read during an incident.
-- [ ] **Move the listings onto `ongoing_games`** -- behind
-      `READ_ONGOING_GAMES` (rollout step 6). Once it has been on for a release,
-      delete the `games` versions of the queries and the flag, and drop
-      `idx_games_game_end_reason` if nothing else uses it.
-      The older `ListOngoing*` queries in `ongoing_games.sql` still have no
-      callers; delete them then too.
+- [x] **Move the listings onto `ongoing_games`** -- on since 2026-11-13; the
+      `games` queries, the unused `ListOngoing*` queries and both flags are
+      deleted (rollout step 7).
+- [ ] **Drop `idx_games_game_end_reason`** (153 MB) once nothing uses it.
+      Queries still filtering `games` on `game_end_reason = 0` include
+      `GetLeagueGamesByStatus`, `ListLiveGamesWithoutOngoingRow` and the
+      archival audit. Compare `pg_stat_user_indexes.idx_scan` across a few days
+      after the cleanup deploys to see what still walks it.
 - [x] **Correspondence adjudication without reading `games`** -- the
       increment is in the timers (#2235) and the adjudicator pre-filters in
-      SQL behind `READ_ONGOING_GAMES` (rollout step 6).
+      SQL from `ongoing_games` (rollout step 6).
 - [ ] **Time-bank updates take no game lock.** `AddTimeBank*` (league admin)
       update the timers in SQL; a move saved at the same moment writes the
       timers it loaded and drops the added time. Rare and admin-only; route

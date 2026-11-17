@@ -119,9 +119,17 @@ func PairRoundJob(ts TournamentStore, pairer COPPairer) jobs.Handler {
 			if !ok || t.IsFinished || !cd.needsCOPPairing(round) {
 				return nil
 			}
-			req, err := cd.copRequest(round)
+			kept, err := cd.copKeptPlayers(round)
 			if err != nil {
 				return err
+			}
+			req, err := cd.copRequest(round, kept)
+			if err != nil {
+				return err
+			}
+			if req == nil {
+				// Every player still to pair is in a kept pairing.
+				return nil
 			}
 			start := time.Now()
 			resp, err := pairer.PairCOP(ctx, req)
@@ -194,9 +202,10 @@ func applyCOPPairing(ctx context.Context, ts TournamentStore, tid, division stri
 	cd.copAnswer = &copAnswer{round: round, req: req, resp: resp}
 	defer func() { cd.copAnswer = nil }()
 	roundBefore := cd.GetCurrentRound()
-	// The round holds what the change that left it had preserved, its byes
-	// if any, so they are preserved again.
-	pairingsResp, err := cd.PairRound(round, true)
+	// The round holds what the change that left it kept, byes or whole
+	// pairings, and anything paired by hand since: all of it is kept again,
+	// as the job's request kept it.
+	pairingsResp, err := cd.pairRoundKeeping(round, true, true)
 	if err != nil {
 		return 0, err
 	}

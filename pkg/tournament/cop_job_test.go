@@ -14,8 +14,8 @@ import (
 	"github.com/woogles-io/liwords/pkg/stores"
 	"github.com/woogles-io/liwords/pkg/stores/models"
 	"github.com/woogles-io/liwords/pkg/tournament"
-	pb "github.com/woogles-io/liwords/rpc/api/proto/tournament_service"
 	"github.com/woogles-io/liwords/rpc/api/proto/ipc"
+	pb "github.com/woogles-io/liwords/rpc/api/proto/tournament_service"
 )
 
 // heldPairer runs COP in process, calling before (if set) each time first:
@@ -149,6 +149,50 @@ func TestCOPRoundPairedByHandWhileRunning(t *testing.T) {
 	persons := dm.GetPlayers().Persons
 	ids := []string{persons[will.Players[0]].Id, persons[will.Players[1]].Id}
 	is.True(ids[0] == fullID(dm, "Jesse") || ids[1] == fullID(dm, "Jesse"))
+}
+
+// A director's Pair Round that keeps pairings leaves the round to the job
+// with the kept pairing in it. The job sends COP the kept pairing as
+// prepaired, keeps it when it applies the answer, and needs COP only once.
+func TestCOPKeptPairingsPairedByJob(t *testing.T) {
+	is := is.New(t)
+	ctx, stores, ty, _ := setUpCOPDivision(t)
+	tstore := stores.TournamentStore
+
+	_, err := tournament.SetPairings(ctx, tstore, ty.UUID, divOneName, []*pb.TournamentPairingRequest{
+		{PlayerOneId: "Will:Will", PlayerTwoId: "Conrad:Conrad", Round: 1},
+	})
+	is.NoErr(err)
+	_, err = tournament.PairRound(ctx, tstore, ty.UUID, divOneName, 1, false, true)
+	is.NoErr(err)
+	dm := reload(ctx, is, tstore, ty.UUID).Divisions[divOneName].DivisionManager
+	is.True(!dm.IsRoundPaired(1)) // left for the job, with the kept pairing
+
+	var sent *ipc.PairRequest
+	pairer := &heldPairer{}
+	run := tournament.PairRoundJob(tstore, recordingPairer{pairer, &sent})
+	is.NoErr(run(ctx, pairRoundJob(ty, "1")))
+	is.Equal(pairer.calls, 1)
+	is.True(sent != nil && len(sent.DivisionPairings) > 0) // the kept pairing went as prepaired
+
+	dm = reload(ctx, is, tstore, ty.UUID).Divisions[divOneName].DivisionManager
+	is.True(dm.IsRoundPaired(1))
+	will, err := dm.GetPairing(fullID(dm, "Will"), 1)
+	is.NoErr(err)
+	persons := dm.GetPlayers().Persons
+	ids := []string{persons[will.Players[0]].Id, persons[will.Players[1]].Id}
+	is.True(ids[0] == fullID(dm, "Conrad") || ids[1] == fullID(dm, "Conrad"))
+}
+
+// recordingPairer keeps the last request it was sent.
+type recordingPairer struct {
+	*heldPairer
+	last **ipc.PairRequest
+}
+
+func (p recordingPairer) PairCOP(ctx context.Context, req *ipc.PairRequest) (*ipc.PairResponse, error) {
+	*p.last = req
+	return p.heldPairer.PairCOP(ctx, req)
 }
 
 // When the job gives up, the directors are told the round wasn't paired.

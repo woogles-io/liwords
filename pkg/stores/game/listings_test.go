@@ -14,19 +14,31 @@ import (
 	"github.com/woogles-io/liwords/pkg/stores/user"
 )
 
-// readOngoingCtx turns on both flags, so the listings come from ongoing_games.
-func readOngoingCtx() context.Context {
-	cfg := *DefaultConfig
-	cfg.WriteOngoingGames = true
-	cfg.ReadOngoingGames = true
-	return cfg.WithContext(context.Background())
-}
-
-// readGamesCtx keeps the writer on but the listings on games.
-func readGamesCtx() context.Context {
-	cfg := *DefaultConfig
-	cfg.WriteOngoingGames = true
-	return cfg.WithContext(context.Background())
+// giveLiveGamesRows gives every live fixture game its ongoing row, as every
+// live game in production has, and returns their ids. Saved rather than
+// backfilled: the fixtures were inserted without games.player_on_turn, which a
+// save writes and the bot listings return.
+func giveLiveGamesRows(t *testing.T, s *DBStore) []string {
+	t.Helper()
+	ctx := testCtx()
+	ids, err := s.ListLiveGamesWithoutOngoingRow(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, id := range ids {
+		g, err := s.Get(ctx, id)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := s.Set(ctx, g); err != nil {
+			t.Fatal(err)
+		}
+	}
+	left, err := s.ListLiveGamesWithoutOngoingRow(ctx)
+	if err != nil || len(left) != 0 {
+		t.Fatalf("live games still without a row: %v (%v)", left, err)
+	}
+	return ids
 }
 
 // cloneLiveGame copies ongoingGID's games row and ongoing_games row under a
@@ -61,32 +73,19 @@ func cloneLiveGame(t *testing.T, s *DBStore, gid, gamesSet, ongoingSet string) {
 	}
 }
 
-// Every listing must return exactly the same rows from either table. The
+// Each listing returns the games it filters for and no ended game. The
 // fixture game is cloned into each kind of game a listing filters on --
 // correspondence, tournament, league, a bot on turn, and an ended game that
-// must appear in none -- and each listing is compared row for row.
-func TestListingsAgreeAcrossTables(t *testing.T) {
+// must appear in none.
+func TestListings(t *testing.T) {
 	is := is.New(t)
 	ustore, gstore := recreateDB()
 	defer gstore.Disconnect()
 	defer ustore.(*user.DBStore).Disconnect()
-	wctx := writeOngoingCtx()
+	wctx := testCtx()
 
-	// Give every live fixture game its row. Saved rather than backfilled: the
-	// fixtures were inserted without games.player_on_turn, which a save
-	// writes, and the bot listings on games filter on that column. (In
-	// production the two agree; the rollout checks compare them.)
-	ids, err := gstore.ListLiveGamesWithoutOngoingRow(wctx)
-	is.NoErr(err)
-	for _, id := range ids {
-		g, err := gstore.Get(wctx, id)
-		is.NoErr(err)
-		is.NoErr(gstore.Set(wctx, g))
-	}
-	left, err := gstore.ListLiveGamesWithoutOngoingRow(wctx)
-	is.NoErr(err)
-	is.Equal(len(left), 0)
-	_, err = gstore.queries.GetOngoingGame(wctx, ongoingGID)
+	ids := giveLiveGamesRows(t, gstore)
+	_, err := gstore.queries.GetOngoingGame(wctx, ongoingGID)
 	is.NoErr(err) // the game every clone is made from
 
 	leagueID := uuid.New()
@@ -120,21 +119,15 @@ func TestListingsAgreeAcrossTables(t *testing.T) {
 		`SELECT u.uuid FROM users u JOIN games g ON g.player0_id = u.id WHERE g.uuid = $1`,
 		ongoingGID).Scan(&userUUID))
 
-	oldCtx, newCtx := readGamesCtx(), readOngoingCtx()
 	q := gstore.queries
 
-	// same runs one listing both ways and requires identical, non-empty
-	// results (so a filter that matches nothing cannot pass by accident), and
-	// that no ended game is listed.
+	// same runs one listing and requires the expected number of games (a
+	// non-empty result for want < 0, so a filter that matches nothing cannot
+	// pass by accident), and that no ended game is listed.
 	same := func(name string, list func(ctx context.Context) (any, error), want int) {
 		t.Helper()
-		a, err := list(oldCtx)
+		b, err := list(wctx)
 		is.NoErr(err)
-		b, err := list(newCtx)
-		is.NoErr(err)
-		if !reflect.DeepEqual(a, b) {
-			t.Errorf("%s differs:\n games:   %v\n ongoing: %v", name, uuidsOf(a), uuidsOf(b))
-		}
 		got := uuidsOf(b)
 		if (want < 0 && len(got) == 0) || (want >= 0 && len(got) != want) {
 			t.Errorf("%s: %d games, want %d: %v", name, len(got), want, got)
@@ -147,67 +140,34 @@ func TestListingsAgreeAcrossTables(t *testing.T) {
 	}
 	nRealTime, nCorres := 4, 3 // fixture, two tourneys, other turn; corres, league, other turn
 	nRealTime += len(ids) - 1  // other live fixture games, all real-time
-	same("ActiveGames", func(ctx context.Context) (any, error) { return ActiveGames(ctx, q) }, nRealTime)
+	same("ActiveGames", func(ctx context.Context) (any, error) { return q.ListActiveGames(ctx) }, nRealTime)
 	same("ActiveRealTimeGamesForAdjudication", func(ctx context.Context) (any, error) {
-		return ActiveRealTimeGamesForAdjudication(ctx, q)
+		return q.ListActiveRealTimeGamesForAdjudication(ctx)
 	}, nRealTime)
 	same("ActiveTournamentGames", func(ctx context.Context) (any, error) {
-		return ActiveTournamentGames(ctx, q, "listTourney")
+		return q.ListActiveTournamentGames(ctx, "listTourney")
 	}, 1)
 	same("ActiveCorrespondenceGames", func(ctx context.Context) (any, error) {
-		return ActiveCorrespondenceGames(ctx, q)
+		return q.ListActiveCorrespondenceGames(ctx)
 	}, nCorres)
 	same("ActiveCorrespondenceGamesForUser", func(ctx context.Context) (any, error) {
-		return ActiveCorrespondenceGamesForUser(ctx, q, userUUID)
+		return q.ListActiveCorrespondenceGamesForUser(ctx, userUUID)
 	}, nCorres)
 	same("ActiveCorrespondenceGamesForUserAndLeague", func(ctx context.Context) (any, error) {
-		return ActiveCorrespondenceGamesForUserAndLeague(ctx, q, models.ListActiveCorrespondenceGamesForUserAndLeagueParams{
+		return q.ListActiveCorrespondenceGamesForUserAndLeague(ctx, models.ListActiveCorrespondenceGamesForUserAndLeagueParams{
 			LeagueID: leagueID, UserUuid: userUUID,
 		})
 	}, 1)
 	same("ActiveCorrespondenceGamesWithBotOnTurn", func(ctx context.Context) (any, error) {
-		return ActiveCorrespondenceGamesWithBotOnTurn(ctx, q)
+		return q.ListActiveCorrespondenceGamesWithBotOnTurn(ctx)
 	}, 2) // corres + league
 	same("ActiveRealtimeGamesWithBotOnTurn", func(ctx context.Context) (any, error) {
-		return ActiveRealtimeGamesWithBotOnTurn(ctx, q)
+		return q.ListActiveRealtimeGamesWithBotOnTurn(ctx)
 	}, -1) // fixture and both tourneys, plus any other fixture game a bot is on turn in
 
-	a, err := CountActiveCorrespondenceGames(oldCtx, q)
+	n, err := q.CountActiveCorrespondenceGames(wctx)
 	is.NoErr(err)
-	b, err := CountActiveCorrespondenceGames(newCtx, q)
-	is.NoErr(err)
-	is.Equal(a, b)
-	is.Equal(int(b), nCorres)
-}
-
-// The reads follow the writer: with WRITE_ONGOING_GAMES off the table is not
-// kept up to date, so READ_ONGOING_GAMES alone must not use it.
-func TestListingsIgnoreReadFlagWithoutWriter(t *testing.T) {
-	is := is.New(t)
-	ustore, gstore := recreateDB()
-	defer gstore.Disconnect()
-	defer ustore.(*user.DBStore).Disconnect()
-
-	// A row for a game that has ended: what a stale table looks like.
-	wctx := writeOngoingCtx()
-	entGame, err := gstore.Get(wctx, ongoingGID)
-	is.NoErr(err)
-	is.NoErr(gstore.Set(wctx, entGame))
-	_, err = gstore.dbPool.Exec(wctx, `UPDATE games SET game_end_reason = 1 WHERE uuid = $1`, ongoingGID)
-	is.NoErr(err)
-
-	cfg := *DefaultConfig
-	cfg.ReadOngoingGames = true // writer off
-	ctx := cfg.WithContext(context.Background())
-	rows, err := ActiveGames(ctx, gstore.queries)
-	is.NoErr(err)
-	for _, r := range rows {
-		is.True(r.Uuid.String != ongoingGID) // read from games, not the stale row
-	}
-	// And with both on, the stale row is what would be read.
-	rows, err = ActiveGames(readOngoingCtx(), gstore.queries)
-	is.NoErr(err)
-	is.True(contains(uuidsOf(rows), ongoingGID))
+	is.Equal(int(n), nCorres)
 }
 
 // uuidsOf pulls the game ids out of any listing result, for messages.
@@ -227,21 +187,15 @@ func uuidsOf(rows any) []string {
 
 // The correspondence timeout pre-filter must never drop a game that
 // Timers.RanOut would time out, and should drop the ones it would not. Each
-// case is a correspondence clone with hand-set timers, on both tables.
+// case is a correspondence clone with hand-set timers.
 func TestCorrespondenceTimeoutCandidates(t *testing.T) {
 	is := is.New(t)
 	ustore, gstore := recreateDB()
 	defer gstore.Disconnect()
 	defer ustore.(*user.DBStore).Disconnect()
-	wctx := writeOngoingCtx()
+	wctx := testCtx()
 
-	ids, err := gstore.ListLiveGamesWithoutOngoingRow(wctx)
-	is.NoErr(err)
-	for _, id := range ids {
-		g, err := gstore.Get(wctx, id)
-		is.NoErr(err)
-		is.NoErr(gstore.Set(wctx, g))
-	}
+	giveLiveGamesRows(t, gstore)
 
 	const now = int64(10_000_000_000)
 	timers := func(sinceUpdate, bank int64, rtiat bool, withInc bool) string {
@@ -280,9 +234,9 @@ func TestCorrespondenceTimeoutCandidates(t *testing.T) {
 			`game_mode = 1, started = true, timers = '`+c.timers+`'`)
 	}
 
-	all, err := CorrespondenceTimeoutCandidates(readGamesCtx(), gstore.queries, now)
+	all, err := gstore.queries.ListActiveCorrespondenceGames(wctx)
 	is.NoErr(err)
-	got, err := CorrespondenceTimeoutCandidates(readOngoingCtx(), gstore.queries, now)
+	got, err := gstore.ListCorrespondenceTimeoutCandidates(wctx, now)
 	is.NoErr(err)
 	in := map[string]bool{}
 	for _, r := range got {

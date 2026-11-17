@@ -51,6 +51,10 @@ var ErrNotPaidTier = errors.New("user not subscribed on paid tier")
 // member list with the creator token. It is our problem, not the user's.
 var ErrMembershipCheckUnavailable = errors.New("unable to check patreon membership")
 
+// ErrNoPatreonUserID means the user's Patreon integration doesn't say which
+// Patreon account it belongs to. They need to reconnect.
+var ErrNoPatreonUserID = errors.New("patreon integration has no patreon user id")
+
 const (
 	ChargeStatusPaid = "Paid"
 )
@@ -155,12 +159,20 @@ type PaidTierData struct {
 	Tier             Tier
 }
 
+// PatreonTokenResponse is an OAuth token. Only the creator token, in
+// integrations_global, is stored.
 type PatreonTokenResponse struct {
-	AccessToken   string `json:"access_token"`
-	RefreshToken  string `json:"refresh_token"`
-	ExpiresIn     int    `json:"expires_in"`
-	Scope         string `json:"scope"`
-	PatreonUserID string `json:"patreon_user_id,omitempty"` // Don't overwrite with blank ID on refresh.
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+	ExpiresIn    int    `json:"expires_in"`
+	Scope        string `json:"scope"`
+}
+
+// PatreonIntegrationData is what a user's Patreon integration row stores.
+// Tier checks find this ID in the campaign member list, so the user's own
+// OAuth token is used once, at link time, and then discarded.
+type PatreonIntegrationData struct {
+	PatreonUserID string `json:"patreon_user_id"`
 }
 
 type PatreonAPIError struct {
@@ -228,9 +240,11 @@ func (s *OAuthIntegrationService) patreonCallback(w http.ResponseWriter, r *http
 	}
 
 	log.Info().Interface("ud", userData).Msg("userData")
-	token.PatreonUserID = userData.Data.ID
-	// re-dump token data for saving into table
-	td, err := json.Marshal(token)
+	if userData.Data.ID == "" {
+		http.Error(w, "Patreon did not return a user ID", http.StatusInternalServerError)
+		return
+	}
+	td, err := json.Marshal(PatreonIntegrationData{PatreonUserID: userData.Data.ID})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -302,18 +316,6 @@ func (s *OAuthIntegrationService) RefreshPatreonToken(refreshToken string) (*Pat
 	log.Debug().Interface("tr", tokenResp).Msg("refresh-token-response")
 
 	return &tokenResp, nil
-}
-
-// FetchPatreonUserID returns the Patreon user ID that owns accessToken.
-func FetchPatreonUserID(accessToken string) (string, error) {
-	userData, err := fetchPatreonUserData(accessToken)
-	if err != nil {
-		return "", err
-	}
-	if userData.Data.ID == "" {
-		return "", errors.New("patreon identity response has no user id")
-	}
-	return userData.Data.ID, nil
 }
 
 func fetchPatreonUserData(accessToken string) (*PatreonUserData, error) {
@@ -555,29 +557,14 @@ func DetermineUserTier(ctx context.Context, userID string, queries *models.Queri
 		}
 		return nil, err
 	}
-	ptoken := PatreonTokenResponse{}
-	err = json.Unmarshal(row.Data, &ptoken)
+	var data PatreonIntegrationData
+	err = json.Unmarshal(row.Data, &data)
 	if err != nil {
-		return nil, fmt.Errorf("unable to unmarshal data into token: %w", err)
+		return nil, fmt.Errorf("unable to unmarshal patreon integration data: %w", err)
 	}
-	patreonUserID := ptoken.PatreonUserID
+	patreonUserID := data.PatreonUserID
 	if patreonUserID == "" {
-		// Rows linked before we stored patreon_user_id. The user's own token
-		// is the only way to find out who they are; save it for next time.
-		// XXX: For now. Remove when all Patreon rows have a patreon_user_id
-		userData, err := fetchPatreonUserData(ptoken.AccessToken)
-		if err != nil {
-			return nil, fmt.Errorf("unable to fetch user data: %w", err)
-		}
-		patreonUserID = userData.Data.ID
-		tokenUpdate := []byte(fmt.Sprintf(`{"patreon_user_id": "%s"}`, patreonUserID))
-		err = queries.UpdateIntegrationData(ctx, models.UpdateIntegrationDataParams{
-			Uuid: row.Uuid,
-			Data: tokenUpdate,
-		})
-		if err != nil {
-			return nil, fmt.Errorf("unable to update user data: %w", err)
-		}
+		return nil, ErrNoPatreonUserID
 	}
 
 	member, err := lookupCampaignMember(ctx, queries, patreonUserID)

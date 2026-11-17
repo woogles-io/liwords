@@ -464,8 +464,8 @@ func (b *Bus) newBotGame(ctx context.Context, req *pb.SeekRequest, botUserID str
 					return errors.New("We couldn't reach Patreon to check your membership. Please try again in a few minutes.")
 				}
 				var papierr *integrations.PatreonAPIError
-				if errors.As(err, &papierr) {
-					log.Err(papierr).Msg("patreon-api-error")
+				if errors.As(err, &papierr) || errors.Is(err, integrations.ErrNoPatreonUserID) {
+					log.Err(err).Msg("patreon-api-error")
 					return errors.New("There was an error with your connection to the Patreon API. Please go to your Settings -> Integrations and reconnect with Patreon.")
 				}
 

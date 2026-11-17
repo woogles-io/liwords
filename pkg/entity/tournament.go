@@ -11,6 +11,7 @@ type DivisionManager interface {
 	SubmitResult(int, string, string, int, int, pb.TournamentGameResult,
 		pb.TournamentGameResult, pb.GameEndReason, bool, int, string) (*pb.DivisionPairingsResponse, error)
 	PairRound(int, bool) (*pb.DivisionPairingsResponse, error)
+	PairRoundKeepingPairings(int) (*pb.DivisionPairingsResponse, error)
 	DeletePairings(int) error
 	GetStandings(int) (*pb.RoundStandings, int, error)
 	GetCurrentRound() int
