@@ -9,7 +9,7 @@ func TestPgxSpanName(t *testing.T) {
 	for _, tc := range []struct {
 		stmt, want string
 	}{
-		{"-- name: ListActiveGamesFromOngoing :many\nSELECT g.uuid\nFROM ongoing_games g", "ListActiveGamesFromOngoing"},
+		{"-- name: ListActiveGames :many\nSELECT g.uuid\nFROM ongoing_games g", "ListActiveGames"},
 		{"  -- name: GetGame :one\nSELECT 1", "GetGame"},
 		{"SELECT expires_at, data\n  FROM db_sessions WHERE uuid = $1", "SELECT expires_at, data FROM db_sessions WHERE uuid = $1"},
 		{"   ", "UNKNOWN"},

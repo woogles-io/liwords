@@ -14,7 +14,6 @@ import (
 
 	"github.com/woogles-io/liwords/pkg/apiserver"
 	"github.com/woogles-io/liwords/pkg/entity"
-	gamestore "github.com/woogles-io/liwords/pkg/stores/game"
 	"github.com/woogles-io/liwords/pkg/stores/models"
 	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/mod_service"
@@ -475,7 +474,7 @@ func (ms *ModService) GetChannelChats(ctx context.Context, req *connect.Request[
 // games in progress, and games that ended within the chat expiry.
 func (ms *ModService) userGameIDs(ctx context.Context, u *entity.User) ([]string, error) {
 	var ids []string
-	active, err := gamestore.ActiveGames(ctx, ms.queries)
+	active, err := ms.queries.ListActiveGames(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -487,7 +486,7 @@ func (ms *ModService) userGameIDs(ctx context.Context, u *entity.User) ([]string
 			}
 		}
 	}
-	corres, err := gamestore.ActiveCorrespondenceGamesForUser(ctx, ms.queries, u.UUID)
+	corres, err := ms.queries.ListActiveCorrespondenceGamesForUser(ctx, u.UUID)
 	if err != nil {
 		return nil, err
 	}

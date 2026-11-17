@@ -108,7 +108,7 @@ func LeagueHourlyRunner() error {
 	ctx := log.Logger.WithContext(context.Background())
 	cfg := &config.Config{}
 	cfg.Load(nil)
-	// The stores read feature flags such as WRITE_ONGOING_GAMES from the
+	// The stores read feature flags such as SHADOW_TURNS_LOAD from the
 	// config in ctx, and treat a ctx without one as every flag off.
 	ctx = cfg.WithContext(ctx)
 
@@ -190,7 +190,7 @@ func LeagueUnstartedGameReminder() error {
 	ctx := context.Background()
 	cfg := &config.Config{}
 	cfg.Load(nil)
-	// The stores read feature flags such as WRITE_ONGOING_GAMES from the
+	// The stores read feature flags such as SHADOW_TURNS_LOAD from the
 	// config in ctx, and treat a ctx without one as every flag off.
 	ctx = cfg.WithContext(ctx)
 
@@ -274,7 +274,7 @@ func ResendSeasonStartedEmails() error {
 	ctx := context.Background()
 	cfg := &config.Config{}
 	cfg.Load(nil)
-	// The stores read feature flags such as WRITE_ONGOING_GAMES from the
+	// The stores read feature flags such as SHADOW_TURNS_LOAD from the
 	// config in ctx, and treat a ctx without one as every flag off.
 	ctx = cfg.WithContext(ctx)
 
