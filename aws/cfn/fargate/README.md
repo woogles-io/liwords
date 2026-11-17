@@ -16,10 +16,9 @@ services until traffic moves over, so nothing has to stop for the move.
 - **Cluster** `woogles` (Fargate only). The EC2 cluster `woogles-prod` keeps
   running the old services until they're scaled down.
 - **On-demand tasks**: `puzzle-generator-fargate`, started by the API
-  (`pkg/puzzles`, with `-puzzle-generation-subnets` set), and
-  `liwords-db-migration-fargate`, which CI runs before each deploy. CI
-  switches the migration to Fargate by itself once that task definition
-  exists.
+  (`pkg/puzzles`), and `liwords-db-migration-fargate`, which CI runs before
+  each deploy. Both are defined in the `liwords-api` stack, so it has to
+  exist before CI runs a migration.
 - **Network**: VPC `vpc-0fe61cd12246e6ee0`, subnet `subnet-0957a537f7ee06915`
   (us-east-2a, where Postgres, Redis and NATS are). Tasks get public IPs,
   since there is no NAT gateway; the security group `liwords-fargate-tasks`
@@ -43,9 +42,11 @@ export AWS_PROFILE=woogles-prod AWS_REGION=us-east-2
 TAG=master-gh2321   # the tag the EC2 API runs now
 
 scripts/fargate/deploy-stack.sh liwords-base   aws/cfn/fargate/base.yaml
+# The task definitions, with no API task running yet:
+scripts/fargate/deploy-stack.sh liwords-api    aws/cfn/fargate/liwords-api.yaml    ImageTag=$TAG DesiredCount=0
 scripts/fargate/deploy-stack.sh macondo-bot    aws/cfn/fargate/macondo-bot.yaml
 scripts/fargate/deploy-stack.sh liwords-socket aws/cfn/fargate/liwords-socket.yaml ImageTag=$TAG
-scripts/fargate/deploy-stack.sh liwords-api    aws/cfn/fargate/liwords-api.yaml    ImageTag=$TAG
+scripts/fargate/deploy-stack.sh liwords-api    aws/cfn/fargate/liwords-api.yaml    DesiredCount=1
 ```
 
 Each service starts one task. From that moment it is a second server: the

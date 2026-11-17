@@ -34,13 +34,12 @@ type PuzzleService struct {
 	queries            *models.Queries
 }
 
-// ECSTask says where the puzzle generation task runs.
+// ECSTask says where the puzzle generation task runs: on Fargate, in these
+// subnets and security groups, with a public IP (the VPC has no NAT
+// gateway).
 type ECSTask struct {
 	Cluster        string
 	TaskDefinition string
-	// Non-empty: run it on Fargate, in these subnets and security groups,
-	// with a public IP (the VPC has no NAT gateway). Empty: on the
-	// cluster's EC2 instances.
 	Subnets        []string
 	SecurityGroups []string
 }
@@ -301,9 +300,17 @@ func boolPtrToPuzzleStatus(b *bool) pb.PuzzleStatus {
 }
 
 func puzzleGenRunTaskInput(arg string, task ECSTask) *ecs.RunTaskInput {
-	input := &ecs.RunTaskInput{
+	return &ecs.RunTaskInput{
 		Cluster:        aws.String(task.Cluster),
 		TaskDefinition: aws.String(task.TaskDefinition),
+		LaunchType:     types.LaunchTypeFargate,
+		NetworkConfiguration: &types.NetworkConfiguration{
+			AwsvpcConfiguration: &types.AwsVpcConfiguration{
+				Subnets:        task.Subnets,
+				SecurityGroups: task.SecurityGroups,
+				AssignPublicIp: types.AssignPublicIpEnabled,
+			},
+		},
 		Overrides: &types.TaskOverride{
 			ContainerOverrides: []types.ContainerOverride{
 				{
@@ -316,15 +323,4 @@ func puzzleGenRunTaskInput(arg string, task ECSTask) *ecs.RunTaskInput {
 			},
 		},
 	}
-	if len(task.Subnets) > 0 {
-		input.LaunchType = types.LaunchTypeFargate
-		input.NetworkConfiguration = &types.NetworkConfiguration{
-			AwsvpcConfiguration: &types.AwsVpcConfiguration{
-				Subnets:        task.Subnets,
-				SecurityGroups: task.SecurityGroups,
-				AssignPublicIp: types.AssignPublicIpEnabled,
-			},
-		}
-	}
-	return input
 }

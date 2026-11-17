@@ -243,8 +243,7 @@ jobs:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       AWS_REGION: us-east-2
-      ECS_CLUSTER: woogles-prod
-      TASK_DEFINITION: liwords-db-migration
+      TASK_DEFINITION: liwords-db-migration-fargate
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -282,21 +281,15 @@ jobs:
 
           echo "Using Docker image: $DOCKER_IMAGE"
 
-          # On Fargate once the liwords-api stack (aws/cfn/fargate) has made
-          # its migration task definition; on the EC2 cluster until then.
-          RUN_ARGS=(--launch-type EC2)
-          if aws ecs describe-task-definition --task-definition liwords-db-migration-fargate \
-              --region $AWS_REGION >/dev/null 2>&1; then
-            base_output() {
-              aws cloudformation describe-stacks --stack-name liwords-base --region $AWS_REGION \
-                --query "Stacks[0].Outputs[?OutputKey=='$1'].OutputValue" --output text
-            }
-            TASK_DEFINITION=liwords-db-migration-fargate
-            ECS_CLUSTER=$(base_output ClusterName)
-            RUN_ARGS=(--launch-type FARGATE --network-configuration
-              "awsvpcConfiguration={subnets=[$(base_output Subnets)],securityGroups=[$(base_output TaskSecurityGroupId)],assignPublicIp=ENABLED}")
-          fi
-          echo "Running $TASK_DEFINITION on $ECS_CLUSTER (${RUN_ARGS[1]})"
+          # The task definition comes from the liwords-api stack, and the
+          # cluster and network from liwords-base (aws/cfn/fargate).
+          base_output() {
+            aws cloudformation describe-stacks --stack-name liwords-base --region $AWS_REGION \
+              --query "Stacks[0].Outputs[?OutputKey=='$1'].OutputValue" --output text
+          }
+          ECS_CLUSTER=$(base_output ClusterName)
+          NETWORK="awsvpcConfiguration={subnets=[$(base_output Subnets)],securityGroups=[$(base_output TaskSecurityGroupId)],assignPublicIp=ENABLED}"
+          echo "Running $TASK_DEFINITION on $ECS_CLUSTER"
 
           # Register a revision of the task definition with the new image.
           # Get the current task definition
@@ -324,7 +317,8 @@ jobs:
           TASK_OUTPUT=$(aws ecs run-task \
             --cluster $ECS_CLUSTER \
             --task-definition $NEW_TASK_DEF_ARN \
-            "${RUN_ARGS[@]}" \
+            --launch-type FARGATE \
+            --network-configuration "$NETWORK" \
             --region $AWS_REGION)
 
           # Extract task ARN
