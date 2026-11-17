@@ -3,6 +3,7 @@ package organizations
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -13,6 +14,8 @@ import (
 	"sync"
 	"time"
 	"unicode"
+
+	"github.com/woogles-io/liwords/pkg/utilities"
 )
 
 // ABSPBaseURL is absp-database.org, which has both the members' login and
@@ -78,7 +81,8 @@ func NewABSPIntegration() *ABSPIntegration {
 	return &ABSPIntegration{
 		BaseURL: ABSPBaseURL,
 		HTTPClient: &http.Client{
-			Timeout: 30 * time.Second,
+			Timeout:   30 * time.Second,
+			Transport: utilities.TracedTransport(),
 		},
 	}
 }
@@ -157,18 +161,25 @@ func parseABSPRatings(body []byte) (map[string]abspPlayer, error) {
 // load downloads and parses the ratings list, once per instance: a failure
 // is kept too, so that a scheduled refresh of every linked user does not
 // download a broken list again for each of them.
-func (a *ABSPIntegration) load() (map[string]abspPlayer, error) {
+// Preload downloads the ratings list within ctx, so that the download is traced
+// as part of the caller's work rather than the first FetchTitle's.
+func (a *ABSPIntegration) Preload(ctx context.Context) error {
+	_, err := a.load(ctx)
+	return err
+}
+
+func (a *ABSPIntegration) load(ctx context.Context) (map[string]abspPlayer, error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	if a.players == nil && a.loadErr == nil {
-		a.players, a.loadErr = a.download()
+		a.players, a.loadErr = a.download(ctx)
 	}
 	return a.players, a.loadErr
 }
 
 // download fetches and parses the ratings list.
-func (a *ABSPIntegration) download() (map[string]abspPlayer, error) {
-	req, err := http.NewRequest("GET", a.BaseURL+"/current.txt", nil)
+func (a *ABSPIntegration) download(ctx context.Context) (map[string]abspPlayer, error) {
+	req, err := http.NewRequestWithContext(ctx, "GET", a.BaseURL+"/current.txt", nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -200,7 +211,7 @@ func (a *ABSPIntegration) lookUp(memberID string) (*TitleInfo, error) {
 	if !ok {
 		return nil, fmt.Errorf("%q is not an ABSP membership number", memberID)
 	}
-	players, err := a.load()
+	players, err := a.load(context.Background())
 	if err != nil {
 		return nil, err
 	}

@@ -257,7 +257,7 @@ func refreshPatreonIntegrationTokens(ctx context.Context, q *models.Queries, svc
 		return
 	}
 
-	tokres, err := svc.RefreshPatreonToken(integrationData.RefreshToken)
+	tokres, err := svc.RefreshPatreonToken(ctx, integrationData.RefreshToken)
 	if err != nil {
 		log.Err(err).Msg("failed to refresh global patreon token")
 		return

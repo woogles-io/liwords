@@ -13,6 +13,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"strings"
 	"time"
 
@@ -27,6 +28,7 @@ import (
 	"github.com/woogles-io/liwords/pkg/organization"
 	"github.com/woogles-io/liwords/pkg/stores"
 	"github.com/woogles-io/liwords/pkg/stores/models"
+	"github.com/woogles-io/liwords/pkg/utilities"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/config_service"
 )
 
@@ -54,7 +56,9 @@ const (
 // BlogRSS shows the newest blog post as the homepage announcement that links
 // to the blog, replacing the one before.
 func (t *Tasks) BlogRSS(ctx context.Context) error {
-	feed, err := gofeed.NewParser().ParseURLWithContext(blogRSSFeedURL, ctx)
+	parser := gofeed.NewParser()
+	parser.Client = &http.Client{Timeout: 30 * time.Second, Transport: utilities.TracedTransport()}
+	feed, err := parser.ParseURLWithContext(blogRSSFeedURL, ctx)
 	if err != nil {
 		return err
 	}
@@ -282,7 +286,7 @@ func (t *Tasks) refreshPatreonCreatorToken(ctx context.Context) error {
 	if err := json.Unmarshal(bts, &data); err != nil {
 		return err
 	}
-	tokres, err := t.oauth.RefreshPatreonToken(data.RefreshToken)
+	tokres, err := t.oauth.RefreshPatreonToken(ctx, data.RefreshToken)
 	if err != nil {
 		return fmt.Errorf("global patreon token: %w", err)
 	}

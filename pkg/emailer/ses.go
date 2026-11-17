@@ -11,6 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sesv2"
 	"github.com/aws/aws-sdk-go-v2/service/sesv2/types"
 	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws"
 )
 
 const (
@@ -35,6 +36,8 @@ func sesClient() (*sesv2.Client, error) {
 			clientErr = fmt.Errorf("failed to load AWS config: %w", err)
 			return
 		}
+		// Each send is a span, a child of the caller's when it has one.
+		otelaws.AppendMiddlewares(&cfg.APIOptions)
 		client = sesv2.NewFromConfig(cfg)
 	})
 	return client, clientErr
@@ -44,6 +47,12 @@ func sesClient() (*sesv2.Client, error) {
 // The debugMode parameter controls whether to actually send or just log.
 // The bccAddress parameter optionally adds a BCC recipient.
 func SendSimpleMessage(debugMode bool, recipient, subject, body string, bccAddress ...string) (string, error) {
+	return SendSimpleMessageCtx(context.Background(), debugMode, recipient, subject, body, bccAddress...)
+}
+
+// SendSimpleMessageCtx is SendSimpleMessage within ctx, so the send is traced
+// as part of the caller's work.
+func SendSimpleMessageCtx(ctx context.Context, debugMode bool, recipient, subject, body string, bccAddress ...string) (string, error) {
 	if debugMode {
 		bccInfo := ""
 		if len(bccAddress) > 0 {
@@ -58,7 +67,7 @@ func SendSimpleMessage(debugMode bool, recipient, subject, body string, bccAddre
 		return "", err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
 	destination := &types.Destination{

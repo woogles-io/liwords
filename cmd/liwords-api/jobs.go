@@ -88,15 +88,15 @@ func registerJobs(r *jobs.Runner, d jobDeps) error {
 // the league Discord webhook (dropped when none is configured, as before).
 func outboxChannels(cfg *config.Config) map[string]outbox.SendFunc {
 	return map[string]outbox.SendFunc{
-		outbox.ChannelEmail: func(_ context.Context, m outbox.Message) error {
-			_, err := emailer.SendSimpleMessage(cfg.EmailDebugMode, m.Recipient, m.Subject, m.Body)
+		outbox.ChannelEmail: func(ctx context.Context, m outbox.Message) error {
+			_, err := emailer.SendSimpleMessageCtx(ctx, cfg.EmailDebugMode, m.Recipient, m.Subject, m.Body)
 			return err
 		},
-		outbox.ChannelLeagueDiscord: func(_ context.Context, m outbox.Message) error {
+		outbox.ChannelLeagueDiscord: func(ctx context.Context, m outbox.Message) error {
 			if cfg.LeagueDiscordToken == "" {
 				return nil
 			}
-			return notify.Send(m.Body, cfg.LeagueDiscordToken)
+			return notify.Send(ctx, m.Body, cfg.LeagueDiscordToken)
 		},
 	}
 }

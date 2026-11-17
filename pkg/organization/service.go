@@ -1101,6 +1101,13 @@ func RefreshOrganizationTitles(ctx context.Context, q *models.Queries, orgCode o
 	if err != nil {
 		return err
 	}
+	// A list downloaded once for every link is downloaded here, within ctx,
+	// so the download shows in the caller's trace.
+	if p, ok := integration.(interface{ Preload(context.Context) error }); ok {
+		if err := p.Preload(ctx); err != nil {
+			return err
+		}
+	}
 	links, err := q.GetAllUsersWithOrganization(ctx, string(orgCode))
 	if err != nil {
 		return err
