@@ -417,6 +417,11 @@ func TestMisc(t *testing.T) {
 	is.NoErr(err)
 	is.Equal(len(users), 0)
 
+	// Every user would match an empty prefix; return none rather than all.
+	users, err = ustore.UsersByPrefix(ctx, "")
+	is.NoErr(err)
+	is.Equal(len(users), 0)
+
 	// ListAllIDs
 	allUsers, err := ustore.ListAllIDs(ctx)
 	is.NoErr(err)
@@ -430,6 +435,41 @@ func TestMisc(t *testing.T) {
 	is.NoErr(err)
 	is.Equal(count, int64(19))
 	ustore.Disconnect()
+}
+
+// The prefix is matched as a byte range, not with LIKE: "_" is an ordinary
+// character, case is ignored, non-ASCII names match, and the answer is capped
+// and comes back in order.
+func TestUsersByPrefixMatching(t *testing.T) {
+	is := is.New(t)
+	ustore, _, ctx := recreateDB()
+	defer ustore.Disconnect()
+
+	for _, name := range []string{"Snake_Case", "snakeXcase", "ÉclairFan", "éclat"} {
+		is.NoErr(ustore.New(ctx, &entity.User{Username: name, Email: name + "@woogles.io", UUID: name + "_uuid"}))
+	}
+
+	users, err := ustore.UsersByPrefix(ctx, "snake_")
+	is.NoErr(err)
+	is.Equal(getUsernamesFromBasicUsers(users), []string{"Snake_Case"})
+
+	users, err = ustore.UsersByPrefix(ctx, "SNAKE")
+	is.NoErr(err)
+	is.Equal(getUsernamesFromBasicUsers(users), []string{"Snake_Case", "snakeXcase"})
+
+	users, err = ustore.UsersByPrefix(ctx, "Écl")
+	is.NoErr(err)
+	is.Equal(getUsernamesFromBasicUsers(users), []string{"ÉclairFan", "éclat"})
+
+	for i := 0; i < maxPrefixResults+5; i++ {
+		name := fmt.Sprintf("bulk%03d", i)
+		is.NoErr(ustore.New(ctx, &entity.User{Username: name, Email: name + "@woogles.io", UUID: name + "_uuid"}))
+	}
+	users, err = ustore.UsersByPrefix(ctx, "bulk")
+	is.NoErr(err)
+	is.Equal(len(users), maxPrefixResults)
+	is.Equal(users[0].Username, "bulk000")
+	is.Equal(users[maxPrefixResults-1].Username, fmt.Sprintf("bulk%03d", maxPrefixResults-1))
 }
 
 func TestBlocks(t *testing.T) {

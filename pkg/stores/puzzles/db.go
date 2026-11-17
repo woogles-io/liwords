@@ -223,10 +223,16 @@ func (s *DBStore) GetStartPuzzleId(ctx context.Context, userUUID string, lexicon
 		var pid int
 		status := &pgtype.Bool{}
 		// This query gets the most recently updated puzzle for this lexicon.
+		// It walks idx_puzzle_attempts_user_updated back from the newest
+		// attempt and stops at the first one in the lexicon. A join rather
+		// than a subquery on puzzles, so the planner can see from the lexicon
+		// statistics how soon that is; otherwise it may read and sort every
+		// attempt the player has made (15k for the heaviest player).
 		err = tx.QueryRow(ctx, `
-			SELECT puzzle_id, correct FROM puzzle_attempts WHERE user_id = $1 AND
-			(SELECT lexicon FROM puzzles WHERE id = puzzle_id AND valid) = $2
-			ORDER BY updated_at DESC LIMIT 1`, uid, lexicon).Scan(&pid, status)
+			SELECT pa.puzzle_id, pa.correct FROM puzzle_attempts pa
+			JOIN puzzles p ON p.id = pa.puzzle_id
+			WHERE pa.user_id = $1 AND p.lexicon = $2 AND p.valid
+			ORDER BY pa.updated_at DESC LIMIT 1`, uid, lexicon).Scan(&pid, status)
 		if err == pgx.ErrNoRows {
 			// User has not seen any puzzles, just get the next puzzle
 			getNext = true
