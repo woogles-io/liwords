@@ -286,23 +286,11 @@ go run cmd/league-tester simulate-games --season <season-uuid> --seed 12345
 go run cmd/league-tester close-season --league test-league
 ```
 
-### Using Maintenance Commands
+### In production
 
-The maintenance commands can also be used in production:
-
-```bash
-# Day 15: Open registration
-go run cmd/maintenance league-registration-opener
-
-# Day 20: Close current season
-go run cmd/maintenance league-season-closer
-
-# Day 21 at 7:45 AM: Prepare divisions
-go run cmd/maintenance league-division-preparer
-
-# Day 21 at 8:00 AM: Start season
-go run cmd/maintenance league-season-starter
-```
+In production these steps run in the API, as the `league_hourly` job
+(`pkg/maintenance`, hourly at :01 UTC), which calls the same lifecycle
+runner. A step cut off by a deploy carries on in the next run.
 
 ## Testing Different Scenarios
 

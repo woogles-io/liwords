@@ -272,7 +272,7 @@ func (s *DBStore) UpdateVerificationToken(ctx context.Context, uuid string, toke
 
 // NOTE: DeleteUnverifiedUsers used to live here, but it was never called and
 // its delete ordering was incomplete (it missed both followings and blockings).
-// The real cleanup is UnverifiedUsersCleanup in cmd/maintenance/main.go.
+// The real cleanup is UnverifiedUsersCleanup in pkg/maintenance/cleanup.go.
 
 // New creates a new user in the DB.
 func (s *DBStore) New(ctx context.Context, u *entity.User) error {

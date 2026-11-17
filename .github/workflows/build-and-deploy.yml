@@ -176,9 +176,6 @@ jobs:
       - name: Build Puzzle Generator
         run: cd cmd/puzzlegen && go build
 
-      - name: Build Maintenance
-        run: cd cmd/maintenance && go build
-
       - name: Build Socket Server
         run: cd cmd/socketsrv && go build
 
