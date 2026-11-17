@@ -731,7 +731,7 @@ deployed in groups.
 4. **No deploy:** delete `cmd/maintenance`, its Dockerfile, build steps and
    cfn template, once deploy 1 has run a day. Deleting the AWS stack, task
    definition and `liwordsMaintenanceTaskRole` waits for an OK. Code removed
-   in #REMOVE_PR; the AWS stack is still up until then.
+   in #2300; the AWS stack is still up until then.
 
 ## 8. Socket server
 
