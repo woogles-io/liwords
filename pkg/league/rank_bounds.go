@@ -6,8 +6,6 @@ import (
 	"slices"
 	"sort"
 	"sync"
-
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // gamePair represents an unfinished game between two players (by standing index)
@@ -201,8 +199,8 @@ func StandingInfoFromRow(userID int32, wins, draws, spread, gamesRemaining int32
 }
 
 // UnfinishedGameFromRow converts a DB row to unfinishedGame.
-func UnfinishedGameFromRow(p0, p1 pgtype.Int4) unfinishedGame {
-	return unfinishedGame{player0ID: p0.Int32, player1ID: p1.Int32}
+func UnfinishedGameFromRow(p0, p1 int32) unfinishedGame {
+	return unfinishedGame{player0ID: p0, player1ID: p1}
 }
 
 // playerGameInfo holds precomputed game decomposition for a specific player P.

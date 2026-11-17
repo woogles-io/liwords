@@ -38,12 +38,16 @@ SELECT
     g.tournament_data, g.tournament_id, g.ready_flag, g.meta_events, g.type,
     g.game_request, g.player_on_turn, g.league_id, g.season_id, g.league_division_id,
     g.history_s3_key, g.last_known_racks,
+    -- A live game's meta events are kept in its ongoing_games row only. NULL
+    -- for a game with no row (a finished one), which keeps the games copy.
+    og.meta_events AS ongoing_meta_events,
     CASE WHEN @with_turns::boolean THEN (
         SELECT array_agg(t.event ORDER BY t.turn_idx)
         FROM game_turns t
         WHERE t.game_uuid = g.uuid
     ) END::jsonb[] AS turn_events
 FROM games g
+LEFT JOIN ongoing_games og ON og.game_uuid = g.uuid
 WHERE g.uuid = @uuid;
 
 -- name: GetGameOwner :one
@@ -236,10 +240,6 @@ INSERT INTO games (
 UPDATE games SET timers = @timers, updated_at = now()
 WHERE uuid = @uuid;
 
--- name: UpdateGameMetaEvents :exec
-UPDATE games SET meta_events = @meta_events, updated_at = now()
-WHERE uuid = @uuid;
-
 -- name: UpdateGameStarted :exec
 UPDATE games SET started = @started, timers = @timers, updated_at = now()
 WHERE uuid = @uuid;
@@ -276,7 +276,8 @@ UPDATE games SET
     loser_idx = @loser_idx,
     quickdata = @quickdata,
     history = @history,
-    meta_events = @meta_events,
+    -- meta_events is not written: a live game's are in its ongoing_games row,
+    -- and nothing reads them after the game ends (see GetGameWithTurns).
     stats = @stats,
     tournament_data = @tournament_data,
     tournament_id = @tournament_id,
@@ -305,104 +306,6 @@ INSERT INTO games (
 ) VALUES (
     @uuid, @history, @quickdata, @timers, @game_end_reason, @type, @game_request
 );
-
--- name: ListActiveGames :many
-SELECT quickdata, uuid, started, tournament_data, game_request, player_on_turn, league_id, season_id, league_division_id
-FROM games
-WHERE game_end_reason = 0 -- NONE (ongoing games)
-    AND COALESCE((game_request->>'game_mode')::int, 0) != 1 -- Exclude CORRESPONDENCE games
-ORDER BY id;
-
--- name: ListActiveRealTimeGamesForAdjudication :many
--- Only what the adjudicator needs to decide whether an ongoing real-time game
--- has timed out or never started, so it does not have to load every game.
-SELECT uuid, started, player_on_turn, timers, game_request, type, created_at, quickdata, tournament_id
-FROM games
-WHERE game_end_reason = 0 -- NONE (ongoing games)
-    AND COALESCE((game_request->>'game_mode')::int, 0) != 1 -- Exclude CORRESPONDENCE games
-ORDER BY id;
-
--- name: ListActiveTournamentGames :many
-SELECT quickdata, uuid, started, tournament_data, game_request, player_on_turn, league_id, season_id, league_division_id
-FROM games
-WHERE game_end_reason = 0 -- NONE (ongoing games)
-    AND tournament_id = @tournament_id::text
-    AND COALESCE((game_request->>'game_mode')::int, 0) != 1 -- Exclude CORRESPONDENCE games
-ORDER BY id;
-
--- name: ListActiveCorrespondenceGames :many
-SELECT g.quickdata, g.uuid, g.started, g.tournament_data, g.game_request, g.player_on_turn, g.timers, g.type, g.updated_at, g.league_id, g.season_id, g.league_division_id,
-    COALESCE(l.slug, '')::text AS league_slug
-FROM games g
-LEFT JOIN leagues l ON l.uuid = g.league_id
-WHERE g.game_end_reason = 0 -- NONE (ongoing games)
-    AND (g.game_request->>'game_mode')::int = 1 -- Only CORRESPONDENCE games
-ORDER BY g.id;
-
--- name: ListActiveCorrespondenceGamesForUser :many
-SELECT g.quickdata, g.uuid, g.started, g.tournament_data, g.game_request, g.player_on_turn, g.timers, g.updated_at, g.league_id, g.season_id, g.league_division_id, g.history,
-    COALESCE(l.slug, '')::text AS league_slug
-FROM games g
-LEFT JOIN leagues l ON l.uuid = g.league_id
-WHERE g.game_end_reason = 0 -- NONE (ongoing games)
-    AND (g.game_request->>'game_mode')::int = 1 -- Only CORRESPONDENCE games
-    AND (
-        g.player0_id = (SELECT id FROM users WHERE uuid = @user_uuid::text)
-        OR g.player1_id = (SELECT id FROM users WHERE uuid = @user_uuid::text)
-    )
-ORDER BY g.id;
-
--- name: ListActiveCorrespondenceGamesForUserAndLeague :many
-SELECT quickdata, uuid, started, tournament_data, game_request, player_on_turn, timers, updated_at, league_id, season_id, league_division_id, history
-FROM games
-WHERE league_id = @league_id::uuid
-    AND game_end_reason = 0 -- NONE (ongoing games)
-    AND (game_request->>'game_mode')::int = 1 -- Only CORRESPONDENCE games
-    AND (
-        player0_id = (SELECT id FROM users WHERE uuid = @user_uuid::text)
-        OR player1_id = (SELECT id FROM users WHERE uuid = @user_uuid::text)
-    )
-ORDER BY id;
-
--- name: CountActiveCorrespondenceGames :one
-SELECT COUNT(*)::int
-FROM games
-WHERE game_end_reason = 0 -- NONE (ongoing games)
-    AND (game_request->>'game_mode')::int = 1; -- Only CORRESPONDENCE games
-
--- name: ListActiveCorrespondenceGamesWithBotOnTurn :many
-SELECT g.uuid
-FROM games g
-WHERE g.game_end_reason = 0 -- NONE (ongoing games)
-    AND (g.game_request->>'game_mode')::int = 1 -- Only CORRESPONDENCE games
-    AND g.player_on_turn IS NOT NULL
-    AND (
-        (g.player_on_turn = 0 AND EXISTS (
-            SELECT 1 FROM users u WHERE u.id = g.player0_id AND u.internal_bot = true AND lower(u.username) != 'bestbot'
-        ))
-        OR
-        (g.player_on_turn = 1 AND EXISTS (
-            SELECT 1 FROM users u WHERE u.id = g.player1_id AND u.internal_bot = true AND lower(u.username) != 'bestbot'
-        ))
-    )
-ORDER BY g.id;
-
--- name: ListActiveRealtimeGamesWithBotOnTurn :many
-SELECT g.uuid
-FROM games g
-WHERE g.game_end_reason = 0 -- NONE (ongoing games)
-    AND COALESCE((g.game_request->>'game_mode')::int, 0) != 1 -- Exclude CORRESPONDENCE games
-    AND g.player_on_turn IS NOT NULL
-    AND (
-        (g.player_on_turn = 0 AND EXISTS (
-            SELECT 1 FROM users u WHERE u.id = g.player0_id AND u.internal_bot = true AND lower(u.username) != 'bestbot'
-        ))
-        OR
-        (g.player_on_turn = 1 AND EXISTS (
-            SELECT 1 FROM users u WHERE u.id = g.player1_id AND u.internal_bot = true AND lower(u.username) != 'bestbot'
-        ))
-    )
-ORDER BY g.id;
 
 -- name: SetReady :one
 -- Returns the flag as it now stands, including when this player's bit was

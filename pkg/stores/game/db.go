@@ -151,6 +151,18 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Game, error) {
 		return nil, err
 	}
 
+	// A live game's meta events are kept in its ongoing row only; Set stopped
+	// writing the games copy. A game without a row -- a finished one -- keeps
+	// whatever the games column last held, which nothing reads.
+	if row.OngoingMetaEvents != nil {
+		var me entity.MetaEventData
+		if err := me.Scan(row.OngoingMetaEvents); err != nil {
+			span.RecordError(err)
+			return nil, fmt.Errorf("game %s: ongoing meta events: %w", id, err)
+		}
+		g.MetaEvents = me
+	}
+
 	// Convert to an entity.Game
 	gamereq := &g.GameRequest
 
@@ -1317,11 +1329,6 @@ func (s *DBStore) Set(ctx context.Context, g *entity.Game) error {
 
 	g.LastUpdatedAt = time.UnixMilli(g.TimerModule().Now())
 
-	writeOngoing := false
-	if cfg, cfgErr := config.Ctx(ctx); cfgErr == nil && cfg.WriteOngoingGames {
-		writeOngoing = true
-	}
-
 	pending := g.PendingTurns()
 	params := models.UpdateGameParams{
 		UpdatedAt:        pgtype.Timestamptz{Time: g.LastUpdatedAt, Valid: true},
@@ -1337,7 +1344,6 @@ func (s *DBStore) Set(ctx context.Context, g *entity.Game) error {
 		Quickdata:        safeDerefQuickdata(g.Quickdata),
 		TournamentData:   safeDerefTournamentData(g.TournamentData),
 		TournamentID:     tourneyID,
-		MetaEvents:       safeDerefMetaEvents(g.MetaEvents),
 		Uuid:             common.ToPGTypeText(g.GameID()),
 		GameRequest:      safeDerefGameRequest(g.GameReq),
 		PlayerOnTurn:     pgtype.Int4{Int32: int32(g.PlayerOnTurn()), Valid: true},
@@ -1386,12 +1392,9 @@ func (s *DBStore) Set(ctx context.Context, g *entity.Game) error {
 			return err
 		}
 		// In the same transaction, so the listings can never name a game whose
-		// row says something else. Nothing reads ongoing_games yet -- this
-		// populates it so it can be checked before anything does.
-		if writeOngoing {
-			return syncOngoingGame(ctx, q, g)
-		}
-		return nil
+		// row says something else, and a live game's meta events (kept only in
+		// its ongoing row) are saved with the rest of it.
+		return syncOngoingGame(ctx, q, g)
 	}); err != nil {
 		return err
 	}
@@ -1414,14 +1417,6 @@ func (s *DBStore) UpdateTimers(ctx context.Context, gameID string, timers entity
 	return s.queries.UpdateGameTimers(ctx, models.UpdateGameTimersParams{
 		Uuid:   common.ToPGTypeText(gameID),
 		Timers: timers,
-	})
-}
-
-// UpdateMetaEvents writes only the meta_events column (e.g. after appending a nudge/abort).
-func (s *DBStore) UpdateMetaEvents(ctx context.Context, gameID string, events entity.MetaEventData) error {
-	return s.queries.UpdateGameMetaEvents(ctx, models.UpdateGameMetaEventsParams{
-		Uuid:       common.ToPGTypeText(gameID),
-		MetaEvents: events,
 	})
 }
 
@@ -1623,9 +1618,6 @@ func (s *DBStore) Create(ctx context.Context, g *entity.Game) error {
 		LastKnownRacks:   g.History().LastKnownRacks,
 	}
 
-	if cfg, cfgErr := config.Ctx(ctx); cfgErr != nil || !cfg.WriteOngoingGames {
-		return s.queries.CreateGame(ctx, params)
-	}
 	// A game is ongoing from the moment it exists, not from its first save:
 	// that is StartGame, after both players have readied, so a game waiting
 	// for its players -- or one that never starts and is aborted -- would
@@ -1665,7 +1657,7 @@ func (s *DBStore) ListActive(ctx context.Context, tourneyID string, bust bool) (
 	var responses []*pb.GameInfoResponse
 
 	if tourneyID != "" {
-		games, err := ActiveTournamentGames(ctx, s.queries, tourneyID)
+		games, err := s.queries.ListActiveTournamentGames(ctx, tourneyID)
 		if err != nil {
 			return nil, err
 		}
@@ -1689,7 +1681,7 @@ func (s *DBStore) ListActive(ctx context.Context, tourneyID string, bust bool) (
 			responses = append(responses, info)
 		}
 	} else {
-		games, err := ActiveGames(ctx, s.queries)
+		games, err := s.queries.ListActiveGames(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -1798,7 +1790,7 @@ func ScoresFromHistory(historyBytes []byte) []int32 {
 func (s *DBStore) ListActiveCorrespondenceForUser(ctx context.Context, userID string) (*pb.GameInfoResponses, error) {
 	var responses []*pb.GameInfoResponse
 
-	games, err := ActiveCorrespondenceGamesForUser(ctx, s.queries, userID)
+	games, err := s.queries.ListActiveCorrespondenceGamesForUser(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -1850,7 +1842,7 @@ func (s *DBStore) ListActiveCorrespondenceForUserAndLeague(ctx context.Context, 
 		UserUuid: userID,
 	}
 
-	games, err := ActiveCorrespondenceGamesForUserAndLeague(ctx, s.queries, params)
+	games, err := s.queries.ListActiveCorrespondenceGamesForUserAndLeague(ctx, params)
 	if err != nil {
 		return nil, err
 	}
@@ -1890,19 +1882,31 @@ func (s *DBStore) ListActiveCorrespondenceForUserAndLeague(ctx context.Context, 
 // ongoing real-time game, so it can find the games to act on without loading
 // each one.
 func (s *DBStore) ListActiveRealTimeRaw(ctx context.Context) ([]models.ListActiveRealTimeGamesForAdjudicationRow, error) {
-	return ActiveRealTimeGamesForAdjudication(ctx, s.queries)
+	return s.queries.ListActiveRealTimeGamesForAdjudication(ctx)
 }
 
 // ListCorrespondenceTimeoutCandidates returns the correspondence games the
-// adjudicator should check at nowMs; see CorrespondenceTimeoutCandidates.
+// adjudicator should check at nowMs: only those whose timers say the player on
+// turn may have run out (see the query), which is normally none. The
+// adjudicator decides each one with Timers.RanOut.
 func (s *DBStore) ListCorrespondenceTimeoutCandidates(ctx context.Context, nowMs int64) ([]models.ListActiveCorrespondenceGamesRow, error) {
-	return CorrespondenceTimeoutCandidates(ctx, s.queries, nowMs)
+	rows, err := s.queries.ListCorrespondenceTimeoutCandidates(ctx, nowMs)
+	if err != nil {
+		return nil, err
+	}
+	// The query returns ListActiveCorrespondenceGames's columns, so the row
+	// types are identical. If they ever drift apart, this stops compiling.
+	out := make([]models.ListActiveCorrespondenceGamesRow, len(rows))
+	for i, r := range rows {
+		out[i] = models.ListActiveCorrespondenceGamesRow(r)
+	}
+	return out, nil
 }
 
 // ListActiveCorrespondenceRaw returns raw DB rows with timer data.
 // This is used internally by ListActiveCorrespondence and the adjudication process.
 func (s *DBStore) ListActiveCorrespondenceRaw(ctx context.Context) ([]models.ListActiveCorrespondenceGamesRow, error) {
-	games, err := ActiveCorrespondenceGames(ctx, s.queries)
+	games, err := s.queries.ListActiveCorrespondenceGames(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -1932,34 +1936,12 @@ func (s *DBStore) ListAllIDs(ctx context.Context) ([]string, error) {
 	return gameIDs, nil
 }
 
-func (s *DBStore) SetReady(ctx context.Context, gid string, pidx int) (int, error) {
-	if cfg, cfgErr := config.Ctx(ctx); cfgErr == nil && cfg.WriteOngoingGames {
-		return s.setReadyWithOngoing(ctx, gid, pidx)
-	}
-	readyFlag, err := s.queries.SetReady(ctx, models.SetReadyParams{
-		PlayerIdx: int32(pidx),
-		Uuid:      common.ToPGTypeText(gid),
-	})
-
-	if err != nil {
-		// No such game. (A bit already set is not this case any more: the
-		// query returns the flag regardless.)
-		if err == pgx.ErrNoRows {
-			return 0, nil
-		}
-		log.Err(err).Int("playerIdx", pidx).Str("gid", gid).Msg("setting-ready")
-		return 0, err
-	}
-
-	log.Debug().Int("playerIdx", pidx).Str("gid", gid).Int("readyFlag", int(readyFlag.Int64)).Msg("player-set-ready")
-	return int(readyFlag.Int64), nil
-}
-
-// setReadyWithOngoing is SetReady with the ongoing row kept in step, in one
+// SetReady sets player pidx's ready bit and returns the flag as it now stands
+// (0 if there is no such game). The ongoing row is kept in step, in one
 // transaction. The caller holds the game's lock (readyForGame does), and so
 // does every save, so the row cannot be created between the two updates and
 // miss the bit.
-func (s *DBStore) setReadyWithOngoing(ctx context.Context, gid string, pidx int) (int, error) {
+func (s *DBStore) SetReady(ctx context.Context, gid string, pidx int) (int, error) {
 	var flag int
 	err := withGameTx(ctx, s.dbPool, func(ctx context.Context, q *models.Queries) error {
 		readyFlag, err := q.SetReady(ctx, models.SetReadyParams{
