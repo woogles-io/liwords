@@ -1,0 +1,73 @@
+name: Migration order
+
+# Sets the `migration-order` commit status on open PRs into master: failure
+# when a PR adds a migration that is not newer than master's newest one, which
+# golang-migrate would skip in production (see scripts/check-migration-order.sh).
+#
+# The answer changes when master moves, not only when the PR does, so every
+# push to master checks all open PRs again. A PR that was fine when it was
+# pushed turns red as soon as another migration lands ahead of it.
+#
+# This uses pull_request_target so fork PRs get a token that can write
+# statuses. That token can write to the repo, so the job never runs PR code:
+# it checks out master and only reads the PR's commits with git.
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, edited]
+    branches: [master]
+  push:
+    branches: [master]
+
+permissions:
+  contents: read
+  pull-requests: read
+  statuses: write
+
+concurrency:
+  # A newer push to master checks every PR again, so an older run can stop.
+  group: migration-order-${{ github.event.pull_request.number || 'master' }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout master
+        uses: actions/checkout@v4
+        with:
+          ref: master
+          fetch-depth: 0
+
+      - name: Check open PRs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [ -n "$PR_NUMBER" ]; then
+            prs=$PR_NUMBER
+          else
+            prs=$(gh pr list --base master --state open --limit 500 --json number --jq '.[].number')
+          fi
+
+          for n in $prs; do
+            if ! git fetch -q origin "pull/$n/head"; then
+              echo "::warning::could not fetch #$n; skipped"
+              continue
+            fi
+            sha=$(git rev-parse FETCH_HEAD)
+            echo "::group::#$n ($sha)"
+            if out=$(scripts/check-migration-order.sh origin/master "$sha" 2>&1); then
+              state=success
+              desc="Migrations are in order"
+            else
+              state=failure
+              desc=$(echo "$out" | head -1 | cut -c1-140)
+            fi
+            echo "$out"
+            echo "::endgroup::"
+            gh api --silent "repos/$GITHUB_REPOSITORY/statuses/$sha" \
+              -f state="$state" -f context=migration-order \
+              -f description="$desc" -f target_url="$RUN_URL"
+          done

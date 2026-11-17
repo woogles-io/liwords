@@ -238,6 +238,22 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # The last line of defense if a PR merged with a red migration-order
+      # status: golang-migrate would skip the out-of-order migration without
+      # an error, so stop here instead (the failure step below posts to
+      # Discord).
+      - name: Check migration order
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: |
+          if ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            echo "::warning::previous master commit $BEFORE not found; skipping the order check"
+            exit 0
+          fi
+          scripts/check-migration-order.sh "$BEFORE" "$GITHUB_SHA"
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
