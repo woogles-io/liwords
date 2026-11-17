@@ -593,10 +593,13 @@ func (ts *TournamentService) PairRound(ctx context.Context, req *connect.Request
 		return nil, err
 	}
 	var warnings []string
+	if req.Msg.DeletePairings && req.Msg.KeepPairings {
+		return nil, apiserver.InvalidArg("cannot both delete and keep the pairings")
+	}
 	if req.Msg.DeletePairings {
 		err = DeletePairings(ctx, ts.tournamentStore, req.Msg.Id, req.Msg.Division, int(req.Msg.Round))
 	} else {
-		warnings, err = PairRound(ctx, ts.tournamentStore, req.Msg.Id, req.Msg.Division, int(req.Msg.Round), req.Msg.PreserveByes)
+		warnings, err = PairRound(ctx, ts.tournamentStore, req.Msg.Id, req.Msg.Division, int(req.Msg.Round), req.Msg.PreserveByes, req.Msg.KeepPairings)
 	}
 	if err != nil {
 		return nil, apiserver.InvalidArg(err.Error())

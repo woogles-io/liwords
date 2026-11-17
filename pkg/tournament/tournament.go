@@ -1695,7 +1695,7 @@ func DivisionChannelName(tid, division string) string {
 
 // PairRound pairs the round for a director. It returns warnings for
 // follow-on work that failed without failing the request.
-func PairRound(ctx context.Context, ts TournamentStore, id string, division string, round int, preserveByes bool) ([]string, error) {
+func PairRound(ctx context.Context, ts TournamentStore, id string, division string, round int, preserveByes bool, keepPairings bool) ([]string, error) {
 	t, lk, err := ts.LockForChange(ctx, id)
 	if err != nil {
 		return nil, err
@@ -1722,7 +1722,12 @@ func PairRound(ctx context.Context, ts TournamentStore, id string, division stri
 
 	dm := divisionObject.DivisionManager
 	wasPaired := dm.IsRoundPaired(round)
-	pairingsResp, err := dm.PairRound(round, preserveByes)
+	var pairingsResp *ipc.DivisionPairingsResponse
+	if keepPairings {
+		pairingsResp, err = dm.PairRoundKeepingPairings(round)
+	} else {
+		pairingsResp, err = dm.PairRound(round, preserveByes)
+	}
 
 	if err != nil {
 		return nil, err
