@@ -1,0 +1,239 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  liwords-api on Fargate: task definition, service and target group. CI
+  updates it on every master build that passes the deploy gate; ImageTag is
+  the only parameter that changes per deploy.
+
+# The service runs whether or not the load balancer sends it traffic: it
+# joins NATS, takes moves from the queue group, and runs jobs. HTTP reaches it
+# only through the test rule below (a request header) until the listener's
+# default action is weighted toward this target group
+# (scripts/fargate/shift-traffic.sh).
+
+Parameters:
+  BaseStackName:
+    Type: String
+    Default: liwords-base
+  ImageTag:
+    Type: String
+    Description: Tag of ghcr.io/woogles-io/liwords-api, e.g. master-gh2321
+  DesiredCount:
+    Type: Number
+    Default: 1
+  # Header that sends a request to this service regardless of weights:
+  # curl -H 'X-Woogles-Target: api-fargate' https://woogles.io/ping
+  TestRulePriority:
+    Type: Number
+    Default: 3
+  # COPPairJobFunction once #2291 is deployed; empty runs COP in-process.
+  COPPairJobLambdaFunctionName:
+    Type: String
+    Default: ""
+
+Resources:
+  TaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: liwords-api-fargate
+      RequiresCompatibilities: [FARGATE]
+      NetworkMode: awsvpc
+      RuntimePlatform:
+        CpuArchitecture: X86_64
+        OperatingSystemFamily: LINUX
+      Cpu: "1024"
+      Memory: "2048"
+      ExecutionRoleArn: { "Fn::ImportValue": !Sub "${BaseStackName}-ExecutionRoleArn" }
+      TaskRoleArn: { "Fn::ImportValue": !Sub "${BaseStackName}-ApiTaskRoleArn" }
+      Volumes:
+        - Name: datavol
+          EFSVolumeConfiguration:
+            FilesystemId: fs-d4db50ac
+            RootDirectory: /
+            TransitEncryption: ENABLED
+      ContainerDefinitions:
+        - Name: liwords-api
+          Image: !Sub ghcr.io/woogles-io/liwords-api:${ImageTag}
+          Essential: true
+          # GracefulShutdownTimeout (25s) plus the NATS flush and span export
+          # (2s each), with room to spare. cmd/liwords-api/main.go.
+          StopTimeout: 40
+          PortMappings:
+            - { ContainerPort: 8001, Protocol: tcp }
+          MountPoints:
+            - { SourceVolume: datavol, ContainerPath: /datavol, ReadOnly: false }
+          HealthCheck:
+            Command: [CMD-SHELL, "curl -fsS http://localhost:8001/ping || exit 1"]
+            Interval: 10
+            Timeout: 5
+            Retries: 3
+            StartPeriod: 30
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              # The same group as the EC2 tasks, so log queries keep working;
+              # stream names start with fargate/ instead of ecs/.
+              awslogs-group: /ecs/liwords-api
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: fargate
+          Environment:
+            - { Name: AWS_REGION, Value: !Ref AWS::Region }
+            - { Name: DEBUG, Value: "0" }
+            - { Name: GOMEMLIMIT, Value: 1600MiB }
+            - { Name: DB_HOST, Value: 10.0.0.76 }
+            - { Name: DB_PORT, Value: "5432" }
+            - { Name: DB_NAME, Value: liwords }
+            - { Name: DB_USER, Value: liwords }
+            - { Name: DB_SSL_MODE, Value: disable }
+            - { Name: DB_MIGRATIONS_PATH, Value: "file:///opt/db/migrations" }
+            - { Name: REDIS_URL, Value: "redis://10.0.0.70:6379" }
+            - { Name: NATS_URL, Value: "nats://10.0.0.251:4222" }
+            - { Name: OTEL_EXPORTER_OTLP_ENDPOINT, Value: "http://10.0.0.164:4318" }
+            - { Name: OTEL_RESOURCE_ATTRIBUTES, Value: "service.name=liwords,service.version=0.1.0" }
+            - { Name: MACONDO_DATA_PATH, Value: /datavol/data }
+            - { Name: MACONDO_KWG_PATH_PREFIX, Value: "2024" }
+            - { Name: BEST_BOT_USERID, Value: "351137" }
+            - { Name: AVATAR_UPLOAD_BUCKET, Value: woogles-uploads }
+            - { Name: IDENTITY_VERIFICATION_UPLOAD_BUCKET, Value: woogles-identity-verifications }
+            - { Name: GAMEHISTORY_UPLOAD_BUCKET, Value: woogles-gamehistories }
+            - { Name: ANALYSIS_UPLOAD_BUCKET, Value: woogles-analyses }
+            - { Name: COP_PAIR_LAMBDA_FUNCTION_NAME, Value: COPPairFunction }
+            - { Name: COP_PAIR_JOB_LAMBDA_FUNCTION_NAME, Value: !Ref COPPairJobLambdaFunctionName }
+            - { Name: TOURNEY_PDF_LAMBDA_FUNCTION_NAME, Value: TourneyPDFFunction }
+            # puzzle-generator still runs on the EC2 cluster: RunTask in
+            # pkg/puzzles sets no launch type or network configuration.
+            - { Name: ECS_CLUSTER_NAME, Value: woogles-prod }
+            - { Name: PUZZLE_GENERATION_TASK_DEFINITION, Value: puzzle-generator }
+            - { Name: PATREON_CLIENT_ID, Value: VRup-HOI7HQ7bzBqrN2J4S9y1GRWtZcAW1aot8vdjnGQJv1V9hwItPhhIv-X68Wk }
+            - { Name: PATREON_REDIRECT_URI, Value: "https://woogles.io/integrations/patreon/callback" }
+            - { Name: TWITCH_CLIENT_ID, Value: j4v7y2d101wijl3kjiuckuxa1lecyy }
+            - { Name: TWITCH_REDIRECT_URI, Value: "https://woogles.io/integrations/twitch/callback" }
+            - { Name: VAPID_PUBLIC_KEY, Value: BKdDHisR6sJfFdCncMeroEr6ViL74NkwdsuUYiqbA-oEmqIIegpV94Pv89BEv9Lm9j6IhQjMMqvys4PY9P_y2wo }
+            - { Name: VAPID_SUBJECT, Value: "mailto:woogles@woogles.io" }
+            - { Name: PUSH_TTL, Value: 24h }
+            - { Name: VDO_POLLING_INTERVAL_SECONDS, Value: "300" }
+            - { Name: READ_ONGOING_GAMES, Value: "1" }
+            - { Name: WRITE_ONGOING_GAMES, Value: "1" }
+            - { Name: DUAL_WRITE_TURNS, Value: "1" }
+            - { Name: SHADOW_TURNS, Value: "1" }
+            - { Name: SHADOW_TURNS_LOAD, Value: "1" }
+          # Read from SSM SecureStrings when the task starts.
+          Secrets:
+            - Name: DB_PASSWORD
+              ValueFrom: !Sub
+                - arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter${Path}/db-password
+                - Path: { "Fn::ImportValue": !Sub "${BaseStackName}-SecretsPath" }
+            - Name: SECRET_KEY
+              ValueFrom: !Sub
+                - arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter${Path}/secret-key
+                - Path: { "Fn::ImportValue": !Sub "${BaseStackName}-SecretsPath" }
+            - Name: CREDENTIALS_ENCRYPTION_KEY
+              ValueFrom: !Sub
+                - arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter${Path}/creds-encryption-key
+                - Path: { "Fn::ImportValue": !Sub "${BaseStackName}-SecretsPath" }
+            - Name: PUZZLE_GENERATION_SECRET_KEY
+              ValueFrom: !Sub
+                - arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter${Path}/puzzle-generation-secret-key
+                - Path: { "Fn::ImportValue": !Sub "${BaseStackName}-SecretsPath" }
+            - Name: VAPID_PRIVATE_KEY
+              ValueFrom: !Sub
+                - arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter${Path}/vapid-private-key
+                - Path: { "Fn::ImportValue": !Sub "${BaseStackName}-SecretsPath" }
+            - Name: HUMAN_CHECK_COOKIE_KEY
+              ValueFrom: !Sub
+                - arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter${Path}/human-check-cookie-key
+                - Path: { "Fn::ImportValue": !Sub "${BaseStackName}-SecretsPath" }
+            - Name: TURNSTILE_SECRET
+              ValueFrom: !Sub
+                - arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter${Path}/turnstile-secret
+                - Path: { "Fn::ImportValue": !Sub "${BaseStackName}-SecretsPath" }
+            - Name: TWITCH_CLIENT_SECRET
+              ValueFrom: !Sub
+                - arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter${Path}/twitch-client-secret
+                - Path: { "Fn::ImportValue": !Sub "${BaseStackName}-SecretsPath" }
+            - Name: PATREON_CLIENT_SECRET
+              ValueFrom: !Sub
+                - arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter${Path}/patreon-client-secret
+                - Path: { "Fn::ImportValue": !Sub "${BaseStackName}-SecretsPath" }
+            - Name: DISCORD_TOKEN
+              ValueFrom: !Sub
+                - arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter${Path}/discord-token
+                - Path: { "Fn::ImportValue": !Sub "${BaseStackName}-SecretsPath" }
+            - Name: LEAGUE_DISCORD_TOKEN
+              ValueFrom: !Sub
+                - arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter${Path}/league-discord-token
+                - Path: { "Fn::ImportValue": !Sub "${BaseStackName}-SecretsPath" }
+
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: woogles-api-fargate
+      TargetType: ip
+      Protocol: HTTP
+      Port: 8001
+      VpcId: { "Fn::ImportValue": !Sub "${BaseStackName}-VpcId" }
+      HealthCheckPath: /ping
+      HealthCheckIntervalSeconds: 5
+      HealthCheckTimeoutSeconds: 4
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 2
+      Matcher: { HttpCode: "200" }
+      TargetGroupAttributes:
+        # A stopping task stays registered this long, finishing its requests,
+        # before ECS sends SIGTERM. Event streams end at shutdown instead.
+        - { Key: deregistration_delay.timeout_seconds, Value: "20" }
+      Tags:
+        - { Key: app, Value: liwords }
+
+  # ECS needs the target group attached to the load balancer. This rule only
+  # matches requests carrying the header, so it moves no ordinary traffic,
+  # and lets you try the Fargate API before shifting weight to it.
+  TestRule:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      ListenerArn: { "Fn::ImportValue": !Sub "${BaseStackName}-ListenerArn" }
+      Priority: !Ref TestRulePriority
+      Conditions:
+        - Field: http-header
+          HttpHeaderConfig:
+            HttpHeaderName: X-Woogles-Target
+            Values: [api-fargate]
+      Actions:
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroup
+
+  Service:
+    Type: AWS::ECS::Service
+    DependsOn: TestRule
+    Properties:
+      ServiceName: liwords-api
+      Cluster: { "Fn::ImportValue": !Sub "${BaseStackName}-ClusterName" }
+      TaskDefinition: !Ref TaskDefinition
+      LaunchType: FARGATE
+      PlatformVersion: LATEST
+      DesiredCount: !Ref DesiredCount
+      # Overlapping deploys: the new task is healthy before the old one stops.
+      DeploymentConfiguration:
+        MaximumPercent: 200
+        MinimumHealthyPercent: 100
+        DeploymentCircuitBreaker: { Enable: true, Rollback: true }
+      HealthCheckGracePeriodSeconds: 30
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          Subnets: !Split [",", { "Fn::ImportValue": !Sub "${BaseStackName}-Subnets" }]
+          SecurityGroups: [{ "Fn::ImportValue": !Sub "${BaseStackName}-TaskSecurityGroupId" }]
+      LoadBalancers:
+        - ContainerName: liwords-api
+          ContainerPort: 8001
+          TargetGroupArn: !Ref TargetGroup
+      EnableExecuteCommand: true
+      EnableECSManagedTags: true
+      PropagateTags: SERVICE
+      Tags:
+        - { Key: app, Value: liwords }
+
+Outputs:
+  TargetGroupArn:
+    Value: !Ref TargetGroup
+  ServiceName:
+    Value: !GetAtt Service.Name

@@ -1,0 +1,387 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  liwords on Fargate: the cluster, the tasks' security group and IAM roles,
+  and the role CI deploys the service stacks with. Deployed by hand
+  (scripts/fargate/deploy-stack.sh liwords-base aws/cfn/fargate/base.yaml);
+  the service stacks import its exports. See README.md here.
+
+# Reuses the existing network: the VPC, subnets and load balancer were made
+# outside this stack and aren't changed by it. The new security group and
+# listener rules are added alongside what is there.
+
+Parameters:
+  ClusterName:
+    Type: String
+    Default: woogles
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Default: vpc-0fe61cd12246e6ee0
+  # us-east-2a only: Postgres, Redis and NATS are there, and a task in 2b
+  # would pay a cross-zone hop on every query.
+  Subnets:
+    Type: CommaDelimitedList
+    Default: subnet-0957a537f7ee06915
+  AlbSecurityGroupId:
+    Type: AWS::EC2::SecurityGroup::Id
+    Default: sg-08711a55a857aad30
+  # The HTTPS listener of the woogles-prod load balancer.
+  ListenerArn:
+    Type: String
+    Default: arn:aws:elasticloadbalancing:us-east-2:509130939211:listener/app/woogles-prod/1649a1faeb650080/f09ff1908628125e
+  # Secrets live under this path as SecureStrings (default aws/ssm key).
+  SecretsPath:
+    Type: String
+    Default: /liwords/prod/secrets
+  # The IAM user GitHub Actions runs as. It gets permission to update the
+  # service stacks through DeployRole, and nothing else from this stack.
+  GithubDeployUser:
+    Type: String
+    Default: GithubActionsUploadUser
+  # The EC2 cluster puzzle-generator still runs on (pkg/puzzles RunTask).
+  LegacyClusterName:
+    Type: String
+    Default: woogles-prod
+
+Resources:
+  Cluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Ref ClusterName
+      CapacityProviders: [FARGATE, FARGATE_SPOT]
+      DefaultCapacityProviderStrategy:
+        - CapacityProvider: FARGATE
+          Weight: 1
+      ClusterSettings:
+        - Name: containerInsights
+          Value: disabled
+      Tags:
+        - { Key: app, Value: liwords }
+
+  # Tasks get public IPs (there's no NAT gateway) to reach ghcr.io and AWS
+  # APIs, so inbound is only from the load balancer. Postgres, Redis, NATS,
+  # Jaeger and EFS allow the whole VPC range, so they need no change.
+  TaskSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: liwords-fargate-tasks
+      GroupDescription: liwords Fargate tasks; inbound from the load balancer only
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - Description: liwords-api from the load balancer
+          IpProtocol: tcp
+          FromPort: 8001
+          ToPort: 8001
+          SourceSecurityGroupId: !Ref AlbSecurityGroupId
+        - Description: liwords-socket from the load balancer
+          IpProtocol: tcp
+          FromPort: 8087
+          ToPort: 8087
+          SourceSecurityGroupId: !Ref AlbSecurityGroupId
+      SecurityGroupEgress:
+        - Description: everything (ghcr.io, AWS APIs, backing services)
+          IpProtocol: "-1"
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - { Key: app, Value: liwords }
+
+  # Pulls images, writes logs, and reads the secrets in SecretsPath into the
+  # containers' environment when a task starts.
+  ExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: liwordsFargateExecutionRole
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: { Service: ecs-tasks.amazonaws.com }
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+      Policies:
+        - PolicyName: ReadSecrets
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: ssm:GetParameters
+                Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter${SecretsPath}/*
+              - Effect: Allow
+                Action: kms:Decrypt
+                Resource: "*"
+                Condition:
+                  StringEquals:
+                    kms:ViaService: !Sub ssm.${AWS::Region}.amazonaws.com
+
+  # Lets `aws ecs execute-command` open a shell in a running task.
+  EcsExecPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: liwords-ecs-exec
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - ssmmessages:CreateControlChannel
+              - ssmmessages:CreateDataChannel
+              - ssmmessages:OpenControlChannel
+              - ssmmessages:OpenDataChannel
+            Resource: "*"
+
+  # The API's own AWS calls. ecsInstanceRole grants these today (as s3:* and
+  # lambda:*); here they're narrowed to what the code calls.
+  ApiTaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: liwordsApiTaskRole
+      ManagedPolicyArns: [!Ref EcsExecPolicy]
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: { Service: ecs-tasks.amazonaws.com }
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: SES
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: [ses:SendEmail, ses:SendRawEmail]
+                Resource: "*"
+        - PolicyName: S3
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              # Uploads use the SDK's upload manager, which goes multipart
+              # for large bodies, hence AbortMultipartUpload.
+              - Effect: Allow
+                Action: [s3:GetObject, s3:PutObject, s3:DeleteObject, s3:AbortMultipartUpload]
+                Resource:
+                  - arn:aws:s3:::woogles-uploads/*
+                  - arn:aws:s3:::woogles-identity-verifications/*
+                  - arn:aws:s3:::woogles-gamehistories/*
+                  - arn:aws:s3:::woogles-analyses/*
+              # Without ListBucket a missing key reads as 403, not 404.
+              - Effect: Allow
+                Action: s3:ListBucket
+                Resource:
+                  - arn:aws:s3:::woogles-uploads
+                  - arn:aws:s3:::woogles-identity-verifications
+                  - arn:aws:s3:::woogles-gamehistories
+                  - arn:aws:s3:::woogles-analyses
+        - PolicyName: Lambda
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource:
+                  - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:COPPairFunction
+                  # pair_round jobs (#2291); harmless until that ships.
+                  - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:COPPairJobFunction
+                  - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:TourneyPDFFunction
+        - PolicyName: PuzzleGenerator
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: ecs:RunTask
+                Resource: !Sub arn:aws:ecs:${AWS::Region}:${AWS::AccountId}:task-definition/puzzle-generator*
+                Condition:
+                  ArnEquals:
+                    ecs:cluster: !Sub arn:aws:ecs:${AWS::Region}:${AWS::AccountId}:cluster/${LegacyClusterName}
+              # puzzle-generator runs as ecsTaskExecutionRole.
+              - Effect: Allow
+                Action: iam:PassRole
+                Resource: !Sub arn:aws:iam::${AWS::AccountId}:role/ecsTaskExecutionRole
+                Condition:
+                  StringEquals:
+                    iam:PassedToService: ecs-tasks.amazonaws.com
+
+  # The socket server calls no AWS APIs; the role is only for ECS Exec.
+  SocketTaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: liwordsSocketTaskRole
+      ManagedPolicyArns: [!Ref EcsExecPolicy]
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: { Service: ecs-tasks.amazonaws.com }
+            Action: sts:AssumeRole
+
+  BotTaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: macondoBotTaskRole
+      ManagedPolicyArns: [!Ref EcsExecPolicy]
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: { Service: ecs-tasks.amazonaws.com }
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: Lambda
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:MacondoLambdaFunction
+
+  # CloudFormation assumes this to update the service stacks from CI, so the
+  # CI user itself only needs to start the update. It can change only the
+  # resources those stacks own.
+  DeployRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: liwordsCfnDeployRole
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: { Service: cloudformation.amazonaws.com }
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: ServiceStacks
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ecs:RegisterTaskDefinition
+                  - ecs:DeregisterTaskDefinition
+                  - ecs:DescribeTaskDefinition
+                  - ecs:TagResource
+                  - ecs:UntagResource
+                  - ecs:ListTagsForResource
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - ecs:CreateService
+                  - ecs:UpdateService
+                  - ecs:DeleteService
+                  - ecs:DescribeServices
+                Resource: !Sub arn:aws:ecs:${AWS::Region}:${AWS::AccountId}:service/${ClusterName}/*
+              - Effect: Allow
+                Action:
+                  - elasticloadbalancing:Describe*
+                  - ec2:DescribeVpcs
+                  - ec2:DescribeSubnets
+                  - ec2:DescribeSecurityGroups
+                  - ecs:DescribeClusters
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - elasticloadbalancing:CreateTargetGroup
+                  - elasticloadbalancing:ModifyTargetGroup
+                  - elasticloadbalancing:ModifyTargetGroupAttributes
+                  - elasticloadbalancing:DeleteTargetGroup
+                  - elasticloadbalancing:AddTags
+                  - elasticloadbalancing:RemoveTags
+                Resource: !Sub arn:aws:elasticloadbalancing:${AWS::Region}:${AWS::AccountId}:targetgroup/*-fargate/*
+              - Effect: Allow
+                Action:
+                  - elasticloadbalancing:CreateRule
+                  - elasticloadbalancing:ModifyRule
+                  - elasticloadbalancing:DeleteRule
+                  - elasticloadbalancing:SetRulePriorities
+                  - elasticloadbalancing:AddTags
+                  - elasticloadbalancing:RemoveTags
+                Resource:
+                  - !Ref ListenerArn
+                  - !Sub
+                    - arn:aws:elasticloadbalancing:${AWS::Region}:${AWS::AccountId}:listener-rule/app/${Lb}/*
+                    - Lb: !Join ["/", [!Select [2, !Split ["/", !Ref ListenerArn]], !Select [3, !Split ["/", !Ref ListenerArn]]]]
+              - Effect: Allow
+                Action: iam:PassRole
+                Resource:
+                  - !GetAtt ExecutionRole.Arn
+                  - !GetAtt ApiTaskRole.Arn
+                  - !GetAtt SocketTaskRole.Arn
+                  - !GetAtt BotTaskRole.Arn
+                Condition:
+                  StringEquals:
+                    iam:PassedToService: ecs-tasks.amazonaws.com
+
+  # What CI needs to update liwords-api and liwords-socket, and watch them.
+  GithubDeployPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: liwords-github-deploy
+      Description: Lets GitHub Actions update the liwords Fargate service stacks
+      Users: [!Ref GithubDeployUser]
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - cloudformation:CreateChangeSet
+              - cloudformation:DescribeChangeSet
+              - cloudformation:ExecuteChangeSet
+              - cloudformation:DeleteChangeSet
+              - cloudformation:DescribeStacks
+              - cloudformation:DescribeStackEvents
+              - cloudformation:GetTemplateSummary
+            Resource:
+              - !Sub arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/liwords-api/*
+              - !Sub arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/liwords-socket/*
+          # The deploy script reads DeployRoleArn from the base stack.
+          - Effect: Allow
+            Action: cloudformation:DescribeStacks
+            Resource: !Sub arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${AWS::StackName}/*
+          - Effect: Allow
+            Action: cloudformation:ValidateTemplate
+            Resource: "*"
+          # Change sets need it to read the base stack's exports.
+          - Effect: Allow
+            Action: cloudformation:ListExports
+            Resource: "*"
+          - Effect: Allow
+            Action: iam:PassRole
+            Resource: !GetAtt DeployRole.Arn
+            Condition:
+              StringEquals:
+                iam:PassedToService: cloudformation.amazonaws.com
+          - Effect: Allow
+            Action: ecs:DescribeServices
+            Resource: !Sub arn:aws:ecs:${AWS::Region}:${AWS::AccountId}:service/${ClusterName}/*
+
+Outputs:
+  ClusterName:
+    Value: !Ref Cluster
+    Export: { Name: !Sub "${AWS::StackName}-ClusterName" }
+  VpcId:
+    Value: !Ref VpcId
+    Export: { Name: !Sub "${AWS::StackName}-VpcId" }
+  Subnets:
+    Value: !Join [",", !Ref Subnets]
+    Export: { Name: !Sub "${AWS::StackName}-Subnets" }
+  ListenerArn:
+    Value: !Ref ListenerArn
+    Export: { Name: !Sub "${AWS::StackName}-ListenerArn" }
+  SecretsPath:
+    Value: !Ref SecretsPath
+    Export: { Name: !Sub "${AWS::StackName}-SecretsPath" }
+  TaskSecurityGroupId:
+    Value: !Ref TaskSecurityGroup
+    Export: { Name: !Sub "${AWS::StackName}-TaskSecurityGroupId" }
+  ExecutionRoleArn:
+    Value: !GetAtt ExecutionRole.Arn
+    Export: { Name: !Sub "${AWS::StackName}-ExecutionRoleArn" }
+  ApiTaskRoleArn:
+    Value: !GetAtt ApiTaskRole.Arn
+    Export: { Name: !Sub "${AWS::StackName}-ApiTaskRoleArn" }
+  SocketTaskRoleArn:
+    Value: !GetAtt SocketTaskRole.Arn
+    Export: { Name: !Sub "${AWS::StackName}-SocketTaskRoleArn" }
+  BotTaskRoleArn:
+    Value: !GetAtt BotTaskRole.Arn
+    Export: { Name: !Sub "${AWS::StackName}-BotTaskRoleArn" }
+  DeployRoleArn:
+    Value: !GetAtt DeployRole.Arn
+    Export: { Name: !Sub "${AWS::StackName}-DeployRoleArn" }
