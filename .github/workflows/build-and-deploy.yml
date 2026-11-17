@@ -433,6 +433,7 @@ jobs:
       - run_db_migration
     permissions:
       contents: read
+      actions: read
     uses: ./.github/workflows/deploy-fargate.yml
     with:
       image_tag: ${{ github.ref_name }}-gh${{ github.run_number }}

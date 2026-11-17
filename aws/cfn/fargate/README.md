@@ -71,15 +71,30 @@ Roll back with the old weights. Between steps, watch 5xx and response time
 on the load balancer and Jaeger. Once all traffic is on Fargate, scale the EC2
 service to 0, and later delete it.
 
-## Deploys from CI
+## Deploys
 
 `.github/workflows/deploy-fargate.yml` updates `liwords-api` and
-`liwords-socket` to the tag a master build just pushed, after the migration
-task has run. It is off until the repository variable `FARGATE_DEPLOY` is
-`true`. The `production` environment is the manual switch: with required
-reviewers, each deploy waits for an approval in the Actions tab; without,
-every master build deploys. It can also be run by hand with any tag, which is
-also how to roll back. Stacks that don't exist are skipped.
+`liwords-socket` to an image tag. Stacks that don't exist are skipped.
+
+**By hand** (the usual way: merge a batch, then deploy once). With no tag it
+deploys the newest master build that pushed its images and ran its migration
+(`scripts/fargate/latest-image-tag.sh`); give a tag to deploy or roll back to
+that image:
+
+```bash
+gh workflow run deploy-fargate.yml                                # newest
+gh workflow run deploy-fargate.yml -f image_tag=master-gh2321     # that one
+```
+
+or Actions > Deploy backend (Fargate) > Run workflow.
+
+**On every master build**, after the migration: only if the repository
+variable `FARGATE_DEPLOY` is `true`. The `production` environment can then
+hold each one for approval (required reviewers); every build makes its own
+waiting deploy, so approve the newest and reject the rest.
+
+Migrations are not gated either way: every master build runs its own, so
+they reach the database before their code is deployed.
 
 CI deploys through the base stack's `liwordsCfnDeployRole`, so the CI user
 can only start updates of these two stacks.
