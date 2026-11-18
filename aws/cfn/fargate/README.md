@@ -96,8 +96,25 @@ waiting deploy, so approve the newest and reject the rest.
 Migrations are not gated either way: every master build runs its own, so
 they reach the database before their code is deployed.
 
+**The bot** has its own workflow, `.github/workflows/deploy-bot.yml`, since
+its image comes from macondo's builds. With no tag it deploys the newest
+macondo master build that pushed a bot image
+(`scripts/fargate/latest-bot-tag.sh`):
+
+```bash
+gh workflow run deploy-bot.yml                                    # newest
+gh workflow run deploy-bot.yml -f image_tag=master-gh571          # that one
+```
+
+or Actions > Deploy macondo bot (Fargate) > Run workflow. It only runs by
+hand.
+
 CI deploys through the base stack's `liwordsCfnDeployRole`, so the CI user
-can only start updates of these two stacks.
+can only start updates of these three stacks.
+
+**Who can deploy:** anyone with write access to the repository can run
+either workflow, unless the `production` environment has required
+reviewers; then each run waits until one of them approves it.
 
 ## Retiring the EC2 instances
 
