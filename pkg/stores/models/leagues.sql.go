@@ -2125,26 +2125,28 @@ func (q *Queries) GetSeasonChampion(ctx context.Context, seasonID uuid.UUID) (Ge
 }
 
 const getSeasonOpponentMistakeIndex = `-- name: GetSeasonOpponentMistakeIndex :many
-WITH latest AS (
+WITH season_players AS (
+    SELECT gp.game_uuid, gp.player_id, gp.player_index
+    FROM game_players gp
+    WHERE gp.league_season_id = $1::uuid
+),
+latest AS (
     SELECT DISTINCT ON (aj.game_id)
         aj.game_id,
         aj.player0_mistake_index AS mi0,
         aj.player1_mistake_index AS mi1
     FROM analysis_jobs aj
-    WHERE aj.game_id IN (
-        SELECT gp.game_uuid FROM game_players gp
-        WHERE gp.league_season_id = $1::uuid
-    )
+    WHERE aj.game_id IN (SELECT sp.game_uuid FROM season_players sp)
       AND aj.player0_mistake_index IS NOT NULL
       AND aj.player1_mistake_index IS NOT NULL
     ORDER BY aj.game_id, aj.created_at DESC
 )
-SELECT gp.player_id::INT AS user_id,
-       SUM(CASE gp.player_index WHEN 0 THEN l.mi1 ELSE l.mi0 END)::FLOAT8 AS total,
+SELECT sp.player_id::INT AS user_id,
+       SUM(CASE sp.player_index WHEN 0 THEN l.mi1 ELSE l.mi0 END)::FLOAT8 AS total,
        COUNT(*)::INT AS n
 FROM latest l
-JOIN game_players gp ON gp.game_uuid = l.game_id
-GROUP BY gp.player_id
+JOIN season_players sp ON sp.game_uuid = l.game_id
+GROUP BY sp.player_id
 `
 
 type GetSeasonOpponentMistakeIndexRow struct {
@@ -2159,6 +2161,12 @@ type GetSeasonOpponentMistakeIndexRow struct {
 // by n gives the average opponent mistake index over the player's analyzed
 // games. Players come from game_players rather than games: its rows are
 // small and stay cached, while reading old seasons' games rows was slow.
+//
+// The season's game_players rows are read once, through the season index, and
+// used both to pick the games and to name their players. Looking the players
+// up again by game_uuid walked game_players_pkey once per game, and for an old
+// season those index pages are cold: about 0.5 ms a game, most of a second
+// for a full season.
 func (q *Queries) GetSeasonOpponentMistakeIndex(ctx context.Context, seasonID uuid.UUID) ([]GetSeasonOpponentMistakeIndexRow, error) {
 	rows, err := q.db.Query(ctx, getSeasonOpponentMistakeIndex, seasonID)
 	if err != nil {
