@@ -563,10 +563,11 @@ func main() {
 
 	srv := &http.Server{
 		Addr:         cfg.ListenAddr,
-		Handler:      router,
+		Handler:      apiserver.ReadTimeoutAs408(router),
 		WriteTimeout: 120 * time.Second,
-		ReadTimeout:  10 * time.Second,
-		IdleTimeout:  90 * time.Second}
+		// A body that hasn't arrived by now gets a 408 (ReadTimeoutAs408).
+		ReadTimeout: 10 * time.Second,
+		IdleTimeout: 90 * time.Second}
 
 	// The streaming routes end when the server shuts down (shutdown.go).
 	streamRoute := endStreamsOnShutdown(srv)
