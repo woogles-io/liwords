@@ -45,10 +45,6 @@ on:
         type: boolean
         default: false
     secrets:
-      AWS_ACCESS_KEY_ID:
-        required: true
-      AWS_SECRET_ACCESS_KEY:
-        required: true
       DISCORD_WEBHOOK:
         required: false
 
@@ -60,6 +56,8 @@ permissions:
   contents: read
   # To find the newest master build.
   actions: read
+  # To sign in to AWS as liwordsGithubDeployRole (aws/cfn/fargate/base.yaml).
+  id-token: write
 
 jobs:
   deploy:
@@ -93,12 +91,33 @@ jobs:
           echo "IMAGE_TAG=$tag" >> "$GITHUB_ENV"
           echo "Deploying \`$tag\`" >> "$GITHUB_STEP_SUMMARY"
 
+      # The role trusts only jobs in the production environment, which run
+      # once one of its required reviewers approves.
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          role-to-assume: arn:aws:iam::509130939211:role/liwordsGithubDeployRole
           aws-region: us-east-2
+
+      # Between the deployed API and this one, as build-and-deploy.yml checks
+      # each push: a migration numbered below one already applied would be
+      # skipped without an error.
+      - name: Check migration order
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          deployed=$(aws cloudformation describe-stacks --stack-name liwords-api \
+            --query "Stacks[0].Parameters[?ParameterKey=='ImageTag'].ParameterValue" --output text)
+          if ! old=$(scripts/fargate/tag-commit.sh "$deployed") || ! new=$(scripts/fargate/tag-commit.sh "$IMAGE_TAG"); then
+            echo "::warning::can't find the commits of $deployed and $IMAGE_TAG; skipping the order check"
+            exit 0
+          fi
+          scripts/check-migration-order.sh "$old" "$new"
+
+      # Before the code that needs them. Already-applied migrations are
+      # skipped, so a rollback to an older tag runs nothing.
+      - name: Run migrations
+        run: scripts/fargate/run-migration.sh "$IMAGE_TAG"
 
       - name: Deploy liwords-api
         run: scripts/fargate/deploy-stack.sh liwords-api aws/cfn/fargate/liwords-api.yaml "ImageTag=$IMAGE_TAG"

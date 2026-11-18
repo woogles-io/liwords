@@ -73,8 +73,10 @@ service to 0, and later delete it.
 
 ## Deploys
 
-`.github/workflows/deploy-fargate.yml` updates `liwords-api` and
-`liwords-socket` to an image tag. Stacks that don't exist are skipped.
+`.github/workflows/deploy-fargate.yml` runs the image's migrations
+(`scripts/fargate/run-migration.sh`), then updates `liwords-api` and
+`liwords-socket` to the image tag. Stacks that don't exist are skipped. Before
+migrating it checks the order of the migrations added since the deployed tag.
 
 The socket server is redeployed only when its binary changed since the
 deployed tag, because a socket deploy disconnects every client once.
@@ -83,8 +85,8 @@ without build stamps and compares the bytes; a change to its Dockerfile or
 template counts too. `-f force_socket=true` redeploys it regardless.
 
 **By hand** (the usual way: merge a batch, then deploy once). With no tag it
-deploys the newest master build that pushed its images and ran its migration
-(`scripts/fargate/latest-image-tag.sh`); give a tag to deploy or roll back to
+deploys the newest master build that pushed its images and passed its
+migration order check (`scripts/fargate/latest-image-tag.sh`); give a tag to deploy or roll back to
 that image:
 
 ```bash
@@ -94,13 +96,13 @@ gh workflow run deploy-fargate.yml -f image_tag=master-gh2321     # that one
 
 or Actions > Deploy backend (Fargate) > Run workflow.
 
-**On every master build**, after the migration: only if the repository
-variable `FARGATE_DEPLOY` is `true`. The `production` environment can then
-hold each one for approval (required reviewers); every build makes its own
-waiting deploy, so approve the newest and reject the rest.
+**On every master build**: only if the repository variable `FARGATE_DEPLOY`
+is `true`. Each build then makes its own deploy waiting for approval, so
+approve the newest and reject the rest.
 
-Migrations are not gated either way: every master build runs its own, so
-they reach the database before their code is deployed.
+Master builds don't touch the database: migrations run only in an approved
+deploy, just before the code that needs them. They must still work with the
+code already running, which keeps running until the new tasks replace it.
 
 **The bot** has its own workflow, `.github/workflows/deploy-bot.yml`, since
 its image comes from macondo's builds. With no tag it deploys the newest
@@ -115,12 +117,20 @@ gh workflow run deploy-bot.yml -f image_tag=master-gh571          # that one
 or Actions > Deploy macondo bot (Fargate) > Run workflow. It only runs by
 hand.
 
-CI deploys through the base stack's `liwordsCfnDeployRole`, so the CI user
-can only start updates of these three stacks.
+**Who can deploy:** the `production` environment's required reviewers
+(Settings > Environments). Anyone with write access can start either
+workflow, but its job waits until a reviewer approves it, and it runs only
+from master. Admins can't bypass the approval.
 
-**Who can deploy:** anyone with write access to the repository can run
-either workflow, unless the `production` environment has required
-reviewers; then each run waits until one of them approves it.
+That is enforced in AWS, not just in GitHub: deploys sign in as
+`liwordsGithubDeployRole` through GitHub's OIDC tokens, with no stored key,
+and the role trusts only jobs of this repository running in `production`.
+GitHub issues such a token only once the environment's rules let the job run,
+so a workflow that skips the environment gets no access. The role can run the
+migration task and start updates of `liwords-api`, `liwords-socket` and
+`macondo-bot`, which CloudFormation carries out as `liwordsCfnDeployRole`.
+The stored key that remains (`GithubActionsUploadUser`) only uploads the
+frontend.
 
 ## Retiring the EC2 instances
 

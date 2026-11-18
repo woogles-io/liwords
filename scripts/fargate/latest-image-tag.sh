@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 # Prints the image tag of the newest master build that pushed its images and
-# ran its migration, e.g. master-gh2340: what a deploy should normally ship.
+# passed its migration order check, e.g. master-gh2340: what a deploy should
+# normally ship. (The deploy runs the migrations.)
 #
 #   scripts/fargate/latest-image-tag.sh
 #
 # Builds that changed only the frontend push no images, and builds still
-# running, or whose images or migration failed, are skipped. Needs gh, logged
+# running, or whose images or order check failed, are skipped. Needs gh, logged
 # in (GH_TOKEN in Actions) with read access to the repository's Actions.
 set -euo pipefail
 
@@ -16,10 +17,11 @@ runs=$(gh run list --repo "$REPO" --workflow build-and-deploy.yml --branch maste
 
 while read -r id number; do
   [[ -n "$id" ]] || continue
-  # push_backend_images was called deploy_api_docker in older runs.
+  # Older runs named these deploy_api_docker and run_db_migration (which
+  # also applied the migrations).
   ok=$(gh run view "$id" --repo "$REPO" --json jobs -q '
     [.jobs[] | select(.name == "push_backend_images" or .name == "deploy_api_docker"
-                      or .name == "run_db_migration")
+                      or .name == "check_migration_order" or .name == "run_db_migration")
              | select(.conclusion == "success")] | length')
   if [[ "$ok" == 2 ]]; then
     echo "master-gh${number}"
@@ -27,5 +29,5 @@ while read -r id number; do
   fi
 done <<< "$runs"
 
-echo "no master build in the last 30 pushed images and migrated" >&2
+echo "no master build in the last 30 pushed images and passed its order check" >&2
 exit 1
