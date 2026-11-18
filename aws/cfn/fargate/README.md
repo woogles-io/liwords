@@ -76,6 +76,12 @@ service to 0, and later delete it.
 `.github/workflows/deploy-fargate.yml` updates `liwords-api` and
 `liwords-socket` to an image tag. Stacks that don't exist are skipped.
 
+The socket server is redeployed only when its binary changed since the
+deployed tag, because a socket deploy disconnects every client once.
+`scripts/fargate/socket-changed.sh` builds `cmd/socketsrv` at both commits
+without build stamps and compares the bytes; a change to its Dockerfile or
+template counts too. `-f force_socket=true` redeploys it regardless.
+
 **By hand** (the usual way: merge a batch, then deploy once). With no tag it
 deploys the newest master build that pushed its images and ran its migration
 (`scripts/fargate/latest-image-tag.sh`); give a tag to deploy or roll back to
