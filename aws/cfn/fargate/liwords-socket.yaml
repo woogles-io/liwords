@@ -25,6 +25,16 @@ Parameters:
     Default: 2
 
 Resources:
+  # Imported (it predates this stack). Retained so deleting or replacing the
+  # stack keeps the logs.
+  SocketLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      LogGroupName: /ecs/liwords-socket
+      RetentionInDays: 14
+
   TaskDefinition:
     Type: AWS::ECS::TaskDefinition
     Properties:

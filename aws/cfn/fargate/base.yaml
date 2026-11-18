@@ -296,7 +296,7 @@ Resources:
               # The service stacks' log groups (liwords-api owns
               # /ecs/liwords-db-migration).
               - Effect: Allow
-                Action: logs:DescribeLogGroups
+                Action: logs:Describe* # log groups, index policies (drift checks)
                 Resource: "*"
               - Effect: Allow
                 Action:
@@ -310,6 +310,7 @@ Resources:
                   - logs:TagLogGroup
                   - logs:UntagLogGroup
                   - logs:ListTagsLogGroup
+                  - logs:GetDataProtectionPolicy
                 Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/ecs/*
               - Effect: Allow
                 Action: iam:PassRole
