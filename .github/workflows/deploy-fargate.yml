@@ -12,14 +12,19 @@ name: Deploy backend (Fargate)
 #   deploys.
 #
 # Run it by hand (Actions > Deploy backend (Fargate) > Run workflow) to deploy
-# or roll back to any tag already on ghcr.io.
+# what master has now: with no tag, it deploys the newest master build that
+# pushed its images and ran its migration (scripts/fargate/latest-image-tag.sh).
+# Give a tag to deploy or roll back to any image already on ghcr.io:
+#
+#   gh workflow run deploy-fargate.yml                       # newest
+#   gh workflow run deploy-fargate.yml -f image_tag=master-gh2321
 
 on:
   workflow_dispatch:
     inputs:
       image_tag:
-        description: "Image tag, e.g. master-gh2321"
-        required: true
+        description: "Image tag, e.g. master-gh2321. Empty: the newest master build."
+        required: false
         type: string
   workflow_call:
     inputs:
@@ -40,18 +45,32 @@ concurrency:
 
 permissions:
   contents: read
+  # To find the newest master build.
+  actions: read
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     environment: production
     env:
-      IMAGE_TAG: ${{ inputs.image_tag }}
       # Stacks that don't exist yet are skipped, not created.
       REQUIRE_EXISTING: "1"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Pick the image tag
+        env:
+          INPUT_TAG: ${{ inputs.image_tag }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="$INPUT_TAG"
+          if [[ -z "$tag" ]]; then
+            tag=$(scripts/fargate/latest-image-tag.sh)
+          fi
+          echo "Deploying $tag"
+          echo "IMAGE_TAG=$tag" >> "$GITHUB_ENV"
+          echo "Deploying \`$tag\`" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
