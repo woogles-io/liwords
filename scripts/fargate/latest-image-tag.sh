@@ -16,8 +16,10 @@ runs=$(gh run list --repo "$REPO" --workflow build-and-deploy.yml --branch maste
 
 while read -r id number; do
   [[ -n "$id" ]] || continue
+  # push_backend_images was called deploy_api_docker in older runs.
   ok=$(gh run view "$id" --repo "$REPO" --json jobs -q '
-    [.jobs[] | select(.name == "deploy_api_docker" or .name == "run_db_migration")
+    [.jobs[] | select(.name == "push_backend_images" or .name == "deploy_api_docker"
+                      or .name == "run_db_migration")
              | select(.conclusion == "success")] | length')
   if [[ "$ok" == 2 ]]; then
     echo "master-gh${number}"
