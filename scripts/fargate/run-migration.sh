@@ -6,8 +6,10 @@
 #
 # It registers a revision of liwords-db-migration-fargate (the liwords-api
 # stack) with the image, and runs it in the cluster and network of
-# liwords-base. Migrations already applied are skipped, so running it twice,
-# or for an older image, does nothing.
+# liwords-base. Migrations already applied are skipped, so running it twice
+# does nothing. Don't run it for an image older than the database, though:
+# golang-migrate fails when the database's version isn't among the image's
+# migration files (deploy-fargate.yml runs it only for new migrations).
 set -euo pipefail
 
 tag="${1:?usage: run-migration.sh <image tag>}"

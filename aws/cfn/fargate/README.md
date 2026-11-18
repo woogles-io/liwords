@@ -78,6 +78,13 @@ service to 0, and later delete it.
 `liwords-socket` to the image tag. Stacks that don't exist are skipped. Before
 migrating it checks the order of the migrations added since the deployed tag.
 
+It runs migrations only when the image adds migration files over the deployed
+one, so a rollback runs none. That matters: golang-migrate refuses to run from
+an image that lacks the database's current version, so migrating during a
+rollback past a migration would fail the deploy. The rolled-back code runs
+against the newer schema, so a migration has to stay compatible with the code
+before it (add columns and tables; drop them a release later).
+
 The socket server is redeployed only when its binary changed since the
 deployed tag, because a socket deploy disconnects every client once.
 `scripts/fargate/socket-changed.sh` builds `cmd/socketsrv` at both commits
