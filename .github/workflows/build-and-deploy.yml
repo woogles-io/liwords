@@ -2,7 +2,7 @@ name: Build and Deploy
 
 # Workflow optimization:
 # - detect_changes job identifies which parts of the codebase changed
-# - Backend jobs (build_api_srv, push_backend_images, run_db_migration) only run if backend files changed
+# - Backend jobs (build_api_srv, push_backend_images, check_migration_order) only run if backend files changed
 # - Frontend jobs (build_fe, deploy_fe) only run if liwords-ui/ changed
 # - Migration job runs on every master deploy (migrations are idempotent)
 # This significantly speeds up deployments that only touch one part of the codebase
@@ -232,27 +232,19 @@ jobs:
         run: ./scripts/utilities/notify-discord.sh
         continue-on-error: true
 
-  run_db_migration:
+  # Migrations run in the deploy (deploy-fargate.yml), once approved. This
+  # only stops a master build whose push added a migration numbered below
+  # one already on master: golang-migrate would skip it without an error.
+  check_migration_order:
     runs-on: ubuntu-latest
     if: ${{ github.ref == 'refs/heads/master' }}
-    needs:
-      - push_backend_images
-      - detect_changes
-    env:
-      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      AWS_REGION: us-east-2
-      TASK_DEFINITION: liwords-db-migration-fargate
+    needs: detect_changes
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # The last line of defense if a PR merged with a red migration-order
-      # status: golang-migrate would skip the out-of-order migration without
-      # an error, so stop here instead (the failure step below posts to
-      # Discord).
       - name: Check migration order
         env:
           BEFORE: ${{ github.event.before }}
@@ -263,182 +255,32 @@ jobs:
           fi
           scripts/check-migration-order.sh "$BEFORE" "$GITHUB_SHA"
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-2
-
-      - name: Run Database Migration Task
-        run: |
-          echo "Starting database migration task..."
-
-          # Calculate the Docker image tag (matches deploy/build-and-tag.sh format)
-          IMAGE_TAG="${GITHUB_REF_NAME}-gh${GITHUB_RUN_NUMBER}"
-          DOCKER_IMAGE="ghcr.io/woogles-io/liwords-api:${IMAGE_TAG}"
-
-          echo "Using Docker image: $DOCKER_IMAGE"
-
-          # The task definition comes from the liwords-api stack, and the
-          # cluster and network from liwords-base (aws/cfn/fargate).
-          base_output() {
-            aws cloudformation describe-stacks --stack-name liwords-base --region $AWS_REGION \
-              --query "Stacks[0].Outputs[?OutputKey=='$1'].OutputValue" --output text
-          }
-          ECS_CLUSTER=$(base_output ClusterName)
-          NETWORK="awsvpcConfiguration={subnets=[$(base_output Subnets)],securityGroups=[$(base_output TaskSecurityGroupId)],assignPublicIp=ENABLED}"
-          echo "Running $TASK_DEFINITION on $ECS_CLUSTER"
-
-          # Register a revision of the task definition with the new image.
-          # Get the current task definition
-          TASK_DEF_JSON=$(aws ecs describe-task-definition \
-            --task-definition $TASK_DEFINITION \
-            --region $AWS_REGION \
-            --query 'taskDefinition')
-
-          # Update the image in the task definition
-          NEW_TASK_DEF=$(echo $TASK_DEF_JSON | jq \
-            --arg IMAGE "$DOCKER_IMAGE" \
-            '.containerDefinitions[0].image = $IMAGE | del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)')
-
-          # Register the new task definition revision
-          echo "Registering new task definition with updated image..."
-          NEW_TASK_DEF_ARN=$(aws ecs register-task-definition \
-            --cli-input-json "$NEW_TASK_DEF" \
-            --region $AWS_REGION \
-            --query 'taskDefinition.taskDefinitionArn' \
-            --output text)
-
-          echo "New task definition: $NEW_TASK_DEF_ARN"
-
-          # Run the ECS task with the new task definition revision
-          TASK_OUTPUT=$(aws ecs run-task \
-            --cluster $ECS_CLUSTER \
-            --task-definition $NEW_TASK_DEF_ARN \
-            --launch-type FARGATE \
-            --network-configuration "$NETWORK" \
-            --region $AWS_REGION)
-
-          # Extract task ARN
-          TASK_ARN=$(echo $TASK_OUTPUT | jq -r '.tasks[0].taskArn')
-
-          if [[ -z "$TASK_ARN" ]] || [[ "$TASK_ARN" == "null" ]]; then
-            echo "ERROR: Failed to start migration task"
-            echo "$TASK_OUTPUT" | jq .
-            exit 1
-          fi
-
-          TASK_ID=$(echo $TASK_ARN | awk -F/ '{print $NF}')
-          echo "Migration task started: $TASK_ID"
-          echo "Task ARN: $TASK_ARN"
-
-          # Wait for task to complete (10 minute timeout)
-          TIMEOUT=600
-          ELAPSED=0
-          POLL_INTERVAL=10
-
-          while [ $ELAPSED -lt $TIMEOUT ]; do
-            TASK_STATUS=$(aws ecs describe-tasks \
-              --cluster $ECS_CLUSTER \
-              --tasks $TASK_ARN \
-              --region $AWS_REGION \
-              --query 'tasks[0].lastStatus' \
-              --output text)
-
-            echo "[${ELAPSED}s] Migration task status: $TASK_STATUS"
-
-            if [ "$TASK_STATUS" == "STOPPED" ]; then
-              EXIT_CODE=$(aws ecs describe-tasks \
-                --cluster $ECS_CLUSTER \
-                --tasks $TASK_ARN \
-                --region $AWS_REGION \
-                --query 'tasks[0].containers[0].exitCode' \
-                --output text)
-
-              STOP_REASON=$(aws ecs describe-tasks \
-                --cluster $ECS_CLUSTER \
-                --tasks $TASK_ARN \
-                --region $AWS_REGION \
-                --query 'tasks[0].stoppedReason' \
-                --output text)
-
-              echo "Migration task completed with exit code: $EXIT_CODE"
-              echo "Stop reason: $STOP_REASON"
-
-              if [ "$EXIT_CODE" == "0" ]; then
-                echo "✓ Database migration completed successfully!"
-                exit 0
-              else
-                echo "✗ Database migration failed!"
-
-                # Try to fetch logs
-                LOG_GROUP="/ecs/liwords-db-migration"
-                echo "Fetching CloudWatch logs from $LOG_GROUP..."
-
-                LOG_STREAM=$(aws logs describe-log-streams \
-                  --log-group-name $LOG_GROUP \
-                  --region $AWS_REGION \
-                  --order-by LastEventTime \
-                  --descending \
-                  --max-items 1 \
-                  --query 'logStreams[0].logStreamName' \
-                  --output text 2>/dev/null || echo "")
-
-                if [[ -n "$LOG_STREAM" ]] && [[ "$LOG_STREAM" != "None" ]]; then
-                  echo "Recent logs:"
-                  aws logs get-log-events \
-                    --log-group-name $LOG_GROUP \
-                    --log-stream-name $LOG_STREAM \
-                    --region $AWS_REGION \
-                    --limit 100 \
-                    --query 'events[*].message' \
-                    --output text 2>/dev/null || echo "Could not fetch logs"
-                fi
-
-                exit 1
-              fi
-            fi
-
-            sleep $POLL_INTERVAL
-            ELAPSED=$((ELAPSED + POLL_INTERVAL))
-          done
-
-          echo "✗ Migration task timeout reached after ${TIMEOUT}s"
-          exit 1
-
-      - name: Discord notification (success)
-        if: ${{ success() }}
-        env:
-          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
-        run: ./scripts/utilities/notify-discord.sh "✓ Database migration completed successfully for branch {{GITHUB_REF_NAME}}."
-        continue-on-error: true
-
       - name: Discord notification (failure)
         if: ${{ failure() }}
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
-        run: ./scripts/utilities/notify-discord.sh "✗ Database migration FAILED for branch {{GITHUB_REF_NAME}}. Check GitHub Actions logs."
+        run: >-
+          ./scripts/utilities/notify-discord.sh "✗ Migration order check FAILED for branch {{GITHUB_REF_NAME}}:
+          a new migration is numbered below one on master. Check GitHub Actions logs."
         continue-on-error: true
 
-  # Deploys the images just built to Fargate, after the migrations. Off
-  # until the repository variable FARGATE_DEPLOY is "true"; with it on, the
-  # "production" environment's reviewers (if any) approve each deploy. See
-  # deploy-fargate.yml.
+  # Deploys the images just built to Fargate: migrations, then the services.
+  # Off until the repository variable FARGATE_DEPLOY is "true"; with it on,
+  # each build's deploy waits for one of the "production" environment's
+  # required reviewers. See deploy-fargate.yml.
   deploy_backend:
     if: ${{ github.ref == 'refs/heads/master' && vars.FARGATE_DEPLOY == 'true' }}
     needs:
       - push_backend_images
-      - run_db_migration
+      - check_migration_order
     permissions:
       contents: read
       actions: read
+      id-token: write
     uses: ./.github/workflows/deploy-fargate.yml
     with:
       image_tag: ${{ github.ref_name }}-gh${{ github.run_number }}
     secrets:
-      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
 
   build_fe:

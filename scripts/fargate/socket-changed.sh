@@ -18,17 +18,11 @@ set -euo pipefail
 
 old="${1:?usage: socket-changed.sh <deployed tag> <new tag>}"
 new="${2:?usage: socket-changed.sh <deployed tag> <new tag>}"
-REPO="${GITHUB_REPOSITORY:-woogles-io/liwords}"
 
 [[ "$old" == "$new" ]] && { echo "same tag $new"; exit 1; }
 
-commit_of() {
-  local n="${1#master-gh}"
-  [[ "$n" =~ ^[0-9]+$ ]] || return 0
-  gh run list --repo "$REPO" --workflow build-and-deploy.yml --branch master --event push \
-    --limit 300 --json number,headSha -q ".[] | select(.number == $n) | .headSha"
-}
-old_sha=$(commit_of "$old"); new_sha=$(commit_of "$new")
+here=$(dirname "$0")
+old_sha=$("$here/tag-commit.sh" "$old" || true); new_sha=$("$here/tag-commit.sh" "$new" || true)
 if [[ -z "$old_sha" || -z "$new_sha" ]]; then
   echo "can't find the commits of $old and $new; treating the socket server as changed"
   exit 0
