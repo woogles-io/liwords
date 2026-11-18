@@ -2,10 +2,12 @@ package collections
 
 import (
 	"context"
+	"errors"
 	"strings"
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
@@ -225,6 +227,9 @@ func (cs *CollectionsService) AddGameToCollection(ctx context.Context, req *conn
 		ChapterTitle:  pgtype.Text{String: req.Msg.ChapterTitle, Valid: req.Msg.ChapterTitle != ""},
 		IsAnnotated:   pgtype.Bool{Bool: req.Msg.IsAnnotated, Valid: true},
 	})
+	if isDuplicateGame(err) {
+		return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("this game is already in the collection"))
+	}
 	if err != nil {
 		log.Error().Err(err).Str("collection_uuid", req.Msg.CollectionUuid).Str("game_id", req.Msg.GameId).Msg("failed to add game to collection")
 		return nil, apiserver.InternalErr(err)
@@ -602,4 +607,13 @@ func (cs *CollectionsService) GetCommentsForCollectionGames(ctx context.Context,
 			GameMeta:    gameMeta,
 		}
 	}), nil
+}
+
+// isDuplicateGame reports whether err is the collection_games unique
+// violation on (collection_id, game_id): the game is already in the
+// collection, which is the caller's mistake (often a double click), not ours.
+func isDuplicateGame(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == "23505" &&
+		pgErr.ConstraintName == "collection_games_collection_id_game_id_key"
 }

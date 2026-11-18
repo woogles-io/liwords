@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Modal, Select, Input, Button, Form, Space, message, Spin } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
+import { Code, ConnectError } from "@connectrpc/connect";
 import { useClient } from "../utils/hooks/connect";
 import { CollectionsService } from "../gen/api/proto/collections_service/collections_service_pb";
 import { Collection } from "../gen/api/proto/collections_service/collections_service_pb";
@@ -99,7 +100,11 @@ export const AddToCollectionModal: React.FC<AddToCollectionModalProps> = ({
       onClose();
     } catch (err) {
       console.error("Failed to add game to collection:", err);
-      message.error("Failed to add game to collection");
+      if (ConnectError.from(err).code === Code.AlreadyExists) {
+        message.error("That game is already in this collection");
+      } else {
+        message.error("Failed to add game to collection");
+      }
     } finally {
       setSubmitting(false);
     }
