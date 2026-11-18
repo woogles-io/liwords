@@ -18,6 +18,10 @@ name: Deploy backend (Fargate)
 #
 #   gh workflow run deploy-fargate.yml                       # newest
 #   gh workflow run deploy-fargate.yml -f image_tag=master-gh2321
+#
+# The socket server is redeployed only when its binary changed (see
+# scripts/fargate/socket-changed.sh), since a socket deploy disconnects every
+# client once. Pass -f force_socket=true to redeploy it anyway.
 
 on:
   workflow_dispatch:
@@ -26,11 +30,20 @@ on:
         description: "Image tag, e.g. master-gh2321. Empty: the newest master build."
         required: false
         type: string
+      force_socket:
+        description: "Redeploy the socket server even if its code didn't change"
+        required: false
+        type: boolean
+        default: false
   workflow_call:
     inputs:
       image_tag:
         required: true
         type: string
+      force_socket:
+        required: false
+        type: boolean
+        default: false
     secrets:
       AWS_ACCESS_KEY_ID:
         required: true
@@ -58,6 +71,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # socket-changed.sh builds the deployed and the new commit.
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
 
       - name: Pick the image tag
         env:
@@ -82,7 +103,27 @@ jobs:
       - name: Deploy liwords-api
         run: scripts/fargate/deploy-stack.sh liwords-api aws/cfn/fargate/liwords-api.yaml "ImageTag=$IMAGE_TAG"
 
+      - name: Did the socket server change?
+        id: socket
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FORCE: ${{ inputs.force_socket }}
+        run: |
+          deployed=$(aws cloudformation describe-stacks --stack-name liwords-socket \
+            --query "Stacks[0].Parameters[?ParameterKey=='ImageTag'].ParameterValue" --output text 2>/dev/null || true)
+          if [[ -z "$deployed" || "$deployed" == None ]]; then
+            echo "no socket stack yet"; echo "deploy=true" >> "$GITHUB_OUTPUT"
+          elif [[ "$FORCE" == true ]]; then
+            echo "forced"; echo "deploy=true" >> "$GITHUB_OUTPUT"
+          elif scripts/fargate/socket-changed.sh "$deployed" "$IMAGE_TAG"; then
+            echo "deploy=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "deploy=false" >> "$GITHUB_OUTPUT"
+            echo "Socket server unchanged since \`$deployed\`; not redeployed" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
       - name: Deploy liwords-socket
+        if: steps.socket.outputs.deploy == 'true'
         run: scripts/fargate/deploy-stack.sh liwords-socket aws/cfn/fargate/liwords-socket.yaml "ImageTag=$IMAGE_TAG"
 
       - name: Discord notification
