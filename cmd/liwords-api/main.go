@@ -61,10 +61,12 @@ import (
 	"github.com/woogles-io/liwords/pkg/integrations"
 	"github.com/woogles-io/liwords/pkg/jobs"
 	"github.com/woogles-io/liwords/pkg/league"
+	"github.com/woogles-io/liwords/pkg/maintenance"
 	"github.com/woogles-io/liwords/pkg/memento"
 	"github.com/woogles-io/liwords/pkg/mod"
 	"github.com/woogles-io/liwords/pkg/omgwords"
 	"github.com/woogles-io/liwords/pkg/organization"
+	"github.com/woogles-io/liwords/pkg/outbox"
 	"github.com/woogles-io/liwords/pkg/pair"
 	pkgprofile "github.com/woogles-io/liwords/pkg/profile"
 	"github.com/woogles-io/liwords/pkg/push"
@@ -353,7 +355,12 @@ func main() {
 	}
 	leagueService := league.NewLeagueService(stores.LeagueStore, stores.UserStore, cfg, stores.Queries, stores, gameCreatorAdapter)
 	modService := mod.NewModService(stores.UserStore, stores.ChatStore, stores.Queries)
-	puzzleService := puzzles.NewPuzzleService(stores.PuzzleStore, stores.UserStore, cfg.PuzzleGenerationSecretKey, cfg.ECSClusterName, cfg.PuzzleGenerationTaskDefinition, stores.Queries)
+	puzzleService := puzzles.NewPuzzleService(stores.PuzzleStore, stores.UserStore, cfg.PuzzleGenerationSecretKey, puzzles.ECSTask{
+		Cluster:        cfg.ECSClusterName,
+		TaskDefinition: cfg.PuzzleGenerationTaskDefinition,
+		Subnets:        splitList(cfg.PuzzleGenerationSubnets),
+		SecurityGroups: splitList(cfg.PuzzleGenerationSecurityGroups),
+	}, stores.Queries)
 	omgwordsService := omgwords.NewOMGWordsService(stores.UserStore, cfg, stores.GameDocumentStore, stores.AnnotatedGameStore)
 	commentService := comments.NewCommentsService(stores.UserStore, stores.GameStore, stores.CommentsStore, stores.Queries)
 	collectionsService := collections.NewCollectionsService(stores.UserStore, stores.Queries, dbPool)
@@ -600,6 +607,8 @@ func main() {
 			broadcasts:  broadcastService,
 			vdo:         vdoWebhookService,
 			users:       stores.UserStore,
+			outbox:      outbox.NewSender(stores.Queries, outboxChannels(cfg), 0),
+			maintenance: maintenance.New(cfg, stores, gameCreatorAdapter, oauthIntegrationService),
 			tournaments: stores.TournamentStore,
 			copPairer:   copPairer(cfg, lambdaClient),
 		}); err != nil {
@@ -695,3 +704,14 @@ func main() {
 // 	}
 // 	return connect.UnaryInterceptorFunc(interceptor)
 // }
+
+// splitList splits a comma-separated flag value, dropping empty items.
+func splitList(s string) []string {
+	var out []string
+	for _, item := range strings.Split(s, ",") {
+		if item = strings.TrimSpace(item); item != "" {
+			out = append(out, item)
+		}
+	}
+	return out
+}

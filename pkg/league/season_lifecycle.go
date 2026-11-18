@@ -12,7 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/rs/zerolog/log"
 
-	"github.com/woogles-io/liwords/pkg/config"
+	"github.com/woogles-io/liwords/pkg/outbox"
 	"github.com/woogles-io/liwords/pkg/stores"
 	"github.com/woogles-io/liwords/pkg/stores/models"
 	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
@@ -138,6 +138,9 @@ func (slm *SeasonLifecycleManager) OpenRegistrationForNextSeason(
 		EndDate:          pgtype.Timestamptz{Time: nextEndDate, Valid: true},
 		Status:           int32(ipc.SeasonStatus_SEASON_REGISTRATION_OPEN),
 		PromotionFormula: currentSeason.PromotionFormula, // Copy from previous season
+		// Created with the season, so the registration-open messages are
+		// written (QueueRegistrationOpenNotices) even if this run stops now.
+		RegistrationNoticePending: true,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create next season: %w", err)
@@ -152,95 +155,153 @@ func (slm *SeasonLifecycleManager) OpenRegistrationForNextSeason(
 	}, nil
 }
 
-// SendSeasonStartingSoonNotification sends reminder emails 1 day before season starts
-func (slm *SeasonLifecycleManager) SendSeasonStartingSoonNotification(
-	ctx context.Context,
-	cfg *config.Config,
-	leagueID uuid.UUID,
-	nextSeasonID uuid.UUID,
-) error {
-	// Get league info
-	dbLeague, err := slm.stores.LeagueStore.GetLeagueByUUID(ctx, leagueID)
+// writeNotices writes msgs to the outbox in one transaction with claim,
+// which marks the notice as written (an UPDATE ... WHERE <mark> IS NULL).
+// If claim updates no row, the notice was written already, and nothing is.
+// It reports whether msgs were written.
+func (slm *SeasonLifecycleManager) writeNotices(ctx context.Context, claim func(q *models.Queries) (int64, error), msgs []outbox.Message) (bool, error) {
+	if slm.stores.DBPool == nil {
+		return false, errors.New("league notices need stores.DBPool")
+	}
+	tx, err := slm.stores.DBPool.Begin(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to get league: %w", err)
+		return false, err
 	}
-
-	// Get next season info
-	nextSeason, err := slm.stores.LeagueStore.GetSeason(ctx, nextSeasonID)
+	defer tx.Rollback(ctx)
+	q := slm.stores.Queries.WithTx(tx)
+	n, err := claim(q)
 	if err != nil {
-		return fmt.Errorf("failed to get next season: %w", err)
+		return false, err
 	}
-
-	// Get registered players for the next season
-	registeredUserIDs, err := slm.GetRegisteredPlayerIDs(ctx, nextSeasonID)
-	if err != nil {
-		return fmt.Errorf("failed to get registered players: %w", err)
+	if n == 0 {
+		return false, nil
 	}
-
-	if len(registeredUserIDs) == 0 {
-		log.Info().Str("leagueID", leagueID.String()).Int32("season", nextSeason.SeasonNumber).Msg("no-registered-players-for-season-starting-soon-notification")
-		return nil
+	if _, err := outbox.Add(ctx, q, msgs); err != nil {
+		return false, err
 	}
-
-	// Send emails
-	SendSeasonStartingSoonEmail(
-		ctx,
-		cfg,
-		slm.stores.UserStore,
-		dbLeague.Name,
-		dbLeague.Slug,
-		int(nextSeason.SeasonNumber),
-		nextSeason.StartDate.Time,
-		registeredUserIDs,
-	)
-
-	log.Info().Str("leagueID", leagueID.String()).Int32("season", nextSeason.SeasonNumber).Int("count", len(registeredUserIDs)).Msg("sent-season-starting-soon-notifications")
-	return nil
+	return true, tx.Commit(ctx)
 }
 
-// SendSeasonStartedNotification sends emails to players when season starts and games are created
-func (slm *SeasonLifecycleManager) SendSeasonStartedNotification(
+// QueueSeasonStartingSoonNotices writes the emails sent 1 day before a
+// season starts, and marks them written (starting_soon_notification_sent_at)
+// in the same transaction. It reports whether it wrote them: false if they
+// were written before.
+func (slm *SeasonLifecycleManager) QueueSeasonStartingSoonNotices(
 	ctx context.Context,
-	cfg *config.Config,
 	leagueID uuid.UUID,
 	seasonID uuid.UUID,
-) error {
-	// Get league info
+) (bool, error) {
 	dbLeague, err := slm.stores.LeagueStore.GetLeagueByUUID(ctx, leagueID)
 	if err != nil {
-		return fmt.Errorf("failed to get league: %w", err)
+		return false, fmt.Errorf("failed to get league: %w", err)
 	}
-
-	// Get season info
 	season, err := slm.stores.LeagueStore.GetSeason(ctx, seasonID)
 	if err != nil {
-		return fmt.Errorf("failed to get season: %w", err)
+		return false, fmt.Errorf("failed to get next season: %w", err)
 	}
+	if season.StartingSoonNotificationSentAt.Valid {
+		return false, nil
+	}
+	registeredUserIDs, err := slm.GetRegisteredPlayerIDs(ctx, seasonID)
+	if err != nil {
+		return false, fmt.Errorf("failed to get registered players: %w", err)
+	}
+	msgs, err := seasonStartingSoonMessages(ctx, slm.stores.UserStore, seasonID, dbLeague.Name, dbLeague.Slug,
+		int(season.SeasonNumber), season.StartDate.Time, registeredUserIDs)
+	if err != nil {
+		return false, err
+	}
+	written, err := slm.writeNotices(ctx, func(q *models.Queries) (int64, error) {
+		return q.ClaimStartingSoonNotice(ctx, seasonID)
+	}, msgs)
+	if written {
+		log.Info().Str("leagueID", leagueID.String()).Int32("season", season.SeasonNumber).Int("messages", len(msgs)).Msg("queued-season-starting-soon-notices")
+	}
+	return written, err
+}
 
-	// Build player assignment map
+// QueueSeasonStartedNotices writes the emails and Discord post for a season
+// whose games have all been created, and marks them created
+// (games_created_at, and started_at) in the same transaction. It reports
+// whether it wrote them: false if the season was marked before.
+func (slm *SeasonLifecycleManager) QueueSeasonStartedNotices(
+	ctx context.Context,
+	leagueID uuid.UUID,
+	seasonID uuid.UUID,
+) (bool, error) {
+	dbLeague, err := slm.stores.LeagueStore.GetLeagueByUUID(ctx, leagueID)
+	if err != nil {
+		return false, fmt.Errorf("failed to get league: %w", err)
+	}
+	season, err := slm.stores.LeagueStore.GetSeason(ctx, seasonID)
+	if err != nil {
+		return false, fmt.Errorf("failed to get season: %w", err)
+	}
+	if season.GamesCreatedAt.Valid {
+		return false, nil
+	}
 	playerAssignments, err := slm.buildPlayerAssignments(ctx, seasonID)
 	if err != nil {
-		return fmt.Errorf("failed to build player assignments: %w", err)
+		return false, fmt.Errorf("failed to build player assignments: %w", err)
 	}
-
-	if len(playerAssignments) == 0 {
-		log.Info().Str("leagueID", leagueID.String()).Int32("season", season.SeasonNumber).Msg("no-players-for-season-started-notification")
-		return nil
+	msgs, err := seasonStartedMessages(ctx, slm.stores.UserStore, seasonID, dbLeague.Name, dbLeague.Slug,
+		int(season.SeasonNumber), playerAssignments)
+	if err != nil {
+		return false, err
 	}
+	written, err := slm.writeNotices(ctx, func(q *models.Queries) (int64, error) {
+		return q.ClaimSeasonStartedNotice(ctx, seasonID)
+	}, msgs)
+	if written {
+		log.Info().Str("leagueID", leagueID.String()).Int32("season", season.SeasonNumber).Int("messages", len(msgs)).Msg("queued-season-started-notices")
+	}
+	return written, err
+}
 
-	// Send emails
-	SendSeasonStartedEmail(
-		ctx,
-		cfg,
-		slm.stores.UserStore,
-		dbLeague.Name,
-		dbLeague.Slug,
-		int(season.SeasonNumber),
-		playerAssignments,
-	)
-
-	log.Info().Str("leagueID", leagueID.String()).Int32("season", season.SeasonNumber).Int("count", len(playerAssignments)).Msg("sent-season-started-notifications")
-	return nil
+// QueueRegistrationOpenNotices writes the registration-open emails and
+// Discord post for a season the league runner opened
+// (registration_notice_pending), and clears the flag in the same
+// transaction. It reports whether it wrote them: false if the flag wasn't
+// set.
+func (slm *SeasonLifecycleManager) QueueRegistrationOpenNotices(
+	ctx context.Context,
+	leagueID uuid.UUID,
+	seasonID uuid.UUID,
+) (bool, error) {
+	dbLeague, err := slm.stores.LeagueStore.GetLeagueByUUID(ctx, leagueID)
+	if err != nil {
+		return false, fmt.Errorf("failed to get league: %w", err)
+	}
+	season, err := slm.stores.LeagueStore.GetSeason(ctx, seasonID)
+	if err != nil {
+		return false, fmt.Errorf("failed to get season: %w", err)
+	}
+	if !season.RegistrationNoticePending {
+		return false, nil
+	}
+	currentRegistrants, err := slm.stores.LeagueStore.GetSeasonRegistrations(ctx, seasonID)
+	if err != nil {
+		return false, fmt.Errorf("failed to get current registrants: %w", err)
+	}
+	previousRegistrants, err := slm.stores.LeagueStore.GetPreviousSeasonRegistrantsNotInCurrent(ctx, models.GetPreviousSeasonRegistrantsNotInCurrentParams{
+		LeagueID:     leagueID,
+		SeasonNumber: season.SeasonNumber - 1,
+	})
+	if err != nil {
+		return false, fmt.Errorf("failed to get previous season registrants: %w", err)
+	}
+	msgs, err := registrationOpenMessages(ctx, slm.stores.UserStore, seasonID, dbLeague.Name, dbLeague.Slug,
+		int(season.SeasonNumber), currentRegistrants, previousRegistrants)
+	if err != nil {
+		return false, err
+	}
+	written, err := slm.writeNotices(ctx, func(q *models.Queries) (int64, error) {
+		return q.ClaimRegistrationNotice(ctx, seasonID)
+	}, msgs)
+	if written {
+		log.Info().Str("leagueID", leagueID.String()).Int32("season", season.SeasonNumber).Int("messages", len(msgs)).Msg("queued-registration-open-notices")
+	}
+	return written, err
 }
 
 // buildPlayerAssignments creates a map of player assignments with division and opponent info
@@ -863,59 +924,42 @@ func ShouldRunTask(season *models.LeagueSeason, taskType string, seasonLengthDay
 	return false, "Unknown task type"
 }
 
-// SendUnstartedGameReminder sends reminder emails to players who haven't started their games
-// isFirm determines whether to send a gentle reminder (Day 1) or firm warning (Day 2)
-func (slm *SeasonLifecycleManager) SendUnstartedGameReminder(
+// QueueUnstartedGameReminders writes reminders to players who haven't
+// started their games: gentle on day 1, firm on day 2 (isFirm). Each player
+// gets each reminder once per season, however often this runs. It returns
+// how many reminders it wrote.
+func (slm *SeasonLifecycleManager) QueueUnstartedGameReminders(
 	ctx context.Context,
-	cfg *config.Config,
 	leagueID uuid.UUID,
 	seasonID uuid.UUID,
 	isFirm bool,
-) error {
-	// Get league info
+) (int64, error) {
 	dbLeague, err := slm.stores.LeagueStore.GetLeagueByUUID(ctx, leagueID)
 	if err != nil {
-		return fmt.Errorf("failed to get league: %w", err)
+		return 0, fmt.Errorf("failed to get league: %w", err)
 	}
-
-	// Get season info
 	season, err := slm.stores.LeagueStore.GetSeason(ctx, seasonID)
 	if err != nil {
-		return fmt.Errorf("failed to get season: %w", err)
+		return 0, fmt.Errorf("failed to get season: %w", err)
 	}
-
-	// Get players with unstarted games using the new query
-	playersWithUnstartedGames, err := slm.stores.LeagueStore.GetSeasonPlayersWithUnstartedGames(ctx, seasonID)
+	players, err := slm.stores.LeagueStore.GetSeasonPlayersWithUnstartedGames(ctx, seasonID)
 	if err != nil {
-		return fmt.Errorf("failed to get players with unstarted games: %w", err)
+		return 0, fmt.Errorf("failed to get players with unstarted games: %w", err)
 	}
-
-	if len(playersWithUnstartedGames) == 0 {
-		log.Info().Str("leagueID", leagueID.String()).Int32("season", season.SeasonNumber).Msg("no-players-with-unstarted-games")
-		return nil
+	msgs, err := unstartedGameReminderMessages(ctx, slm.stores.UserStore, seasonID, dbLeague.Name, dbLeague.Slug,
+		int(season.SeasonNumber), players, isFirm)
+	if err != nil {
+		return 0, err
 	}
-
-	// Send emails to each player
-	SendUnstartedGameReminderEmail(
-		ctx,
-		cfg,
-		slm.stores.UserStore,
-		dbLeague.Name,
-		dbLeague.Slug,
-		int(season.SeasonNumber),
-		playersWithUnstartedGames,
-		isFirm,
-	)
-
-	reminderType := "gentle"
-	if isFirm {
-		reminderType = "firm"
+	n, err := outbox.Add(ctx, slm.stores.Queries, msgs)
+	if err != nil {
+		return 0, err
 	}
 	log.Info().
 		Str("leagueID", leagueID.String()).
 		Int32("season", season.SeasonNumber).
-		Int("count", len(playersWithUnstartedGames)).
-		Str("type", reminderType).
-		Msg("sent-unstarted-game-reminders")
-	return nil
+		Int64("queued", n).
+		Bool("firm", isFirm).
+		Msg("queued-unstarted-game-reminders")
+	return n, nil
 }

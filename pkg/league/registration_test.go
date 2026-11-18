@@ -57,6 +57,8 @@ func setupTest(t *testing.T) (*stores.Stores, *leaguestore.DBStore, func()) {
 	allStores := &stores.Stores{
 		LeagueStore: leagueStore,
 		UserStore:   userStore,
+		Queries:     models.New(pool),
+		DBPool:      pool,
 	}
 
 	cleanup := func() {

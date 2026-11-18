@@ -1062,7 +1062,8 @@ func (q *Queries) UpsertUserClient(ctx context.Context, arg UpsertUserClientPara
 
 const usersByPrefix = `-- name: UsersByPrefix :many
 SELECT username, uuid FROM users
-WHERE substr(lower(users.username), 1, length($1::text)) = $1
+WHERE lower(users.username) COLLATE "C" >= $1::text
+  AND lower(users.username) COLLATE "C" < $1::text || chr(1114111)
   AND users.internal_bot IS FALSE
   AND NOT EXISTS(
     SELECT 1 FROM user_actions
@@ -1071,11 +1072,14 @@ WHERE substr(lower(users.username), 1, length($1::text)) = $1
     user_actions.end_time IS NULL AND
     user_actions.action_type = $2
 )
+ORDER BY lower(users.username) COLLATE "C"
+LIMIT $3
 `
 
 type UsersByPrefixParams struct {
 	Prefix            string
 	SuspendActionType int32
+	MaxResults        int32
 }
 
 type UsersByPrefixRow struct {
@@ -1083,8 +1087,14 @@ type UsersByPrefixRow struct {
 	Uuid     string
 }
 
+// Usernames starting with @prefix (already lowercased), first in byte order.
+// In "C" order every string that starts with the prefix sorts at or after it
+// and before prefix || U+10FFFF, the highest code point, so the matches are
+// one range of idx_users_username_lower_c. A range rather than LIKE because
+// usernames contain "_", a LIKE wildcard, and because a LIKE on a parameter
+// cannot use the index once the prepared statement goes to a generic plan.
 func (q *Queries) UsersByPrefix(ctx context.Context, arg UsersByPrefixParams) ([]UsersByPrefixRow, error) {
-	rows, err := q.db.Query(ctx, usersByPrefix, arg.Prefix, arg.SuspendActionType)
+	rows, err := q.db.Query(ctx, usersByPrefix, arg.Prefix, arg.SuspendActionType, arg.MaxResults)
 	if err != nil {
 		return nil, err
 	}

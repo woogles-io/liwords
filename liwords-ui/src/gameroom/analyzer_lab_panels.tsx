@@ -155,6 +155,9 @@ type EndgameCandidate = {
   value: number;
   exact?: boolean;
   tiles?: Array<EndgameTile>;
+  // with two or more in the bag, the deals its sets cover, in place of the
+  // sets themselves, which are read for the play shown
+  deals?: number;
   draws?: Array<EndgameDraw>;
 };
 
@@ -172,7 +175,8 @@ type EndgameAnswer = {
   nodes: number;
   exact: boolean;
   play: WasmPlay | null;
-  value?: number;
+  // none (absent or null) till a first depth is searched
+  value?: number | null;
   spread: number;
   depth: number;
   line?: Array<{ play: WasmPlay; value: number }>;
@@ -182,6 +186,8 @@ type EndgameAnswer = {
   tiles?: Array<EndgameTile>;
   draws?: Array<EndgameDraw>;
   candidates?: Array<EndgameCandidate>;
+  // how many plays there are in all, where the answer gives only the best
+  candidates_total?: number;
 };
 
 // How the game ends for the player to move, leading by this much at the end:
@@ -203,6 +209,13 @@ const dealsText = (count: number) =>
 
 // The depth a pre-endgame's answer gives once searched to the end.
 const END_DEPTH = 127;
+
+// A pre-endgame play's rows read for it at a time, from each part.
+const DRAWS_PAGE = 50;
+
+// How many of a pre-endgame's plays are listed at first, and how many more on
+// each "more": a pre-endgame values every play, tens of thousands of them.
+const PLAYS_PAGE = 50;
 
 // What each player knows in a pre-endgame of two or more tiles in the bag
 // once the first move is made: nothing more, each choosing blind over every
@@ -494,9 +507,14 @@ const ranText = (ms: number) => {
 };
 
 type JobState<T> = {
+  // the key the state is of: until the job of a new key is made, the last
+  // key's state is still the one held
+  key?: string;
   job?: number;
   answer?: T;
   error?: string;
+  // the error came on the job's first step
+  firstStep?: boolean;
   running: boolean;
 };
 
@@ -506,7 +524,7 @@ type JobState<T> = {
 const useLabJob = <T,>(start: (() => Promise<number>) | null, key: string) => {
   const [state, setState] = useState<JobState<T>>({ running: false });
   useEffect(() => {
-    setState({ running: false });
+    setState({ key, running: false });
     if (!start) return;
     let current = true;
     let job: number | undefined;
@@ -515,7 +533,10 @@ const useLabJob = <T,>(start: (() => Promise<number>) | null, key: string) => {
       setState((s) => ({
         ...s,
         answer: (e.answer as T) ?? s.answer,
-        error: e.error,
+        // an answer heard after an error (a part's reply to the stop the
+        // error sent) leaves the error standing
+        error: e.error ?? s.error,
+        firstStep: e.error ? e.firstStep : s.firstStep,
         // a step that was under way when a stop was sent leaves it stopped
         running: s.running && !e.done && !e.error,
       }));
@@ -530,11 +551,12 @@ const useLabJob = <T,>(start: (() => Promise<number>) | null, key: string) => {
         job = made;
         const ms = await frameMs();
         if (!current) return;
-        setState({ job, running: true });
+        setState({ key, job, running: true });
         await labCall({ op: "run", args: { job, ms } });
       } catch (e) {
         if (current) {
           setState({
+            key,
             running: false,
             error: e instanceof Error ? e.message : String(e),
           });
@@ -559,7 +581,12 @@ const useLabJob = <T,>(start: (() => Promise<number>) | null, key: string) => {
     const { job } = state;
     if (job === undefined) return;
     const ms = await frameMs();
-    setState((s) => ({ ...s, running: true }));
+    setState((s) => ({
+      ...s,
+      running: true,
+      error: undefined,
+      firstStep: undefined,
+    }));
     labCall({ op: "run", args: { job, ms } }).catch((e) =>
       setState((s) => ({ ...s, running: false, error: String(e) })),
     );
@@ -789,6 +816,14 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
     : 1;
   // the workers the job shown was made on, which an error of it is from
   const [madeOn, setMadeOn] = useState(workers);
+  const jobKey = modeled ? `${lab.key}/${model}/${workers}` : lab.key;
+  // the solve tried once more, on a fresh worker, after running out of
+  // memory on its first step
+  const [retried, setRetried] = useState<string>();
+  // another solve, or this one come back to, starts with its retry unspent:
+  // only the solve it was made for, still shown, is retried
+  if (retried !== undefined && retried !== jobKey) setRetried(undefined);
+  const againKey = `${jobKey}/again`;
   const job = useLabJob<EndgameAnswer>(
     solvable
       ? async () => {
@@ -844,19 +879,39 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
           return made;
         }
       : null,
-    modeled ? `${lab.key}/${model}/${workers}` : lab.key,
+    retried === jobKey ? againKey : jobKey,
   );
   // a part out of room (the endgame's own graph and table not fitting beside
   // the lexicon): solved again on half the workers, each with twice the
   // share, until it fits or runs on one
-  if (job.error === OUT_OF_MEMORY && madeOn > 1 && workers > madeOn / 2) {
+  // out of memory on its first step: the worker an earlier job left full,
+  // let go since, so the solve is tried once more, on a fresh worker
+  // nothing failed from the player's side: the solve only starts cold, so
+  // no error is shown while it does
+  // the job's state is of this solve, not the one before it, still held
+  // until the job of this one is made
+  const ours = job.key === jobKey || job.key === againKey;
+  const retrying =
+    ours &&
+    job.error === OUT_OF_MEMORY &&
+    !!job.firstStep &&
+    job.key === jobKey;
+  const jobError = ours && !retrying ? job.error : undefined;
+  if (retrying) {
+    if (retried !== jobKey) setRetried(jobKey);
+  } else if (
+    ours &&
+    job.error === OUT_OF_MEMORY &&
+    madeOn > 1 &&
+    workers > madeOn / 2
+  ) {
     setCap({ lexicon: lab.loadableKey, workers: Math.floor(madeOn / 2) });
   }
   const { answer } = job;
   // the answer from its first step on, the best so far: before that, it has
   // no value or win to give
   const solved =
-    answer && answer.steps > 0 && answer.value !== undefined
+    answer && answer.steps > 0 && typeof answer.value === "number"
       ? (answer as EndgameAnswer & { value: number })
       : undefined;
   const ranMs = useRunMs(job.job, job.running);
@@ -872,17 +927,32 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
   // the best first, or the best alone where the answer lists no other. The
   // best's own tiles or sets are the answer's where its entry has none. With
   // an empty bag, every first move once valued, beside the line.
-  const plays = useMemo(() => {
+  // how many of the plays are listed, a page more on each "more"
+  const [playsPage, setPlaysPage] = useState<{ job?: number; upTo: number }>({
+    upTo: PLAYS_PAGE,
+  });
+  const playsUpTo = playsPage.job === job.job ? playsPage.upTo : PLAYS_PAGE;
+  const listed: Array<EndgameCandidate> = useMemo(() => {
     if (!solved) return [];
     if (solved.bag === 0 && !solved.candidates?.length) return [];
-    const listed: Array<EndgameCandidate> = solved.candidates?.length
+    return solved.candidates?.length
       ? solved.candidates
       : solved.play
         ? [{ play: solved.play, value: solved.value, win: solved.win }]
         : [];
-    return listed.map((c, i) => {
+  }, [solved]);
+  const morePlays = Math.max(
+    0,
+    (solved?.candidates_total ?? listed.length) - playsUpTo,
+  );
+  const plays = useMemo(() => {
+    if (!solved) return [];
+    return listed.slice(0, playsUpTo).map((c, i) => {
       const tiles = c.tiles ?? (i === 0 ? solved.tiles : undefined);
-      const draws = c.draws ?? (i === 0 ? solved.draws : undefined);
+      // a play's sets are read a page at a time, the best's as any other's
+      // (the answer gives the best none of its own); a part's answer merged
+      // may still give them whole
+      const draws = c.draws;
       return {
         play: c.play,
         move: toAnalyzerMove(c.play, c.value, lab.letters, lab.rack, lab),
@@ -892,14 +962,62 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
         exact: c.exact,
         tiles: tiles?.length ? tiles : undefined,
         draws: draws?.length ? draws : undefined,
+        // whether it has sets to show, given or to be read
+        sets: !!(draws?.length || c.deals),
       };
     });
-  }, [solved, lab, lead]);
+  }, [solved, listed, playsUpTo, lab, lead]);
   // the play whose tiles or sets are shown, the best unless another is picked
   const [picked, setPicked] = useState<string>();
   const shown =
     plays.find((p) => p.move.jsonKey === picked) ??
-    plays.find((p) => p.tiles || p.draws);
+    plays.find((p) => p.tiles || p.sets);
+  // the shown play's sets where its answer gives none: read for it, again
+  // each second while the solve runs, and once more when it is exact
+  const [read, setRead] = useState<{
+    key: string;
+    draws: Array<EndgameDraw>;
+    total: number;
+  }>();
+  const readKey =
+    shown && !shown.tiles && !shown.draws && shown.sets && job.job !== undefined
+      ? `${job.job}/${shown.move.jsonKey}`
+      : undefined;
+  const readPlay = shown ? JSON.stringify(shown.play) : undefined;
+  const readTick = Math.floor(ranMs / 1000);
+  const readExact = !!solved?.exact;
+  // how many of its rows each part reads, a page more on each "more"
+  const [readPage, setReadPage] = useState<{ key?: string; upTo: number }>({
+    upTo: DRAWS_PAGE,
+  });
+  const upTo = readPage.key === readKey ? readPage.upTo : DRAWS_PAGE;
+  useEffect(() => {
+    // a job that failed is freed, or its worker gone: nothing to read
+    if (readKey === undefined || job.job === undefined || job.error) return;
+    let current = true;
+    labCall<{ rows: Array<EndgameDraw>; total: number } | undefined>({
+      op: "draws",
+      args: { job: job.job, play: readPlay!, upTo },
+    })
+      .then((got) => {
+        if (current && got) {
+          setRead({ key: readKey, draws: got.rows, total: got.total });
+        }
+      })
+      .catch((e) => console.error("reading the sets failed", e));
+    return () => {
+      current = false;
+    };
+    // the play and job are in readKey; read once more when the solve stops
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [readKey, readTick, readExact, upTo, job.running, job.error]);
+  const shownDraws =
+    shown?.draws ?? (read && read.key === readKey ? read.draws : undefined);
+  // the rows not yet read, offered a page at a time
+  const moreDraws =
+    !shown?.draws && read && read.key === readKey
+      ? read.total - read.draws.length
+      : 0;
 
   // the players by who moves first in the line: the player to move, then the
   // other
@@ -937,12 +1055,12 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
     status = goneOutText(lab);
   } else if (bag === null) {
     status = "Needs the full rack of the player to move.";
-  } else if (job.error || valuesError) {
+  } else if (jobError || valuesError) {
     status = (
       <span className="analyzer-error">
-        {job.error === OUT_OF_MEMORY && madeOn === 1
+        {jobError === OUT_OF_MEMORY && madeOn === 1
           ? OUT_OF_MEMORY_ALONE
-          : (job.error ?? valuesError)}
+          : (jobError ?? valuesError)}
       </span>
     );
   } else if (!solved || !solved.play) {
@@ -965,7 +1083,7 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
       title={bagTitle(bag)}
       status={status}
       running={job.running}
-      canResume={job.job !== undefined && !answer?.exact && !job.error}
+      canResume={job.job !== undefined && !answer?.exact && !jobError}
       stop={job.stop}
       resume={job.resume}
       onClose={onClose}
@@ -1073,7 +1191,7 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
                 <td className="move-score">{m.score}</td>
                 <td className="move-leave">{runes(m.leave)}</td>
                 <td className="lab-win">
-                  {p.tiles || p.draws ? (
+                  {p.tiles || p.sets ? (
                     // the win picks the play whose deals are shown below
                     <Tooltip title="Show what it gains for each draw">
                       <Button
@@ -1099,6 +1217,28 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
               </tr>
             );
           })}
+          {morePlays > 0 && (
+            <tr className="lab-tile">
+              <td colSpan={7}>
+                <Button
+                  type="link"
+                  size="small"
+                  onClick={() => {
+                    const upTo = playsUpTo + PLAYS_PAGE;
+                    setPlaysPage({ job: job.job, upTo });
+                    if (job.job !== undefined) {
+                      labCall({
+                        op: "list",
+                        args: { job: job.job, upTo },
+                      }).catch(() => {});
+                    }
+                  }}
+                >
+                  {`${morePlays} more play${morePlays === 1 ? "" : "s"}`}
+                </Button>
+              </td>
+            </tr>
+          )}
           {shown ? (
             <tr className="lab-tile lab-draws-head">
               <td className="lab-who" />
@@ -1119,37 +1259,55 @@ export const EndgamePanel = (props: EndgamePanelProps) => {
               <td className="move-equity">{signed(t.value)}</td>
             </tr>
           ))}
-          {shown?.draws?.map((d) => (
-            <React.Fragment key={d.tiles.join(",")}>
-              <tr className="lab-tile">
-                <td className="lab-who">
-                  {!d.drawn && goInButton(shown.play, d.tiles)}
-                </td>
-                <td className="move-coords" />
-                <td className="move" colSpan={3}>
-                  {runes(d.tiles)}
-                  {dealsText(d.count)}
-                </td>
-                <td className="lab-win">
-                  {d.win === undefined ? endText(d.value) : percent(d.win)}
-                </td>
-                <td className="move-equity">{signed(d.value, 2)}</td>
-              </tr>
-              {d.drawn?.map((r) => (
-                // with both racks known, what the play then draws from the set
-                <tr key={r.tiles.join(",")} className="lab-tile lab-drawn">
-                  <td className="lab-who">{goInButton(shown.play, r.tiles)}</td>
+          {shown &&
+            shownDraws?.map((d) => (
+              <React.Fragment key={d.tiles.join(",")}>
+                <tr className="lab-tile">
+                  <td className="lab-who">
+                    {!d.drawn && goInButton(shown.play, d.tiles)}
+                  </td>
                   <td className="move-coords" />
                   <td className="move" colSpan={3}>
-                    {`draws ${runes(r.tiles)}`}
-                    {dealsText(r.count)}
+                    {runes(d.tiles)}
+                    {dealsText(d.count)}
                   </td>
-                  <td className="lab-win">{percent(r.win)}</td>
-                  <td className="move-equity">{signed(r.value, 2)}</td>
+                  <td className="lab-win">
+                    {d.win === undefined ? endText(d.value) : percent(d.win)}
+                  </td>
+                  <td className="move-equity">{signed(d.value, 2)}</td>
                 </tr>
-              ))}
-            </React.Fragment>
-          ))}
+                {d.drawn?.map((r) => (
+                  // with both racks known, what the play then draws from the set
+                  <tr key={r.tiles.join(",")} className="lab-tile lab-drawn">
+                    <td className="lab-who">
+                      {goInButton(shown.play, r.tiles)}
+                    </td>
+                    <td className="move-coords" />
+                    <td className="move" colSpan={3}>
+                      {`draws ${runes(r.tiles)}`}
+                      {dealsText(r.count)}
+                    </td>
+                    <td className="lab-win">{percent(r.win)}</td>
+                    <td className="move-equity">{signed(r.value, 2)}</td>
+                  </tr>
+                ))}
+              </React.Fragment>
+            ))}
+          {moreDraws > 0 && (
+            <tr className="lab-tile">
+              <td colSpan={7}>
+                <Button
+                  type="link"
+                  size="small"
+                  onClick={() =>
+                    setReadPage({ key: readKey, upTo: upTo + DRAWS_PAGE })
+                  }
+                >
+                  {`${moreDraws} more draw${moreDraws === 1 ? "" : "s"}`}
+                </Button>
+              </td>
+            </tr>
+          )}
         </tbody>
       </table>
     </PanelFrame>
@@ -1421,6 +1579,10 @@ export const useLabSim = (
 ) => {
   const [allEdits, setAllEdits] = useState(() => new Map<string, SimEdits>());
   const [sim, setSim] = useState<MadeSim | null>(null);
+  // The job of the sim last made. Events of other jobs (an endgame's, of
+  // megabytes) are not handed to setSim: an update that leaves the state as
+  // it was is still kept until the panel next renders, its event with it.
+  const simJob = useRef<number | undefined>(undefined);
   const [settings, setSettings] = useState(defaultSimSettings);
   const [starting, setStarting] = useState(false);
   const startingRef = useRef(false);
@@ -1453,7 +1615,8 @@ export const useLabSim = (
 
   useEffect(
     () =>
-      onLabEvent((e) =>
+      onLabEvent((e) => {
+        if (e.job !== simJob.current) return;
         setSim((s) => {
           if (!s || e.job !== s.job) return s;
           // another job has taken the worker, and this one is gone
@@ -1466,8 +1629,8 @@ export const useLabSim = (
             running: s.running && !e.done && !e.error,
             done: !!e.done,
           };
-        }),
-      ),
+        });
+      }),
     [],
   );
 
@@ -1617,6 +1780,12 @@ export const useLabSim = (
             plies: settings.plies,
             known: known.tiles,
             opponents_pass: settings.opponentsPass,
+            // the device's allowance shared by the workers the sim runs on,
+            // as an endgame's is
+            max_memory_mb: Math.max(
+              1,
+              Math.floor(endgameMemoryMb() / labParts()),
+            ),
           }),
           plays: JSON.stringify(plays.map((m) => JSON.parse(m.jsonKey))),
           ...(infer ? { infer } : {}),
@@ -1624,6 +1793,7 @@ export const useLabSim = (
       });
       // A play is held as the sim writes it, which can differ from how it was
       // given: a one-tile play written down is held across.
+      simJob.current = job;
       setSim({
         key: at,
         job,

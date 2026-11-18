@@ -5,21 +5,16 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
-	"sync"
 	"text/template"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 	"github.com/woogles-io/liwords/pkg/config"
 	"github.com/woogles-io/liwords/pkg/emailer"
-	"github.com/woogles-io/liwords/pkg/notify"
+	"github.com/woogles-io/liwords/pkg/outbox"
 	"github.com/woogles-io/liwords/pkg/stores/models"
 	"github.com/woogles-io/liwords/pkg/user"
-)
-
-const (
-	maxConcurrentEmails = 5               // Max simultaneous email sends
-	emailSendDelay      = 2 * time.Second // Delay between email launches (~1 every 2 seconds)
 )
 
 type LeagueEmailInfo struct {
@@ -104,31 +99,34 @@ func instantiateLeagueEmail(info *LeagueEmailInfo) (string, string, error) {
 	return emailContentBuffer.String(), emailSubject, nil
 }
 
-// SendSeasonStartingSoonEmail sends reminder email 1 day before season starts
-func SendSeasonStartingSoonEmail(ctx context.Context, cfg *config.Config, userStore user.Store, leagueName, leagueSlug string, seasonNumber int, startTime time.Time, registeredUserIDs []string) {
+// noticeKey is the outbox key of a league notice: what it is, for which
+// season, and for whom ("discord" for the league channel post).
+func noticeKey(seasonID uuid.UUID, notice, who string) string {
+	return fmt.Sprintf("league:%s:%s:%s", seasonID, notice, who)
+}
 
+// seasonStartingSoonMessages are the emails sent 1 day before a season
+// starts. Players who can't be looked up, or have no email, are skipped.
+func seasonStartingSoonMessages(ctx context.Context, userStore user.Store, seasonID uuid.UUID, leagueName, leagueSlug string, seasonNumber int, startTime time.Time, registeredUserIDs []string) ([]outbox.Message, error) {
 	leagueURL := fmt.Sprintf("https://woogles.io/leagues/%s", leagueSlug)
 	startTimeString := startTime.Format("Monday, January 2, 2006 at 3:04 PM MST")
 	startTimeZones := formatTimeInTimezones(startTime)
 
-	// Semaphore for concurrency control and WaitGroup to wait for completion
-	sem := make(chan struct{}, maxConcurrentEmails)
-	var wg sync.WaitGroup
-
+	var msgs []outbox.Message
 	for _, userID := range registeredUserIDs {
-		// Fetch user details
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
 		user, err := userStore.GetByUUID(ctx, userID)
 		if err != nil {
 			log.Err(err).Str("userID", userID).Msg("failed-to-fetch-user-for-league-email")
 			continue
 		}
-
 		if user.Email == "" {
 			log.Debug().Str("username", user.Username).Msg("user-has-no-email-skipping")
 			continue
 		}
-
-		emailInfo := &LeagueEmailInfo{
+		body, subject, err := instantiateLeagueEmail(&LeagueEmailInfo{
 			Username:       user.Username,
 			LeagueName:     leagueName,
 			SeasonNumber:   seasonNumber,
@@ -136,67 +134,42 @@ func SendSeasonStartingSoonEmail(ctx context.Context, cfg *config.Config, userSt
 			StartTimeZones: startTimeZones,
 			LeagueURL:      leagueURL,
 			IsStartingSoon: true,
-		}
-
-		emailContent, emailSubject, err := instantiateLeagueEmail(emailInfo)
+		})
 		if err != nil {
 			log.Err(err).Str("username", user.Username).Msg("failed-to-instantiate-league-email")
 			continue
 		}
-
-		// Acquire semaphore slot
-		wg.Add(1)
-		sem <- struct{}{}
-
-		// Send email asynchronously with rate limiting
-		go func(email, subject, body, username string) {
-			defer wg.Done()
-			defer func() { <-sem }() // Release semaphore
-
-			_, err := emailer.SendSimpleMessage(
-				cfg.EmailDebugMode,
-				email,
-				subject,
-				body)
-			if err != nil {
-				log.Err(err).Str("username", username).Msg("failed-to-send-season-starting-soon-email")
-			} else {
-				log.Info().Str("username", username).Str("league", leagueName).Msg("sent-season-starting-soon-email")
-			}
-		}(user.Email, emailSubject, emailContent, user.Username)
-
-		// Rate limit: delay before launching next goroutine
-		time.Sleep(emailSendDelay)
+		msgs = append(msgs, outbox.Message{
+			Key:       noticeKey(seasonID, "starting-soon", userID),
+			Channel:   outbox.ChannelEmail,
+			Recipient: user.Email,
+			Subject:   subject,
+			Body:      body,
+		})
 	}
-
-	// Wait for all emails to complete
-	wg.Wait()
-	log.Info().Int("count", len(registeredUserIDs)).Str("league", leagueName).Msg("completed-sending-season-starting-soon-emails")
+	return msgs, nil
 }
 
-// SendSeasonStartedEmail sends notification when season starts and games are created
-func SendSeasonStartedEmail(ctx context.Context, cfg *config.Config, userStore user.Store, leagueName, leagueSlug string, seasonNumber int, playerAssignments map[string]*PlayerSeasonInfo) {
-
+// seasonStartedMessages are the emails sent when a season starts, with each
+// player's division and opponents, and the league Discord post.
+func seasonStartedMessages(ctx context.Context, userStore user.Store, seasonID uuid.UUID, leagueName, leagueSlug string, seasonNumber int, playerAssignments map[string]*PlayerSeasonInfo) ([]outbox.Message, error) {
 	leagueURL := fmt.Sprintf("https://woogles.io/leagues/%s", leagueSlug)
 
-	// Semaphore for concurrency control and WaitGroup to wait for completion
-	sem := make(chan struct{}, maxConcurrentEmails)
-	var wg sync.WaitGroup
-
+	var msgs []outbox.Message
 	for userID, assignment := range playerAssignments {
-		// Fetch user details
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
 		user, err := userStore.GetByUUID(ctx, userID)
 		if err != nil {
 			log.Err(err).Str("userID", userID).Msg("failed-to-fetch-user-for-league-email")
 			continue
 		}
-
 		if user.Email == "" {
 			log.Debug().Str("username", user.Username).Msg("user-has-no-email-skipping")
 			continue
 		}
-
-		emailInfo := &LeagueEmailInfo{
+		body, subject, err := instantiateLeagueEmail(&LeagueEmailInfo{
 			Username:       user.Username,
 			LeagueName:     leagueName,
 			SeasonNumber:   seasonNumber,
@@ -204,42 +177,25 @@ func SendSeasonStartedEmail(ctx context.Context, cfg *config.Config, userStore u
 			DivisionName:   assignment.DivisionName,
 			Opponents:      assignment.OpponentNames,
 			IsStartingSoon: false,
-		}
-
-		emailContent, emailSubject, err := instantiateLeagueEmail(emailInfo)
+		})
 		if err != nil {
 			log.Err(err).Str("username", user.Username).Msg("failed-to-instantiate-league-email")
 			continue
 		}
-
-		// Acquire semaphore slot
-		wg.Add(1)
-		sem <- struct{}{}
-
-		// Send email asynchronously with rate limiting
-		go func(email, subject, body, username string) {
-			defer wg.Done()
-			defer func() { <-sem }() // Release semaphore
-
-			_, err := emailer.SendSimpleMessage(
-				cfg.EmailDebugMode,
-				email,
-				subject,
-				body)
-			if err != nil {
-				log.Err(err).Str("username", username).Msg("failed-to-send-season-started-email")
-			} else {
-				log.Info().Str("username", username).Str("league", leagueName).Msg("sent-season-started-email")
-			}
-		}(user.Email, emailSubject, emailContent, user.Username)
-
-		// Rate limit: delay before launching next goroutine
-		time.Sleep(emailSendDelay)
+		msgs = append(msgs, outbox.Message{
+			Key:       noticeKey(seasonID, "started", userID),
+			Channel:   outbox.ChannelEmail,
+			Recipient: user.Email,
+			Subject:   subject,
+			Body:      body,
+		})
 	}
-
-	// Wait for all emails to complete
-	wg.Wait()
-	log.Info().Int("count", len(playerAssignments)).Str("league", leagueName).Msg("completed-sending-season-started-emails")
+	msgs = append(msgs, outbox.Message{
+		Key:     noticeKey(seasonID, "started", "discord"),
+		Channel: outbox.ChannelLeagueDiscord,
+		Body:    fmt.Sprintf("🏁 **%s Season %d** has officially started!\n\nGames have been created. Good luck to all players!\n\nhttps://woogles.io/leagues/%s", leagueName, seasonNumber, leagueSlug),
+	})
+	return msgs, nil
 }
 
 // PlayerSeasonInfo holds information about a player's season assignment
@@ -273,110 +229,68 @@ func instantiateRegistrationEmail(info *RegistrationEmailInfo) (string, string, 
 	return emailContentBuffer.String(), emailSubject, nil
 }
 
-// SendRegistrationOpenEmail sends bulk email to current + previous season registrants
-func SendRegistrationOpenEmail(ctx context.Context, cfg *config.Config, userStore user.Store, leagueName, leagueSlug string, seasonNumber int, currentRegistrants []models.GetSeasonRegistrationsRow, previousRegistrants []models.GetPreviousSeasonRegistrantsNotInCurrentRow) {
+// registrationOpenMessages are the emails to current and previous season
+// registrants when registration opens, and the league Discord post.
+func registrationOpenMessages(ctx context.Context, userStore user.Store, seasonID uuid.UUID, leagueName, leagueSlug string, seasonNumber int, currentRegistrants []models.GetSeasonRegistrationsRow, previousRegistrants []models.GetPreviousSeasonRegistrantsNotInCurrentRow) ([]outbox.Message, error) {
 	leagueURL := fmt.Sprintf("https://woogles.io/leagues/%s", leagueSlug)
 
-	// Combine all recipients (current + previous) into a map to deduplicate
-	recipients := make(map[string]struct {
-		username string
-		email    string
-	})
-
-	// Add current registrants
+	// Current registrants' emails are looked up; previous registrants come
+	// with theirs.
+	type recipient struct{ username, email string }
+	recipients := map[string]recipient{}
 	for _, reg := range currentRegistrants {
 		if reg.UserUuid != "" {
-			recipients[reg.UserUuid] = struct {
-				username string
-				email    string
-			}{username: reg.Username, email: ""} // Will fetch email from user store
+			recipients[reg.UserUuid] = recipient{username: reg.Username}
 		}
 	}
-
-	// Add previous registrants (already filtered to not include current)
 	for _, prev := range previousRegistrants {
 		if prev.Uuid != "" && prev.Email != "" {
-			recipients[prev.Uuid] = struct {
-				username string
-				email    string
-			}{username: prev.Username, email: prev.Email}
+			recipients[prev.Uuid] = recipient{username: prev.Username, email: prev.Email}
 		}
 	}
 
-	log.Info().
-		Int("total_recipients", len(recipients)).
-		Str("league", leagueName).
-		Int("season", seasonNumber).
-		Msg("sending-registration-open-emails")
-
-	// Semaphore for concurrency control and WaitGroup to wait for completion
-	sem := make(chan struct{}, maxConcurrentEmails)
-	var wg sync.WaitGroup
-
-	for userID, recipient := range recipients {
-		// Fetch user details if email not already available
-		var email string
-		var username string
-		if recipient.email != "" {
-			email = recipient.email
-			username = recipient.username
-		} else {
+	var msgs []outbox.Message
+	for userID, r := range recipients {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		if r.email == "" {
 			user, err := userStore.GetByUUID(ctx, userID)
 			if err != nil {
 				log.Err(err).Str("userID", userID).Msg("failed-to-fetch-user-for-registration-email")
 				continue
 			}
-			email = user.Email
-			username = user.Username
+			r = recipient{username: user.Username, email: user.Email}
 		}
-
-		if email == "" {
-			log.Debug().Str("username", username).Msg("user-has-no-email-skipping")
+		if r.email == "" {
+			log.Debug().Str("username", r.username).Msg("user-has-no-email-skipping")
 			continue
 		}
-
-		emailInfo := &RegistrationEmailInfo{
-			Username:           username,
+		body, subject, err := instantiateRegistrationEmail(&RegistrationEmailInfo{
+			Username:           r.username,
 			LeagueName:         leagueName,
 			SeasonNumber:       seasonNumber,
 			LeagueURL:          leagueURL,
 			IsRegistrationOpen: true,
-		}
-
-		emailContent, emailSubject, err := instantiateRegistrationEmail(emailInfo)
+		})
 		if err != nil {
-			log.Err(err).Str("username", username).Msg("failed-to-instantiate-registration-email")
+			log.Err(err).Str("username", r.username).Msg("failed-to-instantiate-registration-email")
 			continue
 		}
-
-		// Acquire semaphore slot
-		wg.Add(1)
-		sem <- struct{}{}
-
-		// Send email asynchronously with rate limiting
-		go func(email, subject, body, username string) {
-			defer wg.Done()
-			defer func() { <-sem }() // Release semaphore
-
-			_, err := emailer.SendSimpleMessage(
-				cfg.EmailDebugMode,
-				email,
-				subject,
-				body)
-			if err != nil {
-				log.Err(err).Str("username", username).Msg("failed-to-send-registration-open-email")
-			} else {
-				log.Info().Str("username", username).Str("league", leagueName).Msg("sent-registration-open-email")
-			}
-		}(email, emailSubject, emailContent, username)
-
-		// Rate limit: delay before launching next goroutine
-		time.Sleep(emailSendDelay)
+		msgs = append(msgs, outbox.Message{
+			Key:       noticeKey(seasonID, "registration-open", userID),
+			Channel:   outbox.ChannelEmail,
+			Recipient: r.email,
+			Subject:   subject,
+			Body:      body,
+		})
 	}
-
-	// Wait for all emails to complete
-	wg.Wait()
-	log.Info().Int("count", len(recipients)).Str("league", leagueName).Msg("completed-sending-registration-open-emails")
+	msgs = append(msgs, outbox.Message{
+		Key:     noticeKey(seasonID, "registration-open", "discord"),
+		Channel: outbox.ChannelLeagueDiscord,
+		Body:    fmt.Sprintf("🎮 Registration is now open for **%s Season %d**!\n\nRegister now at: https://woogles.io/leagues/%s", leagueName, seasonNumber, leagueSlug),
+	})
+	return msgs, nil
 }
 
 // SendRegistrationConfirmationEmail sends individual email when user registers
@@ -444,67 +358,38 @@ func SendUnregistrationConfirmationEmail(ctx context.Context, cfg *config.Config
 	}()
 }
 
-// PostLeagueDiscordNotification posts a message to the league Discord channel
-func PostLeagueDiscordNotification(message string, cfg *config.Config) {
-	if cfg.LeagueDiscordToken != "" {
-		notify.Post(message, cfg.LeagueDiscordToken)
-	}
-}
-
-// SendRegistrationOpenDiscord posts to #woogleague when registration opens
-func SendRegistrationOpenDiscord(cfg *config.Config, leagueName, leagueSlug string, seasonNumber int) {
-	message := fmt.Sprintf("🎮 Registration is now open for **%s Season %d**!\n\nRegister now at: https://woogles.io/leagues/%s", leagueName, seasonNumber, leagueSlug)
-	PostLeagueDiscordNotification(message, cfg)
-	log.Info().Str("league", leagueName).Int("season", seasonNumber).Msg("posted-registration-open-discord")
-}
-
-// SendSeasonStartedDiscord posts to #woogleague when season starts
-func SendSeasonStartedDiscord(cfg *config.Config, leagueName, leagueSlug string, seasonNumber int) {
-	message := fmt.Sprintf("🏁 **%s Season %d** has officially started!\n\nGames have been created. Good luck to all players!\n\nhttps://woogles.io/leagues/%s", leagueName, seasonNumber, leagueSlug)
-	PostLeagueDiscordNotification(message, cfg)
-	log.Info().Str("league", leagueName).Int("season", seasonNumber).Msg("posted-season-started-discord")
-}
-
-// SendUnstartedGameReminderEmail sends reminders to players who haven't started their games
-func SendUnstartedGameReminderEmail(
+// unstartedGameReminderMessages are the reminders to players who haven't
+// started their games: gentle on day 1, firm on day 2.
+func unstartedGameReminderMessages(
 	ctx context.Context,
-	cfg *config.Config,
 	userStore user.Store,
+	seasonID uuid.UUID,
 	leagueName, leagueSlug string,
 	seasonNumber int,
 	playersWithUnstartedGames []models.GetSeasonPlayersWithUnstartedGamesRow,
 	isFirm bool,
-) {
+) ([]outbox.Message, error) {
 	leagueURL := fmt.Sprintf("https://woogles.io/leagues/%s", leagueSlug)
-	reminderType := "gentle"
+	notice := "unstarted-gentle"
 	if isFirm {
-		reminderType = "firm"
+		notice = "unstarted-firm"
 	}
 
-	log.Info().
-		Int("count", len(playersWithUnstartedGames)).
-		Str("league", leagueName).
-		Str("type", reminderType).
-		Msg("sending-unstarted-game-reminder-emails")
-
-	// Semaphore for concurrency control and WaitGroup to wait for completion
-	sem := make(chan struct{}, maxConcurrentEmails)
-	var wg sync.WaitGroup
-
+	var msgs []outbox.Message
 	for _, player := range playersWithUnstartedGames {
-		// Fetch user details
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
 		u, err := userStore.GetByUUID(ctx, player.UserUuid)
 		if err != nil {
 			log.Err(err).Str("userUUID", player.UserUuid).Msg("failed-to-fetch-user-for-unstarted-game-reminder")
 			continue
 		}
-
 		if u.Email == "" {
 			log.Debug().Str("username", u.Username).Msg("user-has-no-email-skipping")
 			continue
 		}
 
-		// Prepare email content
 		var emailBody, emailSubject string
 		gameCount := player.UnstartedGameCount
 
@@ -546,28 +431,13 @@ The Woogles Team
 `, u.Username, leagueName, seasonNumber, gameCount, leagueURL)
 		}
 
-		// Acquire semaphore slot
-		wg.Add(1)
-		sem <- struct{}{}
-
-		// Send email asynchronously with rate limiting
-		go func(email, subject, body, username string) {
-			defer wg.Done()
-			defer func() { <-sem }() // Release semaphore
-
-			_, err := emailer.SendSimpleMessage(cfg.EmailDebugMode, email, subject, body)
-			if err != nil {
-				log.Err(err).Str("username", username).Msg("failed-to-send-unstarted-game-reminder-email")
-			} else {
-				log.Info().Str("username", username).Str("league", leagueName).Str("type", reminderType).Msg("sent-unstarted-game-reminder-email")
-			}
-		}(u.Email, emailSubject, emailBody, u.Username)
-
-		// Rate limit: delay before launching next goroutine
-		time.Sleep(emailSendDelay)
+		msgs = append(msgs, outbox.Message{
+			Key:       noticeKey(seasonID, notice, player.UserUuid),
+			Channel:   outbox.ChannelEmail,
+			Recipient: u.Email,
+			Subject:   emailSubject,
+			Body:      emailBody,
+		})
 	}
-
-	// Wait for all emails to complete
-	wg.Wait()
-	log.Info().Int("count", len(playersWithUnstartedGames)).Str("league", leagueName).Str("type", reminderType).Msg("completed-sending-unstarted-game-reminder-emails")
+	return msgs, nil
 }

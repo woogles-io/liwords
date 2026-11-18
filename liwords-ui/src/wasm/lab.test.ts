@@ -99,6 +99,31 @@ describe("the lab on one worker", () => {
   });
 });
 
+describe("the lab on one worker, pruned", () => {
+  it("builds a board's pruned lexicon for a sim on one worker, and an analysis takes it", async () => {
+    const plain = answer;
+    answer = (w, m) =>
+      m.op === "kbwg_build" ? new Uint8Array([1]) : plain(w, m);
+    setLabPartsForTest(1);
+    const position = { lexicon: "CSW24", rules: "R", board: ["A"] };
+    await labCall({
+      op: "sim",
+      args: { request: JSON.stringify(position), plays: "[]" },
+    });
+    const sim = JSON.parse(lastOf(0, "sim")!.args!.request as string);
+    expect(sim).toMatchObject({ pruned: true });
+    expect(sim.lexicon).toMatch(/^kbwg:/);
+    await labCall({
+      op: "analyze",
+      args: { request: JSON.stringify(position) },
+    });
+    expect(
+      JSON.parse(lastOf(0, "analyze")!.args!.request as string).lexicon,
+    ).toBe(sim.lexicon);
+    expect(ops(0).filter((op) => op === "kbwg_build")).toHaveLength(1);
+  });
+});
+
 describe("a sim in parts", () => {
   const start = async () => {
     setLabPartsForTest(2);
@@ -130,6 +155,169 @@ describe("a sim in parts", () => {
     await labCall({ op: "add", args: { job, plays: "[]" } });
     expect(ops(0)).toContain("add");
     expect(ops(1)).toContain("add");
+  });
+
+  it("prunes the board's lexicon once, on the first worker, and loads it on each", async () => {
+    const bytes = new Uint8Array([1, 2, 3]);
+    const plain = answer;
+    answer = (w, m) => (m.op === "kbwg_build" ? bytes : plain(w, m));
+    const position = {
+      lexicon: "CSW24",
+      rules: "CrosswordGame",
+      board: ["A"],
+      max_memory_mb: 128,
+    };
+    const sim = () =>
+      labCall({
+        op: "sim",
+        args: { request: JSON.stringify(position), plays: "[]" },
+      });
+    setLabPartsForTest(2);
+    await sim();
+    expect(ops(0).filter((op) => op === "kbwg_build")).toHaveLength(1);
+    expect(ops(1)).not.toContain("kbwg_build");
+    // under the cap each worker's job is given
+    expect(
+      JSON.parse(lastOf(0, "kbwg_build")!.args!.request as string),
+    ).toEqual(position);
+    const key = lastOf(0, "kbwg_load")!.args!.key as string;
+    for (const w of [0, 1]) {
+      expect(lastOf(w, "kbwg_load")?.args).toEqual({ key, bytes });
+      expect(
+        JSON.parse(lastOf(w, "sim")!.args!.request as string),
+      ).toMatchObject({ lexicon: key, pruned: true });
+    }
+    // the same board again: neither built nor loaded again
+    await sim();
+    expect(ops(0).filter((op) => op === "kbwg_build")).toHaveLength(1);
+    expect(ops(1).filter((op) => op === "kbwg_load")).toHaveLength(1);
+  });
+
+  it("shares a board's pruned lexicon with every feature on it, and keeps the board before", async () => {
+    const plain = answer;
+    answer = (w, m) =>
+      m.op === "kbwg_build" ? new Uint8Array([1]) : plain(w, m);
+    const at = (board: string) => ({ lexicon: "CSW24", rules: "R", board });
+    const builds = () => ops(0).filter((op) => op === "kbwg_build").length;
+    const asked = (op: string) =>
+      JSON.parse(lastOf(0, op)!.args!.request as string);
+    setLabPartsForTest(2);
+    // an analysis alone builds none
+    await labCall({
+      op: "analyze",
+      args: { request: JSON.stringify(at("A")) },
+    });
+    expect(builds()).toBe(0);
+    expect(asked("analyze").lexicon).toBe("CSW24");
+    // a threats count builds it, on the first worker alone, unflagged
+    await labCall({
+      op: "threats_new",
+      args: { request: JSON.stringify(at("A")) },
+    });
+    expect(builds()).toBe(1);
+    expect(made[1]?.sent.some((m) => m.op === "kbwg_load") ?? false).toBe(
+      false,
+    );
+    const keyA = asked("threats_new").lexicon as string;
+    expect(keyA).toMatch(/^kbwg:/);
+    expect(asked("threats_new").pruned).toBeUndefined();
+    // the analysis and the endgame on that board take it, none built again
+    await labCall({
+      op: "analyze",
+      args: { request: JSON.stringify(at("A")) },
+    });
+    expect(asked("analyze")).toEqual({ ...at("A"), lexicon: keyA });
+    await labCall({
+      op: "endgame",
+      args: { request: JSON.stringify(at("A")) },
+    });
+    expect(asked("endgame")).toEqual({
+      ...at("A"),
+      lexicon: keyA,
+      pruned: true,
+    });
+    expect(builds()).toBe(1);
+    // the next board's, the inference of the board before on that one's
+    await labCall({
+      op: "endgame",
+      args: { request: JSON.stringify(at("B")) },
+    });
+    expect(builds()).toBe(2);
+    await labCall({ op: "infer", args: { request: JSON.stringify(at("A")) } });
+    expect(asked("infer").lexicon).toBe(keyA);
+    expect(ops(0)).not.toContain("kbwg_evict");
+    // a third board's lets the oldest go
+    await labCall({
+      op: "endgame",
+      args: { request: JSON.stringify(at("C")) },
+    });
+    expect(lastOf(0, "kbwg_evict")?.args).toEqual({ key: keyA });
+    await labCall({ op: "infer", args: { request: JSON.stringify(at("A")) } });
+    expect(asked("infer").lexicon).toBe("CSW24");
+  });
+
+  it("makes a sim's inference once, on the first worker, for every part", async () => {
+    const shared = { bytes: new Uint8Array([7]), count: 3, leaves: [] };
+    const plain = answer;
+    answer = (w, m) => (m.op === "infer_share" ? shared : plain(w, m));
+    setLabPartsForTest(2);
+    await labCall({
+      op: "sim",
+      args: { request: "{}", plays: "[]", infer: '{"board":"A"}' },
+    });
+    expect(ops(0).filter((op) => op === "infer_share")).toHaveLength(1);
+    expect(ops(1)).not.toContain("infer_share");
+    for (const w of [0, 1]) {
+      expect(lastOf(w, "sim")?.args?.shared).toEqual(shared);
+      expect(lastOf(w, "sim")?.args?.infer).toBeUndefined();
+    }
+  });
+
+  it("leaves each part to infer for itself when none can be shared", async () => {
+    setLabPartsForTest(2);
+    await labCall({
+      op: "sim",
+      args: { request: "{}", plays: "[]", infer: '{"board":"A"}' },
+    });
+    for (const w of [0, 1]) {
+      expect(lastOf(w, "sim")?.args?.infer).toBe('{"board":"A"}');
+      expect(lastOf(w, "sim")?.args?.shared).toBeUndefined();
+    }
+  });
+
+  it("builds no pruned lexicon the wasm says does not pay, asked for the searches to run", async () => {
+    const plain = answer;
+    answer = (w, m) =>
+      m.op === "prune_pays"
+        ? false
+        : m.op === "kbwg_build"
+          ? new Uint8Array([1])
+          : plain(w, m);
+    setLabPartsForTest(2);
+    const position = { lexicon: "CSW24", rules: "R", board: ["A"] };
+    await labCall({
+      op: "sim",
+      args: { request: JSON.stringify(position), plays: "[]" },
+    });
+    expect(
+      JSON.parse(lastOf(0, "prune_pays")!.args!.request as string),
+    ).toEqual({ rules: "R", board: ["A"], uses: 2 });
+    expect(ops(0)).not.toContain("kbwg_build");
+    expect(JSON.parse(lastOf(1, "sim")!.args!.request as string).lexicon).toBe(
+      "CSW24",
+    );
+  });
+
+  it("goes on with the full lexicon when the board cannot be pruned", async () => {
+    setLabPartsForTest(2);
+    await labCall({
+      op: "sim",
+      args: { request: JSON.stringify({ lexicon: "CSW24" }), plays: "[]" },
+    });
+    expect(ops(1)).not.toContain("kbwg_load");
+    const request = JSON.parse(lastOf(1, "sim")!.args!.request as string);
+    expect(request.lexicon).toBe("CSW24");
+    expect(request.pruned).toBeUndefined();
   });
 
   it("merges the parts' answers once each has answered", async () => {
@@ -379,6 +567,25 @@ describe("a pre-endgame in parts", () => {
     expect(made[1]?.sent.some((m) => m.op === "endgame") ?? false).toBe(false);
   });
 
+  it("passes on the answer a part's error stands with, merged", async () => {
+    setLabPartsForTest(2);
+    const job = await labCall<number>({
+      op: "endgame",
+      args: { request: JSON.stringify({ model: "info_sets" }) },
+    });
+    made[0].event({ job: 12, answer: endgamePart(0, 4, 1), done: false });
+    made[1].event({
+      job: 12,
+      error: "out of memory",
+      answer: { ...endgamePart(1, -2, 0), exact: false },
+    });
+    const failed = events.find((e) => e.error) as LabEvent & {
+      answer?: object;
+    };
+    expect(failed).toMatchObject({ job, error: "out of memory" });
+    expect(failed.answer).toBeDefined();
+  });
+
   it("stops the others on a part's error, and says so", async () => {
     setLabPartsForTest(2);
     const job = await labCall<number>({
@@ -404,5 +611,31 @@ describe("a worker whose wasm panicked", () => {
     await labCall({ op: "held" });
     expect(made).toHaveLength(2);
     expect(ops(1)).toEqual(["held"]);
+  });
+});
+
+describe("a worker whose endgame ran out of memory", () => {
+  it("has its error heard, then is let go, the next call made on a fresh one", async () => {
+    setLabPartsForTest(1);
+    await labCall({ op: "held" });
+    made[0].onmessage?.({
+      data: { event: { job: 3, error: "out of memory" }, spent: true },
+    } as MessageEvent);
+    expect(events).toEqual([{ job: 3, error: "out of memory" }]);
+    await labCall({ op: "held" });
+    expect(made).toHaveLength(2);
+    expect(ops(1)).toEqual(["held"]);
+  });
+
+  it("frees a pre-endgame's other parts, of no use alone", async () => {
+    setLabPartsForTest(2);
+    await labCall<number>({
+      op: "endgame",
+      args: { request: JSON.stringify({ model: "random_draws" }), parts: 2 },
+    });
+    made[1].onmessage?.({
+      data: { event: { job: 12, error: "out of memory" }, spent: true },
+    } as MessageEvent);
+    expect(ops(0)).toContain("free");
   });
 });

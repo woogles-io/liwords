@@ -9,6 +9,22 @@ export const OUT_OF_MEMORY =
 export const OUT_OF_MEMORY_ALONE =
   "Out of memory: the solve has no room to search, even on one worker.";
 
+// The cap reached before the first moves were all listed: the position's
+// moves alone need more memory than the device allows, on any number of
+// workers, however often it is tried.
+export const OUT_OF_MEMORY_MOVES =
+  "Out of memory: this position has more first moves than the memory allows.";
+
+// The cap reached while each play's sets were kept: the answer stands at
+// the plays valued so far, and no more can be valued in the memory allowed.
+export const OUT_OF_MEMORY_DRAWS =
+  "Out of memory keeping each play's sets: stopped at the plays valued so far.";
+
+// A sim's step with no room left under its memory cap: the numbers stand at
+// the iterations run so far.
+export const SIM_OUT_OF_MEMORY =
+  "Out of memory: the sim stopped at the iterations run so far.";
+
 // A wasm error names a tile by its number ("too many tile 17"): the tile's
 // letter in its place, as the page shows tiles.
 export const namedTiles = (text: string, rune: (tile: number) => string) =>

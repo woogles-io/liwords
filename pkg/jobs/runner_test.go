@@ -323,18 +323,25 @@ func TestDeadRunnersJobIsTakenOver(t *testing.T) {
 // takes the job.
 func TestLeaseIsRenewedWhileRunning(t *testing.T) {
 	_, q := setupDB(t)
+	// A longer lease than fast's: each renewal gets Lease/3 to finish, and
+	// two missed in a row let the other runner take the job. Under -race,
+	// with every package's tests sharing the database, 100ms renewals
+	// sometimes took longer than that in CI.
+	opts := Options{Lease: time.Second, MaxSleep: fast.MaxSleep}
 	var runs atomic.Int32
 	for range 2 {
-		r := NewRunner(q, fast)
+		r := NewRunner(q, opts)
 		r.Handle("long", func(ctx context.Context, job Job) error {
 			runs.Add(1)
-			time.Sleep(4 * fast.Lease)
+			// Outlives the lease, so the job stays with its runner only
+			// if the lease is renewed.
+			time.Sleep(5 * opts.Lease / 2)
 			return nil
 		})
 		start(t, r)
 	}
 	enqueue(t, q, "long", "a")
-	eventually(t, 3*time.Second, "job done", func() bool { return getJob(t, q, "long", "a").DoneAt.Valid })
+	eventually(t, 10*time.Second, "job done", func() bool { return getJob(t, q, "long", "a").DoneAt.Valid })
 	if n := runs.Load(); n != 1 {
 		t.Fatalf("ran %d times", n)
 	}

@@ -2,6 +2,7 @@
 /* eslint-disable */
 export const memory: WebAssembly.Memory;
 export const analyze: (a: number, b: number) => [number, number, number, number];
+export const build_kbwg: (a: number, b: number) => [number, number, number, number];
 export const do_this_on_startup: () => void;
 export const endgame_free: (a: number) => [number, number];
 export const endgame_new: (a: number, b: number) => [number, number, number];
@@ -10,13 +11,16 @@ export const evict_klv: (a: number, b: number) => [number, number, number];
 export const evict_kwg: (a: number, b: number) => [number, number, number];
 export const hooks: (a: number, b: number) => [number, number, number, number];
 export const infer: (a: number, b: number) => [number, number, number, number];
+export const infer_export: (a: number) => [number, number, number, number];
 export const infer_free: (a: number) => [number, number];
+export const infer_import: (a: number, b: number) => [number, number, number];
 export const memory_held: () => number;
 export const play_score: (a: number, b: number) => [number, number, number, number];
 export const precache_kblv2: (a: number, b: number, c: any) => [number, number];
 export const precache_kbwg: (a: number, b: number, c: any) => [number, number];
 export const precache_klv: (a: number, b: number, c: any) => [number, number];
 export const precache_kwg: (a: number, b: number, c: any) => [number, number];
+export const prune_pays: (a: number, b: number) => [number, number, number];
 export const sim_add: (a: number, b: number, c: number) => [number, number, number, number];
 export const sim_free: (a: number) => [number, number];
 export const sim_new: (a: number, b: number) => [number, number, number];

@@ -8,7 +8,12 @@
 // {event: {job, error}}. A job freed, by a request or by the next job made,
 // says so as {event: {job, freed: true}}.
 
-import { OUT_OF_MEMORY } from "./lab_errors";
+import {
+  OUT_OF_MEMORY,
+  OUT_OF_MEMORY_DRAWS,
+  OUT_OF_MEMORY_MOVES,
+  SIM_OUT_OF_MEMORY,
+} from "./lab_errors";
 import { importWolges } from "./wolges";
 
 // The wasm is imported, not loaded statically: a static import would make this
@@ -17,6 +22,38 @@ import { importWolges } from "./wolges";
 const wolgesPromise = importWolges();
 
 type Wolges = Awaited<typeof wolgesPromise>;
+
+// An inference made on one worker for every worker: its bytes, which each
+// takes in as its own, and its count and likeliest leaves, as made.
+export type SharedInference = {
+  bytes: Uint8Array;
+  count: number;
+  leaves: unknown;
+};
+
+// A wasm's inference given as bytes and taken in again, which a wasm before
+// it lacks: a call to it there throws, and each worker infers for itself.
+type Sharing = {
+  infer_export?: (handle: number) => Uint8Array;
+  infer_import?: (bytes: Uint8Array) => number;
+};
+const sharingOf = (wolges: Wolges) => {
+  const { infer_export, infer_import } = wolges as unknown as Sharing;
+  if (!infer_export || !infer_import) throw new Error("no inference sharing");
+  return { infer_export, infer_import };
+};
+
+// A wasm's board pruning, which a wasm before it lacks: a call to it there
+// throws, and the page goes on with the full lexicon.
+type Pruning = {
+  build_kbwg?: (request: string) => Uint8Array;
+  precache_kbwg?: (key: string, bytes: Uint8Array) => void;
+};
+const pruningOf = (wolges: Wolges) => {
+  const { build_kbwg, precache_kbwg } = wolges as unknown as Pruning;
+  if (!build_kbwg || !precache_kbwg) throw new Error("no board pruning");
+  return { build_kbwg, precache_kbwg };
+};
 type LabFile = { cacheKey: string; path: string };
 export type LabRequest =
   // the files a job needs loaded, answered with each one's size in bytes
@@ -45,7 +82,15 @@ export type LabRequest =
   | { op: "endgame"; args: { request: string; parts?: number } }
   // a sim of the plays given; with an inference's request, the opponent's
   // leave inferred, as infer takes one, and dealt in each iteration
-  | { op: "sim"; args: { request: string; plays: string; infer?: string } }
+  | {
+      op: "sim";
+      args: {
+        request: string;
+        plays: string;
+        infer?: string;
+        shared?: SharedInference;
+      };
+    }
   // plays joining a sim, or leaving it; each answers as the sim holds it
   | { op: "add"; args: { job: number; plays: string } }
   | { op: "remove"; args: { job: number; plays: string } }
@@ -54,7 +99,18 @@ export type LabRequest =
   | { op: "resume"; args: { job: number; plays: string } }
   // a sim's plies or the opponent's tiles changed in place, its rollouts kept,
   // answering as a step does
-  | { op: "set"; args: { job: number; request: string; infer?: string } }
+  | {
+      op: "set";
+      args: {
+        job: number;
+        request: string;
+        infer?: string;
+        shared?: SharedInference;
+      };
+    }
+  // an inference made once, its whole self given as bytes, for every worker
+  // to take in place of making its own
+  | { op: "infer_share"; args: { request: string } }
   // the play each of a sim's candidates is compared with in its answers, on
   // the iterations both ran, or none
   | { op: "against"; args: { job: number; play: string | null } }
@@ -63,6 +119,13 @@ export type LabRequest =
   // an empty bag's endgame, every first move valued on the table its steps
   // kept, in at most ms, without stepping; sent as a step's answer is
   | { op: "values"; args: { job: number; ms: number } }
+  // how many of an endgame's plays its answers give from now, from the best
+  | { op: "list"; args: { job: number; upTo: number } }
+  // a pre-endgame play's rows, what it gains for each set the bag may hold,
+  // read without stepping; the play as its answer gives it, in JSON; its
+  // first upTo rows where given, with how many it has in all. A step's answer
+  // gives each play's deals, not its rows.
+  | { op: "draws"; args: { job: number; play: string; upTo?: number } }
   // a sim's answer as it stands, compared with the play given in place of the
   // one it is compared with, answered and not sent
   | { op: "peek"; args: { job: number; against: string } }
@@ -78,6 +141,16 @@ export type LabRequest =
   | { op: "infer"; args: { request: string } }
   // the bytes the wasm holds now, as an endgame's memory cap counts them
   | { op: "held" }
+  // a board's pruned lexicon, built once from the full one and answered as
+  // its bytes, for every worker to load in its place
+  | { op: "kbwg_build"; args: { request: string } }
+  // whether a board's pruned lexicon pays for the searches to be run on it,
+  // as the wasm judges; a wasm that cannot judge says it does
+  | { op: "prune_pays"; args: { request: string } }
+  // a pruned lexicon loaded under its key, beside any loaded before
+  | { op: "kbwg_load"; args: { key: string; bytes: Uint8Array } }
+  // a pruned lexicon's key let go: the jobs made on it keep it till freed
+  | { op: "kbwg_evict"; args: { key: string } }
   | { op: "stop" }
   | { op: "free"; args: { job: number } };
 type Job = {
@@ -97,15 +170,40 @@ type Job = {
   modeled?: boolean;
   // the play a sim's candidates are compared with, as the sim takes one
   against?: unknown;
+  // whether a step of it has answered without running out of memory
+  stepped?: boolean;
+  // how many of an endgame's plays its answers give, from the best; none
+  // for a part of a pre-endgame in parts, whose answers are merged play by
+  // play and so give every play
+  listed?: number;
+  // when an endgame's answer was last sent; and whether it has stepped since
+  sentAt?: number;
+  unsent?: boolean;
 };
 type Answer = {
   exact?: boolean;
   // true when the step stopped short of exact on the memory cap, in wasms
   // that say so
   out_of_memory?: boolean;
+  // where the cap was reached, in wasms that say so: "moves" while the first
+  // moves were still being listed, "draws" while each play's sets were kept
+  out_of_memory_in?: string;
   nodes?: number;
   iterations?: number;
-  candidates?: Array<{ state: string }>;
+  candidates?: Array<{
+    state: string;
+    play?: unknown;
+    draws?: unknown;
+    draws_total?: number;
+  }>;
+  // the play named by draws_of where the answer does not give it among its
+  // plays, with its rows
+  drawn?: {
+    index: number;
+    play?: unknown;
+    draws?: unknown;
+    draws_total?: number;
+  };
 };
 
 // How a sim prunes its candidates, told to it at every step: wolges's own
@@ -156,6 +254,8 @@ const nameOf = (cacheKey: string) =>
 // The cache keys loaded, as the page's loader names them, each with its
 // size in bytes.
 const loaded = new Map<string, number>();
+// the keys of the pruned lexicons this worker holds
+const pruned = new Set<string>();
 let job: Job | null = null;
 let lastJobId = 0;
 // The threats counts held, each id's wasm handle.
@@ -172,11 +272,59 @@ let chainId = 0;
 // requests that came in meanwhile get in first. A timeout would do the same,
 // but browsers make a chain of timeouts wait 4 ms or more each.
 const stepPort = new MessageChannel();
+
+// How often a running endgame's answer is sent to the page, at most: four a
+// second shows it moving, where one a frame copies a pre-endgame's answer
+// sixty times a second.
+const SEND_EVERY_MS = 250;
+
+// How many of an endgame's plays its answers give at first, as the page
+// lists them: a pre-endgame values every play, tens of thousands of them.
+export const LISTED = 50;
+
+// A read of an endgame without stepping, as asked, its plays as listed.
+const reading = (j: Job, request: object) =>
+  JSON.stringify({
+    ms: 0,
+    ...request,
+    ...(j.listed !== undefined ? { candidates_range: [0, j.listed] } : {}),
+  });
+
+// An endgame's whole answer as it stands, read without stepping.
+const whole = (wolges: Wolges, j: Job): Answer =>
+  JSON.parse(wolges.endgame_step(j.handle, reading(j, {})));
 const nextSteps: Array<() => void> = [];
 stepPort.port1.onmessage = () => nextSteps.shift()?.();
 const later = (next: () => void) => {
   nextSteps.push(next);
   stepPort.port2.postMessage(null);
+};
+
+// The last inference made on this worker, kept by its request, which names
+// the board and the settings: the panel's, a sim's, and a threats count's on
+// the same board and settings take this one, and a request of another board
+// or settings lets it go and makes its own.
+type Kept = {
+  request: string;
+  handle: number;
+  answer: { count: number; leaves: unknown };
+};
+let kept: Kept | undefined;
+const dropInfer = (wolges: Wolges) => {
+  if (kept) wolges.infer_free(kept.handle);
+  kept = undefined;
+};
+const inferKept = (wolges: Wolges, request: string): Kept => {
+  if (kept?.request !== request) {
+    dropInfer(wolges);
+    const { handle, ...answer } = JSON.parse(wolges.infer(request)) as {
+      handle: number;
+      count: number;
+      leaves: unknown;
+    };
+    kept = { request, handle, answer };
+  }
+  return kept;
 };
 
 // A sim's request, with the opponent's leave inferred when asked: the
@@ -189,13 +337,18 @@ const inferring = <T>(
   request: string,
   infer: string | undefined,
   call: (request: string) => T,
+  shared?: SharedInference,
 ): { result: T; inferred?: { count: number; leaves: unknown } } => {
-  if (infer === undefined) return { result: call(request) };
-  const { handle, count, leaves } = JSON.parse(wolges.infer(infer)) as {
-    handle: number;
-    count: number;
-    leaves: unknown;
-  };
+  if (infer === undefined && shared === undefined) {
+    return { result: call(request) };
+  }
+  // one given is this call's own, let go after; one kept stays kept
+  const own = shared !== undefined;
+  const { handle, count, leaves } = own
+    ? { ...shared, handle: sharingOf(wolges).infer_import(shared.bytes) }
+    : (({ handle, answer }) => ({ handle, ...answer }))(
+        inferKept(wolges, infer!),
+      );
   try {
     const result = call(
       count > 0
@@ -208,15 +361,29 @@ const inferring = <T>(
     );
     return { result, inferred: { count, leaves } };
   } finally {
-    wolges.infer_free(handle);
+    if (own) wolges.infer_free(handle);
   }
 };
 
-const freeJob = (wolges: Wolges) => {
+// An endgame let go, its table kept to warm the next endgame made on this
+// worker (a what-if's, after a move made on it): the wasm's warm_from, which
+// takes it. A sim or threats made, or another lexicon loaded, drops it.
+let warm: number | undefined;
+const dropWarm = (wolges: Wolges) => {
+  if (warm !== undefined) wolges.endgame_free(warm);
+  warm = undefined;
+};
+
+// The job held let go; an endgame is kept to warm the next one when keepWarm
+// says so.
+const freeJob = (wolges: Wolges, keepWarm = false) => {
   running = false;
   if (!job) return;
   if (job.kind === "sim") wolges.sim_free(job.handle);
-  else wolges.endgame_free(job.handle);
+  else if (keepWarm) {
+    dropWarm(wolges);
+    warm = job.handle;
+  } else wolges.endgame_free(job.handle);
   post({ event: { job: job.id, freed: true } });
   job = null;
 };
@@ -239,8 +406,10 @@ const step = async (j: Job, chain: number, ms: number) => {
   try {
     // each step, a sim's or an endgame's, goes on where the last one stopped,
     // so every step runs the same frame
+    // An endgame's step answers in brief, how it stands without its plays; the
+    // whole answer is read when one is sent to the page.
     const request = JSON.stringify(
-      j.kind === "sim" ? { ms, ...pruning(wolges, j) } : { ms },
+      j.kind === "sim" ? { ms, ...pruning(wolges, j) } : { ms, brief: true },
     );
     const answer: Answer = JSON.parse(
       j.kind === "sim"
@@ -248,27 +417,86 @@ const step = async (j: Job, chain: number, ms: number) => {
         : wolges.endgame_step(j.handle, request),
     );
     j.iterations = answer.iterations;
+    // A sim's step with no room left under its cap: no step after it has
+    // room either, and the memory grown stays with the worker, which the page
+    // lets go.
+    if (j.kind === "sim" && answer.out_of_memory) {
+      running = false;
+      post({ event: { job: j.id, error: SIM_OUT_OF_MEMORY }, spent: true });
+      return;
+    }
     // A step of an endgame not yet exact that searched no node stopped on the
     // memory cap, which counts every byte the instance holds, the lexicon too:
     // no step after it can search either. A pre-endgame's answers count no
     // nodes, searching or not, so tell nothing of it; a wasm that says when a
-    // step stopped on the cap says so for either.
+    // step stopped on the cap says so for either, and is taken at its word
+    // (a step it stopped for time searches no node either).
     if (
       j.kind === "endgame" &&
-      (answer.out_of_memory ||
-        (!j.modeled &&
+      (answer.out_of_memory !== undefined
+        ? answer.out_of_memory
+        : !j.modeled &&
           !answer.exact &&
           answer.nodes !== undefined &&
-          answer.nodes === j.nodes))
+          answer.nodes === j.nodes)
     ) {
       running = false;
-      post({ event: { job: j.id, error: OUT_OF_MEMORY } });
+      // the memory the instance grew to stays with it: the page lets this
+      // worker go and makes a fresh one for the next job
+      if (answer.out_of_memory_in === "draws") {
+        // stopped keeping each play's sets: the plays valued so far stand,
+        // sent whole with the error
+        let stood: unknown;
+        try {
+          stood = whole(wolges, j);
+        } catch {
+          // no room left to read it either: the error alone
+        }
+        post({
+          event: {
+            job: j.id,
+            answer: stood,
+            error: OUT_OF_MEMORY_DRAWS,
+            firstStep: !j.stepped,
+          },
+          spent: true,
+        });
+        return;
+      }
+      post({
+        event: {
+          job: j.id,
+          error:
+            answer.out_of_memory_in === "moves"
+              ? OUT_OF_MEMORY_MOVES
+              : OUT_OF_MEMORY,
+          firstStep: !j.stepped,
+        },
+        spent: true,
+      });
       return;
     }
     j.nodes = answer.nodes;
+    j.stepped = true;
     const done = isDone(j, answer);
     if (done) running = false;
-    post({ event: { job: j.id, answer, done } });
+    // An endgame steps a frame at a time: its whole answer is read and sent
+    // to the page once each SEND_EVERY_MS, enough to show it, and when it is
+    // done or stopped.
+    const now = performance.now();
+    if (j.kind !== "endgame") {
+      post({ event: { job: j.id, answer, done } });
+    } else if (
+      !done &&
+      j.sentAt !== undefined &&
+      now - j.sentAt < SEND_EVERY_MS
+    ) {
+      j.unsent = true;
+    } else {
+      j.sentAt = now;
+      j.unsent = false;
+      post({ event: { job: j.id, answer: whole(wolges, j), done } });
+    }
     if (done) return;
   } catch (e) {
     running = false;
@@ -288,7 +516,12 @@ const prepare = async (wolges: Wolges, files: Array<LabFile>) => {
   );
   if (unwanted.length) {
     freeJob(wolges);
+    dropWarm(wolges);
     freeThreats(wolges);
+  }
+  // the pruned lexicons stay: the page keeps track of them, and lets them go
+  if (unwanted.length) {
+    dropInfer(wolges);
   }
   for (const cacheKey of unwanted) {
     if (cacheKey.startsWith("klv/")) wolges.evict_klv(nameOf(cacheKey));
@@ -322,16 +555,34 @@ const handle = async (req: LabRequest): Promise<unknown> => {
       return prepare(wolges, req.args.files);
     case "held":
       return wolges.memory_held();
-    case "infer": {
-      const { handle, ...inferred } = JSON.parse(
-        wolges.infer(req.args.request),
-      ) as { handle: number };
-      wolges.infer_free(handle);
-      return inferred;
+    case "prune_pays": {
+      const { prune_pays } = wolges as unknown as {
+        prune_pays?: (request: string) => boolean;
+      };
+      return prune_pays ? prune_pays(req.args.request) : true;
     }
+    case "kbwg_build":
+      return pruningOf(wolges).build_kbwg(req.args.request);
+    case "kbwg_load": {
+      if (pruned.has(req.args.key)) return undefined;
+      pruningOf(wolges).precache_kbwg(req.args.key, req.args.bytes);
+      pruned.add(req.args.key);
+      return undefined;
+    }
+    case "kbwg_evict":
+      if (pruned.delete(req.args.key)) wolges.evict_kwg(req.args.key);
+      return undefined;
+    case "infer_share": {
+      const { infer_export } = sharingOf(wolges);
+      const { handle, answer } = inferKept(wolges, req.args.request);
+      return { bytes: infer_export(handle), ...answer };
+    }
+    case "infer":
+      return inferKept(wolges, req.args.request).answer;
     case "analyze":
       return JSON.parse(wolges.analyze(req.args.request));
     case "threats_new": {
+      dropWarm(wolges);
       const { result: handle, inferred } = inferring(
         wolges,
         req.args.request,
@@ -354,24 +605,47 @@ const handle = async (req: LabRequest): Promise<unknown> => {
       threats.delete(req.args.id);
       return undefined;
     }
-    case "endgame":
-      freeJob(wolges);
+    case "endgame": {
+      freeJob(wolges, true);
+      const asked = JSON.parse(req.args.request);
+      const modeled = asked.model !== undefined;
+      // warmed by the endgame before it where the wasm takes it (the same
+      // rules and lexicon, the board holding every tile of the earlier
+      // one's); made cold otherwise
+      let handle: number | undefined;
+      if (warm !== undefined) {
+        try {
+          handle = wolges.endgame_new(
+            JSON.stringify({
+              ...JSON.parse(req.args.request),
+              warm_from: warm,
+            }),
+          );
+        } catch {
+          handle = undefined;
+        }
+      }
+      dropWarm(wolges);
       job = {
         id: ++lastJobId,
         kind: "endgame",
-        handle: wolges.endgame_new(req.args.request),
+        handle: handle ?? wolges.endgame_new(req.args.request),
         // a new endgame has searched none
         nodes: 0,
-        modeled: JSON.parse(req.args.request).model !== undefined,
+        modeled,
+        listed: asked.part === undefined ? LISTED : undefined,
       };
       return job.id;
+    }
     case "sim": {
       freeJob(wolges);
+      dropWarm(wolges);
       const { result: handle, inferred } = inferring(
         wolges,
         req.args.request,
         req.args.infer,
         wolges.sim_new,
+        req.args.shared,
       );
       let added: unknown;
       try {
@@ -409,6 +683,7 @@ const handle = async (req: LabRequest): Promise<unknown> => {
         req.args.request,
         req.args.infer,
         (request) => wolges.sim_set(handle, request),
+        req.args.shared,
       );
       const answer: Answer = JSON.parse(result);
       post({ event: { job: job.id, answer, done: isDone(job, answer) } });
@@ -450,7 +725,7 @@ const handle = async (req: LabRequest): Promise<unknown> => {
                 ...(job.against !== undefined ? { against: job.against } : {}),
               }),
             )
-          : wolges.endgame_step(job.handle, JSON.stringify({ ms: 0 })),
+          : wolges.endgame_step(job.handle, reading(job, {})),
       );
       post({ event: { job: job.id, answer, done: isDone(job, answer) } });
       return undefined;
@@ -462,11 +737,56 @@ const handle = async (req: LabRequest): Promise<unknown> => {
       const answer: Answer = JSON.parse(
         wolges.endgame_step(
           job.handle,
-          JSON.stringify({ ms: 0, first_moves_ms: req.args.ms }),
+          reading(job, { first_moves_ms: req.args.ms }),
         ),
       );
       post({ event: { job: job.id, answer, done: isDone(job, answer) } });
       return undefined;
+    }
+    case "list": {
+      if (!job || job.id !== req.args.job || job.kind !== "endgame") {
+        throw new Error("no such endgame");
+      }
+      if (job.listed === undefined) return undefined;
+      job.listed = req.args.upTo;
+      const answer = whole(wolges, job);
+      post({ event: { job: job.id, answer, done: isDone(job, answer) } });
+      return undefined;
+    }
+    case "draws": {
+      if (!job || job.id !== req.args.job || job.kind !== "endgame") {
+        throw new Error("no such endgame");
+      }
+      // the play's rows, named by the play itself, with none of the plays:
+      // the wasm gives them as "drawn" where the play is not among the plays
+      // the answer gives, and on the play otherwise
+      let read: Answer;
+      try {
+        read = JSON.parse(
+          wolges.endgame_step(
+            job.handle,
+            JSON.stringify({
+              ms: 0,
+              draws_of: JSON.parse(req.args.play),
+              ...(req.args.upTo !== undefined
+                ? { draws_range: [0, req.args.upTo] }
+                : {}),
+              candidates_range: [0, 0],
+            }),
+          ),
+        );
+      } catch {
+        // a play the endgame does not value
+        return undefined;
+      }
+      const c =
+        read.drawn ??
+        (read.candidates ?? []).find(
+          (c) => JSON.stringify(c.play) === req.args.play,
+        );
+      if (!c?.draws) return undefined;
+      const rows = c.draws as Array<unknown>;
+      return { rows, total: c.draws_total ?? rows.length };
     }
     case "run": {
       if (!job || job.id !== req.args.job) throw new Error("no such job");
@@ -481,9 +801,20 @@ const handle = async (req: LabRequest): Promise<unknown> => {
     }
     case "stop":
       running = false;
+      // the answer it stopped on, if not yet sent
+      if (job?.unsent) {
+        job.unsent = false;
+        post({
+          event: {
+            job: job.id,
+            answer: whole(await wolgesPromise, job),
+            done: false,
+          },
+        });
+      }
       return undefined;
     case "free":
-      if (job && job.id === req.args.job) freeJob(wolges);
+      if (job && job.id === req.args.job) freeJob(wolges, true);
       return undefined;
   }
 };

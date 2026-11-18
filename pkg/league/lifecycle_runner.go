@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -40,7 +39,7 @@ type LifecycleRunnerResult struct {
 
 // RunLeagueLifecycleTasks executes all automated league lifecycle tasks for a single league
 // This is called by:
-// - cmd/maintenance hourly cron job (production)
+// - the API's league_hourly job, pkg/maintenance (production)
 // - cmd/league-tester TUI (testing)
 func RunLeagueLifecycleTasks(
 	ctx context.Context,
@@ -53,9 +52,6 @@ func RunLeagueLifecycleTasks(
 
 	result := &LifecycleRunnerResult{}
 	now := clock.Now()
-
-	// WaitGroup to ensure background notification tasks complete before returning
-	var wg sync.WaitGroup
 
 	// Get league
 	dbLeague, err := allStores.LeagueStore.GetLeagueByUUID(ctx, leagueUUID)
@@ -87,6 +83,14 @@ func RunLeagueLifecycleTasks(
 	}
 
 	lifecycleMgr := NewSeasonLifecycleManager(allStores, clock)
+
+	// Seasons whose registration-open messages are still to be written.
+	var pendingNotices []uuid.UUID
+	for _, season := range allSeasons {
+		if season.RegistrationNoticePending {
+			pendingNotices = append(pendingNotices, season.Uuid)
+		}
+	}
 
 	// TASK 1: Close current season (if end time has passed and not already closed)
 	if hasCurrentSeason && currentSeason.Status == int32(pb.SeasonStatus_SEASON_ACTIVE) {
@@ -204,48 +208,25 @@ func RunLeagueLifecycleTasks(
 				if err != nil {
 					log.Error().Err(err).Str("leagueID", dbLeague.Uuid.String()).Msg("Failed to open registration")
 				} else if openResult != nil {
-					if markErr := allStores.LeagueStore.MarkRegistrationOpened(ctx, openResult.NextSeasonID); markErr != nil {
-						log.Warn().Err(markErr).Str("seasonID", openResult.NextSeasonID.String()).Msg("Failed to mark registration opened timestamp")
-					}
-
 					log.Info().
 						Str("nextSeasonID", openResult.NextSeasonID.String()).
 						Int32("seasonNumber", openResult.NextSeasonNumber).
 						Time("startDate", openResult.StartDate).
 						Msg("✓ Registration opened successfully")
-
-					// Send registration open notifications (email + Discord)
-					wg.Add(1)
-					go func(seasonID uuid.UUID, seasonNumber int32) {
-						defer wg.Done()
-						// Get current season registrants
-						currentRegistrants, err := allStores.LeagueStore.GetSeasonRegistrations(ctx, seasonID)
-						if err != nil {
-							log.Error().Err(err).Str("seasonID", seasonID.String()).Msg("Failed to get current registrants")
-							return
-						}
-
-						// Get previous season registrants (not in current)
-						previousRegistrants, err := allStores.LeagueStore.GetPreviousSeasonRegistrantsNotInCurrent(ctx, models.GetPreviousSeasonRegistrantsNotInCurrentParams{
-							LeagueID:     dbLeague.Uuid,
-							SeasonNumber: seasonNumber - 1,
-						})
-						if err != nil {
-							log.Warn().Err(err).Msg("Failed to get previous season registrants (continuing anyway)")
-						}
-
-						// Send bulk email
-						SendRegistrationOpenEmail(ctx, cfg, allStores.UserStore, dbLeague.Name, dbLeague.Slug, int(seasonNumber), currentRegistrants, previousRegistrants)
-
-						// Send Discord notification
-						SendRegistrationOpenDiscord(cfg, dbLeague.Name, dbLeague.Slug, int(seasonNumber))
-					}(openResult.NextSeasonID, openResult.NextSeasonNumber)
-
+					pendingNotices = append(pendingNotices, openResult.NextSeasonID)
 					result.TasksRun++
 					result.RegistrationOpened = true
 					result.NextSeasonCreated = true
 				}
 			}
+		}
+	}
+
+	// Registration-open emails and Discord post, for the season just opened
+	// and any whose run stopped before writing them.
+	for _, seasonID := range pendingNotices {
+		if _, err := lifecycleMgr.QueueRegistrationOpenNotices(ctx, dbLeague.Uuid, seasonID); err != nil {
+			log.Error().Err(err).Str("seasonID", seasonID.String()).Msg("Failed to queue registration-open notices")
 		}
 	}
 
@@ -267,17 +248,13 @@ func RunLeagueLifecycleTasks(
 					Time("startTime", startTime).
 					Msg("Sending season starting soon notifications...")
 
-				err := lifecycleMgr.SendSeasonStartingSoonNotification(ctx, cfg, dbLeague.Uuid, season.Uuid)
+				written, err := lifecycleMgr.QueueSeasonStartingSoonNotices(ctx, dbLeague.Uuid, season.Uuid)
 				if err != nil {
-					log.Error().Err(err).Str("seasonID", season.Uuid.String()).Msg("Failed to send notifications")
-				} else {
-					if markErr := allStores.LeagueStore.MarkStartingSoonNotificationSent(ctx, season.Uuid); markErr != nil {
-						log.Warn().Err(markErr).Str("seasonID", season.Uuid.String()).Msg("Failed to mark notification as sent")
-					}
-
+					log.Error().Err(err).Str("seasonID", season.Uuid.String()).Msg("Failed to queue notifications")
+				} else if written {
 					log.Info().
 						Str("seasonID", season.Uuid.String()).
-						Msg("✓ Season starting soon notifications sent")
+						Msg("✓ Season starting soon notifications queued")
 					result.TasksRun++
 					result.StartingSoonNotification = true
 				}
@@ -289,78 +266,54 @@ func RunLeagueLifecycleTasks(
 		}
 	}
 
-	// TASK 5: Start scheduled seasons (if start time has passed)
+	// TASK 5: Start scheduled seasons (if start time has passed), and create
+	// their games. A season is set ACTIVE first; its games are then created
+	// one pair at a time, and games_created_at is set once all exist, with
+	// the season-started emails. A start cut off partway leaves the season
+	// ACTIVE without games_created_at, and this carries on with the games
+	// still missing.
+	var toCreate []models.LeagueSeason
 	for _, season := range allSeasons {
-		if season.Status != int32(pb.SeasonStatus_SEASON_SCHEDULED) {
-			continue
-		}
-
-		startTime := season.StartDate.Time
-
-		if now.After(startTime) || now.Equal(startTime) {
-			// Check idempotency
-			if !season.StartedAt.Valid {
-				log.Info().
-					Str("seasonID", season.Uuid.String()).
-					Time("startTime", startTime).
-					Msg("Starting season (start time reached)...")
-
-				// Step 1: Start the season (changes status to ACTIVE)
-				startResult, err := lifecycleMgr.StartScheduledSeason(ctx, dbLeague.Uuid, season.Uuid)
-				if err != nil {
-					log.Error().Err(err).Str("seasonID", season.Uuid.String()).Msg("Failed to start season")
-					continue
-				}
-
-				// Step 2: Create ALL games for the season with batching
-				startMgr := NewSeasonStartManager(allStores.LeagueStore, allStores, cfg, gameCreator)
-				gameResult, err := startMgr.CreateGamesForSeason(ctx, dbLeague.Uuid, season.Uuid, leagueSettings, 100*time.Millisecond, 2)
-				if err != nil {
-					// Roll back the season status to SCHEDULED since game creation failed
-					rollbackErr := lifecycleMgr.RollbackSeasonToScheduled(ctx, season.Uuid)
-					if rollbackErr != nil {
-						log.Err(rollbackErr).
-							Str("seasonID", season.Uuid.String()).
-							Msg("failed to rollback season status after game creation failure")
-					}
-					log.Err(err).
-						Str("seasonID", season.Uuid.String()).
-						Msg("failed to create games for season - rolled back to SCHEDULED")
-					continue
-				}
-
-				// Mark as started for idempotency
-				if markErr := allStores.LeagueStore.MarkSeasonStarted(ctx, season.Uuid); markErr != nil {
-					log.Warn().Err(markErr).Str("seasonID", season.Uuid.String()).Msg("Failed to mark season as started")
-				}
-
-				log.Info().
-					Str("seasonID", startResult.SeasonID.String()).
-					Int("totalGames", gameResult.TotalGamesCreated).
-					Msg("✓ Successfully started season and created games")
-
-				// Send season started notifications
-				err = lifecycleMgr.SendSeasonStartedNotification(ctx, cfg, dbLeague.Uuid, season.Uuid)
-				if err != nil {
-					log.Error().Err(err).Str("seasonID", season.Uuid.String()).Msg("Failed to send season started notifications")
-				}
-
-				// Send Discord notification for season start
-				SendSeasonStartedDiscord(cfg, dbLeague.Name, dbLeague.Slug, int(season.SeasonNumber))
-
-				result.TasksRun++
-				result.SeasonStarted = true
-				result.GamesCreated = gameResult.TotalGamesCreated
-			} else {
-				log.Info().
-					Str("seasonID", season.Uuid.String()).
-					Msg("Season already started (idempotency check)")
+		switch {
+		case season.Status == int32(pb.SeasonStatus_SEASON_ACTIVE) && !season.GamesCreatedAt.Valid:
+			log.Info().Str("seasonID", season.Uuid.String()).Msg("Season start was cut off; creating the games still missing")
+			toCreate = append(toCreate, season)
+		case season.Status == int32(pb.SeasonStatus_SEASON_SCHEDULED) && !now.Before(season.StartDate.Time):
+			log.Info().
+				Str("seasonID", season.Uuid.String()).
+				Time("startTime", season.StartDate.Time).
+				Msg("Starting season (start time reached)...")
+			// Changes the status to ACTIVE.
+			if _, err := lifecycleMgr.StartScheduledSeason(ctx, dbLeague.Uuid, season.Uuid); err != nil {
+				log.Error().Err(err).Str("seasonID", season.Uuid.String()).Msg("Failed to start season")
+				continue
 			}
+			toCreate = append(toCreate, season)
 		}
 	}
+	for _, season := range toCreate {
+		startMgr := NewSeasonStartManager(allStores.LeagueStore, allStores, cfg, gameCreator)
+		gameResult, err := startMgr.CreateGamesForSeason(ctx, dbLeague.Uuid, season.Uuid, leagueSettings, 100*time.Millisecond, 2)
+		if err != nil {
+			// The season stays ACTIVE without games_created_at: the next run
+			// creates the games still missing.
+			log.Err(err).Str("seasonID", season.Uuid.String()).Msg("failed to create games for season; the next run carries on")
+			continue
+		}
+		log.Info().
+			Str("seasonID", season.Uuid.String()).
+			Int("totalGames", gameResult.TotalGamesCreated).
+			Msg("✓ Successfully started season and created games")
 
-	// Wait for all background notification tasks to complete before returning
-	wg.Wait()
+		// Marks every game created, with the season's emails and Discord post.
+		if _, err := lifecycleMgr.QueueSeasonStartedNotices(ctx, dbLeague.Uuid, season.Uuid); err != nil {
+			log.Error().Err(err).Str("seasonID", season.Uuid.String()).Msg("Failed to queue season started notifications")
+		}
+
+		result.TasksRun++
+		result.SeasonStarted = true
+		result.GamesCreated += gameResult.TotalGamesCreated
+	}
 
 	return result, nil
 }

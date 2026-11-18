@@ -43,6 +43,9 @@ type Stores struct {
 	// We probably are going to be moving everything to a single queries thingy
 	// like this:
 	Queries *models.Queries
+	// DBPool is the pool behind Queries, for changes that need a
+	// transaction (Queries.WithTx).
+	DBPool *pgxpool.Pool
 
 	// GameHistoryArchiver is injected from main (needs the S3 client).
 	// Nil when running without S3 (e.g. tests that don't configure a bucket).
@@ -124,6 +127,7 @@ func NewInitializedStores(dbPool *pgxpool.Pool, redisPool *redigoredis.Pool, cfg
 	stores.ChatStore = redis.NewRedisChatStore(redisPool, stores.PresenceStore, stores.TournamentStore, stores.LeagueStore)
 
 	stores.Queries = models.New(dbPool)
+	stores.DBPool = dbPool
 
 	// Note: LeagueStandingsUpdater is set separately after initialization to avoid
 	// circular import dependencies. See SetLeagueStandingsUpdater().

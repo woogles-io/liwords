@@ -18,6 +18,9 @@ export type EndgamePartCandidate = {
   win?: number;
   value: number;
   exact?: boolean;
+  // the deals its rows cover, which a step's answer gives in place of the
+  // rows themselves (read apart, lab.worker.ts "draws")
+  deals?: number;
   draws?: Array<EndgameRow>;
 };
 
@@ -40,21 +43,30 @@ export type EndgamePartAnswer = {
 
 const sum = (xs: Array<number>) => xs.reduce((a, b) => a + b, 0);
 
-// A play's rows from every part, and its win and value weighed by their
-// deals; a play some part has not valued yet is left out.
+// A play's win and value from every part, each part's weighed by the deals
+// its rows cover (its own win and value being its rows' means weighed so),
+// and its rows together where every part gave them; a play some part has not
+// valued yet is left out.
 const mergeCandidate = (
   parts: Array<EndgamePartCandidate>,
 ): EndgamePartCandidate => {
-  const draws = parts.flatMap((c) => c.draws ?? []);
-  const deals = sum(draws.map((d) => d.count));
-  const weigh = (of: (d: EndgameRow) => number) =>
-    deals ? sum(draws.map((d) => d.count * of(d))) / deals : undefined;
+  const dealsOf = parts.map(
+    (c) => c.deals ?? sum((c.draws ?? []).map((d) => d.count)),
+  );
+  const deals = sum(dealsOf);
+  const weigh = (of: (c: EndgamePartCandidate) => number) =>
+    deals
+      ? sum(parts.map((c, k) => (dealsOf[k] ? dealsOf[k] * of(c) : 0))) / deals
+      : undefined;
   return {
     play: parts[0].play,
-    win: weigh((d) => d.win ?? 0),
-    value: weigh((d) => d.value) ?? parts[0].value,
+    win: weigh((c) => c.win ?? 0),
+    value: weigh((c) => c.value) ?? parts[0].value,
     exact: parts.every((c) => c.exact !== false),
-    draws,
+    deals: deals || undefined,
+    draws: parts.every((c) => c.draws)
+      ? parts.flatMap((c) => c.draws!)
+      : undefined,
   };
 };
 

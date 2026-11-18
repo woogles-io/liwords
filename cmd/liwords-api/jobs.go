@@ -11,7 +11,11 @@ import (
 	"github.com/woogles-io/liwords/pkg/broadcasts"
 	"github.com/woogles-io/liwords/pkg/bus"
 	"github.com/woogles-io/liwords/pkg/config"
+	"github.com/woogles-io/liwords/pkg/emailer"
 	"github.com/woogles-io/liwords/pkg/jobs"
+	"github.com/woogles-io/liwords/pkg/maintenance"
+	"github.com/woogles-io/liwords/pkg/notify"
+	"github.com/woogles-io/liwords/pkg/outbox"
 	"github.com/woogles-io/liwords/pkg/tournament"
 	"github.com/woogles-io/liwords/pkg/user"
 	"github.com/woogles-io/liwords/pkg/vdowebhook"
@@ -25,11 +29,13 @@ import (
 
 // jobDeps is what the jobs below use.
 type jobDeps struct {
-	bus        *bus.Bus
-	analysis   *analysis.AnalysisService
-	broadcasts *broadcasts.BroadcastService
-	vdo        *vdowebhook.VDOWebhookService
-	users      user.Store
+	bus         *bus.Bus
+	analysis    *analysis.AnalysisService
+	broadcasts  *broadcasts.BroadcastService
+	vdo         *vdowebhook.VDOWebhookService
+	users       user.Store
+	outbox      *outbox.Sender
+	maintenance *maintenance.Tasks
 	// tournaments and copPairer pair COP rounds (pair_round).
 	tournaments tournament.TournamentStore
 	copPairer   tournament.COPPairer
@@ -53,6 +59,24 @@ func registerJobs(r *jobs.Runner, d jobDeps) error {
 	schedule("reclaim_analysis_jobs", "*/30 * * * * *", d.analysis.ReclaimStaleJobs)
 	schedule("poll_broadcasts", "*/30 * * * * *", d.broadcasts.PollDue)
 	schedule("prune_client_records", "0 5 * * *", pruneClientRecords(d.users))
+	// Emails and Discord posts written to the outbox (league notices). One
+	// run sends all that is waiting, 2 s apart; a run cut off by a deploy
+	// leaves the rest for the next.
+	schedule("send_outbox", "* * * * *", d.outbox.Send)
+
+	// Site upkeep, at the times the EventBridge rules ran it. Each task is
+	// its own job, so one failing or running long doesn't hold up the rest.
+	hourly, daily := "1 * * * *", "0 5 * * *"
+	schedule("blog_rss", hourly, d.maintenance.BlogRSS)
+	schedule("sub_badges", hourly, d.maintenance.SubBadges)
+	schedule("league_hourly", hourly, d.maintenance.LeagueHourly)
+	schedule("archive_sweep", hourly, d.maintenance.ArchiveSweep)
+	schedule("integrations_refresh", daily, d.maintenance.IntegrationsRefresh)
+	schedule("cancelled_games_cleanup", daily, d.maintenance.CancelledGamesCleanup)
+	schedule("monitoring_streams_cleanup", daily, d.maintenance.MonitoringStreamsCleanup)
+	schedule("expired_sessions_cleanup", daily, d.maintenance.ExpiredSessionsCleanup)
+	schedule("unverified_users_cleanup", daily, d.maintenance.UnverifiedUsersCleanup)
+	schedule("league_unstarted_reminders", daily, d.maintenance.LeagueUnstartedReminders)
 
 	// COP rounds left unpaired by a tournament change (pkg/tournament,
 	// DeferCOPPairing). Enqueued with the change, so the runner is woken
@@ -79,4 +103,21 @@ func copPairer(cfg *config.Config, client *lambda.Client) tournament.COPPairer {
 		return tournament.LocalCOPPairer{}
 	}
 	return tournament.LambdaCOPPairer{Client: client, FunctionName: cfg.COPPairJobLambdaFunctionName}
+}
+
+// outboxChannels sends outbox messages: emails through SES, league posts to
+// the league Discord webhook (dropped when none is configured, as before).
+func outboxChannels(cfg *config.Config) map[string]outbox.SendFunc {
+	return map[string]outbox.SendFunc{
+		outbox.ChannelEmail: func(ctx context.Context, m outbox.Message) error {
+			_, err := emailer.SendSimpleMessageCtx(ctx, cfg.EmailDebugMode, m.Recipient, m.Subject, m.Body)
+			return err
+		},
+		outbox.ChannelLeagueDiscord: func(ctx context.Context, m outbox.Message) error {
+			if cfg.LeagueDiscordToken == "" {
+				return nil
+			}
+			return notify.Send(ctx, m.Body, cfg.LeagueDiscordToken)
+		},
+	}
 }

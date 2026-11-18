@@ -31,8 +31,10 @@ export type ThreatPlay = {
 // play's expected score, the chance of a play of a whole rack (null when they
 // hold fewer tiles than a rack), whether every rack was counted (exact), else
 // the share of rack chance counted exactly (covered) and how many racks were
-// drawn for the rest (samples), how long listing every play took, the best
-// plays first, and the board's squares, row by row.
+// drawn for the rest (samples), how long listing every play took, the share
+// of the plays listed so far (walked, 1 once every play is), the best plays
+// first, and the board's squares, row by row. Till every play is listed, the
+// plays and squares are those of the plays listed so far.
 export type ThreatsAnswer = {
   racks: number;
   count: number;
@@ -41,6 +43,7 @@ export type ThreatsAnswer = {
   covered: number;
   samples: number;
   list_ms: number;
+  walked: number;
   exact: boolean;
   plays: Array<ThreatPlay>;
   squares: Array<Array<ThreatSquare | null>>;
@@ -114,18 +117,35 @@ export const percentText = (x: number) => `${(x * 100).toFixed(1)}%`;
 
 // The status line for an answer: the opponent's best on average, the chance
 // of a whole rack, from how many tiles unseen; "~" and how much was counted
-// exactly when time ran out, or so far while still counting.
+// exactly when the count was stopped, or so far while it goes on; before
+// that, how much of the plays were listed. While the plays are first listed,
+// before any rack is weighed, how much of them were listed alone.
+// Whether the plays are still first listed, no rack yet weighed: the answer
+// then gives no best, bingo, or chance.
+export const unweighedThreats = (answer: ThreatsAnswer) =>
+  answer.walked < 1 && answer.covered === 0 && answer.samples === 0;
+
 export const threatsSummary = (
   answer: ThreatsAnswer,
   unseen: number,
   counting = false,
 ) => {
+  // still listing the plays, no rack weighed yet: no best or bingo to give
+  if (unweighedThreats(answer)) {
+    return counting
+      ? `Listing the opponent's plays: ${percentText(answer.walked)}, from ${unseen} unseen`
+      : `Stopped listing the opponent's plays at ${percentText(answer.walked)}, from ${unseen} unseen`;
+  }
   const about = answer.exact ? "" : "~";
   const bingo =
     answer.bingo === null ? "" : `, bingo ${about}${percentText(answer.bingo)}`;
   const cut = answer.exact
     ? ""
-    : `; ${counting ? "counting" : "time ran out"}: ${percentText(answer.covered)} of racks counted, ${answer.samples} more drawn`;
+    : answer.walked < 1
+      ? counting
+        ? `; listing ${percentText(answer.walked)}`
+        : `; stopped: ${percentText(answer.walked)} of plays listed`
+      : `; ${counting ? "counting" : "stopped"}: ${percentText(answer.covered)} of racks counted, ${answer.samples} more drawn`;
   return `Opponent's best ${about}${answer.expected_best.toFixed(1)} on average${bingo}, from ${unseen} unseen${cut}`;
 };
 

@@ -1,15 +1,6 @@
-FROM liwords-builder AS build-env
-
-WORKDIR /opt/program/cmd/socketsrv
-
-ARG BUILD_HASH=unknown
-ARG BUILD_DATE=unknown
-
-RUN go build -ldflags  "-X=main.BuildDate=${BUILD_DATE} -X=main.BuildHash=${BUILD_HASH}"
-
-# Build minimal image:
+# Built by deploy/build-and-tag.sh, whose build context holds the binary.
 FROM debian:latest
-COPY --from=build-env /opt/program/cmd/socketsrv/socketsrv /opt/socketsrv
+COPY socketsrv /opt/socketsrv
 EXPOSE 8087
 
 WORKDIR /opt

@@ -16,37 +16,20 @@ import (
 
 	"github.com/woogles-io/liwords/pkg/config"
 	"github.com/woogles-io/liwords/pkg/entity"
+	"github.com/woogles-io/liwords/pkg/gameplay"
 	"github.com/woogles-io/liwords/pkg/stores"
 	"github.com/woogles-io/liwords/pkg/stores/league"
 	"github.com/woogles-io/liwords/pkg/stores/models"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
-// GameCreator interface for creating and starting games
-// This avoids import cycle with gameplay package by allowing the caller to provide
-// an adapter that wraps the gameplay package functions.
-//
-// Example implementation (in calling code, not in league package):
-//
-//	type GameplayAdapter struct {
-//		stores    *stores.Stores
-//		cfg       *config.Config
-//		eventChan chan<- *entity.EventWrapper
-//	}
-//
-//	func (a *GameplayAdapter) InstantiateNewGame(ctx context.Context, users [2]*entity.User,
-//		req *pb.GameRequest, tdata *entity.TournamentData) (*entity.Game, error) {
-//		return gameplay.InstantiateNewGame(ctx, a.stores.GameStore, a.cfg, users, req, tdata)
-//	}
-//
-//	func (a *GameplayAdapter) StartGame(ctx context.Context, game *entity.Game) error {
-//		return gameplay.StartGame(ctx, a.stores, a.eventChan, game)
-//	}
-//
-// This is the same pattern used in pkg/bus/gameplay.go for tournaments.
+// GameCreator creates, starts and loads games. The caller provides it,
+// wrapping the gameplay package with its stores and event channel (see
+// cmd/liwords-api/league_adapter.go).
 type GameCreator interface {
-	InstantiateNewGame(ctx context.Context, users [2]*entity.User, req *pb.GameRequest, tdata *entity.TournamentData) (*entity.Game, error)
+	InstantiateNewGame(ctx context.Context, users [2]*entity.User, req *pb.GameRequest, tdata *entity.TournamentData, opts ...gameplay.GameOption) (*entity.Game, error)
 	StartGame(ctx context.Context, game *entity.Game) error
+	GetGame(ctx context.Context, id string) (*entity.Game, error)
 }
 
 // SeasonStartManager handles creating games when a season starts
@@ -174,12 +157,48 @@ func (ssm *SeasonStartManager) createGamesForDivision(
 		Int("pairingsCount", len(pairings)).
 		Msg("generated-pairings-for-division")
 
-	// Create games for each pairing
+	// A start cut off partway left some of these games created already, and
+	// perhaps one created but not started (cut off between the two). Each
+	// pair plays once, so a pair with a game in this division is done, or
+	// only needs that game started.
+	existing, err := ssm.store.GetDivisionGamePlayers(ctx, division.Uuid)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get existing games: %w", err)
+	}
+	type pairKey struct{ a, b int32 }
+	keyOf := func(x, y int32) pairKey {
+		if x > y {
+			x, y = y, x
+		}
+		return pairKey{x, y}
+	}
+	existingGames := make(map[pairKey]models.GetDivisionGamePlayersRow, len(existing))
+	for _, g := range existing {
+		existingGames[keyOf(g.Player0ID.Int32, g.Player1ID.Int32)] = g
+	}
+
 	gamesCreated := 0
 	for i, pairing := range pairings {
 		// Get player registrations
+		if err := ctx.Err(); err != nil {
+			return gamesCreated, err
+		}
 		player1Reg := registrations[pairing.Player1Index]
 		player2Reg := registrations[pairing.Player2Index]
+		if g, ok := existingGames[keyOf(player1Reg.UserID, player2Reg.UserID)]; ok {
+			if g.Started.Bool {
+				continue
+			}
+			game, err := ssm.gameCreator.GetGame(ctx, g.Uuid.String)
+			if err != nil {
+				return gamesCreated, fmt.Errorf("failed to load unstarted game %s: %w", g.Uuid.String, err)
+			}
+			if err := ssm.gameCreator.StartGame(ctx, game); err != nil {
+				return gamesCreated, fmt.Errorf("failed to start game %s: %w", g.Uuid.String, err)
+			}
+			gamesCreated++
+			continue
+		}
 
 		// Look up user entities using the UUIDs from the JOIN
 		user1, err := ssm.stores.UserStore.GetByUUID(ctx, player1Reg.UserUuid)
@@ -207,20 +226,18 @@ func (ssm *SeasonStartManager) createGamesForDivision(
 		}
 
 		// Create the game
-		game, err := ssm.gameCreator.InstantiateNewGame(ctx, users, gameReq, nil)
+		// Saved with its division, so a start cut off before StartGame below
+		// finds it, and starts it, rather than creating another.
+		game, err := ssm.gameCreator.InstantiateNewGame(ctx, users, gameReq, nil,
+			gameplay.WithLeague(leagueID, seasonID, division.Uuid))
 		if err != nil {
 			return gamesCreated, fmt.Errorf("failed to create game: %w", err)
 		}
 
-		// Set league-specific fields
-		game.LeagueID = &leagueID
-		game.SeasonID = &seasonID
-		game.LeagueDivisionID = &division.Uuid
-
 		// Start the game (starts timer for correspondence games)
 		err = ssm.gameCreator.StartGame(ctx, game)
 		if err != nil {
-			return gamesCreated, fmt.Errorf("failed to start game %s: %w", game.Uid(), err)
+			return gamesCreated, fmt.Errorf("failed to start game of %s and %s: %w", users[0].Username, users[1].Username, err)
 		}
 
 		gamesCreated++
@@ -232,7 +249,11 @@ func (ssm *SeasonStartManager) createGamesForDivision(
 				Int("gamesCreated", gamesCreated).
 				Dur("sleeping", delayBetweenBatches).
 				Msg("batch-complete-sleeping")
-			time.Sleep(delayBetweenBatches)
+			select {
+			case <-ctx.Done():
+				return gamesCreated, ctx.Err()
+			case <-time.After(delayBetweenBatches):
+			}
 		}
 	}
 

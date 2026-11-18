@@ -1,0 +1,88 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  macondo-bot on Fargate: task definition and service, no load balancer. The
+  image is built in the macondo repo, so this stack is deployed by hand with
+  that image's tag.
+
+# Bots take requests through the NATS queue group bot_queue, so this one
+# shares the work with the EC2 bot while both run; each request goes to one.
+
+Parameters:
+  BaseStackName:
+    Type: String
+    Default: liwords-base
+  Image:
+    Type: String
+    Default: ghcr.io/domino14/macondo-bot:master-gh571
+  DesiredCount:
+    Type: Number
+    Default: 1
+
+Resources:
+  TaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: macondo-bot-fargate
+      RequiresCompatibilities: [FARGATE]
+      NetworkMode: awsvpc
+      RuntimePlatform:
+        CpuArchitecture: X86_64
+        OperatingSystemFamily: LINUX
+      # 512 CPU units allow no less than 1024 MB on Fargate.
+      Cpu: "512"
+      Memory: "1024"
+      ExecutionRoleArn: { "Fn::ImportValue": !Sub "${BaseStackName}-ExecutionRoleArn" }
+      TaskRoleArn: { "Fn::ImportValue": !Sub "${BaseStackName}-BotTaskRoleArn" }
+      Volumes:
+        - Name: datavol
+          EFSVolumeConfiguration:
+            FilesystemId: fs-d4db50ac
+            RootDirectory: /
+            TransitEncryption: ENABLED
+      ContainerDefinitions:
+        - Name: macondo-bot
+          Image: !Ref Image
+          Essential: true
+          MountPoints:
+            - { SourceVolume: datavol, ContainerPath: /data, ReadOnly: true }
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: /ecs/macondo-bot
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: fargate
+          Environment:
+            - { Name: AWS_REGION, Value: !Ref AWS::Region }
+            - { Name: MACONDO_NATS_URL, Value: "nats://10.0.0.251:4222" }
+            - { Name: MACONDO_DATA_PATH, Value: /data/data }
+            - { Name: MACONDO_KWG_PATH_PREFIX, Value: "2024" }
+            - { Name: MACONDO_LAMBDA_FUNCTION_NAME, Value: MacondoLambdaFunction }
+            - { Name: NO_COLOR, Value: "true" }
+
+  Service:
+    Type: AWS::ECS::Service
+    Properties:
+      ServiceName: macondo-bot
+      Cluster: { "Fn::ImportValue": !Sub "${BaseStackName}-ClusterName" }
+      TaskDefinition: !Ref TaskDefinition
+      LaunchType: FARGATE
+      PlatformVersion: LATEST
+      DesiredCount: !Ref DesiredCount
+      DeploymentConfiguration:
+        MaximumPercent: 200
+        MinimumHealthyPercent: 100
+        DeploymentCircuitBreaker: { Enable: true, Rollback: true }
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          Subnets: !Split [",", { "Fn::ImportValue": !Sub "${BaseStackName}-Subnets" }]
+          SecurityGroups: [{ "Fn::ImportValue": !Sub "${BaseStackName}-TaskSecurityGroupId" }]
+      EnableExecuteCommand: true
+      EnableECSManagedTags: true
+      PropagateTags: SERVICE
+      Tags:
+        - { Key: app, Value: liwords }
+
+Outputs:
+  ServiceName:
+    Value: !GetAtt Service.Name

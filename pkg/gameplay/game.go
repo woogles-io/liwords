@@ -13,6 +13,7 @@ import (
 
 	"github.com/domino14/macondo/turnplayer"
 	"github.com/domino14/word-golib/tilemapping"
+	"github.com/google/uuid"
 	"github.com/lithammer/shortuuid/v4"
 	"google.golang.org/protobuf/proto"
 
@@ -78,8 +79,22 @@ type GameStore interface {
 
 // InstantiateNewGame instantiates a game and returns it.
 // Users must be in order of who goes first.
+// A GameOption sets something on a new game before it is first saved.
+type GameOption func(*entity.Game)
+
+// WithLeague makes the new game a league game in the given division. It is
+// saved with the game, so a league game is never in the database without
+// its division.
+func WithLeague(leagueID, seasonID, divisionID uuid.UUID) GameOption {
+	return func(g *entity.Game) {
+		g.LeagueID = &leagueID
+		g.SeasonID = &seasonID
+		g.LeagueDivisionID = &divisionID
+	}
+}
+
 func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Config,
-	users [2]*entity.User, req *pb.GameRequest, tdata *entity.TournamentData) (*entity.Game, error) {
+	users [2]*entity.User, req *pb.GameRequest, tdata *entity.TournamentData, opts ...GameOption) (*entity.Game, error) {
 
 	var players []*macondopb.PlayerInfo
 	var dbids [2]uint
@@ -173,6 +188,10 @@ func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Co
 	entGame.CreatedAt = time.Now()
 
 	entGame.MetaEvents = &entity.MetaEventData{}
+
+	for _, o := range opts {
+		o(entGame)
+	}
 
 	// Save the game to the store.
 	if err = gameStore.Create(ctx, entGame); err != nil {

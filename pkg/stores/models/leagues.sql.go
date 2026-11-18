@@ -139,6 +139,58 @@ func (q *Queries) AddTimeBankSinglePlayer(ctx context.Context, arg AddTimeBankSi
 	return column_1, err
 }
 
+const claimRegistrationNotice = `-- name: ClaimRegistrationNotice :execrows
+UPDATE league_seasons
+SET registration_notice_pending = FALSE,
+    registration_opened_at = COALESCE(registration_opened_at, NOW()),
+    updated_at = NOW()
+WHERE uuid = $1 AND registration_notice_pending
+`
+
+// Clears registration_notice_pending, in the transaction that writes the
+// registration-open messages. 0 rows: they were written already.
+func (q *Queries) ClaimRegistrationNotice(ctx context.Context, argUuid uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, claimRegistrationNotice, argUuid)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const claimSeasonStartedNotice = `-- name: ClaimSeasonStartedNotice :execrows
+UPDATE league_seasons
+SET games_created_at = NOW(), started_at = COALESCE(started_at, NOW()),
+    updated_at = NOW()
+WHERE uuid = $1 AND games_created_at IS NULL
+`
+
+// Marks every game of the season created (games_created_at, and started_at
+// if unset), in the transaction that writes the season-started messages.
+// 0 rows: they were written already.
+func (q *Queries) ClaimSeasonStartedNotice(ctx context.Context, argUuid uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, claimSeasonStartedNotice, argUuid)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const claimStartingSoonNotice = `-- name: ClaimStartingSoonNotice :execrows
+UPDATE league_seasons
+SET starting_soon_notification_sent_at = NOW(), updated_at = NOW()
+WHERE uuid = $1 AND starting_soon_notification_sent_at IS NULL
+`
+
+// Sets starting_soon_notification_sent_at, in the transaction that writes
+// the starting-soon messages. 0 rows: they were written already.
+func (q *Queries) ClaimStartingSoonNotice(ctx context.Context, argUuid uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, claimStartingSoonNotice, argUuid)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const countDivisionGamesComplete = `-- name: CountDivisionGamesComplete :one
 SELECT COUNT(*) FROM games
 WHERE league_division_id = $1 AND game_end_reason != 0
@@ -248,19 +300,20 @@ func (q *Queries) CreateLeague(ctx context.Context, arg CreateLeagueParams) (Lea
 
 const createSeason = `-- name: CreateSeason :one
 
-INSERT INTO league_seasons (uuid, league_id, season_number, start_date, end_date, status, promotion_formula)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING id, uuid, league_id, season_number, start_date, end_date, actual_end_date, status, created_at, updated_at, closed_at, divisions_prepared_at, started_at, registration_opened_at, starting_soon_notification_sent_at, promotion_formula
+INSERT INTO league_seasons (uuid, league_id, season_number, start_date, end_date, status, promotion_formula, registration_notice_pending)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING id, uuid, league_id, season_number, start_date, end_date, actual_end_date, status, created_at, updated_at, closed_at, divisions_prepared_at, started_at, registration_opened_at, starting_soon_notification_sent_at, promotion_formula, registration_notice_pending, games_created_at
 `
 
 type CreateSeasonParams struct {
-	Uuid             uuid.UUID
-	LeagueID         uuid.UUID
-	SeasonNumber     int32
-	StartDate        pgtype.Timestamptz
-	EndDate          pgtype.Timestamptz
-	Status           int32
-	PromotionFormula int32
+	Uuid                      uuid.UUID
+	LeagueID                  uuid.UUID
+	SeasonNumber              int32
+	StartDate                 pgtype.Timestamptz
+	EndDate                   pgtype.Timestamptz
+	Status                    int32
+	PromotionFormula          int32
+	RegistrationNoticePending bool
 }
 
 // Season operations
@@ -273,6 +326,7 @@ func (q *Queries) CreateSeason(ctx context.Context, arg CreateSeasonParams) (Lea
 		arg.EndDate,
 		arg.Status,
 		arg.PromotionFormula,
+		arg.RegistrationNoticePending,
 	)
 	var i LeagueSeason
 	err := row.Scan(
@@ -292,6 +346,8 @@ func (q *Queries) CreateSeason(ctx context.Context, arg CreateSeasonParams) (Lea
 		&i.RegistrationOpenedAt,
 		&i.StartingSoonNotificationSentAt,
 		&i.PromotionFormula,
+		&i.RegistrationNoticePending,
+		&i.GamesCreatedAt,
 	)
 	return i, err
 }
@@ -355,7 +411,7 @@ func (q *Queries) GetAllLeagues(ctx context.Context, activeOnly bool) ([]League,
 }
 
 const getCurrentSeason = `-- name: GetCurrentSeason :one
-SELECT ls.id, ls.uuid, ls.league_id, ls.season_number, ls.start_date, ls.end_date, ls.actual_end_date, ls.status, ls.created_at, ls.updated_at, ls.closed_at, ls.divisions_prepared_at, ls.started_at, ls.registration_opened_at, ls.starting_soon_notification_sent_at, ls.promotion_formula FROM league_seasons ls
+SELECT ls.id, ls.uuid, ls.league_id, ls.season_number, ls.start_date, ls.end_date, ls.actual_end_date, ls.status, ls.created_at, ls.updated_at, ls.closed_at, ls.divisions_prepared_at, ls.started_at, ls.registration_opened_at, ls.starting_soon_notification_sent_at, ls.promotion_formula, ls.registration_notice_pending, ls.games_created_at FROM league_seasons ls
 JOIN leagues l ON l.current_season_id = ls.uuid
 WHERE l.uuid = $1
 `
@@ -380,6 +436,8 @@ func (q *Queries) GetCurrentSeason(ctx context.Context, argUuid uuid.UUID) (Leag
 		&i.RegistrationOpenedAt,
 		&i.StartingSoonNotificationSentAt,
 		&i.PromotionFormula,
+		&i.RegistrationNoticePending,
+		&i.GamesCreatedAt,
 	)
 	return i, err
 }
@@ -460,6 +518,45 @@ func (q *Queries) GetDivisionCrosstableGames(ctx context.Context, divisionID uui
 			&i.Player0Score,
 			&i.Player1Score,
 			&i.History,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getDivisionGamePlayers = `-- name: GetDivisionGamePlayers :many
+SELECT uuid, player0_id, player1_id, started FROM games
+WHERE league_division_id = $1
+`
+
+type GetDivisionGamePlayersRow struct {
+	Uuid      pgtype.Text
+	Player0ID pgtype.Int4
+	Player1ID pgtype.Int4
+	Started   pgtype.Bool
+}
+
+// Every game in a division, with its players and whether it started, for a
+// season start carrying on after being cut off.
+func (q *Queries) GetDivisionGamePlayers(ctx context.Context, leagueDivisionID pgtype.UUID) ([]GetDivisionGamePlayersRow, error) {
+	rows, err := q.db.Query(ctx, getDivisionGamePlayers, leagueDivisionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetDivisionGamePlayersRow
+	for rows.Next() {
+		var i GetDivisionGamePlayersRow
+		if err := rows.Scan(
+			&i.Uuid,
+			&i.Player0ID,
+			&i.Player1ID,
+			&i.Started,
 		); err != nil {
 			return nil, err
 		}
@@ -602,7 +699,7 @@ const getDivisionRegistrations = `-- name: GetDivisionRegistrations :many
 SELECT lr.id, lr.user_id, lr.season_id, lr.division_id, lr.registration_date, lr.firsts_count, lr.status, lr.placement_status, lr.previous_division_rank, lr.seasons_away, lr.created_at, lr.updated_at, u.uuid as user_uuid, u.username FROM league_registrations lr
 JOIN users u ON lr.user_id = u.id
 WHERE lr.division_id = $1
-ORDER BY lr.registration_date
+ORDER BY lr.registration_date, lr.user_id
 `
 
 type GetDivisionRegistrationsRow struct {
@@ -622,6 +719,8 @@ type GetDivisionRegistrationsRow struct {
 	Username             string
 }
 
+// user_id breaks ties: season start pairs players by their place in this
+// order, and a start cut off partway must pair them the same way again.
 func (q *Queries) GetDivisionRegistrations(ctx context.Context, divisionID pgtype.UUID) ([]GetDivisionRegistrationsRow, error) {
 	rows, err := q.db.Query(ctx, getDivisionRegistrations, divisionID)
 	if err != nil {
@@ -663,7 +762,7 @@ FROM league_registrations lr
 JOIN users u ON lr.user_id = u.id
 JOIN league_divisions d ON d.uuid = lr.division_id
 WHERE lr.division_id = ANY($1::uuid[])
-ORDER BY d.division_number, lr.registration_date
+ORDER BY d.division_number, lr.registration_date, lr.user_id
 `
 
 type GetDivisionRegistrationsForDivisionsRow struct {
@@ -1220,7 +1319,7 @@ func (q *Queries) GetLeagueRoster(ctx context.Context, leagueID uuid.UUID) ([]Ge
 }
 
 const getPastSeasons = `-- name: GetPastSeasons :many
-SELECT id, uuid, league_id, season_number, start_date, end_date, actual_end_date, status, created_at, updated_at, closed_at, divisions_prepared_at, started_at, registration_opened_at, starting_soon_notification_sent_at, promotion_formula FROM league_seasons
+SELECT id, uuid, league_id, season_number, start_date, end_date, actual_end_date, status, created_at, updated_at, closed_at, divisions_prepared_at, started_at, registration_opened_at, starting_soon_notification_sent_at, promotion_formula, registration_notice_pending, games_created_at FROM league_seasons
 WHERE league_id = $1 AND status = 2  -- SeasonStatus.SEASON_COMPLETED
 ORDER BY season_number DESC
 `
@@ -1251,6 +1350,8 @@ func (q *Queries) GetPastSeasons(ctx context.Context, leagueID uuid.UUID) ([]Lea
 			&i.RegistrationOpenedAt,
 			&i.StartingSoonNotificationSentAt,
 			&i.PromotionFormula,
+			&i.RegistrationNoticePending,
+			&i.GamesCreatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -1843,7 +1944,7 @@ func (q *Queries) GetPreviousSeasonRegistrantsNotInCurrent(ctx context.Context, 
 }
 
 const getRecentSeasons = `-- name: GetRecentSeasons :many
-SELECT id, uuid, league_id, season_number, start_date, end_date, actual_end_date, status, created_at, updated_at, closed_at, divisions_prepared_at, started_at, registration_opened_at, starting_soon_notification_sent_at, promotion_formula FROM league_seasons
+SELECT id, uuid, league_id, season_number, start_date, end_date, actual_end_date, status, created_at, updated_at, closed_at, divisions_prepared_at, started_at, registration_opened_at, starting_soon_notification_sent_at, promotion_formula, registration_notice_pending, games_created_at FROM league_seasons
 WHERE league_id = $1
 ORDER BY season_number DESC
 LIMIT $2
@@ -1880,6 +1981,8 @@ func (q *Queries) GetRecentSeasons(ctx context.Context, arg GetRecentSeasonsPara
 			&i.RegistrationOpenedAt,
 			&i.StartingSoonNotificationSentAt,
 			&i.PromotionFormula,
+			&i.RegistrationNoticePending,
+			&i.GamesCreatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -1931,7 +2034,7 @@ func (q *Queries) GetRegistrationsByDivision(ctx context.Context, divisionID pgt
 }
 
 const getSeason = `-- name: GetSeason :one
-SELECT id, uuid, league_id, season_number, start_date, end_date, actual_end_date, status, created_at, updated_at, closed_at, divisions_prepared_at, started_at, registration_opened_at, starting_soon_notification_sent_at, promotion_formula FROM league_seasons WHERE uuid = $1
+SELECT id, uuid, league_id, season_number, start_date, end_date, actual_end_date, status, created_at, updated_at, closed_at, divisions_prepared_at, started_at, registration_opened_at, starting_soon_notification_sent_at, promotion_formula, registration_notice_pending, games_created_at FROM league_seasons WHERE uuid = $1
 `
 
 func (q *Queries) GetSeason(ctx context.Context, argUuid uuid.UUID) (LeagueSeason, error) {
@@ -1954,13 +2057,15 @@ func (q *Queries) GetSeason(ctx context.Context, argUuid uuid.UUID) (LeagueSeaso
 		&i.RegistrationOpenedAt,
 		&i.StartingSoonNotificationSentAt,
 		&i.PromotionFormula,
+		&i.RegistrationNoticePending,
+		&i.GamesCreatedAt,
 	)
 	return i, err
 }
 
 const getSeasonByLeagueAndNumber = `-- name: GetSeasonByLeagueAndNumber :one
 
-SELECT id, uuid, league_id, season_number, start_date, end_date, actual_end_date, status, created_at, updated_at, closed_at, divisions_prepared_at, started_at, registration_opened_at, starting_soon_notification_sent_at, promotion_formula FROM league_seasons
+SELECT id, uuid, league_id, season_number, start_date, end_date, actual_end_date, status, created_at, updated_at, closed_at, divisions_prepared_at, started_at, registration_opened_at, starting_soon_notification_sent_at, promotion_formula, registration_notice_pending, games_created_at FROM league_seasons
 WHERE league_id = $1 AND season_number = $2
 `
 
@@ -1990,6 +2095,8 @@ func (q *Queries) GetSeasonByLeagueAndNumber(ctx context.Context, arg GetSeasonB
 		&i.RegistrationOpenedAt,
 		&i.StartingSoonNotificationSentAt,
 		&i.PromotionFormula,
+		&i.RegistrationNoticePending,
+		&i.GamesCreatedAt,
 	)
 	return i, err
 }
@@ -2250,7 +2357,7 @@ func (q *Queries) GetSeasonZeroMoveGames(ctx context.Context, seasonID pgtype.UU
 }
 
 const getSeasonsByLeague = `-- name: GetSeasonsByLeague :many
-SELECT id, uuid, league_id, season_number, start_date, end_date, actual_end_date, status, created_at, updated_at, closed_at, divisions_prepared_at, started_at, registration_opened_at, starting_soon_notification_sent_at, promotion_formula FROM league_seasons
+SELECT id, uuid, league_id, season_number, start_date, end_date, actual_end_date, status, created_at, updated_at, closed_at, divisions_prepared_at, started_at, registration_opened_at, starting_soon_notification_sent_at, promotion_formula, registration_notice_pending, games_created_at FROM league_seasons
 WHERE league_id = $1
 ORDER BY season_number DESC
 `
@@ -2281,6 +2388,8 @@ func (q *Queries) GetSeasonsByLeague(ctx context.Context, leagueID uuid.UUID) ([
 			&i.RegistrationOpenedAt,
 			&i.StartingSoonNotificationSentAt,
 			&i.PromotionFormula,
+			&i.RegistrationNoticePending,
+			&i.GamesCreatedAt,
 		); err != nil {
 			return nil, err
 		}

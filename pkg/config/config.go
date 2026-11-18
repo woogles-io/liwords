@@ -45,6 +45,9 @@ type Config struct {
 	PuzzleGenerationSecretKey      string
 	ECSClusterName                 string
 	PuzzleGenerationTaskDefinition string
+	// The puzzle generation task runs on Fargate in these.
+	PuzzleGenerationSubnets        string
+	PuzzleGenerationSecurityGroups string
 
 	TourneyPDFLambdaFunctionName string
 	COPPairLambdaFunctionName    string
@@ -136,6 +139,8 @@ func (c *Config) Load(args []string) error {
 	fs.StringVar(&c.PuzzleGenerationSecretKey, "puzzle-generation-secret-key", shortuuid.New(), "a secret key used for generating puzzles")
 	fs.StringVar(&c.ECSClusterName, "ecs-cluster-name", "", "the ECS cluster this runs on")
 	fs.StringVar(&c.PuzzleGenerationTaskDefinition, "puzzle-generation-task-definition", "", "the task definition for the puzzle generation ECS task")
+	fs.StringVar(&c.PuzzleGenerationSubnets, "puzzle-generation-subnets", "", "comma-separated subnets the puzzle generation task runs in (Fargate)")
+	fs.StringVar(&c.PuzzleGenerationSecurityGroups, "puzzle-generation-security-groups", "", "comma-separated security groups for the puzzle generation task")
 	fs.StringVar(&c.TourneyPDFLambdaFunctionName, "tourney-pdf-lambda-function-name", "", "the name of the TourneyPDF lambda function")
 	fs.StringVar(&c.COPPairLambdaFunctionName, "cop-pair-lambda-function-name", "", "the name of the COPPair lambda function")
 	fs.StringVar(&c.COPPairJobLambdaFunctionName, "cop-pair-job-lambda-function-name", "", "the Lambda function that runs COP for tournament rounds (pair_round jobs); empty runs it in this process")
