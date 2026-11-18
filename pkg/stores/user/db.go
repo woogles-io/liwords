@@ -735,6 +735,14 @@ func (s *DBStore) Username(ctx context.Context, uuid string) (string, error) {
 	return s.queries.GetUsernameFromUUID(ctx, uuid)
 }
 
+func (s *DBStore) IsBot(ctx context.Context, uuid string) (bool, error) {
+	isBot, err := s.queries.GetUserIsBotByUUID(ctx, uuid)
+	if err == pgx.ErrNoRows {
+		return false, errors.New("user not found")
+	}
+	return isBot, err
+}
+
 func (s *DBStore) GetAPIKey(ctx context.Context, uuid string) (string, error) {
 	var apikey string
 	err := s.dbPool.QueryRow(ctx, `SELECT COALESCE((SELECT api_key FROM users where uuid = $1), '')`, uuid).Scan(
