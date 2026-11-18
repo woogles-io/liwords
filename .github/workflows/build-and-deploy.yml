@@ -77,7 +77,6 @@ jobs:
               - "liwords-ui/**"
             migrations:
               - "db/migrations/**"
-              - "scripts/run-migration-task.sh"
 
   build_api_srv:
     runs-on: ubuntu-latest
