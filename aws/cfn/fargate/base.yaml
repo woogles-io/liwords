@@ -345,6 +345,7 @@ Resources:
             Resource:
               - !Sub arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/liwords-api/*
               - !Sub arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/liwords-socket/*
+              - !Sub arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/macondo-bot/*
           # The deploy script reads DeployRoleArn from the base stack.
           - Effect: Allow
             Action: cloudformation:DescribeStacks
