@@ -214,6 +214,17 @@ Resources:
                 - arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter${Path}/db-password
                 - Path: { "Fn::ImportValue": !Sub "${BaseStackName}-SecretsPath" }
 
+  # Imported from the old liwords-db-migration stack (aws/cfn/db-migration-task.yaml,
+  # since deleted). Retained so that deleting or replacing this stack keeps the
+  # migration logs.
+  MigrationLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      LogGroupName: /ecs/liwords-db-migration
+      RetentionInDays: 7
+
   # Run by CI before each deploy (build-and-deploy.yml registers a revision
   # with the new image and runs it), so a deploy's migrations are in before
   # its code starts.

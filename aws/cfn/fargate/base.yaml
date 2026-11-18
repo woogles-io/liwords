@@ -293,6 +293,24 @@ Resources:
                   - !Sub
                     - arn:aws:elasticloadbalancing:${AWS::Region}:${AWS::AccountId}:listener-rule/app/${Lb}/*
                     - Lb: !Join ["/", [!Select [2, !Split ["/", !Ref ListenerArn]], !Select [3, !Split ["/", !Ref ListenerArn]]]]
+              # The service stacks' log groups (liwords-api owns
+              # /ecs/liwords-db-migration).
+              - Effect: Allow
+                Action: logs:DescribeLogGroups
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:DeleteLogGroup
+                  - logs:PutRetentionPolicy
+                  - logs:DeleteRetentionPolicy
+                  - logs:TagResource
+                  - logs:UntagResource
+                  - logs:ListTagsForResource
+                  - logs:TagLogGroup
+                  - logs:UntagLogGroup
+                  - logs:ListTagsLogGroup
+                Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/ecs/*
               - Effect: Allow
                 Action: iam:PassRole
                 Resource:
