@@ -5,10 +5,21 @@ import (
 
 	nats "github.com/nats-io/nats.go"
 	"github.com/rs/zerolog/log"
+	"google.golang.org/protobuf/proto"
+
+	"github.com/woogles-io/liwords/pkg/entity"
+	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 
 	"github.com/woogles-io/liwords/pkg/natsopts"
 	"github.com/woogles-io/liwords/services/socketsrv/pkg/config"
 )
+
+// subChanSize is how many messages each subscription buffers. NATS drops
+// messages for a subscription whose buffer is full ("slow consumer"). When a
+// socket server restarts, every browser reconnects to the new one within
+// seconds, and the API answers each with several messages; 512 was enough
+// only while nothing slowed down forwarding them.
+const subChanSize = 4096
 
 // PubSub encapsulates the various subscriptions to the different channels.
 // The `liwords` package should have a very similar structure.
@@ -50,10 +61,12 @@ func newPubSub(natsURL string, cfg *config.Config, onReconnect func()) (*PubSub,
 		"channel.>",
 		// live broadcast updates
 		"broadcasts.>",
-		// NEW: efficient presence change notifications
+		// a user's presence changed; for the users who follow them
 		"presence.changed.>",
-		// Efficient seek notifications to followed users
-		"seek.followed.>",
+		// a user followed or unfollowed someone
+		"follows.>",
+		// a seek open only to the players its seeker follows
+		"seek.recipients.>",
 		// a user's sessions were revoked; disconnect their sockets
 		"sessionend.>",
 	}
@@ -66,7 +79,7 @@ func newPubSub(natsURL string, cfg *config.Config, onReconnect func()) (*PubSub,
 	}
 	// Subscribe to the above topics.
 	for _, topic := range topics {
-		ch := make(chan *nats.Msg, 512)
+		ch := make(chan *nats.Msg, subChanSize)
 		sub, err := natsconn.ChanSubscribe(topic, ch)
 		if err != nil {
 			return nil, err
@@ -222,23 +235,79 @@ func (h *Hub) PubsubProcess() {
 		case msg := <-h.pubsub.subchans["presence.changed.>"]:
 			log.Debug().Str("topic", msg.Subject).Msg("presence-changed")
 			subtopics := strings.Split(msg.Subject, ".")
-			if len(subtopics) < 3 {
+			if len(subtopics) != 3 || subtopics[2] == "" {
 				log.Error().Msgf("presence.changed subtopics weird %v", msg.Subject)
 				continue
 			}
-			userID := subtopics[2]
-			h.handlePresenceChanged(userID, msg.Data)
+			h.sendFollowers <- FollowersMessage{
+				userID: subtopics[2],
+				msg:    entity.BytesFromSerializedEvent(msg.Data, byte(pb.MessageType_PRESENCE_ENTRY)),
+			}
 
-		case msg := <-h.pubsub.subchans["seek.followed.>"]:
-			log.Debug().Str("topic", msg.Subject).Msg("seek-followed")
-			subtopics := strings.Split(msg.Subject, ".")
-			if len(subtopics) < 3 {
-				log.Error().Msgf("seek.followed subtopics weird %v", msg.Subject)
+		case msg := <-h.pubsub.subchans["follows.>"]:
+			change, ok := parseFollowChange(msg.Subject)
+			if !ok {
+				log.Error().Msgf("follows subtopics weird %v", msg.Subject)
 				continue
 			}
-			seekerUserID := subtopics[2]
-			h.handleSeekFollowed(seekerUserID, msg.Data)
+			h.followChanges <- change
+
+		case msg := <-h.pubsub.subchans["seek.recipients.>"]:
+			log.Debug().Str("topic", msg.Subject).Msg("seek-recipients")
+			subtopics := strings.Split(msg.Subject, ".")
+			if len(subtopics) != 3 || subtopics[2] == "" {
+				log.Error().Msgf("seek.recipients subtopics weird %v", msg.Subject)
+				continue
+			}
+			m, err := followedPlayersSeek(subtopics[2], msg.Data)
+			if err != nil {
+				log.Err(err).Str("topic", msg.Subject).Msg("seek-recipients")
+				continue
+			}
+			h.sendUsers <- m
 		}
 
 	}
+}
+
+// parseFollowChange parses follows.added.<follower>.<followed> or
+// follows.removed.<follower>.<followed>.
+func parseFollowChange(subject string) (FollowChange, bool) {
+	subtopics := strings.Split(subject, ".")
+	if len(subtopics) != 4 || subtopics[2] == "" || subtopics[3] == "" {
+		return FollowChange{}, false
+	}
+	switch subtopics[1] {
+	case "added", "removed":
+	default:
+		return FollowChange{}, false
+	}
+	return FollowChange{
+		follower:  subtopics[2],
+		followed:  subtopics[3],
+		following: subtopics[1] == "added",
+	}, true
+}
+
+// followedPlayersSeek is the message for a seek open only to the players its
+// seeker follows: the seek, for those players and the seeker.
+func followedPlayersSeek(seekerUserID string, data []byte) (UsersMessage, error) {
+	fps := &pb.FollowedPlayersSeek{}
+	if err := proto.Unmarshal(data, fps); err != nil {
+		return UsersMessage{}, err
+	}
+	seek, err := proto.Marshal(fps.SeekRequest)
+	if err != nil {
+		return UsersMessage{}, err
+	}
+	userIDs := []string{seekerUserID}
+	for _, id := range fps.RecipientUserIds {
+		if id != seekerUserID {
+			userIDs = append(userIDs, id)
+		}
+	}
+	return UsersMessage{
+		userIDs: userIDs,
+		msg:     entity.BytesFromSerializedEvent(seek, byte(pb.MessageType_SEEK_REQUEST)),
+	}, nil
 }

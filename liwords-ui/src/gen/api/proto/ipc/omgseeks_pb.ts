@@ -14,7 +14,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file proto/ipc/omgseeks.proto.
  */
 export const file_proto_ipc_omgseeks: GenFile = /*@__PURE__*/
-  fileDesc("Chhwcm90by9pcGMvb21nc2Vla3MucHJvdG8SA2lwYyJhCglNYXRjaFVzZXISDwoHdXNlcl9pZBgBIAEoCRIXCg9yZWxldmFudF9yYXRpbmcYAiABKAkSFAoMaXNfYW5vbnltb3VzGAMgASgIEhQKDGRpc3BsYXlfbmFtZRgEIAEoCSL9AwoLU2Vla1JlcXVlc3QSJgoMZ2FtZV9yZXF1ZXN0GAEgASgLMhAuaXBjLkdhbWVSZXF1ZXN0EhwKBHVzZXIYAiABKAsyDi5pcGMuTWF0Y2hVc2VyEhwKFG1pbmltdW1fcmF0aW5nX3JhbmdlGAMgASgFEhwKFG1heGltdW1fcmF0aW5nX3JhbmdlGAQgASgFEhwKFHNlZWtlcl9jb25uZWN0aW9uX2lkGAUgASgJEiYKDnJlY2VpdmluZ191c2VyGAYgASgLMg4uaXBjLk1hdGNoVXNlchIiCgp1c2VyX3N0YXRlGAcgASgOMg4uaXBjLlNlZWtTdGF0ZRImCg5yZWNlaXZlcl9zdGF0ZRgIIAEoDjIOLmlwYy5TZWVrU3RhdGUSHgoWcmVjZWl2ZXJfY29ubmVjdGlvbl9pZBgJIAEoCRIYChBib290ZWRfcmVjZWl2ZXJzGAogAygJEhMKC3JlbWF0Y2hfZm9yGAsgASgJEhUKDXRvdXJuYW1lbnRfaWQYDCABKAkSHQoVcmVjZWl2ZXJfaXNfcGVybWFuZW50GA0gASgIEhIKCnJhdGluZ19rZXkYDiABKAkSIgoacmVxdWlyZV9lc3RhYmxpc2hlZF9yYXRpbmcYDyABKAgSHQoVb25seV9mb2xsb3dlZF9wbGF5ZXJzGBAgASgIIkIKFlNvdWdodEdhbWVQcm9jZXNzRXZlbnQSEgoKcmVxdWVzdF9pZBgBIAEoCRIUCgxhbHRlcm5hdGl2ZXMYAiADKAkiMgoMU2Vla1JlcXVlc3RzEiIKCHJlcXVlc3RzGAEgAygLMhAuaXBjLlNlZWtSZXF1ZXN0IigKEkRlY2xpbmVTZWVrUmVxdWVzdBISCgpyZXF1ZXN0X2lkGAEgASgJKi8KCVNlZWtTdGF0ZRIKCgZBQlNFTlQQABILCgdQUkVTRU5UEAESCQoFUkVBRFkQAkJ1Cgdjb20uaXBjQg1PbWdzZWVrc1Byb3RvUAFaL2dpdGh1Yi5jb20vd29vZ2xlcy1pby9saXdvcmRzL3JwYy9hcGkvcHJvdG8vaXBjogIDSVhYqgIDSXBjygIDSXBj4gIPSXBjXEdQQk1ldGFkYXRh6gIDSXBjYgZwcm90bzM", [file_proto_ipc_omgwords]);
+  fileDesc("Chhwcm90by9pcGMvb21nc2Vla3MucHJvdG8SA2lwYyJhCglNYXRjaFVzZXISDwoHdXNlcl9pZBgBIAEoCRIXCg9yZWxldmFudF9yYXRpbmcYAiABKAkSFAoMaXNfYW5vbnltb3VzGAMgASgIEhQKDGRpc3BsYXlfbmFtZRgEIAEoCSL9AwoLU2Vla1JlcXVlc3QSJgoMZ2FtZV9yZXF1ZXN0GAEgASgLMhAuaXBjLkdhbWVSZXF1ZXN0EhwKBHVzZXIYAiABKAsyDi5pcGMuTWF0Y2hVc2VyEhwKFG1pbmltdW1fcmF0aW5nX3JhbmdlGAMgASgFEhwKFG1heGltdW1fcmF0aW5nX3JhbmdlGAQgASgFEhwKFHNlZWtlcl9jb25uZWN0aW9uX2lkGAUgASgJEiYKDnJlY2VpdmluZ191c2VyGAYgASgLMg4uaXBjLk1hdGNoVXNlchIiCgp1c2VyX3N0YXRlGAcgASgOMg4uaXBjLlNlZWtTdGF0ZRImCg5yZWNlaXZlcl9zdGF0ZRgIIAEoDjIOLmlwYy5TZWVrU3RhdGUSHgoWcmVjZWl2ZXJfY29ubmVjdGlvbl9pZBgJIAEoCRIYChBib290ZWRfcmVjZWl2ZXJzGAogAygJEhMKC3JlbWF0Y2hfZm9yGAsgASgJEhUKDXRvdXJuYW1lbnRfaWQYDCABKAkSHQoVcmVjZWl2ZXJfaXNfcGVybWFuZW50GA0gASgIEhIKCnJhdGluZ19rZXkYDiABKAkSIgoacmVxdWlyZV9lc3RhYmxpc2hlZF9yYXRpbmcYDyABKAgSHQoVb25seV9mb2xsb3dlZF9wbGF5ZXJzGBAgASgIIkIKFlNvdWdodEdhbWVQcm9jZXNzRXZlbnQSEgoKcmVxdWVzdF9pZBgBIAEoCRIUCgxhbHRlcm5hdGl2ZXMYAiADKAkiWQoTRm9sbG93ZWRQbGF5ZXJzU2VlaxImCgxzZWVrX3JlcXVlc3QYASABKAsyEC5pcGMuU2Vla1JlcXVlc3QSGgoScmVjaXBpZW50X3VzZXJfaWRzGAIgAygJIjIKDFNlZWtSZXF1ZXN0cxIiCghyZXF1ZXN0cxgBIAMoCzIQLmlwYy5TZWVrUmVxdWVzdCIoChJEZWNsaW5lU2Vla1JlcXVlc3QSEgoKcmVxdWVzdF9pZBgBIAEoCSovCglTZWVrU3RhdGUSCgoGQUJTRU5UEAASCwoHUFJFU0VOVBABEgkKBVJFQURZEAJCdQoHY29tLmlwY0INT21nc2Vla3NQcm90b1ABWi9naXRodWIuY29tL3dvb2dsZXMtaW8vbGl3b3Jkcy9ycGMvYXBpL3Byb3RvL2lwY6ICA0lYWKoCA0lwY8oCA0lwY+ICD0lwY1xHUEJNZXRhZGF0YeoCA0lwY2IGcHJvdG8z", [file_proto_ipc_omgwords]);
 
 /**
  * A MatchUser requests or receives a match via a seek or a match request.
@@ -191,6 +191,32 @@ export const SoughtGameProcessEventSchema: GenMessage<SoughtGameProcessEvent> = 
   messageDesc(file_proto_ipc_omgseeks, 2);
 
 /**
+ * A FollowedPlayersSeek is a seek open only to the players its seeker follows,
+ * sent from the API to the socket servers with those players' IDs. Each socket
+ * server delivers it to the recipients connected to it, and to the seeker.
+ *
+ * @generated from message ipc.FollowedPlayersSeek
+ */
+export type FollowedPlayersSeek = Message<"ipc.FollowedPlayersSeek"> & {
+  /**
+   * @generated from field: ipc.SeekRequest seek_request = 1;
+   */
+  seekRequest?: SeekRequest | undefined;
+
+  /**
+   * @generated from field: repeated string recipient_user_ids = 2;
+   */
+  recipientUserIds: string[];
+};
+
+/**
+ * Describes the message ipc.FollowedPlayersSeek.
+ * Use `create(FollowedPlayersSeekSchema)` to create a new message.
+ */
+export const FollowedPlayersSeekSchema: GenMessage<FollowedPlayersSeek> = /*@__PURE__*/
+  messageDesc(file_proto_ipc_omgseeks, 3);
+
+/**
  * SeekRequests sends all open seek requests.
  *
  * @generated from message ipc.SeekRequests
@@ -207,7 +233,7 @@ export type SeekRequests = Message<"ipc.SeekRequests"> & {
  * Use `create(SeekRequestsSchema)` to create a new message.
  */
 export const SeekRequestsSchema: GenMessage<SeekRequests> = /*@__PURE__*/
-  messageDesc(file_proto_ipc_omgseeks, 3);
+  messageDesc(file_proto_ipc_omgseeks, 4);
 
 /**
  * When a Receiver declines a Seeker:
@@ -226,7 +252,7 @@ export type DeclineSeekRequest = Message<"ipc.DeclineSeekRequest"> & {
  * Use `create(DeclineSeekRequestSchema)` to create a new message.
  */
 export const DeclineSeekRequestSchema: GenMessage<DeclineSeekRequest> = /*@__PURE__*/
-  messageDesc(file_proto_ipc_omgseeks, 4);
+  messageDesc(file_proto_ipc_omgseeks, 5);
 
 /**
  * @generated from enum ipc.SeekState

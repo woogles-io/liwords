@@ -232,3 +232,24 @@ func TestGetInChannel(t *testing.T) {
 // 	purged, err := ps.renewPresenceScript.Do(conn, "uuid1", "cesar", "auth", "connx1", ts)
 
 // }
+
+// A follow or unfollow tells the follower, and the socket servers, which keep
+// whom each connected user follows.
+func TestUpdateFollower(t *testing.T) {
+	is := is.New(t)
+	redisPool := newPool(RedisURL)
+	ps := NewRedisPresenceStore(redisPool)
+	flushTestDB(redisPool)
+	evts := make(chan *entity.EventWrapper, 2)
+	ps.SetEventChan(evts)
+
+	ctx := context.Background()
+	followee := &entity.User{UUID: "uuid1", Username: "cesar"}
+	follower := &entity.User{UUID: "uuid2", Username: "mina"}
+
+	is.NoErr(ps.UpdateFollower(ctx, followee, follower, true))
+	is.Equal((<-evts).Audience(), []string{"user.uuid2", "follows.added.uuid2.uuid1"})
+
+	is.NoErr(ps.UpdateFollower(ctx, followee, follower, false))
+	is.Equal((<-evts).Audience(), []string{"user.uuid2", "follows.removed.uuid2.uuid1"})
+}

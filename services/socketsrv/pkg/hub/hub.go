@@ -6,14 +6,12 @@ import (
 	"os"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/protobuf/proto"
 
-	"github.com/woogles-io/liwords/pkg/entity"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 
 	"github.com/woogles-io/liwords/services/socketsrv/pkg/config"
@@ -39,14 +37,6 @@ const (
 	resyncPause = 100 * time.Millisecond
 )
 
-// Metrics tracking for getFollowers API requests
-var (
-	getFollowersRequestCount int64 // Total API requests made
-	getFollowersDataBytes    int64 // Total bytes received from API responses
-	lastReportedRequestCount int64 // For calculating per-minute rate
-	lastReportedDataBytes    int64 // For calculating per-minute data volume
-)
-
 // A RealmMessage is a message that should be sent to a socket Realm.
 type RealmMessage struct {
 	realm Realm
@@ -65,6 +55,26 @@ type UserMessage struct {
 type ConnMessage struct {
 	connID string
 	msg    []byte
+}
+
+// A FollowersMessage is sent to every connected user who follows userID.
+type FollowersMessage struct {
+	userID string
+	msg    []byte
+}
+
+// A UsersMessage is sent to each of userIDs that is connected.
+type UsersMessage struct {
+	userIDs []string
+	msg     []byte
+}
+
+// A FollowChange says that follower has started or stopped following
+// followed.
+type FollowChange struct {
+	follower  string
+	followed  string
+	following bool
 }
 
 // Hub maintains the set of active clients and broadcasts messages to the
@@ -92,6 +102,11 @@ type Hub struct {
 	broadcastRealm  chan RealmMessage
 	broadcastUser   chan UserMessage
 	sendConnMessage chan ConnMessage
+	sendFollowers   chan FollowersMessage
+	sendUsers       chan UsersMessage
+	followChanges   chan FollowChange
+	// follows records whom each connected user follows. Only Run uses it.
+	follows *followIndex
 	// endUserSockets receives user IDs whose sockets must all be closed.
 	endUserSockets chan string
 	// resync is signaled when every socket's realm info should be resent.
@@ -112,17 +127,15 @@ func NewHub(cfg *config.Config) (*Hub, error) {
 		return nil, err
 	}
 
-	// Initialize followers cache
-	InitFollowersCache(cfg.FollowersCacheSize, cfg.FollowersCacheTTL)
-
-	// Initialize follows cache (uses same config as followers cache)
-	InitFollowsCache(cfg.FollowersCacheSize, cfg.FollowersCacheTTL)
-
 	return &Hub{
 		// broadcast:         make(chan []byte),
 		broadcastRealm:  make(chan RealmMessage),
 		broadcastUser:   make(chan UserMessage),
 		sendConnMessage: make(chan ConnMessage),
+		sendFollowers:   make(chan FollowersMessage),
+		sendUsers:       make(chan UsersMessage),
+		followChanges:   make(chan FollowChange),
+		follows:         newFollowIndex(),
 		endUserSockets:  make(chan string),
 		resync:          resync,
 		register:        make(chan *Client),
@@ -148,6 +161,12 @@ func (h *Hub) addClient(client *Client) error {
 	// add to the realm map.
 	h.addToRealm(client.tempRealms, client)
 	client.tempRealms = []string{}
+	if client.follows != nil {
+		// The newest list wins; the user's other sockets may have loaded
+		// theirs before a follow or unfollow.
+		h.follows.set(client.userID, client.follows)
+		client.follows = nil
+	}
 
 	// Meow, depending on the realm, request that the API publish
 	// initial information pertaining to this realm. For example,
@@ -194,6 +213,7 @@ func (h *Hub) removeClient(c *Client) error {
 
 	if (len(h.clientsByUserID[c.userID])) == 1 {
 		delete(h.clientsByUserID, c.userID)
+		h.follows.remove(c.userID)
 		log.Debug().Msgf("deleted client from clientsbyuserid. New length %v", len(
 			h.clientsByUserID))
 
@@ -237,6 +257,57 @@ func realmToChannel(realm Realm) string {
 
 func channelToRealm(channel string) Realm {
 	return Realm(strings.ReplaceAll(channel, ".", "-"))
+}
+
+// deliverToUser sends msg to every socket of userID connected here. A
+// non-empty channel limits it to the sockets in a realm that the channel
+// starts with. Call it only from Run.
+func (h *Hub) deliverToUser(userID, channel string, msg []byte) {
+	for client := range h.clientsByUserID[userID] {
+		if channel != "" && !inChannel(client, channel) {
+			continue
+		}
+		select {
+		case client.send <- msg:
+		default:
+			log.Debug().Str("username", client.username).Msg("in deliverToUser, removeClient")
+			h.removeClient(client)
+		}
+	}
+}
+
+// deliverToFollowers sends m to the connected users who follow m.userID. Call
+// it only from Run.
+func (h *Hub) deliverToFollowers(m FollowersMessage) {
+	// A copy: delivering can remove a client, and with it the user's
+	// follows from the index being iterated.
+	followers := make([]string, 0, len(h.follows.followersOf(m.userID)))
+	for f := range h.follows.followersOf(m.userID) {
+		followers = append(followers, f)
+	}
+	for _, f := range followers {
+		h.deliverToUser(f, "", m.msg)
+	}
+}
+
+// applyFollowChange records a follow or unfollow. Call it only from Run.
+func (h *Hub) applyFollowChange(c FollowChange) {
+	if c.following {
+		h.follows.follow(c.follower, c.followed)
+	} else {
+		h.follows.unfollow(c.follower, c.followed)
+	}
+}
+
+func inChannel(c *Client, channel string) bool {
+	for _, realm := range c.realms {
+		// if the message has a channel attached to it, it needs to be
+		// a prefix of the realm in order to be delivered.
+		if strings.HasPrefix(channel, realmToChannel(realm)) {
+			return true
+		}
+	}
+	return false
 }
 
 func (h *Hub) Run() {
@@ -283,31 +354,18 @@ func (h *Hub) Run() {
 		case message := <-h.broadcastUser:
 			log.Debug().Str("user", string(message.userID)).
 				Msg("sending to all user sockets")
-			// Send the message to every socket belonging to this user.
-			for client := range h.clientsByUserID[message.userID] {
-				canSend := true
-				if message.channel != "" {
-					canSend = false
-					// Determine if we can send this message to this client.
-					for _, realm := range client.realms {
-						if strings.HasPrefix(message.channel, realmToChannel(realm)) {
-							// if the message has a channel attached to it, it needs to be
-							// a prefix of the realm in order to be delivered.
-							canSend = true
-							break
-						}
-					}
-				}
-				if !canSend {
-					continue
-				}
-				select {
-				case client.send <- message.msg:
-				default:
-					log.Debug().Str("username", client.username).Msg("in broadcastUser, removeClient")
-					h.removeClient(client)
-				}
+			h.deliverToUser(message.userID, message.channel, message.msg)
+
+		case message := <-h.sendFollowers:
+			h.deliverToFollowers(message)
+
+		case message := <-h.sendUsers:
+			for _, u := range message.userIDs {
+				h.deliverToUser(u, "", message.msg)
 			}
+
+		case change := <-h.followChanges:
+			h.applyFollowChange(change)
 
 		case userID := <-h.endUserSockets:
 			clients := make([]*Client, 0, len(h.clientsByUserID[userID]))
@@ -341,25 +399,12 @@ func (h *Hub) Run() {
 			go h.publishPaced(msgs, resyncBatch, resyncPause)
 
 		case <-ticker.C:
-			// Calculate per-minute rates for getFollowers API
-			currentRequests := atomic.LoadInt64(&getFollowersRequestCount)
-			currentDataBytes := atomic.LoadInt64(&getFollowersDataBytes)
-			requestsPerMin := currentRequests - atomic.LoadInt64(&lastReportedRequestCount)
-			dataBytesPerMin := currentDataBytes - atomic.LoadInt64(&lastReportedDataBytes)
-
-			// Update last reported values
-			atomic.StoreInt64(&lastReportedRequestCount, currentRequests)
-			atomic.StoreInt64(&lastReportedDataBytes, currentDataBytes)
-
-			followersCacheLen := GetCacheStats()
-			followsCacheLen := GetFollowsCacheStats()
+			followUsers, follows := h.follows.size()
 			log.Info().Int("num-conns", len(h.clients)).
 				Int("num-users", len(h.clientsByUserID)).
 				Int("num-realms", len(h.realms)).
-				Int("followers-cache-entries", followersCacheLen).
-				Int("follows-cache-entries", followsCacheLen).
-				Int64("followers-api-requests-per-min", requestsPerMin).
-				Int64("followers-api-bytes-per-min", dataBytesPerMin).
+				Int("follow-index-users", followUsers).
+				Int("follow-index-follows", follows).
 				Msg("conn-stats")
 		}
 	}
@@ -460,6 +505,26 @@ func registerRealm(c *Client, path string, h *Hub) error {
 	return nil
 }
 
+// loadFollows asks the API whom userID follows. It is a blocking request, made
+// while the socket connects.
+func loadFollows(userID string, h *Hub) ([]string, error) {
+	data, err := proto.Marshal(&pb.GetFollowsRequest{UserId: userID})
+	if err != nil {
+		return nil, err
+	}
+	resp, err := h.pubsub.natsconn.Request("ipc.request.getFollows", data, ipcTimeout)
+	if err != nil {
+		return nil, err
+	}
+	follows := &pb.GetFollowsResponse{}
+	if err := proto.Unmarshal(resp.Data, follows); err != nil {
+		return nil, err
+	}
+	// Never nil once loaded, even if the user follows nobody, so that the
+	// hub records it.
+	return append([]string{}, follows.FollowUserIds...), nil
+}
+
 func (h *Hub) sendRealmInitInfo(c *Client) error {
 	m, err := realmInitInfo(c)
 	if err != nil {
@@ -524,115 +589,4 @@ func realmInitInfo(c *Client) (natsMsg, error) {
 	log.Debug().Interface("initRealmInfo", req).Msg("req-init-realm-info")
 
 	return natsMsg{extendTopic(c, "ipc.pb.initRealmInfo"), data}, nil
-}
-
-// handlePresenceChanged processes new-style efficient presence notifications
-func (h *Hub) handlePresenceChanged(userID string, data []byte) {
-	log.Debug().Str("userID", userID).Msg("handling-presence-changed")
-
-	// Try to get followers from cache first
-	followers, found := GetFollowers(userID)
-	var cacheHit bool
-
-	if !found {
-		// Cache miss - request followers from main service
-		req := &pb.GetFollowersRequest{
-			UserId: userID,
-		}
-		reqData, err := proto.Marshal(req)
-		if err != nil {
-			log.Err(err).Msg("marshal-get-followers-request")
-			return
-		}
-
-		resp, err := h.pubsub.natsconn.Request("ipc.request.getFollowers", reqData, ipcTimeout)
-		if err != nil {
-			log.Err(err).Str("userID", userID).Msg("get-followers-request-failed")
-			return
-		}
-
-		// Track successful API request
-		atomic.AddInt64(&getFollowersRequestCount, 1)
-		atomic.AddInt64(&getFollowersDataBytes, int64(len(resp.Data)))
-
-		followersResp := &pb.GetFollowersResponse{}
-		err = proto.Unmarshal(resp.Data, followersResp)
-		if err != nil {
-			log.Err(err).Msg("unmarshal-get-followers-response")
-			return
-		}
-
-		followers = followersResp.FollowerUserIds
-		// Cache the result for future requests
-		CacheFollowers(userID, followers)
-		cacheHit = false
-	} else {
-		cacheHit = true
-	}
-
-	btsToSend := entity.BytesFromSerializedEvent(data, byte(pb.MessageType_PRESENCE_ENTRY))
-	// Send presence notification to all followers (Run() will handle if not connected)
-	for _, followerID := range followers {
-		h.sendToUser(followerID, btsToSend)
-	}
-
-	log.Debug().Str("userID", userID).
-		Int("total_followers", len(followers)).
-		Bool("cache_hit", cacheHit).
-		Msg("presence-changed-processed")
-}
-
-func (h *Hub) handleSeekFollowed(seekerUserID string, data []byte) {
-	log.Debug().Str("seekerUserID", seekerUserID).Msg("handling-seek-followed")
-
-	// Try to get follows from cache first
-	follows, found := GetFollows(seekerUserID)
-	var cacheHit bool
-
-	if !found {
-		// Cache miss - request follows from main service
-		req := &pb.GetFollowsRequest{
-			UserId: seekerUserID,
-		}
-		reqData, err := proto.Marshal(req)
-		if err != nil {
-			log.Err(err).Msg("marshal-get-follows-request")
-			return
-		}
-
-		resp, err := h.pubsub.natsconn.Request("ipc.request.getFollows", reqData, ipcTimeout)
-		if err != nil {
-			log.Err(err).Str("seekerUserID", seekerUserID).Msg("get-follows-request-failed")
-			return
-		}
-
-		followsResp := &pb.GetFollowsResponse{}
-		err = proto.Unmarshal(resp.Data, followsResp)
-		if err != nil {
-			log.Err(err).Msg("unmarshal-get-follows-response")
-			return
-		}
-
-		follows = followsResp.FollowUserIds
-		// Cache the result for future requests
-		CacheFollows(seekerUserID, follows)
-		cacheHit = false
-	} else {
-		cacheHit = true
-	}
-
-	btsToSend := entity.BytesFromSerializedEvent(data, byte(pb.MessageType_SEEK_REQUEST))
-
-	// Send seek notification to the seeker themselves (so they see their own seek)
-	h.sendToUser(seekerUserID, btsToSend)
-
-	// Send seek notification to all users that the seeker follows
-	for _, followedUserID := range follows {
-		h.sendToUser(followedUserID, btsToSend)
-	}
-
-	log.Debug().Str("seekerUserID", seekerUserID).
-		Int("total_follows", len(follows)).
-		Bool("cache_hit", cacheHit).
-		Msg("seek-followed-processed")
 }

@@ -59,6 +59,14 @@ message SoughtGameProcessEvent {
   repeated string alternatives = 2;
 }
 
+// A FollowedPlayersSeek is a seek open only to the players its seeker follows,
+// sent from the API to the socket servers with those players' IDs. Each socket
+// server delivers it to the recipients connected to it, and to the seeker.
+message FollowedPlayersSeek {
+  SeekRequest seek_request = 1;
+  repeated string recipient_user_ids = 2;
+}
+
 // SeekRequests sends all open seek requests.
 message SeekRequests { repeated SeekRequest requests = 1; }
 
