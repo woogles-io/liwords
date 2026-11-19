@@ -195,39 +195,39 @@ func TestConfirmEmailChange(t *testing.T) {
 	is.NoErr(ustore.RequestEmailChange(ctx, cesarUUID, "first@wolges.io", "token-1", later))
 	is.NoErr(ustore.RequestEmailChange(ctx, cesarUUID, "second@wolges.io", "token-2", later))
 	emailIs(cesarUUID, "cesar@woogles.io")
-	_, _, err := ustore.ConfirmEmailChange(ctx, "token-1", allow)
+	_, err := ustore.ConfirmEmailChange(ctx, "token-1", allow)
 	is.True(errors.Is(err, pkguser.ErrEmailChangeNotFound))
 
 	// A refused address leaves the change pending and the email as it was.
 	refuse := func(string) error { return pkguser.ErrEmailNotAllowed }
-	_, _, err = ustore.ConfirmEmailChange(ctx, "token-2", refuse)
+	_, err = ustore.ConfirmEmailChange(ctx, "token-2", refuse)
 	is.True(errors.Is(err, pkguser.ErrEmailNotAllowed))
 	emailIs(cesarUUID, "cesar@woogles.io")
 
 	// The right token makes the change, once.
-	uuid, email, err := ustore.ConfirmEmailChange(ctx, "token-2", allow)
+	change, err := ustore.ConfirmEmailChange(ctx, "token-2", allow)
 	is.NoErr(err)
-	is.Equal(uuid, cesarUUID)
-	is.Equal(email, "second@wolges.io")
+	is.Equal(change, pkguser.EmailChange{
+		UserUUID: cesarUUID, OldEmail: "cesar@woogles.io", NewEmail: "second@wolges.io"})
 	emailIs(cesarUUID, "second@wolges.io")
 	rows, err := models.New(pool).ListEmailChanges(ctx, cesarUUID)
 	is.NoErr(err)
 	is.Equal(len(rows), 1)
 	is.Equal([3]string{rows[0].OldEmail, rows[0].NewEmail, rows[0].ChangedByUuid},
 		[3]string{"cesar@woogles.io", "second@wolges.io", cesarUUID})
-	_, _, err = ustore.ConfirmEmailChange(ctx, "token-2", allow)
+	_, err = ustore.ConfirmEmailChange(ctx, "token-2", allow)
 	is.True(errors.Is(err, pkguser.ErrEmailChangeNotFound))
 
 	// An expired link does nothing.
 	is.NoErr(ustore.RequestEmailChange(ctx, minaUUID, "mina@wolges.io", "token-3",
 		time.Now().Add(-time.Minute)))
-	_, _, err = ustore.ConfirmEmailChange(ctx, "token-3", allow)
+	_, err = ustore.ConfirmEmailChange(ctx, "token-3", allow)
 	is.True(errors.Is(err, pkguser.ErrEmailChangeNotFound))
 	emailIs(minaUUID, "mina@gmail.com")
 
 	// An address another account took in the meantime is refused.
 	is.NoErr(ustore.RequestEmailChange(ctx, minaUUID, "JESSE@woogles.io", "token-4", later))
-	_, _, err = ustore.ConfirmEmailChange(ctx, "token-4", allow)
+	_, err = ustore.ConfirmEmailChange(ctx, "token-4", allow)
 	is.True(errors.Is(err, pkguser.ErrEmailTaken))
 	emailIs(minaUUID, "mina@gmail.com")
 

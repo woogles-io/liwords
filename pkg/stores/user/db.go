@@ -410,39 +410,41 @@ func (s *DBStore) ChangeEmail(ctx context.Context, uuid string, email string, ch
 		return err
 	}
 	defer tx.Rollback(ctx)
-	if err := changeEmail(ctx, s.queries.WithTx(tx), uuid, email, changedBy); err != nil {
+	if _, err := changeEmail(ctx, s.queries.WithTx(tx), uuid, email, changedBy); err != nil {
 		return err
 	}
 	return tx.Commit(ctx)
 }
 
-// changeEmail is ChangeEmail within the caller's transaction.
-func changeEmail(ctx context.Context, qtx *models.Queries, uuid string, email string, changedBy string) error {
+// changeEmail is ChangeEmail within the caller's transaction. It returns the
+// email the user had.
+func changeEmail(ctx context.Context, qtx *models.Queries, uuid string, email string,
+	changedBy string) (string, error) {
 	oldEmail, err := qtx.GetUserEmailForUpdate(ctx, uuid)
 	if err != nil {
-		return err
+		return "", err
 	}
 	if oldEmail == email {
-		return nil
+		return oldEmail, nil
 	}
 	err = qtx.SetUserEmail(ctx, models.SetUserEmailParams{Email: email, Uuid: uuid})
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" && // unique_violation
 			pgErr.ConstraintName == "email_idx" {
-			return user.ErrEmailTaken
+			return "", user.ErrEmailTaken
 		}
-		return err
+		return "", err
 	}
 	n, err := qtx.AddEmailChange(ctx, models.AddEmailChangeParams{
 		UserUuid: uuid, OldEmail: oldEmail, NewEmail: email, ChangedByUuid: changedBy})
 	if err != nil {
-		return err
+		return "", err
 	}
 	if n != 1 {
-		return fmt.Errorf("email change not recorded for user %s by %s", uuid, changedBy)
+		return "", fmt.Errorf("email change not recorded for user %s by %s", uuid, changedBy)
 	}
-	return nil
+	return oldEmail, nil
 }
 
 // RequestEmailChange records that the user wants the given email, until
@@ -467,40 +469,42 @@ func (s *DBStore) RequestEmailChange(ctx context.Context, uuid string, email str
 
 // ConfirmEmailChange makes the pending change with this token, as the user's
 // own change, if check allows the new email, and returns the user's UUID and
-// new email. The token works once; a change that fails leaves it pending. It
+// old and new emails. The token works once; a change that fails leaves it pending. It
 // returns user.ErrEmailChangeNotFound for a token that is unknown or expired,
 // user.ErrEmailTaken if another account took the address in the meantime,
 // and whatever check returns.
 func (s *DBStore) ConfirmEmailChange(ctx context.Context, token string,
-	check func(email string) error) (string, string, error) {
+	check func(email string) error) (user.EmailChange, error) {
 	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
 	if err != nil {
-		return "", "", err
+		return user.EmailChange{}, err
 	}
 	defer tx.Rollback(ctx)
 	qtx := s.queries.WithTx(tx)
 
 	pending, err := qtx.TakePendingEmailChange(ctx, token)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return "", "", user.ErrEmailChangeNotFound
+		return user.EmailChange{}, user.ErrEmailChangeNotFound
 	}
 	if err != nil {
-		return "", "", err
+		return user.EmailChange{}, err
 	}
 	if !pending.ExpiresAt.Time.After(time.Now()) {
-		return "", "", user.ErrEmailChangeNotFound
+		return user.EmailChange{}, user.ErrEmailChangeNotFound
 	}
 	if err := check(pending.NewEmail); err != nil {
-		return "", "", err
+		return user.EmailChange{}, err
 	}
 	uuid, err := qtx.GetUserUUIDFromDBID(ctx, pending.UserID)
 	if err != nil {
-		return "", "", err
+		return user.EmailChange{}, err
 	}
-	if err := changeEmail(ctx, qtx, uuid, pending.NewEmail, uuid); err != nil {
-		return "", "", err
+	oldEmail, err := changeEmail(ctx, qtx, uuid, pending.NewEmail, uuid)
+	if err != nil {
+		return user.EmailChange{}, err
 	}
-	return uuid, pending.NewEmail, tx.Commit(ctx)
+	return user.EmailChange{UserUUID: uuid, OldEmail: oldEmail, NewEmail: pending.NewEmail},
+		tx.Commit(ctx)
 }
 
 // IsEmailOfSuspendedAccount reports whether the address, ignoring case and

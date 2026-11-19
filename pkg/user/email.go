@@ -35,6 +35,13 @@ func CheckNewEmail(ctx context.Context, us Store, uuid string, email string) (st
 	return email, nil
 }
 
+// EmailChange is a change of a user's email that was made.
+type EmailChange struct {
+	UserUUID string
+	OldEmail string
+	NewEmail string
+}
+
 // CheckEmailAllowed refuses, with ErrEmailNotAllowed, an address that a
 // suspended account has or had, so that a suspended user cannot reuse it for
 // a new account or move it onto another one. If the check itself fails, the

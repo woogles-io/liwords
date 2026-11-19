@@ -90,7 +90,7 @@ func (rs *RegistrationService) ResendVerificationEmail(ctx context.Context, r *c
 // needs no login: the token, sent only to the new address, is the proof.
 func (rs *RegistrationService) ConfirmEmailChange(ctx context.Context, r *connect.Request[pb.ConfirmEmailChangeRequest],
 ) (*connect.Response[pb.ConfirmEmailChangeResponse], error) {
-	email, err := ConfirmEmailChange(ctx, rs.userStore, r.Msg.Token)
+	email, err := ConfirmEmailChange(ctx, rs.userStore, r.Msg.Token, rs.emailDebugMode)
 	if err != nil {
 		if errors.Is(err, user.ErrEmailChangeNotFound) || errors.Is(err, user.ErrEmailTaken) ||
 			errors.Is(err, user.ErrEmailNotAllowed) {

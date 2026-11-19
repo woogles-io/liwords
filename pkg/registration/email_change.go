@@ -9,6 +9,7 @@ import (
 	"github.com/rs/zerolog"
 
 	"github.com/woogles-io/liwords/pkg/emailer"
+	"github.com/woogles-io/liwords/pkg/mod"
 	"github.com/woogles-io/liwords/pkg/user"
 )
 
@@ -56,19 +57,52 @@ func RequestEmailChange(ctx context.Context, us user.Store, username string, uui
 	return nil
 }
 
-// ConfirmEmailChange makes the pending email change with this token. The
-// address is checked again, since an account may have been suspended, or
-// taken the address, since the change was asked for.
-func ConfirmEmailChange(ctx context.Context, us user.Store, token string) (string, error) {
+// ConfirmEmailChange makes the pending email change with this token, and
+// tells the old address about it. The address is checked again, since an
+// account may have been suspended, or taken the address, since the change was
+// asked for.
+func ConfirmEmailChange(ctx context.Context, us user.Store, token string, emailDebugMode bool) (string, error) {
 	if token == "" {
 		return "", user.ErrEmailChangeNotFound
 	}
-	uuid, email, err := us.ConfirmEmailChange(ctx, token, func(email string) error {
+	change, err := us.ConfirmEmailChange(ctx, token, func(email string) error {
 		return user.CheckEmailAllowed(ctx, us, email)
 	})
 	if err != nil {
 		return "", err
 	}
-	zerolog.Ctx(ctx).Info().Str("userID", uuid).Msg("email-change-confirmed")
-	return email, nil
+	zerolog.Ctx(ctx).Info().Str("userID", change.UserUUID).Msg("email-change-confirmed")
+	if change.OldEmail != change.NewEmail {
+		notifyOldEmail(ctx, us, change, emailDebugMode)
+	}
+	return change.NewEmail, nil
+}
+
+const emailChangedTemplate = `Hi %s,
+
+The email address of your Woogles.io account was changed from this address to %s.
+
+If you made this change, there is nothing more to do.
+
+If you didn't, someone else may have your password. Password resets now go to the new address, so please write to %s from this address to get your account back.
+
+The Woogles.io team
+`
+
+// notifyOldEmail tells the address a user had that their email was changed,
+// so that if someone else changed it, the owner hears of it. The change has
+// already been made, so a failure to send is only logged.
+func notifyOldEmail(ctx context.Context, us user.Store, change user.EmailChange, emailDebugMode bool) {
+	log := zerolog.Ctx(ctx)
+	username, err := us.Username(ctx, change.UserUUID)
+	if err != nil {
+		log.Err(err).Str("userID", change.UserUUID).Msg("email-changed-notice-username")
+		return
+	}
+	_, err = emailer.SendSimpleMessageCtx(ctx, emailDebugMode, change.OldEmail,
+		"Your Woogles.io email was changed",
+		fmt.Sprintf(emailChangedTemplate, username, change.NewEmail, mod.AddressToContact))
+	if err != nil {
+		log.Err(err).Str("userID", change.UserUUID).Msg("email-changed-notice")
+	}
 }
