@@ -99,9 +99,9 @@ jobs:
           role-to-assume: arn:aws:iam::509130939211:role/liwordsGithubDeployRole
           aws-region: us-east-2
 
-      # Between the deployed API and this one, as build-and-deploy.yml checks
-      # each push: a migration numbered below one already applied would be
-      # skipped without an error.
+      # Between the deployed API and this one: a migration numbered below one
+      # already applied would be skipped without an error. (Open PRs get the
+      # same check against master in migration-order.yml.)
       #
       # It also decides whether to run migrations: only when the new image
       # adds migration files over the deployed one. A rollback to an image
