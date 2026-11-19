@@ -224,17 +224,28 @@ func (l *lockedTournament) Save(ctx context.Context) error {
 	ctx, span := startSpan(ctx, "Save", l.tm.UUID)
 	defer span.End()
 	defer l.Release()
-	size, err := l.s.update(ctx, l.s.queries.WithTx(l.tx), l.tm)
+	q := l.s.queries.WithTx(l.tx)
+	size, err := l.s.update(ctx, q, l.tm)
 	if err != nil {
 		span.SetStatus(codes.Error, err.Error())
 		return err
 	}
 	span.SetAttributes(attribute.Int("tournament.divisions_bytes", size))
+	// COP rounds the change left for a job are written with it, so the
+	// change and the promise to pair them commit together.
+	queued, err := tl.EnqueuePendingPairings(ctx, q, l.tm)
+	if err != nil {
+		span.SetStatus(codes.Error, err.Error())
+		return err
+	}
 	if err := l.tx.Commit(ctx); err != nil {
 		span.SetStatus(codes.Error, err.Error())
 		return err
 	}
-	span.SetAttributes(attribute.Bool("committed", true))
+	span.SetAttributes(attribute.Bool("committed", true), attribute.Int("tournament.pairings_queued", queued))
+	if queued > 0 && l.s.jobsWake != nil {
+		l.s.jobsWake()
+	}
 	return nil
 }
 

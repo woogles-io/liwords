@@ -51,6 +51,9 @@ type Config struct {
 
 	TourneyPDFLambdaFunctionName string
 	COPPairLambdaFunctionName    string
+	// COPPairJobLambdaFunctionName runs COP for pair_round jobs. Empty: in
+	// this process.
+	COPPairJobLambdaFunctionName string
 
 	// Integrations
 	PatreonClientID     string
@@ -140,6 +143,7 @@ func (c *Config) Load(args []string) error {
 	fs.StringVar(&c.PuzzleGenerationSecurityGroups, "puzzle-generation-security-groups", "", "comma-separated security groups for the puzzle generation task")
 	fs.StringVar(&c.TourneyPDFLambdaFunctionName, "tourney-pdf-lambda-function-name", "", "the name of the TourneyPDF lambda function")
 	fs.StringVar(&c.COPPairLambdaFunctionName, "cop-pair-lambda-function-name", "", "the name of the COPPair lambda function")
+	fs.StringVar(&c.COPPairJobLambdaFunctionName, "cop-pair-job-lambda-function-name", "", "the Lambda function that runs COP for tournament rounds (pair_round jobs); empty runs it in this process")
 	fs.StringVar(&c.PatreonClientID, "patreon-client-id", "", "The Patreon Integration Client ID")
 	fs.StringVar(&c.PatreonClientSecret, "patreon-client-secret", "", "The Patreon Integration Client secret")
 	fs.StringVar(&c.PatreonRedirectURI, "patreon-redirect-uri", "", "The Patreon redirect URI")

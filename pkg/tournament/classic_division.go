@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -17,6 +18,7 @@ import (
 	"github.com/woogles-io/liwords/pkg/pair/cop"
 	"github.com/woogles-io/liwords/pkg/utilities"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
+	"google.golang.org/protobuf/proto"
 )
 
 type PlayerSorter []*pb.TournamentPerson
@@ -65,6 +67,18 @@ type ClassicDivision struct {
 	// the last TakeAutoPairingFailures. Those failures don't fail the
 	// action that triggered them, so the caller reports them instead.
 	autoPairingFailures []int
+	// pendingCOP holds the COP rounds left for a pair_round job since the
+	// last TakePendingCOPRounds (see DeferCOPPairing).
+	pendingCOP []int
+	// copAnswer is COP's answer to a request, for the pair_round job to
+	// apply: pairing its round with the same request uses it.
+	copAnswer *copAnswer
+}
+
+type copAnswer struct {
+	round int
+	req   *pb.PairRequest
+	resp  *pb.PairResponse
 }
 
 func NewClassicDivision(tournamentName string, divisionName string) *ClassicDivision {
@@ -1285,20 +1299,36 @@ func (t *ClassicDivision) pairRound(round int, preserveByes bool, keepPairings b
 	return pmessage, nil
 }
 
-func (t *ClassicDivision) pairRoundWithCOP(round int, keptPlayers map[string]bool) (*pb.DivisionPairingsResponse, error) {
-	if round < 0 || round >= len(t.Matrix) {
-		return nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_ROUND_NUMBER_OUT_OF_RANGE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), "pairRoundWithCOP")
-	}
+// copDeferred is set by DeferCOPPairing.
+var copDeferred atomic.Bool
 
-	// Build COPIntermediateConfig from the RoundControl
+// DeferCOPPairing makes pairing a COP round leave it unpaired, for a
+// pair_round job (PairRoundJob) to pair once the change is saved, rather
+// than run COP while the tournament is locked. COP takes seconds, and every
+// other change to the tournament would wait for it. The API turns it on;
+// tests and tools leave it off, and COP runs in place.
+func DeferCOPPairing(on bool) {
+	copDeferred.Store(on)
+}
+
+// TakePendingCOPRounds returns the COP rounds left unpaired for a
+// pair_round job since the last call, and forgets them. The store writes a
+// job for each when it saves the change.
+func (t *ClassicDivision) TakePendingCOPRounds() []int {
+	rounds := t.pendingCOP
+	t.pendingCOP = nil
+	return rounds
+}
+
+// copRequest is the COP request that pairs the round from the division as
+// it is now, keeping the pairings of keptPlayers. It is nil when every
+// player still to pair is in a kept pairing: COP has nothing to pair.
+func (t *ClassicDivision) copRequest(round int, keptPlayers map[string]bool) (*pb.PairRequest, error) {
 	rc := t.RoundControls[round]
-
-	// Convert gibson_spreads and hopefulness_thresholds from repeated fields to slices
 	gibsonSpread := make([]int, len(rc.GibsonSpreads))
 	for i, gs := range rc.GibsonSpreads {
 		gibsonSpread[i] = int(gs)
 	}
-
 	cfg := &COPIntermediateConfig{
 		GibsonSpread:               gibsonSpread,
 		ControlLossThreshold:       rc.ControlLossThreshold,
@@ -1308,14 +1338,10 @@ func (t *ClassicDivision) pairRoundWithCOP(round int, keptPlayers map[string]boo
 		ControlLossActivationRound: int(rc.ControlLossActivationRound),
 		PlacePrizes:                int(rc.PlacePrizes),
 	}
-
-	// Get the division data
 	divisionData, err := t.GetXHRResponse()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get division data for COP: %w", err)
 	}
-
-	// Convert to COP PairRequest
 	pairRequest, err := TournamentDivisionToCOPRequest(divisionData, int64(round), int64(t.pairingBasisRound(round)), cfg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert division to COP request: %w", err)
@@ -1344,7 +1370,7 @@ func (t *ClassicDivision) pairRoundWithCOP(round int, keptPlayers map[string]boo
 			prepaired[i] = int32(t.PlayerIndexMap[opp])
 		}
 		if unpaired == 0 {
-			return newPairingsMessage(), nil
+			return nil, nil
 		}
 		pairRequest.DivisionPairings = append(pairRequest.DivisionPairings,
 			&pb.RoundPairings{Pairings: prepaired})
@@ -1352,12 +1378,69 @@ func (t *ClassicDivision) pairRoundWithCOP(round int, keptPlayers map[string]boo
 
 	// Set the seed for reproducibility
 	pairRequest.Seed = int64(t.Seed) + int64(round)
+	return pairRequest, nil
+}
 
-	// Call COP pairing algorithm
+// copKeptPlayers is every player whose pairing in the round would be kept:
+// what a change that left the round for a job kept, byes or whole pairings,
+// and anything paired by hand since. The job and the pairing that applies
+// its answer both read it from the round as it is, so they build the same
+// request.
+func (t *ClassicDivision) copKeptPlayers(round int) (map[string]bool, error) {
+	kept := make(map[string]bool)
+	for _, p := range t.Players.Persons {
+		isKept, err := t.pairingIsKept(p.Id, round)
+		if err != nil {
+			return nil, err
+		}
+		if isKept {
+			kept[p.Id] = true
+		}
+	}
+	return kept, nil
+}
+
+// needsCOPPairing reports whether the round is a COP round still to pair:
+// not started, and not fully paired.
+func (t *ClassicDivision) needsCOPPairing(round int) bool {
+	return round > int(t.CurrentRound) && round < len(t.Matrix) &&
+		t.RoundControls[round].PairingMethod == pb.PairingMethod_PAIRING_METHOD_COP &&
+		!t.IsRoundPaired(round)
+}
+
+func (t *ClassicDivision) pairRoundWithCOP(round int, keptPlayers map[string]bool) (*pb.DivisionPairingsResponse, error) {
+	if round < 0 || round >= len(t.Matrix) {
+		return nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_ROUND_NUMBER_OUT_OF_RANGE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), "pairRoundWithCOP")
+	}
+	pairRequest, err := t.copRequest(round, keptPlayers)
+	if err != nil {
+		return nil, err
+	}
+	if pairRequest == nil {
+		return newPairingsMessage(), nil
+	}
+	if a := t.copAnswer; a != nil && a.round == round && proto.Equal(a.req, pairRequest) {
+		return t.applyCOPResponse(round, keptPlayers, a.resp)
+	}
+	if copDeferred.Load() {
+		// The round stays as pairRound left it: cleared, but for the
+		// pairings it keeps. The job pairs it once this change is saved.
+		if !slices.Contains(t.pendingCOP, round) {
+			t.pendingCOP = append(t.pendingCOP, round)
+		}
+		log.Info().Str("tournament", t.TournamentName).Str("division", t.DivisionName).Int("round", round+1).Msg("cop-pairing-deferred")
+		return newPairingsMessage(), nil
+	}
+
 	log.Info().Str("tournament", t.TournamentName).Str("division", t.DivisionName).Int("round", round+1).Msg("calling COP pairing algorithm")
 	pairResponse := cop.COPPair(pairRequest)
 	log.Info().Str("tournament", t.TournamentName).Str("division", t.DivisionName).Int("round", round+1).Msg("returned from COP pairing algorithm")
+	return t.applyCOPResponse(round, keptPlayers, pairResponse)
+}
 
+// applyCOPResponse pairs the round with COP's answer, keeping the pairings
+// of keptPlayers.
+func (t *ClassicDivision) applyCOPResponse(round int, keptPlayers map[string]bool, pairResponse *pb.PairResponse) (*pb.DivisionPairingsResponse, error) {
 	if pairResponse.ErrorCode != pb.PairError_SUCCESS {
 		log.Error().Str("error", pairResponse.ErrorMessage).Msg("COP pairing failed")
 		if len(keptPlayers) > 0 {

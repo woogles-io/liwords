@@ -596,6 +596,10 @@ func main() {
 	go pubsubBus.ProcessMessages(ctx)
 	go gamestore.RunShadowSummary(ctx, cfg, time.Hour)
 
+	// COP rounds are paired by pair_round jobs, outside the tournament lock.
+	// On even with -run-jobs=false: another server's runner pairs them.
+	tournament.DeferCOPPairing(true)
+
 	var jobRunner *jobs.Runner
 	if cfg.RunJobs {
 		jobRunner = jobs.NewRunner(stores.Queries, jobs.Options{})
@@ -608,9 +612,12 @@ func main() {
 			outbox:      outbox.NewSender(stores.Queries, outboxChannels(cfg), 0),
 			stores:      stores,
 			maintenance: maintenance.New(cfg, stores, gameCreatorAdapter, oauthIntegrationService),
+			tournaments: stores.TournamentStore,
+			copPairer:   copPairer(cfg, lambdaClient),
 		}); err != nil {
 			log.Fatal().Err(err).Msg("register-jobs")
 		}
+		stores.TournamentStore.SetJobsWake(jobRunner.Wake)
 		go func() {
 			jobsCtx := log.Logger.WithContext(cfg.WithContext(ctx))
 			if err := jobRunner.Run(jobsCtx); err != nil {
