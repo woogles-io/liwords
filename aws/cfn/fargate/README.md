@@ -136,8 +136,11 @@ GitHub issues such a token only once the environment's rules let the job run,
 so a workflow that skips the environment gets no access. The role can run the
 migration task and start updates of `liwords-api`, `liwords-socket` and
 `macondo-bot`, which CloudFormation carries out as `liwordsCfnDeployRole`.
-The stored key that remains (`GithubActionsUploadUser`) only uploads the
-frontend.
+The frontend deploy (`deploy_fe`, which runs `liwords-ui/scripts/deploy-s3.sh`)
+needs no approval, so it signs in as a second role,
+`liwordsGithubFrontendRole`, which trusts any job of this repository running
+on master and can only read, write and delete in the `woogles.io` bucket. No
+stored AWS key is left.
 
 ## Retiring the EC2 instances
 
