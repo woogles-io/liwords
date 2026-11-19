@@ -1,0 +1,79 @@
+name: Deploy macondo bot (Fargate)
+
+# Updates the macondo-bot stack (aws/cfn/fargate/macondo-bot.yaml) to a
+# macondo-bot image. The image is built by macondo's own "Build and Deploy"
+# workflow, so nothing here runs on a push: run it by hand (Actions > Deploy
+# macondo bot (Fargate) > Run workflow), or
+#
+#   gh workflow run deploy-bot.yml                          # newest macondo master build
+#   gh workflow run deploy-bot.yml -f image_tag=master-gh571
+#
+# The bot drains on SIGTERM (it stops taking requests and answers the ones it
+# has), and the new task is running before the old one stops, so a deploy
+# drops no bot moves. Like the backend deploy, it waits for approval when the
+# "production" environment has required reviewers.
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "macondo-bot tag, e.g. master-gh571. Empty: the newest macondo master build."
+        required: false
+        type: string
+
+concurrency:
+  group: deploy-bot
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  # To sign in to AWS as liwordsGithubDeployRole (aws/cfn/fargate/base.yaml).
+  id-token: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      # Create the stack by hand first; this only updates it.
+      REQUIRE_EXISTING: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Pick the image
+        env:
+          INPUT_TAG: ${{ inputs.image_tag }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [[ -n "$INPUT_TAG" ]]; then
+            image="ghcr.io/domino14/macondo-bot:$INPUT_TAG"
+          else
+            image=$(scripts/fargate/latest-bot-tag.sh)
+          fi
+          echo "Deploying $image"
+          echo "IMAGE=$image" >> "$GITHUB_ENV"
+          echo "Deploying \`$image\`" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::509130939211:role/liwordsGithubDeployRole
+          aws-region: us-east-2
+
+      - name: Deploy macondo-bot
+        run: scripts/fargate/deploy-stack.sh macondo-bot aws/cfn/fargate/macondo-bot.yaml "Image=$IMAGE"
+
+      - name: Discord notification
+        if: success()
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        run: ./scripts/utilities/notify-discord.sh "macondo bot $IMAGE deployed to Fargate."
+        continue-on-error: true
+
+      - name: Discord notification (failure)
+        if: failure()
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        run: ./scripts/utilities/notify-discord.sh "Fargate deploy of macondo bot $IMAGE failed."
+        continue-on-error: true

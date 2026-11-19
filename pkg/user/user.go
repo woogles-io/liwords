@@ -21,6 +21,9 @@ type Store interface {
 	GetByVerificationToken(ctx context.Context, token string) (*entity.User, error)
 	// Username by UUID. Good for fast lookups.
 	Username(ctx context.Context, uuid string) (string, error)
+	// IsBot reports whether the user with this UUID is a bot, without
+	// loading the profile.
+	IsBot(ctx context.Context, uuid string) (bool, error)
 	New(ctx context.Context, user *entity.User) error
 	SetPassword(ctx context.Context, uuid string, hashpass string) error
 	SetEmailVerified(ctx context.Context, uuid string, verified bool) error

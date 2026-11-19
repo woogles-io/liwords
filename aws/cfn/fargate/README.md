@@ -71,18 +71,76 @@ Roll back with the old weights. Between steps, watch 5xx and response time
 on the load balancer and Jaeger. Once all traffic is on Fargate, scale the EC2
 service to 0, and later delete it.
 
-## Deploys from CI
+## Deploys
 
-`.github/workflows/deploy-fargate.yml` updates `liwords-api` and
-`liwords-socket` to the tag a master build just pushed, after the migration
-task has run. It is off until the repository variable `FARGATE_DEPLOY` is
-`true`. The `production` environment is the manual switch: with required
-reviewers, each deploy waits for an approval in the Actions tab; without,
-every master build deploys. It can also be run by hand with any tag, which is
-also how to roll back. Stacks that don't exist are skipped.
+`.github/workflows/deploy-fargate.yml` runs the image's migrations
+(`scripts/fargate/run-migration.sh`), then updates `liwords-api` and
+`liwords-socket` to the image tag. Stacks that don't exist are skipped. Before
+migrating it checks the order of the migrations added since the deployed tag.
 
-CI deploys through the base stack's `liwordsCfnDeployRole`, so the CI user
-can only start updates of these two stacks.
+It runs migrations only when the image adds migration files over the deployed
+one, so a rollback runs none. That matters: golang-migrate refuses to run from
+an image that lacks the database's current version, so migrating during a
+rollback past a migration would fail the deploy. The rolled-back code runs
+against the newer schema, so a migration has to stay compatible with the code
+before it (add columns and tables; drop them a release later).
+
+The socket server is redeployed only when its binary changed since the
+deployed tag, because a socket deploy disconnects every client once.
+`scripts/fargate/socket-changed.sh` builds `cmd/socketsrv` at both commits
+without build stamps and compares the bytes; a change to its Dockerfile or
+template counts too. `-f force_socket=true` redeploys it regardless.
+
+**By hand** (the usual way: merge a batch, then deploy once). With no tag it
+deploys the newest master build that pushed its images and passed its
+migration order check (`scripts/fargate/latest-image-tag.sh`); give a tag to deploy or roll back to
+that image:
+
+```bash
+gh workflow run deploy-fargate.yml                                # newest
+gh workflow run deploy-fargate.yml -f image_tag=master-gh2321     # that one
+```
+
+or Actions > Deploy backend (Fargate) > Run workflow.
+
+**On every master build**: only if the repository variable `FARGATE_DEPLOY`
+is `true`. Each build then makes its own deploy waiting for approval, so
+approve the newest and reject the rest.
+
+Master builds don't touch the database: migrations run only in an approved
+deploy, just before the code that needs them. They must still work with the
+code already running, which keeps running until the new tasks replace it.
+
+**The bot** has its own workflow, `.github/workflows/deploy-bot.yml`, since
+its image comes from macondo's builds. With no tag it deploys the newest
+macondo master build that pushed a bot image
+(`scripts/fargate/latest-bot-tag.sh`):
+
+```bash
+gh workflow run deploy-bot.yml                                    # newest
+gh workflow run deploy-bot.yml -f image_tag=master-gh571          # that one
+```
+
+or Actions > Deploy macondo bot (Fargate) > Run workflow. It only runs by
+hand.
+
+**Who can deploy:** the `production` environment's required reviewers
+(Settings > Environments). Anyone with write access can start either
+workflow, but its job waits until a reviewer approves it, and it runs only
+from master. Admins can't bypass the approval.
+
+That is enforced in AWS, not just in GitHub: deploys sign in as
+`liwordsGithubDeployRole` through GitHub's OIDC tokens, with no stored key,
+and the role trusts only jobs of this repository running in `production`.
+GitHub issues such a token only once the environment's rules let the job run,
+so a workflow that skips the environment gets no access. The role can run the
+migration task and start updates of `liwords-api`, `liwords-socket` and
+`macondo-bot`, which CloudFormation carries out as `liwordsCfnDeployRole`.
+The frontend deploy (`deploy_fe`, which runs `liwords-ui/scripts/deploy-s3.sh`)
+needs no approval, so it signs in as a second role,
+`liwordsGithubFrontendRole`, which trusts any job of this repository running
+on master and can only read, write and delete in the `woogles.io` bucket. No
+stored AWS key is left.
 
 ## Retiring the EC2 instances
 

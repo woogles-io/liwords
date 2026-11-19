@@ -536,6 +536,17 @@ func (q *Queries) GetUserId(ctx context.Context, username string) (int32, error)
 	return id, err
 }
 
+const getUserIsBotByUUID = `-- name: GetUserIsBotByUUID :one
+SELECT internal_bot FROM users WHERE uuid = $1
+`
+
+func (q *Queries) GetUserIsBotByUUID(ctx context.Context, uuid string) (bool, error) {
+	row := q.db.QueryRow(ctx, getUserIsBotByUUID, uuid)
+	var internal_bot bool
+	err := row.Scan(&internal_bot)
+	return internal_bot, err
+}
+
 const getUserUUIDFromDBID = `-- name: GetUserUUIDFromDBID :one
 SELECT uuid FROM users WHERE id = $1::integer
 `

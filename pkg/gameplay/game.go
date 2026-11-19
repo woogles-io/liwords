@@ -1020,12 +1020,14 @@ func shouldCensorRacksForViewers(ctx context.Context, g *entity.Game, s *stores.
 }
 
 func PotentiallySendBotMoveRequest(ctx context.Context, userStore user.Store, g *entity.Game) error {
-	userOnTurn, err := userStore.GetByUUID(ctx, g.PlayerIDOnTurn())
+	// Only the bot flag is needed. Loading the whole user would also load
+	// the profile, and a bot's stats are hundreds of KB of JSON.
+	isBot, err := userStore.IsBot(ctx, g.PlayerIDOnTurn())
 	if err != nil {
 		return err
 	}
 
-	if !userOnTurn.IsBot {
+	if !isBot {
 		return nil
 	}
 
@@ -1034,6 +1036,7 @@ func PotentiallySendBotMoveRequest(ctx context.Context, userStore user.Store, g 
 		BotType:         g.GameReq.BotType,
 		MillisRemaining: int32(g.TimeRemaining(g.PlayerOnTurn())),
 	}).(*macondopb.BotRequest)
+	setBotRequestID(evt, BotRequestID(g))
 	// message type doesn't matter here; we're going to make sure
 	// this doesn't get serialized with a message type.
 	wrapped := entity.WrapEvent(evt, 0)

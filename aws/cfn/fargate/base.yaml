@@ -32,11 +32,15 @@ Parameters:
   SecretsPath:
     Type: String
     Default: /liwords/prod/secrets
-  # The IAM user GitHub Actions runs as. It gets permission to update the
-  # service stacks through DeployRole, and nothing else from this stack.
-  GithubDeployUser:
+  # Deploys run as GithubDeployRole, which only a job of this repository in
+  # this GitHub environment can assume. The environment's required reviewers
+  # approve each deploy, so they are who can deploy.
+  GithubRepository:
     Type: String
-    Default: GithubActionsUploadUser
+    Default: woogles-io/liwords
+  GithubEnvironment:
+    Type: String
+    Default: production
 
 Resources:
   Cluster:
@@ -293,6 +297,25 @@ Resources:
                   - !Sub
                     - arn:aws:elasticloadbalancing:${AWS::Region}:${AWS::AccountId}:listener-rule/app/${Lb}/*
                     - Lb: !Join ["/", [!Select [2, !Split ["/", !Ref ListenerArn]], !Select [3, !Split ["/", !Ref ListenerArn]]]]
+              # The service stacks' log groups (liwords-api owns
+              # /ecs/liwords-db-migration).
+              - Effect: Allow
+                Action: logs:Describe* # log groups, index policies (drift checks)
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:DeleteLogGroup
+                  - logs:PutRetentionPolicy
+                  - logs:DeleteRetentionPolicy
+                  - logs:TagResource
+                  - logs:UntagResource
+                  - logs:ListTagsForResource
+                  - logs:TagLogGroup
+                  - logs:UntagLogGroup
+                  - logs:ListTagsLogGroup
+                  - logs:GetDataProtectionPolicy
+                Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/ecs/*
               - Effect: Allow
                 Action: iam:PassRole
                 Resource:
@@ -304,13 +327,78 @@ Resources:
                   StringEquals:
                     iam:PassedToService: ecs-tasks.amazonaws.com
 
-  # What CI needs to update liwords-api and liwords-socket, and watch them.
+  # GitHub Actions signs in with a token GitHub issues per job, not with a
+  # stored key. The token names the repository and, for a job that uses an
+  # environment, the environment; GitHub issues that one only after the
+  # environment's rules (required reviewers, master only) let the job run.
+  GithubOidcProvider:
+    Type: AWS::IAM::OIDCProvider
+    Properties:
+      Url: https://token.actions.githubusercontent.com
+      ClientIdList: [sts.amazonaws.com]
+      # AWS trusts GitHub's certificate authority and ignores these, but
+      # older API versions require some.
+      ThumbprintList:
+        - 6938fd4d98bab03faadb97b34396831e3780aea1
+        - 1c58a3a8518e8759bf075b76b750d4f2df264fcd
+
+  GithubDeployRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: liwordsGithubDeployRole
+      Description: GitHub Actions deploys, from approved production jobs only
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: { Federated: !Ref GithubOidcProvider }
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+                token.actions.githubusercontent.com:sub: !Sub repo:${GithubRepository}:environment:${GithubEnvironment}
+
+  # The frontend deploy (deploy_fe in build-and-deploy.yml, which runs
+  # liwords-ui/scripts/deploy-s3.sh) uploads each master build to the
+  # woogles.io bucket without an approval, so this trusts any job of this
+  # repository running on master. It can only touch that bucket.
+  GithubFrontendRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: liwordsGithubFrontendRole
+      Description: GitHub Actions frontend deploys, from master only
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: { Federated: !Ref GithubOidcProvider }
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+                token.actions.githubusercontent.com:sub: !Sub repo:${GithubRepository}:ref:refs/heads/master
+      Policies:
+        - PolicyName: frontend-bucket
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: s3:ListBucket
+                Resource: arn:aws:s3:::woogles.io
+              - Effect: Allow
+                Action: [s3:GetObject, s3:PutObject, s3:DeleteObject]
+                Resource: arn:aws:s3:::woogles.io/*
+
+  # What a deploy needs: run the migrations, update the service stacks, and
+  # watch them.
   GithubDeployPolicy:
     Type: AWS::IAM::ManagedPolicy
     Properties:
       ManagedPolicyName: liwords-github-deploy
       Description: Lets GitHub Actions update the liwords Fargate service stacks
-      Users: [!Ref GithubDeployUser]
+      Roles: [!Ref GithubDeployRole]
       PolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -326,6 +414,7 @@ Resources:
             Resource:
               - !Sub arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/liwords-api/*
               - !Sub arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/liwords-socket/*
+              - !Sub arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/macondo-bot/*
           # The deploy script reads DeployRoleArn from the base stack.
           - Effect: Allow
             Action: cloudformation:DescribeStacks
@@ -343,8 +432,26 @@ Resources:
             Condition:
               StringEquals:
                 iam:PassedToService: cloudformation.amazonaws.com
-          # The migration step registers a revision of
-          # liwords-db-migration-fargate with the new image, and runs it.
+          # The migration (scripts/fargate/run-migration.sh) registers a
+          # revision of liwords-db-migration-fargate with the new image, runs
+          # it, and reads its log if it fails.
+          - Effect: Allow
+            Action:
+              - ecs:RegisterTaskDefinition
+              - ecs:DescribeTaskDefinition
+            Resource: "*"
+          - Effect: Allow
+            Action: ecs:RunTask
+            Resource: !Sub arn:aws:ecs:${AWS::Region}:${AWS::AccountId}:task-definition/liwords-db-migration-fargate:*
+            Condition:
+              ArnEquals:
+                ecs:cluster: !GetAtt Cluster.Arn
+          - Effect: Allow
+            Action: ecs:DescribeTasks
+            Resource: !Sub arn:aws:ecs:${AWS::Region}:${AWS::AccountId}:task/${ClusterName}/*
+          - Effect: Allow
+            Action: logs:GetLogEvents
+            Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/ecs/liwords-db-migration:*
           - Effect: Allow
             Action: iam:PassRole
             Resource: !GetAtt ExecutionRole.Arn
@@ -389,3 +496,7 @@ Outputs:
   DeployRoleArn:
     Value: !GetAtt DeployRole.Arn
     Export: { Name: !Sub "${AWS::StackName}-DeployRoleArn" }
+  GithubDeployRoleArn:
+    Value: !GetAtt GithubDeployRole.Arn
+  GithubFrontendRoleArn:
+    Value: !GetAtt GithubFrontendRole.Arn

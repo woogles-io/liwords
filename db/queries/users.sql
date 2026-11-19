@@ -75,6 +75,9 @@ SELECT uuid FROM users WHERE id = @id::integer;
 -- name: GetUsernameFromUUID :one
 SELECT username FROM users WHERE uuid = @uuid;
 
+-- name: GetUserIsBotByUUID :one
+SELECT internal_bot FROM users WHERE uuid = @uuid;
+
 -- name: GetUserByEmail :one
 SELECT id, username, uuid, email, password, internal_bot, notoriety,
        verified, verification_token, verification_expires_at

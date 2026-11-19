@@ -12,25 +12,39 @@ name: Deploy backend (Fargate)
 #   deploys.
 #
 # Run it by hand (Actions > Deploy backend (Fargate) > Run workflow) to deploy
-# or roll back to any tag already on ghcr.io.
+# what master has now: with no tag, it deploys the newest master build that
+# pushed its images and ran its migration (scripts/fargate/latest-image-tag.sh).
+# Give a tag to deploy or roll back to any image already on ghcr.io:
+#
+#   gh workflow run deploy-fargate.yml                       # newest
+#   gh workflow run deploy-fargate.yml -f image_tag=master-gh2321
+#
+# The socket server is redeployed only when its binary changed (see
+# scripts/fargate/socket-changed.sh), since a socket deploy disconnects every
+# client once. Pass -f force_socket=true to redeploy it anyway.
 
 on:
   workflow_dispatch:
     inputs:
       image_tag:
-        description: "Image tag, e.g. master-gh2321"
-        required: true
+        description: "Image tag, e.g. master-gh2321. Empty: the newest master build."
+        required: false
         type: string
+      force_socket:
+        description: "Redeploy the socket server even if its code didn't change"
+        required: false
+        type: boolean
+        default: false
   workflow_call:
     inputs:
       image_tag:
         required: true
         type: string
+      force_socket:
+        required: false
+        type: boolean
+        default: false
     secrets:
-      AWS_ACCESS_KEY_ID:
-        required: true
-      AWS_SECRET_ACCESS_KEY:
-        required: true
       DISCORD_WEBHOOK:
         required: false
 
@@ -40,30 +54,110 @@ concurrency:
 
 permissions:
   contents: read
+  # To find the newest master build.
+  actions: read
+  # To sign in to AWS as liwordsGithubDeployRole (aws/cfn/fargate/base.yaml).
+  id-token: write
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     environment: production
     env:
-      IMAGE_TAG: ${{ inputs.image_tag }}
       # Stacks that don't exist yet are skipped, not created.
       REQUIRE_EXISTING: "1"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # socket-changed.sh builds the deployed and the new commit.
+          fetch-depth: 0
 
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Pick the image tag
+        env:
+          INPUT_TAG: ${{ inputs.image_tag }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="$INPUT_TAG"
+          if [[ -z "$tag" ]]; then
+            tag=$(scripts/fargate/latest-image-tag.sh)
+          fi
+          echo "Deploying $tag"
+          echo "IMAGE_TAG=$tag" >> "$GITHUB_ENV"
+          echo "Deploying \`$tag\`" >> "$GITHUB_STEP_SUMMARY"
+
+      # The role trusts only jobs in the production environment, which run
+      # once one of its required reviewers approves.
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          role-to-assume: arn:aws:iam::509130939211:role/liwordsGithubDeployRole
           aws-region: us-east-2
+
+      # Between the deployed API and this one: a migration numbered below one
+      # already applied would be skipped without an error. (Open PRs get the
+      # same check against master in migration-order.yml.)
+      #
+      # It also decides whether to run migrations: only when the new image
+      # adds migration files over the deployed one. A rollback to an image
+      # from before an applied migration must not run them: golang-migrate
+      # fails when the database's version isn't among the image's files.
+      - name: Check migration order
+        id: migrations
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          deployed=$(aws cloudformation describe-stacks --stack-name liwords-api \
+            --query "Stacks[0].Parameters[?ParameterKey=='ImageTag'].ParameterValue" --output text)
+          if ! old=$(scripts/fargate/tag-commit.sh "$deployed") || ! new=$(scripts/fargate/tag-commit.sh "$IMAGE_TAG"); then
+            echo "::warning::can't find the commits of $deployed and $IMAGE_TAG; skipping the order check and running migrations"
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          scripts/check-migration-order.sh "$old" "$new"
+          added=$(git diff --name-only --diff-filter=A "$old" "$new" -- db/migrations)
+          if [[ -n "$added" ]]; then
+            echo "New migrations since $deployed:"; echo "$added" | sed 's/^/  /'
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No new migrations since $deployed; not running them"
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Before the code that needs them.
+      - name: Run migrations
+        if: steps.migrations.outputs.run == 'true'
+        run: scripts/fargate/run-migration.sh "$IMAGE_TAG"
 
       - name: Deploy liwords-api
         run: scripts/fargate/deploy-stack.sh liwords-api aws/cfn/fargate/liwords-api.yaml "ImageTag=$IMAGE_TAG"
 
+      - name: Did the socket server change?
+        id: socket
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FORCE: ${{ inputs.force_socket }}
+        run: |
+          deployed=$(aws cloudformation describe-stacks --stack-name liwords-socket \
+            --query "Stacks[0].Parameters[?ParameterKey=='ImageTag'].ParameterValue" --output text 2>/dev/null || true)
+          if [[ -z "$deployed" || "$deployed" == None ]]; then
+            echo "no socket stack yet"; echo "deploy=true" >> "$GITHUB_OUTPUT"
+          elif [[ "$FORCE" == true ]]; then
+            echo "forced"; echo "deploy=true" >> "$GITHUB_OUTPUT"
+          elif scripts/fargate/socket-changed.sh "$deployed" "$IMAGE_TAG"; then
+            echo "deploy=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "deploy=false" >> "$GITHUB_OUTPUT"
+            echo "Socket server unchanged since \`$deployed\`; not redeployed" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
       - name: Deploy liwords-socket
+        if: steps.socket.outputs.deploy == 'true'
         run: scripts/fargate/deploy-stack.sh liwords-socket aws/cfn/fargate/liwords-socket.yaml "ImageTag=$IMAGE_TAG"
 
       - name: Discord notification
