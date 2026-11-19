@@ -76,25 +76,26 @@ const isEmailOfSuspendedAccount = `-- name: IsEmailOfSuspendedAccount :one
 SELECT EXISTS (
     SELECT 1
     FROM user_actions ua
-    JOIN users u ON u.id = ua.user_id
-    WHERE ua.action_type = 1 -- SUSPEND_ACCOUNT
+    WHERE ua.user_id IN (
+        SELECT id FROM users WHERE email_key(email) = email_key($1::text)
+        UNION ALL
+        SELECT user_id FROM email_changes WHERE email_key(old_email) = email_key($1::text)
+        UNION ALL
+        SELECT user_id FROM email_changes WHERE email_key(new_email) = email_key($1::text)
+    )
+      AND ua.action_type = 1 -- SUSPEND_ACCOUNT
       AND ua.removed_time IS NULL
       AND (ua.end_time IS NULL OR ua.end_time > NOW())
       AND ua.applier_id IS DISTINCT FROM ua.user_id
-      AND (
-        email_key(u.email) = email_key($1::text)
-        OR EXISTS (
-            SELECT 1 FROM email_changes ec
-            WHERE ec.user_id = u.id
-              AND email_key($1::text) IN (email_key(ec.old_email), email_key(ec.new_email))
-        )
-      )
 ) AS suspended
 `
 
 // Whether the address is the current or a past email of an account under a
 // suspension that someone else applied, so not one that only closed the
 // account at its owner's request. Addresses are compared by email_key.
+// It finds the accounts that have or had the address first, through the
+// email_key indexes, and only then checks those for a suspension, so its cost
+// doesn't grow with the number of suspended accounts.
 func (q *Queries) IsEmailOfSuspendedAccount(ctx context.Context, email string) (bool, error) {
 	row := q.db.QueryRow(ctx, isEmailOfSuspendedAccount, email)
 	var suspended bool
