@@ -13,6 +13,46 @@ import (
 	"github.com/woogles-io/liwords/pkg/entity"
 )
 
+const claimStaleBotTurns = `-- name: ClaimStaleBotTurns :many
+UPDATE ongoing_games o
+SET updated_at = now()
+WHERE o.started
+    AND o.on_turn IS NOT NULL
+    AND o.updated_at < now() - make_interval(secs => $1::float8)
+    AND EXISTS (
+        SELECT 1 FROM users u
+        WHERE u.id = CASE WHEN o.on_turn = 0 THEN o.player0_id ELSE o.player1_id END
+            AND u.internal_bot = true AND lower(u.username) != 'bestbot'
+    )
+RETURNING o.game_uuid
+`
+
+// The games where a bot has been on turn, with nothing saved, for longer than
+// @stale_seconds: its move request or its answer was probably lost. Each game
+// returned is claimed by bumping updated_at, so it comes back no sooner than
+// @stale_seconds from now, and two API servers running this at once never get
+// the same game (the second UPDATE re-checks the row after the first commits).
+// BestBot is left out, as in the listings above.
+func (q *Queries) ClaimStaleBotTurns(ctx context.Context, staleSeconds float64) ([]string, error) {
+	rows, err := q.db.Query(ctx, claimStaleBotTurns, staleSeconds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var game_uuid string
+		if err := rows.Scan(&game_uuid); err != nil {
+			return nil, err
+		}
+		items = append(items, game_uuid)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const countActiveCorrespondenceGames = `-- name: CountActiveCorrespondenceGames :one
 SELECT COUNT(*)::int
 FROM ongoing_games
