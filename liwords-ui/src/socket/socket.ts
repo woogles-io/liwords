@@ -47,6 +47,13 @@ type DecodedToken = {
   a: boolean; // authed
 };
 
+// How long to wait before reconnecting: 1 to 5 seconds, at random. A socket
+// server deploy closes every browser's socket in the same second, and with a
+// fixed delay they all came back within the next two or three, each asking
+// for a token and for the state of its realms at once.
+export const reconnectDelayMs = (random: () => number = Math.random) =>
+  1000 + Math.floor(random() * 4000);
+
 // Returning undefined from useEffect is fine, but some linters dislike it.
 const doNothing = () => {};
 
@@ -410,7 +417,7 @@ export const LiwordsSocket = (props: {
         });
       },
       reconnectAttempts: Infinity,
-      reconnectInterval: 1000,
+      reconnectInterval: () => reconnectDelayMs(),
       retryOnError: true,
       shouldReconnect: (closeEvent) => {
         const shouldReconn = isMountedRef.current;

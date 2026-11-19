@@ -4,7 +4,7 @@ import { ReactNode } from "react";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it, vi } from "vitest";
 import { Store, useLoginStateStoreContext } from "../store/store";
-import { LiwordsSocket } from "./socket";
+import { LiwordsSocket, reconnectDelayMs } from "./socket";
 
 const mocks = vi.hoisted(() => {
   // socket.ts reads this when it is imported
@@ -81,5 +81,13 @@ describe("LiwordsSocket", () => {
     expect(result.current).toBe("cid-later");
     expect(laterUrl).toContain("cid=cid-later");
     expect(earlierUrl).toBe("");
+  });
+});
+
+describe("reconnectDelayMs", () => {
+  it("waits between 1 and 5 seconds", () => {
+    expect(reconnectDelayMs(() => 0)).toBe(1000);
+    expect(reconnectDelayMs(() => 0.5)).toBe(3000);
+    expect(reconnectDelayMs(() => 0.99999)).toBe(4999);
   });
 });
