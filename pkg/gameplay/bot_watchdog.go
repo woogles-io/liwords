@@ -12,6 +12,7 @@ import (
 
 	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/stores"
+	"github.com/woogles-io/liwords/pkg/stores/models"
 )
 
 // A bot move request is published once and forgotten. If it is lost (NATS
@@ -33,6 +34,9 @@ const (
 	// seconds; a request resent early only costs a duplicate move that is
 	// then dropped.
 	BotTurnStaleAfter = 2 * time.Minute
+	// BestBotTurnStaleAfter is BotTurnStaleAfter for BestBot, whose moves
+	// are simmed and take longer. Resending early would start another sim.
+	BestBotTurnStaleAfter = 5 * time.Minute
 )
 
 // botRequestIDField is the field number of request_id in macondo's
@@ -96,10 +100,10 @@ func StaleBotResponse(resp *macondopb.BotResponse, g *entity.Game, botOnTurn boo
 }
 
 // RunBotWatchdog resends the move request of every game whose bot has been
-// on turn for longer than staleAfter, every interval, until ctx is done. It
-// is safe to run on every API server: ClaimStaleBotTurns hands each stuck
-// game to one of them.
-func RunBotWatchdog(ctx context.Context, s *stores.Stores, interval, staleAfter time.Duration) {
+// on turn for longer than staleAfter (bestBotStaleAfter for BestBot), every
+// interval, until ctx is done. It is safe to run on every API server:
+// ClaimStaleBotTurns hands each stuck game to one of them.
+func RunBotWatchdog(ctx context.Context, s *stores.Stores, interval, staleAfter, bestBotStaleAfter time.Duration) {
 	t := time.NewTicker(interval)
 	defer t.Stop()
 	for {
@@ -107,15 +111,18 @@ func RunBotWatchdog(ctx context.Context, s *stores.Stores, interval, staleAfter 
 		case <-ctx.Done():
 			return
 		case <-t.C:
-			ResendStaleBotRequests(ctx, s, staleAfter)
+			ResendStaleBotRequests(ctx, s, staleAfter, bestBotStaleAfter)
 		}
 	}
 }
 
 // ResendStaleBotRequests is one pass of RunBotWatchdog. It returns the IDs
 // of the games it claimed.
-func ResendStaleBotRequests(ctx context.Context, s *stores.Stores, staleAfter time.Duration) []string {
-	gameIDs, err := s.Queries.ClaimStaleBotTurns(ctx, staleAfter.Seconds())
+func ResendStaleBotRequests(ctx context.Context, s *stores.Stores, staleAfter, bestBotStaleAfter time.Duration) []string {
+	gameIDs, err := s.Queries.ClaimStaleBotTurns(ctx, models.ClaimStaleBotTurnsParams{
+		StaleSeconds:        staleAfter.Seconds(),
+		BestbotStaleSeconds: bestBotStaleAfter.Seconds(),
+	})
 	if err != nil {
 		log.Err(err).Msg("bot-watchdog-claim")
 		return nil

@@ -95,12 +95,12 @@ func TestWatchdogResendsStaleBotTurn(t *testing.T) {
 	ctx := context.Background()
 
 	// On turn for less than the threshold: left alone.
-	is.Equal(len(gameplay.ResendStaleBotRequests(ctx, gs.stores, time.Minute)), 0)
+	is.Equal(len(gameplay.ResendStaleBotRequests(ctx, gs.stores, time.Minute, 5*time.Minute)), 0)
 
 	ageBotTurn(t, gs, 3*time.Minute)
-	is.Equal(gameplay.ResendStaleBotRequests(ctx, gs.stores, time.Minute), []string{gs.g.GameID()})
+	is.Equal(gameplay.ResendStaleBotRequests(ctx, gs.stores, time.Minute, 5*time.Minute), []string{gs.g.GameID()})
 	// Claimed: not resent again until another threshold has passed.
-	is.Equal(len(gameplay.ResendStaleBotRequests(ctx, gs.stores, time.Minute)), 0)
+	is.Equal(len(gameplay.ResendStaleBotRequests(ctx, gs.stores, time.Minute, 5*time.Minute)), 0)
 
 	reqs := botRequests(gs)
 	is.Equal(len(reqs), 1)
@@ -108,12 +108,31 @@ func TestWatchdogResendsStaleBotTurn(t *testing.T) {
 	is.Equal(botRequestID(t, reqs[0]), strconv.Itoa(len(g.History().Events)))
 }
 
+// BestBot sims, so it gets longer before its request is resent.
+func TestWatchdogWaitsLongerForBestBot(t *testing.T) {
+	is := is.New(t)
+	gs := setupNewGame()
+	defer teardownGame(gs)
+	makeJesseABot(t, gs)
+	_, err := gs.stores.DBPool.Exec(context.Background(),
+		`UPDATE users SET username = 'BestBot' WHERE username = 'jesse'`)
+	is.NoErr(err)
+	ctx := context.Background()
+
+	ageBotTurn(t, gs, 3*time.Minute)
+	is.Equal(len(gameplay.ResendStaleBotRequests(ctx, gs.stores, time.Minute, 5*time.Minute)), 0)
+
+	ageBotTurn(t, gs, 6*time.Minute)
+	is.Equal(gameplay.ResendStaleBotRequests(ctx, gs.stores, time.Minute, 5*time.Minute), []string{gs.g.GameID()})
+	is.Equal(len(botRequests(gs)), 1)
+}
+
 func TestWatchdogIgnoresHumanTurn(t *testing.T) {
 	is := is.New(t)
 	gs := setupNewGame()
 	defer teardownGame(gs)
 	ageBotTurn(t, gs, 3*time.Minute)
-	is.Equal(len(gameplay.ResendStaleBotRequests(context.Background(), gs.stores, time.Minute)), 0)
+	is.Equal(len(gameplay.ResendStaleBotRequests(context.Background(), gs.stores, time.Minute, 5*time.Minute)), 0)
 	is.Equal(len(botRequests(gs)), 0)
 }
 
@@ -131,4 +150,3 @@ func TestStaleBotResponse(t *testing.T) {
 	gs.cancel()
 	<-gs.donechan
 }
-

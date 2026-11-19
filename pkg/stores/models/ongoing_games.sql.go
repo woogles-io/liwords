@@ -18,23 +18,32 @@ UPDATE ongoing_games o
 SET updated_at = now()
 WHERE o.started
     AND o.on_turn IS NOT NULL
-    AND o.updated_at < now() - make_interval(secs => $1::float8)
+    AND o.updated_at < now() - make_interval(secs => LEAST($1::float8, $2::float8))
     AND EXISTS (
         SELECT 1 FROM users u
         WHERE u.id = CASE WHEN o.on_turn = 0 THEN o.player0_id ELSE o.player1_id END
-            AND u.internal_bot = true AND lower(u.username) != 'bestbot'
+            AND u.internal_bot = true
+            AND o.updated_at < now() - make_interval(secs =>
+                CASE WHEN lower(u.username) = 'bestbot'
+                    THEN $2::float8
+                    ELSE $1::float8 END)
     )
 RETURNING o.game_uuid
 `
 
+type ClaimStaleBotTurnsParams struct {
+	StaleSeconds        float64
+	BestbotStaleSeconds float64
+}
+
 // The games where a bot has been on turn, with nothing saved, for longer than
-// @stale_seconds: its move request or its answer was probably lost. Each game
+// @stale_seconds (@bestbot_stale_seconds for BestBot, whose simming moves take
+// longer): its move request or its answer was probably lost. Each game
 // returned is claimed by bumping updated_at, so it comes back no sooner than
-// @stale_seconds from now, and two API servers running this at once never get
+// its threshold from now, and two API servers running this at once never get
 // the same game (the second UPDATE re-checks the row after the first commits).
-// BestBot is left out, as in the listings above.
-func (q *Queries) ClaimStaleBotTurns(ctx context.Context, staleSeconds float64) ([]string, error) {
-	rows, err := q.db.Query(ctx, claimStaleBotTurns, staleSeconds)
+func (q *Queries) ClaimStaleBotTurns(ctx context.Context, arg ClaimStaleBotTurnsParams) ([]string, error) {
+	rows, err := q.db.Query(ctx, claimStaleBotTurns, arg.StaleSeconds, arg.BestbotStaleSeconds)
 	if err != nil {
 		return nil, err
 	}

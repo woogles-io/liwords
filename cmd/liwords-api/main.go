@@ -594,7 +594,8 @@ func main() {
 
 	go pubsubBus.ProcessMessages(ctx)
 	go gamestore.RunShadowSummary(ctx, cfg, time.Hour)
-	go gameplay.RunBotWatchdog(ctx, stores, gameplay.BotWatchdogInterval, gameplay.BotTurnStaleAfter)
+	go gameplay.RunBotWatchdog(ctx, stores, gameplay.BotWatchdogInterval,
+		gameplay.BotTurnStaleAfter, gameplay.BestBotTurnStaleAfter)
 
 	var jobRunner *jobs.Runner
 	if cfg.RunJobs {
