@@ -359,6 +359,38 @@ Resources:
                 token.actions.githubusercontent.com:aud: sts.amazonaws.com
                 token.actions.githubusercontent.com:sub: !Sub repo:${GithubRepository}:environment:${GithubEnvironment}
 
+  # The frontend deploy (deploy_fe in build-and-deploy.yml, which runs
+  # liwords-ui/scripts/deploy-s3.sh) uploads each master build to the
+  # woogles.io bucket without an approval, so this trusts any job of this
+  # repository running on master. It can only touch that bucket.
+  GithubFrontendRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: liwordsGithubFrontendRole
+      Description: GitHub Actions frontend deploys, from master only
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: { Federated: !Ref GithubOidcProvider }
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+                token.actions.githubusercontent.com:sub: !Sub repo:${GithubRepository}:ref:refs/heads/master
+      Policies:
+        - PolicyName: frontend-bucket
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: s3:ListBucket
+                Resource: arn:aws:s3:::woogles.io
+              - Effect: Allow
+                Action: [s3:GetObject, s3:PutObject, s3:DeleteObject]
+                Resource: arn:aws:s3:::woogles.io/*
+
   # What a deploy needs: run the migrations, update the service stacks, and
   # watch them.
   GithubDeployPolicy:
@@ -466,3 +498,5 @@ Outputs:
     Export: { Name: !Sub "${AWS::StackName}-DeployRoleArn" }
   GithubDeployRoleArn:
     Value: !GetAtt GithubDeployRole.Arn
+  GithubFrontendRoleArn:
+    Value: !GetAtt GithubFrontendRole.Arn
