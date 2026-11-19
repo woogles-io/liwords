@@ -23,7 +23,13 @@ func Options(name string) []nats.Option {
 	return []nats.Option{
 		nats.Name(name),
 		nats.MaxReconnects(-1),
-		nats.ReconnectWait(time.Second),
+		// Messages published while a connection is down are buffered and
+		// flushed when it's back, but anyone who resubscribes after that
+		// flush misses them. After a NATS restart, how much is lost depends
+		// on how long clients wait before reconnecting: about a second's
+		// worth of messages at 1s, a handful at 100ms (plus nats.go's default
+		// 100ms jitter).
+		nats.ReconnectWait(100 * time.Millisecond),
 		// A server that disappears without closing the socket (an instance
 		// stopped hard, a network fault) is noticed only by missed pings.
 		// The default, 2 pings 2 minutes apart, takes up to 6 minutes;
