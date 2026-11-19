@@ -40,8 +40,7 @@ type ClaimStaleBotTurnsParams struct {
 // @stale_seconds (@bestbot_stale_seconds for BestBot, whose simming moves take
 // longer): its move request or its answer was probably lost. Each game
 // returned is claimed by bumping updated_at, so it comes back no sooner than
-// its threshold from now, and two API servers running this at once never get
-// the same game (the second UPDATE re-checks the row after the first commits).
+// its threshold from now, however often this runs.
 func (q *Queries) ClaimStaleBotTurns(ctx context.Context, arg ClaimStaleBotTurnsParams) ([]string, error) {
 	rows, err := q.db.Query(ctx, claimStaleBotTurns, arg.StaleSeconds, arg.BestbotStaleSeconds)
 	if err != nil {

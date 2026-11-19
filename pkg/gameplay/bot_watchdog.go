@@ -18,7 +18,7 @@ import (
 // A bot move request is published once and forgotten. If it is lost (NATS
 // restarting, a bot task dying mid-move) or the bot's answer is, nothing asks
 // again and the game sits with the bot on turn until an admin runs
-// UnfreezeBot. RunBotWatchdog asks again.
+// UnfreezeBot. ResendStaleBotRequests, a scheduled job, asks again.
 //
 // Asking again means a bot may answer the same position twice, or answer
 // after the game has moved on. Each request therefore carries an ID, the
@@ -27,8 +27,6 @@ import (
 // (StaleBotResponse).
 
 const (
-	// BotWatchdogInterval is how often RunBotWatchdog looks for stuck games.
-	BotWatchdogInterval = 30 * time.Second
 	// BotTurnStaleAfter is how long a bot may be on turn, with nothing saved,
 	// before its request is sent again. Bots other than BestBot answer in
 	// seconds; a request resent early only costs a duplicate move that is
@@ -99,40 +97,27 @@ func StaleBotResponse(resp *macondopb.BotResponse, g *entity.Game, botOnTurn boo
 	return ""
 }
 
-// RunBotWatchdog resends the move request of every game whose bot has been
-// on turn for longer than staleAfter (bestBotStaleAfter for BestBot), every
-// interval, until ctx is done. It is safe to run on every API server:
-// ClaimStaleBotTurns hands each stuck game to one of them.
-func RunBotWatchdog(ctx context.Context, s *stores.Stores, interval, staleAfter, bestBotStaleAfter time.Duration) {
-	t := time.NewTicker(interval)
-	defer t.Stop()
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-t.C:
-			ResendStaleBotRequests(ctx, s, staleAfter, bestBotStaleAfter)
-		}
-	}
-}
-
-// ResendStaleBotRequests is one pass of RunBotWatchdog. It returns the IDs
-// of the games it claimed.
-func ResendStaleBotRequests(ctx context.Context, s *stores.Stores, staleAfter, bestBotStaleAfter time.Duration) []string {
+// ResendStaleBotRequests resends the move request of every game whose bot
+// has been on turn for longer than staleAfter (bestBotStaleAfter for
+// BestBot), and returns the IDs of those games. Each game is claimed in the
+// database as it is found, so it isn't resent again until its threshold has
+// passed again, however often this runs.
+func ResendStaleBotRequests(ctx context.Context, s *stores.Stores, staleAfter, bestBotStaleAfter time.Duration) ([]string, error) {
 	gameIDs, err := s.Queries.ClaimStaleBotTurns(ctx, models.ClaimStaleBotTurnsParams{
 		StaleSeconds:        staleAfter.Seconds(),
 		BestbotStaleSeconds: bestBotStaleAfter.Seconds(),
 	})
 	if err != nil {
-		log.Err(err).Msg("bot-watchdog-claim")
-		return nil
+		return nil, err
 	}
 	for _, gid := range gameIDs {
+		// One game failing shouldn't keep the rest stuck. Its claim stands,
+		// so it is tried again after its threshold.
 		if err := resendBotRequest(ctx, s, gid); err != nil {
 			log.Err(err).Str("gid", gid).Msg("bot-watchdog-resend")
 		}
 	}
-	return gameIDs
+	return gameIDs, nil
 }
 
 func resendBotRequest(ctx context.Context, s *stores.Stores, gid string) error {

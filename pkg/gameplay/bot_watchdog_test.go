@@ -13,6 +13,7 @@ import (
 	"google.golang.org/protobuf/reflect/protoreflect"
 
 	"github.com/woogles-io/liwords/pkg/gameplay"
+	"github.com/woogles-io/liwords/pkg/stores"
 )
 
 // responseWithID is a BotResponse as a bot that echoes request_id sends it.
@@ -37,6 +38,15 @@ func TestBotResponseRequestID(t *testing.T) {
 	is := is.New(t)
 	is.Equal(gameplay.BotResponseRequestID(responseWithID(t, "12")), "12")
 	is.Equal(gameplay.BotResponseRequestID(&macondopb.BotResponse{GameId: "g"}), "")
+}
+
+func resend(t *testing.T, ctx context.Context, s *stores.Stores, staleAfter, bestBotStaleAfter time.Duration) []string {
+	t.Helper()
+	ids, err := gameplay.ResendStaleBotRequests(ctx, s, staleAfter, bestBotStaleAfter)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return ids
 }
 
 // makeJesseABot makes jesse, who is on turn first in setupNewGame's game, a
@@ -95,12 +105,12 @@ func TestWatchdogResendsStaleBotTurn(t *testing.T) {
 	ctx := context.Background()
 
 	// On turn for less than the threshold: left alone.
-	is.Equal(len(gameplay.ResendStaleBotRequests(ctx, gs.stores, time.Minute, 5*time.Minute)), 0)
+	is.Equal(len(resend(t, ctx, gs.stores, time.Minute, 5*time.Minute)), 0)
 
 	ageBotTurn(t, gs, 3*time.Minute)
-	is.Equal(gameplay.ResendStaleBotRequests(ctx, gs.stores, time.Minute, 5*time.Minute), []string{gs.g.GameID()})
+	is.Equal(resend(t, ctx, gs.stores, time.Minute, 5*time.Minute), []string{gs.g.GameID()})
 	// Claimed: not resent again until another threshold has passed.
-	is.Equal(len(gameplay.ResendStaleBotRequests(ctx, gs.stores, time.Minute, 5*time.Minute)), 0)
+	is.Equal(len(resend(t, ctx, gs.stores, time.Minute, 5*time.Minute)), 0)
 
 	reqs := botRequests(gs)
 	is.Equal(len(reqs), 1)
@@ -120,10 +130,10 @@ func TestWatchdogWaitsLongerForBestBot(t *testing.T) {
 	ctx := context.Background()
 
 	ageBotTurn(t, gs, 3*time.Minute)
-	is.Equal(len(gameplay.ResendStaleBotRequests(ctx, gs.stores, time.Minute, 5*time.Minute)), 0)
+	is.Equal(len(resend(t, ctx, gs.stores, time.Minute, 5*time.Minute)), 0)
 
 	ageBotTurn(t, gs, 6*time.Minute)
-	is.Equal(gameplay.ResendStaleBotRequests(ctx, gs.stores, time.Minute, 5*time.Minute), []string{gs.g.GameID()})
+	is.Equal(resend(t, ctx, gs.stores, time.Minute, 5*time.Minute), []string{gs.g.GameID()})
 	is.Equal(len(botRequests(gs)), 1)
 }
 
@@ -132,7 +142,7 @@ func TestWatchdogIgnoresHumanTurn(t *testing.T) {
 	gs := setupNewGame()
 	defer teardownGame(gs)
 	ageBotTurn(t, gs, 3*time.Minute)
-	is.Equal(len(gameplay.ResendStaleBotRequests(context.Background(), gs.stores, time.Minute, 5*time.Minute)), 0)
+	is.Equal(len(resend(t, context.Background(), gs.stores, time.Minute, 5*time.Minute)), 0)
 	is.Equal(len(botRequests(gs)), 0)
 }
 

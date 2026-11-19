@@ -10,10 +10,12 @@ import (
 	"github.com/woogles-io/liwords/pkg/bus"
 	"github.com/woogles-io/liwords/pkg/config"
 	"github.com/woogles-io/liwords/pkg/emailer"
+	"github.com/woogles-io/liwords/pkg/gameplay"
 	"github.com/woogles-io/liwords/pkg/jobs"
 	"github.com/woogles-io/liwords/pkg/maintenance"
 	"github.com/woogles-io/liwords/pkg/notify"
 	"github.com/woogles-io/liwords/pkg/outbox"
+	"github.com/woogles-io/liwords/pkg/stores"
 	"github.com/woogles-io/liwords/pkg/user"
 	"github.com/woogles-io/liwords/pkg/vdowebhook"
 )
@@ -33,6 +35,7 @@ type jobDeps struct {
 	users       user.Store
 	outbox      *outbox.Sender
 	maintenance *maintenance.Tasks
+	stores      *stores.Stores
 }
 
 // vdoPollOffset is how long after each interval boundary the VDO poll runs.
@@ -51,6 +54,13 @@ func registerJobs(r *jobs.Runner, d jobDeps) error {
 	schedule("adjudicate_correspondence_games", "* * * * *", d.bus.AdjudicateCorrespondenceGames)
 	schedule("expire_seeks", "*/10 * * * *", d.bus.ExpireSeeks)
 	schedule("reclaim_analysis_jobs", "*/30 * * * * *", d.analysis.ReclaimStaleJobs)
+	// A bot move request or its answer can be lost (NATS restarting, a bot
+	// dying mid-move); this asks again for games a bot has sat on too long.
+	schedule("resend_stale_bot_requests", "*/30 * * * * *", func(ctx context.Context) error {
+		_, err := gameplay.ResendStaleBotRequests(ctx, d.stores,
+			gameplay.BotTurnStaleAfter, gameplay.BestBotTurnStaleAfter)
+		return err
+	})
 	schedule("poll_broadcasts", "*/30 * * * * *", d.broadcasts.PollDue)
 	schedule("prune_client_records", "0 5 * * *", pruneClientRecords(d.users))
 	// Emails and Discord posts written to the outbox (league notices). One
