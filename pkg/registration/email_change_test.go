@@ -71,6 +71,7 @@ func TestConfirmEmailChangeNotifiesOldEmail(t *testing.T) {
 	is.True(strings.Contains(out, "To: old@example.com\n"))
 	is.True(strings.Contains(out, "Hi someone,"))
 	is.True(strings.Contains(out, "to new@example.com."))
+	is.True(strings.Contains(out, "write to woogles@woogles.io from this address"))
 }
 
 // Confirming the address the user already has sends nothing.

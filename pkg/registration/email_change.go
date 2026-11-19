@@ -9,12 +9,15 @@ import (
 	"github.com/rs/zerolog"
 
 	"github.com/woogles-io/liwords/pkg/emailer"
-	"github.com/woogles-io/liwords/pkg/mod"
 	"github.com/woogles-io/liwords/pkg/user"
 )
 
 // EmailChangeExpiration is how long the link sent to a new address works.
 const EmailChangeExpiration = 24 * time.Hour
+
+// accountHelpAddress is where the old address of a changed email is told to
+// write if the owner didn't make the change.
+const accountHelpAddress = "woogles@woogles.io"
 
 const emailChangeTemplate = `Hi %s,
 
@@ -101,7 +104,7 @@ func notifyOldEmail(ctx context.Context, us user.Store, change user.EmailChange,
 	}
 	_, err = emailer.SendSimpleMessageCtx(ctx, emailDebugMode, change.OldEmail,
 		"Your Woogles.io email was changed",
-		fmt.Sprintf(emailChangedTemplate, username, change.NewEmail, mod.AddressToContact))
+		fmt.Sprintf(emailChangedTemplate, username, change.NewEmail, accountHelpAddress))
 	if err != nil {
 		log.Err(err).Str("userID", change.UserUUID).Msg("email-changed-notice")
 	}
