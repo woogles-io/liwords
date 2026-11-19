@@ -463,6 +463,14 @@ type Outbox struct {
 	LastError string
 }
 
+type PendingEmailChange struct {
+	UserID    int32
+	NewEmail  string
+	Token     string
+	ExpiresAt pgtype.Timestamptz
+	CreatedAt pgtype.Timestamptz
+}
+
 type Permission struct {
 	ID          int32
 	Code        string

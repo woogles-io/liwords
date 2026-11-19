@@ -18,3 +18,8 @@ export const verifyEmail = RegistrationService.method.verifyEmail;
  * @generated from rpc user_service.RegistrationService.ResendVerificationEmail
  */
 export const resendVerificationEmail = RegistrationService.method.resendVerificationEmail;
+
+/**
+ * @generated from rpc user_service.RegistrationService.ConfirmEmailChange
+ */
+export const confirmEmailChange = RegistrationService.method.confirmEmailChange;

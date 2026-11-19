@@ -2,6 +2,7 @@ package registration
 
 import (
 	"context"
+	"errors"
 	"os"
 
 	"connectrpc.com/connect"
@@ -15,14 +16,19 @@ import (
 
 type RegistrationService struct {
 	userStore             user.Store
+	disposable            user.DisposableDomains
 	argonConfig           config.ArgonConfig
 	emailDebugMode        bool
 	skipEmailVerification bool
 }
 
-func NewRegistrationService(u user.Store, cfg config.ArgonConfig, emailDebugMode bool, skipEmailVerification bool) *RegistrationService {
+// NewRegistrationService makes a RegistrationService. Sign-ups and email
+// changes on a domain in disposable are refused; it may be nil.
+func NewRegistrationService(u user.Store, disposable user.DisposableDomains, cfg config.ArgonConfig,
+	emailDebugMode bool, skipEmailVerification bool) *RegistrationService {
 	return &RegistrationService{
 		userStore:             u,
+		disposable:            disposable,
 		argonConfig:           cfg,
 		emailDebugMode:        emailDebugMode,
 		skipEmailVerification: skipEmailVerification,
@@ -43,7 +49,7 @@ func (rs *RegistrationService) Register(ctx context.Context, r *connect.Request[
 	// }
 	err := RegisterUser(ctx, r.Msg.Username, r.Msg.Password, r.Msg.Email,
 		r.Msg.FirstName, r.Msg.LastName, r.Msg.BirthDate, r.Msg.CountryCode,
-		rs.userStore, r.Msg.RegistrationCode == codebot, rs.argonConfig, rs.emailDebugMode, rs.skipEmailVerification)
+		rs.userStore, rs.disposable, r.Msg.RegistrationCode == codebot, rs.argonConfig, rs.emailDebugMode, rs.skipEmailVerification)
 	if err != nil {
 		return nil, apiserver.InvalidArg(err.Error())
 	}
@@ -83,6 +89,22 @@ func (rs *RegistrationService) ResendVerificationEmail(ctx context.Context, r *c
 	return connect.NewResponse(&pb.ResendVerificationEmailResponse{
 		Message: "Verification email sent. Please check your inbox.",
 	}), nil
+}
+
+// ConfirmEmailChange makes the email change whose link was followed. It
+// needs no login: the token, sent only to the new address, is the proof.
+func (rs *RegistrationService) ConfirmEmailChange(ctx context.Context, r *connect.Request[pb.ConfirmEmailChangeRequest],
+) (*connect.Response[pb.ConfirmEmailChangeResponse], error) {
+	email, err := ConfirmEmailChange(ctx, rs.userStore, rs.disposable, r.Msg.Token, rs.emailDebugMode)
+	if err != nil {
+		if errors.Is(err, user.ErrEmailChangeNotFound) || errors.Is(err, user.ErrEmailTaken) ||
+			errors.Is(err, user.ErrEmailNotAllowed) || errors.Is(err, user.ErrDisposableEmail) {
+			return nil, apiserver.InvalidArg(err.Error())
+		}
+		zerolog.Ctx(ctx).Err(err).Msg("confirm-email-change")
+		return nil, apiserver.InternalErr(err)
+	}
+	return connect.NewResponse(&pb.ConfirmEmailChangeResponse{Email: email}), nil
 }
 
 // recordRegistrationClient stores where a new account was created from.

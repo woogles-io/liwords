@@ -87,6 +87,9 @@ const (
 	// RegistrationServiceResendVerificationEmailProcedure is the fully-qualified name of the
 	// RegistrationService's ResendVerificationEmail RPC.
 	RegistrationServiceResendVerificationEmailProcedure = "/user_service.RegistrationService/ResendVerificationEmail"
+	// RegistrationServiceConfirmEmailChangeProcedure is the fully-qualified name of the
+	// RegistrationService's ConfirmEmailChange RPC.
+	RegistrationServiceConfirmEmailChangeProcedure = "/user_service.RegistrationService/ConfirmEmailChange"
 	// ProfileServiceGetRatingsProcedure is the fully-qualified name of the ProfileService's GetRatings
 	// RPC.
 	ProfileServiceGetRatingsProcedure = "/user_service.ProfileService/GetRatings"
@@ -538,6 +541,7 @@ type RegistrationServiceClient interface {
 	Register(context.Context, *connect.Request[user_service.UserRegistrationRequest]) (*connect.Response[user_service.RegistrationResponse], error)
 	VerifyEmail(context.Context, *connect.Request[user_service.VerifyEmailRequest]) (*connect.Response[user_service.VerifyEmailResponse], error)
 	ResendVerificationEmail(context.Context, *connect.Request[user_service.ResendVerificationEmailRequest]) (*connect.Response[user_service.ResendVerificationEmailResponse], error)
+	ConfirmEmailChange(context.Context, *connect.Request[user_service.ConfirmEmailChangeRequest]) (*connect.Response[user_service.ConfirmEmailChangeResponse], error)
 }
 
 // NewRegistrationServiceClient constructs a client for the user_service.RegistrationService
@@ -569,6 +573,12 @@ func NewRegistrationServiceClient(httpClient connect.HTTPClient, baseURL string,
 			connect.WithSchema(registrationServiceMethods.ByName("ResendVerificationEmail")),
 			connect.WithClientOptions(opts...),
 		),
+		confirmEmailChange: connect.NewClient[user_service.ConfirmEmailChangeRequest, user_service.ConfirmEmailChangeResponse](
+			httpClient,
+			baseURL+RegistrationServiceConfirmEmailChangeProcedure,
+			connect.WithSchema(registrationServiceMethods.ByName("ConfirmEmailChange")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -577,6 +587,7 @@ type registrationServiceClient struct {
 	register                *connect.Client[user_service.UserRegistrationRequest, user_service.RegistrationResponse]
 	verifyEmail             *connect.Client[user_service.VerifyEmailRequest, user_service.VerifyEmailResponse]
 	resendVerificationEmail *connect.Client[user_service.ResendVerificationEmailRequest, user_service.ResendVerificationEmailResponse]
+	confirmEmailChange      *connect.Client[user_service.ConfirmEmailChangeRequest, user_service.ConfirmEmailChangeResponse]
 }
 
 // Register calls user_service.RegistrationService.Register.
@@ -594,11 +605,17 @@ func (c *registrationServiceClient) ResendVerificationEmail(ctx context.Context,
 	return c.resendVerificationEmail.CallUnary(ctx, req)
 }
 
+// ConfirmEmailChange calls user_service.RegistrationService.ConfirmEmailChange.
+func (c *registrationServiceClient) ConfirmEmailChange(ctx context.Context, req *connect.Request[user_service.ConfirmEmailChangeRequest]) (*connect.Response[user_service.ConfirmEmailChangeResponse], error) {
+	return c.confirmEmailChange.CallUnary(ctx, req)
+}
+
 // RegistrationServiceHandler is an implementation of the user_service.RegistrationService service.
 type RegistrationServiceHandler interface {
 	Register(context.Context, *connect.Request[user_service.UserRegistrationRequest]) (*connect.Response[user_service.RegistrationResponse], error)
 	VerifyEmail(context.Context, *connect.Request[user_service.VerifyEmailRequest]) (*connect.Response[user_service.VerifyEmailResponse], error)
 	ResendVerificationEmail(context.Context, *connect.Request[user_service.ResendVerificationEmailRequest]) (*connect.Response[user_service.ResendVerificationEmailResponse], error)
+	ConfirmEmailChange(context.Context, *connect.Request[user_service.ConfirmEmailChangeRequest]) (*connect.Response[user_service.ConfirmEmailChangeResponse], error)
 }
 
 // NewRegistrationServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -626,6 +643,12 @@ func NewRegistrationServiceHandler(svc RegistrationServiceHandler, opts ...conne
 		connect.WithSchema(registrationServiceMethods.ByName("ResendVerificationEmail")),
 		connect.WithHandlerOptions(opts...),
 	)
+	registrationServiceConfirmEmailChangeHandler := connect.NewUnaryHandler(
+		RegistrationServiceConfirmEmailChangeProcedure,
+		svc.ConfirmEmailChange,
+		connect.WithSchema(registrationServiceMethods.ByName("ConfirmEmailChange")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/user_service.RegistrationService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case RegistrationServiceRegisterProcedure:
@@ -634,6 +657,8 @@ func NewRegistrationServiceHandler(svc RegistrationServiceHandler, opts ...conne
 			registrationServiceVerifyEmailHandler.ServeHTTP(w, r)
 		case RegistrationServiceResendVerificationEmailProcedure:
 			registrationServiceResendVerificationEmailHandler.ServeHTTP(w, r)
+		case RegistrationServiceConfirmEmailChangeProcedure:
+			registrationServiceConfirmEmailChangeHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -653,6 +678,10 @@ func (UnimplementedRegistrationServiceHandler) VerifyEmail(context.Context, *con
 
 func (UnimplementedRegistrationServiceHandler) ResendVerificationEmail(context.Context, *connect.Request[user_service.ResendVerificationEmailRequest]) (*connect.Response[user_service.ResendVerificationEmailResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("user_service.RegistrationService.ResendVerificationEmail is not implemented"))
+}
+
+func (UnimplementedRegistrationServiceHandler) ConfirmEmailChange(context.Context, *connect.Request[user_service.ConfirmEmailChangeRequest]) (*connect.Response[user_service.ConfirmEmailChangeResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("user_service.RegistrationService.ConfirmEmailChange is not implemented"))
 }
 
 // ProfileServiceClient is a client for the user_service.ProfileService service.

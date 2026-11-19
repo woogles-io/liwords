@@ -334,9 +334,12 @@ func main() {
 	authenticationService := auth.NewAuthenticationService(stores.UserStore, stores.SessionStore, stores.ConfigStore,
 		cfg.SecretKey, cfg.EmailDebugMode, cfg.DiscordToken, cfg.ArgonConfig, cfg.SecureCookies, stores.Queries, redisPool)
 	authorizationService := auth.NewAuthorizationService(stores.UserStore, stores.Queries)
-	registrationService := registration.NewRegistrationService(stores.UserStore, cfg.ArgonConfig, cfg.EmailDebugMode, cfg.SkipEmailVerification)
+	// One copy of the disposable-email list, downloaded when first needed.
+	disposableEmails := disposableemail.NewList(disposableemail.ListURL)
+	registrationService := registration.NewRegistrationService(stores.UserStore, disposableEmails,
+		cfg.ArgonConfig, cfg.EmailDebugMode, cfg.SkipEmailVerification)
 	gameService := gameplay.NewGameService(stores.UserStore, stores.GameStore, stores.GameDocumentStore, cfg, stores.Queries)
-	profileService := pkgprofile.NewProfileService(stores.UserStore, userservices.NewS3Uploader(os.Getenv("AVATAR_UPLOAD_BUCKET"), s3Client), stores.Queries)
+	profileService := pkgprofile.NewProfileService(stores.UserStore, userservices.NewS3Uploader(os.Getenv("AVATAR_UPLOAD_BUCKET"), s3Client), stores.Queries, cfg.EmailDebugMode, disposableEmails)
 
 	// Organization and verification services
 	verificationS3Uploader := userservices.NewS3Uploader(os.Getenv("IDENTITY_VERIFICATION_UPLOAD_BUCKET"), s3Client)
@@ -347,7 +350,7 @@ func main() {
 	autocompleteService := userservices.NewAutocompleteService(stores.UserStore)
 	socializeService := userservices.NewSocializeService(stores.UserStore, stores.ChatStore, stores.PresenceStore, stores.Queries)
 	configService := config.NewConfigService(stores.ConfigStore, stores.UserStore, stores.Queries,
-		disposableemail.NewList(disposableemail.ListURL))
+		disposableEmails)
 	tournamentService := tournament.NewTournamentService(stores.TournamentStore, stores.UserStore, cfg, lambdaClient, stores.Queries)
 	gameCreatorAdapter := &GameCreatorAdapter{
 		stores:    stores,

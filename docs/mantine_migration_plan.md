@@ -346,7 +346,7 @@ No fidelity requirement. This is where the `@mantine/form` patterns get establis
 
 ## Phase 6 — Lobby and auth (2 PRs)
 
-- **6a — Auth forms**: `register` (AutoComplete birthdate with a borderless `Input` child, 6 rules blocks, ToS `Checkbox`, `Modal.success`), `login`, `password_reset`, `new_password`, `verify_email` (`Result`). Rewrite `lobby/accountForms.scss`. **M**
+- **6a — Auth forms**: `register` (AutoComplete birthdate with a borderless `Input` child, 6 rules blocks, ToS `Checkbox`, `Modal.success`), `login`, `password_reset`, `new_password`, `verify_email` and `confirm_email_change` (both `Result`). Rewrite `lobby/accountForms.scss`. **M**
 - **6b — Lobby proper**: `seek_form.tsx` (2 always-open `Slider` tooltips, `AutoComplete`, `Radio.Group`/`Radio.Button` segmented → Mantine `SegmentedControl`), `bot_selector.tsx` (rich JSX option labels + its zero-padding `ConfigProvider`), `seek_confirm_modal.tsx` (the only `theme.useToken()` call), `gameLists`, `active_games`, `sought_games`, `correspondence_games`, `announcements` (Tabs). Rewrite `lobby/lobby.scss`, `seek_form.scss`, `upcoming_tournaments.scss`, `shared/gameLists.scss`. Drop the nested `ConfigProvider` in `lobby.tsx`. **L**
 
 ---

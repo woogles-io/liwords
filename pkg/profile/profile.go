@@ -13,6 +13,7 @@ import (
 	"github.com/woogles-io/liwords/pkg/auth/rbac"
 	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/mod"
+	"github.com/woogles-io/liwords/pkg/registration"
 	"github.com/woogles-io/liwords/pkg/stores/models"
 	"github.com/woogles-io/liwords/pkg/user"
 	userservices "github.com/woogles-io/liwords/pkg/user/services"
@@ -41,14 +42,23 @@ type ProfileService struct {
 	userStore     user.Store
 	avatarService userservices.UploadService
 	queries       *models.Queries
+	// emailDebugMode logs emails instead of sending them.
+	emailDebugMode bool
+	// disposable refuses new emails on disposable domains; it may be nil.
+	disposable user.DisposableDomains
 
 	badgesCacheMu      sync.RWMutex
 	badgesCache        *pb.BadgeMetadataResponse
 	badgesCacheFetched time.Time
 }
 
-func NewProfileService(u user.Store, us userservices.UploadService, q *models.Queries) *ProfileService {
-	return &ProfileService{userStore: u, avatarService: us, queries: q}
+// NewProfileService makes a ProfileService. With emailDebugMode, emails such
+// as the link to confirm a new address are logged instead of sent. A new
+// email on a domain in disposable is refused; it may be nil.
+func NewProfileService(u user.Store, us userservices.UploadService, q *models.Queries,
+	emailDebugMode bool, disposable user.DisposableDomains) *ProfileService {
+	return &ProfileService{userStore: u, avatarService: us, queries: q,
+		emailDebugMode: emailDebugMode, disposable: disposable}
 }
 
 func modActionExistsErr(err error) error {
@@ -242,15 +252,22 @@ func (ps *ProfileService) UpdatePersonalInfo(ctx context.Context, r *connect.Req
 		}
 	}
 
-	// The email first: it is the write that can be refused, and a refusal
-	// should leave the rest of the profile as it was.
+	// The email first: it is the step that can be refused, and a refusal
+	// should leave the rest of the profile as it was. It changes only once
+	// the user follows the link sent to the new address.
+	pendingEmail := ""
 	if email != u.Email {
-		if err := ps.userStore.ChangeEmail(ctx, u.UUID, email, u.UUID); err != nil {
-			if errors.Is(err, user.ErrEmailTaken) {
+		err := registration.RequestEmailChange(ctx, ps.userStore, ps.disposable, u.Username, u.UUID, email,
+			ps.emailDebugMode)
+		if err != nil {
+			if errors.Is(err, user.ErrEmailNotAllowed) || errors.Is(err, user.ErrEmailTaken) ||
+				errors.Is(err, user.ErrDisposableEmail) {
 				return nil, apiserver.InvalidArg(err.Error())
 			}
+			log.Err(err).Str("userID", u.UUID).Msg("request-email-change")
 			return nil, apiserver.InternalErr(err)
 		}
+		pendingEmail = email
 	}
 	updateErr := ps.userStore.SetPersonalInfo(ctx, u.UUID, r.Msg.FirstName,
 		r.Msg.LastName, r.Msg.BirthDate, r.Msg.CountryCode, r.Msg.About)
@@ -258,7 +275,7 @@ func (ps *ProfileService) UpdatePersonalInfo(ctx context.Context, r *connect.Req
 		return nil, apiserver.InternalErr(updateErr)
 	}
 
-	return connect.NewResponse(&pb.UpdatePersonalInfoResponse{}), nil
+	return connect.NewResponse(&pb.UpdatePersonalInfoResponse{PendingEmail: pendingEmail}), nil
 }
 
 func (ps *ProfileService) UpdateAvatar(ctx context.Context, r *connect.Request[pb.UpdateAvatarRequest],
