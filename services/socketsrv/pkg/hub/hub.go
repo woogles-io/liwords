@@ -28,6 +28,17 @@ const LobbyRealm Realm = "lobby"
 
 const ConnPollPeriod = 60 * time.Second
 
+// After the NATS connection comes back, every socket's realms are refreshed:
+// whatever was published while it was down never reached the browsers, and
+// they would show stale games and lobbies until reloaded. The API is
+// reconnecting at the same moment, so wait for it before asking, and ask at a
+// pace it can absorb rather than all at once.
+const (
+	resyncDelay = 2 * time.Second
+	resyncBatch = 50
+	resyncPause = 100 * time.Millisecond
+)
+
 // Metrics tracking for getFollowers API requests
 var (
 	getFollowersRequestCount int64 // Total API requests made
@@ -83,10 +94,20 @@ type Hub struct {
 	sendConnMessage chan ConnMessage
 	// endUserSockets receives user IDs whose sockets must all be closed.
 	endUserSockets chan string
+	// resync is signaled when every socket's realm info should be resent.
+	resync chan struct{}
 }
 
 func NewHub(cfg *config.Config) (*Hub, error) {
-	pubsub, err := newPubSub(cfg.NatsURL, cfg)
+	resync := make(chan struct{}, 1)
+	pubsub, err := newPubSub(cfg.NatsURL, cfg, func() {
+		time.AfterFunc(resyncDelay, func() {
+			select {
+			case resync <- struct{}{}:
+			default: // one is already pending
+			}
+		})
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -103,6 +124,7 @@ func NewHub(cfg *config.Config) (*Hub, error) {
 		broadcastUser:   make(chan UserMessage),
 		sendConnMessage: make(chan ConnMessage),
 		endUserSockets:  make(chan string),
+		resync:          resync,
 		register:        make(chan *Client),
 		unregister:      make(chan *Client),
 		clients:         make(map[*Client][]Realm),
@@ -313,6 +335,11 @@ func (h *Hub) Run() {
 				}
 			}
 
+		case <-h.resync:
+			msgs := h.realmInitInfoForAll()
+			log.Info().Int("sockets", len(msgs)).Msg("resyncing-realms-after-nats-reconnect")
+			go h.publishPaced(msgs, resyncBatch, resyncPause)
+
 		case <-ticker.C:
 			// Calculate per-minute rates for getFollowers API
 			currentRequests := atomic.LoadInt64(&getFollowersRequestCount)
@@ -434,7 +461,49 @@ func registerRealm(c *Client, path string, h *Hub) error {
 }
 
 func (h *Hub) sendRealmInitInfo(c *Client) error {
+	m, err := realmInitInfo(c)
+	if err != nil {
+		return err
+	}
+	return h.pubsub.natsconn.Publish(m.subject, m.data)
+}
 
+type natsMsg struct {
+	subject string
+	data    []byte
+}
+
+// realmInitInfoForAll is what sendRealmInitInfo would send for every
+// registered socket. Call it only from Run, which owns the client maps.
+func (h *Hub) realmInitInfoForAll() []natsMsg {
+	msgs := make([]natsMsg, 0, len(h.clients))
+	for c := range h.clients {
+		m, err := realmInitInfo(c)
+		if err != nil {
+			log.Err(err).Str("connid", c.connID).Msg("realm-init-info")
+			continue
+		}
+		msgs = append(msgs, m)
+	}
+	return msgs
+}
+
+// publishPaced publishes msgs, pausing for pause after every batch of them.
+func (h *Hub) publishPaced(msgs []natsMsg, batch int, pause time.Duration) {
+	for i, m := range msgs {
+		if i > 0 && i%batch == 0 {
+			time.Sleep(pause)
+		}
+		if err := h.pubsub.natsconn.Publish(m.subject, m.data); err != nil {
+			log.Err(err).Msg("resync-publish")
+			return
+		}
+	}
+}
+
+// realmInitInfo asks the API to send c the current state of its realms
+// (lobby seeks, a game's history, tournament standings).
+func realmInitInfo(c *Client) (natsMsg, error) {
 	realms := []string{}
 	for _, r := range c.realms {
 		if r != "" {
@@ -449,13 +518,12 @@ func (h *Hub) sendRealmInitInfo(c *Client) error {
 
 	data, err := proto.Marshal(req)
 	if err != nil {
-		return err
+		return natsMsg{}, err
 	}
 
 	log.Debug().Interface("initRealmInfo", req).Msg("req-init-realm-info")
 
-	return h.pubsub.natsconn.Publish(extendTopic(c, "ipc.pb.initRealmInfo"), data)
-
+	return natsMsg{extendTopic(c, "ipc.pb.initRealmInfo"), data}, nil
 }
 
 // handlePresenceChanged processes new-style efficient presence notifications

@@ -20,8 +20,8 @@ type PubSub struct {
 	config        *config.Config
 }
 
-func newPubSub(natsURL string, cfg *config.Config) (*PubSub, error) {
-	natsconn, err := nats.Connect(natsURL, natsopts.Options("liwords-socket")...)
+func newPubSub(natsURL string, cfg *config.Config, onReconnect func()) (*PubSub, error) {
+	natsconn, err := nats.Connect(natsURL, natsopts.Options("liwords-socket", onReconnect)...)
 
 	if err != nil {
 		return nil, err
