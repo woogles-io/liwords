@@ -66,6 +66,8 @@ Resources:
             - { Name: MACONDO_NATS_URL, Value: "nats://10.0.0.251:4222" }
             - { Name: MACONDO_DATA_PATH, Value: /data/data }
             - { Name: MACONDO_KWG_PATH_PREFIX, Value: "2024" }
+            # Keep the lexicon files already on the EFS volume; only fetch missing ones.
+            - { Name: MACONDO_LEXICON_AUTO_UPDATE, Value: "false" }
             - { Name: MACONDO_LAMBDA_FUNCTION_NAME, Value: MacondoLambdaFunction }
             - { Name: NO_COLOR, Value: "true" }
 
