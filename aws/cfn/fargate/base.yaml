@@ -212,6 +212,17 @@ Resources:
           - Effect: Allow
             Principal: { Service: ecs-tasks.amazonaws.com }
             Action: sts:AssumeRole
+      Policies:
+        # The socket server watches its own target, to close its sockets
+        # gradually once it starts draining. This action can't be limited
+        # to one target group.
+        - PolicyName: TargetHealth
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: elasticloadbalancing:DescribeTargetHealth
+                Resource: "*"
 
   BotTaskRole:
     Type: AWS::IAM::Role

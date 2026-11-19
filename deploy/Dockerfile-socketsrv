@@ -1,5 +1,8 @@
 # Built by deploy/build-and-tag.sh, whose build context holds the binary.
 FROM debian:latest
+# For calls to AWS over TLS (see cmd/socketsrv/drain.go).
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 COPY socketsrv /opt/socketsrv
 EXPOSE 8087
 
