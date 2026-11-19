@@ -241,6 +241,7 @@ func channelToRealm(channel string) Realm {
 
 func (h *Hub) Run() {
 	go h.PubsubProcess()
+	go h.followerProcess(h.handlePresenceChanged, h.handleSeekFollowed)
 	ticker := time.NewTicker(ConnPollPeriod)
 	defer func() {
 		ticker.Stop()

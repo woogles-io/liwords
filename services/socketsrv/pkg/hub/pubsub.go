@@ -1,6 +1,7 @@
 package sockets
 
 import (
+	"hash/fnv"
 	"strings"
 
 	nats "github.com/nats-io/nats.go"
@@ -9,6 +10,18 @@ import (
 	"github.com/woogles-io/liwords/pkg/natsopts"
 	"github.com/woogles-io/liwords/services/socketsrv/pkg/config"
 )
+
+// subChanSize is how many messages each subscription holds while the hub
+// works through earlier ones. nats.go drops whatever arrives when it is full
+// ("slow consumer"). A socket deploy brings every client back within a few
+// seconds, and each asks the API for its realms: several connid messages per
+// client, about 2,000 for 450 clients.
+const subChanSize = 4096
+
+// followerShards is how many goroutines look up followers for
+// presence.changed and seek.followed messages. A lookup is a request to the
+// API, so these run apart from the forwarding of everything else.
+const followerShards = 8
 
 // PubSub encapsulates the various subscriptions to the different channels.
 // The `liwords` package should have a very similar structure.
@@ -66,7 +79,7 @@ func newPubSub(natsURL string, cfg *config.Config, onReconnect func()) (*PubSub,
 	}
 	// Subscribe to the above topics.
 	for _, topic := range topics {
-		ch := make(chan *nats.Msg, 512)
+		ch := make(chan *nats.Msg, subChanSize)
 		sub, err := natsconn.ChanSubscribe(topic, ch)
 		if err != nil {
 			return nil, err
@@ -219,6 +232,25 @@ func (h *Hub) PubsubProcess() {
 			}
 			h.sendToRealm(Realm("broadcasts-"+subtopics[1]), msg.Data)
 
+		}
+
+	}
+}
+
+// followerProcess handles presence.changed and seek.followed messages, which
+// are sent to a user's followers or follows. Looking those up is a request
+// to the API, one per message unless the followers cache has them. Done in
+// PubsubProcess, the lookups held up every other message: when a socket
+// deploy brought hundreds of users back at once, each socket server spent
+// seconds on them while connid messages piled up and were dropped.
+//
+// Messages are spread over followerShards goroutines by user, so one user's
+// changes are handled in the order they came. A slow lookup delays only the
+// users in its shard.
+func (h *Hub) followerProcess(presence, seek func(userID string, data []byte)) {
+	shards := newShardedRunner(followerShards, subChanSize/followerShards)
+	for {
+		select {
 		case msg := <-h.pubsub.subchans["presence.changed.>"]:
 			log.Debug().Str("topic", msg.Subject).Msg("presence-changed")
 			subtopics := strings.Split(msg.Subject, ".")
@@ -226,8 +258,8 @@ func (h *Hub) PubsubProcess() {
 				log.Error().Msgf("presence.changed subtopics weird %v", msg.Subject)
 				continue
 			}
-			userID := subtopics[2]
-			h.handlePresenceChanged(userID, msg.Data)
+			userID, data := subtopics[2], msg.Data
+			shards.run(userID, func() { presence(userID, data) })
 
 		case msg := <-h.pubsub.subchans["seek.followed.>"]:
 			log.Debug().Str("topic", msg.Subject).Msg("seek-followed")
@@ -236,9 +268,41 @@ func (h *Hub) PubsubProcess() {
 				log.Error().Msgf("seek.followed subtopics weird %v", msg.Subject)
 				continue
 			}
-			seekerUserID := subtopics[2]
-			h.handleSeekFollowed(seekerUserID, msg.Data)
+			seekerUserID, data := subtopics[2], msg.Data
+			shards.run(seekerUserID, func() { seek(seekerUserID, data) })
 		}
-
 	}
+}
+
+// shardedRunner runs functions on a fixed set of goroutines, each function
+// on the goroutine its key hashes to, so functions with the same key run one
+// at a time in the order they were given.
+type shardedRunner struct {
+	shards []chan func()
+}
+
+func newShardedRunner(n, queue int) *shardedRunner {
+	s := &shardedRunner{shards: make([]chan func(), n)}
+	for i := range s.shards {
+		ch := make(chan func(), queue)
+		s.shards[i] = ch
+		go func() {
+			for f := range ch {
+				f()
+			}
+		}()
+	}
+	return s
+}
+
+func (s *shardedRunner) shardFor(key string) int {
+	f := fnv.New32a()
+	f.Write([]byte(key))
+	return int(f.Sum32() % uint32(len(s.shards)))
+}
+
+// run queues f on key's goroutine. It blocks while that goroutine's queue
+// is full.
+func (s *shardedRunner) run(key string, f func()) {
+	s.shards[s.shardFor(key)] <- f
 }
