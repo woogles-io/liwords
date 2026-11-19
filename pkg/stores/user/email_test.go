@@ -16,6 +16,7 @@ import (
 const (
 	cesarUUID = "mozEwaVMvTfUA2oxZfYN8k"
 	minaUUID  = "iW7AaqNJDuaxgcYnrFfcJF"
+	jesseUUID = "3xpEkpRAy3AizbVmDg3kdi"
 )
 
 func TestChangeEmail(t *testing.T) {
@@ -161,6 +162,7 @@ func TestIsEmailOfSuspendedAccount(t *testing.T) {
 	is.True(suspended("mina+again@gmail.com"))
 	is.True(suspended("mina@wolges.io"))
 	is.True(!suspended("mina2@gmail.com"))
+	is.True(suspended("as.dfgh@googlemail.com"))
 
 	// Closing one's own account suspends it too, but that does not count.
 	suspend("jesse", "jesse", "NULL", false)
@@ -266,4 +268,11 @@ func TestIsEmailKeyTaken(t *testing.T) {
 	is.NoErr(ustore.ChangeEmail(ctx, cesarUUID, "cesar+tag@woogles.io", cesarUUID))
 	is.True(taken("", "cesar@woogles.io"))
 	is.True(taken("", "cesar+other@woogles.io"))
+	// Gmail ignores dots before the @, and googlemail.com is gmail.com; other
+	// providers' dots count.
+	is.True(taken("", "m.i.n.a@gmail.com"))
+	is.True(taken("", "Mi.Na+x@googlemail.com"))
+	is.NoErr(ustore.ChangeEmail(ctx, jesseUUID, "jes.se@proton.me", jesseUUID))
+	is.True(taken("", "jes.se@proton.me"))
+	is.True(!taken("", "jesse@proton.me"))
 }
