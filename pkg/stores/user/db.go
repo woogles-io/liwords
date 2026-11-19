@@ -410,8 +410,14 @@ func (s *DBStore) ChangeEmail(ctx context.Context, uuid string, email string, ch
 		return err
 	}
 	defer tx.Rollback(ctx)
-	qtx := s.queries.WithTx(tx)
+	if err := changeEmail(ctx, s.queries.WithTx(tx), uuid, email, changedBy); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
 
+// changeEmail is ChangeEmail within the caller's transaction.
+func changeEmail(ctx context.Context, qtx *models.Queries, uuid string, email string, changedBy string) error {
 	oldEmail, err := qtx.GetUserEmailForUpdate(ctx, uuid)
 	if err != nil {
 		return err
@@ -436,7 +442,72 @@ func (s *DBStore) ChangeEmail(ctx context.Context, uuid string, email string, ch
 	if n != 1 {
 		return fmt.Errorf("email change not recorded for user %s by %s", uuid, changedBy)
 	}
-	return tx.Commit(ctx)
+	return nil
+}
+
+// RequestEmailChange records that the user wants the given email, until
+// expiresAt, replacing any change the user was already waiting on. The email
+// stays as it is until ConfirmEmailChange is given the token.
+func (s *DBStore) RequestEmailChange(ctx context.Context, uuid string, email string, token string,
+	expiresAt time.Time) error {
+	n, err := s.queries.SetPendingEmailChange(ctx, models.SetPendingEmailChangeParams{
+		UserUuid:  uuid,
+		NewEmail:  email,
+		Token:     token,
+		ExpiresAt: pgtype.Timestamptz{Time: expiresAt, Valid: true},
+	})
+	if err != nil {
+		return err
+	}
+	if n != 1 {
+		return fmt.Errorf("no user %s to change the email of", uuid)
+	}
+	return nil
+}
+
+// ConfirmEmailChange makes the pending change with this token, as the user's
+// own change, if check allows the new email, and returns the user's UUID and
+// new email. The token works once; a change that fails leaves it pending. It
+// returns user.ErrEmailChangeNotFound for a token that is unknown or expired,
+// user.ErrEmailTaken if another account took the address in the meantime,
+// and whatever check returns.
+func (s *DBStore) ConfirmEmailChange(ctx context.Context, token string,
+	check func(email string) error) (string, string, error) {
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	if err != nil {
+		return "", "", err
+	}
+	defer tx.Rollback(ctx)
+	qtx := s.queries.WithTx(tx)
+
+	pending, err := qtx.TakePendingEmailChange(ctx, token)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", "", user.ErrEmailChangeNotFound
+	}
+	if err != nil {
+		return "", "", err
+	}
+	if !pending.ExpiresAt.Time.After(time.Now()) {
+		return "", "", user.ErrEmailChangeNotFound
+	}
+	if err := check(pending.NewEmail); err != nil {
+		return "", "", err
+	}
+	uuid, err := qtx.GetUserUUIDFromDBID(ctx, pending.UserID)
+	if err != nil {
+		return "", "", err
+	}
+	if err := changeEmail(ctx, qtx, uuid, pending.NewEmail, uuid); err != nil {
+		return "", "", err
+	}
+	return uuid, pending.NewEmail, tx.Commit(ctx)
+}
+
+// IsEmailOfSuspendedAccount reports whether the address, ignoring case and
+// any +tag, is the current or a past email of an account suspended by
+// someone other than its owner.
+func (s *DBStore) IsEmailOfSuspendedAccount(ctx context.Context, email string) (bool, error) {
+	return s.queries.IsEmailOfSuspendedAccount(ctx, email)
 }
 
 // SetRatings set the specific ratings for the given variant in a transaction.

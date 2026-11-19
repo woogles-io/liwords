@@ -100,6 +100,9 @@ func RegisterUser(ctx context.Context, username string, password string, email s
 	if _, err := userStore.GetByEmail(ctx, email); err == nil {
 		return errors.New("That email address has already been signed up, please log in with your existing username")
 	}
+	if err := user.CheckEmailAllowed(ctx, userStore, email); err != nil {
+		return err
+	}
 
 	config := auth.NewPasswordConfig(argonConfig.Time, argonConfig.Memory, argonConfig.Threads, argonConfig.Keylen)
 	hashPass, err := auth.GeneratePassword(config, password)

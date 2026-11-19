@@ -51,6 +51,40 @@ func (q *Queries) GetUserEmailForUpdate(ctx context.Context, uuid string) (strin
 	return email, err
 }
 
+const isEmailOfSuspendedAccount = `-- name: IsEmailOfSuspendedAccount :one
+SELECT EXISTS (
+    SELECT 1
+    FROM user_actions ua
+    JOIN users u ON u.id = ua.user_id
+    WHERE ua.action_type = 1 -- SUSPEND_ACCOUNT
+      AND ua.removed_time IS NULL
+      AND (ua.end_time IS NULL OR ua.end_time > NOW())
+      AND ua.applier_id IS DISTINCT FROM ua.user_id
+      AND (
+        regexp_replace(lower(u.email), '\+[^@]*@', '@') =
+            regexp_replace(lower($1::text), '\+[^@]*@', '@')
+        OR EXISTS (
+            SELECT 1 FROM email_changes ec
+            WHERE ec.user_id = u.id
+              AND regexp_replace(lower($1::text), '\+[^@]*@', '@') IN (
+                  regexp_replace(lower(ec.old_email), '\+[^@]*@', '@'),
+                  regexp_replace(lower(ec.new_email), '\+[^@]*@', '@'))
+        )
+      )
+) AS suspended
+`
+
+// Whether the address is the current or a past email of an account under a
+// suspension that someone else applied, so not one that only closed the
+// account at its owner's request. Addresses are compared without case or a
+// +tag, which most providers deliver to the untagged address.
+func (q *Queries) IsEmailOfSuspendedAccount(ctx context.Context, email string) (bool, error) {
+	row := q.db.QueryRow(ctx, isEmailOfSuspendedAccount, email)
+	var suspended bool
+	err := row.Scan(&suspended)
+	return suspended, err
+}
+
 const listEmailChanges = `-- name: ListEmailChanges :many
 SELECT ec.old_email, ec.new_email, ec.changed_at,
        cb.uuid AS changed_by_uuid, cb.username AS changed_by_username
@@ -93,4 +127,54 @@ func (q *Queries) ListEmailChanges(ctx context.Context, userUuid string) ([]List
 		return nil, err
 	}
 	return items, nil
+}
+
+const setPendingEmailChange = `-- name: SetPendingEmailChange :execrows
+INSERT INTO pending_email_changes (user_id, new_email, token, expires_at)
+SELECT u.id, $1, $2, $3
+FROM users u WHERE u.uuid = $4
+ON CONFLICT (user_id) DO UPDATE
+SET new_email = EXCLUDED.new_email, token = EXCLUDED.token,
+    expires_at = EXCLUDED.expires_at, created_at = NOW()
+`
+
+type SetPendingEmailChangeParams struct {
+	NewEmail  string
+	Token     string
+	ExpiresAt pgtype.Timestamptz
+	UserUuid  string
+}
+
+// Replaces any change the user was already waiting on.
+func (q *Queries) SetPendingEmailChange(ctx context.Context, arg SetPendingEmailChangeParams) (int64, error) {
+	result, err := q.db.Exec(ctx, setPendingEmailChange,
+		arg.NewEmail,
+		arg.Token,
+		arg.ExpiresAt,
+		arg.UserUuid,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const takePendingEmailChange = `-- name: TakePendingEmailChange :one
+DELETE FROM pending_email_changes
+WHERE token = $1
+RETURNING user_id, new_email, expires_at
+`
+
+type TakePendingEmailChangeRow struct {
+	UserID    int32
+	NewEmail  string
+	ExpiresAt pgtype.Timestamptz
+}
+
+// Removes the pending change with this token and returns it.
+func (q *Queries) TakePendingEmailChange(ctx context.Context, token string) (TakePendingEmailChangeRow, error) {
+	row := q.db.QueryRow(ctx, takePendingEmailChange, token)
+	var i TakePendingEmailChangeRow
+	err := row.Scan(&i.UserID, &i.NewEmail, &i.ExpiresAt)
+	return i, err
 }

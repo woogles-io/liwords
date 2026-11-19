@@ -36,6 +36,17 @@ type Store interface {
 	// user with the UUID changedBy, in one transaction. It returns
 	// ErrEmailTaken if another account has the address.
 	ChangeEmail(ctx context.Context, uuid string, email string, changedBy string) error
+	// RequestEmailChange keeps an email change the user asked for, under a
+	// token sent to the new address, until expiresAt. It replaces any change
+	// the user was already waiting on.
+	RequestEmailChange(ctx context.Context, uuid string, email string, token string, expiresAt time.Time) error
+	// ConfirmEmailChange makes the pending change with the token, as the
+	// user's own, if check allows the new email, and returns the user's UUID
+	// and new email.
+	ConfirmEmailChange(ctx context.Context, token string, check func(email string) error) (string, string, error)
+	// IsEmailOfSuspendedAccount reports whether the address is the current or
+	// a past email of an account that someone other than its owner suspended.
+	IsEmailOfSuspendedAccount(ctx context.Context, email string) (bool, error)
 	SetRatings(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey,
 		p1Rating *entity.SingleRating, p2Rating *entity.SingleRating) error
 	SetStats(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey,

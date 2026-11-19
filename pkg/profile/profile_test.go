@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/matryer/is"
@@ -17,28 +18,33 @@ import (
 )
 
 // personalInfoStore holds one user for UpdatePersonalInfo and keeps what
-// SetPersonalInfo saves and what ChangeEmail changes. Any other method of
-// user.Store panics.
+// SetPersonalInfo saves and what email changes are asked for. Any other
+// method of user.Store panics.
 type personalInfoStore struct {
 	user.Store
-	u       *entity.User
-	saved   []string
-	changes [][]string
+	u        *entity.User
+	saved    []string
+	requests [][]string
 }
 
 func (s *personalInfoStore) Get(ctx context.Context, username string) (*entity.User, error) {
 	return s.u, nil
 }
 
-// ChangeEmail refuses raced@example.com, as the database does an address
-// another account took after GetByEmail found no one with it.
-func (s *personalInfoStore) ChangeEmail(ctx context.Context, uuid string, email string,
-	changedBy string) error {
-	if email == "raced@example.com" {
-		return user.ErrEmailTaken
+// RequestEmailChange keeps the change asked for. The email itself does not
+// change until the link sent to the new address is followed.
+func (s *personalInfoStore) RequestEmailChange(ctx context.Context, uuid string, email string,
+	token string, expiresAt time.Time) error {
+	if token == "" || !expiresAt.After(time.Now()) {
+		return errors.New("no token or already expired")
 	}
-	s.changes = append(s.changes, []string{uuid, email, changedBy})
+	s.requests = append(s.requests, []string{uuid, email})
 	return nil
+}
+
+// IsEmailOfSuspendedAccount knows only suspended@example.com.
+func (s *personalInfoStore) IsEmailOfSuspendedAccount(ctx context.Context, email string) (bool, error) {
+	return email == "suspended@example.com", nil
 }
 
 // GetByEmail finds only taken@example.com, which another account has.
@@ -78,31 +84,33 @@ func TestUpdatePersonalInfoPassword(t *testing.T) {
 		{"email not an address", "not an address", "correct horse", true},
 		{"email with a display name", "New <new@example.com>", "correct horse", true},
 		{"email with space around it", " new@example.com ", "correct horse", false},
-		{"email taken after the check", "raced@example.com", "correct horse", true},
+		{"email of a suspended account", "suspended@example.com", "correct horse", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			is := is.New(t)
 			store := &personalInfoStore{u: &entity.User{
 				UUID: "uuid-1", Username: "someone", Email: "old@example.com", Password: hash}}
-			ps := NewProfileService(store, nil, nil)
+			ps := NewProfileService(store, nil, nil, true)
 
-			_, err := ps.UpdatePersonalInfo(ctx, connect.NewRequest(&pb.UpdatePersonalInfoRequest{
+			resp, err := ps.UpdatePersonalInfo(ctx, connect.NewRequest(&pb.UpdatePersonalInfoRequest{
 				Email: tc.email, Password: tc.password, About: "new bio"}))
 			if tc.refused {
 				is.Equal(connect.CodeOf(err), connect.CodeInvalidArgument)
 				is.True(store.saved == nil) // nothing saved
-				is.True(store.changes == nil)
+				is.True(store.requests == nil)
 				return
 			}
 			is.NoErr(err)
 			is.Equal(store.saved[4], "new bio")
-			// A changed email, and only a changed one, goes through
-			// ChangeEmail as the user's own change.
+			// A changed email, and only a changed one, is asked for, to be
+			// confirmed from the new address, and the response says so.
 			email := strings.TrimSpace(tc.email)
 			if email == "old@example.com" {
-				is.True(store.changes == nil)
+				is.True(store.requests == nil)
+				is.Equal(resp.Msg.PendingEmail, "")
 			} else {
-				is.Equal(store.changes, [][]string{{"uuid-1", email, "uuid-1"}})
+				is.Equal(store.requests, [][]string{{"uuid-1", email}})
+				is.Equal(resp.Msg.PendingEmail, email)
 			}
 		})
 	}

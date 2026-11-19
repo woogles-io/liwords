@@ -38,6 +38,7 @@ import { useWebPushSync } from "./settings/web_push_setting";
 import { PasswordReset } from "./lobby/password_reset";
 import { NewPassword } from "./lobby/new_password";
 import { VerifyEmail } from "./lobby/verify_email";
+import { ConfirmEmailChange } from "./lobby/confirm_email_change";
 import { applyHandoverStorage } from "./utils/handover";
 import { encodeToSocketFmt } from "./utils/protobuf";
 import { Clubs } from "./clubs";
@@ -509,6 +510,10 @@ const App = React.memo(() => {
                 <Route path="terms" element={<TermsOfService />} />
                 <Route path="register" element={<Register />} />
                 <Route path="verify-email" element={<VerifyEmail />} />
+                <Route
+                  path="confirm-email-change"
+                  element={<ConfirmEmailChange />}
+                />
                 <Route path="password">
                   <Route path="reset" element={<PasswordReset />} />
                   <Route path="new" element={<NewPassword />} />

@@ -335,7 +335,7 @@ func main() {
 	authorizationService := auth.NewAuthorizationService(stores.UserStore, stores.Queries)
 	registrationService := registration.NewRegistrationService(stores.UserStore, cfg.ArgonConfig, cfg.EmailDebugMode, cfg.SkipEmailVerification)
 	gameService := gameplay.NewGameService(stores.UserStore, stores.GameStore, stores.GameDocumentStore, cfg, stores.Queries)
-	profileService := pkgprofile.NewProfileService(stores.UserStore, userservices.NewS3Uploader(os.Getenv("AVATAR_UPLOAD_BUCKET"), s3Client), stores.Queries)
+	profileService := pkgprofile.NewProfileService(stores.UserStore, userservices.NewS3Uploader(os.Getenv("AVATAR_UPLOAD_BUCKET"), s3Client), stores.Queries, cfg.EmailDebugMode)
 
 	// Organization and verification services
 	verificationS3Uploader := userservices.NewS3Uploader(os.Getenv("IDENTITY_VERIFICATION_UPLOAD_BUCKET"), s3Client)

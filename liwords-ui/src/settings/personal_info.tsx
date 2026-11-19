@@ -48,7 +48,9 @@ export const PersonalInfoWidget = React.memo((props: Props) => {
   const [imageToUpload, setImageToUpload] = useState<Blob | undefined>(
     undefined,
   );
-  const [savedEmail, setSavedEmail] = useState(props.personalInfo.email);
+  // The email on file. A change takes effect only from the link sent to the
+  // new address, never from this form.
+  const savedEmail = props.personalInfo.email;
 
   const avatarErrorCatcher = useCallback((e: unknown) => {
     console.log(e);
@@ -129,16 +131,26 @@ export const PersonalInfoWidget = React.memo((props: Props) => {
       ? dayjs(values.birthDate).format("YYYY-MM-DD")
       : "";
     try {
-      await profileClient.updatePersonalInfo({
+      const resp = await profileClient.updatePersonalInfo({
         ...values,
         birthDate,
       });
-      setSavedEmail(values.email);
       form.resetFields(["password"]);
-      notification.info({
-        message: "Success",
-        description: "Your personal info was changed.",
-      });
+      if (resp.pendingEmail) {
+        // The email changes only once the link sent to the new address is
+        // followed, so show the current one until then.
+        form.setFieldsValue({ email: savedEmail });
+        notification.info({
+          message: "Check your new email",
+          description: `Your personal info was saved. We sent a link to ${resp.pendingEmail}; your email will change once you follow it.`,
+          duration: 0,
+        });
+      } else {
+        notification.info({
+          message: "Success",
+          description: "Your personal info was changed.",
+        });
+      }
     } catch (e) {
       flashError(e);
     }

@@ -2,6 +2,7 @@ package registration
 
 import (
 	"context"
+	"errors"
 	"os"
 
 	"connectrpc.com/connect"
@@ -83,6 +84,22 @@ func (rs *RegistrationService) ResendVerificationEmail(ctx context.Context, r *c
 	return connect.NewResponse(&pb.ResendVerificationEmailResponse{
 		Message: "Verification email sent. Please check your inbox.",
 	}), nil
+}
+
+// ConfirmEmailChange makes the email change whose link was followed. It
+// needs no login: the token, sent only to the new address, is the proof.
+func (rs *RegistrationService) ConfirmEmailChange(ctx context.Context, r *connect.Request[pb.ConfirmEmailChangeRequest],
+) (*connect.Response[pb.ConfirmEmailChangeResponse], error) {
+	email, err := ConfirmEmailChange(ctx, rs.userStore, r.Msg.Token)
+	if err != nil {
+		if errors.Is(err, user.ErrEmailChangeNotFound) || errors.Is(err, user.ErrEmailTaken) ||
+			errors.Is(err, user.ErrEmailNotAllowed) {
+			return nil, apiserver.InvalidArg(err.Error())
+		}
+		zerolog.Ctx(ctx).Err(err).Msg("confirm-email-change")
+		return nil, apiserver.InternalErr(err)
+	}
+	return connect.NewResponse(&pb.ConfirmEmailChangeResponse{Email: email}), nil
 }
 
 // recordRegistrationClient stores where a new account was created from.

@@ -101,10 +101,17 @@ message VerifyEmailResponse { string message = 1; }
 message ResendVerificationEmailRequest { string email = 1; }
 message ResendVerificationEmailResponse { string message = 1; }
 
+// ConfirmEmailChangeRequest carries the token from the link sent to the new
+// address of an email change.
+message ConfirmEmailChangeRequest { string token = 1; }
+message ConfirmEmailChangeResponse { string email = 1; }
+
 service RegistrationService {
   rpc Register(UserRegistrationRequest) returns (RegistrationResponse);
   rpc VerifyEmail(VerifyEmailRequest) returns (VerifyEmailResponse);
   rpc ResendVerificationEmail(ResendVerificationEmailRequest) returns (ResendVerificationEmailResponse);
+  rpc ConfirmEmailChange(ConfirmEmailChangeRequest)
+      returns (ConfirmEmailChangeResponse);
 }
 
 message RatingsRequest { string username = 1; }
@@ -176,7 +183,11 @@ message UpdatePersonalInfoRequest {
   string password = 9;
 }
 
-message UpdatePersonalInfoResponse {}
+message UpdatePersonalInfoResponse {
+  // The new email, when the request changed it. It takes effect only once the
+  // user follows the link sent to it.
+  string pending_email = 1;
+}
 
 message UpdateAvatarRequest { bytes jpg_data = 1; }
 

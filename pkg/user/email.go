@@ -5,11 +5,17 @@ import (
 	"errors"
 	"net/mail"
 	"strings"
+
+	"github.com/rs/zerolog"
 )
 
 var (
 	ErrInvalidEmail = errors.New("please use a valid email address")
 	ErrEmailTaken   = errors.New("that email address is already used by another account")
+	// ErrEmailNotAllowed does not say why, so as not to tell anyone which
+	// addresses belong to suspended accounts.
+	ErrEmailNotAllowed     = errors.New("that email address cannot be used, please use another")
+	ErrEmailChangeNotFound = errors.New("this email change link is invalid or has expired")
 )
 
 // CheckNewEmail checks an email address that the user with the given UUID is
@@ -27,4 +33,21 @@ func CheckNewEmail(ctx context.Context, us Store, uuid string, email string) (st
 		return "", ErrEmailTaken
 	}
 	return email, nil
+}
+
+// CheckEmailAllowed refuses, with ErrEmailNotAllowed, an address that a
+// suspended account has or had, so that a suspended user cannot reuse it for
+// a new account or move it onto another one. If the check itself fails, the
+// address is allowed: this guards against evasion and should not block
+// sign-ups while the database is struggling.
+func CheckEmailAllowed(ctx context.Context, us Store, email string) error {
+	suspended, err := us.IsEmailOfSuspendedAccount(ctx, email)
+	if err != nil {
+		zerolog.Ctx(ctx).Err(err).Msg("check-email-of-suspended-account")
+		return nil
+	}
+	if suspended {
+		return ErrEmailNotAllowed
+	}
+	return nil
 }
