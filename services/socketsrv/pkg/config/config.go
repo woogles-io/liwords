@@ -14,6 +14,11 @@ type Config struct {
 	// Cache settings
 	FollowersCacheSize int
 	FollowersCacheTTL  time.Duration
+	// TargetGroupARN is the load balancer target group this server is in.
+	// When set, the server closes its sockets gradually, over DrainPeriod,
+	// once the target group starts draining it.
+	TargetGroupARN string
+	DrainPeriod    time.Duration
 }
 
 // Load loads the configs from the given arguments
@@ -28,6 +33,9 @@ func (c *Config) Load(args []string) error {
 	// Cache configuration
 	fs.IntVar(&c.FollowersCacheSize, "followers-cache-size", 1000, "Maximum number of follower lists to cache")
 	fs.DurationVar(&c.FollowersCacheTTL, "followers-cache-ttl", 5*time.Minute, "TTL for cached follower lists")
+
+	fs.StringVar(&c.TargetGroupARN, "target-group-arn", "", "the load balancer target group this server is in; enables gradual draining")
+	fs.DurationVar(&c.DrainPeriod, "drain-period", 2*time.Minute, "how long to take closing every socket once draining; keep it under the target group's deregistration delay")
 
 	err := fs.Parse(args)
 	return err

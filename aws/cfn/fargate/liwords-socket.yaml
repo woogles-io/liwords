@@ -66,6 +66,10 @@ Resources:
               awslogs-stream-prefix: fargate
           Environment:
             - { Name: NATS_URL, Value: "nats://10.0.0.251:4222" }
+            # Watched so that the server closes its sockets gradually once
+            # it's being replaced (cmd/socketsrv/drain.go).
+            - { Name: TARGET_GROUP_ARN, Value: !Ref TargetGroup }
+            - { Name: DRAIN_PERIOD, Value: 2m }
             - { Name: FOLLOWERS_CACHE_SIZE, Value: "0" }
           Secrets:
             - Name: SECRET_KEY
@@ -87,8 +91,12 @@ Resources:
       HealthyThresholdCount: 3
       UnhealthyThresholdCount: 2
       Matcher: { HttpCode: "200" }
+      # A replaced server closes its sockets over DRAIN_PERIOD, and the
+      # target finishes deregistering as soon as the last one is closed. If
+      # it doesn't (an older image, or it can't read its target's health),
+      # this is when the load balancer cuts the rest.
       TargetGroupAttributes:
-        - { Key: deregistration_delay.timeout_seconds, Value: "30" }
+        - { Key: deregistration_delay.timeout_seconds, Value: "180" }
       Tags:
         - { Key: app, Value: liwords }
 

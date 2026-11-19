@@ -91,6 +91,13 @@ deployed tag, because a socket deploy disconnects every client once.
 without build stamps and compares the bytes; a change to its Dockerfile or
 template counts too. `-f force_socket=true` redeploys it regardless.
 
+The old socket server doesn't drop its clients all at once: once the load
+balancer starts draining it, it closes its sockets evenly over `DRAIN_PERIOD`
+(2 minutes), and the browsers reconnect to the new one a few at a time
+(`cmd/socketsrv/drain.go`). A socket deploy therefore takes about 2 minutes
+longer than an API one. If the old server can't tell it is draining, the load
+balancer cuts the remaining sockets after the 180s deregistration delay.
+
 **By hand** (the usual way: merge a batch, then deploy once). With no tag it
 deploys the newest master build that pushed its images and passed its
 migration order check (`scripts/fargate/latest-image-tag.sh`); give a tag to deploy or roll back to

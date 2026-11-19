@@ -4,12 +4,20 @@ import (
 	"context"
 	"expvar"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
 	"runtime"
+	"strconv"
 	"syscall"
 	"time"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/aws/arn"
+	awsconfig "github.com/aws/aws-sdk-go-v2/config"
+	elb "github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2"
+	elbtypes "github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2/types"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -55,6 +63,10 @@ func main() {
 	}
 	go h.Run()
 
+	if cfg.TargetGroupARN != "" {
+		go startDrainWatcher(cfg, h)
+	}
+
 	expvar.Publish("goroutines", expvar.Func(func() interface{} {
 		return fmt.Sprintf("%d", runtime.NumGoroutine())
 	}))
@@ -99,4 +111,40 @@ func main() {
 	}
 	<-idleConnsClosed
 	log.Info().Msg("server gracefully shutting down")
+}
+
+// startDrainWatcher drains h once the load balancer starts draining this
+// task. If it can't watch, the server works as before: the load balancer cuts
+// every socket at the end of the deregistration delay.
+func startDrainWatcher(cfg *config.Config, h *sockets.Hub) {
+	ctx := context.Background()
+	parsed, err := arn.Parse(cfg.TargetGroupARN)
+	if err != nil {
+		log.Err(err).Msg("drain-watcher: bad target group ARN")
+		return
+	}
+	ip, err := taskIP(ctx)
+	if err != nil {
+		log.Err(err).Msg("drain-watcher: no task IP")
+		return
+	}
+	_, portStr, err := net.SplitHostPort(cfg.WebsocketAddress)
+	if err != nil {
+		log.Err(err).Msg("drain-watcher: bad ws address")
+		return
+	}
+	port, err := strconv.Atoi(portStr)
+	if err != nil {
+		log.Err(err).Msg("drain-watcher: bad ws port")
+		return
+	}
+	awsCfg, err := awsconfig.LoadDefaultConfig(ctx, awsconfig.WithRegion(parsed.Region))
+	if err != nil {
+		log.Err(err).Msg("drain-watcher: aws config")
+		return
+	}
+	target := elbtypes.TargetDescription{Id: aws.String(ip), Port: aws.Int32(int32(port))}
+	log.Info().Str("target", ip).Int("port", port).Msg("drain-watcher: watching")
+	watchForDraining(ctx, elb.NewFromConfig(awsCfg), cfg.TargetGroupARN, target,
+		targetHealthPollPeriod, func() { h.Drain(cfg.DrainPeriod) })
 }

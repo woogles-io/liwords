@@ -96,6 +96,11 @@ type Hub struct {
 	endUserSockets chan string
 	// resync is signaled when every socket's realm info should be resent.
 	resync chan struct{}
+
+	// drainRequests asks Run to close every socket over a period; see Drain.
+	drainRequests chan time.Duration
+	// draining is set once draining has begun. Only Run uses it.
+	draining *drainState
 }
 
 func NewHub(cfg *config.Config) (*Hub, error) {
@@ -125,6 +130,7 @@ func NewHub(cfg *config.Config) (*Hub, error) {
 		sendConnMessage: make(chan ConnMessage),
 		endUserSockets:  make(chan string),
 		resync:          resync,
+		drainRequests:   make(chan time.Duration, 1),
 		register:        make(chan *Client),
 		unregister:      make(chan *Client),
 		clients:         make(map[*Client][]Realm),
@@ -245,6 +251,8 @@ func (h *Hub) Run() {
 	defer func() {
 		ticker.Stop()
 	}()
+	drainTicker := time.NewTicker(drainStepPeriod)
+	defer drainTicker.Stop()
 
 	for {
 		select {
@@ -334,6 +342,12 @@ func (h *Hub) Run() {
 					h.removeClient(c)
 				}
 			}
+
+		case over := <-h.drainRequests:
+			h.startDrain(time.Now(), over)
+
+		case now := <-drainTicker.C:
+			h.drainStep(now)
 
 		case <-h.resync:
 			msgs := h.realmInitInfoForAll()
