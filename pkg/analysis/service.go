@@ -31,7 +31,7 @@ import (
 
 // MinMacondoVersion is the minimum macondo worker version accepted.
 // Workers older than this are rejected at ClaimJob.
-const MinMacondoVersion = "v0.13.8"
+const MinMacondoVersion = "v0.14.0"
 
 const (
 	// maxActiveClaimsPerWorker caps how many jobs one worker holds at once.
