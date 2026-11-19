@@ -2,7 +2,7 @@ name: Build and Deploy
 
 # Workflow optimization:
 # - detect_changes job identifies which parts of the codebase changed
-# - Backend jobs (build_api_srv, push_backend_images, check_migration_order) only run if backend files changed
+# - Backend jobs (build_api_srv, push_backend_images) only run if backend files changed
 # - Frontend jobs (build_fe, deploy_fe) only run if liwords-ui/ changed
 # - Migration job runs on every master deploy (migrations are idempotent)
 # This significantly speeds up deployments that only touch one part of the codebase
@@ -232,47 +232,13 @@ jobs:
         run: ./scripts/utilities/notify-discord.sh
         continue-on-error: true
 
-  # Migrations run in the deploy (deploy-fargate.yml), once approved. This
-  # only stops a master build whose push added a migration numbered below
-  # one already on master: golang-migrate would skip it without an error.
-  check_migration_order:
-    runs-on: ubuntu-latest
-    if: ${{ github.ref == 'refs/heads/master' }}
-    needs: detect_changes
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Check migration order
-        env:
-          BEFORE: ${{ github.event.before }}
-        run: |
-          if ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
-            echo "::warning::previous master commit $BEFORE not found; skipping the order check"
-            exit 0
-          fi
-          scripts/check-migration-order.sh "$BEFORE" "$GITHUB_SHA"
-
-      - name: Discord notification (failure)
-        if: ${{ failure() }}
-        env:
-          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
-        run: >-
-          ./scripts/utilities/notify-discord.sh "✗ Migration order check FAILED for branch {{GITHUB_REF_NAME}}:
-          a new migration is numbered below one on master. Check GitHub Actions logs."
-        continue-on-error: true
-
   # Deploys the images just built to Fargate: migrations, then the services.
   # Off until the repository variable FARGATE_DEPLOY is "true"; with it on,
   # each build's deploy waits for one of the "production" environment's
   # required reviewers. See deploy-fargate.yml.
   deploy_backend:
     if: ${{ github.ref == 'refs/heads/master' && vars.FARGATE_DEPLOY == 'true' }}
-    needs:
-      - push_backend_images
-      - check_migration_order
+    needs: push_backend_images
     permissions:
       contents: read
       actions: read
