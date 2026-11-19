@@ -19,7 +19,9 @@ import (
 // Connect still fails at startup if NATS isn't reachable (no
 // RetryOnFailedConnect), so a task with a bad NATS_URL crashes and fails its
 // deploy instead of running unconnected.
-func Options(name string) []nats.Option {
+//
+// onReconnect, if given, run after each reconnect, after it is logged.
+func Options(name string, onReconnect ...func()) []nats.Option {
 	return []nats.Option{
 		nats.Name(name),
 		nats.MaxReconnects(-1),
@@ -45,6 +47,9 @@ func Options(name string) []nats.Option {
 		nats.ReconnectHandler(func(nc *nats.Conn) {
 			log.Info().Str("server", nc.ConnectedUrlRedacted()).
 				Uint64("reconnects", nc.Stats().Reconnects).Msg("nats-reconnected")
+			for _, f := range onReconnect {
+				f()
+			}
 		}),
 		nats.DiscoveredServersHandler(func(nc *nats.Conn) {
 			log.Info().Strs("servers", nc.DiscoveredServers()).Msg("nats-discovered-servers")
