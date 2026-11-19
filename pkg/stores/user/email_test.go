@@ -182,7 +182,7 @@ func TestConfirmEmailChange(t *testing.T) {
 	is := is.New(t)
 	ustore, pool, ctx := recreateDB()
 	defer ustore.Disconnect()
-	allow := func(string) error { return nil }
+	allow := func(string, string) error { return nil }
 
 	emailIs := func(uuid, want string) {
 		u, err := ustore.GetByUUID(ctx, uuid)
@@ -199,9 +199,15 @@ func TestConfirmEmailChange(t *testing.T) {
 	is.True(errors.Is(err, pkguser.ErrEmailChangeNotFound))
 
 	// A refused address leaves the change pending and the email as it was.
-	refuse := func(string) error { return pkguser.ErrEmailNotAllowed }
+	// The check is given the user and the new address.
+	var checked []string
+	refuse := func(uuid, email string) error {
+		checked = []string{uuid, email}
+		return pkguser.ErrEmailNotAllowed
+	}
 	_, err = ustore.ConfirmEmailChange(ctx, "token-2", refuse)
 	is.True(errors.Is(err, pkguser.ErrEmailNotAllowed))
+	is.Equal(checked, []string{cesarUUID, "second@wolges.io"})
 	emailIs(cesarUUID, "cesar@woogles.io")
 
 	// The right token makes the change, once.
@@ -234,4 +240,30 @@ func TestConfirmEmailChange(t *testing.T) {
 	// No such user.
 	err = ustore.RequestEmailChange(ctx, "no_such_uuid", "x@wolges.io", "token-5", later)
 	is.True(err != nil)
+}
+
+// Another account's address with a different case or +tag is taken; the
+// account's own is not.
+func TestIsEmailKeyTaken(t *testing.T) {
+	is := is.New(t)
+	ustore, _, ctx := recreateDB()
+	defer ustore.Disconnect()
+
+	taken := func(uuid, email string) bool {
+		got, err := ustore.IsEmailKeyTaken(ctx, uuid, email)
+		is.NoErr(err)
+		return got
+	}
+	// For a new account.
+	is.True(taken("", "mina@gmail.com"))
+	is.True(taken("", "Mina+woogles@GMAIL.com"))
+	is.True(!taken("", "mina2@gmail.com"))
+	is.True(!taken("", "mina@gmail.co"))
+	// An existing account's own address, tagged or not, is not taken.
+	is.True(!taken(minaUUID, "mina+new@gmail.com"))
+	is.True(taken(cesarUUID, "mina+new@gmail.com"))
+	// A tag on the existing address counts too.
+	is.NoErr(ustore.ChangeEmail(ctx, cesarUUID, "cesar+tag@woogles.io", cesarUUID))
+	is.True(taken("", "cesar@woogles.io"))
+	is.True(taken("", "cesar+other@woogles.io"))
 }

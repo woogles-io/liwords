@@ -21,8 +21,7 @@ SELECT email FROM users WHERE uuid = @uuid FOR UPDATE;
 -- name: IsEmailOfSuspendedAccount :one
 -- Whether the address is the current or a past email of an account under a
 -- suspension that someone else applied, so not one that only closed the
--- account at its owner's request. Addresses are compared without case or a
--- +tag, which most providers deliver to the untagged address.
+-- account at its owner's request. Addresses are compared by email_key.
 SELECT EXISTS (
     SELECT 1
     FROM user_actions ua
@@ -32,17 +31,22 @@ SELECT EXISTS (
       AND (ua.end_time IS NULL OR ua.end_time > NOW())
       AND ua.applier_id IS DISTINCT FROM ua.user_id
       AND (
-        regexp_replace(lower(u.email), '\+[^@]*@', '@') =
-            regexp_replace(lower(@email::text), '\+[^@]*@', '@')
+        email_key(u.email) = email_key(@email::text)
         OR EXISTS (
             SELECT 1 FROM email_changes ec
             WHERE ec.user_id = u.id
-              AND regexp_replace(lower(@email::text), '\+[^@]*@', '@') IN (
-                  regexp_replace(lower(ec.old_email), '\+[^@]*@', '@'),
-                  regexp_replace(lower(ec.new_email), '\+[^@]*@', '@'))
+              AND email_key(@email::text) IN (email_key(ec.old_email), email_key(ec.new_email))
         )
       )
 ) AS suspended;
+
+-- name: IsEmailKeyTaken :one
+-- Whether an account other than the given one has an email with the same
+-- email_key as the address. Pass an empty UUID for a new account.
+SELECT EXISTS (
+    SELECT 1 FROM users
+    WHERE email_key(email) = email_key(@email::text) AND uuid IS DISTINCT FROM @uuid::text
+) AS taken;
 
 -- name: SetPendingEmailChange :execrows
 -- Replaces any change the user was already waiting on.

@@ -20,14 +20,18 @@ type confirmStore struct {
 }
 
 func (s *confirmStore) ConfirmEmailChange(ctx context.Context, token string,
-	check func(string) error) (user.EmailChange, error) {
-	if err := check(s.change.NewEmail); err != nil {
+	check func(string, string) error) (user.EmailChange, error) {
+	if err := check(s.change.UserUUID, s.change.NewEmail); err != nil {
 		return user.EmailChange{}, err
 	}
 	return s.change, nil
 }
 
 func (s *confirmStore) IsEmailOfSuspendedAccount(ctx context.Context, email string) (bool, error) {
+	return false, nil
+}
+
+func (s *confirmStore) IsEmailKeyTaken(ctx context.Context, uuid string, email string) (bool, error) {
 	return false, nil
 }
 
@@ -63,7 +67,7 @@ func TestConfirmEmailChangeNotifiesOldEmail(t *testing.T) {
 	var email string
 	var err error
 	out := captureStdout(t, func() {
-		email, err = ConfirmEmailChange(context.Background(), store, "token", true)
+		email, err = ConfirmEmailChange(context.Background(), store, nil, "token", true)
 	})
 	is.NoErr(err)
 	is.Equal(email, "new@example.com")
@@ -81,7 +85,7 @@ func TestConfirmEmailChangeSameEmail(t *testing.T) {
 		UserUUID: "uuid-1", OldEmail: "same@example.com", NewEmail: "same@example.com"}}
 	var err error
 	out := captureStdout(t, func() {
-		_, err = ConfirmEmailChange(context.Background(), store, "token", true)
+		_, err = ConfirmEmailChange(context.Background(), store, nil, "token", true)
 	})
 	is.NoErr(err)
 	is.Equal(out, "")
@@ -90,6 +94,6 @@ func TestConfirmEmailChangeSameEmail(t *testing.T) {
 // An empty token is not looked up.
 func TestConfirmEmailChangeNoToken(t *testing.T) {
 	is := is.New(t)
-	_, err := ConfirmEmailChange(context.Background(), &confirmStore{}, "", true)
+	_, err := ConfirmEmailChange(context.Background(), &confirmStore{}, nil, "", true)
 	is.Equal(err, user.ErrEmailChangeNotFound)
 }

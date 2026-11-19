@@ -51,6 +51,27 @@ func (q *Queries) GetUserEmailForUpdate(ctx context.Context, uuid string) (strin
 	return email, err
 }
 
+const isEmailKeyTaken = `-- name: IsEmailKeyTaken :one
+SELECT EXISTS (
+    SELECT 1 FROM users
+    WHERE email_key(email) = email_key($1::text) AND uuid IS DISTINCT FROM $2::text
+) AS taken
+`
+
+type IsEmailKeyTakenParams struct {
+	Email string
+	Uuid  string
+}
+
+// Whether an account other than the given one has an email with the same
+// email_key as the address. Pass an empty UUID for a new account.
+func (q *Queries) IsEmailKeyTaken(ctx context.Context, arg IsEmailKeyTakenParams) (bool, error) {
+	row := q.db.QueryRow(ctx, isEmailKeyTaken, arg.Email, arg.Uuid)
+	var taken bool
+	err := row.Scan(&taken)
+	return taken, err
+}
+
 const isEmailOfSuspendedAccount = `-- name: IsEmailOfSuspendedAccount :one
 SELECT EXISTS (
     SELECT 1
@@ -61,14 +82,11 @@ SELECT EXISTS (
       AND (ua.end_time IS NULL OR ua.end_time > NOW())
       AND ua.applier_id IS DISTINCT FROM ua.user_id
       AND (
-        regexp_replace(lower(u.email), '\+[^@]*@', '@') =
-            regexp_replace(lower($1::text), '\+[^@]*@', '@')
+        email_key(u.email) = email_key($1::text)
         OR EXISTS (
             SELECT 1 FROM email_changes ec
             WHERE ec.user_id = u.id
-              AND regexp_replace(lower($1::text), '\+[^@]*@', '@') IN (
-                  regexp_replace(lower(ec.old_email), '\+[^@]*@', '@'),
-                  regexp_replace(lower(ec.new_email), '\+[^@]*@', '@'))
+              AND email_key($1::text) IN (email_key(ec.old_email), email_key(ec.new_email))
         )
       )
 ) AS suspended
@@ -76,8 +94,7 @@ SELECT EXISTS (
 
 // Whether the address is the current or a past email of an account under a
 // suspension that someone else applied, so not one that only closed the
-// account at its owner's request. Addresses are compared without case or a
-// +tag, which most providers deliver to the untagged address.
+// account at its owner's request. Addresses are compared by email_key.
 func (q *Queries) IsEmailOfSuspendedAccount(ctx context.Context, email string) (bool, error) {
 	row := q.db.QueryRow(ctx, isEmailOfSuspendedAccount, email)
 	var suspended bool

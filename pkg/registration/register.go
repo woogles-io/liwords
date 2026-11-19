@@ -53,7 +53,8 @@ func generateVerificationToken() (string, error) {
 // RegisterUser registers a user.
 func RegisterUser(ctx context.Context, username string, password string, email string,
 	firstName string, lastName string, birthDate string, countryCode string,
-	userStore user.Store, bot bool, argonConfig config.ArgonConfig, emailDebugMode bool, skipEmailVerification bool) error {
+	userStore user.Store, disposable user.DisposableDomains, bot bool, argonConfig config.ArgonConfig,
+	emailDebugMode bool, skipEmailVerification bool) error {
 	// username = strings.Rep
 	if len(username) < 3 || len(username) > 20 {
 		return errors.New("username must be between 3 and 20 letters in length")
@@ -100,8 +101,10 @@ func RegisterUser(ctx context.Context, username string, password string, email s
 	if _, err := userStore.GetByEmail(ctx, email); err == nil {
 		return errors.New("That email address has already been signed up, please log in with your existing username")
 	}
-	if err := user.CheckEmailAllowed(ctx, userStore, email); err != nil {
-		return err
+	if !bot {
+		if err := user.CheckEmailAllowed(ctx, userStore, disposable, "", email); err != nil {
+			return err
+		}
 	}
 
 	config := auth.NewPasswordConfig(argonConfig.Time, argonConfig.Memory, argonConfig.Threads, argonConfig.Keylen)

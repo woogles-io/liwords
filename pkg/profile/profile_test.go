@@ -42,6 +42,11 @@ func (s *personalInfoStore) RequestEmailChange(ctx context.Context, uuid string,
 	return nil
 }
 
+// IsEmailKeyTaken knows only another account with taken@example.com.
+func (s *personalInfoStore) IsEmailKeyTaken(ctx context.Context, uuid string, email string) (bool, error) {
+	return strings.EqualFold(strings.Replace(email, "+x@", "@", 1), "taken@example.com"), nil
+}
+
 // IsEmailOfSuspendedAccount knows only suspended@example.com.
 func (s *personalInfoStore) IsEmailOfSuspendedAccount(ctx context.Context, email string) (bool, error) {
 	return email == "suspended@example.com", nil
@@ -85,12 +90,13 @@ func TestUpdatePersonalInfoPassword(t *testing.T) {
 		{"email with a display name", "New <new@example.com>", "correct horse", true},
 		{"email with space around it", " new@example.com ", "correct horse", false},
 		{"email of a suspended account", "suspended@example.com", "correct horse", true},
+		{"email tagged like another account's", "taken+x@example.com", "correct horse", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			is := is.New(t)
 			store := &personalInfoStore{u: &entity.User{
 				UUID: "uuid-1", Username: "someone", Email: "old@example.com", Password: hash}}
-			ps := NewProfileService(store, nil, nil, true)
+			ps := NewProfileService(store, nil, nil, true, nil)
 
 			resp, err := ps.UpdatePersonalInfo(ctx, connect.NewRequest(&pb.UpdatePersonalInfoRequest{
 				Email: tc.email, Password: tc.password, About: "new bio"}))

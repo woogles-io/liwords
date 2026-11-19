@@ -44,6 +44,8 @@ type ProfileService struct {
 	queries       *models.Queries
 	// emailDebugMode logs emails instead of sending them.
 	emailDebugMode bool
+	// disposable refuses new emails on disposable domains; it may be nil.
+	disposable user.DisposableDomains
 
 	badgesCacheMu      sync.RWMutex
 	badgesCache        *pb.BadgeMetadataResponse
@@ -51,10 +53,12 @@ type ProfileService struct {
 }
 
 // NewProfileService makes a ProfileService. With emailDebugMode, emails such
-// as the link to confirm a new address are logged instead of sent.
+// as the link to confirm a new address are logged instead of sent. A new
+// email on a domain in disposable is refused; it may be nil.
 func NewProfileService(u user.Store, us userservices.UploadService, q *models.Queries,
-	emailDebugMode bool) *ProfileService {
-	return &ProfileService{userStore: u, avatarService: us, queries: q, emailDebugMode: emailDebugMode}
+	emailDebugMode bool, disposable user.DisposableDomains) *ProfileService {
+	return &ProfileService{userStore: u, avatarService: us, queries: q,
+		emailDebugMode: emailDebugMode, disposable: disposable}
 }
 
 func modActionExistsErr(err error) error {
@@ -253,9 +257,11 @@ func (ps *ProfileService) UpdatePersonalInfo(ctx context.Context, r *connect.Req
 	// the user follows the link sent to the new address.
 	pendingEmail := ""
 	if email != u.Email {
-		err := registration.RequestEmailChange(ctx, ps.userStore, u.Username, u.UUID, email, ps.emailDebugMode)
+		err := registration.RequestEmailChange(ctx, ps.userStore, ps.disposable, u.Username, u.UUID, email,
+			ps.emailDebugMode)
 		if err != nil {
-			if errors.Is(err, user.ErrEmailNotAllowed) {
+			if errors.Is(err, user.ErrEmailNotAllowed) || errors.Is(err, user.ErrEmailTaken) ||
+				errors.Is(err, user.ErrDisposableEmail) {
 				return nil, apiserver.InvalidArg(err.Error())
 			}
 			log.Err(err).Str("userID", u.UUID).Msg("request-email-change")

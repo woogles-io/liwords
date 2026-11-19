@@ -36,9 +36,9 @@ The Woogles.io team
 // pending and sends a link to the new address, which must already have
 // passed user.CheckNewEmail. The email changes only when the link is
 // followed, so an account's address is always one its owner can read.
-func RequestEmailChange(ctx context.Context, us user.Store, username string, uuid string,
-	email string, emailDebugMode bool) error {
-	if err := user.CheckEmailAllowed(ctx, us, email); err != nil {
+func RequestEmailChange(ctx context.Context, us user.Store, disposable user.DisposableDomains,
+	username string, uuid string, email string, emailDebugMode bool) error {
+	if err := user.CheckEmailAllowed(ctx, us, disposable, uuid, email); err != nil {
 		return err
 	}
 	token, err := generateVerificationToken()
@@ -64,12 +64,13 @@ func RequestEmailChange(ctx context.Context, us user.Store, username string, uui
 // tells the old address about it. The address is checked again, since an
 // account may have been suspended, or taken the address, since the change was
 // asked for.
-func ConfirmEmailChange(ctx context.Context, us user.Store, token string, emailDebugMode bool) (string, error) {
+func ConfirmEmailChange(ctx context.Context, us user.Store, disposable user.DisposableDomains,
+	token string, emailDebugMode bool) (string, error) {
 	if token == "" {
 		return "", user.ErrEmailChangeNotFound
 	}
-	change, err := us.ConfirmEmailChange(ctx, token, func(email string) error {
-		return user.CheckEmailAllowed(ctx, us, email)
+	change, err := us.ConfirmEmailChange(ctx, token, func(uuid string, email string) error {
+		return user.CheckEmailAllowed(ctx, us, disposable, uuid, email)
 	})
 	if err != nil {
 		return "", err

@@ -474,7 +474,7 @@ func (s *DBStore) RequestEmailChange(ctx context.Context, uuid string, email str
 // user.ErrEmailTaken if another account took the address in the meantime,
 // and whatever check returns.
 func (s *DBStore) ConfirmEmailChange(ctx context.Context, token string,
-	check func(email string) error) (user.EmailChange, error) {
+	check func(uuid string, email string) error) (user.EmailChange, error) {
 	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
 	if err != nil {
 		return user.EmailChange{}, err
@@ -492,11 +492,11 @@ func (s *DBStore) ConfirmEmailChange(ctx context.Context, token string,
 	if !pending.ExpiresAt.Time.After(time.Now()) {
 		return user.EmailChange{}, user.ErrEmailChangeNotFound
 	}
-	if err := check(pending.NewEmail); err != nil {
-		return user.EmailChange{}, err
-	}
 	uuid, err := qtx.GetUserUUIDFromDBID(ctx, pending.UserID)
 	if err != nil {
+		return user.EmailChange{}, err
+	}
+	if err := check(uuid, pending.NewEmail); err != nil {
 		return user.EmailChange{}, err
 	}
 	oldEmail, err := changeEmail(ctx, qtx, uuid, pending.NewEmail, uuid)
@@ -505,6 +505,12 @@ func (s *DBStore) ConfirmEmailChange(ctx context.Context, token string,
 	}
 	return user.EmailChange{UserUUID: uuid, OldEmail: oldEmail, NewEmail: pending.NewEmail},
 		tx.Commit(ctx)
+}
+
+// IsEmailKeyTaken reports whether an account other than the one with the
+// given UUID has an email with the same email_key as the address.
+func (s *DBStore) IsEmailKeyTaken(ctx context.Context, uuid string, email string) (bool, error) {
+	return s.queries.IsEmailKeyTaken(ctx, models.IsEmailKeyTakenParams{Email: email, Uuid: uuid})
 }
 
 // IsEmailOfSuspendedAccount reports whether the address, ignoring case and
