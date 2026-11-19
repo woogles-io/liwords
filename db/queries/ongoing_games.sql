@@ -5,9 +5,16 @@
 -- table was introduced got theirs from `cmd/backfill-ongoing-games`, which
 -- goes through this same query under the game's lock.
 --
--- The rules columns are immutable, so ON CONFLICT deliberately does not rewrite
--- them -- if they ever disagreed with the row that exists, the existing row is
--- the one the game has actually been played under.
+-- The rules and player columns are immutable, so ON CONFLICT deliberately does
+-- not rewrite them -- if they ever disagreed with the row that exists, the
+-- existing row is the one the game has actually been played under. The
+-- tournament and league columns are not immutable in the same way: they can be
+-- filled in after Create (see below).
+--
+-- Every write to a live game's games row must go through DBStore.Set, which
+-- calls this in the same transaction. A query that updates games directly
+-- leaves this row behind, and the listings read this row. The one exception,
+-- AddTimeBank*, updates both tables in one statement.
 --
 -- No position is stored here. play_state and on_turn are denormalized for the
 -- listings and are derived from the event log on load, never read back into a

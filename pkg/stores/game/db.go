@@ -1412,47 +1412,6 @@ func (s *DBStore) Set(ctx context.Context, g *entity.Game) error {
 	return nil
 }
 
-// UpdateTimers writes only the timers column for a game (e.g. after add-time).
-func (s *DBStore) UpdateTimers(ctx context.Context, gameID string, timers entity.Timers) error {
-	return s.queries.UpdateGameTimers(ctx, models.UpdateGameTimersParams{
-		Uuid:   common.ToPGTypeText(gameID),
-		Timers: timers,
-	})
-}
-
-// UpdateStarted marks a game as started and persists its initial timer state.
-func (s *DBStore) UpdateStarted(ctx context.Context, gameID string, started bool, timers entity.Timers) error {
-	return s.queries.UpdateGameStarted(ctx, models.UpdateGameStartedParams{
-		Uuid:    common.ToPGTypeText(gameID),
-		Started: pgtype.Bool{Bool: started, Valid: true},
-		Timers:  timers,
-	})
-}
-
-// UpdateAfterMove writes history, timers, and player_on_turn after a gameplay event.
-func (s *DBStore) UpdateAfterMove(ctx context.Context, gameID string, hist []byte, timers entity.Timers, playerOnTurn int32) error {
-	return s.queries.UpdateGameAfterMove(ctx, models.UpdateGameAfterMoveParams{
-		Uuid:         common.ToPGTypeText(gameID),
-		History:      hist,
-		Timers:       timers,
-		PlayerOnTurn: pgtype.Int4{Int32: playerOnTurn, Valid: true},
-	})
-}
-
-// UpdateEnd writes all end-of-game columns atomically.
-func (s *DBStore) UpdateEnd(ctx context.Context, gameID string, endReason, winnerIdx, loserIdx int32, hist []byte, stats entity.Stats, qd entity.Quickdata, timers entity.Timers) error {
-	return s.queries.UpdateGameEnd(ctx, models.UpdateGameEndParams{
-		Uuid:          common.ToPGTypeText(gameID),
-		GameEndReason: pgtype.Int4{Int32: endReason, Valid: true},
-		WinnerIdx:     pgtype.Int4{Int32: winnerIdx, Valid: true},
-		LoserIdx:      pgtype.Int4{Int32: loserIdx, Valid: true},
-		History:       hist,
-		Stats:         stats,
-		Quickdata:     qd,
-		Timers:        timers,
-	})
-}
-
 // AppendTurns marshals each GameEvent and appends them to game_turns starting at startIdx.
 // Errors are best-effort logged by callers; this does not roll back the game save.
 func (s *DBStore) StageTurns(g *entity.Game, startIdx int, events []*macondopb.GameEvent) error {
