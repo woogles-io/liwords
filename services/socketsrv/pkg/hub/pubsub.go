@@ -6,6 +6,7 @@ import (
 	nats "github.com/nats-io/nats.go"
 	"github.com/rs/zerolog/log"
 
+	"github.com/woogles-io/liwords/pkg/natsopts"
 	"github.com/woogles-io/liwords/services/socketsrv/pkg/config"
 )
 
@@ -20,7 +21,7 @@ type PubSub struct {
 }
 
 func newPubSub(natsURL string, cfg *config.Config) (*PubSub, error) {
-	natsconn, err := nats.Connect(natsURL)
+	natsconn, err := nats.Connect(natsURL, natsopts.Options("liwords-socket")...)
 
 	if err != nil {
 		return nil, err

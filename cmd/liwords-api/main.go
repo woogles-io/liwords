@@ -64,6 +64,7 @@ import (
 	"github.com/woogles-io/liwords/pkg/maintenance"
 	"github.com/woogles-io/liwords/pkg/memento"
 	"github.com/woogles-io/liwords/pkg/mod"
+	"github.com/woogles-io/liwords/pkg/natsopts"
 	"github.com/woogles-io/liwords/pkg/omgwords"
 	"github.com/woogles-io/liwords/pkg/organization"
 	"github.com/woogles-io/liwords/pkg/outbox"
@@ -541,7 +542,7 @@ func main() {
 	idleConnsClosed := make(chan struct{})
 	sig := make(chan os.Signal, 1)
 
-	natsconn, err := nats.Connect(cfg.NatsURL)
+	natsconn, err := nats.Connect(cfg.NatsURL, natsopts.Options("liwords-api")...)
 	if err != nil {
 		panic(err)
 	}
