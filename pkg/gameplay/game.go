@@ -1036,6 +1036,7 @@ func PotentiallySendBotMoveRequest(ctx context.Context, userStore user.Store, g 
 		BotType:         g.GameReq.BotType,
 		MillisRemaining: int32(g.TimeRemaining(g.PlayerOnTurn())),
 	}).(*macondopb.BotRequest)
+	setBotRequestID(evt, BotRequestID(g))
 	// message type doesn't matter here; we're going to make sure
 	// this doesn't get serialized with a message type.
 	wrapped := entity.WrapEvent(evt, 0)

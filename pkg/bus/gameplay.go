@@ -206,6 +206,20 @@ func (b *Bus) goHandleBotMove(ctx context.Context, resp *macondo.BotResponse,
 		// These should both be the bot:
 		onTurn := g.Game.PlayerOnTurn()
 		userID := g.Game.PlayerIDOnTurn()
+		// A request can be answered twice (the bot watchdog resends ones it
+		// thinks were lost) or after the game has moved on. Without this a
+		// late answer would be played for whoever is on turn now.
+		onTurnUser, err := b.stores.UserStore.GetByUUID(ctx, userID)
+		if err != nil {
+			log.Err(err).Str("gid", gid).Msg("cant-get-user-on-turn-for-bot-move")
+			return
+		}
+		if why := gameplay.StaleBotResponse(resp, g, onTurnUser.IsBot); why != "" {
+			log.Info().Str("gid", gid).Str("reason", why).
+				Str("request-id", gameplay.BotResponseRequestID(resp)).
+				Str("current-id", gameplay.BotRequestID(g)).Msg("dropping-stale-bot-move")
+			return
+		}
 		switch r := resp.Response.(type) {
 		case *macondo.BotResponse_Move:
 			timeRemaining := g.TimeRemaining(onTurn)

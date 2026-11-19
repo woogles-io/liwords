@@ -605,6 +605,7 @@ func main() {
 			vdo:         vdoWebhookService,
 			users:       stores.UserStore,
 			outbox:      outbox.NewSender(stores.Queries, outboxChannels(cfg), 0),
+			stores:      stores,
 			maintenance: maintenance.New(cfg, stores, gameCreatorAdapter, oauthIntegrationService),
 		}); err != nil {
 			log.Fatal().Err(err).Msg("register-jobs")
