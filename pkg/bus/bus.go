@@ -640,22 +640,9 @@ func (b *Bus) handleNatsRequest(ctx context.Context, topic string,
 
 		log.Debug().Str("userID", msg.UserId).Msg("received-get-follows-request")
 
-		// Get user by UUID
-		user, err := b.stores.UserStore.GetByUUID(ctx, msg.UserId)
+		followIDs, err := b.followedUserIDs(ctx, msg.UserId)
 		if err != nil {
 			return err
-		}
-
-		// Get all users that this user follows
-		followUsers, err := b.stores.UserStore.GetFollows(ctx, user.ID)
-		if err != nil {
-			return err
-		}
-
-		// Convert to user IDs
-		followIDs := make([]string, len(followUsers))
-		for i, fu := range followUsers {
-			followIDs[i] = fu.UUID
 		}
 
 		resp := &pb.GetFollowsResponse{
@@ -675,6 +662,23 @@ func (b *Bus) handleNatsRequest(ctx context.Context, topic string,
 		return fmt.Errorf("unhandled-req-topic: %v", topic)
 	}
 	return nil
+}
+
+// followedUserIDs returns the IDs of the users that userID follows.
+func (b *Bus) followedUserIDs(ctx context.Context, userID string) ([]string, error) {
+	user, err := b.stores.UserStore.GetByUUID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	follows, err := b.stores.UserStore.GetFollows(ctx, user.ID)
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]string, len(follows))
+	for i, u := range follows {
+		ids[i] = u.UUID
+	}
+	return ids, nil
 }
 
 // handleNatsPublish runs in a separate goroutine

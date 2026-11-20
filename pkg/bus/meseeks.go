@@ -284,9 +284,14 @@ func publishSeek(ctx context.Context, b *Bus, sg *entity.SoughtGame, userID stri
 				return err
 			}
 
-			// Publish to a special topic for efficient socketsrv fan-out
 			log.Debug().Str("seekerUserID", seekerUserID).Msg("publishing seek to followed users only")
+			// TODO: remove once no socket server subscribes to seek.followed
+			// (it moved to seek.recipients).
 			err = publishSeekToFollowed(b, sg, seekerUserID)
+			if err != nil {
+				return err
+			}
+			err = publishSeekToRecipients(ctx, b, sg, seekerUserID)
 			if err != nil {
 				return err
 			}
@@ -319,6 +324,24 @@ func publishSeekToFollowed(b *Bus, sg *entity.SoughtGame, seekerUserID string) e
 	topic := "seek.followed." + seekerUserID
 	log.Debug().Str("topic", topic).Msg("publishing seek to followed users topic")
 	return b.natsconn.Publish(topic, data)
+}
+
+// publishSeekToRecipients sends a seek open only to the players its seeker
+// follows. It is one message carrying their IDs, however many there are; each
+// socket server delivers it to the ones connected to it.
+func publishSeekToRecipients(ctx context.Context, b *Bus, sg *entity.SoughtGame, seekerUserID string) error {
+	recipients, err := b.followedUserIDs(ctx, seekerUserID)
+	if err != nil {
+		return err
+	}
+	data, err := proto.Marshal(&pb.FollowedPlayersSeek{
+		SeekRequest:      sg.SeekRequest,
+		RecipientUserIds: recipients,
+	})
+	if err != nil {
+		return err
+	}
+	return b.natsconn.Publish("seek.recipients."+seekerUserID, data)
 }
 
 func publishSeekToPlayers(b *Bus, sg *entity.SoughtGame, seekerID, seekerConnID, receiverID, receiverConnID string) error {

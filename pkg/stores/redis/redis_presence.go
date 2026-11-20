@@ -344,6 +344,17 @@ func (s *RedisPresenceStore) BatchGetChannels(ctx context.Context, uuids []strin
 	return ret, nil
 }
 
+// FollowChangeTopic is the NATS subject on which a follow or unfollow is
+// announced: follows.added.<follower>.<followed> or
+// follows.removed.<follower>.<followed>.
+func FollowChangeTopic(follower, followed string, following bool) string {
+	verb := "removed"
+	if following {
+		verb = "added"
+	}
+	return "follows." + verb + "." + follower + "." + followed
+}
+
 func (s *RedisPresenceStore) UpdateFollower(ctx context.Context, followee, follower *entity.User, following bool) error {
 	var channels []string
 
@@ -371,6 +382,9 @@ func (s *RedisPresenceStore) UpdateFollower(ctx context.Context, followee, follo
 			Channel:  channels,
 		}, pb.MessageType_PRESENCE_ENTRY)
 		wrapped.AddAudience(entity.AudUser, follower.UUID)
+		// The socket servers keep, for each user connected to them, whom
+		// they follow; this tells them about the change.
+		wrapped.AddAudience(entity.EventAudienceType(FollowChangeTopic(follower.UUID, followee.UUID, following)), "")
 		evtChan <- wrapped
 	}
 

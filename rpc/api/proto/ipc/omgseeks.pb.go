@@ -374,6 +374,61 @@ func (x *SoughtGameProcessEvent) GetAlternatives() []string {
 	return nil
 }
 
+// A FollowedPlayersSeek is a seek open only to the players its seeker follows,
+// sent from the API to the socket servers with those players' IDs. Each socket
+// server delivers it to the recipients connected to it, and to the seeker.
+type FollowedPlayersSeek struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	SeekRequest      *SeekRequest           `protobuf:"bytes,1,opt,name=seek_request,json=seekRequest,proto3" json:"seek_request,omitempty"`
+	RecipientUserIds []string               `protobuf:"bytes,2,rep,name=recipient_user_ids,json=recipientUserIds,proto3" json:"recipient_user_ids,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *FollowedPlayersSeek) Reset() {
+	*x = FollowedPlayersSeek{}
+	mi := &file_proto_ipc_omgseeks_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FollowedPlayersSeek) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FollowedPlayersSeek) ProtoMessage() {}
+
+func (x *FollowedPlayersSeek) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_ipc_omgseeks_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FollowedPlayersSeek.ProtoReflect.Descriptor instead.
+func (*FollowedPlayersSeek) Descriptor() ([]byte, []int) {
+	return file_proto_ipc_omgseeks_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *FollowedPlayersSeek) GetSeekRequest() *SeekRequest {
+	if x != nil {
+		return x.SeekRequest
+	}
+	return nil
+}
+
+func (x *FollowedPlayersSeek) GetRecipientUserIds() []string {
+	if x != nil {
+		return x.RecipientUserIds
+	}
+	return nil
+}
+
 // SeekRequests sends all open seek requests.
 type SeekRequests struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -384,7 +439,7 @@ type SeekRequests struct {
 
 func (x *SeekRequests) Reset() {
 	*x = SeekRequests{}
-	mi := &file_proto_ipc_omgseeks_proto_msgTypes[3]
+	mi := &file_proto_ipc_omgseeks_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -396,7 +451,7 @@ func (x *SeekRequests) String() string {
 func (*SeekRequests) ProtoMessage() {}
 
 func (x *SeekRequests) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_ipc_omgseeks_proto_msgTypes[3]
+	mi := &file_proto_ipc_omgseeks_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -409,7 +464,7 @@ func (x *SeekRequests) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SeekRequests.ProtoReflect.Descriptor instead.
 func (*SeekRequests) Descriptor() ([]byte, []int) {
-	return file_proto_ipc_omgseeks_proto_rawDescGZIP(), []int{3}
+	return file_proto_ipc_omgseeks_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *SeekRequests) GetRequests() []*SeekRequest {
@@ -429,7 +484,7 @@ type DeclineSeekRequest struct {
 
 func (x *DeclineSeekRequest) Reset() {
 	*x = DeclineSeekRequest{}
-	mi := &file_proto_ipc_omgseeks_proto_msgTypes[4]
+	mi := &file_proto_ipc_omgseeks_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -441,7 +496,7 @@ func (x *DeclineSeekRequest) String() string {
 func (*DeclineSeekRequest) ProtoMessage() {}
 
 func (x *DeclineSeekRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_ipc_omgseeks_proto_msgTypes[4]
+	mi := &file_proto_ipc_omgseeks_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -454,7 +509,7 @@ func (x *DeclineSeekRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeclineSeekRequest.ProtoReflect.Descriptor instead.
 func (*DeclineSeekRequest) Descriptor() ([]byte, []int) {
-	return file_proto_ipc_omgseeks_proto_rawDescGZIP(), []int{4}
+	return file_proto_ipc_omgseeks_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *DeclineSeekRequest) GetRequestId() string {
@@ -498,7 +553,10 @@ const file_proto_ipc_omgseeks_proto_rawDesc = "" +
 	"\x16SoughtGameProcessEvent\x12\x1d\n" +
 	"\n" +
 	"request_id\x18\x01 \x01(\tR\trequestId\x12\"\n" +
-	"\falternatives\x18\x02 \x03(\tR\falternatives\"<\n" +
+	"\falternatives\x18\x02 \x03(\tR\falternatives\"x\n" +
+	"\x13FollowedPlayersSeek\x123\n" +
+	"\fseek_request\x18\x01 \x01(\v2\x10.ipc.SeekRequestR\vseekRequest\x12,\n" +
+	"\x12recipient_user_ids\x18\x02 \x03(\tR\x10recipientUserIds\"<\n" +
 	"\fSeekRequests\x12,\n" +
 	"\brequests\x18\x01 \x03(\v2\x10.ipc.SeekRequestR\brequests\"3\n" +
 	"\x12DeclineSeekRequest\x12\x1d\n" +
@@ -524,28 +582,30 @@ func file_proto_ipc_omgseeks_proto_rawDescGZIP() []byte {
 }
 
 var file_proto_ipc_omgseeks_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_proto_ipc_omgseeks_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_proto_ipc_omgseeks_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_proto_ipc_omgseeks_proto_goTypes = []any{
 	(SeekState)(0),                 // 0: ipc.SeekState
 	(*MatchUser)(nil),              // 1: ipc.MatchUser
 	(*SeekRequest)(nil),            // 2: ipc.SeekRequest
 	(*SoughtGameProcessEvent)(nil), // 3: ipc.SoughtGameProcessEvent
-	(*SeekRequests)(nil),           // 4: ipc.SeekRequests
-	(*DeclineSeekRequest)(nil),     // 5: ipc.DeclineSeekRequest
-	(*GameRequest)(nil),            // 6: ipc.GameRequest
+	(*FollowedPlayersSeek)(nil),    // 4: ipc.FollowedPlayersSeek
+	(*SeekRequests)(nil),           // 5: ipc.SeekRequests
+	(*DeclineSeekRequest)(nil),     // 6: ipc.DeclineSeekRequest
+	(*GameRequest)(nil),            // 7: ipc.GameRequest
 }
 var file_proto_ipc_omgseeks_proto_depIdxs = []int32{
-	6, // 0: ipc.SeekRequest.game_request:type_name -> ipc.GameRequest
+	7, // 0: ipc.SeekRequest.game_request:type_name -> ipc.GameRequest
 	1, // 1: ipc.SeekRequest.user:type_name -> ipc.MatchUser
 	1, // 2: ipc.SeekRequest.receiving_user:type_name -> ipc.MatchUser
 	0, // 3: ipc.SeekRequest.user_state:type_name -> ipc.SeekState
 	0, // 4: ipc.SeekRequest.receiver_state:type_name -> ipc.SeekState
-	2, // 5: ipc.SeekRequests.requests:type_name -> ipc.SeekRequest
-	6, // [6:6] is the sub-list for method output_type
-	6, // [6:6] is the sub-list for method input_type
-	6, // [6:6] is the sub-list for extension type_name
-	6, // [6:6] is the sub-list for extension extendee
-	0, // [0:6] is the sub-list for field type_name
+	2, // 5: ipc.FollowedPlayersSeek.seek_request:type_name -> ipc.SeekRequest
+	2, // 6: ipc.SeekRequests.requests:type_name -> ipc.SeekRequest
+	7, // [7:7] is the sub-list for method output_type
+	7, // [7:7] is the sub-list for method input_type
+	7, // [7:7] is the sub-list for extension type_name
+	7, // [7:7] is the sub-list for extension extendee
+	0, // [0:7] is the sub-list for field type_name
 }
 
 func init() { file_proto_ipc_omgseeks_proto_init() }
@@ -560,7 +620,7 @@ func file_proto_ipc_omgseeks_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_ipc_omgseeks_proto_rawDesc), len(file_proto_ipc_omgseeks_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   5,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

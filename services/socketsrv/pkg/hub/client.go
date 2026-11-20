@@ -89,8 +89,11 @@ type Client struct {
 	realms []Realm
 	// tempRealms is a temporary holding variable for the user realms.
 	tempRealms []string
-	connID     string
-	connToken  string
+	// follows holds whom the user follows, loaded when the socket connects,
+	// until the hub records it.
+	follows   []string
+	connID    string
+	connToken string
 
 	forwardedFor string
 	clientID     string
@@ -354,6 +357,14 @@ func ServeWS(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Err(err).Msg("register-realm-error")
 		client.conn.Close()
+	}
+
+	if client.authenticated {
+		// Without it the user still connects, but won't see the people they
+		// follow come and go until they reconnect.
+		if client.follows, err = loadFollows(client.userID, hub); err != nil {
+			log.Err(err).Str("userID", client.userID).Msg("load-follows-error")
+		}
 	}
 
 	client.hub.register <- client
