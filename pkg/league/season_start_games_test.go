@@ -170,7 +170,7 @@ func TestSeasonStartCreatesGames(t *testing.T) {
 	for _, r := range regs {
 		is.Equal(counted.getByUUID[r.UserUuid], 1)
 		is.Equal(counted.getActions[r.UserUuid], 1)
-		is.True(counted.isBot[r.UserUuid] <= 1)
+		is.Equal(counted.isBot[r.UserUuid], 0) // league games skip the bot check
 	}
 
 	// Pauses: one after every startPauseGames games, none after the last.

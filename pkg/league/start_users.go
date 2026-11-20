@@ -11,8 +11,8 @@ import (
 
 // startUsers is the user store a season start uses. Each player is in about
 // fourteen of a division's games, and creating and starting each game looks
-// both players up: their user, whether they are a bot, and their moderator
-// actions (to censor a suspended player's name). startUsers remembers each
+// both players up: their user, and their moderator actions (to censor a
+// suspended player's name). startUsers remembers each
 // answer for the rest of the start, so each player is looked up once.
 //
 // A start takes a minute or two. A player suspended during it may have their
@@ -25,7 +25,6 @@ type startUsers struct {
 
 	mu      sync.Mutex
 	users   map[string]*entity.User
-	bots    map[string]bool
 	actions map[string]map[string]*ms.ModAction
 }
 
@@ -33,7 +32,6 @@ func newStartUsers(s user.Store) *startUsers {
 	return &startUsers{
 		Store:   s,
 		users:   map[string]*entity.User{},
-		bots:    map[string]bool{},
 		actions: map[string]map[string]*ms.ModAction{},
 	}
 }
@@ -42,10 +40,6 @@ func newStartUsers(s user.Store) *startUsers {
 // creation only reads it.
 func (s *startUsers) GetByUUID(ctx context.Context, uuid string) (*entity.User, error) {
 	return remember(s, s.users, uuid, func() (*entity.User, error) { return s.Store.GetByUUID(ctx, uuid) })
-}
-
-func (s *startUsers) IsBot(ctx context.Context, uuid string) (bool, error) {
-	return remember(s, s.bots, uuid, func() (bool, error) { return s.Store.IsBot(ctx, uuid) })
 }
 
 func (s *startUsers) GetActions(ctx context.Context, uuid string) (map[string]*ms.ModAction, error) {
