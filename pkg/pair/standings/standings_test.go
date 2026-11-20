@@ -156,8 +156,8 @@ func TestStandings(t *testing.T) {
 		is.Equal(simResults.GibsonGroups[i], 0)
 	}
 	// Jackson is gibsonized and should always be first
-	assertGibsonizedResult(is, simResults.FinalRanks, numSims, 0)
-	assertResultSums(is, simResults.FinalRanks, int(req.ValidPlayers), numSims)
+	assertGibsonizedResult(is, simResults.FinalRanks, simResults.TotalSims, 0)
+	assertResultSums(is, simResults.FinalRanks, int(req.ValidPlayers), simResults.TotalSims)
 
 	// 1st and 2nd are gibsonized
 	req = pairtestutils.CreateAlbanyCSWAfterRound24PairRequest()
@@ -176,9 +176,9 @@ func TestStandings(t *testing.T) {
 	for i := 0; i < int(req.ValidPlayers); i++ {
 		is.Equal(simResults.GibsonGroups[i], 0)
 	}
-	assertGibsonizedResult(is, simResults.FinalRanks, numSims, 0)
-	assertGibsonizedResult(is, simResults.FinalRanks, numSims, 1)
-	assertResultSums(is, simResults.FinalRanks, int(req.ValidPlayers), numSims)
+	assertGibsonizedResult(is, simResults.FinalRanks, simResults.TotalSims, 0)
+	assertGibsonizedResult(is, simResults.FinalRanks, simResults.TotalSims, 1)
+	assertResultSums(is, simResults.FinalRanks, int(req.ValidPlayers), simResults.TotalSims)
 
 	// 3rd is gibsonized
 	req = pairtestutils.CreateAlbany3rdGibsonizedAfterRound25PairRequest()
@@ -196,8 +196,8 @@ func TestStandings(t *testing.T) {
 	for i := 2; i < int(req.ValidPlayers); i++ {
 		is.Equal(simResults.GibsonGroups[i], 0)
 	}
-	assertGibsonizedResult(is, simResults.FinalRanks, numSims, 2)
-	assertResultSums(is, simResults.FinalRanks, int(req.ValidPlayers), numSims)
+	assertGibsonizedResult(is, simResults.FinalRanks, simResults.TotalSims, 2)
+	assertResultSums(is, simResults.FinalRanks, int(req.ValidPlayers), simResults.TotalSims)
 
 	// 4th is gibsonized
 	req = pairtestutils.CreateAlbany4thGibsonizedAfterRound25PairRequest()
@@ -215,8 +215,8 @@ func TestStandings(t *testing.T) {
 	for i := 4; i < int(req.ValidPlayers); i++ {
 		is.Equal(simResults.GibsonGroups[i], 0)
 	}
-	assertGibsonizedResult(is, simResults.FinalRanks, numSims, 3)
-	assertResultSums(is, simResults.FinalRanks, int(req.ValidPlayers), numSims)
+	assertGibsonizedResult(is, simResults.FinalRanks, simResults.TotalSims, 3)
+	assertResultSums(is, simResults.FinalRanks, int(req.ValidPlayers), simResults.TotalSims)
 
 	// 1st and 4th are gibsonized
 	req = pairtestutils.CreateAlbany1stAnd4thGibsonizedAfterRound25PairRequest()
@@ -234,9 +234,9 @@ func TestStandings(t *testing.T) {
 	for i := 4; i < int(req.ValidPlayers); i++ {
 		is.Equal(simResults.GibsonGroups[i], 0)
 	}
-	assertGibsonizedResult(is, simResults.FinalRanks, numSims, 0)
-	assertGibsonizedResult(is, simResults.FinalRanks, numSims, 3)
-	assertResultSums(is, simResults.FinalRanks, int(req.ValidPlayers), numSims)
+	assertGibsonizedResult(is, simResults.FinalRanks, simResults.TotalSims, 0)
+	assertGibsonizedResult(is, simResults.FinalRanks, simResults.TotalSims, 3)
+	assertResultSums(is, simResults.FinalRanks, int(req.ValidPlayers), simResults.TotalSims)
 
 	// 1st and 4th and 8th are gibsonized
 	req = pairtestutils.CreateAlbany1stAnd4thAnd8thGibsonizedAfterRound25PairRequest()
@@ -258,10 +258,10 @@ func TestStandings(t *testing.T) {
 	for i := 8; i < int(req.ValidPlayers); i++ {
 		is.Equal(simResults.GibsonGroups[i], 0)
 	}
-	assertGibsonizedResult(is, simResults.FinalRanks, numSims, 0)
-	assertGibsonizedResult(is, simResults.FinalRanks, numSims, 3)
-	assertGibsonizedResult(is, simResults.FinalRanks, numSims, 7)
-	assertResultSums(is, simResults.FinalRanks, int(req.ValidPlayers), numSims)
+	assertGibsonizedResult(is, simResults.FinalRanks, simResults.TotalSims, 0)
+	assertGibsonizedResult(is, simResults.FinalRanks, simResults.TotalSims, 3)
+	assertGibsonizedResult(is, simResults.FinalRanks, simResults.TotalSims, 7)
+	assertResultSums(is, simResults.FinalRanks, int(req.ValidPlayers), simResults.TotalSims)
 
 	// Test control loss
 
@@ -297,26 +297,32 @@ func TestStandings(t *testing.T) {
 	req = pairtestutils.CreateBellevilleCSWAfterRound12PairRequest()
 	// Give the player in 2nd more spread to trigger control loss
 	req.DivisionResults[0].Results[0] = 1800
+	// Rank 2's true vsFirst/vsFactorPair gap is about 25%, so at the
+	// request's 25% threshold the outcome depends on the random stream (and
+	// so on the machine's core count): about 40% of streams flag rank 3
+	// instead. 20% keeps the threshold well clear of every gap observed for
+	// rank 2 (23.2%-26.6% over 160 seed and worker-count combinations).
+	req.ControlLossThreshold = 0.20
 	is.True(verifyreq.Verify(req) == nil)
 	standings = pkgstnd.CreateInitialStandings(req)
 	numSims = 5000
 	simResults, pairErr = standings.SimFactorPairAll(req, copRand, numSims, 3, 5, nil, -1)
 	is.Equal(pairErr, pb.PairError_SUCCESS)
-	// Rank 2 (0-indexed rank 1) wins every vsFirst sim but only 3743/5000
-	// vsFactorPair sims - a 25.1% gap, just over the 25% threshold. The old
-	// binary search missed this real control loss because it assumed the
+	// Rank 2 (0-indexed rank 1) wins every vsFirst sim but loses about a
+	// quarter of its vsFactorPair tournament wins. The old binary search
+	// missed this real control loss because it assumed the
 	// vsFirst/vsFactorPair gap was monotonic across ranks, which is exactly
 	// the bug the exhaustive per-rank scan (see standings.go) fixed.
 	is.Equal(simResults.HighestControlLossRankIdx, 1)
 	numSims = 1000
 }
 
-func assertGibsonizedResult(is *is.I, results [][]int, numSims int, gibsonizedPos int) {
+func assertGibsonizedResult(is *is.I, results [][]int, totalSims int, gibsonizedPos int) {
 	is.Helper()
 	numPlayers := len(results)
 	for i := 0; i < numPlayers; i++ {
 		if i == gibsonizedPos {
-			is.Equal(results[gibsonizedPos][gibsonizedPos], numSims)
+			is.Equal(results[gibsonizedPos][gibsonizedPos], totalSims)
 		} else {
 			is.Equal(results[gibsonizedPos][i], 0)
 		}
