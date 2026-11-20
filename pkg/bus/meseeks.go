@@ -285,12 +285,6 @@ func publishSeek(ctx context.Context, b *Bus, sg *entity.SoughtGame, userID stri
 			}
 
 			log.Debug().Str("seekerUserID", seekerUserID).Msg("publishing seek to followed users only")
-			// TODO: remove once no socket server subscribes to seek.followed
-			// (it moved to seek.recipients).
-			err = publishSeekToFollowed(b, sg, seekerUserID)
-			if err != nil {
-				return err
-			}
 			err = publishSeekToRecipients(ctx, b, sg, seekerUserID)
 			if err != nil {
 				return err
@@ -311,19 +305,6 @@ func publishSeekToLobby(b *Bus, sg *entity.SoughtGame) error {
 	log.Debug().Interface("evt", evt).Msg("republishing seek request that was abandoned to lobby topic")
 	b.natsconn.Publish("lobby.seekRequest", outdata)
 	return nil
-}
-
-func publishSeekToFollowed(b *Bus, sg *entity.SoughtGame, seekerUserID string) error {
-	// Publish a single NATS message to a special topic.
-	// The socketsrv will handle fan-out to all users that the seeker follows.
-	// This is much more efficient than sending individual messages to each followed user.
-	data, err := proto.Marshal(sg.SeekRequest)
-	if err != nil {
-		return err
-	}
-	topic := "seek.followed." + seekerUserID
-	log.Debug().Str("topic", topic).Msg("publishing seek to followed users topic")
-	return b.natsconn.Publish(topic, data)
 }
 
 // publishSeekToRecipients sends a seek open only to the players its seeker

@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file proto/ipc/presence.proto.
  */
 export const file_proto_ipc_presence: GenFile = /*@__PURE__*/
-  fileDesc("Chhwcm90by9pcGMvcHJlc2VuY2UucHJvdG8SA2lwYyJqCgxVc2VyUHJlc2VuY2USEAoIdXNlcm5hbWUYASABKAkSDwoHdXNlcl9pZBgCIAEoCRIPCgdjaGFubmVsGAMgASgJEhQKDGlzX2Fub255bW91cxgEIAEoCBIQCghkZWxldGluZxgFIAEoCCI1Cg1Vc2VyUHJlc2VuY2VzEiQKCXByZXNlbmNlcxgBIAMoCzIRLmlwYy5Vc2VyUHJlc2VuY2UiQwoNUHJlc2VuY2VFbnRyeRIQCgh1c2VybmFtZRgBIAEoCRIPCgd1c2VyX2lkGAIgASgJEg8KB2NoYW5uZWwYAyADKAkiJgoTR2V0Rm9sbG93ZXJzUmVxdWVzdBIPCgd1c2VyX2lkGAEgASgJIjEKFEdldEZvbGxvd2Vyc1Jlc3BvbnNlEhkKEWZvbGxvd2VyX3VzZXJfaWRzGAEgAygJIiQKEUdldEZvbGxvd3NSZXF1ZXN0Eg8KB3VzZXJfaWQYASABKAkiLQoSR2V0Rm9sbG93c1Jlc3BvbnNlEhcKD2ZvbGxvd191c2VyX2lkcxgBIAMoCUJ1Cgdjb20uaXBjQg1QcmVzZW5jZVByb3RvUAFaL2dpdGh1Yi5jb20vd29vZ2xlcy1pby9saXdvcmRzL3JwYy9hcGkvcHJvdG8vaXBjogIDSVhYqgIDSXBjygIDSXBj4gIPSXBjXEdQQk1ldGFkYXRh6gIDSXBjYgZwcm90bzM");
+  fileDesc("Chhwcm90by9pcGMvcHJlc2VuY2UucHJvdG8SA2lwYyJqCgxVc2VyUHJlc2VuY2USEAoIdXNlcm5hbWUYASABKAkSDwoHdXNlcl9pZBgCIAEoCRIPCgdjaGFubmVsGAMgASgJEhQKDGlzX2Fub255bW91cxgEIAEoCBIQCghkZWxldGluZxgFIAEoCCI1Cg1Vc2VyUHJlc2VuY2VzEiQKCXByZXNlbmNlcxgBIAMoCzIRLmlwYy5Vc2VyUHJlc2VuY2UiQwoNUHJlc2VuY2VFbnRyeRIQCgh1c2VybmFtZRgBIAEoCRIPCgd1c2VyX2lkGAIgASgJEg8KB2NoYW5uZWwYAyADKAkiJAoRR2V0Rm9sbG93c1JlcXVlc3QSDwoHdXNlcl9pZBgBIAEoCSItChJHZXRGb2xsb3dzUmVzcG9uc2USFwoPZm9sbG93X3VzZXJfaWRzGAEgAygJQnUKB2NvbS5pcGNCDVByZXNlbmNlUHJvdG9QAVovZ2l0aHViLmNvbS93b29nbGVzLWlvL2xpd29yZHMvcnBjL2FwaS9wcm90by9pcGOiAgNJWFiqAgNJcGPKAgNJcGPiAg9JcGNcR1BCTWV0YWRhdGHqAgNJcGNiBnByb3RvMw");
 
 /**
  * @generated from message ipc.UserPresence
@@ -96,44 +96,6 @@ export const PresenceEntrySchema: GenMessage<PresenceEntry> = /*@__PURE__*/
   messageDesc(file_proto_ipc_presence, 2);
 
 /**
- * Request for getting followers of a user
- *
- * @generated from message ipc.GetFollowersRequest
- */
-export type GetFollowersRequest = Message<"ipc.GetFollowersRequest"> & {
-  /**
-   * @generated from field: string user_id = 1;
-   */
-  userId: string;
-};
-
-/**
- * Describes the message ipc.GetFollowersRequest.
- * Use `create(GetFollowersRequestSchema)` to create a new message.
- */
-export const GetFollowersRequestSchema: GenMessage<GetFollowersRequest> = /*@__PURE__*/
-  messageDesc(file_proto_ipc_presence, 3);
-
-/**
- * Response containing list of follower user IDs
- *
- * @generated from message ipc.GetFollowersResponse
- */
-export type GetFollowersResponse = Message<"ipc.GetFollowersResponse"> & {
-  /**
-   * @generated from field: repeated string follower_user_ids = 1;
-   */
-  followerUserIds: string[];
-};
-
-/**
- * Describes the message ipc.GetFollowersResponse.
- * Use `create(GetFollowersResponseSchema)` to create a new message.
- */
-export const GetFollowersResponseSchema: GenMessage<GetFollowersResponse> = /*@__PURE__*/
-  messageDesc(file_proto_ipc_presence, 4);
-
-/**
  * Request for getting users that a user follows
  *
  * @generated from message ipc.GetFollowsRequest
@@ -150,7 +112,7 @@ export type GetFollowsRequest = Message<"ipc.GetFollowsRequest"> & {
  * Use `create(GetFollowsRequestSchema)` to create a new message.
  */
 export const GetFollowsRequestSchema: GenMessage<GetFollowsRequest> = /*@__PURE__*/
-  messageDesc(file_proto_ipc_presence, 5);
+  messageDesc(file_proto_ipc_presence, 3);
 
 /**
  * Response containing list of user IDs that the user follows
@@ -169,5 +131,5 @@ export type GetFollowsResponse = Message<"ipc.GetFollowsResponse"> & {
  * Use `create(GetFollowsResponseSchema)` to create a new message.
  */
 export const GetFollowsResponseSchema: GenMessage<GetFollowsResponse> = /*@__PURE__*/
-  messageDesc(file_proto_ipc_presence, 6);
+  messageDesc(file_proto_ipc_presence, 4);
 
