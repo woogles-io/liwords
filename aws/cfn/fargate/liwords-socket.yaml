@@ -65,7 +65,7 @@ Resources:
               awslogs-region: !Ref AWS::Region
               awslogs-stream-prefix: fargate
           Environment:
-            - { Name: NATS_URL, Value: "nats://10.0.0.251:4222" }
+            - { Name: NATS_URL, Value: "nats://nats.woogles.io:4222" }
           Secrets:
             - Name: SECRET_KEY
               ValueFrom: !Sub
