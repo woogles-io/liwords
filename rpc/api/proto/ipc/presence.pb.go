@@ -202,96 +202,6 @@ func (x *PresenceEntry) GetChannel() []string {
 	return nil
 }
 
-// Request for getting followers of a user
-type GetFollowersRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *GetFollowersRequest) Reset() {
-	*x = GetFollowersRequest{}
-	mi := &file_proto_ipc_presence_proto_msgTypes[3]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *GetFollowersRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*GetFollowersRequest) ProtoMessage() {}
-
-func (x *GetFollowersRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_ipc_presence_proto_msgTypes[3]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use GetFollowersRequest.ProtoReflect.Descriptor instead.
-func (*GetFollowersRequest) Descriptor() ([]byte, []int) {
-	return file_proto_ipc_presence_proto_rawDescGZIP(), []int{3}
-}
-
-func (x *GetFollowersRequest) GetUserId() string {
-	if x != nil {
-		return x.UserId
-	}
-	return ""
-}
-
-// Response containing list of follower user IDs
-type GetFollowersResponse struct {
-	state           protoimpl.MessageState `protogen:"open.v1"`
-	FollowerUserIds []string               `protobuf:"bytes,1,rep,name=follower_user_ids,json=followerUserIds,proto3" json:"follower_user_ids,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
-}
-
-func (x *GetFollowersResponse) Reset() {
-	*x = GetFollowersResponse{}
-	mi := &file_proto_ipc_presence_proto_msgTypes[4]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *GetFollowersResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*GetFollowersResponse) ProtoMessage() {}
-
-func (x *GetFollowersResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_ipc_presence_proto_msgTypes[4]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use GetFollowersResponse.ProtoReflect.Descriptor instead.
-func (*GetFollowersResponse) Descriptor() ([]byte, []int) {
-	return file_proto_ipc_presence_proto_rawDescGZIP(), []int{4}
-}
-
-func (x *GetFollowersResponse) GetFollowerUserIds() []string {
-	if x != nil {
-		return x.FollowerUserIds
-	}
-	return nil
-}
-
 // Request for getting users that a user follows
 type GetFollowsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -302,7 +212,7 @@ type GetFollowsRequest struct {
 
 func (x *GetFollowsRequest) Reset() {
 	*x = GetFollowsRequest{}
-	mi := &file_proto_ipc_presence_proto_msgTypes[5]
+	mi := &file_proto_ipc_presence_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -314,7 +224,7 @@ func (x *GetFollowsRequest) String() string {
 func (*GetFollowsRequest) ProtoMessage() {}
 
 func (x *GetFollowsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_ipc_presence_proto_msgTypes[5]
+	mi := &file_proto_ipc_presence_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -327,7 +237,7 @@ func (x *GetFollowsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetFollowsRequest.ProtoReflect.Descriptor instead.
 func (*GetFollowsRequest) Descriptor() ([]byte, []int) {
-	return file_proto_ipc_presence_proto_rawDescGZIP(), []int{5}
+	return file_proto_ipc_presence_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *GetFollowsRequest) GetUserId() string {
@@ -347,7 +257,7 @@ type GetFollowsResponse struct {
 
 func (x *GetFollowsResponse) Reset() {
 	*x = GetFollowsResponse{}
-	mi := &file_proto_ipc_presence_proto_msgTypes[6]
+	mi := &file_proto_ipc_presence_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -359,7 +269,7 @@ func (x *GetFollowsResponse) String() string {
 func (*GetFollowsResponse) ProtoMessage() {}
 
 func (x *GetFollowsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_ipc_presence_proto_msgTypes[6]
+	mi := &file_proto_ipc_presence_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -372,7 +282,7 @@ func (x *GetFollowsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetFollowsResponse.ProtoReflect.Descriptor instead.
 func (*GetFollowsResponse) Descriptor() ([]byte, []int) {
-	return file_proto_ipc_presence_proto_rawDescGZIP(), []int{6}
+	return file_proto_ipc_presence_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *GetFollowsResponse) GetFollowUserIds() []string {
@@ -398,11 +308,7 @@ const file_proto_ipc_presence_proto_rawDesc = "" +
 	"\rPresenceEntry\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\x12\x17\n" +
 	"\auser_id\x18\x02 \x01(\tR\x06userId\x12\x18\n" +
-	"\achannel\x18\x03 \x03(\tR\achannel\".\n" +
-	"\x13GetFollowersRequest\x12\x17\n" +
-	"\auser_id\x18\x01 \x01(\tR\x06userId\"B\n" +
-	"\x14GetFollowersResponse\x12*\n" +
-	"\x11follower_user_ids\x18\x01 \x03(\tR\x0ffollowerUserIds\",\n" +
+	"\achannel\x18\x03 \x03(\tR\achannel\",\n" +
 	"\x11GetFollowsRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\"<\n" +
 	"\x12GetFollowsResponse\x12&\n" +
@@ -421,15 +327,13 @@ func file_proto_ipc_presence_proto_rawDescGZIP() []byte {
 	return file_proto_ipc_presence_proto_rawDescData
 }
 
-var file_proto_ipc_presence_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_proto_ipc_presence_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_proto_ipc_presence_proto_goTypes = []any{
-	(*UserPresence)(nil),         // 0: ipc.UserPresence
-	(*UserPresences)(nil),        // 1: ipc.UserPresences
-	(*PresenceEntry)(nil),        // 2: ipc.PresenceEntry
-	(*GetFollowersRequest)(nil),  // 3: ipc.GetFollowersRequest
-	(*GetFollowersResponse)(nil), // 4: ipc.GetFollowersResponse
-	(*GetFollowsRequest)(nil),    // 5: ipc.GetFollowsRequest
-	(*GetFollowsResponse)(nil),   // 6: ipc.GetFollowsResponse
+	(*UserPresence)(nil),       // 0: ipc.UserPresence
+	(*UserPresences)(nil),      // 1: ipc.UserPresences
+	(*PresenceEntry)(nil),      // 2: ipc.PresenceEntry
+	(*GetFollowsRequest)(nil),  // 3: ipc.GetFollowsRequest
+	(*GetFollowsResponse)(nil), // 4: ipc.GetFollowsResponse
 }
 var file_proto_ipc_presence_proto_depIdxs = []int32{
 	0, // 0: ipc.UserPresences.presences:type_name -> ipc.UserPresence
@@ -451,7 +355,7 @@ func file_proto_ipc_presence_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_ipc_presence_proto_rawDesc), len(file_proto_ipc_presence_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   7,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
