@@ -156,8 +156,8 @@ func TestStandings(t *testing.T) {
 		is.Equal(simResults.GibsonGroups[i], 0)
 	}
 	// Jackson is gibsonized and should always be first
-	assertGibsonizedResult(is, simResults.FinalRanks, numSims, 0)
-	assertResultSums(is, simResults.FinalRanks, int(req.ValidPlayers), numSims)
+	assertGibsonizedResult(is, simResults.FinalRanks, simResults.TotalSims, 0)
+	assertResultSums(is, simResults.FinalRanks, int(req.ValidPlayers), simResults.TotalSims)
 
 	// 1st and 2nd are gibsonized
 	req = pairtestutils.CreateAlbanyCSWAfterRound24PairRequest()
@@ -176,9 +176,9 @@ func TestStandings(t *testing.T) {
 	for i := 0; i < int(req.ValidPlayers); i++ {
 		is.Equal(simResults.GibsonGroups[i], 0)
 	}
-	assertGibsonizedResult(is, simResults.FinalRanks, numSims, 0)
-	assertGibsonizedResult(is, simResults.FinalRanks, numSims, 1)
-	assertResultSums(is, simResults.FinalRanks, int(req.ValidPlayers), numSims)
+	assertGibsonizedResult(is, simResults.FinalRanks, simResults.TotalSims, 0)
+	assertGibsonizedResult(is, simResults.FinalRanks, simResults.TotalSims, 1)
+	assertResultSums(is, simResults.FinalRanks, int(req.ValidPlayers), simResults.TotalSims)
 
 	// 3rd is gibsonized
 	req = pairtestutils.CreateAlbany3rdGibsonizedAfterRound25PairRequest()
@@ -196,8 +196,8 @@ func TestStandings(t *testing.T) {
 	for i := 2; i < int(req.ValidPlayers); i++ {
 		is.Equal(simResults.GibsonGroups[i], 0)
 	}
-	assertGibsonizedResult(is, simResults.FinalRanks, numSims, 2)
-	assertResultSums(is, simResults.FinalRanks, int(req.ValidPlayers), numSims)
+	assertGibsonizedResult(is, simResults.FinalRanks, simResults.TotalSims, 2)
+	assertResultSums(is, simResults.FinalRanks, int(req.ValidPlayers), simResults.TotalSims)
 
 	// 4th is gibsonized
 	req = pairtestutils.CreateAlbany4thGibsonizedAfterRound25PairRequest()
@@ -215,8 +215,8 @@ func TestStandings(t *testing.T) {
 	for i := 4; i < int(req.ValidPlayers); i++ {
 		is.Equal(simResults.GibsonGroups[i], 0)
 	}
-	assertGibsonizedResult(is, simResults.FinalRanks, numSims, 3)
-	assertResultSums(is, simResults.FinalRanks, int(req.ValidPlayers), numSims)
+	assertGibsonizedResult(is, simResults.FinalRanks, simResults.TotalSims, 3)
+	assertResultSums(is, simResults.FinalRanks, int(req.ValidPlayers), simResults.TotalSims)
 
 	// 1st and 4th are gibsonized
 	req = pairtestutils.CreateAlbany1stAnd4thGibsonizedAfterRound25PairRequest()
@@ -234,9 +234,9 @@ func TestStandings(t *testing.T) {
 	for i := 4; i < int(req.ValidPlayers); i++ {
 		is.Equal(simResults.GibsonGroups[i], 0)
 	}
-	assertGibsonizedResult(is, simResults.FinalRanks, numSims, 0)
-	assertGibsonizedResult(is, simResults.FinalRanks, numSims, 3)
-	assertResultSums(is, simResults.FinalRanks, int(req.ValidPlayers), numSims)
+	assertGibsonizedResult(is, simResults.FinalRanks, simResults.TotalSims, 0)
+	assertGibsonizedResult(is, simResults.FinalRanks, simResults.TotalSims, 3)
+	assertResultSums(is, simResults.FinalRanks, int(req.ValidPlayers), simResults.TotalSims)
 
 	// 1st and 4th and 8th are gibsonized
 	req = pairtestutils.CreateAlbany1stAnd4thAnd8thGibsonizedAfterRound25PairRequest()
@@ -258,10 +258,10 @@ func TestStandings(t *testing.T) {
 	for i := 8; i < int(req.ValidPlayers); i++ {
 		is.Equal(simResults.GibsonGroups[i], 0)
 	}
-	assertGibsonizedResult(is, simResults.FinalRanks, numSims, 0)
-	assertGibsonizedResult(is, simResults.FinalRanks, numSims, 3)
-	assertGibsonizedResult(is, simResults.FinalRanks, numSims, 7)
-	assertResultSums(is, simResults.FinalRanks, int(req.ValidPlayers), numSims)
+	assertGibsonizedResult(is, simResults.FinalRanks, simResults.TotalSims, 0)
+	assertGibsonizedResult(is, simResults.FinalRanks, simResults.TotalSims, 3)
+	assertGibsonizedResult(is, simResults.FinalRanks, simResults.TotalSims, 7)
+	assertResultSums(is, simResults.FinalRanks, int(req.ValidPlayers), simResults.TotalSims)
 
 	// Test control loss
 
@@ -311,12 +311,12 @@ func TestStandings(t *testing.T) {
 	numSims = 1000
 }
 
-func assertGibsonizedResult(is *is.I, results [][]int, numSims int, gibsonizedPos int) {
+func assertGibsonizedResult(is *is.I, results [][]int, totalSims int, gibsonizedPos int) {
 	is.Helper()
 	numPlayers := len(results)
 	for i := 0; i < numPlayers; i++ {
 		if i == gibsonizedPos {
-			is.Equal(results[gibsonizedPos][gibsonizedPos], numSims)
+			is.Equal(results[gibsonizedPos][gibsonizedPos], totalSims)
 		} else {
 			is.Equal(results[gibsonizedPos][i], 0)
 		}
