@@ -68,8 +68,13 @@ func WrapEvent(event proto.Message, messageType pb.MessageType) *EventWrapper {
 	}
 }
 
+// SendEvent sends e on ch. ctx is the request that caused the event.
+func SendEvent(ctx context.Context, ch chan<- *EventWrapper, e *EventWrapper) {
+	ch <- e.WithTrace(ctx)
+}
+
 // WithTrace records ctx's trace, if it has one, as the trace this event
-// belongs to, and returns e.
+// belongs to, and returns e. SendChange and SendEvent call it.
 func (e *EventWrapper) WithTrace(ctx context.Context) *EventWrapper {
 	e.trace = trace.SpanContextFromContext(ctx)
 	return e

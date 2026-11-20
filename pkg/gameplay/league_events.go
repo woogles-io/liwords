@@ -1,6 +1,7 @@
 package gameplay
 
 import (
+	"context"
 	"strings"
 
 	"github.com/google/uuid"
@@ -34,10 +35,10 @@ func leagueGameEvent(leagueID, seasonID, divisionID uuid.UUID, gameID string,
 }
 
 // sendLeagueGameUpdated sends leagueGameEvent for g, if g is a league game.
-func sendLeagueGameUpdated(g *entity.Game, ended bool) {
+func sendLeagueGameUpdated(ctx context.Context, g *entity.Game, ended bool) {
 	if g.LeagueID == nil || g.SeasonID == nil || g.LeagueDivisionID == nil {
 		return
 	}
-	g.SendChange(leagueGameEvent(*g.LeagueID, *g.SeasonID, *g.LeagueDivisionID,
+	g.SendChange(ctx, leagueGameEvent(*g.LeagueID, *g.SeasonID, *g.LeagueDivisionID,
 		g.GameID(), players(g), ended))
 }

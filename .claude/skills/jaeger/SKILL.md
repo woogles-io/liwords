@@ -82,6 +82,12 @@ message's `traceparent` header), and what the API publishes back in that trace
 is forwarded under `socket.forward.<subject prefix>` spans (tags `msg.subject`,
 `msg.type`, `sockets`: how many sockets it was queued for). So one trace shows
 a move from the socket server through the API and back out to every socket.
+Under a forward span, each socket's write is a `socket.write` span (tags
+`conn.id`, `user.id`, `queue_wait_us`: time in that socket's send queue,
+`write_us`, `batch.messages`, `msg.bytes`). It starts when the message is
+queued and ends when the write returns, i.e. when the bytes are in the
+server's TCP buffer, not when the browser has them; a long write means a slow
+or stalled client. Messages sent to more than 20 sockets get no write spans.
 Messages the API publishes outside a traced request (lobby updates, presence)
 get no socket span.
 

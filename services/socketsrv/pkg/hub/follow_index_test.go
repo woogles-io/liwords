@@ -82,7 +82,7 @@ func testHub() *Hub {
 
 func connect(h *Hub, userID, connID string) *Client {
 	c := &Client{authenticated: true, userID: userID, connID: connID,
-		send: make(chan []byte, 8)}
+		send: make(chan outMsg, 8)}
 	if h.clientsByUserID[userID] == nil {
 		h.clientsByUserID[userID] = map[*Client]bool{}
 	}
@@ -140,7 +140,7 @@ func TestDeliverToFollowersRemovesStuckSocket(t *testing.T) {
 	// removeClient publishes leave messages; with no connection they fail.
 	h.pubsub = &PubSub{}
 	stuck := connect(h, "bob", "b1")
-	stuck.send = make(chan []byte) // full: nothing reads it
+	stuck.send = make(chan outMsg) // full: nothing reads it
 	carol := connect(h, "carol", "c1")
 	h.follows.set("bob", []string{"x"})
 	h.follows.set("carol", []string{"x"})

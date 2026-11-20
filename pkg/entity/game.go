@@ -1,6 +1,7 @@
 package entity
 
 import (
+	"context"
 	"database/sql/driver"
 	"encoding/json"
 	"errors"
@@ -685,8 +686,9 @@ func (g *Game) RegisterChangeHook(eventChan chan<- *EventWrapper) error {
 	return nil
 }
 
-// SendChange sends an event via the registered hook.
-func (g *Game) SendChange(e *EventWrapper) {
+// SendChange sends an event via the registered hook. ctx is the request
+// that caused the event.
+func (g *Game) SendChange(ctx context.Context, e *EventWrapper) {
 	log.Debug().Interface("evt", e.Event).
 		Interface("aud", e.Audience()).
 		Int("chan-length", len(g.ChangeHook)).Msg("send-change")
@@ -699,7 +701,7 @@ func (g *Game) SendChange(e *EventWrapper) {
 		log.Error().Str("gameid", g.GameID()).Msg("change hook is closed!")
 		return
 	}
-	g.ChangeHook <- e
+	SendEvent(ctx, g.ChangeHook, e)
 	log.Debug().Msg("change sent")
 }
 

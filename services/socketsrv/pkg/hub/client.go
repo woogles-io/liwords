@@ -74,7 +74,7 @@ type Client struct {
 	conn *websocket.Conn
 
 	// Buffered channel of outbound messages.
-	send chan []byte
+	send chan outMsg
 
 	authenticated bool
 	username      string
@@ -118,7 +118,7 @@ func (c *Client) sendError(err error) {
 	// Through the hub, the only goroutine that may touch c.send: it closes
 	// the channel when it drops this client, which the read pump (our
 	// caller) may outlive, and a send on a closed channel panics.
-	c.hub.sendToConnID(c.connID, bts, nil)
+	c.hub.sendToConnID(context.Background(), c.connID, bts)
 }
 
 func (c *Client) sendLatency() {
@@ -132,7 +132,7 @@ func (c *Client) sendLatency() {
 		return
 	}
 	// Through the hub; see sendError.
-	c.hub.sendToConnID(c.connID, bts, nil)
+	c.hub.sendToConnID(context.Background(), c.connID, bts)
 }
 
 // readPump pumps messages from the websocket connection to the hub.
@@ -244,21 +244,29 @@ func (c *Client) writePump() {
 				return
 			}
 
+			start := time.Now()
+			var traced []outMsg // the batch's messages to record writes for
+			if message.trace.IsValid() {
+				traced = append(traced, message)
+			}
 			w, err := c.conn.NextWriter(websocket.BinaryMessage)
 			if err != nil {
 				return
 			}
-			w.Write(message)
+			w.Write(message.data)
 
 			// Add queued messages to the current websocket message. A frame
 			// too big for a two-byte length goes in a websocket message of its
 			// own: a client that can't read it then loses only that frame, not
 			// the ones batched with it.
-			alone := needsExtendedLength(message)
+			alone := needsExtendedLength(message.data)
 			n := len(c.send)
 			for i := 0; i < n; i++ {
 				next := <-c.send
-				if alone || needsExtendedLength(next) {
+				if next.trace.IsValid() {
+					traced = append(traced, next)
+				}
+				if alone || needsExtendedLength(next.data) {
 					if err := w.Close(); err != nil {
 						return
 					}
@@ -266,11 +274,15 @@ func (c *Client) writePump() {
 						return
 					}
 				}
-				w.Write(next)
-				alone = needsExtendedLength(next)
+				w.Write(next.data)
+				alone = needsExtendedLength(next.data)
 			}
 
-			if err := w.Close(); err != nil {
+			err = w.Close()
+			if traced != nil {
+				recordWrites(c, traced, start, n+1, err)
+			}
+			if err != nil {
 				return
 			}
 		case <-ticker.C:
@@ -336,7 +348,7 @@ func ServeWS(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	client := &Client{
 		hub:          hub,
 		conn:         conn,
-		send:         make(chan []byte, 256),
+		send:         make(chan outMsg, 256),
 		connID:       connID,
 		connToken:    token,
 		forwardedFor: strings.Join(fwd, ","),

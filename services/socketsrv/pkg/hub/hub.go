@@ -1,6 +1,7 @@
 package sockets
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -10,7 +11,6 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/rs/zerolog/log"
-	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/protobuf/proto"
 
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
@@ -42,7 +42,7 @@ const (
 type RealmMessage struct {
 	realm Realm
 	msg   []byte
-	span  trace.Span // see forwardSpan; nil if not traced
+	ctx   context.Context // its forward span, if traced (see forwardContext)
 }
 
 // A UserMessage is a message that should be sent to a user (across all
@@ -51,14 +51,14 @@ type UserMessage struct {
 	userID  string
 	channel string
 	msg     []byte
-	span    trace.Span // see forwardSpan; nil if not traced
+	ctx     context.Context // its forward span, if traced (see forwardContext)
 }
 
 // A ConnMessage is a message that just gets sent to a single socket connection.
 type ConnMessage struct {
 	connID string
 	msg    []byte
-	span   trace.Span // see forwardSpan; nil if not traced
+	ctx    context.Context // its forward span, if traced (see forwardContext)
 }
 
 // A FollowersMessage is sent to every connected user who follows userID.
@@ -235,26 +235,26 @@ func (h *Hub) removeClient(c *Client) error {
 	return nil
 }
 
-// The sendTo functions hand a message to Run to deliver. span, if not nil,
-// is the message's forward span (see forwardSpan); Run ends it.
+// The sendTo functions hand a message to Run to deliver. If ctx has a
+// forward span (see forwardContext), Run ends it once the message is queued.
 
-func (h *Hub) sendToRealm(realm Realm, msg []byte, span trace.Span) error {
-	h.broadcastRealm <- RealmMessage{realm: realm, msg: msg, span: span}
+func (h *Hub) sendToRealm(ctx context.Context, realm Realm, msg []byte) error {
+	h.broadcastRealm <- RealmMessage{realm: realm, msg: msg, ctx: ctx}
 	return nil
 }
 
-func (h *Hub) sendToConnID(connID string, msg []byte, span trace.Span) error {
-	h.sendConnMessage <- ConnMessage{connID: connID, msg: msg, span: span}
+func (h *Hub) sendToConnID(ctx context.Context, connID string, msg []byte) error {
+	h.sendConnMessage <- ConnMessage{connID: connID, msg: msg, ctx: ctx}
 	return nil
 }
 
-func (h *Hub) sendToUser(userID string, msg []byte, span trace.Span) error {
-	h.broadcastUser <- UserMessage{userID: userID, msg: msg, span: span}
+func (h *Hub) sendToUser(ctx context.Context, userID string, msg []byte) error {
+	h.broadcastUser <- UserMessage{userID: userID, msg: msg, ctx: ctx}
 	return nil
 }
 
-func (h *Hub) sendToUserChannel(userID string, msg []byte, channel string, span trace.Span) error {
-	h.broadcastUser <- UserMessage{userID: userID, msg: msg, channel: channel, span: span}
+func (h *Hub) sendToUserChannel(ctx context.Context, userID string, msg []byte, channel string) error {
+	h.broadcastUser <- UserMessage{userID: userID, msg: msg, channel: channel, ctx: ctx}
 	return nil
 }
 
@@ -268,16 +268,17 @@ func channelToRealm(channel string) Realm {
 
 // deliverToUser sends msg to every socket of userID connected here. A
 // non-empty channel limits it to the sockets in a realm that the channel
-// starts with. Call it only from Run.
-// deliverToUser returns how many sockets msg was queued for.
-func (h *Hub) deliverToUser(userID, channel string, msg []byte) int {
+// starts with. It returns how many sockets msg was queued for. Call it only
+// from Run.
+func (h *Hub) deliverToUser(ctx context.Context, userID, channel string, msg []byte) int {
+	out := outgoing(ctx, msg, len(h.clientsByUserID[userID]))
 	sent := 0
 	for client := range h.clientsByUserID[userID] {
 		if channel != "" && !inChannel(client, channel) {
 			continue
 		}
 		select {
-		case client.send <- msg:
+		case client.send <- out:
 			sent++
 		default:
 			log.Debug().Str("username", client.username).Msg("in deliverToUser, removeClient")
@@ -297,7 +298,7 @@ func (h *Hub) deliverToFollowers(m FollowersMessage) {
 		followers = append(followers, f)
 	}
 	for _, f := range followers {
-		h.deliverToUser(f, "", m.msg)
+		h.deliverToUser(context.Background(), f, "", m.msg)
 	}
 }
 
@@ -353,29 +354,30 @@ func (h *Hub) Run() {
 			log.Debug().Str("realm", string(message.realm)).
 				Int("clients", len(h.realms[message.realm])).
 				Msg("sending broadcast message to realm")
+			out := outgoing(message.ctx, message.msg, len(h.realms[message.realm]))
 			sent := 0
 			for client := range h.realms[message.realm] {
 				select {
-				case client.send <- message.msg:
+				case client.send <- out:
 					sent++
 				default:
 					log.Debug().Str("username", client.username).Msg("in broadcastRealm, removeClient")
 					h.removeClient(client)
 				}
 			}
-			endForward(message.span, sent)
+			endForward(message.ctx, sent)
 
 		case message := <-h.broadcastUser:
 			log.Debug().Str("user", string(message.userID)).
 				Msg("sending to all user sockets")
-			endForward(message.span, h.deliverToUser(message.userID, message.channel, message.msg))
+			endForward(message.ctx, h.deliverToUser(message.ctx, message.userID, message.channel, message.msg))
 
 		case message := <-h.sendFollowers:
 			h.deliverToFollowers(message)
 
 		case message := <-h.sendUsers:
 			for _, u := range message.userIDs {
-				h.deliverToUser(u, "", message.msg)
+				h.deliverToUser(context.Background(), u, "", message.msg)
 			}
 
 		case change := <-h.followChanges:
@@ -401,14 +403,14 @@ func (h *Hub) Run() {
 				log.Debug().Str("connID", message.connID).Msg("connID-not-found")
 			} else {
 				select {
-				case c.send <- message.msg:
+				case c.send <- outgoing(message.ctx, message.msg, 1):
 					sent = 1
 				default:
 					log.Debug().Str("connID", message.connID).Msg("in sendToConnID, removeClient")
 					h.removeClient(c)
 				}
 			}
-			endForward(message.span, sent)
+			endForward(message.ctx, sent)
 
 		case <-h.resync:
 			msgs := h.realmInitInfoForAll()
