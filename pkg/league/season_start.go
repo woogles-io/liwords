@@ -20,6 +20,7 @@ import (
 	"github.com/woogles-io/liwords/pkg/stores"
 	"github.com/woogles-io/liwords/pkg/stores/league"
 	"github.com/woogles-io/liwords/pkg/stores/models"
+	"github.com/woogles-io/liwords/pkg/user"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
@@ -28,7 +29,8 @@ import (
 // cmd/liwords-api/league_adapter.go).
 type GameCreator interface {
 	InstantiateNewGame(ctx context.Context, users [2]*entity.User, req *pb.GameRequest, tdata *entity.TournamentData, opts ...gameplay.GameOption) (*entity.Game, error)
-	StartGame(ctx context.Context, game *entity.Game) error
+	// StartGame starts game, looking its players up in users.
+	StartGame(ctx context.Context, game *entity.Game, users user.Store) error
 	GetGame(ctx context.Context, id string) (*entity.Game, error)
 }
 
@@ -38,6 +40,10 @@ type SeasonStartManager struct {
 	stores      *stores.Stores
 	cfg         *config.Config
 	gameCreator GameCreator
+	// users is where a start looks players up, through startUsers; tests
+	// replace it, and sleep, which pauses between batches of games.
+	users user.Store
+	sleep func(context.Context, time.Duration) error
 }
 
 // NewSeasonStartManager creates a new season start manager
@@ -52,6 +58,20 @@ func NewSeasonStartManager(
 		stores:      stores,
 		cfg:         cfg,
 		gameCreator: gameCreator,
+		users:       stores.UserStore,
+		sleep:       sleepCtx,
+	}
+}
+
+// sleepCtx sleeps for d, or until ctx is done.
+func sleepCtx(ctx context.Context, d time.Duration) error {
+	t := time.NewTimer(d)
+	defer t.Stop()
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-t.C:
+		return nil
 	}
 }
 
@@ -91,9 +111,12 @@ func (ssm *SeasonStartManager) CreateGamesForSeason(
 		Int("batchSize", batchSize).
 		Msg("creating-games-for-season")
 
+	// Each player is in many games: look each up once (see startUsers).
+	users := newStartUsers(ssm.users)
+
 	// Process each division
 	for _, division := range divisions {
-		gamesCreated, err := ssm.createGamesForDivision(ctx, leagueID, seasonID, division, leagueSettings, delayBetweenBatches, batchSize)
+		gamesCreated, err := ssm.createGamesForDivision(ctx, leagueID, seasonID, division, leagueSettings, delayBetweenBatches, batchSize, users)
 		if err != nil {
 			errMsg := fmt.Sprintf("division %s: %v", division.Uuid.String(), err)
 			result.Errors = append(result.Errors, errMsg)
@@ -124,6 +147,7 @@ func (ssm *SeasonStartManager) createGamesForDivision(
 	leagueSettings *pb.LeagueSettings,
 	delayBetweenBatches time.Duration,
 	batchSize int,
+	users user.Store,
 ) (int, error) {
 	// Get players in division
 	registrations, err := ssm.store.GetDivisionRegistrations(ctx, division.Uuid)
@@ -193,7 +217,7 @@ func (ssm *SeasonStartManager) createGamesForDivision(
 			if err != nil {
 				return gamesCreated, fmt.Errorf("failed to load unstarted game %s: %w", g.Uuid.String, err)
 			}
-			if err := ssm.gameCreator.StartGame(ctx, game); err != nil {
+			if err := ssm.gameCreator.StartGame(ctx, game, users); err != nil {
 				return gamesCreated, fmt.Errorf("failed to start game %s: %w", g.Uuid.String, err)
 			}
 			gamesCreated++
@@ -201,22 +225,22 @@ func (ssm *SeasonStartManager) createGamesForDivision(
 		}
 
 		// Look up user entities using the UUIDs from the JOIN
-		user1, err := ssm.stores.UserStore.GetByUUID(ctx, player1Reg.UserUuid)
+		user1, err := users.GetByUUID(ctx, player1Reg.UserUuid)
 		if err != nil {
 			return gamesCreated, fmt.Errorf("failed to get user %d: %w", player1Reg.UserID, err)
 		}
 
-		user2, err := ssm.stores.UserStore.GetByUUID(ctx, player2Reg.UserUuid)
+		user2, err := users.GetByUUID(ctx, player2Reg.UserUuid)
 		if err != nil {
 			return gamesCreated, fmt.Errorf("failed to get user %d: %w", player2Reg.UserID, err)
 		}
 
 		// Determine order based on who goes first
-		var users [2]*entity.User
+		var players [2]*entity.User
 		if pairing.IsPlayer1First {
-			users = [2]*entity.User{user1, user2}
+			players = [2]*entity.User{user1, user2}
 		} else {
-			users = [2]*entity.User{user2, user1}
+			players = [2]*entity.User{user2, user1}
 		}
 
 		// Build game request with unique request ID for each game
@@ -228,16 +252,16 @@ func (ssm *SeasonStartManager) createGamesForDivision(
 		// Create the game
 		// Saved with its division, so a start cut off before StartGame below
 		// finds it, and starts it, rather than creating another.
-		game, err := ssm.gameCreator.InstantiateNewGame(ctx, users, gameReq, nil,
+		game, err := ssm.gameCreator.InstantiateNewGame(ctx, players, gameReq, nil,
 			gameplay.WithLeague(leagueID, seasonID, division.Uuid))
 		if err != nil {
 			return gamesCreated, fmt.Errorf("failed to create game: %w", err)
 		}
 
 		// Start the game (starts timer for correspondence games)
-		err = ssm.gameCreator.StartGame(ctx, game)
+		err = ssm.gameCreator.StartGame(ctx, game, users)
 		if err != nil {
-			return gamesCreated, fmt.Errorf("failed to start game of %s and %s: %w", users[0].Username, users[1].Username, err)
+			return gamesCreated, fmt.Errorf("failed to start game of %s and %s: %w", players[0].Username, players[1].Username, err)
 		}
 
 		gamesCreated++
@@ -249,10 +273,8 @@ func (ssm *SeasonStartManager) createGamesForDivision(
 				Int("gamesCreated", gamesCreated).
 				Dur("sleeping", delayBetweenBatches).
 				Msg("batch-complete-sleeping")
-			select {
-			case <-ctx.Done():
-				return gamesCreated, ctx.Err()
-			case <-time.After(delayBetweenBatches):
+			if err := ssm.sleep(ctx, delayBetweenBatches); err != nil {
+				return gamesCreated, err
 			}
 		}
 	}

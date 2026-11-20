@@ -256,6 +256,14 @@ func clientEventToMove(cge *pb.ClientGameplayEvent, g *game.Game) (*move.Move, e
 
 func StartGame(ctx context.Context, stores *stores.Stores, eventChan chan<- *entity.EventWrapper,
 	entGame *entity.Game) error {
+	return StartGameWithUsers(ctx, stores, stores.UserStore, eventChan, entGame)
+}
+
+// StartGameWithUsers is StartGame, looking players up in users rather than
+// stores.UserStore: a league season start, which starts many games between
+// the same players, passes one that caches what it has looked up.
+func StartGameWithUsers(ctx context.Context, stores *stores.Stores, users user.Store,
+	eventChan chan<- *entity.EventWrapper, entGame *entity.Game) error {
 	// Note that StartGame does _not_ start the Macondo game, which
 	// has already started, but we don't "know" that. It is _this_
 	// function that will actually start the game in the user's eyes.
@@ -286,7 +294,7 @@ func StartGame(ctx context.Context, stores *stores.Stores, eventChan chan<- *ent
 	}
 
 	evt := entGame.HistoryRefresherEvent()
-	evt.History = proto.Clone(mod.CensorHistory(ctx, stores.UserStore, evt.History)).(*macondopb.GameHistory)
+	evt.History = proto.Clone(mod.CensorHistory(ctx, users, evt.History)).(*macondopb.GameHistory)
 	if shouldCensorRacksForViewers(ctx, entGame, stores) {
 		playerWrapped := entity.WrapEvent(evt, pb.MessageType_GAME_HISTORY_REFRESHER)
 		for _, p := range players(entGame) {
@@ -309,8 +317,9 @@ func StartGame(ctx context.Context, stores *stores.Stores, eventChan chan<- *ent
 	}
 
 	// If the previous game was a rematch, notify
-	// the viewers that this game has started.
-	if entGame.Quickdata.OriginalRequestId != "" {
+	// the viewers that this game has started. A league game is never a
+	// rematch: the season start gives each one a request ID of its own.
+	if entGame.Quickdata.OriginalRequestId != "" && entGame.LeagueID == nil {
 		previousGameID, err := stores.GameStore.GetLatestRematchGame(ctx, entGame.Quickdata.OriginalRequestId)
 		if err != nil {
 			return err
@@ -322,8 +331,15 @@ func StartGame(ctx context.Context, stores *stores.Stores, eventChan chan<- *ent
 			entGame.SendChange(wrappedRematch)
 		}
 	}
-	return PotentiallySendBotMoveRequest(ctx, stores.UserStore, entGame)
-
+	// Bots can't join leagues (league.RegisterPlayer refuses them), so a
+	// league game never waits on a bot's move, and its start skips the bot
+	// lookup. (Should one ever be
+	// registered, the bot watchdog, ResendStaleBotRequests, would send its
+	// move request a couple of minutes late; the game wouldn't freeze.)
+	if entGame.LeagueID != nil {
+		return nil
+	}
+	return PotentiallySendBotMoveRequest(ctx, users, entGame)
 }
 
 func players(entGame *entity.Game) []string {

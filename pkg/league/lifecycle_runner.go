@@ -15,6 +15,15 @@ import (
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
+// A season start pauses for startPauseEvery after each startPauseGames games
+// it creates. Each game's queries take about 20 ms, so the pause keeps the
+// start from taking the database and NATS for the minute or two it runs:
+// every game started sends events to both its players.
+const (
+	startPauseEvery = 50 * time.Millisecond
+	startPauseGames = 10
+)
+
 // parseLeagueSettings parses the JSONB settings from the database
 func parseLeagueSettings(settingsJSON []byte) (*pb.LeagueSettings, error) {
 	var settings pb.LeagueSettings
@@ -293,7 +302,7 @@ func RunLeagueLifecycleTasks(
 	}
 	for _, season := range toCreate {
 		startMgr := NewSeasonStartManager(allStores.LeagueStore, allStores, cfg, gameCreator)
-		gameResult, err := startMgr.CreateGamesForSeason(ctx, dbLeague.Uuid, season.Uuid, leagueSettings, 100*time.Millisecond, 2)
+		gameResult, err := startMgr.CreateGamesForSeason(ctx, dbLeague.Uuid, season.Uuid, leagueSettings, startPauseEvery, startPauseGames)
 		if err != nil {
 			// The season stays ACTIVE without games_created_at: the next run
 			// creates the games still missing.

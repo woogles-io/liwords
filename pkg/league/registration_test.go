@@ -2,6 +2,7 @@ package league
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -350,4 +351,32 @@ func TestCategorizeRegistrations_Mixed(t *testing.T) {
 
 	is.Equal(newCount, 5)
 	is.Equal(returningCount, 5)
+}
+
+// Bots can't register: season start relies on no league player being a bot.
+func TestRegisterPlayerRejectsBots(t *testing.T) {
+	is := is.New(t)
+	ctx := context.Background()
+	allStores, store, cleanup := setupTest(t)
+	defer cleanup()
+
+	bot := &entity.User{Username: "leaguebot", Email: "leaguebot@test.com", UUID: "league-bot-uuid", IsBot: true}
+	is.NoErr(allStores.UserStore.New(ctx, bot))
+	botUser, err := allStores.UserStore.GetByUUID(ctx, bot.UUID)
+	is.NoErr(err)
+	is.True(botUser.IsBot)
+
+	_, seasonID := createLeagueAndSeason(t, ctx, allStores)
+	rm := NewRegistrationManager(store, RealClock{}, allStores)
+
+	err = rm.RegisterPlayer(ctx, int32(botUser.ID), seasonID)
+	is.True(errors.Is(err, ErrBotsCantPlayLeagues))
+
+	// A person still can.
+	is.NoErr(rm.RegisterPlayer(ctx, 1, seasonID))
+
+	regs, err := rm.GetSeasonRegistrations(ctx, seasonID)
+	is.NoErr(err)
+	is.Equal(len(regs), 1)
+	is.Equal(regs[0].UserID, int32(1))
 }
