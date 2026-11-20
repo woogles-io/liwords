@@ -58,7 +58,7 @@ services:
       - ./data/lexica/gaddag:/opt/program/data/lexica/gaddag
       - ../macondo/data/strategy:/opt/program/data/strategy
       - ${AWS_CREDENTIALS_PATH:-~/.aws}:/root/.aws:ro
-    command: sh -c "go run -race cmd/liwords-api/*.go"
+    command: sh -c "go run -race ./cmd/liwords-api"
     depends_on: ["db", "proxy", "nats", "socket", "redis", "minio"]
     networks:
       - aeronet
