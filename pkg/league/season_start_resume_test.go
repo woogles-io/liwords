@@ -18,6 +18,7 @@ import (
 	"github.com/woogles-io/liwords/pkg/gameplay"
 	leaguestore "github.com/woogles-io/liwords/pkg/stores/league"
 	"github.com/woogles-io/liwords/pkg/stores/models"
+	"github.com/woogles-io/liwords/pkg/user"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
@@ -61,7 +62,7 @@ func (f *fakeGameCreator) InstantiateNewGame(ctx context.Context, users [2]*enti
 	return g, nil
 }
 
-func (f *fakeGameCreator) StartGame(ctx context.Context, g *entity.Game) error {
+func (f *fakeGameCreator) StartGame(ctx context.Context, g *entity.Game, _ user.Store) error {
 	if f.stopBeforeStart {
 		f.stopBeforeStart = false
 		return errors.New("cut off")

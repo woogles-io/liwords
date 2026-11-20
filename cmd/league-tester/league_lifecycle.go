@@ -13,6 +13,7 @@ import (
 	"github.com/woogles-io/liwords/pkg/gameplay"
 	"github.com/woogles-io/liwords/pkg/league"
 	"github.com/woogles-io/liwords/pkg/stores"
+	"github.com/woogles-io/liwords/pkg/user"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
@@ -28,8 +29,8 @@ func (a *GameplayAdapter) InstantiateNewGame(ctx context.Context, users [2]*enti
 	return gameplay.InstantiateNewGame(ctx, a.stores.GameStore, a.cfg, users, req, tdata, opts...)
 }
 
-func (a *GameplayAdapter) StartGame(ctx context.Context, game *entity.Game) error {
-	return gameplay.StartGame(ctx, a.stores, a.eventChan, game)
+func (a *GameplayAdapter) StartGame(ctx context.Context, game *entity.Game, users user.Store) error {
+	return gameplay.StartGameWithUsers(ctx, a.stores, users, a.eventChan, game)
 }
 
 func (a *GameplayAdapter) GetGame(ctx context.Context, id string) (*entity.Game, error) {
