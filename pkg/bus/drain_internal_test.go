@@ -49,7 +49,7 @@ func drainTestBus(t *testing.T) (*Bus, []*fakeSub) {
 		config:              config.DefaultConfig(),
 		subchans:            map[string]chan *nats.Msg{"user.>": make(chan *nats.Msg, 8)},
 		drainChecks:         make(chan drainCheck),
-		publish:             func(string, []byte) error { return nil },
+		publish:             func(*nats.Msg) error { return nil },
 		gameEventChan:       make(chan *entity.EventWrapper, 8),
 		tournamentEventChan: make(chan *entity.EventWrapper, 8),
 		genericEventChan:    make(chan *entity.EventWrapper, 8),
@@ -246,11 +246,11 @@ type slowPublisher struct {
 	published []string
 }
 
-func (p *slowPublisher) publish(subject string, data []byte) error {
+func (p *slowPublisher) publish(msg *nats.Msg) error {
 	time.Sleep(p.delay)
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	p.published = append(p.published, subject)
+	p.published = append(p.published, msg.Subject)
 	return nil
 }
 

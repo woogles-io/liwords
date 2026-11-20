@@ -66,6 +66,9 @@ Resources:
               awslogs-stream-prefix: fargate
           Environment:
             - { Name: NATS_URL, Value: "nats://nats.woogles.io:4222" }
+            # Spans go to the same Jaeger as the API's.
+            - { Name: OTEL_EXPORTER_OTLP_ENDPOINT, Value: "http://10.0.0.164:4318" }
+            - { Name: OTEL_RESOURCE_ATTRIBUTES, Value: "service.name=liwords-socket,service.version=0.1.0" }
           Secrets:
             - Name: SECRET_KEY
               ValueFrom: !Sub

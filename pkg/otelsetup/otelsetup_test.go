@@ -1,6 +1,7 @@
-package main
+package otelsetup
 
 import (
+	"context"
 	"os"
 	"testing"
 
@@ -13,7 +14,7 @@ func TestTraceResource(t *testing.T) {
 	is := is.New(t)
 	t.Setenv("OTEL_SERVICE_NAME", "liwords")
 	t.Setenv("OTEL_RESOURCE_ATTRIBUTES", "service.version=0.1.0")
-	res, err := traceResource()
+	res, err := traceResource(context.Background())
 	is.NoErr(err)
 
 	got := map[string]string{}

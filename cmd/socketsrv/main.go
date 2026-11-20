@@ -13,6 +13,8 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+
+	"github.com/woogles-io/liwords/pkg/otelsetup"
 	"github.com/woogles-io/liwords/services/socketsrv/pkg/config"
 	sockets "github.com/woogles-io/liwords/services/socketsrv/pkg/hub"
 )
@@ -48,6 +50,18 @@ func main() {
 	}
 
 	log.Debug().Msg("debug log is on")
+
+	// Tracing, when there's somewhere to send the spans. Without it the
+	// tracer is a no-op and messages go out with no trace headers.
+	shutdownTracing := func(context.Context) error { return nil }
+	if os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT") != "" {
+		if shutdown, err := otelsetup.Tracing(context.Background()); err != nil {
+			log.Err(err).Msg("tracing-setup-failed")
+		} else {
+			shutdownTracing = shutdown
+			log.Info().Msg("tracing-on")
+		}
+	}
 
 	h, err := sockets.NewHub(cfg)
 	if err != nil {
@@ -99,4 +113,9 @@ func main() {
 	}
 	<-idleConnsClosed
 	log.Info().Msg("server gracefully shutting down")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := shutdownTracing(ctx); err != nil {
+		log.Err(err).Msg("tracing-shutdown")
+	}
 }

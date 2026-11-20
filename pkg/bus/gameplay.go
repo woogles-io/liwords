@@ -299,7 +299,7 @@ func (b *Bus) readyForGame(ctx context.Context, evt *pb.ReadyForGame, userID str
 		if err != nil {
 			log.Err(err).Msg("starting-game")
 		} else {
-			g.SendChange(g.NewActiveGameEntry(true))
+			g.SendChange(ctx, g.NewActiveGameEntry(true))
 		}
 
 	}
@@ -491,7 +491,7 @@ func (b *Bus) readyForTournamentGame(ctx context.Context, evt *pb.ReadyForTourna
 		Str("onturn", g.NickOnTurn()).Msg("tournament-game-started")
 
 	// This is untested.
-	g.SendChange(g.NewActiveGameEntry(true))
+	g.SendChange(ctx, g.NewActiveGameEntry(true))
 	return nil
 }
 

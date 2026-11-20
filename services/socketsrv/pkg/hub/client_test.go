@@ -11,7 +11,7 @@ import (
 // client, and not to the closed channel, where it would panic.
 func TestReadPumpSendsGoThroughHub(t *testing.T) {
 	h := &Hub{sendConnMessage: make(chan ConnMessage, 2)}
-	c := &Client{hub: h, connID: "conn", send: make(chan []byte, 256)}
+	c := &Client{hub: h, connID: "conn", send: make(chan outMsg, 256)}
 	close(c.send) // as removeClient does
 
 	c.sendLatency()

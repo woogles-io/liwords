@@ -300,20 +300,20 @@ func StartGameWithUsers(ctx context.Context, stores *stores.Stores, users user.S
 		for _, p := range players(entGame) {
 			playerWrapped.AddAudience(entity.AudUser, p+".game."+entGame.GameID())
 		}
-		entGame.SendChange(playerWrapped)
+		entGame.SendChange(ctx, playerWrapped)
 
 		censoredEvt := proto.Clone(evt).(*pb.GameHistoryRefresher)
 		entity.CensorHistoryRacks(censoredEvt)
 		tvWrapped := entity.WrapEvent(censoredEvt, pb.MessageType_GAME_HISTORY_REFRESHER)
 		tvWrapped.AddAudience(entity.AudGameTV, entGame.GameID())
-		entGame.SendChange(tvWrapped)
+		entGame.SendChange(ctx, tvWrapped)
 	} else {
 		wrapped := entity.WrapEvent(evt, pb.MessageType_GAME_HISTORY_REFRESHER)
 		wrapped.AddAudience(entity.AudGameTV, entGame.GameID())
 		for _, p := range players(entGame) {
 			wrapped.AddAudience(entity.AudUser, p+".game."+entGame.GameID())
 		}
-		entGame.SendChange(wrapped)
+		entGame.SendChange(ctx, wrapped)
 	}
 
 	// If the previous game was a rematch, notify
@@ -328,7 +328,7 @@ func StartGameWithUsers(ctx context.Context, stores *stores.Stores, users user.S
 			evt := &pb.RematchStartedEvent{RematchGameId: entGame.GameID()}
 			wrappedRematch := entity.WrapEvent(evt, pb.MessageType_REMATCH_STARTED)
 			wrappedRematch.AddAudience(entity.AudGameTV, previousGameID)
-			entGame.SendChange(wrappedRematch)
+			entGame.SendChange(ctx, wrappedRematch)
 		}
 	}
 	// Bots can't join leagues (league.RegisterPlayer refuses them), so a
@@ -553,9 +553,9 @@ func handleChallenge(ctx context.Context, entGame *entity.Game, stores *stores.S
 	evt := entity.WrapEvent(resultEvent, pb.MessageType_SERVER_CHALLENGE_RESULT_EVENT)
 	evt.AddAudience(entity.AudGame, entGame.GameID())
 	evt.AddAudience(entity.AudGameTV, entGame.GameID())
-	entGame.SendChange(evt)
+	entGame.SendChange(ctx, evt)
 	for _, line := range chatLines {
-		entGame.SendChange(line)
+		entGame.SendChange(ctx, line)
 	}
 
 	newEvts := entGame.Game.History().Events
@@ -591,7 +591,7 @@ func handleChallenge(ctx context.Context, entGame *entity.Game, stores *stores.S
 		for _, uid := range players(entGame) {
 			evt.AddAudience(entity.AudUser, uid+".game."+entGame.GameID())
 		}
-		entGame.SendChange(evt)
+		entGame.SendChange(ctx, evt)
 	}
 	if cfg, cfgErr := config.Ctx(ctx); cfgErr == nil && cfg.DualWriteTurns {
 		if dwtErr := stores.GameStore.StageTurns(entGame, numEvts, newEvts[numEvts:]); dwtErr != nil {
@@ -728,13 +728,13 @@ func PlayMove(ctx context.Context,
 			for _, p := range players {
 				playerWrapped.AddAudience(entity.AudUser, p+".game."+entGame.GameID())
 			}
-			entGame.SendChange(playerWrapped)
+			entGame.SendChange(ctx, playerWrapped)
 
 			c := proto.Clone(sge).(*pb.ServerGameplayEvent)
 			entity.CensorRacks(c)
 			tvWrapped := entity.WrapEvent(c, pb.MessageType_SERVER_GAMEPLAY_EVENT)
 			tvWrapped.AddAudience(entity.AudGameTV, entGame.GameID())
-			entGame.SendChange(tvWrapped)
+			entGame.SendChange(ctx, tvWrapped)
 		} else {
 			// Public game: single event with both audiences.
 			wrapped := entity.WrapEvent(sge, pb.MessageType_SERVER_GAMEPLAY_EVENT)
@@ -742,7 +742,7 @@ func PlayMove(ctx context.Context,
 			for _, p := range players {
 				wrapped.AddAudience(entity.AudUser, p+".game."+entGame.GameID())
 			}
-			entGame.SendChange(wrapped)
+			entGame.SendChange(ctx, wrapped)
 		}
 	}
 	if playing == macondopb.PlayState_GAME_OVER {
@@ -934,10 +934,10 @@ func handleEventAfterLockingGame(ctx context.Context, stores *stores.Stores, use
 				for _, p := range players {
 					wrapped.AddAudience(entity.AudUser, p)
 				}
-				entGame.SendChange(wrapped)
+				entGame.SendChange(ctx, wrapped)
 			}
 			// A league game's page shows its live score and whose turn it is.
-			sendLeagueGameUpdated(entGame, false)
+			sendLeagueGameUpdated(ctx, entGame, false)
 			pushTurn(ctx, entGame, stores, userID)
 		}
 
@@ -1060,7 +1060,7 @@ func PotentiallySendBotMoveRequest(ctx context.Context, userStore user.Store, g 
 	// serialize without any length/type headers! This message is meant to
 	// go straight to a bot. See bus.go  `case msg := <-b.gameEventChan:`
 	wrapped.SetSerializationProtocol(entity.EvtSerializationProto)
-	g.SendChange(wrapped)
+	g.SendChange(ctx, wrapped)
 
 	return nil
 }

@@ -2,11 +2,13 @@ package entity
 
 import (
 	"bytes"
+	"context"
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"io"
 
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/protobuf/proto"
 
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
@@ -52,6 +54,9 @@ type EventWrapper struct {
 	protocol     SerializationProtocol
 	audience     []string
 	excludeUsers []string
+	// trace is the trace this event belongs to, if any: the request that
+	// caused it. Its publisher sends it along in the NATS message's headers.
+	trace trace.SpanContext
 }
 
 // WrapEvent wraps a protobuf event.
@@ -61,6 +66,27 @@ func WrapEvent(event proto.Message, messageType pb.MessageType) *EventWrapper {
 		Event:    event,
 		protocol: DefaultSerializationProtocol,
 	}
+}
+
+// SendEvent sends e on ch. ctx is the request that caused the event.
+func SendEvent(ctx context.Context, ch chan<- *EventWrapper, e *EventWrapper) {
+	ch <- e.WithTrace(ctx)
+}
+
+// WithTrace records ctx's trace, if it has one, as the trace this event
+// belongs to, and returns e. SendChange and SendEvent call it.
+func (e *EventWrapper) WithTrace(ctx context.Context) *EventWrapper {
+	e.trace = trace.SpanContextFromContext(ctx)
+	return e
+}
+
+// TraceContext returns ctx carrying the trace recorded by WithTrace; ctx
+// unchanged if there is none.
+func (e *EventWrapper) TraceContext(ctx context.Context) context.Context {
+	if !e.trace.IsValid() {
+		return ctx
+	}
+	return trace.ContextWithSpanContext(ctx, e.trace)
 }
 
 // SetSerializationProtocol sets the serialization protocol of the protobuf

@@ -39,10 +39,10 @@ func TestWritePumpSendsLargeFramesAlone(t *testing.T) {
 			t.Error(err)
 			return
 		}
-		c := &Client{conn: conn, send: make(chan []byte, len(queued))}
+		c := &Client{conn: conn, send: make(chan outMsg, len(queued))}
 		// Queued before the pump starts, so it finds them all waiting.
 		for _, f := range queued {
-			c.send <- f
+			c.send <- outMsg{data: f}
 		}
 		go c.writePump()
 	}))

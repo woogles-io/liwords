@@ -1,6 +1,7 @@
 package sockets
 
 import (
+	"context"
 	"strings"
 
 	nats "github.com/nats-io/nats.go"
@@ -105,7 +106,7 @@ func (h *Hub) PubsubProcess() {
 				log.Error().Msgf("subtopics weird %v", msg.Subject)
 				continue
 			}
-			h.sendToRealm(LobbyRealm, msg.Data)
+			h.sendToRealm(forwardContext(msg), LobbyRealm, msg.Data)
 
 		case msg := <-h.pubsub.subchans["tournament.>"]:
 			log.Debug().Str("topic", msg.Subject).Int("type", int(msg.Data[2])).Msg("got tournament message, forwarding along")
@@ -116,7 +117,7 @@ func (h *Hub) PubsubProcess() {
 				continue
 			}
 			tournamentID := subtopics[1]
-			h.sendToRealm(Realm("tournament-"+tournamentID), msg.Data)
+			h.sendToRealm(forwardContext(msg), Realm("tournament-"+tournamentID), msg.Data)
 
 		case msg := <-h.pubsub.subchans["league.>"]:
 			log.Debug().Str("topic", msg.Subject).Int("type", int(msg.Data[2])).Msg("got league message, forwarding along")
@@ -127,7 +128,7 @@ func (h *Hub) PubsubProcess() {
 				continue
 			}
 			leagueID := subtopics[1]
-			h.sendToRealm(Realm("league-"+leagueID), msg.Data)
+			h.sendToRealm(forwardContext(msg), Realm("league-"+leagueID), msg.Data)
 
 		case msg := <-h.pubsub.subchans["user.>"]:
 			// If we get a user message, we should send it along to the given
@@ -140,9 +141,9 @@ func (h *Hub) PubsubProcess() {
 			}
 			userID := subtopics[1]
 			if len(subtopics) < 3 {
-				h.sendToUser(userID, msg.Data)
+				h.sendToUser(forwardContext(msg), userID, msg.Data)
 			} else {
-				h.sendToUserChannel(userID, msg.Data, subtopics[2])
+				h.sendToUserChannel(forwardContext(msg), userID, msg.Data, subtopics[2])
 			}
 
 		case msg := <-h.pubsub.subchans["sessionend.>"]:
@@ -162,7 +163,7 @@ func (h *Hub) PubsubProcess() {
 				continue
 			}
 			connID := subtopics[1]
-			h.sendToConnID(connID, msg.Data)
+			h.sendToConnID(forwardContext(msg), connID, msg.Data)
 
 		case msg := <-h.pubsub.subchans["usertv.>"]:
 			// XXX: This might not really work. We should only send to gametv
@@ -176,7 +177,7 @@ func (h *Hub) PubsubProcess() {
 				continue
 			}
 			userID := subtopics[1]
-			h.sendToRealm(Realm("usertv-"+userID), msg.Data)
+			h.sendToRealm(forwardContext(msg), Realm("usertv-"+userID), msg.Data)
 
 		case msg := <-h.pubsub.subchans["gametv.>"]:
 			// A gametv message is meant for people who are observing a user's games.
@@ -187,7 +188,7 @@ func (h *Hub) PubsubProcess() {
 				continue
 			}
 			gameID := subtopics[1]
-			h.sendToRealm(Realm("gametv-"+gameID), msg.Data)
+			h.sendToRealm(forwardContext(msg), Realm("gametv-"+gameID), msg.Data)
 
 		case msg := <-h.pubsub.subchans["game.>"]:
 			// A game message is meant for people who are playing a game.
@@ -198,7 +199,7 @@ func (h *Hub) PubsubProcess() {
 				continue
 			}
 			gameID := subtopics[1]
-			h.sendToRealm(Realm("game-"+gameID), msg.Data)
+			h.sendToRealm(forwardContext(msg), Realm("game-"+gameID), msg.Data)
 
 		case msg := <-h.pubsub.subchans["chat.>"]:
 			log.Debug().Str("topic", msg.Subject).Msg("chat-msg")
@@ -206,11 +207,12 @@ func (h *Hub) PubsubProcess() {
 				// This is a private message. Send to each recipient.
 				recipients := strings.Split(strings.TrimPrefix(msg.Subject, "chat.pm."), "_")
 				log.Debug().Interface("recipients", recipients).Msg("private-message")
+				// One message for several users: not traced.
 				for _, r := range recipients {
-					h.sendToUser(r, msg.Data)
+					h.sendToUser(context.Background(), r, msg.Data)
 				}
 			} else {
-				h.sendToRealm(channelToRealm(msg.Subject), msg.Data)
+				h.sendToRealm(forwardContext(msg), channelToRealm(msg.Subject), msg.Data)
 			}
 
 		case msg := <-h.pubsub.subchans["channel.>"]:
@@ -221,7 +223,7 @@ func (h *Hub) PubsubProcess() {
 				continue
 			}
 			channelID := subtopics[1]
-			h.sendToRealm(Realm("channel-"+channelID), msg.Data)
+			h.sendToRealm(forwardContext(msg), Realm("channel-"+channelID), msg.Data)
 
 		case msg := <-h.pubsub.subchans["broadcasts.>"]:
 			log.Debug().Str("topic", msg.Subject).Msg("broadcast-msg")
@@ -230,7 +232,7 @@ func (h *Hub) PubsubProcess() {
 				log.Error().Msgf("broadcasts subtopics weird %v", msg.Subject)
 				continue
 			}
-			h.sendToRealm(Realm("broadcasts-"+subtopics[1]), msg.Data)
+			h.sendToRealm(forwardContext(msg), Realm("broadcasts-"+subtopics[1]), msg.Data)
 
 		case msg := <-h.pubsub.subchans["presence.changed.>"]:
 			log.Debug().Str("topic", msg.Subject).Msg("presence-changed")
