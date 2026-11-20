@@ -25,7 +25,7 @@ really the season UUID. Match a pasted UUID against both `users.uuid` (a 22-char
 shortuuid) and `league_seasons.uuid` (a standard UUID).
 
 ```sql
-SELECT u.id, u.uuid, u.username, p.first_name, p.last_name, p.country_code
+SELECT u.id, u.uuid, u.username, u.internal_bot, p.first_name, p.last_name, p.country_code
 FROM users u LEFT JOIN profiles p ON p.user_id = u.id
 WHERE u.uuid = '<given>' OR u.username ILIKE '%<name>%'
    OR p.first_name ILIKE '%<name>%' OR p.last_name ILIKE '%<name>%';
@@ -41,6 +41,9 @@ ORDER BY l.slug, s.season_number DESC;
 
 - Identify the league by `settings->>'lexicon'`, not the slug.
 - If more than one user matches the name, stop and ask which one.
+- If `internal_bot` is true, **stop**: bots can't play in leagues. Season start
+  relies on that, and sends a bot no move request (`RegisterPlayer` refuses
+  bots for the same reason).
 - `current_season_id` is NULL between the old season closing and the new one
   starting. That's normal, not a sign anything is broken.
 

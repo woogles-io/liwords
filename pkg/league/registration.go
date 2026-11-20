@@ -2,6 +2,8 @@ package league
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -34,6 +36,12 @@ func NewRegistrationManager(store league.Store, clock Clock, allStores *stores.S
 	}
 }
 
+// ErrBotsCantPlayLeagues is RegisterPlayer's error for a bot account.
+//
+// Bots don't join leagues, and season start relies on it: a league game's
+// start sends no move request to a bot (gameplay.StartGameWithUsers).
+var ErrBotsCantPlayLeagues = errors.New("bots can't play in leagues")
+
 // RegisterPlayer registers a player for a season
 // Returns error if already registered or if validation fails
 func (rm *RegistrationManager) RegisterPlayer(
@@ -41,7 +49,14 @@ func (rm *RegistrationManager) RegisterPlayer(
 	userID int32,
 	seasonID uuid.UUID,
 ) error {
-	_, err := rm.store.RegisterPlayer(ctx, models.RegisterPlayerParams{
+	isBot, err := rm.allStores.Queries.GetUserIsBotByID(ctx, userID)
+	if err != nil {
+		return fmt.Errorf("checking user %d: %w", userID, err)
+	}
+	if isBot {
+		return ErrBotsCantPlayLeagues
+	}
+	_, err = rm.store.RegisterPlayer(ctx, models.RegisterPlayerParams{
 		UserID:           userID,
 		SeasonID:         seasonID,
 		DivisionID:       pgtype.UUID{Valid: false}, // No division assigned yet

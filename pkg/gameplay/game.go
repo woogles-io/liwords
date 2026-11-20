@@ -331,8 +331,9 @@ func StartGameWithUsers(ctx context.Context, stores *stores.Stores, users user.S
 			entGame.SendChange(wrappedRematch)
 		}
 	}
-	// Bots don't join leagues, so a league game never waits on a bot's
-	// move, and its start skips the bot lookup. (Should one ever be
+	// Bots can't join leagues (league.RegisterPlayer refuses them), so a
+	// league game never waits on a bot's move, and its start skips the bot
+	// lookup. (Should one ever be
 	// registered, the bot watchdog, ResendStaleBotRequests, would send its
 	// move request a couple of minutes late; the game wouldn't freeze.)
 	if entGame.LeagueID != nil {

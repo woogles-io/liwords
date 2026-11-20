@@ -1424,6 +1424,9 @@ func (ls *LeagueService) RegisterForSeason(
 	// Register the player
 	regMgr := NewRegistrationManager(ls.store, RealClock{}, ls.stores)
 	err = regMgr.RegisterPlayer(ctx, int32(user.ID), season.Uuid)
+	if errors.Is(err, ErrBotsCantPlayLeagues) {
+		return nil, apiserver.PermissionDenied(err.Error())
+	}
 	if err != nil {
 		return nil, apiserver.InternalErr(fmt.Errorf("failed to register player: %w", err))
 	}
