@@ -308,10 +308,11 @@ SELECT
     -- for a game with no row (a finished one), which keeps the games copy.
     og.meta_events AS ongoing_meta_events,
     CASE WHEN $1::boolean THEN (
-        SELECT array_agg(t.event ORDER BY t.turn_idx)
+        -- Binary when the row has it; see GetGameTurns.
+        SELECT array_agg(COALESCE(t.event_bin, convert_to(t.event::text, 'UTF8')) ORDER BY t.turn_idx)
         FROM game_turns t
         WHERE t.game_uuid = g.uuid
-    ) END::jsonb[] AS turn_events
+    ) END::bytea[] AS turn_events
 FROM games g
 LEFT JOIN ongoing_games og ON og.game_uuid = g.uuid
 WHERE g.uuid = $2
