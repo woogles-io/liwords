@@ -118,7 +118,7 @@ func (c *Client) sendError(err error) {
 	// Through the hub, the only goroutine that may touch c.send: it closes
 	// the channel when it drops this client, which the read pump (our
 	// caller) may outlive, and a send on a closed channel panics.
-	c.hub.sendToConnID(c.connID, bts)
+	c.hub.sendToConnID(c.connID, bts, nil)
 }
 
 func (c *Client) sendLatency() {
@@ -132,7 +132,7 @@ func (c *Client) sendLatency() {
 		return
 	}
 	// Through the hub; see sendError.
-	c.hub.sendToConnID(c.connID, bts)
+	c.hub.sendToConnID(c.connID, bts, nil)
 }
 
 // readPump pumps messages from the websocket connection to the hub.

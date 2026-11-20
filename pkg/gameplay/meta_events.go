@@ -242,7 +242,7 @@ func HandleMetaEvent(ctx context.Context, evt *pb.GameMetaEvent, eventChan chan<
 		// that an abort was requested etc.
 		wrapped := entity.WrapEvent(evt, pb.MessageType_GAME_META_EVENT)
 		wrapped.AddAudience(entity.AudGame, evt.GameId)
-		eventChan <- wrapped
+		eventChan <- wrapped.WithTrace(ctx)
 
 	case pb.GameMetaEvent_ADD_TIME:
 		// Disallow for correspondence games
@@ -288,7 +288,7 @@ func HandleMetaEvent(ctx context.Context, evt *pb.GameMetaEvent, eventChan chan<
 		wrapped := entity.WrapEvent(evt, pb.MessageType_GAME_META_EVENT)
 		wrapped.AddAudience(entity.AudGame, evt.GameId)
 		wrapped.AddAudience(entity.AudGameTV, evt.GameId)
-		eventChan <- wrapped
+		eventChan <- wrapped.WithTrace(ctx)
 
 		// Also send updated time info via GameHistoryRefresher. Send it to
 		// each player individually (AudUser) so the bus sanitizes opponent
@@ -301,20 +301,20 @@ func HandleMetaEvent(ctx context.Context, evt *pb.GameMetaEvent, eventChan chan<
 			for _, p := range players(g) {
 				playerRefresher.AddAudience(entity.AudUser, p+".game."+evt.GameId)
 			}
-			eventChan <- playerRefresher
+			eventChan <- playerRefresher.WithTrace(ctx)
 
 			censoredRefresher := proto.Clone(refresher).(*pb.GameHistoryRefresher)
 			entity.CensorHistoryRacks(censoredRefresher)
 			tvRefresher := entity.WrapEvent(censoredRefresher, pb.MessageType_GAME_HISTORY_REFRESHER)
 			tvRefresher.AddAudience(entity.AudGameTV, evt.GameId)
-			eventChan <- tvRefresher
+			eventChan <- tvRefresher.WithTrace(ctx)
 		} else {
 			refresherWrapped := entity.WrapEvent(refresher, pb.MessageType_GAME_HISTORY_REFRESHER)
 			refresherWrapped.AddAudience(entity.AudGameTV, evt.GameId)
 			for _, p := range players(g) {
 				refresherWrapped.AddAudience(entity.AudUser, p+".game."+evt.GameId)
 			}
-			eventChan <- refresherWrapped
+			eventChan <- refresherWrapped.WithTrace(ctx)
 		}
 
 	case pb.GameMetaEvent_TIMER_EXPIRED:
@@ -395,7 +395,7 @@ func HandleMetaEvent(ctx context.Context, evt *pb.GameMetaEvent, eventChan chan<
 		wrapped := entity.WrapEvent(evt, pb.MessageType_GAME_META_EVENT)
 		wrapped.AddAudience(entity.AudGame, evt.GameId)
 		wrapped.AddAudience(entity.AudGameTV, evt.GameId)
-		eventChan <- wrapped
+		eventChan <- wrapped.WithTrace(ctx)
 	}
 
 	return nil
@@ -430,7 +430,7 @@ func cancelMetaEvent(ctx context.Context, g *entity.Game, evt *pb.GameMetaEvent)
 	wrapped := entity.WrapEvent(pseudoEvt, pb.MessageType_GAME_META_EVENT)
 	wrapped.AddAudience(entity.AudGame, evt.GameId)
 	wrapped.AddAudience(entity.AudGameTV, evt.GameId)
-	g.SendChange(wrapped)
+	g.SendChange(wrapped.WithTrace(ctx))
 
 	return nil
 }

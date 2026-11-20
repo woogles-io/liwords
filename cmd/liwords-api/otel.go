@@ -3,20 +3,14 @@ package main
 import (
 	"context"
 	"errors"
-	"os"
 	"runtime"
-	"strings"
 
+	"github.com/woogles-io/liwords/pkg/otelsetup"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/exporters/stdout/stdoutmetric"
 	otelmetric "go.opentelemetry.io/otel/metric"
-	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/metric"
-	"go.opentelemetry.io/otel/sdk/resource"
-	"go.opentelemetry.io/otel/sdk/trace"
 )
 
 // setupOTelSDK bootstraps the OpenTelemetry pipeline.
@@ -48,18 +42,13 @@ func setupOTelSDK(ctx context.Context) (shutdown func(context.Context) error, er
 		err = errors.Join(inErr, shutdown(ctx))
 	}
 
-	// Set up propagator.
-	prop := newPropagator()
-	otel.SetTextMapPropagator(prop)
-
-	// Set up trace provider.
-	tracerProvider, err := newTraceProvider()
+	// Propagator and trace provider: the same setup as the socket server's.
+	traceShutdown, err := otelsetup.Tracing(ctx)
 	if err != nil {
 		handleErr(err)
 		return
 	}
-	shutdownFuncs = append(shutdownFuncs, tracerProvider.Shutdown)
-	otel.SetTracerProvider(tracerProvider)
+	shutdownFuncs = append(shutdownFuncs, traceShutdown)
 
 	// TODO(metrics-leak): meter provider disabled — see comment on setupOTelSDK.
 	// meterProvider, err := newMeterProvider()
@@ -71,53 +60,6 @@ func setupOTelSDK(ctx context.Context) (shutdown func(context.Context) error, er
 	// otel.SetMeterProvider(meterProvider)
 
 	return
-}
-
-func newPropagator() propagation.TextMapPropagator {
-	return propagation.NewCompositeTextMapPropagator(
-		propagation.TraceContext{},
-		propagation.Baggage{},
-	)
-}
-
-func withSecure() bool {
-	return strings.HasPrefix(os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"), "https://") ||
-		strings.ToLower(os.Getenv("OTEL_EXPORTER_OTLP_INSECURE")) == "false"
-}
-
-func newTraceProvider() (*trace.TracerProvider, error) {
-	var opts []otlptracehttp.Option
-	if !withSecure() {
-		opts = []otlptracehttp.Option{otlptracehttp.WithInsecure()}
-	}
-
-	traceExporter, err := otlptrace.New(context.Background(),
-		otlptracehttp.NewClient(opts...))
-	if err != nil {
-		return nil, err
-	}
-
-	res, err := traceResource()
-	if err != nil {
-		return nil, err
-	}
-	traceProvider := trace.NewTracerProvider(
-		trace.WithBatcher(traceExporter),
-		trace.WithResource(res),
-	)
-	return traceProvider, nil
-}
-
-// traceResource describes this process on every span: what the default
-// resource has (service name and version from OTEL_SERVICE_NAME and
-// OTEL_RESOURCE_ATTRIBUTES, the SDK), plus host.name, the container's
-// hostname, so spans from different API servers can be told apart.
-func traceResource() (*resource.Resource, error) {
-	host, err := resource.New(context.Background(), resource.WithHost())
-	if err != nil {
-		return nil, err
-	}
-	return resource.Merge(resource.Default(), host)
 }
 
 func newMeterProvider() (*metric.MeterProvider, error) {

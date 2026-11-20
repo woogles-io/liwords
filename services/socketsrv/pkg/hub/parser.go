@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/rs/zerolog/log"
+
+	"github.com/woogles-io/liwords/pkg/natstrace"
 )
 
 const (
@@ -38,5 +40,7 @@ func (h *Hub) parseAndExecuteMessage(ctx context.Context, msg []byte, c *Client)
 	fullTopic := extendTopic(c, topicName)
 	log.Debug().Str("fullTopic", fullTopic).Msg("nats-publish")
 
-	return h.pubsub.natsconn.Publish(fullTopic, msg[3:])
+	ctx, span := receiveSpan(ctx, c, msg[2])
+	defer span.End()
+	return h.pubsub.natsconn.PublishMsg(natstrace.NewMsg(ctx, fullTopic, msg[3:]))
 }

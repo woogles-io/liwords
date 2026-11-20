@@ -29,6 +29,7 @@ import (
 	"github.com/woogles-io/liwords/pkg/config"
 	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/gameplay"
+	"github.com/woogles-io/liwords/pkg/natstrace"
 	"github.com/woogles-io/liwords/pkg/omgwords"
 	"github.com/woogles-io/liwords/pkg/stores"
 	"github.com/woogles-io/liwords/pkg/tournament"
@@ -63,9 +64,9 @@ type Bus struct {
 	// For shutting down without dropping work in progress; see Drain.
 	inFlight    atomic.Int64 // handler goroutines running (trackHandler)
 	drainChecks chan drainCheck
-	// publish sends the events the loop publishes; natsconn.Publish, but
+	// publish sends the events the loop publishes; natsconn.PublishMsg, but
 	// tests replace it.
-	publish func(subject string, data []byte) error
+	publish func(msg *nats.Msg) error
 
 	gameEventChan       chan *entity.EventWrapper
 	tournamentEventChan chan *entity.EventWrapper
@@ -80,7 +81,7 @@ func NewBus(cfg *config.Config, natsconn *nats.Conn, stores *stores.Stores, redi
 		stores:              stores,
 		subscriptions:       []subscription{},
 		drainChecks:         make(chan drainCheck),
-		publish:             natsconn.Publish,
+		publish:             natsconn.PublishMsg,
 		subchans:            map[string]chan *nats.Msg{},
 		config:              cfg,
 		gameEventChan:       make(chan *entity.EventWrapper, 64),
@@ -188,10 +189,12 @@ outerfor:
 				}
 			}
 
-			// Start a new trace for this message (makes DB queries visible in Jaeger)
+			// A span for this message (makes DB queries visible in Jaeger): in
+			// the socket server's trace if the message carries one, else the
+			// start of a new trace.
 			tracer := otel.Tracer("bus-message-processor")
 			spanName := "nats.publish." + msgType
-			msgCtx, span := tracer.Start(ctx, spanName,
+			msgCtx, span := tracer.Start(natstrace.Extract(ctx, msg), spanName,
 				trace.WithAttributes(
 					attribute.String("msg.subject", msg.Subject),
 					attribute.String("msg.type", msgType),
@@ -221,7 +224,7 @@ outerfor:
 						userID := subtopics[4]
 						connID := subtopics[5]
 						b.pubToConnectionID(connID, userID, entity.WrapEvent(&pb.ErrorMessage{Message: err.Error()},
-							pb.MessageType_ERROR_MESSAGE))
+							pb.MessageType_ERROR_MESSAGE).WithTrace(msgCtx))
 					}
 				}
 			}(msgCtx, span, subtopics, msg.Data)
@@ -237,10 +240,11 @@ outerfor:
 				requestTopic = subtopics[2]
 			}
 
-			// Start a new trace for this request (makes DB queries visible in Jaeger)
+			// A span for this request (makes DB queries visible in Jaeger), in
+			// the requester's trace if it sent one.
 			tracer := otel.Tracer("bus-message-processor")
 			spanName := "nats.request." + requestTopic
-			reqCtx, span := tracer.Start(ctx, spanName,
+			reqCtx, span := tracer.Start(natstrace.Extract(ctx, msg), spanName,
 				trace.WithAttributes(
 					attribute.String("msg.subject", msg.Subject),
 					attribute.String("msg.request_topic", requestTopic),
@@ -371,7 +375,7 @@ outerfor:
 					}
 
 				} else {
-					err := b.publish(topic, data)
+					err := b.publishEvent(msg, topic, data)
 					if err != nil {
 						log.Err(err).Str("topic", topic).Msg("pub-error")
 					}
@@ -391,7 +395,7 @@ outerfor:
 			for _, topic := range topics {
 				// Fails for a message over the server's max_payload (1MB by
 				// default), which would otherwise vanish without a trace.
-				if err := b.publish(topic, data); err != nil {
+				if err := b.publishEvent(msg, topic, data); err != nil {
 					log.Err(err).Str("topic", topic).Int("bytes", len(data)).Msg("pub-error")
 				}
 			}
@@ -411,7 +415,7 @@ outerfor:
 			for _, topic := range topics {
 				// Fails for a message over the server's max_payload (1MB by
 				// default), which would otherwise vanish without a trace.
-				if err := b.publish(topic, data); err != nil {
+				if err := b.publishEvent(msg, topic, data); err != nil {
 					log.Err(err).Str("topic", topic).Int("bytes", len(data)).Msg("pub-error")
 				}
 			}
@@ -829,7 +833,14 @@ func (b *Bus) pubToUser(userID string, evt *entity.EventWrapper,
 		fullChannel = "user." + userID + "." + channel
 	}
 
-	return b.publish(fullChannel, bts)
+	return b.publishEvent(evt, fullChannel, bts)
+}
+
+// publishEvent publishes an event's serialized data to subject, with the
+// event's trace in the message headers if it has one (see
+// EventWrapper.WithTrace), so the socket server can continue that trace.
+func (b *Bus) publishEvent(evt *entity.EventWrapper, subject string, data []byte) error {
+	return b.publish(natstrace.NewMsg(evt.TraceContext(context.Background()), subject, data))
 }
 
 func (b *Bus) pubToConnectionID(connID, userID string, evt *entity.EventWrapper) error {
@@ -842,7 +853,7 @@ func (b *Bus) pubToConnectionID(connID, userID string, evt *entity.EventWrapper)
 	if err != nil {
 		return err
 	}
-	return b.natsconn.Publish("connid."+connID, bts)
+	return b.publishEvent(evt, "connid."+connID, bts)
 }
 
 func didChannelsChange(oldChannels, newChannels []string) bool {

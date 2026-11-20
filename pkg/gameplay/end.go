@@ -251,7 +251,7 @@ func performEndgameDuties(ctx context.Context, g *entity.Game,
 
 	// Send the event here instead of above the computation of Game Stats
 	// to avoid race conditions (ComputeGameStats modifies the history).
-	g.SendChange(wrapped)
+	g.SendChange(wrapped.WithTrace(ctx))
 
 	// Send a notification to the lobby that this
 	// game ended. This will remove it from the list of live games.
@@ -263,7 +263,7 @@ func performEndgameDuties(ctx context.Context, g *entity.Game,
 	for _, p := range players(g) {
 		wrapped.AddAudience(entity.AudUser, p)
 	}
-	g.SendChange(wrapped)
+	g.SendChange(wrapped.WithTrace(ctx))
 
 	if g.TournamentData != nil && g.TournamentData.Id != "" {
 		err := tournament.HandleTournamentGameEnded(ctx, stores.TournamentStore, stores.UserStore, g, stores.Queries)
@@ -316,7 +316,7 @@ func performEndgameDuties(ctx context.Context, g *entity.Game,
 
 	log.Info().Msg("game-ended-unload-cache")
 	stores.GameStore.Unload(ctx, g.GameID())
-	g.SendChange(g.NewActiveGameEntry(false))
+	g.SendChange(g.NewActiveGameEntry(false).WithTrace(ctx))
 
 	// send each player their new profile with updated ratings.
 	sendProfileUpdate(ctx, g, users)
@@ -339,7 +339,7 @@ func sendProfileUpdate(ctx context.Context, g *entity.Game, users []*entity.User
 		wrapped := entity.WrapEvent(&pb.ProfileUpdate{UserId: u.UUID, Ratings: ratingProto},
 			pb.MessageType_PROFILE_UPDATE_EVENT)
 		wrapped.AddAudience(entity.AudUser, u.UUID)
-		g.SendChange(wrapped)
+		g.SendChange(wrapped.WithTrace(ctx))
 	}
 }
 
@@ -529,7 +529,7 @@ func AbortGame(ctx context.Context, stores *stores.Stores,
 	if g.TournamentData != nil && g.TournamentData.Id != "" {
 		wrapped.AddAudience(entity.AudTournament, g.TournamentData.Id)
 	}
-	evtChan <- wrapped
+	evtChan <- wrapped.WithTrace(ctx)
 
 	evt := proto.Clone(&pb.GameEndedEvent{
 		EndReason: gameEndReason,
@@ -542,8 +542,8 @@ func AbortGame(ctx context.Context, stores *stores.Stores,
 		wrapped.AddAudience(entity.AudUser, p+".game."+g.GameID())
 	}
 	wrapped.AddAudience(entity.AudGameTV, g.GameID())
-	evtChan <- wrapped
-	evtChan <- g.NewActiveGameEntry(false)
+	evtChan <- wrapped.WithTrace(ctx)
+	evtChan <- g.NewActiveGameEntry(false).WithTrace(ctx)
 
 	// If this game is part of a tournament that is not in clubhouse
 	// mode, we must allow the players to try to play again.

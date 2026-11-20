@@ -51,7 +51,8 @@ consider adding a subcommand.
   - `startTime`, in µs
   - `startTimeMillis`, a date in ms: filter on this one
   - `traceID`, `spanID`
-  - `process.serviceName`: `liwords` for the API. The socket server sends no spans.
+  - `process.serviceName`: `liwords` for the API, `liwords-socket` for the
+    socket server (use `--service liwords-socket`).
 - `tags` is **nested** `{key, type, value}`, and `value` is a keyword, even for
   booleans (`"true"`). Filter with a nested query, and aggregate with `nested` →
   `filter` on `tags.key` → `terms` on `tags.value`, then `reverse_nested` to get
@@ -73,6 +74,16 @@ consider adding a subcommand.
   whole statement (`query -- name: X :one` then the SQL), and operation names
   over 256 characters aren't indexed, so for those use the calling RPC span, or
   `trace` to see queries inside a request.
+
+Socket round trips: a message from a browser starts a trace in the socket
+server (`socket.receive.<MessageType>`, tags `user.id`, `conn.id`). The API's
+`nats.publish.<MessageType>` span is its child (the trace travels in the NATS
+message's `traceparent` header), and what the API publishes back in that trace
+is forwarded under `socket.forward.<subject prefix>` spans (tags `msg.subject`,
+`msg.type`, `sockets`: how many sockets it was queued for). So one trace shows
+a move from the socket server through the API and back out to every socket.
+Messages the API publishes outside a traced request (lobby updates, presence)
+get no socket span.
 
 Useful operations: RPCs (`tournament_service.TournamentService/GetTournament`),
 `gameplay.HandleEvent` (a move, from NATS), `nats.publish.*` (the NATS handler's
