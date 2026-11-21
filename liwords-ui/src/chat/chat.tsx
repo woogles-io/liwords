@@ -272,12 +272,39 @@ export const Chat = React.memo((props: Props) => {
     setChatChannels,
     setCurrentChatChannel,
   } = useChatStoreContext();
+  // As a page joins or leaves the list: the message at the top of the view,
+  // how far it was below the top, and when. A page loaded at one end can drop
+  // messages at the other, so the view keeps to a message, not an end.
+  const scrollAnchor = useRef<{ id: string; top: number; at: number } | null>(
+    null,
+  );
+  const noteScrollAnchor = useCallback(() => {
+    const top = chatTab && topMessage(chatTab);
+    scrollAnchor.current = top ? { ...top, at: performance.now() } : null;
+  }, [chatTab]);
+  // A page joining or leaving the list keeps the view where the reader was:
+  // the message at its top is noted just before, and the view goes back to it
+  // once the list has changed (below).
+  const insertKeepingView = useCallback(
+    (page: Array<ChatEntityObj>, ch: string) => {
+      noteScrollAnchor();
+      insertChats(page, ch);
+    },
+    [insertChats, noteScrollAnchor],
+  );
+  const trimKeepingView = useCallback(
+    (ch: string, bounds: { before?: string; after?: string }) => {
+      noteScrollAnchor();
+      trimChats(ch, bounds);
+    },
+    [trimChats, noteScrollAnchor],
+  );
   const history = useChatHistory(
     socializeClient,
     userID,
     addChats,
-    insertChats,
-    trimChats,
+    insertKeepingView,
+    trimKeepingView,
   );
   const { win } = history;
   // The newest message whose reading has been saved (or was read at open).
@@ -285,10 +312,6 @@ export const Chat = React.memo((props: Props) => {
   const markTimer = useRef<NodeJS.Timeout | null>(null);
   // Set on opening at a "new messages" line, until the list scrolls to it.
   const scrollToDivider = useRef(false);
-  // While a page loads: the message at the top of the view and how far it
-  // was below the top, kept once the page is in. A page loaded at one end can
-  // drop messages at the other, so the view keeps to a message, not an end.
-  const scrollAnchor = useRef<{ id: string; top: number } | null>(null);
   const { presences } = usePresenceStoreContext();
   const { excludedPlayers } = useExcludedPlayersStoreContext();
   const lastChannel = useRef("");
@@ -1048,18 +1071,10 @@ export const Chat = React.memo((props: Props) => {
       } else {
         setChatAutoScroll(false);
       }
-      const loadKeepingView = (load: () => Promise<boolean>) => {
-        scrollAnchor.current = topMessage(chatTab);
-        load().then((loaded) => {
-          if (!loaded) {
-            scrollAnchor.current = null;
-          }
-        });
-      };
       if (chatTab.scrollTop < LOAD_MORE_PX && win.hasOlder) {
-        loadKeepingView(history.loadOlder);
+        history.loadOlder();
       } else if (fromBottom < LOAD_MORE_PX && win.hasNewer) {
-        loadKeepingView(history.loadNewer);
+        history.loadNewer();
       }
       markReadSoon();
     }
@@ -1068,10 +1083,11 @@ export const Chat = React.memo((props: Props) => {
   // A page in: the list stays where the reader was.
   useLayoutEffect(() => {
     const anchor = scrollAnchor.current;
-    if (anchor === null || !chatTab) {
+    scrollAnchor.current = null;
+    // One noted for a page that changed nothing is stale by the next change.
+    if (anchor === null || !chatTab || performance.now() - anchor.at > 1000) {
       return;
     }
-    scrollAnchor.current = null;
     const el = chatTab.querySelector<HTMLElement>(
       `[data-msgid="${CSS.escape(anchor.id)}"]`,
     );
