@@ -83,6 +83,21 @@ const LOAD_MORE_PX = 150;
 // How long reading has to settle before the read position is saved.
 const MARK_READ_DELAY_MS = 1000;
 
+// How far an element is below the top of the scrolling list's view.
+const offsetIn = (list: HTMLElement, el: HTMLElement) =>
+  el.getBoundingClientRect().top - list.getBoundingClientRect().top;
+
+// The first message at least partly in view, and where it is.
+const topMessage = (list: HTMLElement) => {
+  for (const el of list.querySelectorAll<HTMLElement>("[data-msgid]")) {
+    const top = offsetIn(list, el);
+    if (top + el.offsetHeight > 0) {
+      return { id: el.dataset.msgid ?? "", top };
+    }
+  }
+  return null;
+};
+
 // A page hidden this long may come back to a socket the server dropped: it
 // drops one whose pings go unanswered for 15 seconds, and a phone app asleep
 // in the background answers none.
@@ -253,6 +268,7 @@ export const Chat = React.memo((props: Props) => {
     addChats,
     mergeChats,
     insertChats,
+    trimChats,
     setChatChannels,
     setCurrentChatChannel,
   } = useChatStoreContext();
@@ -261,6 +277,7 @@ export const Chat = React.memo((props: Props) => {
     userID,
     addChats,
     insertChats,
+    trimChats,
   );
   const { win } = history;
   // The newest message whose reading has been saved (or was read at open).
@@ -268,9 +285,10 @@ export const Chat = React.memo((props: Props) => {
   const markTimer = useRef<NodeJS.Timeout | null>(null);
   // Set on opening at a "new messages" line, until the list scrolls to it.
   const scrollToDivider = useRef(false);
-  // While older messages load at the top: the distance from the list's
-  // bottom to its scroll position, kept once they are in.
-  const keepFromBottom = useRef<number | null>(null);
+  // While a page loads: the message at the top of the view and how far it
+  // was below the top, kept once the page is in. A page loaded at one end can
+  // drop messages at the other, so the view keeps to a message, not an end.
+  const scrollAnchor = useRef<{ id: string; top: number } | null>(null);
   const { presences } = usePresenceStoreContext();
   const { excludedPlayers } = useExcludedPlayersStoreContext();
   const lastChannel = useRef("");
@@ -1030,26 +1048,35 @@ export const Chat = React.memo((props: Props) => {
       } else {
         setChatAutoScroll(false);
       }
-      if (chatTab.scrollTop < LOAD_MORE_PX && win.hasOlder) {
-        keepFromBottom.current = chatTab.scrollHeight - chatTab.scrollTop;
-        history.loadOlder().then((loaded) => {
+      const loadKeepingView = (load: () => Promise<boolean>) => {
+        scrollAnchor.current = topMessage(chatTab);
+        load().then((loaded) => {
           if (!loaded) {
-            keepFromBottom.current = null;
+            scrollAnchor.current = null;
           }
         });
-      }
-      if (fromBottom < LOAD_MORE_PX && win.hasNewer) {
-        history.loadNewer();
+      };
+      if (chatTab.scrollTop < LOAD_MORE_PX && win.hasOlder) {
+        loadKeepingView(history.loadOlder);
+      } else if (fromBottom < LOAD_MORE_PX && win.hasNewer) {
+        loadKeepingView(history.loadNewer);
       }
       markReadSoon();
     }
   }, [chatTab, win.hasNewer, win.hasOlder, history, markReadSoon]);
 
-  // Older messages in at the top: the list stays where the reader was.
+  // A page in: the list stays where the reader was.
   useLayoutEffect(() => {
-    if (keepFromBottom.current !== null && chatTab) {
-      chatTab.scrollTop = chatTab.scrollHeight - keepFromBottom.current;
-      keepFromBottom.current = null;
+    const anchor = scrollAnchor.current;
+    if (anchor === null || !chatTab) {
+      return;
+    }
+    scrollAnchor.current = null;
+    const el = chatTab.querySelector<HTMLElement>(
+      `[data-msgid="${CSS.escape(anchor.id)}"]`,
+    );
+    if (el) {
+      chatTab.scrollTop += offsetIn(chatTab, el) - anchor.top;
     }
   }, [chatEntities, chatTab]);
 

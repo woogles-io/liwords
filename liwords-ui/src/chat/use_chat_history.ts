@@ -35,6 +35,10 @@ const emptyWindow = (channel: string): HistoryWindow => ({
   dividerBefore: "",
 });
 
+// The most messages of the channel shown the chat keeps. Past it, loading
+// one end drops the other, which loads again on scrolling back to it.
+export const WINDOW_MAX = 500;
+
 type Page = {
   messages: Array<ChatEntityObj>;
   hasOlder: boolean;
@@ -44,17 +48,25 @@ type Page = {
 // useChatHistory loads a channel's history a page at a time: opened around
 // the user's read position, then older or newer pages as the user scrolls,
 // or the newest again. Pages replace (open, latest) or join (older, newer)
-// what the chat shows, through replace and insert.
+// what the chat shows, through replace and insert. At most windowMax
+// messages stay: past it, the end away from the one loading goes, through
+// trim, and can load again.
 export const useChatHistory = (
   client: Client<typeof SocializeService>,
   userID: string,
   replace: (entities: Array<ChatEntityObj>) => void,
   insert: (entities: Array<ChatEntityObj>, channel: string) => void,
+  trim: (channel: string, bounds: { before?: string; after?: string }) => void,
+  windowMax = WINDOW_MAX,
 ) => {
   const [win, setWin] = useState<HistoryWindow>(emptyWindow(""));
   const winRef = useRef(win);
   winRef.current = win;
   const loading = useRef(false);
+  // The IDs of the messages loaded, oldest first.
+  const ids = useRef<Array<string>>([]);
+  const idsOf = (msgs: Array<ChatEntityObj>) =>
+    msgs.map((m) => m.id).filter(isMessageID);
 
   const fetchPage = useCallback(
     async (req: {
@@ -101,11 +113,27 @@ export const useChatHistory = (
         lastReadAtOpen: readAt,
         dividerBefore: firstUnread?.id ?? "",
       };
+      ids.current = idsOf(page.messages);
       replace(page.messages);
       setWin(w);
       return w;
     },
     [fetchPage, replace, userID],
+  );
+
+  // Past windowMax, drops the oldest messages loaded, and returns the oldest
+  // one kept ("" if none were dropped).
+  const dropOldest = useCallback(
+    (channel: string): string => {
+      if (ids.current.length <= windowMax) {
+        return "";
+      }
+      ids.current = ids.current.slice(ids.current.length - windowMax);
+      const cut = ids.current[0];
+      trim(channel, { before: cut });
+      return cut;
+    },
+    [trim, windowMax],
   );
 
   // Loads the page before the oldest message loaded. Returns whether it did.
@@ -121,16 +149,24 @@ export const useChatHistory = (
         return false;
       }
       insert(page.messages, w.channel);
+      ids.current = [...idsOf(page.messages), ...ids.current];
+      let cut = "";
+      if (ids.current.length > windowMax) {
+        ids.current = ids.current.slice(0, windowMax);
+        cut = ids.current[windowMax - 1];
+        trim(w.channel, { after: cut });
+      }
       setWin((cur) => ({
         ...cur,
         hasOlder: page.hasOlder,
         oldest: bounds(page.messages).oldest || cur.oldest,
+        ...(cut ? { hasNewer: true, newest: cut } : {}),
       }));
       return page.messages.length > 0;
     } finally {
       loading.current = false;
     }
-  }, [fetchPage, insert]);
+  }, [fetchPage, insert, trim, windowMax]);
 
   // Loads the page after the newest message loaded.
   const loadNewer = useCallback(async (): Promise<boolean> => {
@@ -145,16 +181,19 @@ export const useChatHistory = (
         return false;
       }
       insert(page.messages, w.channel);
+      ids.current = [...ids.current, ...idsOf(page.messages)];
+      const cut = dropOldest(w.channel);
       setWin((cur) => ({
         ...cur,
         hasNewer: page.hasNewer,
         newest: bounds(page.messages).newest || cur.newest,
+        ...(cut ? { hasOlder: true, oldest: cut } : {}),
       }));
       return page.messages.length > 0;
     } finally {
       loading.current = false;
     }
-  }, [fetchPage, insert]);
+  }, [fetchPage, insert, dropOldest]);
 
   // Loads the newest messages again, in place of what is loaded.
   const jumpToLatest = useCallback(async () => {
@@ -166,6 +205,7 @@ export const useChatHistory = (
     if (winRef.current.channel !== channel) {
       return;
     }
+    ids.current = idsOf(page.messages);
     replace(page.messages);
     setWin((cur) => ({
       ...cur,
@@ -178,15 +218,25 @@ export const useChatHistory = (
 
   // A live message of the channel shown moves the newest loaded forward,
   // unless the chat is showing older history.
-  const noteLive = useCallback((id: string) => {
-    setWin((cur) =>
-      cur.hasNewer || !isMessageID(id) || id <= cur.newest
-        ? cur
-        : { ...cur, newest: id },
-    );
-  }, []);
+  const noteLive = useCallback(
+    (id: string) => {
+      const cur = winRef.current;
+      if (cur.hasNewer || !isMessageID(id) || id <= cur.newest) {
+        return;
+      }
+      ids.current = [...ids.current, id];
+      const cut = dropOldest(cur.channel);
+      setWin((w) => ({
+        ...w,
+        newest: id,
+        ...(cut ? { hasOlder: true, oldest: cut } : {}),
+      }));
+    },
+    [dropOldest],
+  );
 
   const reset = useCallback((channel: string) => {
+    ids.current = [];
     setWin(emptyWindow(channel));
   }, []);
 

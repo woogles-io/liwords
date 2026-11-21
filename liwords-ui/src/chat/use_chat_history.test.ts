@@ -15,7 +15,7 @@ const msg = (n: number, userId = "zed") => ({
   timestamp: BigInt(n),
 });
 
-const setup = (pages: Array<object>) => {
+const setup = (pages: Array<object>, windowMax?: number) => {
   const client = {
     getChatsForChannel: vi.fn(),
   };
@@ -24,11 +24,13 @@ const setup = (pages: Array<object>) => {
   }
   const replace = vi.fn<(e: Array<ChatEntityObj>) => void>();
   const insert = vi.fn<(e: Array<ChatEntityObj>, ch: string) => void>();
+  const trim =
+    vi.fn<(ch: string, b: { before?: string; after?: string }) => void>();
   const { result } = renderHook(() =>
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    useChatHistory(client as any, "me", replace, insert),
+    useChatHistory(client as any, "me", replace, insert, trim, windowMax),
   );
-  return { client, replace, insert, result };
+  return { client, replace, insert, trim, result };
 };
 
 describe("useChatHistory", () => {
@@ -166,5 +168,67 @@ describe("useChatHistory", () => {
     });
     act(() => result.current.noteLive(id(3)));
     expect(result.current.win.newest).toBe(id(1));
+  });
+
+  it("drops the newest loaded past the most it keeps, as older pages load", async () => {
+    const { client, trim, result } = setup(
+      [
+        { messages: [msg(7), msg(8)], hasOlder: true, hasNewer: false },
+        { messages: [msg(5), msg(6)], hasOlder: true },
+        { messages: [msg(3), msg(4)], hasOlder: true },
+        { messages: [msg(7), msg(8)], hasNewer: false },
+      ],
+      4,
+    );
+    await act(async () => {
+      await result.current.open("c");
+    });
+    await act(async () => {
+      await result.current.loadOlder();
+    });
+    expect(trim).not.toHaveBeenCalled();
+    await act(async () => {
+      await result.current.loadOlder();
+    });
+    // 3 to 6 stay; 7 and 8 load again on scrolling down.
+    expect(trim).toHaveBeenCalledWith("c", { after: id(6) });
+    expect(result.current.win).toMatchObject({
+      hasOlder: true,
+      hasNewer: true,
+      oldest: id(3),
+      newest: id(6),
+    });
+    await act(async () => {
+      await result.current.loadNewer();
+    });
+    expect(client.getChatsForChannel).toHaveBeenLastCalledWith({
+      channel: "c",
+      afterId: id(6),
+      limit: 100,
+    });
+    expect(trim).toHaveBeenLastCalledWith("c", { before: id(5) });
+    expect(result.current.win).toMatchObject({
+      hasOlder: true,
+      hasNewer: false,
+      oldest: id(5),
+      newest: id(8),
+    });
+  });
+
+  it("drops the oldest loaded past the most it keeps, as live messages come", async () => {
+    const { trim, result } = setup(
+      [{ messages: [msg(1), msg(2)], hasOlder: false, hasNewer: false }],
+      2,
+    );
+    await act(async () => {
+      await result.current.open("c");
+    });
+    act(() => result.current.noteLive(id(3)));
+    expect(trim).toHaveBeenCalledWith("c", { before: id(2) });
+    expect(result.current.win).toMatchObject({
+      hasOlder: true,
+      oldest: id(2),
+      newest: id(3),
+    });
   });
 });
