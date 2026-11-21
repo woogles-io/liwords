@@ -143,7 +143,9 @@ type ChatStore interface {
 	MarkRead(ctx context.Context, uid, channel, msgID string) error
 	// LastRead returns the newest message the user has read in the channel,
 	// or "".
-	LastRead(ctx context.Context, uid, channel string) (string, error)
+	// LastRead is the newest message uid has read in channel ("" if none),
+	// and whether uid is a member of it (a private chat).
+	LastRead(ctx context.Context, uid, channel string) (lastRead string, member bool, err error)
 
 	GetChat(ctx context.Context, channel string, msgID string) (*pb.ChatMessage, error)
 	// DeleteChat removes a message; deletedBy is the moderator's UUID.
@@ -160,7 +162,9 @@ type ChatQuery struct {
 	Before string // messages older than this one
 	After  string // messages newer than this one
 	Around string // this message, with up to Limit/2 older and the rest newer
-	Limit  int
+	// The channel's first Limit messages, if no cursor is given.
+	FromStart bool
+	Limit     int
 }
 
 // A ChatPage is a page of a channel's history, oldest first.

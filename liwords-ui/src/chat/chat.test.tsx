@@ -230,6 +230,7 @@ describe("a channel's history, a page at a time", () => {
 
   // Logs in, then adds a live message on request.
   let addLive: (n: number) => void = () => {};
+  let addLiveIn: (m: ReturnType<typeof msg>) => void = () => {};
   const Harness = () => {
     const { dispatchLoginState } = useLoginStateStoreContext();
     const { addChat } = useChatStoreContext();
@@ -247,6 +248,7 @@ describe("a channel's history, a page at a time", () => {
     React.useEffect(() => {
       addLive = (n: number) =>
         addChat(chatMessageToChatEntity(msg(n) as never));
+      addLiveIn = (m) => addChat(chatMessageToChatEntity(m as never));
     }, [addChat]);
     return null;
   };
@@ -311,5 +313,90 @@ describe("a channel's history, a page at a time", () => {
     await waitFor(() =>
       expect(document.querySelector(".jump-to-latest")).toBeNull(),
     );
+  });
+
+  it("counts conversations, not messages, on the Chat tab", async () => {
+    // The Players tab watches its rows scroll into view.
+    vi.stubGlobal(
+      "IntersectionObserver",
+      class {
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+      },
+    );
+    socializeClient.getChatsForChannel.mockResolvedValue({
+      messages: [msg(1)],
+      hasOlder: false,
+      hasNewer: false,
+      lastReadId: id(1),
+    });
+    const { findByText, findByRole, container } = renderGame();
+    await findByText("message 1");
+    fireEvent.click(await findByRole("tab", { name: "Players" }));
+    const badge = () =>
+      container.querySelector(".notification")?.textContent ?? "";
+    const live = (n: number, channel: string, userId = "zed-id") =>
+      React.act(() =>
+        addLiveIn({
+          ...msg(n, userId),
+          channel,
+          timestamp: BigInt(Date.now() + n),
+        }),
+      );
+    live(10, "chat.game.789");
+    live(11, "chat.game.789");
+    await waitFor(() => expect(badge()).toBe("1"));
+    live(12, "chat.pm.me-id_zed-id");
+    await waitFor(() => expect(badge()).toBe("2"));
+    live(13, "chat.pm.me-id_zed-id", "me-id"); // the user's own: not counted
+    live(14, "chat.pm.me-id_zed-id");
+    await waitFor(() => expect(badge()).toBe("2"));
+    fireEvent.click(await findByRole("tab", { name: /Chat/ }));
+    await waitFor(() => expect(badge()).toBe(""));
+    vi.unstubAllGlobals();
+  });
+
+  it("clears a conversation the user replies to, from here or elsewhere", async () => {
+    vi.stubGlobal(
+      "IntersectionObserver",
+      class {
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+      },
+    );
+    socializeClient.getChatsForChannel.mockResolvedValue({
+      messages: [msg(1)],
+      hasOlder: false,
+      hasNewer: false,
+      lastReadId: id(1),
+    });
+    const { findByText, findByRole, container } = renderGame();
+    await findByText("message 1");
+    fireEvent.click(await findByRole("tab", { name: "Players" }));
+    const badge = () =>
+      container.querySelector(".notification")?.textContent ?? "";
+    const live = (n: number, channel: string, userId = "zed-id") =>
+      React.act(() =>
+        addLiveIn({
+          ...msg(n, userId),
+          channel,
+          timestamp: BigInt(Date.now() + n),
+        }),
+      );
+    const pm = "chat.pm.me-id_zed-id";
+    const other = "chat.pm.me-id_yan-id";
+    live(20, pm);
+    live(21, pm);
+    live(22, other);
+    await waitFor(() => expect(badge()).toBe("2"));
+    live(23, pm, "me-id"); // a reply, from another device
+    await waitFor(() => expect(badge()).toBe("1"));
+    live(24, other); // more elsewhere doesn't bring the replied one back
+    await waitFor(() => expect(badge()).toBe("1"));
+    live(25, pm); // but a new message in it does
+    await waitFor(() => expect(badge()).toBe("2"));
+    vi.unstubAllGlobals();
   });
 });

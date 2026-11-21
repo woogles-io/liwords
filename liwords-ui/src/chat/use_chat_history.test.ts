@@ -231,4 +231,20 @@ describe("useChatHistory", () => {
       newest: id(3),
     });
   });
+
+  it("puts the line before the first message from others in a chat read none of", async () => {
+    const { result } = setup([
+      {
+        messages: [msg(1, "me"), msg(2), msg(3)],
+        lastReadId: "",
+        readNothing: true,
+        hasNewer: true,
+      },
+    ]);
+    let w;
+    await act(async () => {
+      w = await result.current.open("chat.pm.me_zed");
+    });
+    expect(w).toMatchObject({ lastReadAtOpen: "", dividerBefore: id(2) });
+  });
 });

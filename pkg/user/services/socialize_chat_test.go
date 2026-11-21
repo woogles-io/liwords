@@ -69,11 +69,19 @@ func TestFetchMarksPrivateChatRead(t *testing.T) {
 	is.NoErr(err)
 	is.Equal(len(resp.Msg.Messages), 1)
 	is.Equal(resp.Msg.LastReadId, "")
-	is.True(unread()) // a paging client: not marked
+	is.True(resp.Msg.ReadNothing) // mina hasn't read cesar's first message
+	is.True(unread())             // a paging client: not marked
+
+	// cesar sent it, so he has read it.
+	resp, err = ss.GetChatsForChannel(as("uuid-cesar"), connect.NewRequest(&pb.GetChatsRequest{Channel: ch, AroundLastRead: true}))
+	is.NoErr(err)
+	is.Equal(resp.Msg.LastReadId, m.Id)
+	is.True(!resp.Msg.ReadNothing)
 
 	resp, err = ss.GetChatsForChannel(as("uuid-mina"), connect.NewRequest(&pb.GetChatsRequest{Channel: ch}))
 	is.NoErr(err)
 	is.Equal(resp.Msg.LastReadId, m.Id)
+	is.True(!resp.Msg.ReadNothing)
 	is.True(!unread())
 
 	// Someone outside the chat can't read it or mark it.
@@ -112,10 +120,39 @@ func TestGetChatsForChannelPaging(t *testing.T) {
 	is.NoErr(err) // anonymous readers can read room chats
 	is.Equal(len(resp.Msg.Messages), 2)
 	is.Equal(resp.Msg.LastReadId, "")
+	is.True(!resp.Msg.ReadNothing)
+
+	// Not a member of a room chat: its newest messages, nothing flagged.
+	resp, err = ss.GetChatsForChannel(as("uuid-cesar"), connect.NewRequest(&pb.GetChatsRequest{
+		Channel: ch, AroundLastRead: true, Limit: 2}))
+	is.NoErr(err)
+	is.True(!resp.Msg.ReadNothing)
+	is.Equal(resp.Msg.Messages[1].Id, ids[4])
 
 	_, err = ss.GetChatsForChannel(as("uuid-mina"), connect.NewRequest(&pb.GetChatsRequest{
 		Channel: ch, BeforeId: ids[2], AfterId: ids[0]}))
 	is.Equal(connect.CodeOf(err), connect.CodeInvalidArgument)
 	_, err = ss.GetChatsForChannel(as("uuid-mina"), connect.NewRequest(&pb.GetChatsRequest{Channel: ch, Limit: 500}))
 	is.Equal(connect.CodeOf(err), connect.CodeInvalidArgument)
+}
+
+// A private chat with more unread than a page opens at its first message.
+func TestGetChatsForChannelReadNothing(t *testing.T) {
+	is := is.New(t)
+	ss, cs := setupChat(t)
+	ch := "chat.pm.uuid-cesar_uuid-mina"
+	var ids []string
+	for _, s := range []string{"a", "b", "c", "d"} {
+		m, err := cs.AddChat(context.Background(), "cesar", "uuid-cesar", s, ch, false)
+		is.NoErr(err)
+		ids = append(ids, m.Id)
+	}
+	resp, err := ss.GetChatsForChannel(as("uuid-mina"), connect.NewRequest(&pb.GetChatsRequest{
+		Channel: ch, AroundLastRead: true, Limit: 2}))
+	is.NoErr(err)
+	is.True(resp.Msg.ReadNothing)
+	is.Equal(resp.Msg.Messages[0].Id, ids[0])
+	is.Equal(len(resp.Msg.Messages), 2)
+	is.True(!resp.Msg.HasOlder)
+	is.True(resp.Msg.HasNewer)
 }

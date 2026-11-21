@@ -3198,9 +3198,9 @@ func (x *GetChatsRequest) GetLimit() int32 {
 	return 0
 }
 
-// A page of a channel's history. Field 1 matches ipc.ChatMessages, which
-// GetChatsForChannel returned before, so older clients read it unchanged.
-// (Kept out of the ipc protos, which the socket server is built with.)
+// A page of a channel's history, for GetChatsForChannel. Field 1 matches
+// ipc.ChatMessages, which it returned before, so older clients read it
+// unchanged.
 type ChatHistory struct {
 	state    protoimpl.MessageState `protogen:"open.v1"`
 	Messages []*ipc.ChatMessage     `protobuf:"bytes,1,rep,name=messages,proto3" json:"messages,omitempty"`
@@ -3210,7 +3210,11 @@ type ChatHistory struct {
 	HasNewer bool `protobuf:"varint,3,opt,name=has_newer,json=hasNewer,proto3" json:"has_newer,omitempty"`
 	// The newest message the user has read in this channel; "" if none or
 	// not logged in.
-	LastReadId    string `protobuf:"bytes,4,opt,name=last_read_id,json=lastReadId,proto3" json:"last_read_id,omitempty"`
+	LastReadId string `protobuf:"bytes,4,opt,name=last_read_id,json=lastReadId,proto3" json:"last_read_id,omitempty"`
+	// The user is in this channel (a private chat) but has read none of it, so
+	// every message from someone else is unread. Asked for around the read
+	// position, the page then starts at the channel's first message.
+	ReadNothing   bool `protobuf:"varint,5,opt,name=read_nothing,json=readNothing,proto3" json:"read_nothing,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3271,6 +3275,13 @@ func (x *ChatHistory) GetLastReadId() string {
 		return x.LastReadId
 	}
 	return ""
+}
+
+func (x *ChatHistory) GetReadNothing() bool {
+	if x != nil {
+		return x.ReadNothing
+	}
+	return false
 }
 
 // Records that the user has read the channel up to message_id. It never
@@ -6300,13 +6311,14 @@ const file_proto_user_service_user_service_proto_rawDesc = "" +
 	"\bafter_id\x18\x03 \x01(\tR\aafterId\x12\x1b\n" +
 	"\taround_id\x18\x04 \x01(\tR\baroundId\x12(\n" +
 	"\x10around_last_read\x18\x05 \x01(\bR\x0earoundLastRead\x12\x14\n" +
-	"\x05limit\x18\x06 \x01(\x05R\x05limit\"\x97\x01\n" +
+	"\x05limit\x18\x06 \x01(\x05R\x05limit\"\xba\x01\n" +
 	"\vChatHistory\x12,\n" +
 	"\bmessages\x18\x01 \x03(\v2\x10.ipc.ChatMessageR\bmessages\x12\x1b\n" +
 	"\thas_older\x18\x02 \x01(\bR\bhasOlder\x12\x1b\n" +
 	"\thas_newer\x18\x03 \x01(\bR\bhasNewer\x12 \n" +
 	"\flast_read_id\x18\x04 \x01(\tR\n" +
-	"lastReadId\"Q\n" +
+	"lastReadId\x12!\n" +
+	"\fread_nothing\x18\x05 \x01(\bR\vreadNothing\"Q\n" +
 	"\x16MarkChannelReadRequest\x12\x18\n" +
 	"\achannel\x18\x01 \x01(\tR\achannel\x12\x1d\n" +
 	"\n" +
