@@ -7,7 +7,6 @@ local userkey = ARGV[1].."#"..ARGV[2].."#"..ARGV[3].."#"..ARGV[4]  -- uuid#usern
 local ts = tonumber(ARGV[5])
 
 -- delete where conn_id matches.
-local shouldtouch = false
 local setbefore = {}
 for _, simpleuserkey in ipairs(redis.call("ZRANGE", userpresencekey, 0, -1)) do
   -- simpleuserkey looks like conn_id#channel
@@ -18,14 +17,8 @@ for _, simpleuserkey in ipairs(redis.call("ZRANGE", userpresencekey, 0, -1)) do
       redis.call("ZREM", "channelpresence:"..chan, userkey)
       redis.call("ZREM", userpresencekey, simpleuserkey)
       redis.call("ZREM", "userpresences", userkey.."#"..chan)
-      shouldtouch = true
     end
   end
-end
-
--- update the last known presence time.
-if shouldtouch and ARGV[3] == "auth" then
-  redis.call("ZADD", "lastpresences", ts, ARGV[1])
 end
 
 -- inefficient, but easier to write.

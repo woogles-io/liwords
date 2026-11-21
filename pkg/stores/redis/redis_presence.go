@@ -306,20 +306,6 @@ func (s *RedisPresenceStore) BatchGetPresence(ctx context.Context, users []*enti
 	return nil, nil
 }
 
-func (s *RedisPresenceStore) LastSeen(ctx context.Context, uuid string) (int64, error) {
-
-	conn := s.redisPool.Get()
-	defer conn.Close()
-
-	key := "lastpresences"
-
-	val, err := redis.Int(conn.Do("ZSCORE", key, uuid))
-	if err != nil {
-		return 0, err
-	}
-	return int64(val), nil
-}
-
 func (s *RedisPresenceStore) SetEventChan(c chan *entity.EventWrapper) {
 	s.eventChan = c
 }
