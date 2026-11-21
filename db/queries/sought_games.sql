@@ -18,6 +18,13 @@ RETURNING request;
 DELETE FROM soughtgames WHERE seeker_conn_id = @seeker_conn_id AND (game_mode IS NULL OR game_mode = 0)
 RETURNING request;
 
+-- name: DeleteRealtimeSoughtGamesOfSeekerConn :many
+-- The real-time seeks the given user made from the given connection.
+DELETE FROM soughtgames
+WHERE seeker = @seeker AND seeker_conn_id = @seeker_conn_id
+  AND (game_mode IS NULL OR game_mode = 0)
+RETURNING request;
+
 -- name: GetSoughtGameSeekerByUUID :one
 SELECT seeker FROM soughtgames WHERE uuid = @uuid;
 

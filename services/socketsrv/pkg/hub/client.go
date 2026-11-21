@@ -309,6 +309,21 @@ func closeMessage(ws *websocket.Conn, errStr string) {
 	ws.Close()
 }
 
+// validConnID reports whether a connection ID can be used. It goes into NATS
+// subjects (split on '.') and presence entries (split on '#' and ':'), so it
+// is kept to letters, digits, '-' and '_'.
+func validConnID(id string) bool {
+	if len(id) == 0 || len(id) > 64 {
+		return false
+	}
+	for _, r := range id {
+		if !(r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || r == '-' || r == '_') {
+			return false
+		}
+	}
+	return true
+}
+
 // ServeWS handles websocket requests from the peer. This runs in its own
 // goroutine.
 func ServeWS(hub *Hub, w http.ResponseWriter, r *http.Request) {
@@ -329,15 +344,11 @@ func ServeWS(hub *Hub, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	connIDs, ok := r.URL.Query()["cid"]
-	if !ok || len(connIDs[0]) < 1 {
-		log.Error().Msg("connID is missing")
-		return
-	}
+	// Only used with a token that doesn't carry its connection ID.
+	connID := r.URL.Query().Get("cid")
 
 	token := tokens[0]
 	path := paths[0]
-	connID := connIDs[0]
 
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -360,6 +371,11 @@ func ServeWS(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Err(err).Msg("socket-login-error")
 		client.conn.Close()
+		return
+	}
+	if !validConnID(client.connID) {
+		log.Error().Int("len", len(client.connID)).Msg("invalid-conn-id")
+		closeMessage(client.conn, "invalid connection ID")
 		return
 	}
 
