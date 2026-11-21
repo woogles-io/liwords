@@ -10,6 +10,7 @@ import {
   ifEndedNow,
   onTurnCounts,
   scoreType,
+  tilesToPlay,
 } from "./crosstable";
 
 const game = (
@@ -118,6 +119,52 @@ describe("onTurnCounts", () => {
     expect(n.get("a")).toBe(2);
     expect(n.get("b")).toBe(1);
     expect(n.get("c")).toBe(0);
+  });
+});
+
+describe("tilesToPlay", () => {
+  const live = { gameEndReason: GameEndReason.NONE, winnerIndex: -1 };
+  it("adds up the tiles left in each player's games in progress", () => {
+    const cells = buildCrosstable(
+      ["a", "b", "c"],
+      [
+        // finished: counts none
+        game({ gameId: "ab" }),
+        game({
+          ...live,
+          gameId: "ac",
+          player1UserId: "c",
+          playerOnTurn: 0,
+          tilesUnplayed: 100,
+        }),
+        game({
+          ...live,
+          gameId: "bc",
+          player0UserId: "b",
+          player1UserId: "c",
+          playerOnTurn: 1,
+          tilesUnplayed: 37,
+        }),
+      ],
+    );
+    const n = tilesToPlay(["a", "b", "c"], cells);
+    expect(n.get("a")).toBe(100);
+    expect(n.get("b")).toBe(37);
+    expect(n.get("c")).toBe(137);
+  });
+
+  it("is unknown when a game in progress came without its count", () => {
+    const cells = buildCrosstable(
+      ["a", "b", "c"],
+      [
+        game({ ...live, gameId: "ab", playerOnTurn: 0, tilesUnplayed: 50 }),
+        game({ ...live, gameId: "ac", player1UserId: "c", playerOnTurn: 0 }),
+      ],
+    );
+    const n = tilesToPlay(["a", "b", "c"], cells);
+    expect(n.get("a")).toBeNull();
+    expect(n.get("b")).toBe(50);
+    expect(n.get("c")).toBeNull();
   });
 });
 

@@ -26,6 +26,9 @@ export type CrosstableCell = {
   // "win", "loss" or "draw" once finished; "turn" (the row player's) or
   // "waiting" (the opponent's) while in progress.
   result: "win" | "loss" | "draw" | "turn" | "waiting";
+  // in progress: the tiles not yet played, in the bag or on a rack; absent
+  // when the server did not count them
+  tilesUnplayed?: number;
 };
 
 // A game still in progress.
@@ -68,6 +71,7 @@ export const buildCrosstable = (
         myScore: idx === 0 ? g.player0Score : g.player1Score,
         theirScore: idx === 0 ? g.player1Score : g.player0Score,
         result,
+        tilesUnplayed: live ? g.tilesUnplayed : undefined,
       };
       const key = cellKey(me, them);
       const list = cells.get(key);
@@ -280,6 +284,31 @@ export const onTurnCounts = (
   return out;
 };
 
+// Each player's tiles not yet played over their games in progress (a finished
+// game counts none): how far they are from the end of their season, which
+// starts at a full bag per game. Null when a game in progress came back
+// without its count.
+export const tilesToPlay = (
+  userIds: Array<string>,
+  cells: Map<string, Array<CrosstableCell>>,
+): Map<string, number | null> => {
+  const out = new Map<string, number | null>();
+  for (const me of userIds) {
+    let n: number | null = 0;
+    for (const them of userIds) {
+      for (const g of cells.get(cellKey(me, them)) ?? []) {
+        if (!isLive(g)) continue;
+        n =
+          n === null || g.tilesUnplayed === undefined
+            ? null
+            : n + g.tilesUnplayed;
+      }
+    }
+    out.set(me, n);
+  }
+  return out;
+};
+
 // The width the cross-table needs before its totals stay in view at the right:
 // the names and the totals take about 320px, which leaves room for two or more
 // games between them. It goes by the table, not the screen, since the page's
@@ -290,8 +319,9 @@ const PIN_TOTALS_WIDTH = 480;
 // a game in progress is in italics (with * when the row player is on turn); a letter after the score says how a game ended when
 // it was not played out. Always a grid, however wide: a player's games as a
 // list are in the standings' game history. While any game is in progress, each
-// name is followed by how many games wait on that player (onTurnCounts), and
-// the grid ends with each player's totals if every game ended now (ifEndedNow).
+// name is followed by how many games wait on that player (onTurnCounts) and
+// their tiles still to play (tilesToPlay), and the grid ends with each
+// player's totals if every game ended now (ifEndedNow).
 export const DivisionCrosstable = (props: {
   division: Division;
   onChat?: (uuid: string, username: string) => void;
@@ -344,8 +374,13 @@ export const DivisionCrosstable = (props: {
   const cells = buildCrosstable(userIds, data?.games ?? []);
   const now = ifEndedNow(props.division.standings, cells);
   const onTurn = onTurnCounts(userIds, cells);
+  const tiles = tilesToPlay(userIds, cells);
   // with nothing in progress the totals would only repeat the standings.
   const anyLive = [...cells.values()].some((list) => list.some(isLive));
+  // a server that does not count tiles sends none at all
+  const anyTiles = [...cells.values()].some((list) =>
+    list.some((g) => g.tilesUnplayed !== undefined),
+  );
 
   if (isLoading) {
     return <Spin />;
@@ -411,6 +446,22 @@ export const DivisionCrosstable = (props: {
           onCell: playerCell,
           render: (_: unknown, row: Row) => onTurn.get(row.userId) || null,
         },
+        ...(anyTiles
+          ? [
+              {
+                title: (
+                  <Tooltip title="Unplayed tiles in this player's unfinished games.">
+                    <span style={{ cursor: "help" }}>Tiles</span>
+                  </Tooltip>
+                ),
+                key: "tiles",
+                align: "center" as const,
+                fixed: wide ? ("left" as const) : undefined,
+                onCell: playerCell,
+                render: (_: unknown, row: Row) => tiles.get(row.userId) || null,
+              },
+            ]
+          : []),
       ]
     : [];
 
