@@ -1399,6 +1399,9 @@ export const BoardPanel = React.memo((props: Props) => {
   let gameMetaMessage;
   if (examinableGameEndMessage) {
     gameMetaMessage = examinableGameEndMessage;
+  } else if (correspondenceSpectator && whatIfRackEditing) {
+    // no message: the rack row stays, empty, so a what-if rack can be set
+    // for the hidden one
   } else if (correspondenceSpectator) {
     gameMetaMessage = "Tiles are hidden for correspondence game spectators";
   } else if (anonymousTourneyViewer) {
