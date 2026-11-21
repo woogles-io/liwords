@@ -204,3 +204,86 @@ it("does not let a player examine other games in play", async () => {
   expect(await screen.findByText("PNG")).toBeInTheDocument();
   expect(screen.queryByText("Examine")).toBeNull();
 });
+
+it("plays at once when Play does not ask first", () => {
+  const onCommit = vi.fn();
+  renderGameControls({ myTurn: true, onCommit });
+  fireEvent.click(screen.getByText("Play"));
+  expect(onCommit).toHaveBeenCalledTimes(1);
+});
+
+it("asks first, showing the play, and a second tap on Play plays", async () => {
+  const onCommit = vi.fn();
+  renderGameControls({
+    myTurn: true,
+    onCommit,
+    playConfirm: "Play 8H ZA for 22?",
+  });
+  fireEvent.click(screen.getByText("Play"));
+  expect(await screen.findByText("Play 8H ZA for 22?")).toBeInTheDocument();
+  expect(onCommit).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByText("Play"));
+  expect(onCommit).toHaveBeenCalledTimes(1);
+});
+
+function capturePlayShortcut(props: Partial<Props>) {
+  let shortcut: (() => void) | null = null;
+  renderGameControls({
+    myTurn: true,
+    setHandlePlayShortcut: (v) => {
+      shortcut = typeof v === "function" ? v(shortcut) : v;
+    },
+    ...props,
+  });
+  return () => act(() => shortcut?.());
+}
+
+it("plays at once on Enter when Play does not ask first", () => {
+  const onCommit = vi.fn();
+  const pressEnter = capturePlayShortcut({ onCommit });
+  pressEnter();
+  expect(onCommit).toHaveBeenCalledTimes(1);
+});
+
+it("asks on Enter as on Play, and a second Enter plays", async () => {
+  const onCommit = vi.fn();
+  const pressEnter = capturePlayShortcut({
+    onCommit,
+    playConfirm: "Play 8H ZA for 22?",
+  });
+  pressEnter();
+  expect(await screen.findByText("Play 8H ZA for 22?")).toBeInTheDocument();
+  expect(onCommit).not.toHaveBeenCalled();
+  pressEnter();
+  expect(onCommit).toHaveBeenCalledTimes(1);
+});
+
+it("asks before a puzzle's answer too", async () => {
+  const onCommit = vi.fn();
+  renderGameControls({
+    myTurn: true,
+    puzzleMode: true,
+    onCommit,
+    playConfirm: "Play 8H ZA?",
+  });
+  fireEvent.click(screen.getByText("Solve"));
+  expect(await screen.findByText("Play 8H ZA?")).toBeInTheDocument();
+  expect(onCommit).not.toHaveBeenCalled();
+  fireEvent.click(await screen.findByText("Yes"));
+  expect(onCommit).toHaveBeenCalledTimes(1);
+});
+
+it("plays on Yes and not on No", async () => {
+  const onCommit = vi.fn();
+  renderGameControls({
+    myTurn: true,
+    onCommit,
+    playConfirm: "Play 8H ZA for 22?",
+  });
+  fireEvent.click(screen.getByText("Play"));
+  fireEvent.click(await screen.findByText("No"));
+  expect(onCommit).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByText("Play"));
+  fireEvent.click(await screen.findByText("Yes"));
+  expect(onCommit).toHaveBeenCalledTimes(1);
+});

@@ -90,6 +90,20 @@ export function useBoardPanelState(props: UseBoardPanelStateProps) {
     },
     [],
   );
+  const handlePlayShortcut = useRef<(() => void) | null>(null);
+  const setHandlePlayShortcut = useCallback(
+    (
+      makeNewValue:
+        | ((oldValue: (() => void) | null) => (() => void) | null)
+        | null,
+    ): void => {
+      handlePlayShortcut.current =
+        typeof makeNewValue === "function"
+          ? makeNewValue(handlePlayShortcut.current)
+          : makeNewValue;
+    },
+    [],
+  );
   const handleNeitherShortcut = useRef<(() => void) | null>(null);
   const setHandleNeitherShortcut = useCallback(
     (
@@ -162,6 +176,8 @@ export function useBoardPanelState(props: UseBoardPanelStateProps) {
     setHandlePassShortcut,
     handleChallengeShortcut,
     setHandleChallengeShortcut,
+    handlePlayShortcut,
+    setHandlePlayShortcut,
     handleNeitherShortcut,
     setHandleNeitherShortcut,
     boardContainer,

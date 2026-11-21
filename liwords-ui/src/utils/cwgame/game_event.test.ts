@@ -4,9 +4,17 @@ import {
   GameEvent_Type,
   GameEventSchema,
 } from "../../gen/api/proto/vendored/macondo/macondo_pb";
-import { computeLeave, retainedLeave, tilesetToMoveEvent } from "./game_event";
+import {
+  computeLeave,
+  retainedLeave,
+  tilesetToMoveDisplay,
+  tilesetToMoveEvent,
+} from "./game_event";
 import { Board } from "./board";
-import { englishLetterToML } from "../../constants/alphabets";
+import {
+  StandardEnglishAlphabet,
+  englishLetterToML,
+} from "../../constants/alphabets";
 
 const oxyTilesLayout = [
   " PACIFYING     ",
@@ -71,6 +79,49 @@ it("tests complex event", () => {
   expect(evt?.machineLetters).toEqual(
     Uint8Array.from([15, 24, 0, 16, 0, 0, 0, 2, 0, 0, 1, 26, 0, 0, 5]),
   ); // 'OX.P...B..AZ..E'
+});
+
+it("writes a play for the confirm before playing it", () => {
+  const board = new Board();
+  board.setTileLayout(oxyTilesLayout);
+  const tiles = (placed: Array<[number, number, string]>) =>
+    new Set<EphemeralTile>(
+      placed.map(([row, col, letter]) => ({
+        row,
+        col,
+        letter: englishLetterToML(letter),
+      })),
+    );
+  expect(
+    tilesetToMoveDisplay(
+      tiles([
+        [0, 0, "O"],
+        [1, 0, "X"],
+        [3, 0, "P"],
+        [7, 0, "B"],
+        [10, 0, "A"],
+        [11, 0, "Z"],
+        [14, 0, "E"],
+      ]),
+      board,
+      StandardEnglishAlphabet,
+    ),
+  ).toEqual("A1 OX(Y)P(HEN)B(UT)AZ(ON)E");
+  // one tile on the end of a word across
+  expect(
+    tilesetToMoveDisplay(tiles([[7, 12, "S"]]), board, StandardEnglishAlphabet),
+  ).toEqual("8B (RAINWASHING)S");
+  // not in one line: no play
+  expect(
+    tilesetToMoveDisplay(
+      tiles([
+        [0, 0, "O"],
+        [7, 0, "B"],
+      ]),
+      board,
+      StandardEnglishAlphabet,
+    ),
+  ).toBeNull();
 });
 
 it("tests invalid play", () => {

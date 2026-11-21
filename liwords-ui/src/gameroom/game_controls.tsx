@@ -267,6 +267,10 @@ export type Props = {
   onChallenge: () => void;
   challengeAllowed?: boolean;
   onCommit: () => void;
+  // Set when Play asks first (Settings > Preferences): the question, showing
+  // the play. Yes plays it, and so does a second tap on Play or a second
+  // Enter, as a second press does for Pass and Challenge.
+  playConfirm?: string;
   onExamine: () => void;
   onExportGCG: () => void;
   onFlipBoard?: () => void;
@@ -285,6 +289,14 @@ export type Props = {
       ) => void)
     | null;
   setHandleChallengeShortcut:
+    | ((
+        makeNewValue:
+          | ((oldValue: (() => void) | null) => (() => void) | null)
+          | null,
+      ) => void)
+    | null;
+  // Enter's handler, as a tap on Play
+  setHandlePlayShortcut?:
     | ((
         makeNewValue:
           | ((oldValue: (() => void) | null) => (() => void) | null)
@@ -324,14 +336,16 @@ const GameControls = React.memo((props: Props) => {
 
   // Poka-yoke against accidentally having multiple pop-ups active.
   const [actualCurrentPopUp, setCurrentPopUp] = useState<
-    "NONE" | "CHALLENGE" | "PASS"
+    "NONE" | "CHALLENGE" | "PASS" | "PLAY"
   >("NONE");
   // This should match disabled= and/or hidden= props.
   const currentPopUp =
     (actualCurrentPopUp === "CHALLENGE" &&
       (!props.challengeAllowed ||
         props.challengeRule === ChallengeRule.VOID)) ||
-    (actualCurrentPopUp === "PASS" && !props.myTurn)
+    (actualCurrentPopUp === "PASS" && !props.myTurn) ||
+    (actualCurrentPopUp === "PLAY" &&
+      (!props.myTurn || props.finalPassOrChallenge || !props.playConfirm))
       ? "NONE"
       : actualCurrentPopUp;
   useEffect(() => {
@@ -374,8 +388,11 @@ const GameControls = React.memo((props: Props) => {
     observer,
     onChallenge,
     onPass,
+    onCommit,
+    playConfirm,
     setHandlePassShortcut,
     setHandleChallengeShortcut,
+    setHandlePlayShortcut,
     setHandleNeitherShortcut,
   } = props;
   // The board editor always examines, but its buttons are live.
@@ -404,6 +421,19 @@ const GameControls = React.memo((props: Props) => {
       return "NONE";
     });
   }, [hasRegularButtons, onChallenge]);
+  // Enter, as a tap on Play: it plays at once, or, when Play asks first, the
+  // first opens the question and the second plays.
+  const handlePlayShortcut = useCallback(() => {
+    if (!playConfirm || !hasRegularButtons) {
+      onCommit();
+      return;
+    }
+    setCurrentPopUp((v) => {
+      if (v !== "PLAY") return "PLAY";
+      onCommit();
+      return "NONE";
+    });
+  }, [playConfirm, hasRegularButtons, onCommit]);
   const handleNeitherShortcut = useCallback(() => {
     if (!hasRegularButtons) return;
     setCurrentPopUp("NONE");
@@ -421,6 +451,12 @@ const GameControls = React.memo((props: Props) => {
     };
   }, [setHandleChallengeShortcut]);
   useEffect(() => {
+    if (!setHandlePlayShortcut) return;
+    return () => {
+      setHandlePlayShortcut(null);
+    };
+  }, [setHandlePlayShortcut]);
+  useEffect(() => {
     if (!setHandleNeitherShortcut) return;
     return () => {
       setHandleNeitherShortcut(null);
@@ -434,6 +470,10 @@ const GameControls = React.memo((props: Props) => {
     if (!setHandleChallengeShortcut) return;
     setHandleChallengeShortcut(() => handleChallengeShortcut);
   }, [handleChallengeShortcut, setHandleChallengeShortcut]);
+  useEffect(() => {
+    if (!setHandlePlayShortcut) return;
+    setHandlePlayShortcut(() => handlePlayShortcut);
+  }, [handlePlayShortcut, setHandlePlayShortcut]);
   useEffect(() => {
     if (!setHandleNeitherShortcut) return;
     setHandleNeitherShortcut(() => handleNeitherShortcut);
@@ -747,15 +787,53 @@ const GameControls = React.memo((props: Props) => {
               </Button>
             );
           }
+          if (!props.playConfirm) {
+            return (
+              <Button
+                type="primary"
+                className="play"
+                onClick={props.onCommit}
+                disabled={!props.myTurn || props.finalPassOrChallenge}
+              >
+                {props.puzzleMode ? "Solve" : "Play"}
+              </Button>
+            );
+          }
+          // Asks first, above the button: a phone has no room below it, and
+          // every screen asks in the same place. A tap on Play opens the
+          // question; a second tap plays.
           return (
-            <Button
-              type="primary"
-              className="play"
-              onClick={props.onCommit}
-              disabled={!props.myTurn || props.finalPassOrChallenge}
+            <Popconfirm
+              title={props.playConfirm}
+              placement="top"
+              onCancel={() => {
+                setCurrentPopUp("NONE");
+              }}
+              onConfirm={() => {
+                props.onCommit();
+                setCurrentPopUp("NONE");
+              }}
+              onOpenChange={(visible) => {
+                setCurrentPopUp(visible ? "PLAY" : "NONE");
+              }}
+              okText="Yes"
+              cancelText="No"
+              open={currentPopUp === "PLAY"}
             >
-              {props.puzzleMode ? "Solve" : "Play"}
-            </Button>
+              <Button
+                type="primary"
+                className="play"
+                onClick={() => {
+                  if (currentPopUp === "PLAY") {
+                    props.onCommit();
+                    setCurrentPopUp("NONE");
+                  }
+                }}
+                disabled={!props.myTurn || props.finalPassOrChallenge}
+              >
+                {props.puzzleMode ? "Solve" : "Play"}
+              </Button>
+            </Popconfirm>
           );
         })()}
       </div>
