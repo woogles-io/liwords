@@ -8,6 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/lambda"
 
 	"github.com/woogles-io/liwords/pkg/analysis"
+	"github.com/woogles-io/liwords/pkg/auth"
 	"github.com/woogles-io/liwords/pkg/broadcasts"
 	"github.com/woogles-io/liwords/pkg/bus"
 	"github.com/woogles-io/liwords/pkg/config"
@@ -85,6 +86,7 @@ func registerJobs(r *jobs.Runner, d jobDeps) error {
 	schedule("cancelled_games_cleanup", daily, d.maintenance.CancelledGamesCleanup)
 	schedule("monitoring_streams_cleanup", daily, d.maintenance.MonitoringStreamsCleanup)
 	schedule("expired_sessions_cleanup", daily, d.maintenance.ExpiredSessionsCleanup)
+	schedule("login_limits_cleanup", daily, auth.CleanupLoginLimits(d.stores.Queries))
 	schedule("unverified_users_cleanup", daily, d.maintenance.UnverifiedUsersCleanup)
 	schedule("league_unstarted_reminders", daily, d.maintenance.LeagueUnstartedReminders)
 

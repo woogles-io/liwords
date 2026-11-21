@@ -9,7 +9,6 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/gomodule/redigo/redis"
 	"github.com/lithammer/shortuuid/v4"
 	"github.com/rs/zerolog/log"
 
@@ -76,7 +75,7 @@ type AuthenticationService struct {
 
 func NewAuthenticationService(u user.Store, ss sessions.SessionStore, cs config.ConfigStore,
 	secretKey string, emailDebugMode bool, discordToken string, cfg config.ArgonConfig,
-	secureCookies bool, q *models.Queries, redisPool *redis.Pool) *AuthenticationService {
+	secureCookies bool, q *models.Queries) *AuthenticationService {
 	return &AuthenticationService{
 		userStore:      u,
 		sessionStore:   ss,
@@ -87,7 +86,7 @@ func NewAuthenticationService(u user.Store, ss sessions.SessionStore, cs config.
 		argonConfig:    cfg,
 		secureCookies:  secureCookies,
 		q:              q,
-		loginLimit:     newLoginLimiter(redisPool)}
+		loginLimit:     newLoginLimiter(q)}
 }
 
 func (as *AuthenticationService) passwordConfig() *PasswordConfig {

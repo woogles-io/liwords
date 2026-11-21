@@ -432,6 +432,18 @@ type Liststat struct {
 	Item      []byte
 }
 
+type LoginFailure struct {
+	Key       string
+	Failures  int32
+	ExpiresAt pgtype.Timestamptz
+}
+
+type LoginKnownClient struct {
+	Username  string
+	ClientID  string
+	ExpiresAt pgtype.Timestamptz
+}
+
 type MonitoringStream struct {
 	TournamentID    string
 	UserID          string
