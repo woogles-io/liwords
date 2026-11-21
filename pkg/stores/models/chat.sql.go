@@ -13,17 +13,16 @@ import (
 )
 
 const addChatMessages = `-- name: AddChatMessages :execrows
-INSERT INTO chat_messages (id, channel, sender_id, sender_username, message, created_at, legacy_id)
-SELECT m.id, m.channel, u.id, m.sender_username, m.message, m.created_at, m.legacy_id
+INSERT INTO chat_messages (id, channel, sender_id, sender_username, message, created_at)
+SELECT m.id, m.channel, u.id, m.sender_username, m.message, m.created_at
 FROM (SELECT unnest($1::uuid[]) AS id,
              unnest($2::text[]) AS channel,
              unnest($3::text[]) AS sender_uuid,
              unnest($4::text[]) AS sender_username,
              unnest($5::text[]) AS message,
-             unnest($6::timestamptz[]) AS created_at,
-             unnest($7::text[]) AS legacy_id) m
+             unnest($6::timestamptz[]) AS created_at) m
 LEFT JOIN users u ON m.sender_uuid <> '' AND u.uuid = m.sender_uuid
-ON CONFLICT (channel, legacy_id) WHERE legacy_id IS NOT NULL DO NOTHING
+ON CONFLICT (id) DO NOTHING
 `
 
 type AddChatMessagesParams struct {
@@ -33,13 +32,12 @@ type AddChatMessagesParams struct {
 	SenderUsernames []string
 	Messages        []string
 	CreatedAts      []pgtype.Timestamptz
-	LegacyIds       []string
 }
 
-// Adds messages already written to Redis, identified there by legacy_id. A
-// message whose (channel, legacy_id) is already here is left as it is, so
-// the dual write and the backfill can overlap and the backfill can be re-run.
-// An empty or unknown sender UUID gives a NULL sender_id.
+// Adds messages; one whose id is already here is left as it is. Messages
+// copied from Redis have ids computed from their stream IDs, so the dual
+// write and the backfill can overlap and the backfill can be re-run. An
+// empty or unknown sender UUID gives a NULL sender_id.
 func (q *Queries) AddChatMessages(ctx context.Context, arg AddChatMessagesParams) (int64, error) {
 	result, err := q.db.Exec(ctx, addChatMessages,
 		arg.Ids,
@@ -48,7 +46,6 @@ func (q *Queries) AddChatMessages(ctx context.Context, arg AddChatMessagesParams
 		arg.SenderUsernames,
 		arg.Messages,
 		arg.CreatedAts,
-		arg.LegacyIds,
 	)
 	if err != nil {
 		return 0, err
@@ -56,22 +53,23 @@ func (q *Queries) AddChatMessages(ctx context.Context, arg AddChatMessagesParams
 	return result.RowsAffected(), nil
 }
 
-const deleteChatMessageByLegacyID = `-- name: DeleteChatMessageByLegacyID :execrows
+const deleteChatMessage = `-- name: DeleteChatMessage :execrows
 UPDATE chat_messages
 SET deleted_at = now(),
-    deleted_by = (SELECT id FROM users WHERE uuid = $1::text)
-WHERE channel = $2 AND legacy_id = $3 AND deleted_at IS NULL
+    deleted_by = (SELECT u.id FROM users u WHERE u.uuid = $1::text)
+WHERE chat_messages.id = $2 AND chat_messages.channel = $3
+  AND chat_messages.deleted_at IS NULL
 `
 
-type DeleteChatMessageByLegacyIDParams struct {
+type DeleteChatMessageParams struct {
 	DeletedByUuid string
+	ID            uuid.UUID
 	Channel       string
-	LegacyID      pgtype.Text
 }
 
-// Soft-deletes a message by its Redis stream ID; it stays for review.
-func (q *Queries) DeleteChatMessageByLegacyID(ctx context.Context, arg DeleteChatMessageByLegacyIDParams) (int64, error) {
-	result, err := q.db.Exec(ctx, deleteChatMessageByLegacyID, arg.DeletedByUuid, arg.Channel, arg.LegacyID)
+// Soft-deletes a message; it stays for review.
+func (q *Queries) DeleteChatMessage(ctx context.Context, arg DeleteChatMessageParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteChatMessage, arg.DeletedByUuid, arg.ID, arg.Channel)
 	if err != nil {
 		return 0, err
 	}

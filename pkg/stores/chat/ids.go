@@ -1,7 +1,7 @@
 package chat
 
 import (
-	"crypto/rand"
+	"crypto/sha256"
 	"encoding/binary"
 	"fmt"
 	"strconv"
@@ -39,15 +39,15 @@ func parseLegacyID(s string) (legacyID, error) {
 
 func (l legacyID) time() time.Time { return time.UnixMilli(l.ms) }
 
-// messageID is the ID of a message first stored in Redis: a UUIDv7 with the
-// message's Redis time and, in the 12 bits UUIDv7 leaves for ordering within
-// a millisecond, its stream sequence number. So messages copied at any time
-// sort where they were sent, in the order Redis kept them.
-func (l legacyID) messageID() uuid.UUID {
+// messageID is the ID of a message first stored in Redis in channel: a
+// UUIDv7 with the message's Redis time and, in the 12 bits UUIDv7 leaves for
+// ordering within a millisecond, its stream sequence number, so messages
+// copied at any time sort where they were sent, in Redis's order. The other
+// 62 bits come from a hash of the channel and stream ID: a message always
+// gets the same ID, so copying it twice is a no-op, and its Redis ID finds
+// it. (A stream ID is unique within its channel.)
+func (l legacyID) messageID(channel string) uuid.UUID {
 	var u uuid.UUID
-	if _, err := rand.Read(u[8:]); err != nil {
-		panic(err) // crypto/rand doesn't fail on supported platforms
-	}
 	var ms [8]byte
 	binary.BigEndian.PutUint64(ms[:], uint64(l.ms))
 	copy(u[0:6], ms[2:8])
@@ -57,6 +57,8 @@ func (l legacyID) messageID() uuid.UUID {
 	}
 	u[6] = 0x70 | byte(seq>>8) // version 7
 	u[7] = byte(seq)
+	h := sha256.Sum256([]byte(fmt.Sprintf("%s\x00%d-%d", channel, l.ms, l.seq)))
+	copy(u[8:], h[:8])
 	u[8] = u[8]&0x3f | 0x80 // RFC 9562 variant
 	return u
 }

@@ -44,7 +44,6 @@ func (m *Mirror) AddChat(ctx context.Context, senderUsername, senderUID, msg,
 			username: senderUsername,
 			message:  msg,
 			id:       lid,
-			legacyID: cm.Id,
 		}}))
 	}
 	if err != nil {
@@ -57,11 +56,14 @@ func (m *Mirror) DeleteChat(ctx context.Context, channel, msgID, deletedBy strin
 	if err := m.ChatStore.DeleteChat(ctx, channel, msgID, deletedBy); err != nil {
 		return err
 	}
-	_, err := m.q.DeleteChatMessageByLegacyID(ctx, models.DeleteChatMessageByLegacyIDParams{
-		Channel:       channel,
-		LegacyID:      pgtype.Text{String: msgID, Valid: true},
-		DeletedByUuid: deletedBy,
-	})
+	lid, err := parseLegacyID(msgID)
+	if err == nil {
+		_, err = m.q.DeleteChatMessage(ctx, models.DeleteChatMessageParams{
+			ID:            lid.messageID(channel),
+			Channel:       channel,
+			DeletedByUuid: deletedBy,
+		})
+	}
 	if err != nil {
 		log.Err(err).Str("channel", channel).Str("id", msgID).Msg("chat-mirror-delete-failed")
 	}
@@ -74,8 +76,7 @@ type legacyMessage struct {
 	senderID string // UUID; "" for server lines and very old messages
 	username string
 	message  string
-	id       legacyID
-	legacyID string // the Redis stream ID, as Redis gave it
+	id       legacyID // the Redis stream ID
 }
 
 func messagesParams(msgs []legacyMessage) models.AddChatMessagesParams {
@@ -86,16 +87,14 @@ func messagesParams(msgs []legacyMessage) models.AddChatMessagesParams {
 		SenderUsernames: make([]string, len(msgs)),
 		Messages:        make([]string, len(msgs)),
 		CreatedAts:      make([]pgtype.Timestamptz, len(msgs)),
-		LegacyIds:       make([]string, len(msgs)),
 	}
 	for i, m := range msgs {
-		p.Ids[i] = m.id.messageID()
+		p.Ids[i] = m.id.messageID(m.channel)
 		p.Channels[i] = m.channel
 		p.SenderUuids[i] = m.senderID
 		p.SenderUsernames[i] = m.username
 		p.Messages[i] = m.message
 		p.CreatedAts[i] = pgtype.Timestamptz{Time: m.id.time(), Valid: true}
-		p.LegacyIds[i] = m.legacyID
 	}
 	return p
 }

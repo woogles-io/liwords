@@ -19,8 +19,9 @@ type BackfillStats struct {
 }
 
 // Backfill copies every chat stream in Redis to Postgres, batch messages at
-// a time. A message already there (by channel and stream ID) is left alone,
-// so it can run while Mirror is copying new messages, and can be re-run.
+// a time. A message already there is left alone (its ID comes from its
+// channel and stream ID), so it can run while Mirror is copying new
+// messages, and can be re-run.
 func Backfill(ctx context.Context, pool *redis.Pool, q *models.Queries, batch int) (BackfillStats, error) {
 	var st BackfillStats
 	conn := pool.Get()
@@ -117,6 +118,5 @@ func parseEntry(channel string, e interface{}) (legacyMessage, bool) {
 		username: fields["username"],
 		message:  msg,
 		id:       lid,
-		legacyID: id,
 	}, true
 }

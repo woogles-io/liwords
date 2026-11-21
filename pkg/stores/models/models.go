@@ -175,7 +175,6 @@ type ChatMessage struct {
 	SenderUsername string
 	Message        string
 	CreatedAt      pgtype.Timestamptz
-	LegacyID       pgtype.Text
 	DeletedAt      pgtype.Timestamptz
 	DeletedBy      pgtype.Int4
 }

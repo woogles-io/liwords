@@ -59,16 +59,21 @@ type row struct {
 	deletedBy                  *string
 }
 
-func rowByLegacyID(t *testing.T, db *pgxpool.Pool, channel, legacyID string) row {
+// rowFor reads the row of the message with Redis stream ID streamID.
+func rowFor(t *testing.T, db *pgxpool.Pool, channel, streamID string) row {
 	t.Helper()
+	lid, err := parseLegacyID(streamID)
+	if err != nil {
+		t.Fatal(err)
+	}
 	var r row
-	err := db.QueryRow(context.Background(), `
+	err = db.QueryRow(context.Background(), `
 		SELECT m.id, m.channel, m.sender_username, m.message, s.uuid, m.created_at,
 		       m.deleted_at IS NOT NULL, d.uuid
 		FROM chat_messages m
 		LEFT JOIN users s ON s.id = m.sender_id
 		LEFT JOIN users d ON d.id = m.deleted_by
-		WHERE m.channel = $1 AND m.legacy_id = $2`, channel, legacyID).
+		WHERE m.channel = $1 AND m.id = $2`, channel, lid.messageID(channel)).
 		Scan(&r.id, &r.channel, &r.username, &r.message, &r.senderID, &r.createdAt, &r.deleted, &r.deletedBy)
 	if err != nil {
 		t.Fatal(err)
@@ -96,7 +101,7 @@ func TestMirror(t *testing.T) {
 
 	cm, err := m.AddChat(ctx, "cesar", "uuid-cesar", "hello", "chat.game.g1", "", false)
 	is.NoErr(err)
-	r := rowByLegacyID(t, db, "chat.game.g1", cm.Id)
+	r := rowFor(t, db, "chat.game.g1", cm.Id)
 	is.Equal(r.username, "cesar")
 	is.Equal(r.message, "hello")
 	is.Equal(*r.senderID, "uuid-cesar")
@@ -109,14 +114,14 @@ func TestMirror(t *testing.T) {
 	// A line the server posts has no sender.
 	line, err := m.AddChat(ctx, "", "", "challenged off", "chat.game.g1", "", false)
 	is.NoErr(err)
-	is.Equal(rowByLegacyID(t, db, "chat.game.g1", line.Id).senderID, nil)
+	is.Equal(rowFor(t, db, "chat.game.g1", line.Id).senderID, nil)
 
 	old, err := m.OldChats(ctx, "chat.game.g1", 10) // still read from Redis
 	is.NoErr(err)
 	is.Equal(len(old), 2)
 
 	is.NoErr(m.DeleteChat(ctx, "chat.game.g1", cm.Id, "uuid-mina"))
-	r = rowByLegacyID(t, db, "chat.game.g1", cm.Id)
+	r = rowFor(t, db, "chat.game.g1", cm.Id)
 	is.True(r.deleted)
 	is.Equal(*r.deletedBy, "uuid-mina")
 	old, err = m.OldChats(ctx, "chat.game.g1", 10)
@@ -153,26 +158,26 @@ func TestBackfill(t *testing.T) {
 	is.Equal(st.Inserted, int64(2)) // the mirrored one was already there
 	is.Equal(count(t, db), 3)
 
-	r := rowByLegacyID(t, db, "chat.lobby", "1600000000000-0")
+	r := rowFor(t, db, "chat.lobby", "1600000000000-0")
 	is.Equal(r.senderID, nil)
 	is.Equal(r.username, "cesar")
 	is.Equal(r.createdAt.UnixMilli(), int64(1600000000000))
-	r = rowByLegacyID(t, db, "chat.pm.uuid-cesar_uuid-mina", "1700000000000-0")
+	r = rowFor(t, db, "chat.pm.uuid-cesar_uuid-mina", "1700000000000-0")
 	is.Equal(*r.senderID, "uuid-mina")
-	is.Equal(rowByLegacyID(t, db, "chat.pm.uuid-cesar_uuid-mina", mirrored.Id).message, "hi mina")
+	is.Equal(rowFor(t, db, "chat.pm.uuid-cesar_uuid-mina", mirrored.Id).message, "hi mina")
 
 	// Ordering by ID is ordering by time, though the backfill copied the
 	// older messages after the mirror copied the newest.
-	rows, err := db.Query(ctx, `SELECT legacy_id FROM chat_messages ORDER BY id`)
+	rows, err := db.Query(ctx, `SELECT message FROM chat_messages ORDER BY id`)
 	is.NoErr(err)
 	var order []string
 	for rows.Next() {
-		var l string
-		is.NoErr(rows.Scan(&l))
-		order = append(order, l)
+		var m string
+		is.NoErr(rows.Scan(&m))
+		order = append(order, m)
 	}
 	is.NoErr(rows.Err())
-	is.Equal(order, []string{"1600000000000-0", "1700000000000-0", mirrored.Id})
+	is.Equal(order, []string{"old, no id", "hi cesar", "hi mina"})
 
 	st, err = Backfill(ctx, rp, q, 1000)
 	is.NoErr(err)
