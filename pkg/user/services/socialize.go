@@ -359,6 +359,18 @@ func (ss *SocializeService) GetChatsForChannel(ctx context.Context, req *connect
 		return nil, err
 	}
 	chats := page.Messages
+	// Clients that don't page (no cursor, not around the read position)
+	// fetch a private chat when the user opens it and never call
+	// MarkChannelRead; for them, fetching it marks it read.
+	if sess != nil && cursors == 0 && !req.Msg.AroundLastRead && len(chats) > 0 &&
+		strings.HasPrefix(req.Msg.Channel, "chat.pm.") {
+		newest := chats[len(chats)-1].Id
+		if err := ss.chatStore.MarkRead(ctx, sess.UserUUID, req.Msg.Channel, newest); err != nil {
+			log.Err(err).Str("channel", req.Msg.Channel).Msg("mark-read-on-fetch")
+		} else {
+			lastRead = newest
+		}
+	}
 	if len(chats) > 0 {
 		chatterUuids := make([]string, 0, len(chats))
 		for _, chatMessage := range chats {
