@@ -85,10 +85,12 @@ export const TournamentsPage = () => {
             </Link>
           )}
         </div>
+        {/* first, so a director finds their own above the long list; shown
+            only to one who directs any */}
+        {isLoggedIn && <MyTournamentsSection />}
         <div className="tournaments-page-content">
           <TournamentsAndLeaguesContent showBroadcasts={false} />
         </div>
-        {isLoggedIn && <MyTournamentsSection />}
       </div>
     </div>
   );
