@@ -7,67 +7,26 @@ const ch = (name: string, displayName: string) => ({ name, displayName });
 const nobody = new Set<string>();
 
 describe("listsChannel", () => {
-  it("shows only direct messages in the lobby", () => {
+  it("shows private chats only", () => {
     expect(
-      listsChannel(
-        ch("chat.pm.a_b", "pm:a:b"),
-        "chat.lobby",
-        undefined,
-        nobody,
-      ),
+      listsChannel(ch("chat.pm.a_b", "pm:a:b"), "chat.lobby", nobody),
     ).toBe(true);
-    expect(
-      listsChannel(
-        ch("chat.league.x", "league:A League"),
-        "chat.lobby",
-        undefined,
-        nobody,
-      ),
-    ).toBe(false);
-    expect(
-      listsChannel(
-        ch("chat.tournament.t", "tournament:T"),
-        "chat.lobby",
-        undefined,
-        nobody,
-      ),
-    ).toBe(false);
-  });
-
-  it("adds the page's own tournament channel on a tournament page", () => {
-    const here = "chat.tournament.t";
-    expect(
-      listsChannel(ch(here, "tournament:T"), "chat.tournament.u", "t", nobody),
-    ).toBe(true);
-    expect(
-      listsChannel(
-        ch("chat.tournament.v", "tournament:V"),
-        "chat.tournament.u",
-        "t",
-        nobody,
-      ),
-    ).toBe(false);
+    for (const room of ["chat.league.x", "chat.tournament.t", "chat.game.g"]) {
+      expect(listsChannel(ch(room, "x"), "chat.tournament.t2", nobody)).toBe(
+        false,
+      );
+    }
   });
 
   it("never lists the channel the chat already shows", () => {
     expect(
-      listsChannel(
-        ch("chat.pm.a_b", "pm:a:b"),
-        "chat.pm.a_b",
-        undefined,
-        nobody,
-      ),
+      listsChannel(ch("chat.pm.a_b", "pm:a:b"), "chat.pm.a_b", nobody),
     ).toBe(false);
   });
 
   it("hides channels with an excluded player", () => {
     expect(
-      listsChannel(
-        ch("chat.pm.a_b", "pm:a:b"),
-        "chat.lobby",
-        undefined,
-        new Set(["b"]),
-      ),
+      listsChannel(ch("chat.pm.a_b", "pm:a:b"), "chat.lobby", new Set(["b"])),
     ).toBe(false);
   });
 });

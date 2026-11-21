@@ -260,6 +260,19 @@ p {
     position: relative;
   }
 
+  // Shown while the chat shows older history: back to the newest messages.
+  .jump-to-latest {
+    display: block;
+    margin: 4px auto;
+    padding: 2px 12px;
+    border: 1px solid m($primary-dark);
+    border-radius: 12px;
+    background: transparent;
+    color: m($primary-dark);
+    font-size: 12px;
+    cursor: pointer;
+  }
+
   .chat-font-size {
     display: flex;
     gap: 4px;
@@ -295,6 +308,21 @@ p {
 
   .entities {
     padding: 12px 24px 0px;
+    // Where the messages the user hasn't read begin, on opening a channel.
+    .new-messages-line {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 4px 0 12px;
+      color: m($primary-dark);
+      font-size: 12px;
+      &::before,
+      &::after {
+        content: "";
+        flex: 1;
+        border-top: 1px solid m($primary-dark);
+      }
+    }
     // Multiply the message text size by the user's chat font-size setting
     // (1 = default, so no visual change unless the user opts into a larger
     // size). Applied here so it scales the whole message list uniformly.

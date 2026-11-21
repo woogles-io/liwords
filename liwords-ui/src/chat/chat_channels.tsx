@@ -22,17 +22,17 @@ type Props = {
   unseenMessages: Array<ChatEntityObj>;
   updatedChannels?: Set<string>;
   sendMessage?: (uuid: string, username: string) => void;
-  tournamentID?: string;
   maxHeight?: number;
   suppressDefault?: boolean;
 };
 
 // Whether the channel list shows a channel. The unread count in chat.tsx uses
-// the same test, so it never counts a channel this list leaves out.
+// the same test, so it never counts a channel this list leaves out. The
+// server lists only private chats: tournament, league and game chats belong
+// to their pages.
 export const listsChannel = (
   ch: Pick<ActiveChatChannels_Channel, "name" | "displayName">,
   defaultChannel: string,
-  tournamentID: string | undefined,
   excludedPlayers: Set<string>,
 ) => {
   for (const ex of excludedPlayers) {
@@ -40,23 +40,7 @@ export const listsChannel = (
       return false;
     }
   }
-  if (ch.name === defaultChannel) {
-    return false;
-  }
-  // From the lobby, filter out channels we can't get new messages for
-  // Todo: Remove this when we send tournament messages to all enrollees
-  // regardless of their location
-  if (defaultChannel === "chat.lobby") {
-    return ch.displayName.startsWith("pm");
-  }
-  if (tournamentID) {
-    return (
-      ch.displayName.startsWith("pm") ||
-      ch.name === `chat.tournament.${tournamentID}`
-    );
-  } else {
-    return ch.displayName.startsWith("pm");
-  }
+  return ch.name !== defaultChannel && ch.name.startsWith("chat.pm.");
 };
 
 export type ChatChannelLabel = {
@@ -230,14 +214,7 @@ export const ChatChannels = React.memo((props: Props) => {
           ? -1
           : 0;
     })
-    .filter((ch) =>
-      listsChannel(
-        ch,
-        props.defaultChannel,
-        props.tournamentID,
-        excludedPlayers,
-      ),
-    )
+    .filter((ch) => listsChannel(ch, props.defaultChannel, excludedPlayers))
     .map((ch) => {
       const channelLabel = parseChannelLabel(ch.displayName, username);
       if (!channelLabel) {
