@@ -128,7 +128,7 @@ export const ChatEntity = (props: EntityProps) => {
       break;
     case ChatEntityType.UserChat:
       el = (
-        <div className="chat-entity">
+        <div className="chat-entity" data-msgid={props.msgID}>
           <PettableAvatar>
             <PlayerAvatar
               player={{

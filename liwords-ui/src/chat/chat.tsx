@@ -28,7 +28,7 @@ import {
   chatMessageToChatEntity,
 } from "../store/constants";
 import { Players } from "./players";
-import { ChatMessage, ChatMessageSchema } from "../gen/api/proto/ipc/chat_pb";
+import { ChatMessageSchema } from "../gen/api/proto/ipc/chat_pb";
 import { useClient } from "../utils/hooks/connect";
 import { SocializeService } from "../gen/api/proto/user_service/user_service_pb";
 import { useTournamentCompetitorState } from "../hooks/use_tournament_competitor_state";
@@ -37,6 +37,7 @@ import { CollectionNavigationTab } from "../collections/CollectionNavigationTab"
 import { create, toBinary } from "@bufbuild/protobuf";
 import { MessageType } from "../gen/api/proto/ipc/ipc_pb";
 import { encodeToSocketFmt } from "../utils/protobuf";
+import { isMessageID, useChatHistory } from "./use_chat_history";
 
 // ChatHandle exposes an imperative way to open a direct-message channel from
 // outside the Chat component (e.g. a sibling league surface). The "Chat"
@@ -74,6 +75,28 @@ let globalUnsentChatCache: { [key: string]: { [key: string]: string } } = {};
 
 const MAX_MESSAGE_LENGTH = 500;
 const MAX_WEBSOCKET_MESSAGE_SIZE = 1800; // Conservative limit (backend is 2048)
+
+// How close to the top or bottom of the loaded messages the reader scrolls
+// before the next page loads.
+const LOAD_MORE_PX = 150;
+
+// How long reading has to settle before the read position is saved.
+const MARK_READ_DELAY_MS = 1000;
+
+// How far an element is below the top of the scrolling list's view.
+const offsetIn = (list: HTMLElement, el: HTMLElement) =>
+  el.getBoundingClientRect().top - list.getBoundingClientRect().top;
+
+// The first message at least partly in view, and where it is.
+const topMessage = (list: HTMLElement) => {
+  for (const el of list.querySelectorAll<HTMLElement>("[data-msgid]")) {
+    const top = offsetIn(list, el);
+    if (top + el.offsetHeight > 0) {
+      return { id: el.dataset.msgid ?? "", top };
+    }
+  }
+  return null;
+};
 
 // A page hidden this long may come back to a socket the server dropped: it
 // drops one whose pings go unanswered for 15 seconds, and a phone app asleep
@@ -242,12 +265,53 @@ export const Chat = React.memo((props: Props) => {
   const [hasUnreadChat, setHasUnreadChat] = useState(false);
   const {
     chat: chatEntities,
-    clearChat,
     addChats,
     mergeChats,
+    insertChats,
+    trimChats,
     setChatChannels,
     setCurrentChatChannel,
   } = useChatStoreContext();
+  // As a page joins or leaves the list: the message at the top of the view,
+  // how far it was below the top, and when. A page loaded at one end can drop
+  // messages at the other, so the view keeps to a message, not an end.
+  const scrollAnchor = useRef<{ id: string; top: number; at: number } | null>(
+    null,
+  );
+  const noteScrollAnchor = useCallback(() => {
+    const top = chatTab && topMessage(chatTab);
+    scrollAnchor.current = top ? { ...top, at: performance.now() } : null;
+  }, [chatTab]);
+  // A page joining or leaving the list keeps the view where the reader was:
+  // the message at its top is noted just before, and the view goes back to it
+  // once the list has changed (below).
+  const insertKeepingView = useCallback(
+    (page: Array<ChatEntityObj>, ch: string) => {
+      noteScrollAnchor();
+      insertChats(page, ch);
+    },
+    [insertChats, noteScrollAnchor],
+  );
+  const trimKeepingView = useCallback(
+    (ch: string, bounds: { before?: string; after?: string }) => {
+      noteScrollAnchor();
+      trimChats(ch, bounds);
+    },
+    [trimChats, noteScrollAnchor],
+  );
+  const history = useChatHistory(
+    socializeClient,
+    userID,
+    addChats,
+    insertKeepingView,
+    trimKeepingView,
+  );
+  const { win } = history;
+  // The newest message whose reading has been saved (or was read at open).
+  const lastMarked = useRef("");
+  const markTimer = useRef<NodeJS.Timeout | null>(null);
+  // Set on opening at a "new messages" line, until the list scrolls to it.
+  const scrollToDivider = useRef(false);
   const { presences } = usePresenceStoreContext();
   const { excludedPlayers } = useExcludedPlayersStoreContext();
   const lastChannel = useRef("");
@@ -483,14 +547,19 @@ export const Chat = React.memo((props: Props) => {
   // When window is shrunk, auto-scroll may be enabled. This is one-way.
   // Hiding bookmarks bar or downloaded files bar should keep it enabled.
   const enableChatAutoScroll = useCallback(() => {
-    const tab = document.getElementById("chat");
-    if (tab && tab?.scrollTop >= tab?.scrollHeight - tab?.clientHeight) {
+    // The message list, not the card around it (which never scrolls), and
+    // never while it shows older history.
+    if (
+      chatTab &&
+      !win.hasNewer &&
+      chatTab.scrollTop + 12 >= chatTab.scrollHeight - chatTab.clientHeight
+    ) {
       setChatAutoScroll(true);
     }
     // When window is shrunk, keep the bottom entity instead of the top.
     doChatAutoScroll();
     setHeight();
-  }, [doChatAutoScroll, setHeight]);
+  }, [chatTab, win.hasNewer, doChatAutoScroll, setHeight]);
 
   const fetchChannels = useCallback(async () => {
     if (loggedIn) {
@@ -501,35 +570,24 @@ export const Chat = React.memo((props: Props) => {
       const resp = await socializeClient.getActiveChatChannels({
         number: 20,
         offset: 0,
-        tournamentId: props.tournamentID || "",
-        leagueId: props.leagueID || "",
       });
 
       setChatChannels(resp);
       enableChatAutoScroll();
+      // The server keeps how far the user has read each private chat, so
+      // its hasUpdate is the unread dot. The channel shown is being read.
+      const newUpdatedChannels = new Set(
+        resp?.channels
+          ?.filter(
+            (ch) =>
+              ch.hasUpdate &&
+              ch.name !== lastChannel.current &&
+              listsChannel(ch, props.defaultChannel, excludedPlayers),
+          )
+          ?.map((ch) => ch.name),
+      );
+      setUpdatedChannels(newUpdatedChannels);
       if (initial) {
-        // If these were set already, just return that list,
-        // otherwise respect the hasUpdate fields
-        const newUpdatedChannels = new Set(
-          resp?.channels
-            // Count only what the channel list shows, or the badge can point
-            // at a channel the list hides (league and tournament channels in
-            // the lobby).
-            ?.filter(
-              (ch) =>
-                ch.hasUpdate &&
-                listsChannel(
-                  ch,
-                  props.defaultChannel,
-                  props.tournamentID,
-                  excludedPlayers,
-                ),
-            )
-            ?.map((ch) => {
-              return ch.name;
-            }),
-        );
-        setUpdatedChannels(newUpdatedChannels);
         setNotificationCount(newUpdatedChannels.size);
       }
     }
@@ -541,8 +599,6 @@ export const Chat = React.memo((props: Props) => {
     setNotificationCount,
     socializeClient,
     props.defaultChannel,
-    props.tournamentID,
-    props.leagueID,
     excludedPlayers,
   ]);
 
@@ -785,28 +841,29 @@ export const Chat = React.memo((props: Props) => {
           return undefined;
         });
 
-        const chats = await socializeClient.getChatsForChannel({
-          channel: newChannel,
-        });
-        console.log(
-          "[phony-debug] chat channel-load clearChat, channel:",
-          newChannel,
-          "server messages:",
-          chats.messages?.length,
-        );
-        clearChat();
-        const messages: Array<ChatMessage> = chats.messages;
-        if (messages) {
-          addChats(messages.map(chatMessageToChatEntity));
+        // Not stuck to the bottom while the messages come in: the chat
+        // may open at a "new messages" line instead.
+        setChatAutoScroll(false);
+        scrollToDivider.current = true;
+        let opened;
+        try {
+          opened = await history.open(newChannel);
+        } catch (e) {
+          console.log("chat channel load failed", e);
+          return;
         }
         setHasUnreadChat(false);
-        setChatAutoScroll(true);
+        lastMarked.current = opened.lastReadAtOpen;
+        if (!opened.dividerBefore) {
+          scrollToDivider.current = false;
+          setChatAutoScroll(true);
+        }
         setHeight();
       } else {
         setHeight();
       }
     },
-    [addChats, clearChat, setCurrentChatChannel, setHeight, socializeClient],
+    [history, setCurrentChatChannel, setHeight],
   );
 
   useEffect(() => {
@@ -821,7 +878,9 @@ export const Chat = React.memo((props: Props) => {
   // and the disabled help chat has nothing to show.
   const catchUp = useCallback(async () => {
     const ch = channel;
-    if (!ch || ch !== lastChannel.current || chatDisabled) {
+    // While older history is shown, the newest messages load on reaching
+    // them, or from "Jump to latest".
+    if (!ch || ch !== lastChannel.current || chatDisabled || win.hasNewer) {
       return;
     }
     let chats;
@@ -835,7 +894,7 @@ export const Chat = React.memo((props: Props) => {
     if (ch === lastChannel.current) {
       mergeChats(chats.messages.map(chatMessageToChatEntity), ch);
     }
-  }, [channel, chatDisabled, mergeChats, socializeClient]);
+  }, [channel, chatDisabled, mergeChats, socializeClient, win.hasNewer]);
 
   // The channels shown as unread, so that catching up flags only others.
   const unreadChannels = useRef(new Set<string>());
@@ -846,9 +905,8 @@ export const Chat = React.memo((props: Props) => {
     ]);
   }, [updatedChannels, unseenMessages]);
 
-  // The channel list fetched again. As on loading the page, the listed
-  // channels the server marks as updated since this user was last seen (the
-  // socket going down marks that time) are flagged, but not the one shown,
+  // The channel list fetched again. As on loading the page, the private
+  // chats the server marks as unread are flagged, but not the one shown,
   // which catches up by itself.
   const catchUpChannels = useCallback(async () => {
     if (!loggedIn || !channelsFetched) {
@@ -859,8 +917,6 @@ export const Chat = React.memo((props: Props) => {
       resp = await socializeClient.getActiveChatChannels({
         number: 20,
         offset: 0,
-        tournamentId: props.tournamentID || "",
-        leagueId: props.leagueID || "",
       });
     } catch (e) {
       console.log("chat channels catch-up failed", e);
@@ -873,12 +929,7 @@ export const Chat = React.memo((props: Props) => {
           ch.hasUpdate &&
           ch.name !== channel &&
           !unreadChannels.current.has(ch.name) &&
-          listsChannel(
-            ch,
-            props.defaultChannel,
-            props.tournamentID,
-            excludedPlayers,
-          ),
+          listsChannel(ch, props.defaultChannel, excludedPlayers),
       )
       .map((ch) => ch.name);
     if (missed.length) {
@@ -891,8 +942,6 @@ export const Chat = React.memo((props: Props) => {
     excludedPlayers,
     loggedIn,
     props.defaultChannel,
-    props.leagueID,
-    props.tournamentID,
     setChatChannels,
     socializeClient,
   ]);
@@ -934,33 +983,180 @@ export const Chat = React.memo((props: Props) => {
     };
   }, [catchUp]);
 
+  // Saves, once reading settles, how far the reader has read: the newest
+  // message whose top has come into the list's view. Only while the
+  // channel's messages are in sight, and never backward.
+  const markReadSoon = useCallback(() => {
+    if (markTimer.current) {
+      clearTimeout(markTimer.current);
+    }
+    markTimer.current = setTimeout(() => {
+      markTimer.current = null;
+      const ch = lastChannel.current;
+      if (
+        !loggedIn ||
+        !chatTab ||
+        !ch ||
+        ch !== channel ||
+        chatDisabled ||
+        showChannels ||
+        collapsed ||
+        selectedChatTab !== "CHAT" ||
+        document.hidden
+      ) {
+        return;
+      }
+      const view = chatTab.getBoundingClientRect();
+      if (view.height === 0) {
+        return;
+      }
+      const seen = [...chatTab.querySelectorAll<HTMLElement>("[data-msgid]")]
+        .reverse()
+        .find((el) => el.getBoundingClientRect().top < view.bottom - 4);
+      const id = seen?.dataset.msgid;
+      if (!isMessageID(id) || id <= lastMarked.current) {
+        return;
+      }
+      lastMarked.current = id;
+      socializeClient
+        .markChannelRead({ channel: ch, messageId: id })
+        .catch((e) => console.log("marking chat read failed", e));
+    }, MARK_READ_DELAY_MS);
+  }, [
+    loggedIn,
+    chatTab,
+    channel,
+    chatDisabled,
+    showChannels,
+    collapsed,
+    selectedChatTab,
+    socializeClient,
+  ]);
+
+  // The messages coming into sight again (the Chat tab, the chat expanded,
+  // the page shown) are read.
+  useEffect(() => {
+    markReadSoon();
+    const onVisible = () => {
+      if (!document.hidden) {
+        markReadSoon();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [markReadSoon]);
+
+  useEffect(
+    () => () => {
+      if (markTimer.current) {
+        clearTimeout(markTimer.current);
+      }
+    },
+    [],
+  );
+
   // When user is scrolling, auto-scroll may be enabled or disabled.
   // This handler is set through onScroll.
   const handleChatScrolled = useCallback(() => {
     if (chatTab) {
-      // Allow for 12 pixels of wiggle room for enabling auto scroll
-      if (
-        chatTab.scrollTop + 12 >=
-        chatTab.scrollHeight - chatTab.clientHeight
-      ) {
+      const fromBottom =
+        chatTab.scrollHeight - chatTab.clientHeight - chatTab.scrollTop;
+      // Allow for 12 pixels of wiggle room for enabling auto scroll. Below
+      // older history, the bottom is not the newest message.
+      if (fromBottom <= 12 && !win.hasNewer) {
         setHasUnreadChat(false);
         setChatAutoScroll(true);
       } else {
         setChatAutoScroll(false);
       }
+      if (chatTab.scrollTop < LOAD_MORE_PX && win.hasOlder) {
+        history.loadOlder();
+      } else if (fromBottom < LOAD_MORE_PX && win.hasNewer) {
+        history.loadNewer();
+      }
+      markReadSoon();
     }
-  }, [chatTab]);
+  }, [chatTab, win.hasNewer, win.hasOlder, history, markReadSoon]);
+
+  // A page in: the list stays where the reader was.
+  useLayoutEffect(() => {
+    const anchor = scrollAnchor.current;
+    scrollAnchor.current = null;
+    // One noted for a page that changed nothing is stale by the next change.
+    if (anchor === null || !chatTab || performance.now() - anchor.at > 1000) {
+      return;
+    }
+    const el = chatTab.querySelector<HTMLElement>(
+      `[data-msgid="${CSS.escape(anchor.id)}"]`,
+    );
+    if (el) {
+      chatTab.scrollTop += offsetIn(chatTab, el) - anchor.top;
+    }
+  }, [chatEntities, chatTab]);
+
+  // Opened at a "new messages" line: it goes to the top of the list.
+  useLayoutEffect(() => {
+    if (!scrollToDivider.current || !chatTab) {
+      return;
+    }
+    const line = chatTab.querySelector<HTMLElement>(".new-messages-line");
+    if (line) {
+      // An auto-scroll set going before would pull the list to the bottom.
+      if (autoScrollTimeoutRef.current) {
+        clearTimeout(autoScrollTimeoutRef.current);
+        autoScrollTimeoutRef.current = null;
+      }
+      chatTab.scrollTop +=
+        line.getBoundingClientRect().top -
+        chatTab.getBoundingClientRect().top -
+        8;
+      scrollToDivider.current = false;
+      markReadSoon();
+    }
+  }, [chatEntities, chatTab, markReadSoon]);
+
+  // A live message of the channel shown, while its newest are shown, is the
+  // newest loaded.
+  useEffect(() => {
+    const live = chatEntities.findLast(
+      (e) => e.entityType === ChatEntityType.UserChat && e.channel === channel,
+    );
+    if (live?.id) {
+      history.noteLive(live.id);
+    }
+    markReadSoon();
+  }, [chatEntities, channel, history, markReadSoon]);
+
+  // While older history is shown, live messages wait beyond it, counted.
+  const beyondLoaded = useCallback(
+    (ent: ChatEntityObj) =>
+      win.hasNewer &&
+      win.channel === channel &&
+      ent.entityType === ChatEntityType.UserChat &&
+      isMessageID(ent.id) &&
+      ent.id > win.newest,
+    [win.hasNewer, win.channel, win.newest, channel],
+  );
+  const waiting = useMemo(
+    () =>
+      chatEntities.filter((e) => e.channel === channel && beyondLoaded(e))
+        .length,
+    [chatEntities, channel, beyondLoaded],
+  );
+  const dividerBefore = win.channel === channel ? win.dividerBefore : "";
 
   const entities = useMemo(
     () =>
       chatEntities
         ?.filter((ent: ChatEntityObj) => {
           if (ent.entityType === ChatEntityType.UserChat) {
-            return ent.channel === channel;
+            return ent.channel === channel && !beyondLoaded(ent);
           }
           return true;
         })
-        .map((ent) => {
+        .flatMap((ent) => {
           // HACK: Check for both exact match and :readonly suffix for directors
           // TODO: Replace with proper permissions field when backend schema is updated
           let specialSender = false;
@@ -976,9 +1172,16 @@ export const Chat = React.memo((props: Props) => {
             );
           }
           if (!ent.id) {
-            return null;
+            return [];
           }
-          return (
+          const line =
+            ent.id === dividerBefore ? (
+              <div className="new-messages-line" key="new-messages-line">
+                <span>New messages</span>
+              </div>
+            ) : null;
+          return [
+            line,
             <ChatEntity
               entityType={ent.entityType}
               key={ent.id}
@@ -1002,10 +1205,12 @@ export const Chat = React.memo((props: Props) => {
                 ent.senderId === props.firstPlayerID &&
                 ent.channel === defaultChannel
               }
-            />
-          );
+            />,
+          ];
         }),
     [
+      beyondLoaded,
+      dividerBefore,
       chatEntities,
       props.highlight,
       props.highlightText,
@@ -1208,7 +1413,6 @@ export const Chat = React.memo((props: Props) => {
             }}
             sendMessage={sendNewMessage}
             suppressDefault={props.suppressDefault}
-            tournamentID={props.tournamentID}
           />
         ) : (
           channel && (
@@ -1323,6 +1527,22 @@ export const Chat = React.memo((props: Props) => {
                   >
                     {entities}
                   </div>
+                  {win.hasNewer && win.channel === channel && (
+                    <button
+                      type="button"
+                      className="jump-to-latest"
+                      onClick={async () => {
+                        await history.jumpToLatest();
+                        setChatAutoScroll(true);
+                        doChatAutoScroll(true);
+                      }}
+                    >
+                      {waiting > 0
+                        ? `${singularCount(waiting, "new message", "new messages")}: jump to latest`
+                        : "Jump to latest"}{" "}
+                      <DownOutlined />
+                    </button>
+                  )}
                   <form>
                     <Input.TextArea
                       ref={chatInputRef}

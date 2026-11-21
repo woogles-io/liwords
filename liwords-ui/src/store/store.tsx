@@ -35,6 +35,7 @@ import {
 } from "../utils/cwgame/common";
 import { ActiveChatChannels } from "../gen/api/proto/user_service/user_service_pb";
 import { mergeChatHistory } from "../chat/chat_history";
+import { isMessageID } from "../chat/use_chat_history";
 import {
   defaultTournamentState,
   TournamentReducer,
@@ -60,7 +61,9 @@ import { create } from "@bufbuild/protobuf";
 import { calculateHistoricalTimeBanks } from "../utils/time_bank_calculator";
 import { otherRackAfter } from "../gameroom/what_if";
 
-const MaxChatLength = 150;
+// The most entries the chat keeps: pages of history scrolled through, the
+// live messages and the notices posted in.
+const MaxChatLength = 1000;
 
 const defaultTimerContext = {
   p0: 0,
@@ -157,6 +160,15 @@ type ChatStoreData = {
   clearChat: () => void;
   deleteChat: (id: string, channel: string) => void;
   mergeChats: (history: Array<ChatEntityObj>, channel: string) => void;
+  // Puts a page of a channel's history, loaded while scrolling, where its
+  // messages go.
+  insertChats: (page: Array<ChatEntityObj>, channel: string) => void;
+  // Drops a channel's messages older than before, or newer than after (IDs),
+  // as the history the chat shows moves on.
+  trimChats: (
+    channel: string,
+    bounds: { before?: string; after?: string },
+  ) => void;
   chat: Array<ChatEntityObj>;
   chatChannels: ActiveChatChannels | undefined;
   chatGeneration: number;
@@ -383,6 +395,8 @@ const ChatContext = createContext<ChatStoreData>({
   chatGeneration: 0,
   deleteChat: defaultFunction,
   mergeChats: defaultFunction,
+  insertChats: defaultFunction,
+  trimChats: defaultFunction,
   currentChatChannel: "",
   setCurrentChatChannel: defaultFunction,
   setChatChannels: defaultFunction,
@@ -1302,6 +1316,35 @@ const RealStore = ({ children, ...props }: Props) => {
     [],
   );
 
+  // Not trimmed to MaxChatLength, which would drop the page just loaded at
+  // the top: useChatHistory keeps a channel's loaded history bounded with
+  // trimChats.
+  const insertChats = useCallback(
+    (page: Array<ChatEntityObj>, channel: string) => {
+      setChat((oldChat) =>
+        mergeChatHistory(oldChat, page, channel, Infinity, false),
+      );
+    },
+    [],
+  );
+
+  const trimChats = useCallback(
+    (channel: string, bounds: { before?: string; after?: string }) => {
+      setChat((oldChat) => {
+        const kept = oldChat.filter(
+          (e) =>
+            e.entityType !== ChatEntityType.UserChat ||
+            e.channel !== channel ||
+            !isMessageID(e.id) ||
+            ((!bounds.before || e.id >= bounds.before) &&
+              (!bounds.after || e.id <= bounds.after)),
+        );
+        return kept.length === oldChat.length ? oldChat : kept;
+      });
+    },
+    [],
+  );
+
   const setPresence = useCallback((entity: PresenceEntity) => {
     setPresences((prevPresences) => {
       // filter out the current entity then add it if we're not deleting
@@ -1491,6 +1534,8 @@ const RealStore = ({ children, ...props }: Props) => {
       clearChat,
       deleteChat,
       mergeChats,
+      insertChats,
+      trimChats,
       chat,
       chatChannels,
       chatGeneration,
@@ -1507,6 +1552,8 @@ const RealStore = ({ children, ...props }: Props) => {
       chatGeneration,
       deleteChat,
       mergeChats,
+      insertChats,
+      trimChats,
       currentChatChannel,
       setChatChannels,
       setCurrentChatChannel,
