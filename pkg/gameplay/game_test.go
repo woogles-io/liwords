@@ -55,10 +55,10 @@ type fakeChats struct {
 	fail  string // the channel whose AddChat fails
 }
 
-func (f *fakeChats) AddChat(ctx context.Context, senderUsername, senderUID, msg, channel,
-	channelFriendly string, regulateChat bool) (*pb.ChatMessage, error) {
+func (f *fakeChats) AddChat(ctx context.Context, senderUsername, senderUID, msg, channel string,
+	regulateChat bool) (*pb.ChatMessage, error) {
 	if channel == f.fail {
-		return nil, errors.New("no redis")
+		return nil, errors.New("no database")
 	}
 	if regulateChat {
 		return nil, errors.New("a server line must not be regulated")

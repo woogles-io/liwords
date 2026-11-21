@@ -265,14 +265,14 @@ message BasicFollowedUser {
   repeated string channel = 3;
 }
 
+// The user's private chats, most recent first. Tournament, league, game and
+// lobby chats belong to their pages and are not listed.
 message GetActiveChatChannelsRequest {
   int32 number = 1;
   int32 offset = 2;
-  // If a tournament_id is provided, we get active chat channels (private
-  // message channels) in addition to the given tournament channel.
+  // Ignored: tournament and league chats are no longer listed.
   string tournament_id = 3;
-  // If a league_id is provided, we get active chat channels (private
-  // message channels) in addition to the given league channel.
+  // Ignored: tournament and league chats are no longer listed.
   string league_id = 4;
 }
 
@@ -282,13 +282,53 @@ message ActiveChatChannels {
     string display_name = 2;
     // last_update is a unix timestamp, in seconds.
     int64 last_update = 3;
+    // Whether the channel has a message from someone else newer than the
+    // user's read position (see MarkChannelRead).
     bool has_update = 4;
     string last_message = 5;
   }
   repeated Channel channels = 1;
 }
 
-message GetChatsRequest { string channel = 1; }
+// A page of a channel's history, oldest first. Message IDs sort by time.
+// With no cursor, the newest messages; give at most one of before_id,
+// after_id and around_id.
+message GetChatsRequest {
+  string channel = 1;
+  // Messages older than this one.
+  string before_id = 2;
+  // Messages newer than this one.
+  string after_id = 3;
+  // Messages around this one: up to half the limit at or before it, the
+  // rest after it.
+  string around_id = 4;
+  // Messages around the user's read position, or the newest if there is
+  // none. Ignored if a cursor is given.
+  bool around_last_read = 5;
+  // 1 to 200; 0 means 100.
+  int32 limit = 6;
+}
+
+// A page of a channel's history, for GetChatsForChannel. Field 1 matches
+// ipc.ChatMessages, which it returned before, so older clients read it
+// unchanged.
+message ChatHistory {
+  repeated ipc.ChatMessage messages = 1;
+  // Whether the channel has messages before the first one or after the last
+  // one returned.
+  bool has_older = 2;
+  bool has_newer = 3;
+  // The newest message the user has read in this channel; "" if none or
+  // not logged in.
+  string last_read_id = 4;
+}
+
+// Records that the user has read the channel up to message_id. It never
+// moves the read position back.
+message MarkChannelReadRequest {
+  string channel = 1;
+  string message_id = 2;
+}
 
 message GetFollowsResponse { repeated BasicFollowedUser users = 1; }
 message GetBlocksResponse { repeated BasicUser users = 1; }
@@ -315,7 +355,8 @@ service SocializeService {
   rpc GetFullBlocks(GetFullBlocksRequest) returns (GetFullBlocksResponse);
   rpc GetActiveChatChannels(GetActiveChatChannelsRequest)
       returns (ActiveChatChannels);
-  rpc GetChatsForChannel(GetChatsRequest) returns (ipc.ChatMessages);
+  rpc GetChatsForChannel(GetChatsRequest) returns (ChatHistory);
+  rpc MarkChannelRead(MarkChannelReadRequest) returns (OKResponse);
 }
 
 message Integration {

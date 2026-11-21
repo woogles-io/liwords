@@ -8,7 +8,6 @@ import (
 	connect "connectrpc.com/connect"
 	context "context"
 	errors "errors"
-	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 	user_service "github.com/woogles-io/liwords/rpc/api/proto/user_service"
 	http "net/http"
 	strings "strings"
@@ -146,6 +145,9 @@ const (
 	// SocializeServiceGetChatsForChannelProcedure is the fully-qualified name of the SocializeService's
 	// GetChatsForChannel RPC.
 	SocializeServiceGetChatsForChannelProcedure = "/user_service.SocializeService/GetChatsForChannel"
+	// SocializeServiceMarkChannelReadProcedure is the fully-qualified name of the SocializeService's
+	// MarkChannelRead RPC.
+	SocializeServiceMarkChannelReadProcedure = "/user_service.SocializeService/MarkChannelRead"
 	// IntegrationServiceGetIntegrationsProcedure is the fully-qualified name of the
 	// IntegrationService's GetIntegrations RPC.
 	IntegrationServiceGetIntegrationsProcedure = "/user_service.IntegrationService/GetIntegrations"
@@ -1048,7 +1050,8 @@ type SocializeServiceClient interface {
 	// together.
 	GetFullBlocks(context.Context, *connect.Request[user_service.GetFullBlocksRequest]) (*connect.Response[user_service.GetFullBlocksResponse], error)
 	GetActiveChatChannels(context.Context, *connect.Request[user_service.GetActiveChatChannelsRequest]) (*connect.Response[user_service.ActiveChatChannels], error)
-	GetChatsForChannel(context.Context, *connect.Request[user_service.GetChatsRequest]) (*connect.Response[ipc.ChatMessages], error)
+	GetChatsForChannel(context.Context, *connect.Request[user_service.GetChatsRequest]) (*connect.Response[user_service.ChatHistory], error)
+	MarkChannelRead(context.Context, *connect.Request[user_service.MarkChannelReadRequest]) (*connect.Response[user_service.OKResponse], error)
 }
 
 // NewSocializeServiceClient constructs a client for the user_service.SocializeService service. By
@@ -1110,10 +1113,16 @@ func NewSocializeServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			connect.WithSchema(socializeServiceMethods.ByName("GetActiveChatChannels")),
 			connect.WithClientOptions(opts...),
 		),
-		getChatsForChannel: connect.NewClient[user_service.GetChatsRequest, ipc.ChatMessages](
+		getChatsForChannel: connect.NewClient[user_service.GetChatsRequest, user_service.ChatHistory](
 			httpClient,
 			baseURL+SocializeServiceGetChatsForChannelProcedure,
 			connect.WithSchema(socializeServiceMethods.ByName("GetChatsForChannel")),
+			connect.WithClientOptions(opts...),
+		),
+		markChannelRead: connect.NewClient[user_service.MarkChannelReadRequest, user_service.OKResponse](
+			httpClient,
+			baseURL+SocializeServiceMarkChannelReadProcedure,
+			connect.WithSchema(socializeServiceMethods.ByName("MarkChannelRead")),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -1129,7 +1138,8 @@ type socializeServiceClient struct {
 	getBlocks             *connect.Client[user_service.GetBlocksRequest, user_service.GetBlocksResponse]
 	getFullBlocks         *connect.Client[user_service.GetFullBlocksRequest, user_service.GetFullBlocksResponse]
 	getActiveChatChannels *connect.Client[user_service.GetActiveChatChannelsRequest, user_service.ActiveChatChannels]
-	getChatsForChannel    *connect.Client[user_service.GetChatsRequest, ipc.ChatMessages]
+	getChatsForChannel    *connect.Client[user_service.GetChatsRequest, user_service.ChatHistory]
+	markChannelRead       *connect.Client[user_service.MarkChannelReadRequest, user_service.OKResponse]
 }
 
 // AddFollow calls user_service.SocializeService.AddFollow.
@@ -1173,8 +1183,13 @@ func (c *socializeServiceClient) GetActiveChatChannels(ctx context.Context, req 
 }
 
 // GetChatsForChannel calls user_service.SocializeService.GetChatsForChannel.
-func (c *socializeServiceClient) GetChatsForChannel(ctx context.Context, req *connect.Request[user_service.GetChatsRequest]) (*connect.Response[ipc.ChatMessages], error) {
+func (c *socializeServiceClient) GetChatsForChannel(ctx context.Context, req *connect.Request[user_service.GetChatsRequest]) (*connect.Response[user_service.ChatHistory], error) {
 	return c.getChatsForChannel.CallUnary(ctx, req)
+}
+
+// MarkChannelRead calls user_service.SocializeService.MarkChannelRead.
+func (c *socializeServiceClient) MarkChannelRead(ctx context.Context, req *connect.Request[user_service.MarkChannelReadRequest]) (*connect.Response[user_service.OKResponse], error) {
+	return c.markChannelRead.CallUnary(ctx, req)
 }
 
 // SocializeServiceHandler is an implementation of the user_service.SocializeService service.
@@ -1189,7 +1204,8 @@ type SocializeServiceHandler interface {
 	// together.
 	GetFullBlocks(context.Context, *connect.Request[user_service.GetFullBlocksRequest]) (*connect.Response[user_service.GetFullBlocksResponse], error)
 	GetActiveChatChannels(context.Context, *connect.Request[user_service.GetActiveChatChannelsRequest]) (*connect.Response[user_service.ActiveChatChannels], error)
-	GetChatsForChannel(context.Context, *connect.Request[user_service.GetChatsRequest]) (*connect.Response[ipc.ChatMessages], error)
+	GetChatsForChannel(context.Context, *connect.Request[user_service.GetChatsRequest]) (*connect.Response[user_service.ChatHistory], error)
+	MarkChannelRead(context.Context, *connect.Request[user_service.MarkChannelReadRequest]) (*connect.Response[user_service.OKResponse], error)
 }
 
 // NewSocializeServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -1253,6 +1269,12 @@ func NewSocializeServiceHandler(svc SocializeServiceHandler, opts ...connect.Han
 		connect.WithSchema(socializeServiceMethods.ByName("GetChatsForChannel")),
 		connect.WithHandlerOptions(opts...),
 	)
+	socializeServiceMarkChannelReadHandler := connect.NewUnaryHandler(
+		SocializeServiceMarkChannelReadProcedure,
+		svc.MarkChannelRead,
+		connect.WithSchema(socializeServiceMethods.ByName("MarkChannelRead")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/user_service.SocializeService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case SocializeServiceAddFollowProcedure:
@@ -1273,6 +1295,8 @@ func NewSocializeServiceHandler(svc SocializeServiceHandler, opts ...connect.Han
 			socializeServiceGetActiveChatChannelsHandler.ServeHTTP(w, r)
 		case SocializeServiceGetChatsForChannelProcedure:
 			socializeServiceGetChatsForChannelHandler.ServeHTTP(w, r)
+		case SocializeServiceMarkChannelReadProcedure:
+			socializeServiceMarkChannelReadHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -1314,8 +1338,12 @@ func (UnimplementedSocializeServiceHandler) GetActiveChatChannels(context.Contex
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("user_service.SocializeService.GetActiveChatChannels is not implemented"))
 }
 
-func (UnimplementedSocializeServiceHandler) GetChatsForChannel(context.Context, *connect.Request[user_service.GetChatsRequest]) (*connect.Response[ipc.ChatMessages], error) {
+func (UnimplementedSocializeServiceHandler) GetChatsForChannel(context.Context, *connect.Request[user_service.GetChatsRequest]) (*connect.Response[user_service.ChatHistory], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("user_service.SocializeService.GetChatsForChannel is not implemented"))
+}
+
+func (UnimplementedSocializeServiceHandler) MarkChannelRead(context.Context, *connect.Request[user_service.MarkChannelReadRequest]) (*connect.Response[user_service.OKResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("user_service.SocializeService.MarkChannelRead is not implemented"))
 }
 
 // IntegrationServiceClient is a client for the user_service.IntegrationService service.

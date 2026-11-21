@@ -126,11 +126,26 @@ type PresenceStore interface {
 	UpdateActiveGame(ctx context.Context, activeGameEntry *pb.ActiveGameEntry) ([][][]string, error)
 }
 
-// ChatStore stores user and channel chats and messages
+// ChatStore stores chat messages and how far each user has read. Message
+// IDs sort by time.
 type ChatStore interface {
-	AddChat(ctx context.Context, senderUsername, senderUID, msg, channel, channelFriendly string, regulateChat bool) (*pb.ChatMessage, error)
+	// AddChat stores a message. A regulated message is refused if it comes
+	// too soon after, or repeats, the sender's previous regulated message.
+	// senderUID is "" for lines the server posts.
+	AddChat(ctx context.Context, senderUsername, senderUID, msg, channel string, regulateChat bool) (*pb.ChatMessage, error)
+	// OldChats returns the channel's newest n messages, oldest first.
 	OldChats(ctx context.Context, channel string, n int) ([]*pb.ChatMessage, error)
-	LatestChannels(ctx context.Context, count, offset int, uid, tid, lid string) (*upb.ActiveChatChannels, error)
+	// History returns a page of the channel's messages; see ChatQuery.
+	History(ctx context.Context, channel string, q ChatQuery) (*ChatPage, error)
+	// LatestChannels returns the user's private chats, most recent first.
+	LatestChannels(ctx context.Context, count, offset int, uid string) (*upb.ActiveChatChannels, error)
+
+	// MarkRead moves the user's read position in the channel forward to
+	// msgID. It never moves it back.
+	MarkRead(ctx context.Context, uid, channel, msgID string) error
+	// LastRead returns the newest message the user has read in the channel,
+	// or "".
+	LastRead(ctx context.Context, uid, channel string) (string, error)
 
 	GetChat(ctx context.Context, channel string, msgID string) (*pb.ChatMessage, error)
 	// DeleteChat removes a message; deletedBy is the moderator's UUID.
@@ -138,4 +153,21 @@ type ChatStore interface {
 	ScanChannels(ctx context.Context, cursor, prefix string, count int) ([]string, string, error)
 	SetEventChan(chan *entity.EventWrapper)
 	EventChan() chan *entity.EventWrapper
+}
+
+// A ChatQuery picks a page of a channel's history. With no cursor, it is
+// the newest Limit messages; set at most one of Before, After and Around
+// (message IDs).
+type ChatQuery struct {
+	Before string // messages older than this one
+	After  string // messages newer than this one
+	Around string // this message, with up to Limit/2 older and the rest newer
+	Limit  int
+}
+
+// A ChatPage is a page of a channel's history, oldest first.
+type ChatPage struct {
+	Messages []*pb.ChatMessage
+	// Whether the channel has messages before the first or after the last.
+	HasOlder, HasNewer bool
 }

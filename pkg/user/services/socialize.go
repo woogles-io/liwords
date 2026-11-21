@@ -13,7 +13,6 @@ import (
 	"github.com/woogles-io/liwords/pkg/auth/rbac"
 	"github.com/woogles-io/liwords/pkg/stores/models"
 	"github.com/woogles-io/liwords/pkg/user"
-	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/user_service"
 )
 
@@ -276,7 +275,7 @@ func (ss *SocializeService) GetActiveChatChannels(ctx context.Context, req *conn
 		return nil, err
 	}
 
-	resp, err := ss.chatStore.LatestChannels(ctx, int(req.Msg.Number), int(req.Msg.Offset), sess.UserUUID, req.Msg.TournamentId, req.Msg.LeagueId)
+	resp, err := ss.chatStore.LatestChannels(ctx, int(req.Msg.Number), int(req.Msg.Offset), sess.UserUUID)
 	if err != nil {
 		return nil, err
 	}
@@ -306,8 +305,11 @@ func ChatChannelReceiver(uid, name string) (string, error) {
 	return receiver, nil
 }
 
+// maxChatPage is the most messages GetChatsForChannel returns at once.
+const maxChatPage = 200
+
 func (ss *SocializeService) GetChatsForChannel(ctx context.Context, req *connect.Request[pb.GetChatsRequest],
-) (*connect.Response[ipc.ChatMessages], error) {
+) (*connect.Response[pb.ChatHistory], error) {
 	sess, err := apiserver.GetSession(ctx)
 	if err != nil {
 		log.Debug().Err(err).Msg("get-session-get-chats-for-channel")
@@ -324,10 +326,39 @@ func (ss *SocializeService) GetChatsForChannel(ctx context.Context, req *connect
 			return nil, err
 		}
 	}
-	chats, err := ss.chatStore.OldChats(ctx, req.Msg.Channel, 100)
+	cursors := 0
+	for _, c := range []string{req.Msg.BeforeId, req.Msg.AfterId, req.Msg.AroundId} {
+		if c != "" {
+			cursors++
+		}
+	}
+	if cursors > 1 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("give at most one of before_id, after_id and around_id"))
+	}
+	if req.Msg.Limit < 0 || req.Msg.Limit > maxChatPage {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("limit must be 0 to %d", maxChatPage))
+	}
+	q := user.ChatQuery{
+		Before: req.Msg.BeforeId,
+		After:  req.Msg.AfterId,
+		Around: req.Msg.AroundId,
+		Limit:  int(req.Msg.Limit),
+	}
+	lastRead := ""
+	if sess != nil {
+		lastRead, err = ss.chatStore.LastRead(ctx, sess.UserUUID, req.Msg.Channel)
+		if err != nil {
+			return nil, err
+		}
+		if req.Msg.AroundLastRead && cursors == 0 {
+			q.Around = lastRead
+		}
+	}
+	page, err := ss.chatStore.History(ctx, req.Msg.Channel, q)
 	if err != nil {
 		return nil, err
 	}
+	chats := page.Messages
 	if len(chats) > 0 {
 		chatterUuids := make([]string, 0, len(chats))
 		for _, chatMessage := range chats {
@@ -353,5 +384,30 @@ func (ss *SocializeService) GetChatsForChannel(ctx context.Context, req *connect
 			}
 		}
 	}
-	return connect.NewResponse(&ipc.ChatMessages{Messages: chats}), nil
+	return connect.NewResponse(&pb.ChatHistory{
+		Messages:   chats,
+		HasOlder:   page.HasOlder,
+		HasNewer:   page.HasNewer,
+		LastReadId: lastRead,
+	}), nil
+}
+
+func (ss *SocializeService) MarkChannelRead(ctx context.Context, req *connect.Request[pb.MarkChannelReadRequest],
+) (*connect.Response[pb.OKResponse], error) {
+	sess, err := apiserver.GetSession(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if req.Msg.Channel == "" || req.Msg.MessageId == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("channel and message_id are required"))
+	}
+	if strings.HasPrefix(req.Msg.Channel, "chat.pm.") {
+		if _, err := ChatChannelReceiver(sess.UserUUID, req.Msg.Channel); err != nil {
+			return nil, err
+		}
+	}
+	if err := ss.chatStore.MarkRead(ctx, sess.UserUUID, req.Msg.Channel, req.Msg.MessageId); err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&pb.OKResponse{}), nil
 }

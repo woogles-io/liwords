@@ -18,8 +18,8 @@ import (
 	ms "github.com/woogles-io/liwords/rpc/api/proto/mod_service"
 )
 
-// chat-related functionality should be here. Chat should be mostly ephemeral,
-// but will use Redis to keep a short history of previous chats in every channel.
+// chat-related functionality should be here. Messages are stored by the chat
+// store (Postgres) and published on NATS for the socket server to deliver.
 
 func (b *Bus) chat(ctx context.Context, userID string, evt *pb.ChatMessage) error {
 	if utf8.RuneCountInString(evt.Message) > MaxMessageLength {
@@ -52,7 +52,6 @@ func (b *Bus) chat(ctx context.Context, userID string, evt *pb.ChatMessage) erro
 		strings.HasPrefix(evt.Channel, "chat.pm.") ||
 		strings.HasPrefix(evt.Channel, "chat.game."))
 
-	userFriendlyChannelName := ""
 	if strings.HasPrefix(evt.Channel, "chat.pm.") {
 		receiver, err := userservices.ChatChannelReceiver(userID, evt.Channel)
 		if err != nil {
@@ -72,11 +71,6 @@ func (b *Bus) chat(ctx context.Context, userID string, evt *pb.ChatMessage) erro
 		} else if block == 1 {
 			return errors.New("you cannot send messages to people you are blocking")
 		}
-		first, second := sendingUser.Username, recUser.Username
-		if first > second {
-			first, second = second, first
-		}
-		userFriendlyChannelName = "pm:" + first + ":" + second
 	} else if strings.HasPrefix(evt.Channel, "chat.tournament.") {
 		tid := strings.TrimPrefix(evt.Channel, "chat.tournament.")
 		if len(tid) == 0 {
@@ -86,7 +80,6 @@ func (b *Bus) chat(ctx context.Context, userID string, evt *pb.ChatMessage) erro
 		if err != nil {
 			return err
 		}
-		userFriendlyChannelName = "tournament:" + t.Name
 		if regulateChat {
 			for _, director := range t.Directors.Persons {
 				uuid := director.Id
@@ -109,16 +102,14 @@ func (b *Bus) chat(ctx context.Context, userID string, evt *pb.ChatMessage) erro
 		if err != nil {
 			return err
 		}
-		league, err := b.stores.LeagueStore.GetLeagueByUUID(ctx, leagueUUID)
-		if err != nil {
+		if _, err := b.stores.LeagueStore.GetLeagueByUUID(ctx, leagueUUID); err != nil {
 			return err
 		}
-		userFriendlyChannelName = "league:" + league.Name
 		// TODO: League managers could bypass chat regulation similar to tournament directors
 		// This would require adding a GetLeagueManagers query or including managers in the league model
 	}
 
-	chatMessage, err := b.stores.ChatStore.AddChat(ctx, sendingUser.Username, userID, evt.Message, evt.Channel, userFriendlyChannelName, regulateChat)
+	chatMessage, err := b.stores.ChatStore.AddChat(ctx, sendingUser.Username, userID, evt.Message, evt.Channel, regulateChat)
 	if err != nil {
 		return err
 	}

@@ -5,6 +5,7 @@ package integration_test
 import (
 	"context"
 	"fmt"
+	"github.com/woogles-io/liwords/pkg/stores/chat"
 	"os"
 	"testing"
 	"time"
@@ -216,7 +217,11 @@ func createBus() (context.Context, *bus.Bus, context.CancelFunc, bus.Stores, *co
 	stores.SoughtGameStore, err = soughtgame.NewDBStore(cfg)
 
 	stores.PresenceStore = pkgredis.NewRedisPresenceStore(redisPool)
-	stores.ChatStore = pkgredis.NewRedisChatStore(redisPool, stores.PresenceStore, stores.TournamentStore, nil)
+	chatPool, err := common.OpenTestingDB(pkg)
+	if err != nil {
+		panic(err)
+	}
+	stores.ChatStore = chat.NewDBStore(chatPool)
 	stores.ConfigStore = cfgstore.NewRedisConfigStore(redisPool)
 
 	if err != nil {
