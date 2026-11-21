@@ -117,6 +117,8 @@ type Props = {
   puzzleMode?: boolean;
   puzzleSolved?: number;
   boardEditingMode?: boolean;
+  // a player examining their own game while it is in play
+  examiningOwnGameInPlay?: boolean;
   tournamentSlug?: string;
   tournamentID?: string;
   tournamentPairedMode?: boolean;
@@ -744,8 +746,13 @@ export const BoardPanel = React.memo((props: Props) => {
   const [analyzerLab] = useLocalStorageBool(ANALYZER_LAB_KEY);
   const [labWhatIf] = useLocalStorageBool(ANALYZER_LAB_WHAT_IF_KEY);
   const { setRackWhatIf } = useExamineStoreContext();
+  // Never in one's own game in play, which shows no analysis.
   const whatIfRackEditing =
-    !props.boardEditingMode && isExamining && analyzerLab && labWhatIf;
+    !props.boardEditingMode &&
+    isExamining &&
+    analyzerLab &&
+    labWhatIf &&
+    !props.examiningOwnGameInPlay;
   const [rackEditorPrefill, setRackEditorPrefill] =
     useState<MachineWord | null>(null);
 
