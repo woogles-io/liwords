@@ -2,7 +2,14 @@ import React from "react";
 import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 import { Chat, Props } from "./chat";
 import socializeClient from "../__mocks__/socialize_client";
-import { Store, useExcludedPlayersStoreContext } from "../store/store";
+import {
+  Store,
+  useChatStoreContext,
+  useExcludedPlayersStoreContext,
+  useLoginStateStoreContext,
+} from "../store/store";
+import { ActionType } from "../actions/actions";
+import { chatMessageToChatEntity } from "../store/constants";
 
 window.RUNTIME_CONFIGURATION = {};
 
@@ -205,5 +212,104 @@ describe("the chat collapsed to its tabs and its latest line", () => {
     expect(card(container)).toHaveClass("collapsed");
     fireEvent.click(await findByRole("tab", { name: "Chat" }));
     expect(card(container)).not.toHaveClass("collapsed");
+  });
+});
+
+describe("a channel's history, a page at a time", () => {
+  // UUIDv7-shaped IDs that sort as their numbers do.
+  const id = (n: number) =>
+    `0190a000-0000-7000-8000-${n.toString().padStart(12, "0")}`;
+  const msg = (n: number, userId = "zed-id") => ({
+    id: id(n),
+    username: userId === "me-id" ? "Me" : "Zed",
+    userId,
+    channel: "chat.game.789",
+    message: `message ${n}`,
+    timestamp: BigInt(n),
+  });
+
+  // Logs in, then adds a live message on request.
+  let addLive: (n: number) => void = () => {};
+  const Harness = () => {
+    const { dispatchLoginState } = useLoginStateStoreContext();
+    const { addChat } = useChatStoreContext();
+    React.useEffect(() => {
+      dispatchLoginState({
+        actionType: ActionType.SetAuthentication,
+        payload: {
+          username: "Me",
+          userID: "me-id",
+          loggedIn: true,
+          connID: "c",
+        },
+      });
+    }, [dispatchLoginState]);
+    React.useEffect(() => {
+      addLive = (n: number) =>
+        addChat(chatMessageToChatEntity(msg(n) as never));
+    }, [addChat]);
+    return null;
+  };
+  const renderGame = () =>
+    render(
+      <Store>
+        <BlockListKnown />
+        <Harness />
+        <Chat
+          defaultChannel="chat.game.789"
+          defaultDescription="Zed"
+          sendChat={() => {}}
+        />
+      </Store>,
+    );
+
+  it("opens at a line before the first unread message", async () => {
+    socializeClient.getChatsForChannel.mockResolvedValue({
+      messages: [msg(1), msg(2, "me-id"), msg(3), msg(4)],
+      hasOlder: false,
+      hasNewer: false,
+      lastReadId: id(2),
+    });
+    const { findByText, container } = renderGame();
+    await findByText("message 4");
+    const line = container.querySelector(".new-messages-line");
+    expect(line?.textContent).toBe("New messages");
+    expect(line?.nextElementSibling?.textContent).toContain("message 3");
+    expect(socializeClient.getChatsForChannel).toHaveBeenCalledWith(
+      expect.objectContaining({ aroundLastRead: true, limit: 100 }),
+    );
+  });
+
+  it("holds live messages back while older history is shown", async () => {
+    socializeClient.getChatsForChannel.mockResolvedValueOnce({
+      messages: [msg(1), msg(2)],
+      hasOlder: false,
+      hasNewer: true,
+      lastReadId: id(1),
+    });
+    const { findByText, queryByText, findByRole } = renderGame();
+    await findByText("message 2");
+    expect(await findByRole("button", { name: /Jump to latest/ })).toBeTruthy();
+    React.act(() => addLive(9));
+    expect(
+      await findByRole("button", { name: /1 new message: jump to latest/ }),
+    ).toBeTruthy();
+    expect(queryByText("message 9")).toBeNull();
+
+    socializeClient.getChatsForChannel.mockResolvedValueOnce({
+      messages: [msg(8), msg(9)],
+      hasOlder: true,
+      hasNewer: false,
+      lastReadId: id(1),
+    });
+    fireEvent.click(await findByRole("button", { name: /jump to latest/ }));
+    await findByText("message 9");
+    expect(socializeClient.getChatsForChannel).toHaveBeenLastCalledWith({
+      channel: "chat.game.789",
+      limit: 100,
+    });
+    await waitFor(() =>
+      expect(document.querySelector(".jump-to-latest")).toBeNull(),
+    );
   });
 });

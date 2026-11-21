@@ -1,7 +1,7 @@
 import { ChatEntityObj, ChatEntityType } from "../store/constants";
 
-// The most messages the server sends for a channel: GetChatsForChannel
-// (socialize.go) reads the newest this many.
+// The messages the chat asks the server for at a time: GetChatsForChannel
+// (socialize.go) sends this many by default.
 export const FETCHED_CHATS = 100;
 
 // The notice at a hole the chat cannot fill. More was said while the page
@@ -23,12 +23,15 @@ const gapNotice = (before: ChatEntityObj): ChatEntityObj => ({
 // the oldest and the newest fetched ones, but the history does not, was
 // deleted meanwhile and goes too. A full history whose oldest message is new
 // to the chat, though the chat has older ones of the channel, may start
-// after a hole, which a notice marks. At most max entries stay, the newest.
+// after a hole, which a notice marks, unless markHole is false: a page loaded
+// while scrolling sits next to the ones loaded before it. At most max entries
+// stay, the newest.
 export const mergeChatHistory = (
   chat: Array<ChatEntityObj>,
   history: Array<ChatEntityObj>,
   channel: string,
   max: number,
+  markHole = true,
 ): Array<ChatEntityObj> => {
   if (!history.length) {
     return chat;
@@ -50,6 +53,7 @@ export const mergeChatHistory = (
   let changed = merged.length !== chat.length;
   const first = history[0];
   const hole =
+    markHole &&
     history.length >= FETCHED_CHATS &&
     oldest !== undefined &&
     !chat.some((e) => e.id === first.id) &&
