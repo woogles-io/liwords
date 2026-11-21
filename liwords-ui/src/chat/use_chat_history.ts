@@ -74,7 +74,7 @@ export const useChatHistory = (
       beforeId?: string;
       afterId?: string;
       aroundLastRead?: boolean;
-    }): Promise<Page & { lastReadId: string }> => {
+    }): Promise<Page & { lastReadId: string; readNothing: boolean }> => {
       const resp = await client.getChatsForChannel({
         ...req,
         limit: FETCHED_CHATS,
@@ -84,6 +84,7 @@ export const useChatHistory = (
         hasOlder: !!resp.hasOlder,
         hasNewer: !!resp.hasNewer,
         lastReadId: resp.lastReadId ?? "",
+        readNothing: !!resp.readNothing,
       };
     },
     [client],
@@ -95,16 +96,21 @@ export const useChatHistory = (
   });
 
   // Opens channel around the user's read position (the newest messages if
-  // there is none), and returns the window.
+  // there is none; the first ones if it's a private chat the user has read
+  // none of), and returns the window.
   const open = useCallback(
     async (channel: string): Promise<HistoryWindow> => {
       const page = await fetchPage({ channel, aroundLastRead: true });
       const readAt = page.lastReadId;
-      const firstUnread = readAt
-        ? page.messages.find(
-            (m) => m.id !== undefined && m.id > readAt && m.senderId !== userID,
-          )
-        : undefined;
+      const firstUnread =
+        readAt || page.readNothing
+          ? page.messages.find(
+              (m) =>
+                m.id !== undefined &&
+                (page.readNothing || m.id > readAt) &&
+                m.senderId !== userID,
+            )
+          : undefined;
       const w: HistoryWindow = {
         channel,
         hasOlder: page.hasOlder,

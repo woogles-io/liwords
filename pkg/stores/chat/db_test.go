@@ -211,17 +211,18 @@ func TestReadPosition(t *testing.T) {
 	ids := add(t, s, "chat.tournament.t1", 3)
 	other := add(t, s, "chat.tournament.t2", 1)
 
-	got, err := s.LastRead(ctx, "uuid-mina", "chat.tournament.t1")
+	got, member, err := s.LastRead(ctx, "uuid-mina", "chat.tournament.t1")
 	is.NoErr(err)
 	is.Equal(got, "")
-	got, err = s.LastRead(ctx, "uuid-cesar", "chat.tournament.t1")
+	is.True(!member)
+	got, _, err = s.LastRead(ctx, "uuid-cesar", "chat.tournament.t1")
 	is.NoErr(err)
 	is.Equal(got, ids[2]) // cesar sent them
 
 	is.NoErr(s.MarkRead(ctx, "uuid-mina", "chat.tournament.t1", ids[1]))
 	is.NoErr(s.MarkRead(ctx, "uuid-mina", "chat.tournament.t1", ids[0])) // back: ignored
 	is.NoErr(s.MarkRead(ctx, "uuid-mina", "chat.tournament.t1", other[0]))
-	got, err = s.LastRead(ctx, "uuid-mina", "chat.tournament.t1")
+	got, _, err = s.LastRead(ctx, "uuid-mina", "chat.tournament.t1")
 	is.NoErr(err)
 	is.Equal(got, ids[1])
 
@@ -329,4 +330,26 @@ func TestScanChannels(t *testing.T) {
 	is.NoErr(err)
 	is.Equal(len(chans), 4)
 	is.Equal(next, "0")
+}
+
+// The one a private chat's first message is sent to is a member who has read
+// nothing, and the channel can be read from its first message.
+func TestReadNothingFromStart(t *testing.T) {
+	is := is.New(t)
+	s, _ := setup(t)
+	ctx := context.Background()
+	ch := "chat.pm.uuid-cesar_uuid-mina"
+	ids := add(t, s, ch, 3)
+
+	got, member, err := s.LastRead(ctx, "uuid-mina", ch)
+	is.NoErr(err)
+	is.Equal(got, "")
+	is.True(member)
+
+	p, err := s.History(ctx, ch, user.ChatQuery{FromStart: true, Limit: 2})
+	is.NoErr(err)
+	is.Equal(texts(p), []string{"m0", "m1"})
+	is.True(!p.HasOlder)
+	is.True(p.HasNewer)
+	is.Equal(p.Messages[0].Id, ids[0])
 }

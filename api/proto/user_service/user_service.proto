@@ -321,6 +321,10 @@ message ChatHistory {
   // The newest message the user has read in this channel; "" if none or
   // not logged in.
   string last_read_id = 4;
+  // The user is in this channel (a private chat) but has read none of it, so
+  // every message from someone else is unread. Asked for around the read
+  // position, the page then starts at the channel's first message.
+  bool read_nothing = 5;
 }
 
 // Records that the user has read the channel up to message_id. It never

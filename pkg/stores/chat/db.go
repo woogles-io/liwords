@@ -253,6 +253,9 @@ func (s *DBStore) History(ctx context.Context, channel string, cq user.ChatQuery
 		}
 		newer, page.HasNewer, err = s.newer(ctx, channel, id, max(rest, 0))
 		page.Messages = append(page.Messages, newer...)
+	case cq.FromStart:
+		// Every message ID sorts after the nil UUID.
+		page.Messages, page.HasNewer, err = s.newer(ctx, channel, uuid.Nil, limit)
 	default:
 		page.Messages, page.HasOlder, err = s.older(ctx, channel, nil, limit)
 	}
@@ -300,14 +303,16 @@ func (s *DBStore) MarkRead(ctx context.Context, uid, channel, msgID string) erro
 	return err
 }
 
-func (s *DBStore) LastRead(ctx context.Context, uid, channel string) (string, error) {
+func (s *DBStore) LastRead(ctx context.Context, uid, channel string) (string, bool, error) {
 	id, err := s.q.GetChatRead(ctx, models.GetChatReadParams{UserUuid: uid, Channel: channel})
-	if errors.Is(err, pgx.ErrNoRows) || (err == nil && !id.Valid) {
-		return "", nil
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", false, nil
 	} else if err != nil {
-		return "", err
+		return "", false, err
+	} else if !id.Valid {
+		return "", true, nil
 	}
-	return uuid.UUID(id.Bytes).String(), nil
+	return uuid.UUID(id.Bytes).String(), true, nil
 }
 
 func (s *DBStore) LatestChannels(ctx context.Context, count, offset int, uid string) (*upb.ActiveChatChannels, error) {

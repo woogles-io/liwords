@@ -345,13 +345,18 @@ func (ss *SocializeService) GetChatsForChannel(ctx context.Context, req *connect
 		Limit:  int(req.Msg.Limit),
 	}
 	lastRead := ""
+	readNothing := false
 	if sess != nil {
-		lastRead, err = ss.chatStore.LastRead(ctx, sess.UserUUID, req.Msg.Channel)
+		var member bool
+		lastRead, member, err = ss.chatStore.LastRead(ctx, sess.UserUUID, req.Msg.Channel)
 		if err != nil {
 			return nil, err
 		}
+		readNothing = member && lastRead == ""
 		if req.Msg.AroundLastRead && cursors == 0 {
+			// Nothing read: everything is unread, from the first message.
 			q.Around = lastRead
+			q.FromStart = readNothing
 		}
 	}
 	page, err := ss.chatStore.History(ctx, req.Msg.Channel, q)
@@ -369,6 +374,7 @@ func (ss *SocializeService) GetChatsForChannel(ctx context.Context, req *connect
 			log.Err(err).Str("channel", req.Msg.Channel).Msg("mark-read-on-fetch")
 		} else {
 			lastRead = newest
+			readNothing = false
 		}
 	}
 	if len(chats) > 0 {
@@ -400,7 +406,8 @@ func (ss *SocializeService) GetChatsForChannel(ctx context.Context, req *connect
 		Messages:   chats,
 		HasOlder:   page.HasOlder,
 		HasNewer:   page.HasNewer,
-		LastReadId: lastRead,
+		LastReadId:  lastRead,
+		ReadNothing: readNothing,
 	}), nil
 }
 

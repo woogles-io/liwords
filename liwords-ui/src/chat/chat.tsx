@@ -371,7 +371,17 @@ export const Chat = React.memo((props: Props) => {
   const [description, setDescription] = useState(defaultDescription);
   const [channelSelectedTime, setChannelSelectedTime] = useState(Date.now());
   const [channelReadTime, setChannelReadTime] = useState(Date.now());
-  const [notificationCount, setNotificationCount] = useState<number>(0);
+  // The conversations with something new while the chat's messages are out
+  // of sight; the Chat tab shows how many.
+  const [badgeChannels, setBadgeChannels] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+  const notificationCount = badgeChannels.size;
+  const addBadgeChannels = useCallback((chans: Array<string>) => {
+    setBadgeChannels((cur) =>
+      chans.every((c) => cur.has(c)) ? cur : new Set([...cur, ...chans]),
+    );
+  }, []);
   const [lastNotificationTimestamp, setLastNotificationTimestamp] =
     useState<number>(Date.now());
   // Messages that come in for other channels
@@ -588,7 +598,7 @@ export const Chat = React.memo((props: Props) => {
       );
       setUpdatedChannels(newUpdatedChannels);
       if (initial) {
-        setNotificationCount(newUpdatedChannels.size);
+        setBadgeChannels(newUpdatedChannels);
       }
     }
   }, [
@@ -596,7 +606,7 @@ export const Chat = React.memo((props: Props) => {
     enableChatAutoScroll,
     channelsFetched,
     loggedIn,
-    setNotificationCount,
+    setBadgeChannels,
     socializeClient,
     props.defaultChannel,
     excludedPlayers,
@@ -788,10 +798,12 @@ export const Chat = React.memo((props: Props) => {
         undefined,
       );
       if (
-        lastMessage?.channel !== "chat.lobby" &&
-        (lastMessage?.timestamp || 0) > lastNotificationTimestamp
+        lastMessage?.channel &&
+        lastMessage.channel !== "chat.lobby" &&
+        lastMessage.senderId !== userID &&
+        (lastMessage.timestamp || 0) > lastNotificationTimestamp
       ) {
-        setNotificationCount((x) => x + 1);
+        addBadgeChannels([lastMessage.channel]);
         setLastNotificationTimestamp((x) =>
           (Number(lastMessage?.timestamp) || 0) > x
             ? Number(lastMessage?.timestamp) || x
@@ -804,7 +816,8 @@ export const Chat = React.memo((props: Props) => {
     selectedChatTab,
     collapsed,
     lastNotificationTimestamp,
-    setNotificationCount,
+    addBadgeChannels,
+    userID,
   ]);
 
   useEffect(() => {
@@ -934,9 +947,10 @@ export const Chat = React.memo((props: Props) => {
       .map((ch) => ch.name);
     if (missed.length) {
       setUpdatedChannels((u) => new Set([...(u ?? []), ...missed]));
-      setNotificationCount((n) => n + missed.length);
+      addBadgeChannels(missed);
     }
   }, [
+    addBadgeChannels,
     channel,
     channelsFetched,
     excludedPlayers,
@@ -1227,7 +1241,7 @@ export const Chat = React.memo((props: Props) => {
   const handleTabClick = useCallback(
     (key: string) => {
       setSelectedChatTab(key);
-      setNotificationCount(0);
+      setBadgeChannels(new Set());
       setLastNotificationTimestamp(Date.now());
       if (collapsed) {
         setCollapsePreferred(false);
@@ -1237,7 +1251,7 @@ export const Chat = React.memo((props: Props) => {
   );
   const toggleCollapsed = useCallback(() => {
     if (collapsed) {
-      setNotificationCount(0);
+      setBadgeChannels(new Set());
       setLastNotificationTimestamp(Date.now());
     }
     setCollapsePreferred(!collapsed);
