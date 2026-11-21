@@ -204,7 +204,8 @@ func (s *RedisPresenceStore) GetInChannel(ctx context.Context, channel string) (
 
 	key := "channelpresence:" + channel
 
-	vals, err := redis.Strings(conn.Do("ZRANGE", key, 0, -1))
+	// Only entries that haven't expired: the score is when each one does.
+	vals, err := redis.Strings(conn.Do("ZRANGEBYSCORE", key, time.Now().Unix(), "+inf"))
 	if err != nil {
 		return nil, err
 	}
@@ -234,7 +235,7 @@ func (s *RedisPresenceStore) GetPresence(ctx context.Context, uuid string) ([]st
 
 	key := "userpresence:" + uuid
 
-	m, err := redis.Strings(conn.Do("ZRANGE", key, 0, -1))
+	m, err := redis.Strings(conn.Do("ZRANGEBYSCORE", key, time.Now().Unix(), "+inf"))
 	if err != nil {
 		return nil, err
 	}
@@ -295,7 +296,7 @@ func (s *RedisPresenceStore) CountInChannel(ctx context.Context, channel string)
 
 	key := "channelpresence:" + channel
 
-	val, err := redis.Int(conn.Do("ZCARD", key))
+	val, err := redis.Int(conn.Do("ZCOUNT", key, time.Now().Unix(), "+inf"))
 	if err != nil {
 		return 0, err
 	}
