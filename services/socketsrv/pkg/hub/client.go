@@ -15,7 +15,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"google.golang.org/protobuf/proto"
 
-	"github.com/woogles-io/liwords/pkg/apiserver"
+	"github.com/woogles-io/liwords/pkg/clientid"
 	"github.com/woogles-io/liwords/pkg/entity"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
@@ -314,7 +314,7 @@ func closeMessage(ws *websocket.Conn, errStr string) {
 func ServeWS(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	fwd := r.Header.Values("X-Forwarded-For")
 	clientID := ""
-	if c, err := r.Cookie(apiserver.ClientIDCookie); err == nil && apiserver.ValidClientID(c.Value) {
+	if c, err := r.Cookie(clientid.Cookie); err == nil && clientid.Valid(c.Value) {
 		clientID = c.Value
 	}
 	tokens, ok := r.URL.Query()["token"]

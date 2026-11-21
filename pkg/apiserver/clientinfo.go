@@ -2,21 +2,16 @@ package apiserver
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/base64"
 	"net"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/rs/zerolog"
+
+	"github.com/woogles-io/liwords/pkg/clientid"
 )
 
-// ClientIDCookie is the name of the long-lived cookie that identifies a
-// browser across sessions.
-const ClientIDCookie = "client_id"
-
-const clientIDBytes = 16
 const clientIDCookieLifetime = 2 * 365 * 24 * time.Hour
 
 const clientipkey ctxkey = "clientip"
@@ -35,11 +30,11 @@ func ClientInfoMiddlewareGenerator(secureCookies bool) (mw func(http.Handler) ht
 			// visitor's first page load makes several requests in parallel,
 			// each minting its own ID; only one of those cookies survives, so
 			// a freshly minted ID can't be trusted to identify the browser.
-			if c, err := r.Cookie(ClientIDCookie); err == nil && ValidClientID(c.Value) {
+			if c, err := r.Cookie(clientid.Cookie); err == nil && clientid.Valid(c.Value) {
 				ctx = context.WithValue(ctx, clientidkey, c.Value)
-			} else if cid := newClientID(); cid != "" {
+			} else if cid := clientid.New(); cid != "" {
 				http.SetCookie(w, &http.Cookie{
-					Name:     ClientIDCookie,
+					Name:     clientid.Cookie,
 					Value:    cid,
 					Expires:  time.Now().Add(clientIDCookieLifetime),
 					HttpOnly: true,
@@ -102,23 +97,6 @@ func ClientIPFromRequest(r *http.Request) string {
 		return ip.String()
 	}
 	return ""
-}
-
-// ValidClientID reports whether s looks like an ID issued by newClientID.
-func ValidClientID(s string) bool {
-	if len(s) != base64.RawURLEncoding.EncodedLen(clientIDBytes) {
-		return false
-	}
-	_, err := base64.RawURLEncoding.DecodeString(s)
-	return err == nil
-}
-
-func newClientID() string {
-	b := make([]byte, clientIDBytes)
-	if _, err := rand.Read(b); err != nil {
-		return ""
-	}
-	return base64.RawURLEncoding.EncodeToString(b)
 }
 
 // ClientRecorder persists where users connect from.
