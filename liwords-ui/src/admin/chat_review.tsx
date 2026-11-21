@@ -1,4 +1,13 @@
-import { Button, Input, Select, Space, Table, Tag, Typography } from "antd";
+import {
+  Button,
+  GetRef,
+  Input,
+  Select,
+  Space,
+  Table,
+  Tag,
+  Typography,
+} from "antd";
 import React, { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { ChatMessage } from "../gen/api/proto/ipc/chat_pb";
@@ -25,6 +34,22 @@ const SEARCH_PAUSE_MS = 300;
 
 export const formatTime = (ms: bigint): string =>
   ms ? new Date(Number(ms)).toISOString() : "";
+
+const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+// The words searched for, marked wherever they are in a message, in any case.
+export const markWords = (text: string, words: string): React.ReactNode =>
+  words
+    ? text.split(new RegExp(`(${escapeRegExp(words)})`, "gi")).map((part, i) =>
+        i % 2 ? (
+          <Typography.Text mark key={i}>
+            {part}
+          </Typography.Text>
+        ) : (
+          part
+        ),
+      )
+    : text;
 
 // Adds a later page of channels, skipping any already listed.
 export const mergeRows = (
@@ -254,34 +279,83 @@ const ChannelCell = (props: { row: ReviewRow }) => {
   );
 };
 
-// A channel's messages, a page at a time: the newest first, then each older
-// page on request, above them. A channel keeps every message, so it may hold
-// more than a page.
-export const ChannelChats = (props: { channel: string }) => {
+// A channel's messages, a page at a time: the newest first, then older or
+// newer pages on request. With words searched for, only the messages that
+// hold them, the words marked, each with Context, which shows the messages
+// around it, it in bold, from where older and newer ones load as well. A
+// channel keeps every message, so it may hold more than a page.
+export const ChannelChats = (props: {
+  channel: string;
+  containing?: string;
+}) => {
   const modClient = useClient(ModService);
+  const words = props.containing ?? "";
   const [msgs, setMsgs] = useState<Array<ChatMessage> | null>(null);
   const [hasOlder, setHasOlder] = useState(false);
+  const [hasNewer, setHasNewer] = useState(false);
   const [loading, setLoading] = useState(false);
+  // the message whose context is shown, if one is
+  const [around, setAround] = useState("");
+  const tableRef = useRef<GetRef<typeof Table>>(null);
+  // only the messages holding the words, until a context is opened
+  const matching = !!words && !around;
 
-  const load = async (older: boolean) => {
+  // A fresh page replaces what is shown; an older one goes above it, a
+  // newer one below.
+  const ask = async (
+    req: {
+      before?: string;
+      after?: string;
+      around?: string;
+      containing?: string;
+    },
+    place: "fresh" | "older" | "newer",
+  ) => {
     setLoading(true);
     try {
       const resp = await modClient.getChannelChats({
         channel: props.channel,
-        before: older && msgs?.length ? msgs[0].id : "",
+        ...req,
       });
-      setMsgs((m) => (older && m ? [...resp.messages, ...m] : resp.messages));
-      setHasOlder(resp.hasOlder);
+      if (place === "older") {
+        setMsgs((m) => [...resp.messages, ...(m ?? [])]);
+        setHasOlder(resp.hasOlder);
+      } else if (place === "newer") {
+        setMsgs((m) => [...(m ?? []), ...resp.messages]);
+        setHasNewer(resp.hasNewer);
+      } else {
+        setMsgs(resp.messages);
+        setHasOlder(resp.hasOlder);
+        setHasNewer(resp.hasNewer);
+      }
     } catch (e) {
       flashError(e);
     } finally {
       setLoading(false);
     }
   };
+  const openContext = (id: string) => {
+    setAround(id);
+    ask({ around: id }, "fresh");
+  };
+  const backToMatches = () => {
+    setAround("");
+    ask({ containing: words }, "fresh");
+  };
+
+  // the message whose context is shown, scrolled to once it is loaded
+  useEffect(() => {
+    if (around && msgs?.some((m) => m.id === around)) {
+      tableRef.current?.scrollTo({ key: around });
+    }
+  }, [around, msgs]);
 
   if (msgs === null) {
     return (
-      <Button loading={loading} onClick={() => load(false)}>
+      <Button
+        loading={loading}
+        onClick={() => ask(words ? { containing: words } : {}, "fresh")}
+      >
         Load messages
       </Button>
     );
@@ -291,9 +365,33 @@ export const ChannelChats = (props: { channel: string }) => {
     <React.Fragment>
       <Space wrap style={{ marginBottom: 8 }}>
         {hasOlder && (
-          <Button loading={loading} onClick={() => load(true)}>
+          <Button
+            loading={loading}
+            onClick={() =>
+              ask(
+                {
+                  before: msgs[0]?.id ?? "",
+                  ...(matching ? { containing: words } : {}),
+                },
+                "older",
+              )
+            }
+          >
             Load older
           </Button>
+        )}
+        {hasNewer && (
+          <Button
+            loading={loading}
+            onClick={() =>
+              ask({ after: msgs[msgs.length - 1]?.id ?? "" }, "newer")
+            }
+          >
+            Load newer
+          </Button>
+        )}
+        {words && around && (
+          <Button onClick={backToMatches}>Back to the matches</Button>
         )}
         <Button
           onClick={() => download(`${base}.csv`, chatsToCSV(msgs), "text/csv")}
@@ -322,14 +420,15 @@ export const ChannelChats = (props: { channel: string }) => {
         >
           Export JSON
         </Button>
-        {hasOlder && (
+        {(hasOlder || hasNewer) && (
           <Typography.Text type="secondary">
-            Older messages are not loaded yet; the exports hold the ones shown.
+            Not every message is loaded; the exports hold the ones shown.
           </Typography.Text>
         )}
       </Space>
       {/* Only the rows in view are drawn, however many pages are loaded. */}
       <Table
+        ref={tableRef}
         dataSource={msgs}
         rowKey="id"
         size="small"
@@ -347,7 +446,31 @@ export const ChannelChats = (props: { channel: string }) => {
             key: "username",
             render: (_, m) => <Name username={m.username} userId={m.userId} />,
           },
-          { title: "Message", dataIndex: "message", key: "message" },
+          {
+            title: "Message",
+            key: "message",
+            render: (_, m) =>
+              m.id === around ? (
+                <Typography.Text strong>
+                  {markWords(m.message, words)}
+                </Typography.Text>
+              ) : (
+                markWords(m.message, words)
+              ),
+          },
+          ...(matching
+            ? [
+                {
+                  title: "",
+                  key: "context",
+                  render: (_: unknown, m: ChatMessage) => (
+                    <Button size="small" onClick={() => openContext(m.id)}>
+                      Context
+                    </Button>
+                  ),
+                },
+              ]
+            : []),
         ]}
       />
     </React.Fragment>
@@ -365,6 +488,9 @@ export const ChatReview = () => {
   const [username, setUsername] = useState(linkedUsername);
   // the user the rows were searched for, which the input may no longer say.
   const [searchedUser, setSearchedUser] = useState("");
+  // words a message must hold, and those the rows were searched for
+  const [containing, setContaining] = useState("");
+  const [searchedContaining, setSearchedContaining] = useState("");
   const [rows, setRows] = useState<Array<ChatChannelSummary>>([]);
   const [searching, setSearching] = useState(false);
   const [complete, setComplete] = useState(false);
@@ -385,6 +511,8 @@ export const ChatReview = () => {
     setSearching(true);
     setComplete(false);
     setSearchedUser(forUser.trim());
+    const words = containing.trim();
+    setSearchedContaining(words);
     setLookedUp("");
     setRows([]);
     let cursor = "";
@@ -394,6 +522,7 @@ export const ChatReview = () => {
           channelPrefix: forPrefix,
           username: forUser,
           cursor,
+          containing: words,
         });
         if (run !== runRef.current) return;
         setRows((prev) => mergeRows(prev, resp.channels));
@@ -428,10 +557,15 @@ export const ChatReview = () => {
     }
     const run = ++runRef.current;
     setSearching(false);
+    const words = containing.trim();
     try {
-      const resp = await modClient.listChatChannels({ find });
+      const resp = await modClient.listChatChannels({
+        find,
+        containing: words,
+      });
       if (run !== runRef.current) return;
       setSearchedUser("");
+      setSearchedContaining(words);
       setLookedUp(find);
       setRows(resp.channels);
       setComplete(true);
@@ -458,6 +592,13 @@ export const ChatReview = () => {
           onPressEnter={() => search(username, prefix)}
           style={{ width: 200 }}
         />
+        <Input
+          placeholder="Words a message holds (blank: any)"
+          value={containing}
+          onChange={(e) => setContaining(e.target.value)}
+          onPressEnter={() => search(username, prefix)}
+          style={{ width: 260 }}
+        />
         <Select
           value={prefix}
           onChange={setPrefix}
@@ -477,7 +618,10 @@ export const ChatReview = () => {
           With a user: the games they played (marked &quot;played&quot;: those
           in progress and the latest ones that ended), whoever wrote in them,
           plus the other channels they wrote in and their private chats, by when
-          they last wrote there.
+          they last wrote there. With words: only the channels with a message
+          that holds them, in any case, counted; opening one shows those
+          messages, each with Context for the messages around it. The words go
+          with a find below as well.
         </Typography.Text>
       </p>
       <h4>Or find a game, tournament, club or league</h4>
@@ -528,7 +672,10 @@ export const ChatReview = () => {
               {r.parts.map((s) => (
                 <div key={s.channel} style={{ marginBottom: 12 }}>
                   {r.parts.length > 1 && <h4>{partKind(s)}' chat</h4>}
-                  <ChannelChats channel={s.channel} />
+                  <ChannelChats
+                    channel={s.channel}
+                    containing={searchedContaining}
+                  />
                 </div>
               ))}
             </React.Fragment>
@@ -559,6 +706,18 @@ export const ChatReview = () => {
               <PerPart r={r} render={(s) => String(s.messageCount)} />
             ),
           },
+          ...(searchedContaining
+            ? [
+                {
+                  title: `Holding "${searchedContaining}"`,
+                  key: "matchCount",
+                  className: "chat-review-nowrap",
+                  render: (_: unknown, r: ReviewRow) => (
+                    <PerPart r={r} render={(s) => String(s.matchCount)} />
+                  ),
+                },
+              ]
+            : []),
           {
             title: "Who spoke",
             key: "speakers",
