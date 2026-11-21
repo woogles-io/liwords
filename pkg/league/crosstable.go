@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/woogles-io/liwords/pkg/apiserver"
+	"github.com/woogles-io/liwords/pkg/config"
 	gamestore "github.com/woogles-io/liwords/pkg/stores/game"
 	"github.com/woogles-io/liwords/pkg/stores/models"
 	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
@@ -15,9 +16,9 @@ import (
 )
 
 // crosstableGame converts one division game row for the cross-table: final
-// scores for a finished game, running scores (from its history) for one in
-// progress.
-func crosstableGame(row models.GetDivisionCrosstableGamesRow) *pb.CrosstableGame {
+// scores for a finished game; for one in progress, its running scores and the
+// tiles not yet played (from its history).
+func crosstableGame(cfg *config.Config, row models.GetDivisionCrosstableGamesRow) *pb.CrosstableGame {
 	g := &pb.CrosstableGame{
 		GameId:        row.GameUuid.String,
 		Player0UserId: row.Player0Uuid,
@@ -33,6 +34,9 @@ func crosstableGame(row models.GetDivisionCrosstableGamesRow) *pb.CrosstableGame
 		g.Player0Score, g.Player1Score = scores[0], scores[1]
 		if row.PlayerOnTurn.Valid {
 			g.PlayerOnTurn = row.PlayerOnTurn.Int32
+		}
+		if _, unplayed, ok := tileProgressFromBytes(cfg, row.History); ok {
+			g.TilesUnplayed = &unplayed
 		}
 	} else if row.WinnerIdx.Valid && (row.WinnerIdx.Int32 == 0 || row.WinnerIdx.Int32 == 1) {
 		g.WinnerIndex = row.WinnerIdx.Int32
@@ -54,7 +58,7 @@ func (ls *LeagueService) GetDivisionCrosstable(
 	}
 	games := make([]*pb.CrosstableGame, len(rows))
 	for i, row := range rows {
-		games[i] = crosstableGame(row)
+		games[i] = crosstableGame(ls.cfg, row)
 	}
 	return connect.NewResponse(&pb.DivisionCrosstableResponse{Games: games}), nil
 }

@@ -141,6 +141,9 @@ message CrosstableGame {
   int32 winner_index = 7;
   // The player on turn in a game in progress; -1 otherwise.
   int32 player_on_turn = 8;
+  // The tiles not yet played (bag and both racks) in a game in progress;
+  // unset for a finished game, or when its history cannot be read.
+  optional int32 tiles_unplayed = 9;
 }
 
 message DivisionCrosstableResponse { repeated CrosstableGame games = 1; }

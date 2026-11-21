@@ -923,7 +923,10 @@ type CrosstableGame struct {
 	// 0 or 1 for a finished game's winner; -1 for a draw or a game in progress.
 	WinnerIndex int32 `protobuf:"varint,7,opt,name=winner_index,json=winnerIndex,proto3" json:"winner_index,omitempty"`
 	// The player on turn in a game in progress; -1 otherwise.
-	PlayerOnTurn  int32 `protobuf:"varint,8,opt,name=player_on_turn,json=playerOnTurn,proto3" json:"player_on_turn,omitempty"`
+	PlayerOnTurn int32 `protobuf:"varint,8,opt,name=player_on_turn,json=playerOnTurn,proto3" json:"player_on_turn,omitempty"`
+	// The tiles not yet played (bag and both racks) in a game in progress;
+	// unset for a finished game, or when its history cannot be read.
+	TilesUnplayed *int32 `protobuf:"varint,9,opt,name=tiles_unplayed,json=tilesUnplayed,proto3,oneof" json:"tiles_unplayed,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1010,6 +1013,13 @@ func (x *CrosstableGame) GetWinnerIndex() int32 {
 func (x *CrosstableGame) GetPlayerOnTurn() int32 {
 	if x != nil {
 		return x.PlayerOnTurn
+	}
+	return 0
+}
+
+func (x *CrosstableGame) GetTilesUnplayed() int32 {
+	if x != nil && x.TilesUnplayed != nil {
+		return *x.TilesUnplayed
 	}
 	return 0
 }
@@ -3670,7 +3680,7 @@ const file_proto_league_service_league_service_proto_rawDesc = "" +
 	"\vdivision_id\x18\x01 \x01(\tR\n" +
 	"divisionId\"F\n" +
 	"\x19DivisionStandingsResponse\x12)\n" +
-	"\bdivision\x18\x01 \x01(\v2\r.ipc.DivisionR\bdivision\"\xc8\x02\n" +
+	"\bdivision\x18\x01 \x01(\v2\r.ipc.DivisionR\bdivision\"\x87\x03\n" +
 	"\x0eCrosstableGame\x12\x17\n" +
 	"\agame_id\x18\x01 \x01(\tR\x06gameId\x12&\n" +
 	"\x0fplayer0_user_id\x18\x02 \x01(\tR\rplayer0UserId\x12&\n" +
@@ -3679,7 +3689,9 @@ const file_proto_league_service_league_service_proto_rawDesc = "" +
 	"\rplayer1_score\x18\x05 \x01(\x05R\fplayer1Score\x12:\n" +
 	"\x0fgame_end_reason\x18\x06 \x01(\x0e2\x12.ipc.GameEndReasonR\rgameEndReason\x12!\n" +
 	"\fwinner_index\x18\a \x01(\x05R\vwinnerIndex\x12$\n" +
-	"\x0eplayer_on_turn\x18\b \x01(\x05R\fplayerOnTurn\"R\n" +
+	"\x0eplayer_on_turn\x18\b \x01(\x05R\fplayerOnTurn\x12*\n" +
+	"\x0etiles_unplayed\x18\t \x01(\x05H\x00R\rtilesUnplayed\x88\x01\x01B\x11\n" +
+	"\x0f_tiles_unplayed\"R\n" +
 	"\x1aDivisionCrosstableResponse\x124\n" +
 	"\x05games\x18\x01 \x03(\v2\x1e.league_service.CrosstableGameR\x05games\"K\n" +
 	"\x1cAllDivisionStandingsResponse\x12+\n" +
@@ -4123,6 +4135,7 @@ func file_proto_league_service_league_service_proto_init() {
 	if File_proto_league_service_league_service_proto != nil {
 		return
 	}
+	file_proto_league_service_league_service_proto_msgTypes[17].OneofWrappers = []any{}
 	file_proto_league_service_league_service_proto_msgTypes[31].OneofWrappers = []any{}
 	file_proto_league_service_league_service_proto_msgTypes[36].OneofWrappers = []any{}
 	type x struct{}
