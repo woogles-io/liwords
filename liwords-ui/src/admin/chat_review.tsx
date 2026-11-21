@@ -89,7 +89,7 @@ export const sortRows = (
   );
 
 // One table row: a channel, or a game's players' and viewers' chats together
-// (each expires on its own, so either may be missing).
+// (a chat with nothing in it is not listed, so either may be missing).
 export type ReviewRow = { key: string; parts: Array<ChatChannelSummary> };
 
 const gameChannel = /^chat\.(game|gametv)\.(.+)$/;
@@ -254,26 +254,47 @@ const ChannelCell = (props: { row: ReviewRow }) => {
   );
 };
 
-const ChannelChats = (props: { channel: string }) => {
+// A channel's messages, a page at a time: the newest first, then each older
+// page on request, above them. A channel keeps every message, so it may hold
+// more than a page.
+export const ChannelChats = (props: { channel: string }) => {
   const modClient = useClient(ModService);
   const [msgs, setMsgs] = useState<Array<ChatMessage> | null>(null);
+  const [hasOlder, setHasOlder] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const load = async () => {
+  const load = async (older: boolean) => {
+    setLoading(true);
     try {
-      const resp = await modClient.getChannelChats({ channel: props.channel });
-      setMsgs(resp.messages);
+      const resp = await modClient.getChannelChats({
+        channel: props.channel,
+        before: older && msgs?.length ? msgs[0].id : "",
+      });
+      setMsgs((m) => (older && m ? [...resp.messages, ...m] : resp.messages));
+      setHasOlder(resp.hasOlder);
     } catch (e) {
       flashError(e);
+    } finally {
+      setLoading(false);
     }
   };
 
   if (msgs === null) {
-    return <Button onClick={load}>Load messages</Button>;
+    return (
+      <Button loading={loading} onClick={() => load(false)}>
+        Load messages
+      </Button>
+    );
   }
   const base = props.channel.replace(/[^\w.-]/g, "_");
   return (
     <React.Fragment>
-      <Space style={{ marginBottom: 8 }}>
+      <Space wrap style={{ marginBottom: 8 }}>
+        {hasOlder && (
+          <Button loading={loading} onClick={() => load(true)}>
+            Load older
+          </Button>
+        )}
         <Button
           onClick={() => download(`${base}.csv`, chatsToCSV(msgs), "text/csv")}
         >
@@ -301,12 +322,20 @@ const ChannelChats = (props: { channel: string }) => {
         >
           Export JSON
         </Button>
+        {hasOlder && (
+          <Typography.Text type="secondary">
+            Older messages are not loaded yet; the exports hold the ones shown.
+          </Typography.Text>
+        )}
       </Space>
+      {/* Only the rows in view are drawn, however many pages are loaded. */}
       <Table
         dataSource={msgs}
         rowKey="id"
         size="small"
         pagination={false}
+        virtual
+        scroll={{ y: 600 }}
         columns={[
           {
             title: "Time (UTC)",
@@ -325,9 +354,9 @@ const ChannelChats = (props: { channel: string }) => {
   );
 };
 
-// Review the chats Redis still holds (up to 14 days): find the channels by
-// type and user, see who spoke, read and export a channel's messages. A
-// user's menu links here with ?username=, which searches all channels at once.
+// Review the chats: find the channels by type and user, see who spoke, read
+// and export a channel's messages. A user's menu links here with ?username=,
+// which searches all channels at once.
 export const ChatReview = () => {
   const modClient = useClient(ModService);
   const [searchParams] = useSearchParams();
@@ -347,9 +376,9 @@ export const ChatReview = () => {
   // what the rows were looked up by, if they were.
   const [lookedUp, setLookedUp] = useState("");
 
-  // Redis is searched a batch of keys per request; keep asking until it has
-  // all been searched or Stop is pressed, pausing between batches so a long
-  // search does not keep the live Redis busy.
+  // The server searches a batch of channels per request; keep asking until it
+  // has all been searched or Stop is pressed, pausing between batches so a
+  // long search does not keep the live database busy.
   const search = async (forUser: string, forPrefix: string) => {
     const run = ++runRef.current;
     stopRef.current = false;
@@ -418,8 +447,7 @@ export const ChatReview = () => {
     <div className="chat-review">
       <h3>Chat review</h3>
       <p>
-        Only chats from the last 14 days, and not deleted ones. A game with no
-        chat at all is not listed.
+        Deleted messages are left out. A game with no chat at all is not listed.
       </p>
       <h4>Search</h4>
       <Space wrap style={{ marginBottom: 4 }}>
@@ -446,9 +474,10 @@ export const ChatReview = () => {
       </Space>
       <p>
         <Typography.Text type="secondary">
-          With a user: every game they played (marked &quot;played&quot;),
-          whoever wrote in it, plus the other channels they wrote in and their
-          private chats, by when they last wrote there.
+          With a user: the games they played (marked &quot;played&quot;: those
+          in progress and the latest ones that ended), whoever wrote in them,
+          plus the other channels they wrote in and their private chats, by when
+          they last wrote there.
         </Typography.Text>
       </p>
       <h4>Or find a game, tournament, club or league</h4>
