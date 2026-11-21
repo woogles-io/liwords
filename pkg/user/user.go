@@ -116,8 +116,6 @@ type PresenceStore interface {
 	// Can use for buddy/follower lists.
 	BatchGetPresence(ctx context.Context, users []*entity.User) ([]*entity.User, error)
 
-	LastSeen(ctx context.Context, uuid string) (int64, error)
-
 	SetEventChan(chan *entity.EventWrapper)
 	EventChan() chan *entity.EventWrapper
 

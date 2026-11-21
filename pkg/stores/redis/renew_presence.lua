@@ -10,7 +10,6 @@ local ts = tonumber(ARGV[5])
 local expiry = 180
 
 -- renew where conn_id matches.
-local shouldtouch = false
 local setbefore = {}
 local setpurged = {[activeusergameskey]=true}
 for _, simpleuserkey in ipairs(redis.call("ZRANGE", userpresencekey, 0, -1)) do
@@ -28,14 +27,8 @@ for _, simpleuserkey in ipairs(redis.call("ZRANGE", userpresencekey, 0, -1)) do
       setpurged[userpresencekey] = true
       redis.call("ZADD", "userpresences", ts + expiry, userkey.."#"..chan)
       setpurged["userpresences"] = true
-      shouldtouch = true
     end
   end
-end
-
--- update the last known presence time.
-if shouldtouch and ARGV[3] == "auth" then
-  redis.call("ZADD", "lastpresences", ts, ARGV[1])
 end
 
 -- add active games to setbefore.

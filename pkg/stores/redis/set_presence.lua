@@ -29,10 +29,6 @@ redis.call("ZADD", userpresencekey, ts + expiry, simpleuserkey)
 redis.call("EXPIRE", userpresencekey, expiry)
 redis.call("ZADD", "userpresences", ts + expiry, userkey.."#"..chan)
 
--- Do not modify lastpresences here. We only modify that when people leave, or on
--- the renew presence here. We'd like there to be a little time (a few seconds)
--- when the user logs in to determine how long it's been since they last logged in.
-
 -- inefficient, but easier to write.
 -- an efficient algorithm just adds the new channel to setbefore.
 local setafter = {}
