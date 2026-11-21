@@ -79,7 +79,16 @@ export const DisplayUserBadges: React.FC<DisplayUserBadgeProps> = ({
               </div>
             }
           >
-            <span style={{ marginLeft: 8 }}>
+            {/* laid out as the title circle is (display_title.tsx), so the
+                two line up wherever they sit, in a flex row too */}
+            <span
+              style={{
+                alignItems: "center",
+                display: "inline-flex",
+                marginLeft: 8,
+                verticalAlign: "middle",
+              }}
+            >
               <Badge width={20} name={bc} />
             </span>
           </Tooltip>
