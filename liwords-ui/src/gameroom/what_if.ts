@@ -1,8 +1,8 @@
 import { create } from "@bufbuild/protobuf";
 import {
   Alphabet,
+  labelsToTiles,
   machineWordToRunes,
-  runesToMachineWord,
 } from "../constants/alphabets";
 import {
   GameEvent,
@@ -305,13 +305,10 @@ export const placedOfPlay = (play: {
   return placed;
 };
 
-// The tiles a box's text names, in either case; none (null) while it holds
-// anything that is no tile, such as a dead key's accent mid-composition or a
-// digit, so the box can say so instead of the page failing.
-export const typedTiles = (text: string, alphabet: Alphabet) => {
-  try {
-    return runesToMachineWord(text.toUpperCase(), alphabet);
-  } catch {
-    return null;
-  }
-};
+// The tiles a box's text names, each by a tile's label or the one it takes
+// on a blank (labelsToTiles), so a rack tile in either case, the text never
+// changed in case; none (null) while it holds anything that is no tile, such
+// as a dead key's accent mid-composition or a digit, so the box can say so
+// instead of the page failing.
+export const typedTiles = (text: string, alphabet: Alphabet) =>
+  labelsToTiles(text, alphabet);
