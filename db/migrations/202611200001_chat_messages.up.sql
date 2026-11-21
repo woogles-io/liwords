@@ -1,9 +1,11 @@
 -- Chat history, moving from Redis streams (which kept 14 days) to Postgres,
--- kept indefinitely. Messages are ordered by (created_at, id): the backfill
--- copies old messages after new ones have started arriving, so id alone
--- isn't in time order.
+-- kept indefinitely.
 CREATE TABLE chat_messages (
-    id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    -- A UUIDv7, made by the API (Postgres 14 can't): it starts with the
+    -- message's time in milliseconds, so ordering by id is ordering by time,
+    -- and an id alone is a cursor for history pages. Backfilled messages get
+    -- ids made from their Redis timestamps.
+    id uuid PRIMARY KEY,
     -- The full channel name, e.g. chat.lobby, chat.game.<id>,
     -- chat.pm.<uuid>_<uuid>, chat.tournament.<id>.
     channel text NOT NULL,
@@ -23,9 +25,9 @@ CREATE TABLE chat_messages (
 );
 
 -- A channel's messages, in order (history pages).
-CREATE INDEX chat_messages_channel_created_idx ON chat_messages (channel, created_at, id);
--- One user's messages (moderator chat review).
-CREATE INDEX chat_messages_sender_created_idx ON chat_messages (sender_id, created_at)
+CREATE INDEX chat_messages_channel_id_idx ON chat_messages (channel, id);
+-- One user's messages, in order (moderator chat review).
+CREATE INDEX chat_messages_sender_id_idx ON chat_messages (sender_id, id)
     WHERE sender_id IS NOT NULL;
 CREATE UNIQUE INDEX chat_messages_channel_legacy_idx ON chat_messages (channel, legacy_id)
     WHERE legacy_id IS NOT NULL;
@@ -36,7 +38,7 @@ CREATE TABLE chat_reads (
     user_id integer NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     channel text NOT NULL,
     -- The newest message read; NULL if none yet.
-    last_read_message_id bigint REFERENCES chat_messages(id) ON DELETE SET NULL,
+    last_read_message_id uuid REFERENCES chat_messages(id) ON DELETE SET NULL,
     updated_at timestamptz NOT NULL DEFAULT now(),
     PRIMARY KEY (user_id, channel)
 );

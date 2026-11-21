@@ -6,8 +6,8 @@ package chat
 
 import (
 	"context"
-	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/rs/zerolog/log"
 
@@ -36,14 +36,17 @@ func (m *Mirror) AddChat(ctx context.Context, senderUsername, senderUID, msg,
 	if err != nil {
 		return nil, err
 	}
-	_, err = m.q.AddChatMessages(ctx, messagesParams([]legacyMessage{{
-		channel:  channel,
-		senderID: senderUID,
-		username: senderUsername,
-		message:  msg,
-		at:       time.UnixMilli(cm.Timestamp),
-		legacyID: cm.Id,
-	}}))
+	lid, err := parseLegacyID(cm.Id)
+	if err == nil {
+		_, err = m.q.AddChatMessages(ctx, messagesParams([]legacyMessage{{
+			channel:  channel,
+			senderID: senderUID,
+			username: senderUsername,
+			message:  msg,
+			id:       lid,
+			legacyID: cm.Id,
+		}}))
+	}
 	if err != nil {
 		log.Err(err).Str("channel", channel).Str("id", cm.Id).Msg("chat-mirror-add-failed")
 	}
@@ -71,12 +74,13 @@ type legacyMessage struct {
 	senderID string // UUID; "" for server lines and very old messages
 	username string
 	message  string
-	at       time.Time
-	legacyID string // the Redis stream ID
+	id       legacyID
+	legacyID string // the Redis stream ID, as Redis gave it
 }
 
 func messagesParams(msgs []legacyMessage) models.AddChatMessagesParams {
 	p := models.AddChatMessagesParams{
+		Ids:             make([]uuid.UUID, len(msgs)),
 		Channels:        make([]string, len(msgs)),
 		SenderUuids:     make([]string, len(msgs)),
 		SenderUsernames: make([]string, len(msgs)),
@@ -85,11 +89,12 @@ func messagesParams(msgs []legacyMessage) models.AddChatMessagesParams {
 		LegacyIds:       make([]string, len(msgs)),
 	}
 	for i, m := range msgs {
+		p.Ids[i] = m.id.messageID()
 		p.Channels[i] = m.channel
 		p.SenderUuids[i] = m.senderID
 		p.SenderUsernames[i] = m.username
 		p.Messages[i] = m.message
-		p.CreatedAts[i] = pgtype.Timestamptz{Time: m.at, Valid: true}
+		p.CreatedAts[i] = pgtype.Timestamptz{Time: m.id.time(), Valid: true}
 		p.LegacyIds[i] = m.legacyID
 	}
 	return p

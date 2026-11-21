@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gomodule/redigo/redis"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/matryer/is"
 
@@ -50,6 +51,7 @@ func setup(t *testing.T) (*pgxpool.Pool, *redis.Pool) {
 }
 
 type row struct {
+	id                         uuid.UUID
 	channel, username, message string
 	senderID                   *string // the sender's UUID, through sender_id
 	createdAt                  time.Time
@@ -61,13 +63,13 @@ func rowByLegacyID(t *testing.T, db *pgxpool.Pool, channel, legacyID string) row
 	t.Helper()
 	var r row
 	err := db.QueryRow(context.Background(), `
-		SELECT m.channel, m.sender_username, m.message, s.uuid, m.created_at,
+		SELECT m.id, m.channel, m.sender_username, m.message, s.uuid, m.created_at,
 		       m.deleted_at IS NOT NULL, d.uuid
 		FROM chat_messages m
 		LEFT JOIN users s ON s.id = m.sender_id
 		LEFT JOIN users d ON d.id = m.deleted_by
 		WHERE m.channel = $1 AND m.legacy_id = $2`, channel, legacyID).
-		Scan(&r.channel, &r.username, &r.message, &r.senderID, &r.createdAt, &r.deleted, &r.deletedBy)
+		Scan(&r.id, &r.channel, &r.username, &r.message, &r.senderID, &r.createdAt, &r.deleted, &r.deletedBy)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -99,6 +101,9 @@ func TestMirror(t *testing.T) {
 	is.Equal(r.message, "hello")
 	is.Equal(*r.senderID, "uuid-cesar")
 	is.Equal(r.createdAt.UnixMilli(), cm.Timestamp)
+	is.Equal(int(r.id.Version()), 7)
+	sec, nsec := r.id.Time().UnixTime()
+	is.Equal(sec*1000+nsec/1e6, cm.Timestamp) // the ID carries the message's time
 	is.True(!r.deleted)
 
 	// A line the server posts has no sender.
@@ -155,6 +160,19 @@ func TestBackfill(t *testing.T) {
 	r = rowByLegacyID(t, db, "chat.pm.uuid-cesar_uuid-mina", "1700000000000-0")
 	is.Equal(*r.senderID, "uuid-mina")
 	is.Equal(rowByLegacyID(t, db, "chat.pm.uuid-cesar_uuid-mina", mirrored.Id).message, "hi mina")
+
+	// Ordering by ID is ordering by time, though the backfill copied the
+	// older messages after the mirror copied the newest.
+	rows, err := db.Query(ctx, `SELECT legacy_id FROM chat_messages ORDER BY id`)
+	is.NoErr(err)
+	var order []string
+	for rows.Next() {
+		var l string
+		is.NoErr(rows.Scan(&l))
+		order = append(order, l)
+	}
+	is.NoErr(rows.Err())
+	is.Equal(order, []string{"1600000000000-0", "1700000000000-0", mirrored.Id})
 
 	st, err = Backfill(ctx, rp, q, 1000)
 	is.NoErr(err)

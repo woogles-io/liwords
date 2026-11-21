@@ -169,7 +169,7 @@ type BroadcastSlot struct {
 }
 
 type ChatMessage struct {
-	ID             int64
+	ID             uuid.UUID
 	Channel        string
 	SenderID       pgtype.Int4
 	SenderUsername string
@@ -183,7 +183,7 @@ type ChatMessage struct {
 type ChatRead struct {
 	UserID            int32
 	Channel           string
-	LastReadMessageID pgtype.Int8
+	LastReadMessageID pgtype.UUID
 	UpdatedAt         pgtype.Timestamptz
 }
 

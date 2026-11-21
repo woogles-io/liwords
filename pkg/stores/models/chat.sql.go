@@ -8,23 +8,26 @@ package models
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const addChatMessages = `-- name: AddChatMessages :execrows
-INSERT INTO chat_messages (channel, sender_id, sender_username, message, created_at, legacy_id)
-SELECT m.channel, u.id, m.sender_username, m.message, m.created_at, m.legacy_id
-FROM (SELECT unnest($1::text[]) AS channel,
-             unnest($2::text[]) AS sender_uuid,
-             unnest($3::text[]) AS sender_username,
-             unnest($4::text[]) AS message,
-             unnest($5::timestamptz[]) AS created_at,
-             unnest($6::text[]) AS legacy_id) m
+INSERT INTO chat_messages (id, channel, sender_id, sender_username, message, created_at, legacy_id)
+SELECT m.id, m.channel, u.id, m.sender_username, m.message, m.created_at, m.legacy_id
+FROM (SELECT unnest($1::uuid[]) AS id,
+             unnest($2::text[]) AS channel,
+             unnest($3::text[]) AS sender_uuid,
+             unnest($4::text[]) AS sender_username,
+             unnest($5::text[]) AS message,
+             unnest($6::timestamptz[]) AS created_at,
+             unnest($7::text[]) AS legacy_id) m
 LEFT JOIN users u ON m.sender_uuid <> '' AND u.uuid = m.sender_uuid
 ON CONFLICT (channel, legacy_id) WHERE legacy_id IS NOT NULL DO NOTHING
 `
 
 type AddChatMessagesParams struct {
+	Ids             []uuid.UUID
 	Channels        []string
 	SenderUuids     []string
 	SenderUsernames []string
@@ -39,6 +42,7 @@ type AddChatMessagesParams struct {
 // An empty or unknown sender UUID gives a NULL sender_id.
 func (q *Queries) AddChatMessages(ctx context.Context, arg AddChatMessagesParams) (int64, error) {
 	result, err := q.db.Exec(ctx, addChatMessages,
+		arg.Ids,
 		arg.Channels,
 		arg.SenderUuids,
 		arg.SenderUsernames,

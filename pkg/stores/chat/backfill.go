@@ -3,9 +3,7 @@ package chat
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"strings"
-	"time"
 
 	"github.com/gomodule/redigo/redis"
 
@@ -101,7 +99,7 @@ func parseEntry(channel string, e interface{}) (legacyMessage, bool) {
 	if err != nil {
 		return legacyMessage{}, false
 	}
-	ms, err := strconv.ParseInt(strings.SplitN(id, "-", 2)[0], 10, 64)
+	lid, err := parseLegacyID(id)
 	if err != nil {
 		return legacyMessage{}, false
 	}
@@ -118,7 +116,7 @@ func parseEntry(channel string, e interface{}) (legacyMessage, bool) {
 		senderID: fields["userID"],
 		username: fields["username"],
 		message:  msg,
-		at:       time.UnixMilli(ms),
+		id:       lid,
 		legacyID: id,
 	}, true
 }
