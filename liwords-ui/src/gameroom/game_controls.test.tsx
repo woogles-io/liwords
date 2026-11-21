@@ -26,6 +26,11 @@ vi.mock("@connectrpc/connect-query", () => ({
   useQuery: () => ({ data: mockedGameOwner() }),
 }));
 
+// the Check button itself is word_check.test.tsx's; here only where it goes
+vi.mock("./word_check", () => ({
+  WordCheck: () => <button>Check</button>,
+}));
+
 const mockedGameContext = vi.fn();
 
 vi.mock("../store/store", async (importOriginal) => {
@@ -168,6 +173,18 @@ it("ignores 2 while examining a game outside the editor", () => {
   const pressPass = capturePassShortcut({ isExamining: true });
   pressPass();
   expect(screen.queryByText("Are you sure you wish to pass?")).toBeNull();
+});
+
+it("puts Check where Challenge is in a VOID game, for a player in play", () => {
+  renderGameControls({ myTurn: true, challengeRule: ChallengeRule.VOID });
+  expect(screen.getByText("Check")).toBeInTheDocument();
+  expect(screen.queryByText("Challenge")).toBeNull();
+});
+
+it("keeps Challenge and no Check in a game that can be challenged", () => {
+  renderGameControls({ myTurn: true, challengeRule: ChallengeRule.DOUBLE });
+  expect(screen.queryByText("Check")).toBeNull();
+  expect(screen.getByText("Challenge")).toBeInTheDocument();
 });
 
 // A game in play, two moves in, with "me" as a player.

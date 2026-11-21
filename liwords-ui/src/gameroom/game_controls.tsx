@@ -30,6 +30,7 @@ import { ChallengeRule } from "../gen/api/proto/vendored/macondo/macondo_pb";
 const Board3DModal = React.lazy(() => import("./board3d/Board3DModal"));
 import { convertGameStateTo3DData } from "./board3d/convert";
 import { Board3DData } from "./board3d/types";
+import { WordCheck } from "./word_check";
 
 const downloadGameImg = (downloadFilename: string) => {
   const link = document.createElement("a");
@@ -341,6 +342,14 @@ const GameControls = React.memo((props: Props) => {
       setCurrentPopUp(currentPopUp);
     }
   }, [currentPopUp, actualCurrentPopUp]);
+
+  // VOID games have no Challenge; their players get Check in its place while
+  // the game is in play (word_check.tsx).
+  const wordCheckShown =
+    props.challengeRule === ChallengeRule.VOID &&
+    !props.isExamining &&
+    !props.boardEditingMode &&
+    !props.observer;
 
   const passButton = useRef<HTMLButtonElement>(null);
   const challengeButton = useRef<HTMLButtonElement>(null);
@@ -669,8 +678,13 @@ const GameControls = React.memo((props: Props) => {
         </div>
         <div className="secondary-controls">
           {!props.puzzleMode &&
-            (props.isExamining &&
-            props.challengeRule === ChallengeRule.FIVE_POINT ? (
+            (wordCheckShown ? (
+              <WordCheck
+                gameID={gameContext.gameID}
+                disabled={gameHasNotStarted}
+              />
+            ) : props.isExamining &&
+              props.challengeRule === ChallengeRule.FIVE_POINT ? (
               // For editor mode + 5-point challenges, skip the confirmation popover
               // since the word selection modal already serves as confirmation
               <Button

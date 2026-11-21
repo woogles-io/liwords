@@ -4058,3 +4058,15 @@ p.rune {
     transform: translateX(-300px); // Slide left by half the drawer width
   }
 }
+
+// The VOID word check's answers scroll within its popover.
+.word-check-results {
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+// Its box is as tall as the Check beside it, a button as the site's buttons
+// are (base.scss, @mixin button).
+.word-check .ant-input {
+  height: 36px;
+}
