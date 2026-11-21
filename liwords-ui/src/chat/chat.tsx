@@ -506,14 +506,19 @@ export const Chat = React.memo((props: Props) => {
   // When window is shrunk, auto-scroll may be enabled. This is one-way.
   // Hiding bookmarks bar or downloaded files bar should keep it enabled.
   const enableChatAutoScroll = useCallback(() => {
-    const tab = document.getElementById("chat");
-    if (tab && tab?.scrollTop >= tab?.scrollHeight - tab?.clientHeight) {
+    // The message list, not the card around it (which never scrolls), and
+    // never while it shows older history.
+    if (
+      chatTab &&
+      !win.hasNewer &&
+      chatTab.scrollTop + 12 >= chatTab.scrollHeight - chatTab.clientHeight
+    ) {
       setChatAutoScroll(true);
     }
     // When window is shrunk, keep the bottom entity instead of the top.
     doChatAutoScroll();
     setHeight();
-  }, [doChatAutoScroll, setHeight]);
+  }, [chatTab, win.hasNewer, doChatAutoScroll, setHeight]);
 
   const fetchChannels = useCallback(async () => {
     if (loggedIn) {
@@ -795,6 +800,10 @@ export const Chat = React.memo((props: Props) => {
           return undefined;
         });
 
+        // Not stuck to the bottom while the messages come in: the chat
+        // may open at a "new messages" line instead.
+        setChatAutoScroll(false);
+        scrollToDivider.current = true;
         let opened;
         try {
           opened = await history.open(newChannel);
@@ -804,11 +813,8 @@ export const Chat = React.memo((props: Props) => {
         }
         setHasUnreadChat(false);
         lastMarked.current = opened.lastReadAtOpen;
-        if (opened.dividerBefore) {
-          // Open at the first unread message, not at the bottom.
-          setChatAutoScroll(false);
-          scrollToDivider.current = true;
-        } else {
+        if (!opened.dividerBefore) {
+          scrollToDivider.current = false;
           setChatAutoScroll(true);
         }
         setHeight();
@@ -1054,6 +1060,11 @@ export const Chat = React.memo((props: Props) => {
     }
     const line = chatTab.querySelector<HTMLElement>(".new-messages-line");
     if (line) {
+      // An auto-scroll set going before would pull the list to the bottom.
+      if (autoScrollTimeoutRef.current) {
+        clearTimeout(autoScrollTimeoutRef.current);
+        autoScrollTimeoutRef.current = null;
+      }
       chatTab.scrollTop +=
         line.getBoundingClientRect().top -
         chatTab.getBoundingClientRect().top -
