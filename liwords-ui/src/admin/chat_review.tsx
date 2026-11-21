@@ -29,9 +29,6 @@ const channelTypes = [
   { value: "chat.lobby", label: "Lobby" },
 ];
 
-// between the requests of one search.
-const SEARCH_PAUSE_MS = 300;
-
 export const formatTime = (ms: bigint): string =>
   ms ? new Date(Number(ms)).toISOString() : "";
 
@@ -493,8 +490,9 @@ export const ChatReview = () => {
   const [searchedContaining, setSearchedContaining] = useState("");
   const [rows, setRows] = useState<Array<ChatChannelSummary>>([]);
   const [searching, setSearching] = useState(false);
-  const [complete, setComplete] = useState(false);
-  const stopRef = useRef(false);
+  // where the search goes on from with More; "0" once all is found
+  const [nextCursor, setNextCursor] = useState("0");
+  const [searchedPrefix, setSearchedPrefix] = useState("");
   // bumped by each search or lookup, so an older search's late replies are
   // dropped instead of mixed in.
   const runRef = useRef(0);
@@ -502,42 +500,52 @@ export const ChatReview = () => {
   // what the rows were looked up by, if they were.
   const [lookedUp, setLookedUp] = useState("");
 
-  // The server searches a batch of channels per request; keep asking until it
-  // has all been searched or Stop is pressed, pausing between batches so a
-  // long search does not keep the live database busy.
-  const search = async (forUser: string, forPrefix: string) => {
-    const run = ++runRef.current;
-    stopRef.current = false;
+  // A search shows its first page, newest first where it can, and More each
+  // next one, so a user who chatted in a great many channels, or a type with a
+  // great many, costs only what is looked at.
+  const fetchPage = async (
+    run: number,
+    forUser: string,
+    forPrefix: string,
+    words: string,
+    cursor: string,
+  ) => {
     setSearching(true);
-    setComplete(false);
-    setSearchedUser(forUser.trim());
-    const words = containing.trim();
-    setSearchedContaining(words);
-    setLookedUp("");
-    setRows([]);
-    let cursor = "";
     try {
-      do {
-        const resp = await modClient.listChatChannels({
-          channelPrefix: forPrefix,
-          username: forUser,
-          cursor,
-          containing: words,
-        });
-        if (run !== runRef.current) return;
-        setRows((prev) => mergeRows(prev, resp.channels));
-        cursor = resp.nextCursor;
-        if (cursor !== "0" && !stopRef.current) {
-          await new Promise((r) => setTimeout(r, SEARCH_PAUSE_MS));
-        }
-      } while (cursor !== "0" && !stopRef.current);
-      setComplete(cursor === "0");
+      const resp = await modClient.listChatChannels({
+        channelPrefix: forPrefix,
+        username: forUser,
+        cursor,
+        containing: words,
+      });
+      if (run !== runRef.current) return;
+      setRows((prev) => mergeRows(prev, resp.channels));
+      setNextCursor(resp.nextCursor);
     } catch (e) {
       if (run === runRef.current) flashError(e);
     } finally {
       if (run === runRef.current) setSearching(false);
     }
   };
+  const search = (forUser: string, forPrefix: string) => {
+    const run = ++runRef.current;
+    const words = containing.trim();
+    setSearchedUser(forUser.trim());
+    setSearchedContaining(words);
+    setSearchedPrefix(forPrefix);
+    setLookedUp("");
+    setRows([]);
+    setNextCursor("0");
+    fetchPage(run, forUser, forPrefix, words, "");
+  };
+  const more = () =>
+    fetchPage(
+      runRef.current,
+      searchedUser,
+      searchedPrefix,
+      searchedContaining,
+      nextCursor,
+    );
 
   const searchedLinked = useRef(false);
   useEffect(() => {
@@ -568,7 +576,7 @@ export const ChatReview = () => {
       setSearchedContaining(words);
       setLookedUp(find);
       setRows(resp.channels);
-      setComplete(true);
+      setNextCursor("0");
     } catch (e) {
       flashError(e);
     }
@@ -605,13 +613,9 @@ export const ChatReview = () => {
           options={channelTypes}
           style={{ width: 200 }}
         />
-        {searching ? (
-          <Button onClick={() => (stopRef.current = true)}>Stop</Button>
-        ) : (
-          <Button type="primary" onClick={() => search(username, prefix)}>
-            Search
-          </Button>
-        )}
+        <Button type="primary" onClick={() => search(username, prefix)}>
+          Search
+        </Button>
       </Space>
       <p>
         <Typography.Text type="secondary">
@@ -644,14 +648,17 @@ export const ChatReview = () => {
       </p>
       <Space wrap style={{ marginBottom: 8 }}>
         <span>
-          {searching
-            ? `Searching... ${rows.length} channels found so far`
-            : lookedUp && rows.length === 0
-              ? `Nothing found for "${lookedUp}"`
-              : `${rows.length} channel${rows.length === 1 ? "" : "s"}${
-                  rows.length > 0 && !complete ? " (search stopped early)" : ""
-                }`}
+          {lookedUp && rows.length === 0 && !searching
+            ? `Nothing found for "${lookedUp}"`
+            : `${rows.length} channel${rows.length === 1 ? "" : "s"}${
+                searching ? ", searching..." : ""
+              }`}
         </span>
+        {nextCursor !== "0" && !lookedUp && (
+          <Button loading={searching} onClick={more}>
+            More
+          </Button>
+        )}
         <Button
           disabled={rows.length === 0}
           onClick={() =>

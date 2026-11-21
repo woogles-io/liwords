@@ -35,9 +35,8 @@ var reviewableChannelPrefixes = map[string]bool{
 const (
 	// channel names walked per step.
 	chatScanStepCount = 500
-	// steps per request; the client asks again with the returned cursor,
-	// pausing between requests. A step counts its channels' messages in one
-	// query, without reading them.
+	// steps per request; More asks again with the returned cursor. A step
+	// counts its channels' messages in one query, without reading them.
 	chatScanMaxSteps = 2
 	// a request stops early once it has this many channels to return; a
 	// search by user lists this many of the channels they wrote in a page.
