@@ -1,5 +1,5 @@
 import { create } from "@bufbuild/protobuf";
-import { act, renderHook, waitFor } from "@testing-library/react";
+import { act, render, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   ChallengeRule,
@@ -193,5 +193,44 @@ describe("the phony checker", () => {
         "All words played are valid",
       );
     });
+  });
+});
+
+describe("the definitions shown for a tile", () => {
+  beforeEach(() => {
+    mock.defineWords.mockReset();
+    mock.defineWords.mockImplementation(
+      async ({ words }: { words: string[]; definitions: boolean }) => ({
+        results: Object.fromEntries(
+          words.map((word) => [
+            word,
+            word === PHONY
+              ? { v: false, d: "" }
+              : { v: true, d: `the meaning of ${word}` },
+          ]),
+        ),
+      }),
+    );
+  });
+
+  it("ends each definition with a button that copies its word", async () => {
+    const { result } = renderChecker(vi.fn(), "CSW24");
+    act(() => result.current.handleSetHover(7, 7, ["koolahs", PHONY]));
+    await waitFor(() =>
+      expect(result.current.definitionPopover).not.toBeUndefined(),
+    );
+    const { container } = render(
+      <div>{result.current.definitionPopover!.content}</div>,
+    );
+    await waitFor(() =>
+      expect(container.querySelectorAll(".definition-entry")).toHaveLength(2),
+    );
+    // a copy button at the end of each line, the word's own and the phony's
+    const lines = [...container.querySelectorAll(".definition-entry")];
+    for (const line of lines) {
+      expect(line.querySelector(".ant-typography-copy")).not.toBeNull();
+    }
+    expect(lines[0].textContent).toContain("KOOLAHS - the meaning of KOOLAHS");
+    expect(lines[1].textContent).toContain(`${PHONY}* - not a word`);
   });
 });

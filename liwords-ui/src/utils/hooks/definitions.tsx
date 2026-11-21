@@ -5,6 +5,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { Typography } from "antd";
 import { GameState } from "../../store/reducers/game_reducer";
 import { ChatEntityType, ChatEntityObj } from "../../store/constants";
 import { Blank } from "../../utils/cwgame/common";
@@ -15,6 +16,13 @@ import {
 } from "../../gen/api/proto/vendored/macondo/macondo_pb";
 import { useClient } from "./connect";
 import { WordService } from "../../gen/api/proto/word_service/word_service_pb";
+
+// The button at the end of a definition's line copies the word that starts
+// it, as shown (a phony without its *), to look it up or study it elsewhere.
+// antd's button keeps its click from the popup, which a click inside closes.
+const copyWord = (word: string) => (
+  <Typography.Text className="definition-copy" copyable={{ text: word }} />
+);
 
 export const useDefinitionAndPhonyChecker = ({
   addChat,
@@ -116,7 +124,8 @@ export const useDefinitionAndPhonyChecker = ({
             numAnagramsEach.push(anagramDefinitions.length);
             entries.push(
               <li key={entries.length} className="definition-entry">
-                {anagramDefinition.definition}
+                {anagramDefinition.definition}{" "}
+                {copyWord(anagramDefinition.word)}
               </li>,
             );
           }
@@ -134,7 +143,8 @@ export const useDefinitionAndPhonyChecker = ({
                 <span className="invalid-word">
                   {anagrams ? "no valid words" : "not a word"}
                 </span>
-              )}
+              )}{" "}
+              {copyWord(uppercasedWord)}
             </li>,
           );
         }
