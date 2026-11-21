@@ -223,7 +223,7 @@ outerfor:
 					if len(subtopics) > 5 {
 						userID := subtopics[4]
 						connID := subtopics[5]
-						b.pubToConnectionID(connID, userID, entity.WrapEvent(&pb.ErrorMessage{Message: err.Error()},
+						b.pubToConnectionID(connID, userID, entity.WrapEvent(errorMessage(err),
 							pb.MessageType_ERROR_MESSAGE).WithTrace(msgCtx))
 					}
 				}
@@ -681,7 +681,10 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 			return err
 		}
 		log.Debug().Str("user", userID).Str("msg", evt.Message).Str("channel", evt.Channel).Msg("chat")
-		return b.chat(ctx, userID, evt)
+		if err := b.chat(ctx, userID, evt); err != nil {
+			return &refusedChat{err: err, chat: &pb.ChatMessage{Channel: evt.Channel, Message: evt.Message}}
+		}
+		return nil
 
 	case pb.MessageType_DECLINE_SEEK_REQUEST.String():
 		evt := &pb.DeclineSeekRequest{}

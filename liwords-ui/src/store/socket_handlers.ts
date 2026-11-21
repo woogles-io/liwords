@@ -286,7 +286,7 @@ export const ReverseMessageType = (() => {
 
 export const useOnSocketMsg = () => {
   const { challengeResultEvent } = useChallengeResultEventStoreContext();
-  const { addChat, deleteChat } = useChatStoreContext();
+  const { addChat, deleteChat, setRefusedChat } = useChatStoreContext();
   const { excludedPlayers } = useExcludedPlayersStoreContext();
   const { dispatchGameContext, gameContext } = useGameContextStoreContext();
   const { gameMetaEventContext, setGameMetaEventContext } =
@@ -504,6 +504,10 @@ export const useOnSocketMsg = () => {
               message: errorMessage,
               channel: "server",
             });
+            // a chat message refused (sent too soon, say) goes back to its box
+            if (err.refusedChat) {
+              setRefusedChat(err.refusedChat);
+            }
             break;
           }
 
@@ -1208,6 +1212,7 @@ export const useOnSocketMsg = () => {
       setFriends,
       setCurrentLagMs,
       setGameEndMessage,
+      setRefusedChat,
       setGameMetaEventContext,
       setPresence,
       setRematchRequest,

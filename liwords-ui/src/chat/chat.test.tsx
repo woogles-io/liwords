@@ -2,6 +2,8 @@ import React from "react";
 import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 import { Chat, Props } from "./chat";
 import socializeClient from "../__mocks__/socialize_client";
+import { create } from "@bufbuild/protobuf";
+import { ChatMessageSchema } from "../gen/api/proto/ipc/chat_pb";
 import {
   Store,
   useChatStoreContext,
@@ -469,5 +471,81 @@ describe("a channel's history, a page at a time", () => {
     live(25, pm); // but a new message in it does
     await waitFor(() => expect(badge()).toBe("2"));
     vi.unstubAllGlobals();
+  });
+});
+
+// signed in: the box keeps its message for someone signed in
+const SignedIn = () => {
+  const { dispatchLoginState } = useLoginStateStoreContext();
+  React.useEffect(() => {
+    dispatchLoginState({
+      actionType: ActionType.SetAuthentication,
+      payload: {
+        username: "will",
+        userID: "will-id",
+        loggedIn: true,
+        connID: "c1",
+      },
+    });
+  }, [dispatchLoginState]);
+  return null;
+};
+
+// the server refusing a message, as its error brings it back
+const Refuse = (props: { channel: string; message: string }) => {
+  const { setRefusedChat } = useChatStoreContext();
+  return (
+    <button
+      onClick={() =>
+        setRefusedChat(
+          create(ChatMessageSchema, {
+            channel: props.channel,
+            message: props.message,
+          }),
+        )
+      }
+    >
+      refuse
+    </button>
+  );
+};
+
+describe("a message the server refused", () => {
+  beforeEach(() => {
+    socializeClient.getChatsForChannel.mockResolvedValue({
+      data: { messages: [] },
+    });
+  });
+
+  const renderSignedIn = (refused: string) =>
+    render(
+      <Store>
+        <SignedIn />
+        <Chat
+          defaultChannel="chat.game.123"
+          defaultDescription="Cesar"
+          sendChat={() => {}}
+        />
+        <Refuse channel="chat.game.123" message={refused} />
+      </Store>,
+    );
+
+  it("comes back to its box, to send again", async () => {
+    const { findByPlaceholderText, getByText } = renderSignedIn("gg wp");
+    const box = (await findByPlaceholderText("chat...")) as HTMLInputElement;
+    expect(box.value).toBe("");
+    fireEvent.click(getByText("refuse"));
+    await waitFor(() => expect(box.value).toBe("gg wp"));
+  });
+
+  it("leaves alone what was typed since", async () => {
+    const { findByPlaceholderText, getByText } = renderSignedIn("gg wp");
+    const box = (await findByPlaceholderText("chat...")) as HTMLInputElement;
+    fireEvent.change(box, { target: { value: "thanks" } });
+    await waitFor(() => expect(box.value).toBe("thanks"));
+    fireEvent.click(getByText("refuse"));
+    // the refusal is handled, and the box keeps its own
+    await new Promise((r) => setTimeout(r, 0));
+    expect(box.value).toBe("thanks");
   });
 });
