@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"github.com/matryer/is"
+
+	"github.com/woogles-io/liwords/pkg/clientid"
 )
 
 func TestClientIPFromRequest(t *testing.T) {
@@ -57,9 +59,9 @@ func TestClientInfoMiddleware(t *testing.T) {
 	h.ServeHTTP(rec, r)
 	cookies := rec.Result().Cookies()
 	is.Equal(len(cookies), 1)
-	is.Equal(cookies[0].Name, ClientIDCookie)
+	is.Equal(cookies[0].Name, clientid.Cookie)
 	is.True(cookies[0].HttpOnly)
-	is.True(ValidClientID(cookies[0].Value))
+	is.True(clientid.Valid(cookies[0].Value))
 	is.Equal(gotID, "")
 	is.Equal(gotIP, "192.0.2.5")
 
@@ -67,7 +69,7 @@ func TestClientInfoMiddleware(t *testing.T) {
 	issued := cookies[0].Value
 	rec = httptest.NewRecorder()
 	r = httptest.NewRequest(http.MethodGet, "/", nil)
-	r.AddCookie(&http.Cookie{Name: ClientIDCookie, Value: issued})
+	r.AddCookie(&http.Cookie{Name: clientid.Cookie, Value: issued})
 	h.ServeHTTP(rec, r)
 	is.Equal(len(rec.Result().Cookies()), 0)
 	is.Equal(gotID, issued)
@@ -75,7 +77,7 @@ func TestClientInfoMiddleware(t *testing.T) {
 	// Malformed cookie: replaced.
 	rec = httptest.NewRecorder()
 	r = httptest.NewRequest(http.MethodGet, "/", nil)
-	r.AddCookie(&http.Cookie{Name: ClientIDCookie, Value: "bogus"})
+	r.AddCookie(&http.Cookie{Name: clientid.Cookie, Value: "bogus"})
 	h.ServeHTTP(rec, r)
 	is.Equal(len(rec.Result().Cookies()), 1)
 	is.Equal(gotID, "")
