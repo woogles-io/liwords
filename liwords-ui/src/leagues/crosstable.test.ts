@@ -10,6 +10,7 @@ import {
   ifEndedNow,
   onTurnCounts,
   scoreType,
+  sortedByRank,
   tilesToPlay,
 } from "./crosstable";
 
@@ -165,6 +166,39 @@ describe("tilesToPlay", () => {
     expect(n.get("a")).toBeNull();
     expect(n.get("b")).toBe(50);
     expect(n.get("c")).toBeNull();
+  });
+});
+
+describe("sortedByRank", () => {
+  const rows = [
+    { rank: 3, name: "c", n: 5 },
+    { rank: 1, name: "a", n: 2 },
+    { rank: 2, name: "b", n: 5 },
+  ];
+  const byN = (x: { n: number }, y: { n: number }) => x.n - y.n;
+  it("keeps rank order with no sort", () => {
+    expect(sortedByRank(rows, null, undefined).map((r) => r.name)).toEqual([
+      "a",
+      "b",
+      "c",
+    ]);
+    expect(sortedByRank(rows, byN, undefined).map((r) => r.name)).toEqual([
+      "a",
+      "b",
+      "c",
+    ]);
+  });
+  it("sorts either way, ties by rank", () => {
+    expect(sortedByRank(rows, byN, "descend").map((r) => r.name)).toEqual([
+      "b",
+      "c",
+      "a",
+    ]);
+    expect(sortedByRank(rows, byN, "ascend").map((r) => r.name)).toEqual([
+      "a",
+      "b",
+      "c",
+    ]);
   });
 });
 

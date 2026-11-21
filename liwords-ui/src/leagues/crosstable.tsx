@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Spin, Table, type TableColumnsType, Tooltip, Typography } from "antd";
+import type { SortOrder } from "antd/es/table/interface";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import { useQuery } from "@connectrpc/connect-query";
 import { Division } from "../gen/api/proto/ipc/league_pb";
@@ -309,6 +310,20 @@ export const tilesToPlay = (
   return out;
 };
 
+// The players in the order a sort asks for, ties by rank, or by rank alone
+// with no sort. The rows and the grid's columns both follow it, so each
+// player's own square stays on the diagonal.
+export const sortedByRank = <T extends { rank: number }>(
+  rows: Array<T>,
+  compare: ((a: T, b: T) => number) | null,
+  order: SortOrder | undefined,
+): Array<T> => {
+  const out = [...rows].sort((a, b) => a.rank - b.rank);
+  if (!compare || !order) return out;
+  const dir = order === "descend" ? -1 : 1;
+  return out.sort((a, b) => dir * compare(a, b) || a.rank - b.rank);
+};
+
 // The width the cross-table needs before its totals stay in view at the right:
 // the names and the totals take about 320px, which leaves room for two or more
 // games between them. It goes by the table, not the screen, since the page's
@@ -322,6 +337,8 @@ const PIN_TOTALS_WIDTH = 480;
 // name is followed by how many games wait on that player (onTurnCounts) and
 // their tiles still to play (tilesToPlay), and the grid ends with each
 // player's totals if every game ended now (ifEndedNow).
+// The rank, the name, those two, and the rank if every game ended now sort
+// the players.
 export const DivisionCrosstable = (props: {
   division: Division;
   onChat?: (uuid: string, username: string) => void;
@@ -343,6 +360,10 @@ export const DivisionCrosstable = (props: {
     { retry: false },
   );
   const [hover, setHover] = useState<CrossHover>(null);
+  // the column the players are sorted by; by rank when none
+  const [sort, setSort] = useState<{ key: string; order: SortOrder } | null>(
+    null,
+  );
   // whose season games are open, from a name's "View game history".
   const [historyPlayer, setHistoryPlayer] = useState<{
     userId: string;
@@ -381,6 +402,27 @@ export const DivisionCrosstable = (props: {
   const anyTiles = [...cells.values()].some((list) =>
     list.some((g) => g.tilesUnplayed !== undefined),
   );
+  const compareBy: Record<string, (a: Row, b: Row) => number> = {
+    rank: (a, b) => a.rank - b.rank,
+    username: (a, b) => a.username.localeCompare(b.username),
+    onTurn: (a, b) => (onTurn.get(a.userId) ?? 0) - (onTurn.get(b.userId) ?? 0),
+    tiles: (a, b) => (tiles.get(a.userId) ?? -1) - (tiles.get(b.userId) ?? -1),
+    nowRank: (a, b) =>
+      (now.get(a.userId)?.rank ?? 0) - (now.get(b.userId)?.rank ?? 0),
+  };
+  const sorted = sortedByRank(
+    rows,
+    sort ? (compareBy[sort.key] ?? null) : null,
+    sort?.order,
+  );
+  // A column that sorts the players, without the sort arrows (as the
+  // standings).
+  const sortable = (key: string, directions: Array<SortOrder>) => ({
+    sorter: true,
+    sortOrder: sort?.key === key ? sort.order : null,
+    sortDirections: directions,
+    sortIcon: () => null,
+  });
 
   if (isLoading) {
     return <Spin />;
@@ -404,12 +446,14 @@ export const DivisionCrosstable = (props: {
       key: "rank",
       fixed: "left" as const,
       onCell: playerCell,
+      ...sortable("rank", ["descend", "ascend"]),
     },
     {
       title: "Player",
       key: "username",
       fixed: "left" as const,
       onCell: playerCell,
+      ...sortable("username", ["ascend", "descend"]),
       render: (_: unknown, row: Row) => (
         <UsernameWithContext
           username={row.username}
@@ -444,6 +488,7 @@ export const DivisionCrosstable = (props: {
           align: "center" as const,
           fixed: wide ? ("left" as const) : undefined,
           onCell: playerCell,
+          ...sortable("onTurn", ["descend", "ascend"]),
           render: (_: unknown, row: Row) => onTurn.get(row.userId) || null,
         },
         ...(anyTiles
@@ -458,6 +503,7 @@ export const DivisionCrosstable = (props: {
                 align: "center" as const,
                 fixed: wide ? ("left" as const) : undefined,
                 onCell: playerCell,
+                ...sortable("tiles", ["descend", "ascend"]),
                 render: (_: unknown, row: Row) => tiles.get(row.userId) || null,
               },
             ]
@@ -516,13 +562,16 @@ export const DivisionCrosstable = (props: {
               (n) => (n.spread > 0 ? `+${n.spread}` : `${n.spread}`),
               (n) => n.final,
             ),
-            nowColumn(
-              "nowRank",
-              "#",
-              "Rank in division",
-              (n) => `${n.rank}${n.tied ? "=" : ""}`,
-              () => false,
-            ),
+            {
+              ...nowColumn(
+                "nowRank",
+                "#",
+                "Rank in division",
+                (n) => `${n.rank}${n.tied ? "=" : ""}`,
+                () => false,
+              ),
+              ...sortable("nowRank", ["ascend", "descend"]),
+            },
           ],
         },
       ]
@@ -531,7 +580,7 @@ export const DivisionCrosstable = (props: {
   const columns: TableColumnsType<Row> = [
     ...fixedColumns,
     ...onTurnColumns,
-    ...rows.map((col) => ({
+    ...sorted.map((col) => ({
       title: (
         <Tooltip title={col.username}>
           <span style={{ cursor: "help" }}>{col.rank}</span>
@@ -571,10 +620,19 @@ export const DivisionCrosstable = (props: {
       <Table
         className="division-crosstable"
         columns={columns}
-        dataSource={rows}
+        dataSource={sorted}
         pagination={false}
         size="small"
         scroll={{ x: "max-content" }}
+        showSorterTooltip={false}
+        onChange={(_pagination, _filters, sorter) => {
+          const s = Array.isArray(sorter) ? sorter[0] : sorter;
+          setSort(
+            s?.order && s.columnKey !== undefined
+              ? { key: String(s.columnKey), order: s.order }
+              : null,
+          );
+        }}
       />
       {historyPlayer && props.seasonId && (
         <PlayerGameHistoryModal
