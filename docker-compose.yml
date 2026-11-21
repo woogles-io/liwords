@@ -58,7 +58,7 @@ services:
       - ./data/lexica/gaddag:/opt/program/data/lexica/gaddag
       - ../macondo/data/strategy:/opt/program/data/strategy
       - ${AWS_CREDENTIALS_PATH:-~/.aws}:/root/.aws:ro
-    command: sh -c "go run -race cmd/liwords-api/*.go"
+    command: sh -c "go run -race ./cmd/liwords-api"
     depends_on: ["db", "proxy", "nats", "socket", "redis", "minio"]
     networks:
       - aeronet
@@ -112,6 +112,8 @@ services:
       SECRET_KEY: jqxztripletriple
       DEBUG: 1
       NATS_URL: nats://nats:4222
+      OTEL_RESOURCE_ATTRIBUTES: "service.name=liwords-socket,service.version=0.1.0"
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
     volumes:
       - .:/opt/program:rw
     command: ["go", "run", "-race", "cmd/socketsrv/main.go"]
