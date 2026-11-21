@@ -207,6 +207,12 @@ type CollectionGame struct {
 	AddedAt       pgtype.Timestamptz
 }
 
+type ConfigSetting struct {
+	Key       string
+	Value     string
+	UpdatedAt pgtype.Timestamptz
+}
+
 type DbSession struct {
 	Uuid      string
 	ExpiresAt pgtype.Timestamptz
