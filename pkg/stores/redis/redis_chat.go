@@ -232,8 +232,8 @@ func rstreamMsgToChatMsg(v interface{}) (*pb.ChatMessage, error) {
 	return msg, nil
 }
 
-// DeleteChat deletes a chat.
-func (r *RedisChatStore) DeleteChat(ctx context.Context, channel, msgID string) error {
+// DeleteChat deletes a chat. Redis keeps no record of who deleted it.
+func (r *RedisChatStore) DeleteChat(ctx context.Context, channel, msgID, deletedBy string) error {
 	redisKey := "chat:" + strings.TrimPrefix(channel, "chat.")
 	log.Debug().Str("redisKey", redisKey).Str("msgID", msgID).Msg("delete-chat")
 	conn := r.redisPool.Get()

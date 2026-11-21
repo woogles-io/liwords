@@ -133,7 +133,8 @@ type ChatStore interface {
 	LatestChannels(ctx context.Context, count, offset int, uid, tid, lid string) (*upb.ActiveChatChannels, error)
 
 	GetChat(ctx context.Context, channel string, msgID string) (*pb.ChatMessage, error)
-	DeleteChat(ctx context.Context, channel string, msgID string) error
+	// DeleteChat removes a message; deletedBy is the moderator's UUID.
+	DeleteChat(ctx context.Context, channel, msgID, deletedBy string) error
 	ScanChannels(ctx context.Context, cursor, prefix string, count int) ([]string, string, error)
 	SetEventChan(chan *entity.EventWrapper)
 	EventChan() chan *entity.EventWrapper

@@ -168,6 +168,24 @@ type BroadcastSlot struct {
 	UpdatedAt   pgtype.Timestamptz
 }
 
+type ChatMessage struct {
+	ID             uuid.UUID
+	Channel        string
+	SenderID       pgtype.Int4
+	SenderUsername string
+	Message        string
+	CreatedAt      pgtype.Timestamptz
+	DeletedAt      pgtype.Timestamptz
+	DeletedBy      pgtype.Int4
+}
+
+type ChatRead struct {
+	UserID            int32
+	Channel           string
+	LastReadMessageID pgtype.UUID
+	UpdatedAt         pgtype.Timestamptz
+}
+
 type Collection struct {
 	ID          int32
 	Uuid        uuid.UUID
