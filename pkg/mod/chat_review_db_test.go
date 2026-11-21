@@ -431,3 +431,43 @@ func TestChatReviewContaining(t *testing.T) {
 	var ce *connect.Error
 	is.True(errors.As(err, &ce) && ce.Code() == connect.CodeInvalidArgument)
 }
+
+func TestChatReviewAnyoneNewestFirst(t *testing.T) {
+	is := is.New(t)
+	_, stores, _ := recreateDB()
+	defer stores.Disconnect()
+	ctx := DefaultConfig.WithContext(context.Background())
+	ms := mod.NewModService(stores.UserStore, stores.ChatStore, stores.Queries)
+	cesar, err := stores.UserStore.Get(ctx, "cesar")
+	is.NoErr(err)
+	is.NoErr(stores.Queries.AssignRole(ctx, models.AssignRoleParams{
+		Username: "cesar", RoleName: string(rbac.Moderator),
+	}))
+	modCtx := apiserver.PlaceInContext(ctx, &entity.Session{
+		ID: "review", Username: "cesar", UserUUID: cesar.UUID, Expiry: time.Now().Add(time.Hour),
+	})
+	say := func(ch string) {
+		_, err := stores.ChatStore.AddChat(ctx, "cesar", cesar.UUID, "hi", ch, false)
+		is.NoErr(err)
+	}
+	listed := func() []string {
+		resp, err := ms.ListChatChannels(modCtx, connect.NewRequest(&mspb.ListChatChannelsRequest{
+			ChannelPrefix: "chat.tournament.",
+		}))
+		is.NoErr(err)
+		// all of them on this page
+		is.Equal(resp.Msg.NextCursor, "0")
+		var names []string
+		for _, s := range resp.Msg.Channels {
+			names = append(names, s.Channel)
+		}
+		return names
+	}
+	say("chat.tournament.b")
+	say("chat.tournament.c")
+	say("chat.tournament.a")
+	// by their newest message, not by name
+	is.Equal(listed(), []string{"chat.tournament.a", "chat.tournament.c", "chat.tournament.b"})
+	say("chat.tournament.b")
+	is.Equal(listed(), []string{"chat.tournament.b", "chat.tournament.a", "chat.tournament.c"})
+}

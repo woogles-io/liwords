@@ -213,3 +213,18 @@ WHERE m.channel = @channel AND m.deleted_at IS NULL
   AND (sqlc.narg('before')::uuid IS NULL OR m.id < sqlc.narg('before')::uuid)
 ORDER BY m.id DESC
 LIMIT @lim;
+
+-- name: RecentChatChannelMessages :many
+-- The messages of the channels whose names start with prefix, newest first,
+-- older than before (or the newest, if before is NULL), for moderator chat
+-- review to list those channels by their newest message. Deleted messages
+-- and the server's own lines are left out. The prefix holds no LIKE
+-- wildcards (it is one of a fixed set).
+SELECT m.id, m.channel
+FROM chat_messages m
+WHERE m.channel LIKE @prefix::text || '%'
+  AND m.deleted_at IS NULL
+  AND (m.sender_id IS NOT NULL OR m.sender_username <> '')
+  AND (sqlc.narg('before')::uuid IS NULL OR m.id < sqlc.narg('before')::uuid)
+ORDER BY m.id DESC
+LIMIT @lim;

@@ -691,6 +691,53 @@ func (q *Queries) MarkChatRead(ctx context.Context, arg MarkChatReadParams) (int
 	return result.RowsAffected(), nil
 }
 
+const recentChatChannelMessages = `-- name: RecentChatChannelMessages :many
+SELECT m.id, m.channel
+FROM chat_messages m
+WHERE m.channel LIKE $1::text || '%'
+  AND m.deleted_at IS NULL
+  AND (m.sender_id IS NOT NULL OR m.sender_username <> '')
+  AND ($2::uuid IS NULL OR m.id < $2::uuid)
+ORDER BY m.id DESC
+LIMIT $3
+`
+
+type RecentChatChannelMessagesParams struct {
+	Prefix string
+	Before pgtype.UUID
+	Lim    int32
+}
+
+type RecentChatChannelMessagesRow struct {
+	ID      uuid.UUID
+	Channel string
+}
+
+// The messages of the channels whose names start with prefix, newest first,
+// older than before (or the newest, if before is NULL), for moderator chat
+// review to list those channels by their newest message. Deleted messages
+// and the server's own lines are left out. The prefix holds no LIKE
+// wildcards (it is one of a fixed set).
+func (q *Queries) RecentChatChannelMessages(ctx context.Context, arg RecentChatChannelMessagesParams) ([]RecentChatChannelMessagesRow, error) {
+	rows, err := q.db.Query(ctx, recentChatChannelMessages, arg.Prefix, arg.Before, arg.Lim)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []RecentChatChannelMessagesRow
+	for rows.Next() {
+		var i RecentChatChannelMessagesRow
+		if err := rows.Scan(&i.ID, &i.Channel); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const scanChatChannels = `-- name: ScanChatChannels :many
 SELECT DISTINCT m.channel
 FROM chat_messages m

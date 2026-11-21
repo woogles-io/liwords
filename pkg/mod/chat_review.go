@@ -33,10 +33,10 @@ var reviewableChannelPrefixes = map[string]bool{
 }
 
 const (
-	// channel names walked per step.
+	// messages walked per step, newest first: only their ids and channels
+	// are read.
 	chatScanStepCount = 500
-	// steps per request; More asks again with the returned cursor. A step
-	// counts its channels' messages in one query, without reading them.
+	// steps per request; More asks again with the returned cursor.
 	chatScanMaxSteps = 2
 	// a request stops early once it has this many channels to return; a
 	// search by user lists this many of the channels they wrote in a page.
@@ -429,38 +429,59 @@ func (ms *ModService) ListChatChannels(ctx context.Context, req *connect.Request
 		return connect.NewResponse(resp), nil
 	}
 
-	// Anyone's chats: the channels in name order, a batch per step, the
-	// cursor the last name walked.
-	cursor := req.Msg.Cursor
-	if cursor == "" {
-		cursor = "0"
+	// Anyone's chats: the channels by their newest message, newest first,
+	// found by walking the messages newest first, a batch per step; the
+	// cursor is the oldest message walked. A channel may come again on a
+	// later page, from its older messages; the page keeps the first.
+	var before pgtype.UUID
+	if c := req.Msg.Cursor; c != "" && c != "0" {
+		id, err := uuid.Parse(c)
+		if err != nil {
+			return nil, apiserver.InvalidArg("bad cursor")
+		}
+		before = pgtype.UUID{Bytes: id, Valid: true}
 	}
+	seen := map[string]bool{}
+	var recent []string
 	for step := 0; step < chatScanMaxSteps; step++ {
-		channels, next, err := ms.chatStore.ScanChannels(ctx, cursor, prefix, chatScanStepCount)
+		rows, err := ms.queries.RecentChatChannelMessages(ctx, models.RecentChatChannelMessagesParams{
+			Prefix: prefix,
+			Before: before,
+			Lim:    chatScanStepCount,
+		})
 		if err != nil {
 			return nil, err
 		}
-		cursor = next
-		summaries, err := ms.summaries(ctx, channels, "", "")
-		if err != nil {
-			return nil, err
-		}
-		var found []*pb.ChatChannelSummary
-		for _, summary := range summaries {
-			if summary.MessageCount > 0 {
-				found = append(found, summary)
+		for _, r := range rows {
+			if !seen[r.Channel] {
+				seen[r.Channel] = true
+				recent = append(recent, r.Channel)
 			}
 		}
-		found, err = ms.keepMatching(ctx, found, containing)
-		if err != nil {
-			return nil, err
+		if len(rows) < chatScanStepCount {
+			resp.NextCursor = "0"
+			break
 		}
-		resp.Channels = append(resp.Channels, found...)
-		if cursor == "0" || len(resp.Channels) >= chatScanMaxChannels {
+		last := rows[len(rows)-1].ID
+		before = pgtype.UUID{Bytes: last, Valid: true}
+		resp.NextCursor = last.String()
+		if len(recent) >= chatScanMaxChannels {
 			break
 		}
 	}
-	resp.NextCursor = cursor
+	summaries, err := ms.summaries(ctx, recent, "", "")
+	if err != nil {
+		return nil, err
+	}
+	for _, summary := range summaries {
+		if summary.MessageCount > 0 {
+			resp.Channels = append(resp.Channels, summary)
+		}
+	}
+	resp.Channels, err = ms.keepMatching(ctx, resp.Channels, containing)
+	if err != nil {
+		return nil, err
+	}
 	addContexts()
 	return connect.NewResponse(resp), nil
 }
