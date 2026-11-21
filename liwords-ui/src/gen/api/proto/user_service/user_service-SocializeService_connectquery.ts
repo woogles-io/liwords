@@ -51,3 +51,8 @@ export const getActiveChatChannels = SocializeService.method.getActiveChatChanne
  * @generated from rpc user_service.SocializeService.GetChatsForChannel
  */
 export const getChatsForChannel = SocializeService.method.getChatsForChannel;
+
+/**
+ * @generated from rpc user_service.SocializeService.MarkChannelRead
+ */
+export const markChannelRead = SocializeService.method.markChannelRead;

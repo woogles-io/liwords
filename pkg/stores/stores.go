@@ -125,11 +125,7 @@ func NewInitializedStores(dbPool *pgxpool.Pool, redisPool *redigoredis.Pool, cfg
 		return nil, err
 	}
 
-	// Initialize ChatStore after LeagueStore is ready. Chat is moving to
-	// Postgres: Redis still serves it, and every write is copied there.
-	stores.ChatStore = chat.NewMirror(
-		redis.NewRedisChatStore(redisPool, stores.PresenceStore, stores.TournamentStore, stores.LeagueStore),
-		models.New(dbPool))
+	stores.ChatStore = chat.NewDBStore(dbPool)
 
 	stores.Queries = models.New(dbPool)
 	stores.DBPool = dbPool

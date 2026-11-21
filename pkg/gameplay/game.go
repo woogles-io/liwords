@@ -466,8 +466,8 @@ func challengeResultLine(valid bool, returnedTiles string) string {
 }
 
 type chatAdder interface {
-	AddChat(ctx context.Context, senderUsername, senderUID, msg, channel,
-		channelFriendly string, regulateChat bool) (*pb.ChatMessage, error)
+	AddChat(ctx context.Context, senderUsername, senderUID, msg, channel string,
+		regulateChat bool) (*pb.ChatMessage, error)
 }
 
 // postChallengeResult stores a challenge's result line in both of the
@@ -486,7 +486,7 @@ func postChallengeResult(ctx context.Context, chats chatAdder, gameID,
 		{"chat.game." + gameID, entity.AudGame},
 		{"chat.gametv." + gameID, entity.AudGameTV},
 	} {
-		cm, err := chats.AddChat(ctx, "", "", line, c.channel, "", false)
+		cm, err := chats.AddChat(ctx, "", "", line, c.channel, false)
 		if err != nil {
 			log.Err(err).Str("gameID", gameID).Str("channel", c.channel).
 				Msg("challenge-result-chat-error")

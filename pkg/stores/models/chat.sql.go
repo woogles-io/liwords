@@ -12,6 +12,24 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const addChatMembers = `-- name: AddChatMembers :exec
+INSERT INTO chat_reads (user_id, channel)
+SELECT u.id, $1 FROM users u WHERE u.uuid = ANY($2::text[])
+ON CONFLICT (user_id, channel) DO NOTHING
+`
+
+type AddChatMembersParams struct {
+	Channel   string
+	UserUuids []string
+}
+
+// Makes users members of a channel (the two people in a private chat), with
+// nothing read yet if they weren't already.
+func (q *Queries) AddChatMembers(ctx context.Context, arg AddChatMembersParams) error {
+	_, err := q.db.Exec(ctx, addChatMembers, arg.Channel, arg.UserUuids)
+	return err
+}
+
 const addChatMessages = `-- name: AddChatMessages :execrows
 INSERT INTO chat_messages (id, channel, sender_id, sender_username, message, created_at)
 SELECT m.id, m.channel, u.id, m.sender_username, m.message, m.created_at
@@ -53,6 +71,108 @@ func (q *Queries) AddChatMessages(ctx context.Context, arg AddChatMessagesParams
 	return result.RowsAffected(), nil
 }
 
+const chatMessagesAfter = `-- name: ChatMessagesAfter :many
+SELECT m.id, m.sender_username, m.message, m.created_at, COALESCE(u.uuid, '')::text AS sender_uuid
+FROM chat_messages m
+LEFT JOIN users u ON u.id = m.sender_id
+WHERE m.channel = $1 AND m.deleted_at IS NULL AND m.id > $2
+ORDER BY m.id
+LIMIT $3
+`
+
+type ChatMessagesAfterParams struct {
+	Channel string
+	After   uuid.UUID
+	Lim     int32
+}
+
+type ChatMessagesAfterRow struct {
+	ID             uuid.UUID
+	SenderUsername string
+	Message        string
+	CreatedAt      pgtype.Timestamptz
+	SenderUuid     string
+}
+
+// A channel's messages newer than after, oldest first.
+func (q *Queries) ChatMessagesAfter(ctx context.Context, arg ChatMessagesAfterParams) ([]ChatMessagesAfterRow, error) {
+	rows, err := q.db.Query(ctx, chatMessagesAfter, arg.Channel, arg.After, arg.Lim)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ChatMessagesAfterRow
+	for rows.Next() {
+		var i ChatMessagesAfterRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.SenderUsername,
+			&i.Message,
+			&i.CreatedAt,
+			&i.SenderUuid,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const chatMessagesBefore = `-- name: ChatMessagesBefore :many
+SELECT m.id, m.sender_username, m.message, m.created_at, COALESCE(u.uuid, '')::text AS sender_uuid
+FROM chat_messages m
+LEFT JOIN users u ON u.id = m.sender_id
+WHERE m.channel = $1 AND m.deleted_at IS NULL
+  AND ($2::uuid IS NULL OR m.id < $2::uuid)
+ORDER BY m.id DESC
+LIMIT $3
+`
+
+type ChatMessagesBeforeParams struct {
+	Channel string
+	Before  pgtype.UUID
+	Lim     int32
+}
+
+type ChatMessagesBeforeRow struct {
+	ID             uuid.UUID
+	SenderUsername string
+	Message        string
+	CreatedAt      pgtype.Timestamptz
+	SenderUuid     string
+}
+
+// A channel's messages older than before (or the newest, if before is
+// NULL), newest first.
+func (q *Queries) ChatMessagesBefore(ctx context.Context, arg ChatMessagesBeforeParams) ([]ChatMessagesBeforeRow, error) {
+	rows, err := q.db.Query(ctx, chatMessagesBefore, arg.Channel, arg.Before, arg.Lim)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ChatMessagesBeforeRow
+	for rows.Next() {
+		var i ChatMessagesBeforeRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.SenderUsername,
+			&i.Message,
+			&i.CreatedAt,
+			&i.SenderUuid,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const deleteChatMessage = `-- name: DeleteChatMessage :execrows
 UPDATE chat_messages
 SET deleted_at = now(),
@@ -74,4 +194,219 @@ func (q *Queries) DeleteChatMessage(ctx context.Context, arg DeleteChatMessagePa
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const getChatMessage = `-- name: GetChatMessage :one
+SELECT m.id, m.sender_username, m.message, m.created_at, COALESCE(u.uuid, '')::text AS sender_uuid
+FROM chat_messages m
+LEFT JOIN users u ON u.id = m.sender_id
+WHERE m.id = $1 AND m.channel = $2 AND m.deleted_at IS NULL
+`
+
+type GetChatMessageParams struct {
+	ID      uuid.UUID
+	Channel string
+}
+
+type GetChatMessageRow struct {
+	ID             uuid.UUID
+	SenderUsername string
+	Message        string
+	CreatedAt      pgtype.Timestamptz
+	SenderUuid     string
+}
+
+func (q *Queries) GetChatMessage(ctx context.Context, arg GetChatMessageParams) (GetChatMessageRow, error) {
+	row := q.db.QueryRow(ctx, getChatMessage, arg.ID, arg.Channel)
+	var i GetChatMessageRow
+	err := row.Scan(
+		&i.ID,
+		&i.SenderUsername,
+		&i.Message,
+		&i.CreatedAt,
+		&i.SenderUuid,
+	)
+	return i, err
+}
+
+const getChatRead = `-- name: GetChatRead :one
+SELECT r.last_read_message_id
+FROM chat_reads r JOIN users u ON u.id = r.user_id
+WHERE u.uuid = $1::text AND r.channel = $2
+`
+
+type GetChatReadParams struct {
+	UserUuid string
+	Channel  string
+}
+
+func (q *Queries) GetChatRead(ctx context.Context, arg GetChatReadParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, getChatRead, arg.UserUuid, arg.Channel)
+	var last_read_message_id pgtype.UUID
+	err := row.Scan(&last_read_message_id)
+	return last_read_message_id, err
+}
+
+const lastRegulatedChat = `-- name: LastRegulatedChat :one
+SELECT m.message, m.created_at
+FROM chat_messages m
+WHERE m.sender_id = (SELECT u.id FROM users u WHERE u.uuid = $1::text)
+  AND m.channel NOT LIKE 'chat.pm.%' AND m.channel NOT LIKE 'chat.game.%'
+ORDER BY m.id DESC
+LIMIT 1
+`
+
+type LastRegulatedChatRow struct {
+	Message   string
+	CreatedAt pgtype.Timestamptz
+}
+
+// The sender's newest message in a channel where chat is rate-limited (all
+// but private and game chats), for the cooldown and repeat checks.
+func (q *Queries) LastRegulatedChat(ctx context.Context, senderUuid string) (LastRegulatedChatRow, error) {
+	row := q.db.QueryRow(ctx, lastRegulatedChat, senderUuid)
+	var i LastRegulatedChatRow
+	err := row.Scan(&i.Message, &i.CreatedAt)
+	return i, err
+}
+
+const listPrivateChats = `-- name: ListPrivateChats :many
+SELECT r.channel, r.last_read_message_id,
+       l.id AS last_id, l.message AS last_message, l.created_at AS last_at,
+       (l.sender_id IS NOT DISTINCT FROM r.user_id)::bool AS last_from_user,
+       ARRAY(SELECT p.username::text FROM users p
+             WHERE p.uuid = ANY(string_to_array(substr(r.channel, 9), '_')))::text[] AS usernames
+FROM chat_reads r
+JOIN users me ON me.id = r.user_id
+CROSS JOIN LATERAL (
+    SELECT m.id, m.message, m.created_at, m.sender_id
+    FROM chat_messages m
+    WHERE m.channel = r.channel AND m.deleted_at IS NULL
+    ORDER BY m.id DESC
+    LIMIT 1) l
+WHERE me.uuid = $1::text AND r.channel LIKE 'chat.pm.%'
+ORDER BY l.id DESC
+LIMIT $3 OFFSET $2
+`
+
+type ListPrivateChatsParams struct {
+	UserUuid string
+	Off      int32
+	Lim      int32
+}
+
+type ListPrivateChatsRow struct {
+	Channel           string
+	LastReadMessageID pgtype.UUID
+	LastID            uuid.UUID
+	LastMessage       string
+	LastAt            pgtype.Timestamptz
+	LastFromUser      bool
+	Usernames         []string
+}
+
+// The user's private chats with at least one message, most recent first,
+// with the newest message, the user's read position and both usernames.
+func (q *Queries) ListPrivateChats(ctx context.Context, arg ListPrivateChatsParams) ([]ListPrivateChatsRow, error) {
+	rows, err := q.db.Query(ctx, listPrivateChats, arg.UserUuid, arg.Off, arg.Lim)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListPrivateChatsRow
+	for rows.Next() {
+		var i ListPrivateChatsRow
+		if err := rows.Scan(
+			&i.Channel,
+			&i.LastReadMessageID,
+			&i.LastID,
+			&i.LastMessage,
+			&i.LastAt,
+			&i.LastFromUser,
+			&i.Usernames,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const lockChatSender = `-- name: LockChatSender :exec
+SELECT pg_advisory_xact_lock(hashtext('chat-sender:' || $1::text))
+`
+
+// Serializes one sender's messages within a transaction, so two at once
+// can't both pass the cooldown check.
+func (q *Queries) LockChatSender(ctx context.Context, senderUuid string) error {
+	_, err := q.db.Exec(ctx, lockChatSender, senderUuid)
+	return err
+}
+
+const markChatRead = `-- name: MarkChatRead :execrows
+INSERT INTO chat_reads (user_id, channel, last_read_message_id, updated_at)
+SELECT u.id, $1, $2, now()
+FROM users u
+WHERE u.uuid = $3::text
+  AND EXISTS (SELECT 1 FROM chat_messages m WHERE m.id = $2 AND m.channel = $1)
+ON CONFLICT (user_id, channel) DO UPDATE
+SET last_read_message_id = EXCLUDED.last_read_message_id, updated_at = now()
+WHERE chat_reads.last_read_message_id IS NULL
+   OR chat_reads.last_read_message_id < EXCLUDED.last_read_message_id
+`
+
+type MarkChatReadParams struct {
+	Channel   string
+	MessageID pgtype.UUID
+	UserUuid  string
+}
+
+// Moves the user's read position in a channel forward to message_id, a
+// message in that channel. It never moves it back.
+func (q *Queries) MarkChatRead(ctx context.Context, arg MarkChatReadParams) (int64, error) {
+	result, err := q.db.Exec(ctx, markChatRead, arg.Channel, arg.MessageID, arg.UserUuid)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const scanChatChannels = `-- name: ScanChatChannels :many
+SELECT DISTINCT m.channel
+FROM chat_messages m
+WHERE m.channel LIKE $1::text || '%' AND m.channel > $2::text
+ORDER BY m.channel
+LIMIT $3
+`
+
+type ScanChatChannelsParams struct {
+	Prefix string
+	After  string
+	Lim    int32
+}
+
+// Channels whose names start with prefix, in name order after after, for
+// moderator chat review. The prefix holds no LIKE wildcards (it is one of a
+// fixed set).
+func (q *Queries) ScanChatChannels(ctx context.Context, arg ScanChatChannelsParams) ([]string, error) {
+	rows, err := q.db.Query(ctx, scanChatChannels, arg.Prefix, arg.After, arg.Lim)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var channel string
+		if err := rows.Scan(&channel); err != nil {
+			return nil, err
+		}
+		items = append(items, channel)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
