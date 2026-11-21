@@ -356,4 +356,47 @@ describe("a channel's history, a page at a time", () => {
     await waitFor(() => expect(badge()).toBe(""));
     vi.unstubAllGlobals();
   });
+
+  it("clears a conversation the user replies to, from here or elsewhere", async () => {
+    vi.stubGlobal(
+      "IntersectionObserver",
+      class {
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+      },
+    );
+    socializeClient.getChatsForChannel.mockResolvedValue({
+      messages: [msg(1)],
+      hasOlder: false,
+      hasNewer: false,
+      lastReadId: id(1),
+    });
+    const { findByText, findByRole, container } = renderGame();
+    await findByText("message 1");
+    fireEvent.click(await findByRole("tab", { name: "Players" }));
+    const badge = () =>
+      container.querySelector(".notification")?.textContent ?? "";
+    const live = (n: number, channel: string, userId = "zed-id") =>
+      React.act(() =>
+        addLiveIn({
+          ...msg(n, userId),
+          channel,
+          timestamp: BigInt(Date.now() + n),
+        }),
+      );
+    const pm = "chat.pm.me-id_zed-id";
+    const other = "chat.pm.me-id_yan-id";
+    live(20, pm);
+    live(21, pm);
+    live(22, other);
+    await waitFor(() => expect(badge()).toBe("2"));
+    live(23, pm, "me-id"); // a reply, from another device
+    await waitFor(() => expect(badge()).toBe("1"));
+    live(24, other); // more elsewhere doesn't bring the replied one back
+    await waitFor(() => expect(badge()).toBe("1"));
+    live(25, pm); // but a new message in it does
+    await waitFor(() => expect(badge()).toBe("2"));
+    vi.unstubAllGlobals();
+  });
 });

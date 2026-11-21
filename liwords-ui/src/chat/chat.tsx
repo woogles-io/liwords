@@ -750,6 +750,17 @@ export const Chat = React.memo((props: Props) => {
       // If they're for other channels or we're on the channel screen
       // add them to the unseenMessage,
       // to indicate unread in the channels component
+      // The user's own newest message in each channel: what came before it
+      // was read (the server moves the read position to it).
+      const ownLatest = new Map<string, bigint>();
+      for (const ch of chatEntities) {
+        if (ch.senderId === userID && ch.timestamp) {
+          const t = ownLatest.get(ch.channel);
+          if (t === undefined || ch.timestamp > t) {
+            ownLatest.set(ch.channel, ch.timestamp);
+          }
+        }
+      }
       const otherUnreads = chatEntities
         .filter(
           // Only the ones since we switched to this channel
@@ -760,8 +771,9 @@ export const Chat = React.memo((props: Props) => {
         )
         .filter(
           (ch) =>
-            // And not our own
-            ch.senderId !== userID,
+            // And not our own, nor any the user has replied after
+            ch.senderId !== userID &&
+            ch.timestamp! > (ownLatest.get(ch.channel) ?? BigInt(0)),
         );
       if (otherUnreads.length) {
         setUnseenMessages((u) =>
@@ -784,6 +796,42 @@ export const Chat = React.memo((props: Props) => {
     showChannels,
     userID,
   ]);
+
+  // The user's own message, sent from here or from another device, means
+  // they have read its conversation (the server moves their read position to
+  // it), so it's no longer flagged here either.
+  const ownHandledUntil = useRef(BigInt(Date.now()));
+  useEffect(() => {
+    const replied = new Set<string>();
+    let newest = ownHandledUntil.current;
+    for (const ch of chatEntities) {
+      if (
+        ch.senderId === userID &&
+        ch.timestamp &&
+        ch.timestamp > ownHandledUntil.current
+      ) {
+        replied.add(ch.channel);
+        if (ch.timestamp > newest) {
+          newest = ch.timestamp;
+        }
+      }
+    }
+    if (!replied.size) {
+      return;
+    }
+    ownHandledUntil.current = newest;
+    const without = (set: ReadonlySet<string> | undefined) =>
+      set && [...replied].some((c) => set.has(c))
+        ? new Set([...set].filter((c) => !replied.has(c)))
+        : set;
+    setBadgeChannels((cur) => without(cur) ?? cur);
+    setUpdatedChannels((cur) => without(cur) as Set<string> | undefined);
+    setUnseenMessages((u) =>
+      u.some((m) => replied.has(m.channel))
+        ? u.filter((m) => !replied.has(m.channel))
+        : u,
+    );
+  }, [chatEntities, userID]);
 
   useEffect(() => {
     // new messages count on the Chat tab while its messages are out of
