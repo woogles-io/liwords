@@ -343,7 +343,7 @@ func removeChat(ctx context.Context, us user.Store, cs user.ChatStore, action *m
 		return err
 	}
 
-	err = cs.DeleteChat(ctx, action.Channel, action.MessageId)
+	err = cs.DeleteChat(ctx, action.Channel, action.MessageId, action.ApplierUserId)
 	if err != nil {
 		return err
 	}

@@ -7,6 +7,7 @@ import (
 	cfg "github.com/woogles-io/liwords/pkg/config"
 	owstores "github.com/woogles-io/liwords/pkg/omgwords/stores"
 
+	"github.com/woogles-io/liwords/pkg/stores/chat"
 	"github.com/woogles-io/liwords/pkg/stores/comments"
 	"github.com/woogles-io/liwords/pkg/stores/config"
 	"github.com/woogles-io/liwords/pkg/stores/game"
@@ -20,6 +21,7 @@ import (
 	"github.com/woogles-io/liwords/pkg/stores/stats"
 	"github.com/woogles-io/liwords/pkg/stores/tournament"
 	"github.com/woogles-io/liwords/pkg/stores/user"
+	pkguser "github.com/woogles-io/liwords/pkg/user"
 )
 
 type Stores struct {
@@ -27,7 +29,7 @@ type Stores struct {
 	GameStore       *game.Cache // we need to get rid of this cache
 	SoughtGameStore *soughtgame.DBStore
 	PresenceStore   *redis.RedisPresenceStore
-	ChatStore       *redis.RedisChatStore
+	ChatStore       pkguser.ChatStore
 	ListStatStore   *stats.DBStore
 	NotorietyStore  *mod.DBStore
 	TournamentStore *tournament.DBStore
@@ -123,8 +125,11 @@ func NewInitializedStores(dbPool *pgxpool.Pool, redisPool *redigoredis.Pool, cfg
 		return nil, err
 	}
 
-	// Initialize ChatStore after LeagueStore is ready
-	stores.ChatStore = redis.NewRedisChatStore(redisPool, stores.PresenceStore, stores.TournamentStore, stores.LeagueStore)
+	// Initialize ChatStore after LeagueStore is ready. Chat is moving to
+	// Postgres: Redis still serves it, and every write is copied there.
+	stores.ChatStore = chat.NewMirror(
+		redis.NewRedisChatStore(redisPool, stores.PresenceStore, stores.TournamentStore, stores.LeagueStore),
+		models.New(dbPool))
 
 	stores.Queries = models.New(dbPool)
 	stores.DBPool = dbPool
