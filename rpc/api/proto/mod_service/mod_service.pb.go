@@ -1036,7 +1036,11 @@ type ListChatChannelsRequest struct {
 	// a "chat." channel; or first a game, tournament, club or league by its id
 	// or its page's address or path, then always the tournaments, clubs and
 	// leagues whose name or slug contains it.
-	Find          string `protobuf:"bytes,5,opt,name=find,proto3" json:"find,omitempty"`
+	Find string `protobuf:"bytes,5,opt,name=find,proto3" json:"find,omitempty"`
+	// containing, if set, keeps only channels with a message (one a person sent,
+	// not deleted) holding these words, in any case; each summary then says
+	// how many do.
+	Containing    string `protobuf:"bytes,6,opt,name=containing,proto3" json:"containing,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1102,6 +1106,13 @@ func (x *ListChatChannelsRequest) GetChannels() []string {
 func (x *ListChatChannelsRequest) GetFind() string {
 	if x != nil {
 		return x.Find
+	}
+	return ""
+}
+
+func (x *ListChatChannelsRequest) GetContaining() string {
+	if x != nil {
+		return x.Containing
 	}
 	return ""
 }
@@ -1263,8 +1274,10 @@ type ChatChannelSummary struct {
 	// user_last_timestamp is when the requested user last wrote here (0 if
 	// never), so channels can be ordered by the user's own last word.
 	UserLastTimestamp int64 `protobuf:"varint,8,opt,name=user_last_timestamp,json=userLastTimestamp,proto3" json:"user_last_timestamp,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// with a search for words, how many of its messages hold them.
+	MatchCount    int32 `protobuf:"varint,9,opt,name=match_count,json=matchCount,proto3" json:"match_count,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ChatChannelSummary) Reset() {
@@ -1353,6 +1366,13 @@ func (x *ChatChannelSummary) GetUserLastTimestamp() int64 {
 	return 0
 }
 
+func (x *ChatChannelSummary) GetMatchCount() int32 {
+	if x != nil {
+		return x.MatchCount
+	}
+	return 0
+}
+
 type ListChatChannelsResponse struct {
 	state    protoimpl.MessageState `protogen:"open.v1"`
 	Channels []*ChatChannelSummary  `protobuf:"bytes,1,rep,name=channels,proto3" json:"channels,omitempty"`
@@ -1411,7 +1431,15 @@ type GetChannelChatsRequest struct {
 	Channel string                 `protobuf:"bytes,1,opt,name=channel,proto3" json:"channel,omitempty"`
 	// a message's id: the page of messages older than it. Empty for the
 	// newest page.
-	Before        string `protobuf:"bytes,2,opt,name=before,proto3" json:"before,omitempty"`
+	Before string `protobuf:"bytes,2,opt,name=before,proto3" json:"before,omitempty"`
+	// a message's id: the page of messages newer than it.
+	After string `protobuf:"bytes,3,opt,name=after,proto3" json:"after,omitempty"`
+	// a message's id: the page around it, the message with older and newer
+	// ones on either side. At most one of before, after and around is set.
+	Around string `protobuf:"bytes,4,opt,name=around,proto3" json:"around,omitempty"`
+	// if set, only the messages holding these words, in any case, a page at a
+	// time, newest first (with before).
+	Containing    string `protobuf:"bytes,5,opt,name=containing,proto3" json:"containing,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1460,13 +1488,36 @@ func (x *GetChannelChatsRequest) GetBefore() string {
 	return ""
 }
 
+func (x *GetChannelChatsRequest) GetAfter() string {
+	if x != nil {
+		return x.After
+	}
+	return ""
+}
+
+func (x *GetChannelChatsRequest) GetAround() string {
+	if x != nil {
+		return x.Around
+	}
+	return ""
+}
+
+func (x *GetChannelChatsRequest) GetContaining() string {
+	if x != nil {
+		return x.Containing
+	}
+	return ""
+}
+
 // A page of a channel's chats, oldest first. Its field 1 is
 // ipc.ChatMessages' own, so either side may be the older one.
 type ChannelChats struct {
 	state    protoimpl.MessageState `protogen:"open.v1"`
 	Messages []*ipc.ChatMessage     `protobuf:"bytes,1,rep,name=messages,proto3" json:"messages,omitempty"`
 	// whether the channel has messages older than this page's first
-	HasOlder      bool `protobuf:"varint,2,opt,name=has_older,json=hasOlder,proto3" json:"has_older,omitempty"`
+	HasOlder bool `protobuf:"varint,2,opt,name=has_older,json=hasOlder,proto3" json:"has_older,omitempty"`
+	// whether it has messages newer than this page's last
+	HasNewer      bool `protobuf:"varint,3,opt,name=has_newer,json=hasNewer,proto3" json:"has_newer,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1511,6 +1562,13 @@ func (x *ChannelChats) GetMessages() []*ipc.ChatMessage {
 func (x *ChannelChats) GetHasOlder() bool {
 	if x != nil {
 		return x.HasOlder
+	}
+	return false
+}
+
+func (x *ChannelChats) GetHasNewer() bool {
+	if x != nil {
+		return x.HasNewer
 	}
 	return false
 }
@@ -1575,13 +1633,16 @@ const file_proto_mod_service_mod_service_proto_rawDesc = "" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\"Y\n" +
 	"\x0fNotorietyReport\x12\x14\n" +
 	"\x05score\x18\x01 \x01(\x05R\x05score\x120\n" +
-	"\x05games\x18\x02 \x03(\v2\x1a.mod_service.NotoriousGameR\x05games\"\xa4\x01\n" +
+	"\x05games\x18\x02 \x03(\v2\x1a.mod_service.NotoriousGameR\x05games\"\xc4\x01\n" +
 	"\x17ListChatChannelsRequest\x12%\n" +
 	"\x0echannel_prefix\x18\x01 \x01(\tR\rchannelPrefix\x12\x1a\n" +
 	"\busername\x18\x02 \x01(\tR\busername\x12\x16\n" +
 	"\x06cursor\x18\x03 \x01(\tR\x06cursor\x12\x1a\n" +
 	"\bchannels\x18\x04 \x03(\tR\bchannels\x12\x12\n" +
-	"\x04find\x18\x05 \x01(\tR\x04find\"\\\n" +
+	"\x04find\x18\x05 \x01(\tR\x04find\x12\x1e\n" +
+	"\n" +
+	"containing\x18\x06 \x01(\tR\n" +
+	"containing\"\\\n" +
 	"\x0fChatSenderCount\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x1a\n" +
 	"\busername\x18\x02 \x01(\tR\busername\x12\x14\n" +
@@ -1591,7 +1652,7 @@ const file_proto_mod_service_mod_service_proto_rawDesc = "" +
 	"\x04link\x18\x02 \x01(\tR\x04link\x126\n" +
 	"\aparties\x18\x03 \x03(\v2\x1c.mod_service.ChatSenderCountR\aparties\x12&\n" +
 	"\x0fgame_created_at\x18\x04 \x01(\x03R\rgameCreatedAt\x12&\n" +
-	"\x0fgame_updated_at\x18\x05 \x01(\x03R\rgameUpdatedAt\"\xe7\x02\n" +
+	"\x0fgame_updated_at\x18\x05 \x01(\x03R\rgameUpdatedAt\"\x88\x03\n" +
 	"\x12ChatChannelSummary\x12\x18\n" +
 	"\achannel\x18\x01 \x01(\tR\achannel\x12#\n" +
 	"\rmessage_count\x18\x02 \x01(\x05R\fmessageCount\x12'\n" +
@@ -1601,17 +1662,25 @@ const file_proto_mod_service_mod_service_proto_rawDesc = "" +
 	"\vuser_played\x18\x06 \x01(\bR\n" +
 	"userPlayed\x129\n" +
 	"\acontext\x18\a \x01(\v2\x1f.mod_service.ChatChannelContextR\acontext\x12.\n" +
-	"\x13user_last_timestamp\x18\b \x01(\x03R\x11userLastTimestamp\"x\n" +
+	"\x13user_last_timestamp\x18\b \x01(\x03R\x11userLastTimestamp\x12\x1f\n" +
+	"\vmatch_count\x18\t \x01(\x05R\n" +
+	"matchCount\"x\n" +
 	"\x18ListChatChannelsResponse\x12;\n" +
 	"\bchannels\x18\x01 \x03(\v2\x1f.mod_service.ChatChannelSummaryR\bchannels\x12\x1f\n" +
 	"\vnext_cursor\x18\x02 \x01(\tR\n" +
-	"nextCursor\"J\n" +
+	"nextCursor\"\x98\x01\n" +
 	"\x16GetChannelChatsRequest\x12\x18\n" +
 	"\achannel\x18\x01 \x01(\tR\achannel\x12\x16\n" +
-	"\x06before\x18\x02 \x01(\tR\x06before\"Y\n" +
+	"\x06before\x18\x02 \x01(\tR\x06before\x12\x14\n" +
+	"\x05after\x18\x03 \x01(\tR\x05after\x12\x16\n" +
+	"\x06around\x18\x04 \x01(\tR\x06around\x12\x1e\n" +
+	"\n" +
+	"containing\x18\x05 \x01(\tR\n" +
+	"containing\"v\n" +
 	"\fChannelChats\x12,\n" +
 	"\bmessages\x18\x01 \x03(\v2\x10.ipc.ChatMessageR\bmessages\x12\x1b\n" +
-	"\thas_older\x18\x02 \x01(\bR\bhasOlder*\xa4\x02\n" +
+	"\thas_older\x18\x02 \x01(\bR\bhasOlder\x12\x1b\n" +
+	"\thas_newer\x18\x03 \x01(\bR\bhasNewer*\xa4\x02\n" +
 	"\rModActionType\x12\b\n" +
 	"\x04MUTE\x10\x00\x12\x13\n" +
 	"\x0fSUSPEND_ACCOUNT\x10\x01\x12\x17\n" +

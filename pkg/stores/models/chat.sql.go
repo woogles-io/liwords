@@ -71,6 +71,49 @@ func (q *Queries) AddChatMessages(ctx context.Context, arg AddChatMessagesParams
 	return result.RowsAffected(), nil
 }
 
+const chatChannelMatches = `-- name: ChatChannelMatches :many
+SELECT m.channel, count(*)::int AS match_count
+FROM chat_messages m
+WHERE m.channel = ANY($1::text[])
+  AND m.deleted_at IS NULL
+  AND (m.sender_id IS NOT NULL OR m.sender_username <> '')
+  AND m.message ILIKE $2::text
+GROUP BY m.channel
+`
+
+type ChatChannelMatchesParams struct {
+	Channels []string
+	Pattern  string
+}
+
+type ChatChannelMatchesRow struct {
+	Channel    string
+	MatchCount int32
+}
+
+// How many of each channel's messages hold pattern (an ILIKE pattern), for
+// moderator chat review. Deleted messages and the server's own lines (no
+// sender) are left out.
+func (q *Queries) ChatChannelMatches(ctx context.Context, arg ChatChannelMatchesParams) ([]ChatChannelMatchesRow, error) {
+	rows, err := q.db.Query(ctx, chatChannelMatches, arg.Channels, arg.Pattern)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ChatChannelMatchesRow
+	for rows.Next() {
+		var i ChatChannelMatchesRow
+		if err := rows.Scan(&i.Channel, &i.MatchCount); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const chatChannelSenders = `-- name: ChatChannelSenders :many
 SELECT m.channel,
        COALESCE(u.uuid, '')::text AS sender_uuid,
@@ -259,6 +302,67 @@ func (q *Queries) ChatMessagesBefore(ctx context.Context, arg ChatMessagesBefore
 	var items []ChatMessagesBeforeRow
 	for rows.Next() {
 		var i ChatMessagesBeforeRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.SenderUsername,
+			&i.Message,
+			&i.CreatedAt,
+			&i.SenderUuid,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const chatMessagesContainingBefore = `-- name: ChatMessagesContainingBefore :many
+SELECT m.id, m.sender_username, m.message, m.created_at, COALESCE(u.uuid, '')::text AS sender_uuid
+FROM chat_messages m
+LEFT JOIN users u ON u.id = m.sender_id
+WHERE m.channel = $1 AND m.deleted_at IS NULL
+  AND (m.sender_id IS NOT NULL OR m.sender_username <> '')
+  AND m.message ILIKE $2::text
+  AND ($3::uuid IS NULL OR m.id < $3::uuid)
+ORDER BY m.id DESC
+LIMIT $4
+`
+
+type ChatMessagesContainingBeforeParams struct {
+	Channel string
+	Pattern string
+	Before  pgtype.UUID
+	Lim     int32
+}
+
+type ChatMessagesContainingBeforeRow struct {
+	ID             uuid.UUID
+	SenderUsername string
+	Message        string
+	CreatedAt      pgtype.Timestamptz
+	SenderUuid     string
+}
+
+// A channel's messages holding pattern (an ILIKE pattern), older than before
+// (or the newest, if before is NULL), newest first, for moderator chat
+// review. Deleted messages and the server's own lines are left out.
+func (q *Queries) ChatMessagesContainingBefore(ctx context.Context, arg ChatMessagesContainingBeforeParams) ([]ChatMessagesContainingBeforeRow, error) {
+	rows, err := q.db.Query(ctx, chatMessagesContainingBefore,
+		arg.Channel,
+		arg.Pattern,
+		arg.Before,
+		arg.Lim,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ChatMessagesContainingBeforeRow
+	for rows.Next() {
+		var i ChatMessagesContainingBeforeRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.SenderUsername,

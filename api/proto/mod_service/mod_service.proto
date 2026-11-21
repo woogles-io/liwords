@@ -130,6 +130,10 @@ message ListChatChannelsRequest {
   // or its page's address or path, then always the tournaments, clubs and
   // leagues whose name or slug contains it.
   string find = 5;
+  // containing, if set, keeps only channels with a message (one a person sent,
+  // not deleted) holding these words, in any case; each summary then says
+  // how many do.
+  string containing = 6;
 }
 
 message ChatSenderCount {
@@ -166,6 +170,8 @@ message ChatChannelSummary {
   // user_last_timestamp is when the requested user last wrote here (0 if
   // never), so channels can be ordered by the user's own last word.
   int64 user_last_timestamp = 8;
+  // with a search for words, how many of its messages hold them.
+  int32 match_count = 9;
 }
 
 message ListChatChannelsResponse {
@@ -179,6 +185,14 @@ message GetChannelChatsRequest {
   // a message's id: the page of messages older than it. Empty for the
   // newest page.
   string before = 2;
+  // a message's id: the page of messages newer than it.
+  string after = 3;
+  // a message's id: the page around it, the message with older and newer
+  // ones on either side. At most one of before, after and around is set.
+  string around = 4;
+  // if set, only the messages holding these words, in any case, a page at a
+  // time, newest first (with before).
+  string containing = 5;
 }
 
 // A page of a channel's chats, oldest first. Its field 1 is
@@ -187,6 +201,8 @@ message ChannelChats {
   repeated ipc.ChatMessage messages = 1;
   // whether the channel has messages older than this page's first
   bool has_older = 2;
+  // whether it has messages newer than this page's last
+  bool has_newer = 3;
 }
 
 service ModService {

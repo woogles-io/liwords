@@ -362,6 +362,7 @@ func (ms *ModService) ListChatChannels(ctx context.Context, req *connect.Request
 		return nil, apiserver.InvalidArg("unknown channel prefix")
 	}
 	username := strings.TrimSpace(req.Msg.Username)
+	containing := strings.TrimSpace(req.Msg.Containing)
 	resp := &pb.ListChatChannelsResponse{NextCursor: "0"}
 	addContexts := func() {
 		for _, summary := range resp.Channels {
@@ -392,6 +393,10 @@ func (ms *ModService) ListChatChannels(ctx context.Context, req *connect.Request
 		if err != nil {
 			return nil, err
 		}
+		resp.Channels, err = ms.keepMatching(ctx, resp.Channels, containing)
+		if err != nil {
+			return nil, err
+		}
 		addContexts()
 		return connect.NewResponse(resp), nil
 	}
@@ -411,6 +416,10 @@ func (ms *ModService) ListChatChannels(ctx context.Context, req *connect.Request
 		}
 		var more bool
 		resp.Channels, more, err = ms.userChannels(ctx, u, username, prefix, page)
+		if err != nil {
+			return nil, err
+		}
+		resp.Channels, err = ms.keepMatching(ctx, resp.Channels, containing)
 		if err != nil {
 			return nil, err
 		}
@@ -437,11 +446,17 @@ func (ms *ModService) ListChatChannels(ctx context.Context, req *connect.Request
 		if err != nil {
 			return nil, err
 		}
+		var found []*pb.ChatChannelSummary
 		for _, summary := range summaries {
 			if summary.MessageCount > 0 {
-				resp.Channels = append(resp.Channels, summary)
+				found = append(found, summary)
 			}
 		}
+		found, err = ms.keepMatching(ctx, found, containing)
+		if err != nil {
+			return nil, err
+		}
+		resp.Channels = append(resp.Channels, found...)
 		if cursor == "0" || len(resp.Channels) >= chatScanMaxChannels {
 			break
 		}
@@ -449,6 +464,38 @@ func (ms *ModService) ListChatChannels(ctx context.Context, req *connect.Request
 	resp.NextCursor = cursor
 	addContexts()
 	return connect.NewResponse(resp), nil
+}
+
+// keepMatching keeps, with words to find, the summaries of the channels with
+// a message that holds them, in any case, each saying how many do; with
+// none, all of them.
+func (ms *ModService) keepMatching(ctx context.Context, summaries []*pb.ChatChannelSummary, containing string) ([]*pb.ChatChannelSummary, error) {
+	if containing == "" || len(summaries) == 0 {
+		return summaries, nil
+	}
+	channels := make([]string, len(summaries))
+	for i, summary := range summaries {
+		channels[i] = summary.Channel
+	}
+	rows, err := ms.queries.ChatChannelMatches(ctx, models.ChatChannelMatchesParams{
+		Channels: channels,
+		Pattern:  "%" + likeEscaper.Replace(containing) + "%",
+	})
+	if err != nil {
+		return nil, err
+	}
+	matches := make(map[string]int32, len(rows))
+	for _, r := range rows {
+		matches[r.Channel] = r.MatchCount
+	}
+	kept := make([]*pb.ChatChannelSummary, 0, len(rows))
+	for _, summary := range summaries {
+		if n := matches[summary.Channel]; n > 0 {
+			summary.MatchCount = n
+			kept = append(kept, summary)
+		}
+	}
+	return kept, nil
 }
 
 // userChannels lists a page of what a search for user u turns up, any age:
@@ -540,20 +587,52 @@ func (ms *ModService) GetChannelChats(ctx context.Context, req *connect.Request[
 	if !strings.HasPrefix(channel, "chat.") {
 		return nil, apiserver.InvalidArg("channel must start with chat.")
 	}
-	// One page at a time, newest first, older pages on request: a channel
-	// keeps every message, so it may hold more than a page can show. The page
-	// is the chat store's own, as the chat pages. A page holding only the
-	// server's lines is passed over, so a page with older messages behind it
-	// always has one to ask before.
-	q := user.ChatQuery{Before: req.Msg.Before}
+	reply := func(page *user.ChatPage, msgs []*ipc.ChatMessage) *connect.Response[pb.ChannelChats] {
+		return connect.NewResponse(&pb.ChannelChats{Messages: msgs, HasOlder: page.HasOlder, HasNewer: page.HasNewer})
+	}
+	// With words to find: only the messages that hold them, a page at a
+	// time, newest first.
+	if containing := strings.TrimSpace(req.Msg.Containing); containing != "" {
+		page, err := ms.chatStore.Containing(ctx, channel, containing, req.Msg.Before)
+		if err != nil {
+			return nil, err
+		}
+		return reply(page, page.Messages), nil
+	}
+	set := 0
+	for _, id := range []string{req.Msg.Before, req.Msg.After, req.Msg.Around} {
+		if id != "" {
+			set++
+		}
+	}
+	if set > 1 {
+		return nil, apiserver.InvalidArg("ask before, after or around one message, not more")
+	}
+	// One page at a time: the newest, older or newer ones on request, or the
+	// one around a message: a channel keeps every message, so it may hold
+	// more than a page can show. The page is the chat store's own, as the
+	// chat pages. A page holding only the server's lines is passed over, the
+	// way it was asked, so a page with more behind it always has one to ask
+	// from.
+	q := user.ChatQuery{Before: req.Msg.Before, After: req.Msg.After, Around: req.Msg.Around}
 	for {
 		page, err := ms.chatStore.History(ctx, channel, q)
 		if err != nil {
 			return nil, err
 		}
 		msgs := said(page.Messages)
-		if len(msgs) > 0 || !page.HasOlder || len(page.Messages) == 0 {
-			return connect.NewResponse(&pb.ChannelChats{Messages: msgs, HasOlder: page.HasOlder}), nil
+		if len(msgs) > 0 || len(page.Messages) == 0 || q.Around != "" {
+			return reply(page, msgs), nil
+		}
+		if q.After != "" {
+			if !page.HasNewer {
+				return reply(page, msgs), nil
+			}
+			q.After = page.Messages[len(page.Messages)-1].Id
+			continue
+		}
+		if !page.HasOlder {
+			return reply(page, msgs), nil
 		}
 		q.Before = page.Messages[0].Id
 	}

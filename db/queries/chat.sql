@@ -187,3 +187,29 @@ SELECT g.uuid::text AS uuid
 FROM games g
 JOIN users u ON u.id IN (g.player0_id, g.player1_id)
 WHERE u.uuid = @user_uuid::text AND g.uuid = ANY(@game_ids::text[]);
+
+-- name: ChatChannelMatches :many
+-- How many of each channel's messages hold pattern (an ILIKE pattern), for
+-- moderator chat review. Deleted messages and the server's own lines (no
+-- sender) are left out.
+SELECT m.channel, count(*)::int AS match_count
+FROM chat_messages m
+WHERE m.channel = ANY(@channels::text[])
+  AND m.deleted_at IS NULL
+  AND (m.sender_id IS NOT NULL OR m.sender_username <> '')
+  AND m.message ILIKE @pattern::text
+GROUP BY m.channel;
+
+-- name: ChatMessagesContainingBefore :many
+-- A channel's messages holding pattern (an ILIKE pattern), older than before
+-- (or the newest, if before is NULL), newest first, for moderator chat
+-- review. Deleted messages and the server's own lines are left out.
+SELECT m.id, m.sender_username, m.message, m.created_at, COALESCE(u.uuid, '')::text AS sender_uuid
+FROM chat_messages m
+LEFT JOIN users u ON u.id = m.sender_id
+WHERE m.channel = @channel AND m.deleted_at IS NULL
+  AND (m.sender_id IS NOT NULL OR m.sender_username <> '')
+  AND m.message ILIKE @pattern::text
+  AND (sqlc.narg('before')::uuid IS NULL OR m.id < sqlc.narg('before')::uuid)
+ORDER BY m.id DESC
+LIMIT @lim;

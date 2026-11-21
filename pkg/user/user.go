@@ -135,6 +135,9 @@ type ChatStore interface {
 	OldChats(ctx context.Context, channel string, n int) ([]*pb.ChatMessage, error)
 	// History returns a page of the channel's messages; see ChatQuery.
 	History(ctx context.Context, channel string, q ChatQuery) (*ChatPage, error)
+	// Containing returns a page of the channel's messages that hold text, in
+	// any case: the newest, or those older than before, oldest first.
+	Containing(ctx context.Context, channel, text, before string) (*ChatPage, error)
 	// LatestChannels returns up to count of the user's private chats, most
 	// recent first: those whose newest message is older than before, if it
 	// isn't "". The first page (no before) also lists all unread ones.

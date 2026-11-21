@@ -2,6 +2,7 @@ package mod_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -352,4 +353,81 @@ func TestFindChannels(t *testing.T) {
 	is.Equal(len(find("nothing like it")), 0)
 	// An address that names nothing finds nothing.
 	is.Equal(len(find("/club/nowhere")), 0)
+}
+
+func TestChatReviewContaining(t *testing.T) {
+	is := is.New(t)
+	_, stores, _ := recreateDB()
+	defer stores.Disconnect()
+	ctx := DefaultConfig.WithContext(context.Background())
+	ms := mod.NewModService(stores.UserStore, stores.ChatStore, stores.Queries)
+	cesar, err := stores.UserStore.Get(ctx, "cesar")
+	is.NoErr(err)
+	jesse, err := stores.UserStore.Get(ctx, "jesse")
+	is.NoErr(err)
+	is.NoErr(stores.Queries.AssignRole(ctx, models.AssignRoleParams{
+		Username: "cesar", RoleName: string(rbac.Moderator),
+	}))
+	modCtx := apiserver.PlaceInContext(ctx, &entity.Session{
+		ID: "review", Username: "cesar", UserUUID: cesar.UUID, Expiry: time.Now().Add(time.Hour),
+	})
+	say := func(u *entity.User, ch, msg string) *pb.ChatMessage {
+		m, err := stores.ChatStore.AddChat(ctx, u.Username, u.UUID, msg, ch, false)
+		is.NoErr(err)
+		return m
+	}
+	say(cesar, "chat.tournament.a", "good luck all")
+	hit := say(jesse, "chat.tournament.a", "you are a LOSER")
+	say(cesar, "chat.tournament.a", "that is rude")
+	say(jesse, "chat.tournament.b", "nice game")
+	say(jesse, "chat.tournament.c", "100% sure, loser_2")
+	named := []string{"chat.tournament.a", "chat.tournament.b", "chat.tournament.c"}
+
+	listed := func(containing string) map[string]int32 {
+		resp, err := ms.ListChatChannels(modCtx, connect.NewRequest(&mspb.ListChatChannelsRequest{
+			Channels: named, Containing: containing,
+		}))
+		is.NoErr(err)
+		got := map[string]int32{}
+		for _, s := range resp.Msg.Channels {
+			got[s.Channel] = s.MatchCount
+		}
+		return got
+	}
+	// only the channels with a message holding the words, in any case, each
+	// saying how many
+	is.Equal(listed("loser"), map[string]int32{"chat.tournament.a": 1, "chat.tournament.c": 1})
+	// a typed % or _ is only itself
+	is.Equal(listed("100%"), map[string]int32{"chat.tournament.c": 1})
+	is.Equal(len(listed("r_2")), 1)
+	is.Equal(len(listed("e_2")), 0)
+	// no words: every one named
+	is.Equal(len(listed("")), 3)
+
+	chats := func(req *mspb.GetChannelChatsRequest) ([]string, *mspb.ChannelChats) {
+		resp, err := ms.GetChannelChats(modCtx, connect.NewRequest(req))
+		is.NoErr(err)
+		var texts []string
+		for _, m := range resp.Msg.Messages {
+			texts = append(texts, m.Message)
+		}
+		return texts, resp.Msg
+	}
+	// a channel's messages holding the words
+	texts, page := chats(&mspb.GetChannelChatsRequest{Channel: "chat.tournament.a", Containing: "Loser"})
+	is.Equal(texts, []string{"you are a LOSER"})
+	is.Equal(page.Messages[0].Id, hit.Id)
+	// the page around one: it, with those before and after it
+	texts, page = chats(&mspb.GetChannelChatsRequest{Channel: "chat.tournament.a", Around: hit.Id})
+	is.Equal(texts, []string{"good luck all", "you are a LOSER", "that is rude"})
+	is.True(!page.HasOlder && !page.HasNewer)
+	// those after it
+	texts, _ = chats(&mspb.GetChannelChatsRequest{Channel: "chat.tournament.a", After: hit.Id})
+	is.Equal(texts, []string{"that is rude"})
+	// one way at a time
+	_, err = ms.GetChannelChats(modCtx, connect.NewRequest(&mspb.GetChannelChatsRequest{
+		Channel: "chat.tournament.a", Before: hit.Id, After: hit.Id,
+	}))
+	var ce *connect.Error
+	is.True(errors.As(err, &ce) && ce.Code() == connect.CodeInvalidArgument)
 }
