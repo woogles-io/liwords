@@ -28,8 +28,8 @@ func signed(t *testing.T, claims jwt.MapClaims) string {
 	return s
 }
 
-// The token's connection ID wins over the one in the URL; a token without
-// one keeps the URL's.
+// The connection ID is the token's, never the URL's; a token without one is
+// refused.
 func TestSocketLoginTakesConnIDFromToken(t *testing.T) {
 	is := is.New(t)
 	t.Setenv("SECRET_KEY", "test-secret")
@@ -40,11 +40,10 @@ func TestSocketLoginTakesConnIDFromToken(t *testing.T) {
 	for k, v := range base {
 		withCid[k] = v
 	}
-	c := &Client{connToken: signed(t, withCid), connID: "someone-elses"}
+	c := &Client{connToken: signed(t, withCid)}
 	is.NoErr(h.socketLogin(c))
 	is.Equal(c.connID, "fromToken1")
 
-	c = &Client{connToken: signed(t, base), connID: "fromURL1"}
-	is.NoErr(h.socketLogin(c))
-	is.Equal(c.connID, "fromURL1")
+	c = &Client{connToken: signed(t, base)}
+	is.True(h.socketLogin(c) != nil)
 }
