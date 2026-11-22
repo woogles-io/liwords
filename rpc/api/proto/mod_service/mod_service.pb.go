@@ -1573,6 +1573,451 @@ func (x *ChannelChats) GetHasNewer() bool {
 	return false
 }
 
+type ReportChatMessageRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// the reported message's id
+	MessageId     string `protobuf:"bytes,1,opt,name=message_id,json=messageId,proto3" json:"message_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ReportChatMessageRequest) Reset() {
+	*x = ReportChatMessageRequest{}
+	mi := &file_proto_mod_service_mod_service_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReportChatMessageRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReportChatMessageRequest) ProtoMessage() {}
+
+func (x *ReportChatMessageRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_mod_service_mod_service_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReportChatMessageRequest.ProtoReflect.Descriptor instead.
+func (*ReportChatMessageRequest) Descriptor() ([]byte, []int) {
+	return file_proto_mod_service_mod_service_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *ReportChatMessageRequest) GetMessageId() string {
+	if x != nil {
+		return x.MessageId
+	}
+	return ""
+}
+
+type ReportChatMessageResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ReportChatMessageResponse) Reset() {
+	*x = ReportChatMessageResponse{}
+	mi := &file_proto_mod_service_mod_service_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReportChatMessageResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReportChatMessageResponse) ProtoMessage() {}
+
+func (x *ReportChatMessageResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_mod_service_mod_service_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReportChatMessageResponse.ProtoReflect.Descriptor instead.
+func (*ReportChatMessageResponse) Descriptor() ([]byte, []int) {
+	return file_proto_mod_service_mod_service_proto_rawDescGZIP(), []int{23}
+}
+
+type GetChatReportsRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// the handled reports, the most recently handled first, instead of the
+	// open ones
+	Handled       bool `protobuf:"varint,1,opt,name=handled,proto3" json:"handled,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetChatReportsRequest) Reset() {
+	*x = GetChatReportsRequest{}
+	mi := &file_proto_mod_service_mod_service_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetChatReportsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetChatReportsRequest) ProtoMessage() {}
+
+func (x *GetChatReportsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_mod_service_mod_service_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetChatReportsRequest.ProtoReflect.Descriptor instead.
+func (*GetChatReportsRequest) Descriptor() ([]byte, []int) {
+	return file_proto_mod_service_mod_service_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *GetChatReportsRequest) GetHandled() bool {
+	if x != nil {
+		return x.Handled
+	}
+	return false
+}
+
+// A report of a chat message, open or handled.
+type ChatReport struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Id    int64                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	// the reported message: its channel, sender, words and time
+	Message *ipc.ChatMessage `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
+	// whether a moderator has deleted the message since
+	Deleted          bool                   `protobuf:"varint,3,opt,name=deleted,proto3" json:"deleted,omitempty"`
+	ReporterId       string                 `protobuf:"bytes,4,opt,name=reporter_id,json=reporterId,proto3" json:"reporter_id,omitempty"`
+	ReporterUsername string                 `protobuf:"bytes,5,opt,name=reporter_username,json=reporterUsername,proto3" json:"reporter_username,omitempty"`
+	ReportedAt       *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=reported_at,json=reportedAt,proto3" json:"reported_at,omitempty"`
+	// the moderator who marked it handled, and when; empty while it is open
+	HandledById       string                 `protobuf:"bytes,7,opt,name=handled_by_id,json=handledById,proto3" json:"handled_by_id,omitempty"`
+	HandledByUsername string                 `protobuf:"bytes,8,opt,name=handled_by_username,json=handledByUsername,proto3" json:"handled_by_username,omitempty"`
+	HandledAt         *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=handled_at,json=handledAt,proto3" json:"handled_at,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *ChatReport) Reset() {
+	*x = ChatReport{}
+	mi := &file_proto_mod_service_mod_service_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ChatReport) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ChatReport) ProtoMessage() {}
+
+func (x *ChatReport) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_mod_service_mod_service_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ChatReport.ProtoReflect.Descriptor instead.
+func (*ChatReport) Descriptor() ([]byte, []int) {
+	return file_proto_mod_service_mod_service_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *ChatReport) GetId() int64 {
+	if x != nil {
+		return x.Id
+	}
+	return 0
+}
+
+func (x *ChatReport) GetMessage() *ipc.ChatMessage {
+	if x != nil {
+		return x.Message
+	}
+	return nil
+}
+
+func (x *ChatReport) GetDeleted() bool {
+	if x != nil {
+		return x.Deleted
+	}
+	return false
+}
+
+func (x *ChatReport) GetReporterId() string {
+	if x != nil {
+		return x.ReporterId
+	}
+	return ""
+}
+
+func (x *ChatReport) GetReporterUsername() string {
+	if x != nil {
+		return x.ReporterUsername
+	}
+	return ""
+}
+
+func (x *ChatReport) GetReportedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ReportedAt
+	}
+	return nil
+}
+
+func (x *ChatReport) GetHandledById() string {
+	if x != nil {
+		return x.HandledById
+	}
+	return ""
+}
+
+func (x *ChatReport) GetHandledByUsername() string {
+	if x != nil {
+		return x.HandledByUsername
+	}
+	return ""
+}
+
+func (x *ChatReport) GetHandledAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.HandledAt
+	}
+	return nil
+}
+
+type ChatReports struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Reports       []*ChatReport          `protobuf:"bytes,1,rep,name=reports,proto3" json:"reports,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ChatReports) Reset() {
+	*x = ChatReports{}
+	mi := &file_proto_mod_service_mod_service_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ChatReports) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ChatReports) ProtoMessage() {}
+
+func (x *ChatReports) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_mod_service_mod_service_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ChatReports.ProtoReflect.Descriptor instead.
+func (*ChatReports) Descriptor() ([]byte, []int) {
+	return file_proto_mod_service_mod_service_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *ChatReports) GetReports() []*ChatReport {
+	if x != nil {
+		return x.Reports
+	}
+	return nil
+}
+
+type HandleChatReportRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// the report to mark handled
+	ReportId      int64 `protobuf:"varint,1,opt,name=report_id,json=reportId,proto3" json:"report_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *HandleChatReportRequest) Reset() {
+	*x = HandleChatReportRequest{}
+	mi := &file_proto_mod_service_mod_service_proto_msgTypes[27]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *HandleChatReportRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*HandleChatReportRequest) ProtoMessage() {}
+
+func (x *HandleChatReportRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_mod_service_mod_service_proto_msgTypes[27]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use HandleChatReportRequest.ProtoReflect.Descriptor instead.
+func (*HandleChatReportRequest) Descriptor() ([]byte, []int) {
+	return file_proto_mod_service_mod_service_proto_rawDescGZIP(), []int{27}
+}
+
+func (x *HandleChatReportRequest) GetReportId() int64 {
+	if x != nil {
+		return x.ReportId
+	}
+	return 0
+}
+
+type HandleChatReportResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *HandleChatReportResponse) Reset() {
+	*x = HandleChatReportResponse{}
+	mi := &file_proto_mod_service_mod_service_proto_msgTypes[28]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *HandleChatReportResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*HandleChatReportResponse) ProtoMessage() {}
+
+func (x *HandleChatReportResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_mod_service_mod_service_proto_msgTypes[28]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use HandleChatReportResponse.ProtoReflect.Descriptor instead.
+func (*HandleChatReportResponse) Descriptor() ([]byte, []int) {
+	return file_proto_mod_service_mod_service_proto_rawDescGZIP(), []int{28}
+}
+
+type ReopenChatReportRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// the handled report to open again
+	ReportId      int64 `protobuf:"varint,1,opt,name=report_id,json=reportId,proto3" json:"report_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ReopenChatReportRequest) Reset() {
+	*x = ReopenChatReportRequest{}
+	mi := &file_proto_mod_service_mod_service_proto_msgTypes[29]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReopenChatReportRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReopenChatReportRequest) ProtoMessage() {}
+
+func (x *ReopenChatReportRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_mod_service_mod_service_proto_msgTypes[29]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReopenChatReportRequest.ProtoReflect.Descriptor instead.
+func (*ReopenChatReportRequest) Descriptor() ([]byte, []int) {
+	return file_proto_mod_service_mod_service_proto_rawDescGZIP(), []int{29}
+}
+
+func (x *ReopenChatReportRequest) GetReportId() int64 {
+	if x != nil {
+		return x.ReportId
+	}
+	return 0
+}
+
+type ReopenChatReportResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ReopenChatReportResponse) Reset() {
+	*x = ReopenChatReportResponse{}
+	mi := &file_proto_mod_service_mod_service_proto_msgTypes[30]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReopenChatReportResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReopenChatReportResponse) ProtoMessage() {}
+
+func (x *ReopenChatReportResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_mod_service_mod_service_proto_msgTypes[30]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReopenChatReportResponse.ProtoReflect.Descriptor instead.
+func (*ReopenChatReportResponse) Descriptor() ([]byte, []int) {
+	return file_proto_mod_service_mod_service_proto_rawDescGZIP(), []int{30}
+}
+
 var File_proto_mod_service_mod_service_proto protoreflect.FileDescriptor
 
 const file_proto_mod_service_mod_service_proto_rawDesc = "" +
@@ -1680,7 +2125,35 @@ const file_proto_mod_service_mod_service_proto_rawDesc = "" +
 	"\fChannelChats\x12,\n" +
 	"\bmessages\x18\x01 \x03(\v2\x10.ipc.ChatMessageR\bmessages\x12\x1b\n" +
 	"\thas_older\x18\x02 \x01(\bR\bhasOlder\x12\x1b\n" +
-	"\thas_newer\x18\x03 \x01(\bR\bhasNewer*\xa4\x02\n" +
+	"\thas_newer\x18\x03 \x01(\bR\bhasNewer\"9\n" +
+	"\x18ReportChatMessageRequest\x12\x1d\n" +
+	"\n" +
+	"message_id\x18\x01 \x01(\tR\tmessageId\"\x1b\n" +
+	"\x19ReportChatMessageResponse\"1\n" +
+	"\x15GetChatReportsRequest\x12\x18\n" +
+	"\ahandled\x18\x01 \x01(\bR\ahandled\"\xfc\x02\n" +
+	"\n" +
+	"ChatReport\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\x03R\x02id\x12*\n" +
+	"\amessage\x18\x02 \x01(\v2\x10.ipc.ChatMessageR\amessage\x12\x18\n" +
+	"\adeleted\x18\x03 \x01(\bR\adeleted\x12\x1f\n" +
+	"\vreporter_id\x18\x04 \x01(\tR\n" +
+	"reporterId\x12+\n" +
+	"\x11reporter_username\x18\x05 \x01(\tR\x10reporterUsername\x12;\n" +
+	"\vreported_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"reportedAt\x12\"\n" +
+	"\rhandled_by_id\x18\a \x01(\tR\vhandledById\x12.\n" +
+	"\x13handled_by_username\x18\b \x01(\tR\x11handledByUsername\x129\n" +
+	"\n" +
+	"handled_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\thandledAt\"@\n" +
+	"\vChatReports\x121\n" +
+	"\areports\x18\x01 \x03(\v2\x17.mod_service.ChatReportR\areports\"6\n" +
+	"\x17HandleChatReportRequest\x12\x1b\n" +
+	"\treport_id\x18\x01 \x01(\x03R\breportId\"\x1a\n" +
+	"\x18HandleChatReportResponse\"6\n" +
+	"\x17ReopenChatReportRequest\x12\x1b\n" +
+	"\treport_id\x18\x01 \x01(\x03R\breportId\"\x1a\n" +
+	"\x18ReopenChatReportResponse*\xa4\x02\n" +
 	"\rModActionType\x12\b\n" +
 	"\x04MUTE\x10\x00\x12\x13\n" +
 	"\x0fSUSPEND_ACCOUNT\x10\x01\x12\x17\n" +
@@ -1707,7 +2180,7 @@ const file_proto_mod_service_mod_service_proto_rawDesc = "" +
 	"\aSITTING\x10\x02\x12\v\n" +
 	"\aSANDBAG\x10\x03\x12\x18\n" +
 	"\x14NO_PLAY_DENIED_NUDGE\x10\x04\x12\x15\n" +
-	"\x11EXCESSIVE_PHONIES\x10\x052\xe0\x06\n" +
+	"\x11EXCESSIVE_PHONIES\x10\x052\xd6\t\n" +
 	"\n" +
 	"ModService\x12K\n" +
 	"\fApplyActions\x12\x1b.mod_service.ModActionsList\x1a\x1e.mod_service.ModActionResponse\x12L\n" +
@@ -1720,7 +2193,11 @@ const file_proto_mod_service_mod_service_proto_rawDesc = "" +
 	"\x10ListChatChannels\x12$.mod_service.ListChatChannelsRequest\x1a%.mod_service.ListChatChannelsResponse\x12Q\n" +
 	"\x0fGetChannelChats\x12#.mod_service.GetChannelChatsRequest\x1a\x19.mod_service.ChannelChats\x12P\n" +
 	"\vChangeEmail\x12\x1f.mod_service.ChangeEmailRequest\x1a .mod_service.ChangeEmailResponse\x12_\n" +
-	"\x10ListEmailChanges\x12$.mod_service.ListEmailChangesRequest\x1a%.mod_service.ListEmailChangesResponseB\xa3\x01\n" +
+	"\x10ListEmailChanges\x12$.mod_service.ListEmailChangesRequest\x1a%.mod_service.ListEmailChangesResponse\x12b\n" +
+	"\x11ReportChatMessage\x12%.mod_service.ReportChatMessageRequest\x1a&.mod_service.ReportChatMessageResponse\x12N\n" +
+	"\x0eGetChatReports\x12\".mod_service.GetChatReportsRequest\x1a\x18.mod_service.ChatReports\x12_\n" +
+	"\x10HandleChatReport\x12$.mod_service.HandleChatReportRequest\x1a%.mod_service.HandleChatReportResponse\x12_\n" +
+	"\x10ReopenChatReport\x12$.mod_service.ReopenChatReportRequest\x1a%.mod_service.ReopenChatReportResponseB\xa3\x01\n" +
 	"\x0fcom.mod_serviceB\x0fModServiceProtoP\x01Z7github.com/woogles-io/liwords/rpc/api/proto/mod_service\xa2\x02\x03MXX\xaa\x02\n" +
 	"ModService\xca\x02\n" +
 	"ModService\xe2\x02\x16ModService\\GPBMetadata\xea\x02\n" +
@@ -1739,7 +2216,7 @@ func file_proto_mod_service_mod_service_proto_rawDescGZIP() []byte {
 }
 
 var file_proto_mod_service_mod_service_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_proto_mod_service_mod_service_proto_msgTypes = make([]protoimpl.MessageInfo, 23)
+var file_proto_mod_service_mod_service_proto_msgTypes = make([]protoimpl.MessageInfo, 32)
 var file_proto_mod_service_mod_service_proto_goTypes = []any{
 	(ModActionType)(0),                // 0: mod_service.ModActionType
 	(EmailType)(0),                    // 1: mod_service.EmailType
@@ -1766,54 +2243,75 @@ var file_proto_mod_service_mod_service_proto_goTypes = []any{
 	(*ListChatChannelsResponse)(nil),  // 22: mod_service.ListChatChannelsResponse
 	(*GetChannelChatsRequest)(nil),    // 23: mod_service.GetChannelChatsRequest
 	(*ChannelChats)(nil),              // 24: mod_service.ChannelChats
-	nil,                               // 25: mod_service.ModActionsMap.ActionsEntry
-	(*timestamppb.Timestamp)(nil),     // 26: google.protobuf.Timestamp
-	(*ipc.ChatMessage)(nil),           // 27: ipc.ChatMessage
+	(*ReportChatMessageRequest)(nil),  // 25: mod_service.ReportChatMessageRequest
+	(*ReportChatMessageResponse)(nil), // 26: mod_service.ReportChatMessageResponse
+	(*GetChatReportsRequest)(nil),     // 27: mod_service.GetChatReportsRequest
+	(*ChatReport)(nil),                // 28: mod_service.ChatReport
+	(*ChatReports)(nil),               // 29: mod_service.ChatReports
+	(*HandleChatReportRequest)(nil),   // 30: mod_service.HandleChatReportRequest
+	(*HandleChatReportResponse)(nil),  // 31: mod_service.HandleChatReportResponse
+	(*ReopenChatReportRequest)(nil),   // 32: mod_service.ReopenChatReportRequest
+	(*ReopenChatReportResponse)(nil),  // 33: mod_service.ReopenChatReportResponse
+	nil,                               // 34: mod_service.ModActionsMap.ActionsEntry
+	(*timestamppb.Timestamp)(nil),     // 35: google.protobuf.Timestamp
+	(*ipc.ChatMessage)(nil),           // 36: ipc.ChatMessage
 }
 var file_proto_mod_service_mod_service_proto_depIdxs = []int32{
 	0,  // 0: mod_service.ModAction.type:type_name -> mod_service.ModActionType
-	26, // 1: mod_service.ModAction.start_time:type_name -> google.protobuf.Timestamp
-	26, // 2: mod_service.ModAction.end_time:type_name -> google.protobuf.Timestamp
-	26, // 3: mod_service.ModAction.removed_time:type_name -> google.protobuf.Timestamp
+	35, // 1: mod_service.ModAction.start_time:type_name -> google.protobuf.Timestamp
+	35, // 2: mod_service.ModAction.end_time:type_name -> google.protobuf.Timestamp
+	35, // 3: mod_service.ModAction.removed_time:type_name -> google.protobuf.Timestamp
 	1,  // 4: mod_service.ModAction.email_type:type_name -> mod_service.EmailType
-	25, // 5: mod_service.ModActionsMap.actions:type_name -> mod_service.ModActionsMap.ActionsEntry
+	34, // 5: mod_service.ModActionsMap.actions:type_name -> mod_service.ModActionsMap.ActionsEntry
 	3,  // 6: mod_service.ModActionsList.actions:type_name -> mod_service.ModAction
-	26, // 7: mod_service.EmailChange.changed_at:type_name -> google.protobuf.Timestamp
+	35, // 7: mod_service.EmailChange.changed_at:type_name -> google.protobuf.Timestamp
 	10, // 8: mod_service.ListEmailChangesResponse.changes:type_name -> mod_service.EmailChange
 	2,  // 9: mod_service.NotoriousGame.type:type_name -> mod_service.NotoriousGameType
-	26, // 10: mod_service.NotoriousGame.created_at:type_name -> google.protobuf.Timestamp
+	35, // 10: mod_service.NotoriousGame.created_at:type_name -> google.protobuf.Timestamp
 	13, // 11: mod_service.NotorietyReport.games:type_name -> mod_service.NotoriousGame
 	19, // 12: mod_service.ChatChannelContext.parties:type_name -> mod_service.ChatSenderCount
 	19, // 13: mod_service.ChatChannelSummary.senders:type_name -> mod_service.ChatSenderCount
 	20, // 14: mod_service.ChatChannelSummary.context:type_name -> mod_service.ChatChannelContext
 	21, // 15: mod_service.ListChatChannelsResponse.channels:type_name -> mod_service.ChatChannelSummary
-	27, // 16: mod_service.ChannelChats.messages:type_name -> ipc.ChatMessage
-	3,  // 17: mod_service.ModActionsMap.ActionsEntry.value:type_name -> mod_service.ModAction
-	5,  // 18: mod_service.ModService.ApplyActions:input_type -> mod_service.ModActionsList
-	5,  // 19: mod_service.ModService.RemoveActions:input_type -> mod_service.ModActionsList
-	6,  // 20: mod_service.ModService.GetActions:input_type -> mod_service.GetActionsRequest
-	6,  // 21: mod_service.ModService.GetActionHistory:input_type -> mod_service.GetActionsRequest
-	16, // 22: mod_service.ModService.GetNotorietyReport:input_type -> mod_service.GetNotorietyReportRequest
-	14, // 23: mod_service.ModService.ResetNotoriety:input_type -> mod_service.ResetNotorietyRequest
-	18, // 24: mod_service.ModService.ListChatChannels:input_type -> mod_service.ListChatChannelsRequest
-	23, // 25: mod_service.ModService.GetChannelChats:input_type -> mod_service.GetChannelChatsRequest
-	8,  // 26: mod_service.ModService.ChangeEmail:input_type -> mod_service.ChangeEmailRequest
-	11, // 27: mod_service.ModService.ListEmailChanges:input_type -> mod_service.ListEmailChangesRequest
-	7,  // 28: mod_service.ModService.ApplyActions:output_type -> mod_service.ModActionResponse
-	7,  // 29: mod_service.ModService.RemoveActions:output_type -> mod_service.ModActionResponse
-	4,  // 30: mod_service.ModService.GetActions:output_type -> mod_service.ModActionsMap
-	5,  // 31: mod_service.ModService.GetActionHistory:output_type -> mod_service.ModActionsList
-	17, // 32: mod_service.ModService.GetNotorietyReport:output_type -> mod_service.NotorietyReport
-	15, // 33: mod_service.ModService.ResetNotoriety:output_type -> mod_service.ResetNotorietyResponse
-	22, // 34: mod_service.ModService.ListChatChannels:output_type -> mod_service.ListChatChannelsResponse
-	24, // 35: mod_service.ModService.GetChannelChats:output_type -> mod_service.ChannelChats
-	9,  // 36: mod_service.ModService.ChangeEmail:output_type -> mod_service.ChangeEmailResponse
-	12, // 37: mod_service.ModService.ListEmailChanges:output_type -> mod_service.ListEmailChangesResponse
-	28, // [28:38] is the sub-list for method output_type
-	18, // [18:28] is the sub-list for method input_type
-	18, // [18:18] is the sub-list for extension type_name
-	18, // [18:18] is the sub-list for extension extendee
-	0,  // [0:18] is the sub-list for field type_name
+	36, // 16: mod_service.ChannelChats.messages:type_name -> ipc.ChatMessage
+	36, // 17: mod_service.ChatReport.message:type_name -> ipc.ChatMessage
+	35, // 18: mod_service.ChatReport.reported_at:type_name -> google.protobuf.Timestamp
+	35, // 19: mod_service.ChatReport.handled_at:type_name -> google.protobuf.Timestamp
+	28, // 20: mod_service.ChatReports.reports:type_name -> mod_service.ChatReport
+	3,  // 21: mod_service.ModActionsMap.ActionsEntry.value:type_name -> mod_service.ModAction
+	5,  // 22: mod_service.ModService.ApplyActions:input_type -> mod_service.ModActionsList
+	5,  // 23: mod_service.ModService.RemoveActions:input_type -> mod_service.ModActionsList
+	6,  // 24: mod_service.ModService.GetActions:input_type -> mod_service.GetActionsRequest
+	6,  // 25: mod_service.ModService.GetActionHistory:input_type -> mod_service.GetActionsRequest
+	16, // 26: mod_service.ModService.GetNotorietyReport:input_type -> mod_service.GetNotorietyReportRequest
+	14, // 27: mod_service.ModService.ResetNotoriety:input_type -> mod_service.ResetNotorietyRequest
+	18, // 28: mod_service.ModService.ListChatChannels:input_type -> mod_service.ListChatChannelsRequest
+	23, // 29: mod_service.ModService.GetChannelChats:input_type -> mod_service.GetChannelChatsRequest
+	8,  // 30: mod_service.ModService.ChangeEmail:input_type -> mod_service.ChangeEmailRequest
+	11, // 31: mod_service.ModService.ListEmailChanges:input_type -> mod_service.ListEmailChangesRequest
+	25, // 32: mod_service.ModService.ReportChatMessage:input_type -> mod_service.ReportChatMessageRequest
+	27, // 33: mod_service.ModService.GetChatReports:input_type -> mod_service.GetChatReportsRequest
+	30, // 34: mod_service.ModService.HandleChatReport:input_type -> mod_service.HandleChatReportRequest
+	32, // 35: mod_service.ModService.ReopenChatReport:input_type -> mod_service.ReopenChatReportRequest
+	7,  // 36: mod_service.ModService.ApplyActions:output_type -> mod_service.ModActionResponse
+	7,  // 37: mod_service.ModService.RemoveActions:output_type -> mod_service.ModActionResponse
+	4,  // 38: mod_service.ModService.GetActions:output_type -> mod_service.ModActionsMap
+	5,  // 39: mod_service.ModService.GetActionHistory:output_type -> mod_service.ModActionsList
+	17, // 40: mod_service.ModService.GetNotorietyReport:output_type -> mod_service.NotorietyReport
+	15, // 41: mod_service.ModService.ResetNotoriety:output_type -> mod_service.ResetNotorietyResponse
+	22, // 42: mod_service.ModService.ListChatChannels:output_type -> mod_service.ListChatChannelsResponse
+	24, // 43: mod_service.ModService.GetChannelChats:output_type -> mod_service.ChannelChats
+	9,  // 44: mod_service.ModService.ChangeEmail:output_type -> mod_service.ChangeEmailResponse
+	12, // 45: mod_service.ModService.ListEmailChanges:output_type -> mod_service.ListEmailChangesResponse
+	26, // 46: mod_service.ModService.ReportChatMessage:output_type -> mod_service.ReportChatMessageResponse
+	29, // 47: mod_service.ModService.GetChatReports:output_type -> mod_service.ChatReports
+	31, // 48: mod_service.ModService.HandleChatReport:output_type -> mod_service.HandleChatReportResponse
+	33, // 49: mod_service.ModService.ReopenChatReport:output_type -> mod_service.ReopenChatReportResponse
+	36, // [36:50] is the sub-list for method output_type
+	22, // [22:36] is the sub-list for method input_type
+	22, // [22:22] is the sub-list for extension type_name
+	22, // [22:22] is the sub-list for extension extendee
+	0,  // [0:22] is the sub-list for field type_name
 }
 
 func init() { file_proto_mod_service_mod_service_proto_init() }
@@ -1827,7 +2325,7 @@ func file_proto_mod_service_mod_service_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_mod_service_mod_service_proto_rawDesc), len(file_proto_mod_service_mod_service_proto_rawDesc)),
 			NumEnums:      3,
-			NumMessages:   23,
+			NumMessages:   32,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

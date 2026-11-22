@@ -53,3 +53,32 @@ export const changeEmail = ModService.method.changeEmail;
  * @generated from rpc mod_service.ModService.ListEmailChanges
  */
 export const listEmailChanges = ModService.method.listEmailChanges;
+
+/**
+ * Reports a chat message to the moderators: anyone signed in, any message.
+ *
+ * @generated from rpc mod_service.ModService.ReportChatMessage
+ */
+export const reportChatMessage = ModService.method.reportChatMessage;
+
+/**
+ * The open reports, newest first, or the handled ones, the most recently
+ * handled first (moderators).
+ *
+ * @generated from rpc mod_service.ModService.GetChatReports
+ */
+export const getChatReports = ModService.method.getChatReports;
+
+/**
+ * Marks a report handled (moderators).
+ *
+ * @generated from rpc mod_service.ModService.HandleChatReport
+ */
+export const handleChatReport = ModService.method.handleChatReport;
+
+/**
+ * Opens a handled report again (moderators).
+ *
+ * @generated from rpc mod_service.ModService.ReopenChatReport
+ */
+export const reopenChatReport = ModService.method.reopenChatReport;

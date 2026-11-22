@@ -205,6 +205,51 @@ message ChannelChats {
   bool has_newer = 3;
 }
 
+message ReportChatMessageRequest {
+  // the reported message's id
+  string message_id = 1;
+}
+
+message ReportChatMessageResponse {}
+
+message GetChatReportsRequest {
+  // the handled reports, the most recently handled first, instead of the
+  // open ones
+  bool handled = 1;
+}
+
+// A report of a chat message, open or handled.
+message ChatReport {
+  int64 id = 1;
+  // the reported message: its channel, sender, words and time
+  ipc.ChatMessage message = 2;
+  // whether a moderator has deleted the message since
+  bool deleted = 3;
+  string reporter_id = 4;
+  string reporter_username = 5;
+  google.protobuf.Timestamp reported_at = 6;
+  // the moderator who marked it handled, and when; empty while it is open
+  string handled_by_id = 7;
+  string handled_by_username = 8;
+  google.protobuf.Timestamp handled_at = 9;
+}
+
+message ChatReports { repeated ChatReport reports = 1; }
+
+message HandleChatReportRequest {
+  // the report to mark handled
+  int64 report_id = 1;
+}
+
+message HandleChatReportResponse {}
+
+message ReopenChatReportRequest {
+  // the handled report to open again
+  int64 report_id = 1;
+}
+
+message ReopenChatReportResponse {}
+
 service ModService {
   rpc ApplyActions(ModActionsList) returns (ModActionResponse);
   rpc RemoveActions(ModActionsList) returns (ModActionResponse);
@@ -218,4 +263,16 @@ service ModService {
   rpc ChangeEmail(ChangeEmailRequest) returns (ChangeEmailResponse);
   rpc ListEmailChanges(ListEmailChangesRequest)
       returns (ListEmailChangesResponse);
+  // Reports a chat message to the moderators: anyone signed in, any message.
+  rpc ReportChatMessage(ReportChatMessageRequest)
+      returns (ReportChatMessageResponse);
+  // The open reports, newest first, or the handled ones, the most recently
+  // handled first (moderators).
+  rpc GetChatReports(GetChatReportsRequest) returns (ChatReports);
+  // Marks a report handled (moderators).
+  rpc HandleChatReport(HandleChatReportRequest)
+      returns (HandleChatReportResponse);
+  // Opens a handled report again (moderators).
+  rpc ReopenChatReport(ReopenChatReportRequest)
+      returns (ReopenChatReportResponse);
 }
