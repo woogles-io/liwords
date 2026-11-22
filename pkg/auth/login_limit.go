@@ -5,11 +5,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gomodule/redigo/redis"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/rs/zerolog/log"
+
+	"github.com/woogles-io/liwords/pkg/stores/models"
 )
 
-// Failed logins are counted in Redis, and an attempt that is over a limit is
+// Failed logins are counted in Postgres, and an attempt that is over a limit is
 // turned away before its password is hashed. Each limit stops a different
 // kind of guessing:
 //
@@ -30,7 +32,7 @@ const (
 )
 
 type loginLimiter struct {
-	pool *redis.Pool
+	q *models.Queries
 }
 
 type counter struct {
@@ -39,11 +41,11 @@ type counter struct {
 	window time.Duration
 }
 
-func newLoginLimiter(pool *redis.Pool) *loginLimiter {
-	if pool == nil {
+func newLoginLimiter(q *models.Queries) *loginLimiter {
+	if q == nil {
 		return nil
 	}
-	return &loginLimiter{pool: pool}
+	return &loginLimiter{q: q}
 }
 
 // counters returns the failure counters for an attempt, the per-account one
@@ -60,55 +62,45 @@ func counters(username, ip string) []counter {
 	return append(cs, counter{"loginfail:user:" + u, maxFailsUser, failWindowLong})
 }
 
-func knownClientKey(username, clientID string) string {
-	if clientID == "" {
-		return ""
-	}
-	return "loginok:" + strings.ToLower(username) + ":" + clientID
-}
-
 // allowed reports whether a login attempt may go on to the password check. It
-// lets the attempt through if Redis can't be reached, so an outage doesn't
+// lets the attempt through if the counts can't be read, so an outage doesn't
 // stop everyone logging in.
 func (l *loginLimiter) allowed(ctx context.Context, username, ip, clientID string) bool {
 	if l == nil {
 		return true
 	}
-	conn, err := l.pool.GetContext(ctx)
-	if err != nil {
-		log.Err(err).Msg("login-limit-redis")
-		return true
-	}
-	defer conn.Close()
-
 	cs := counters(username, ip)
-	keys := make([]any, len(cs))
+	keys := make([]string, len(cs))
 	for i, c := range cs {
 		keys[i] = c.key
 	}
-	counts, err := redis.Ints(conn.Do("MGET", keys...))
+	rows, err := l.q.GetLoginFailures(ctx, keys)
 	if err != nil {
-		log.Err(err).Msg("login-limit-redis")
+		log.Err(err).Msg("login-limit-db")
 		return true
 	}
-	for i, c := range cs[:len(cs)-1] {
-		if counts[i] >= c.limit {
+	counts := make(map[string]int, len(rows))
+	for _, r := range rows {
+		counts[r.Key] = int(r.Failures)
+	}
+	for _, c := range cs[:len(cs)-1] {
+		if counts[c.key] >= c.limit {
 			return false
 		}
 	}
-	if counts[len(cs)-1] < maxFailsUser {
+	if counts[cs[len(cs)-1].key] < maxFailsUser {
 		return true
 	}
-	known := knownClientKey(username, clientID)
-	if known == "" {
+	if clientID == "" {
 		return false
 	}
-	ok, err := redis.Bool(conn.Do("EXISTS", known))
+	known, err := l.q.IsKnownLoginClient(ctx, models.IsKnownLoginClientParams{
+		Username: strings.ToLower(username), ClientID: clientID})
 	if err != nil {
-		log.Err(err).Msg("login-limit-redis")
+		log.Err(err).Msg("login-limit-db")
 		return true
 	}
-	return ok
+	return known
 }
 
 // failed counts a failed login against the account and the address.
@@ -116,25 +108,11 @@ func (l *loginLimiter) failed(ctx context.Context, username, ip string) {
 	if l == nil {
 		return
 	}
-	conn, err := l.pool.GetContext(ctx)
-	if err != nil {
-		log.Err(err).Msg("login-limit-redis")
-		return
-	}
-	defer conn.Close()
-
 	for _, c := range counters(username, ip) {
-		n, err := redis.Int(conn.Do("INCR", c.key))
-		if err != nil {
-			log.Err(err).Msg("login-limit-redis")
+		if err := l.q.AddLoginFailure(ctx, models.AddLoginFailureParams{
+			Key: c.key, WindowSecs: c.window.Seconds()}); err != nil {
+			log.Err(err).Msg("login-limit-db")
 			return
-		}
-		// The window starts at the first failure.
-		if n == 1 {
-			if _, err := conn.Do("EXPIRE", c.key, int(c.window.Seconds())); err != nil {
-				log.Err(err).Msg("login-limit-redis")
-				return
-			}
 		}
 	}
 }
@@ -145,21 +123,35 @@ func (l *loginLimiter) succeeded(ctx context.Context, username, ip, clientID str
 	if l == nil {
 		return
 	}
-	conn, err := l.pool.GetContext(ctx)
-	if err != nil {
-		log.Err(err).Msg("login-limit-redis")
-		return
-	}
-	defer conn.Close()
-
 	if ip != "" {
-		if _, err := conn.Do("DEL", counters(username, ip)[0].key); err != nil {
-			log.Err(err).Msg("login-limit-redis")
+		if err := l.q.ClearLoginFailures(ctx, counters(username, ip)[0].key); err != nil {
+			log.Err(err).Msg("login-limit-db")
 		}
 	}
-	if known := knownClientKey(username, clientID); known != "" {
-		if _, err := conn.Do("SET", known, 1, "EX", int(knownClientTTL.Seconds())); err != nil {
-			log.Err(err).Msg("login-limit-redis")
+	if clientID != "" {
+		if err := l.q.AddKnownLoginClient(ctx, models.AddKnownLoginClientParams{
+			Username:  strings.ToLower(username),
+			ClientID:  clientID,
+			ExpiresAt: pgtype.Timestamptz{Time: time.Now().Add(knownClientTTL), Valid: true},
+		}); err != nil {
+			log.Err(err).Msg("login-limit-db")
 		}
+	}
+}
+
+// CleanupLoginLimits deletes failure counts and known browsers that have
+// expired. A daily job runs it.
+func CleanupLoginLimits(q *models.Queries) func(context.Context) error {
+	return func(ctx context.Context) error {
+		f, err := q.DeleteExpiredLoginFailures(ctx)
+		if err != nil {
+			return err
+		}
+		k, err := q.DeleteExpiredKnownLoginClients(ctx)
+		if err != nil {
+			return err
+		}
+		log.Info().Int64("failures", f).Int64("known_clients", k).Msg("login-limits-cleanup")
+		return nil
 	}
 }
