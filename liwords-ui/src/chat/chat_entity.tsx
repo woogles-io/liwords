@@ -21,6 +21,7 @@ import { useClient } from "../utils/hooks/connect";
 import { ModService } from "../gen/api/proto/mod_service/mod_service_pb";
 import { HookAPI } from "antd/lib/modal/useModal";
 import { Client } from "@connectrpc/connect";
+import { reportMessage } from "./report_message";
 
 type EntityProps = {
   entityType: ChatEntityType;
@@ -84,7 +85,7 @@ export const ChatEntity = (props: EntityProps) => {
   let fromAdmin = false;
   const channel = "";
   const modClient = useClient(ModService);
-  const { modal } = App.useApp();
+  const { modal, message } = App.useApp();
 
   // Don't render until we know who's been blocked
   if (!excludedPlayersFetched) {
@@ -167,6 +168,13 @@ export const ChatEntity = (props: EntityProps) => {
                       }
                     }}
                     moderate={moderateUser}
+                    reportMessage={() =>
+                      reportMessage({ modal, message }, modClient, {
+                        id: props.msgID,
+                        sender: props.sender,
+                        message: props.message,
+                      })
+                    }
                   />
                   {props.highlightText && props.highlight && (
                     <Tag
