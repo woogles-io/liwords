@@ -112,9 +112,34 @@ func sanitize(us user.Store, gs gameplay.GameStore, ts *tournament.DBStore, evt 
 		entity.CensorRacks(cloned)
 		return entity.WrapEvent(cloned, pb.MessageType_SERVER_GAMEPLAY_EVENT), nil
 
+	case pb.MessageType_SEEK_REQUEST:
+		if sr, ok := evt.Event.(*pb.SeekRequest); ok {
+			return entity.WrapEvent(publicSeek(sr), pb.MessageType_SEEK_REQUEST), nil
+		}
+		return evt, nil
+
+	case pb.MessageType_SEEK_REQUESTS:
+		if srs, ok := evt.Event.(*pb.SeekRequests); ok {
+			out := &pb.SeekRequests{Requests: make([]*pb.SeekRequest, len(srs.Requests))}
+			for i, sr := range srs.Requests {
+				out.Requests[i] = publicSeek(sr)
+			}
+			return entity.WrapEvent(out, pb.MessageType_SEEK_REQUESTS), nil
+		}
+		return evt, nil
+
 	default:
 		return evt, nil
 	}
+}
+
+// publicSeek is a seek as clients get it: without the connection IDs of the
+// tabs it was made from and sent to, which only the server uses.
+func publicSeek(sr *pb.SeekRequest) *pb.SeekRequest {
+	c := proto.Clone(sr).(*pb.SeekRequest)
+	c.SeekerConnectionId = ""
+	c.ReceiverConnectionId = ""
+	return c
 }
 
 func playerIndexFromUserID(userid string, playerinfo []*macondopb.PlayerInfo) int {

@@ -297,7 +297,7 @@ func publishSeek(ctx context.Context, b *Bus, sg *entity.SoughtGame, userID stri
 }
 
 func publishSeekToLobby(b *Bus, sg *entity.SoughtGame) error {
-	evt := entity.WrapEvent(sg.SeekRequest, pb.MessageType_SEEK_REQUEST)
+	evt := entity.WrapEvent(publicSeek(sg.SeekRequest), pb.MessageType_SEEK_REQUEST)
 	outdata, err := evt.Serialize()
 	if err != nil {
 		return err
@@ -316,7 +316,7 @@ func publishSeekToRecipients(ctx context.Context, b *Bus, sg *entity.SoughtGame,
 		return err
 	}
 	data, err := proto.Marshal(&pb.FollowedPlayersSeek{
-		SeekRequest:      sg.SeekRequest,
+		SeekRequest:      publicSeek(sg.SeekRequest),
 		RecipientUserIds: recipients,
 	})
 	if err != nil {
@@ -842,8 +842,10 @@ func (b *Bus) deleteSoughtForUser(ctx context.Context, userID string) error {
 	return nil
 }
 
-func (b *Bus) deleteSoughtForConnID(ctx context.Context, connID string) error {
-	reqs, err := b.stores.SoughtGameStore.DeleteForSeekerConnID(ctx, connID)
+func (b *Bus) deleteSoughtForConnID(ctx context.Context, userID, connID string) error {
+	// Only the leaving user's: the connection ID alone isn't proof of whose
+	// tab it was.
+	reqs, err := b.stores.SoughtGameStore.DeleteForSeekerConn(ctx, userID, connID)
 	if err != nil {
 		return err
 	}

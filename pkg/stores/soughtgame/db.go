@@ -200,6 +200,19 @@ func (s *DBStore) DeleteForSeekerConnID(ctx context.Context, connID string) ([]*
 	return soughtGamesFromRows(rows)
 }
 
+// DeleteForSeekerConn deletes the real-time seeks and match requests that
+// seekerID made from the connection connID, and returns them.
+func (s *DBStore) DeleteForSeekerConn(ctx context.Context, seekerID, connID string) ([]*entity.SoughtGame, error) {
+	rows, err := s.queries.DeleteRealtimeSoughtGamesOfSeekerConn(ctx, models.DeleteRealtimeSoughtGamesOfSeekerConnParams{
+		Seeker:       pgtype.Text{String: seekerID, Valid: true},
+		SeekerConnID: pgtype.Text{String: connID, Valid: true},
+	})
+	if err != nil {
+		return nil, err
+	}
+	return soughtGamesFromRows(rows)
+}
+
 func soughtGamesFromRows(rows [][]byte) ([]*entity.SoughtGame, error) {
 	sgs := make([]*entity.SoughtGame, 0, len(rows))
 	for _, data := range rows {

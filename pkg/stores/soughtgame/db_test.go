@@ -493,3 +493,25 @@ func recreateDB() (*pgxpool.Pool, *DBStore) {
 	}
 	return pool, store
 }
+
+// Leaving a tab deletes only that user's seeks from it: knowing a connection
+// ID isn't enough to delete someone else's.
+func TestDeleteForSeekerConnChecksSeeker(t *testing.T) {
+	_, store := recreateDB()
+	is := is.New(t)
+	ctx := context.Background()
+	sg := newSoughtGame()
+	sg.SeekRequest.GameRequest.GameMode = pb.GameMode_REAL_TIME
+	is.NoErr(store.New(ctx, sg))
+	seeker, err := sg.SeekerUserID()
+	is.NoErr(err)
+	conn, err := sg.SeekerConnID()
+	is.NoErr(err)
+
+	gone, err := store.DeleteForSeekerConn(ctx, "someone-else", conn)
+	is.NoErr(err)
+	is.Equal(len(gone), 0)
+	gone, err = store.DeleteForSeekerConn(ctx, seeker, conn)
+	is.NoErr(err)
+	is.Equal(len(gone), 1)
+}

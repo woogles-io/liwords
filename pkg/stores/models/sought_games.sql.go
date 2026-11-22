@@ -78,6 +78,39 @@ func (q *Queries) DeleteRealtimeSoughtGamesBySeekerID(ctx context.Context, seeke
 	return items, nil
 }
 
+const deleteRealtimeSoughtGamesOfSeekerConn = `-- name: DeleteRealtimeSoughtGamesOfSeekerConn :many
+DELETE FROM soughtgames
+WHERE seeker = $1 AND seeker_conn_id = $2
+  AND (game_mode IS NULL OR game_mode = 0)
+RETURNING request
+`
+
+type DeleteRealtimeSoughtGamesOfSeekerConnParams struct {
+	Seeker       pgtype.Text
+	SeekerConnID pgtype.Text
+}
+
+// The real-time seeks the given user made from the given connection.
+func (q *Queries) DeleteRealtimeSoughtGamesOfSeekerConn(ctx context.Context, arg DeleteRealtimeSoughtGamesOfSeekerConnParams) ([][]byte, error) {
+	rows, err := q.db.Query(ctx, deleteRealtimeSoughtGamesOfSeekerConn, arg.Seeker, arg.SeekerConnID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items [][]byte
+	for rows.Next() {
+		var request []byte
+		if err := rows.Scan(&request); err != nil {
+			return nil, err
+		}
+		items = append(items, request)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const deleteSoughtGameByUUID = `-- name: DeleteSoughtGameByUUID :exec
 DELETE FROM soughtgames WHERE uuid = $1
 `

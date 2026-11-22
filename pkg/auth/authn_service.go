@@ -275,19 +275,22 @@ func (as *AuthenticationService) GetSocketToken(ctx context.Context, r *connect.
 	uuid = u.UUID
 	unn = u.Username
 
+	// A random ID for the connection this token opens. It's signed into the
+	// token: the socket server takes it from there, so a client can't choose
+	// it (or take another connection's).
+	cid := shortuuid.New()[1:10]
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"exp": time.Now().Add(WebSocketTokenExpiration).Unix(),
 		"uid": uuid,
 		"unn": unn,
 		"a":   authed,
 		"cs":  u.IsChild(),
+		"cid": cid,
 	})
 	tokenString, err := token.SignedString([]byte(as.secretKey))
 	if err != nil {
 		return nil, apiserver.InternalErr(err)
 	}
-	// create a random connection ID.
-	cid := shortuuid.New()[1:10]
 
 	apiserver.RecordClient(ctx, as.userStore, uuid)
 
@@ -314,6 +317,7 @@ func (as *AuthenticationService) unauthedToken(ctx context.Context, feHash strin
 		"unn": uid,
 		"a":   false, // not authed
 		"cs":  ipc.ChildStatus_UNKNOWN,
+		"cid": cid,
 	})
 	tokenString, err := token.SignedString([]byte(as.secretKey))
 	if err != nil {

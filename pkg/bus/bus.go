@@ -1046,7 +1046,7 @@ func (b *Bus) leaveTab(ctx context.Context, userID, connID string) error {
 		return err
 	}
 
-	err = b.deleteSoughtForConnID(ctx, connID)
+	err = b.deleteSoughtForConnID(ctx, userID, connID)
 	if err != nil {
 		return err
 	}
