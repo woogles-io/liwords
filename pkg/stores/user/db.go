@@ -2,6 +2,7 @@ package user
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -93,7 +94,7 @@ func userFromRow(id int32, username, uuid, email, password string, internalBot b
 // profileFromRow converts the LEFT JOIN profile fields to an entity.Profile.
 // Returns nil if the profile row doesn't exist (first_name is NULL).
 func profileFromRow(firstName, lastName, birthDate, countryCode, title, about, avatarURL pgtype.Text,
-	ratings entity.Ratings, stats entity.ProfileStats) *entity.Profile {
+	ratings entity.Ratings) *entity.Profile {
 	if !firstName.Valid {
 		return nil
 	}
@@ -106,7 +107,6 @@ func profileFromRow(firstName, lastName, birthDate, countryCode, title, about, a
 		About:       about.String,
 		AvatarUrl:   avatarURL.String,
 		Ratings:     ratings,
-		Stats:       stats,
 	}
 }
 
@@ -122,7 +122,7 @@ func (s *DBStore) Get(ctx context.Context, username string) (*entity.User, error
 	u := userFromRow(row.ID, row.Username, row.Uuid, row.Email, row.Password, row.InternalBot, row.Notoriety,
 		row.Verified, row.VerificationToken, row.VerificationExpiresAt)
 	u.Profile = profileFromRow(row.FirstName, row.LastName, row.BirthDate, row.CountryCode, row.Title,
-		row.About, row.AvatarUrl, row.Ratings, row.Stats)
+		row.About, row.AvatarUrl, row.Ratings)
 	if u.Profile == nil {
 		return nil, errors.New("profile not found")
 	}
@@ -183,7 +183,7 @@ func (s *DBStore) GetByUUID(ctx context.Context, uuid string) (*entity.User, err
 	u := userFromRow(row.ID, row.Username, row.Uuid, row.Email, row.Password, row.InternalBot, row.Notoriety,
 		row.Verified, row.VerificationToken, row.VerificationExpiresAt)
 	u.Profile = profileFromRow(row.FirstName, row.LastName, row.BirthDate, row.CountryCode, row.Title,
-		row.About, row.AvatarUrl, row.Ratings, row.Stats)
+		row.About, row.AvatarUrl, row.Ratings)
 	if u.Profile == nil {
 		return nil, errors.New("profile not found")
 	}
@@ -207,13 +207,46 @@ func (s *DBStore) GetByUUIDs(ctx context.Context, uuids []string) (map[string]*e
 		u := userFromRow(row.ID, row.Username, row.Uuid, row.Email, row.Password, row.InternalBot, row.Notoriety,
 			row.Verified, row.VerificationToken, row.VerificationExpiresAt)
 		u.Profile = profileFromRow(row.FirstName, row.LastName, row.BirthDate, row.CountryCode, row.Title,
-			row.About, row.AvatarUrl, row.Ratings, row.Stats)
+			row.About, row.AvatarUrl, row.Ratings)
 		if u.Profile == nil {
 			continue
 		}
 		users[u.UUID] = u
 	}
 	return users, nil
+}
+
+// GetProfileStats returns all of the user's profile stats. They can run to
+// tens of KB of JSON, so the user lookups leave them out.
+func (s *DBStore) GetProfileStats(ctx context.Context, uuid string) (entity.ProfileStats, error) {
+	st, err := s.queries.GetProfileStats(ctx, uuid)
+	if err == pgx.ErrNoRows {
+		return entity.ProfileStats{}, errors.New("profile not found")
+	}
+	return st, err
+}
+
+// GetProfileVariantStats returns the user's profile stats for one variant, or
+// nil if they have none for it yet.
+func (s *DBStore) GetProfileVariantStats(ctx context.Context, uuid string, variant entity.VariantKey) (*entity.Stats, error) {
+	data, err := s.queries.GetProfileVariantStats(ctx, models.GetProfileVariantStatsParams{
+		Variant: string(variant),
+		Uuid:    uuid,
+	})
+	if err == pgx.ErrNoRows {
+		return nil, errors.New("profile not found")
+	}
+	if err != nil {
+		return nil, err
+	}
+	if data == nil || string(data) == "null" {
+		return nil, nil
+	}
+	var st entity.Stats
+	if err := json.Unmarshal(data, &st); err != nil {
+		return nil, err
+	}
+	return &st, nil
 }
 
 // GetByAPIKey gets a user by api key. It does not try to fetch the profile. We only
@@ -248,7 +281,7 @@ func (s *DBStore) GetByVerificationToken(ctx context.Context, token string) (*en
 	u := userFromRow(row.ID, row.Username, row.Uuid, row.Email, row.Password, row.InternalBot, row.Notoriety,
 		row.Verified, row.VerificationToken, row.VerificationExpiresAt)
 	u.Profile = profileFromRow(row.FirstName, row.LastName, row.BirthDate, row.CountryCode, row.Title,
-		row.About, row.AvatarUrl, row.Ratings, row.Stats)
+		row.About, row.AvatarUrl, row.Ratings)
 	if u.Profile == nil {
 		return nil, errors.New("profile not found")
 	}
@@ -299,7 +332,7 @@ func (s *DBStore) New(ctx context.Context, u *entity.User) error {
 	}
 
 	_, err = tx.Exec(ctx, `INSERT INTO profiles (user_id, first_name, last_name, country_code, title, about, ratings, stats, avatar_url, birth_date, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())`,
-		userId, prof.FirstName, prof.LastName, prof.CountryCode, prof.Title, prof.About, prof.Ratings, prof.Stats, prof.AvatarUrl, prof.BirthDate)
+		userId, prof.FirstName, prof.LastName, prof.CountryCode, prof.Title, prof.About, prof.Ratings, entity.ProfileStats{}, prof.AvatarUrl, prof.BirthDate)
 	if err != nil {
 		return err
 	}
@@ -603,7 +636,7 @@ func (s *DBStore) GetBot(ctx context.Context, botType macondopb.BotRequest_BotCo
 	u := userFromRow(row.ID, row.Username, row.Uuid, row.Email, row.Password, row.InternalBot, row.Notoriety,
 		row.Verified, row.VerificationToken, row.VerificationExpiresAt)
 	u.Profile = profileFromRow(row.FirstName, row.LastName, row.BirthDate, row.CountryCode, row.Title,
-		row.About, row.AvatarUrl, row.Ratings, row.Stats)
+		row.About, row.AvatarUrl, row.Ratings)
 	if u.Profile == nil {
 		return nil, errors.New("profile not found")
 	}
@@ -851,7 +884,7 @@ func (s *DBStore) ResetAPIKey(ctx context.Context, uuid string) (string, error) 
 	return apikey, nil
 }
 
-func scanRowsIntoModActions(ctx context.Context, tx pgx.Tx, rows pgx.Rows) ([]*ms.ModAction, []*DBUniqueValues, error) {
+func scanRowsIntoModActions(ctx context.Context, tx models.DBTX, rows pgx.Rows) ([]*ms.ModAction, []*DBUniqueValues, error) {
 	defer rows.Close()
 	actions := []*ms.ModAction{}
 	dbUniqueValues := []*DBUniqueValues{}
@@ -953,7 +986,7 @@ func getSingleActionDB(ctx context.Context, tx pgx.Tx, userUUID string, actionTy
 	return modActions[0], dbUniqueValues[0], nil
 }
 
-func getActionsDB(ctx context.Context, tx pgx.Tx, userUUID string) (map[string]*ms.ModAction, map[string]*DBUniqueValues, error) {
+func getActionsDB(ctx context.Context, tx models.DBTX, userUUID string) (map[string]*ms.ModAction, map[string]*DBUniqueValues, error) {
 	// Only get current actions that are in effect.
 	query := fmt.Sprintf(`SELECT DISTINCT ON (action_type) %s
 	FROM users JOIN user_actions ON users.id = user_actions.user_id
@@ -1090,15 +1123,11 @@ func addUserUUIDsToActions(ctx context.Context, qtx *models.Queries, actions []*
 }
 
 func (s *DBStore) GetActions(ctx context.Context, userUUID string) (map[string]*ms.ModAction, error) {
-	tx, err := s.dbPool.BeginTx(ctx, common.ReadOnlyTxOptions)
+	// Straight from the pool: a transaction would add a BEGIN and a COMMIT
+	// to a check run on every chat message, for a single query in the
+	// usual case of no actions.
+	actions, _, err := getActionsDB(ctx, s.dbPool, userUUID)
 	if err != nil {
-		return nil, err
-	}
-	defer tx.Rollback(ctx)
-
-	actions, _, err := getActionsDB(ctx, tx, userUUID)
-
-	if err := tx.Commit(ctx); err != nil {
 		return nil, err
 	}
 	return actions, nil

@@ -92,7 +92,10 @@ func (ps *ProfileService) GetStats(ctx context.Context, r *connect.Request[pb.St
 	if err != nil {
 		return nil, apiserver.InvalidArg(err.Error())
 	}
-	stats := user.Profile.Stats
+	stats, err := ps.userStore.GetProfileStats(ctx, user.UUID)
+	if err != nil {
+		return nil, apiserver.InternalErr(err)
+	}
 
 	b, err := json.Marshal(stats)
 	if err != nil {
@@ -157,7 +160,10 @@ func (ps *ProfileService) GetProfile(ctx context.Context, r *connect.Request[pb.
 		return nil, apiserver.InternalErr(err)
 	}
 
-	stats := user.Profile.Stats
+	stats, err := ps.userStore.GetProfileStats(ctx, user.UUID)
+	if err != nil {
+		return nil, apiserver.InternalErr(err)
+	}
 	statjson, err := json.Marshal(stats)
 	if err != nil {
 		return nil, apiserver.InternalErr(err)

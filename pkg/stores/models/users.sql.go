@@ -353,6 +353,42 @@ func (q *Queries) GetMatchingEmails(ctx context.Context, lowercasedEmailLike str
 	return items, nil
 }
 
+const getProfileStats = `-- name: GetProfileStats :one
+SELECT p.stats
+FROM profiles p
+JOIN users u ON u.id = p.user_id
+WHERE u.uuid = $1
+`
+
+// A user's profile stats, which can run to tens of KB of JSON: the user
+// lookups leave them out.
+func (q *Queries) GetProfileStats(ctx context.Context, uuid string) (entity.ProfileStats, error) {
+	row := q.db.QueryRow(ctx, getProfileStats, uuid)
+	var stats entity.ProfileStats
+	err := row.Scan(&stats)
+	return stats, err
+}
+
+const getProfileVariantStats = `-- name: GetProfileVariantStats :one
+SELECT (p.stats -> 'Data' -> $1::text)::jsonb AS stats
+FROM profiles p
+JOIN users u ON u.id = p.user_id
+WHERE u.uuid = $2
+`
+
+type GetProfileVariantStatsParams struct {
+	Variant string
+	Uuid    string
+}
+
+// One variant's profile stats; NULL if the user has none for it.
+func (q *Queries) GetProfileVariantStats(ctx context.Context, arg GetProfileVariantStatsParams) ([]byte, error) {
+	row := q.db.QueryRow(ctx, getProfileVariantStats, arg.Variant, arg.Uuid)
+	var stats []byte
+	err := row.Scan(&stats)
+	return stats, err
+}
+
 const getUserByAPIKey = `-- name: GetUserByAPIKey :one
 SELECT id, username, uuid, email, password, internal_bot, notoriety,
        verified, verification_token, verification_expires_at
@@ -573,7 +609,7 @@ const getUserWithProfileByUUID = `-- name: GetUserWithProfileByUUID :one
 SELECT u.id, u.username, u.uuid, u.email, u.password, u.internal_bot,
        u.notoriety, u.verified, u.verification_token, u.verification_expires_at,
        p.first_name, p.last_name, p.birth_date, p.country_code, p.title,
-       p.about, p.avatar_url, p.ratings, p.stats
+       p.about, p.avatar_url, p.ratings
 FROM users u
 LEFT JOIN profiles p ON p.user_id = u.id
 WHERE u.uuid = $1
@@ -598,7 +634,6 @@ type GetUserWithProfileByUUIDRow struct {
 	About                 pgtype.Text
 	AvatarUrl             pgtype.Text
 	Ratings               entity.Ratings
-	Stats                 entity.ProfileStats
 }
 
 func (q *Queries) GetUserWithProfileByUUID(ctx context.Context, uuid string) (GetUserWithProfileByUUIDRow, error) {
@@ -623,7 +658,6 @@ func (q *Queries) GetUserWithProfileByUUID(ctx context.Context, uuid string) (Ge
 		&i.About,
 		&i.AvatarUrl,
 		&i.Ratings,
-		&i.Stats,
 	)
 	return i, err
 }
@@ -632,7 +666,7 @@ const getUserWithProfileByUsername = `-- name: GetUserWithProfileByUsername :one
 SELECT u.id, u.username, u.uuid, u.email, u.password, u.internal_bot,
        u.notoriety, u.verified, u.verification_token, u.verification_expires_at,
        p.first_name, p.last_name, p.birth_date, p.country_code, p.title,
-       p.about, p.avatar_url, p.ratings, p.stats
+       p.about, p.avatar_url, p.ratings
 FROM users u
 LEFT JOIN profiles p ON p.user_id = u.id
 WHERE lower(u.username) = lower($1)
@@ -657,7 +691,6 @@ type GetUserWithProfileByUsernameRow struct {
 	About                 pgtype.Text
 	AvatarUrl             pgtype.Text
 	Ratings               entity.Ratings
-	Stats                 entity.ProfileStats
 }
 
 func (q *Queries) GetUserWithProfileByUsername(ctx context.Context, username string) (GetUserWithProfileByUsernameRow, error) {
@@ -682,7 +715,6 @@ func (q *Queries) GetUserWithProfileByUsername(ctx context.Context, username str
 		&i.About,
 		&i.AvatarUrl,
 		&i.Ratings,
-		&i.Stats,
 	)
 	return i, err
 }
@@ -691,7 +723,7 @@ const getUserWithProfileByVerificationToken = `-- name: GetUserWithProfileByVeri
 SELECT u.id, u.username, u.uuid, u.email, u.password, u.internal_bot,
        u.notoriety, u.verified, u.verification_token, u.verification_expires_at,
        p.first_name, p.last_name, p.birth_date, p.country_code, p.title,
-       p.about, p.avatar_url, p.ratings, p.stats
+       p.about, p.avatar_url, p.ratings
 FROM users u
 LEFT JOIN profiles p ON p.user_id = u.id
 WHERE u.verification_token = $1
@@ -716,7 +748,6 @@ type GetUserWithProfileByVerificationTokenRow struct {
 	About                 pgtype.Text
 	AvatarUrl             pgtype.Text
 	Ratings               entity.Ratings
-	Stats                 entity.ProfileStats
 }
 
 func (q *Queries) GetUserWithProfileByVerificationToken(ctx context.Context, verificationToken pgtype.Text) (GetUserWithProfileByVerificationTokenRow, error) {
@@ -741,7 +772,6 @@ func (q *Queries) GetUserWithProfileByVerificationToken(ctx context.Context, ver
 		&i.About,
 		&i.AvatarUrl,
 		&i.Ratings,
-		&i.Stats,
 	)
 	return i, err
 }
@@ -818,7 +848,7 @@ const getUsersWithProfileByUUIDs = `-- name: GetUsersWithProfileByUUIDs :many
 SELECT u.id, u.username, u.uuid, u.email, u.password, u.internal_bot,
        u.notoriety, u.verified, u.verification_token, u.verification_expires_at,
        p.first_name, p.last_name, p.birth_date, p.country_code, p.title,
-       p.about, p.avatar_url, p.ratings, p.stats
+       p.about, p.avatar_url, p.ratings
 FROM users u
 LEFT JOIN profiles p ON p.user_id = u.id
 WHERE u.uuid = ANY($1::text[])
@@ -843,7 +873,6 @@ type GetUsersWithProfileByUUIDsRow struct {
 	About                 pgtype.Text
 	AvatarUrl             pgtype.Text
 	Ratings               entity.Ratings
-	Stats                 entity.ProfileStats
 }
 
 func (q *Queries) GetUsersWithProfileByUUIDs(ctx context.Context, uuids []string) ([]GetUsersWithProfileByUUIDsRow, error) {
@@ -874,7 +903,6 @@ func (q *Queries) GetUsersWithProfileByUUIDs(ctx context.Context, uuids []string
 			&i.About,
 			&i.AvatarUrl,
 			&i.Ratings,
-			&i.Stats,
 		); err != nil {
 			return nil, err
 		}

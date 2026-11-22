@@ -95,7 +95,7 @@ FROM users WHERE api_key = @api_key;
 SELECT u.id, u.username, u.uuid, u.email, u.password, u.internal_bot,
        u.notoriety, u.verified, u.verification_token, u.verification_expires_at,
        p.first_name, p.last_name, p.birth_date, p.country_code, p.title,
-       p.about, p.avatar_url, p.ratings, p.stats
+       p.about, p.avatar_url, p.ratings
 FROM users u
 LEFT JOIN profiles p ON p.user_id = u.id
 WHERE u.uuid = @uuid;
@@ -104,16 +104,31 @@ WHERE u.uuid = @uuid;
 SELECT u.id, u.username, u.uuid, u.email, u.password, u.internal_bot,
        u.notoriety, u.verified, u.verification_token, u.verification_expires_at,
        p.first_name, p.last_name, p.birth_date, p.country_code, p.title,
-       p.about, p.avatar_url, p.ratings, p.stats
+       p.about, p.avatar_url, p.ratings
 FROM users u
 LEFT JOIN profiles p ON p.user_id = u.id
 WHERE u.uuid = ANY(@uuids::text[]);
+
+-- name: GetProfileStats :one
+-- A user's profile stats, which can run to tens of KB of JSON: the user
+-- lookups leave them out.
+SELECT p.stats
+FROM profiles p
+JOIN users u ON u.id = p.user_id
+WHERE u.uuid = @uuid;
+
+-- name: GetProfileVariantStats :one
+-- One variant's profile stats; NULL if the user has none for it.
+SELECT (p.stats -> 'Data' -> sqlc.arg(variant)::text)::jsonb AS stats
+FROM profiles p
+JOIN users u ON u.id = p.user_id
+WHERE u.uuid = @uuid;
 
 -- name: GetUserWithProfileByUsername :one
 SELECT u.id, u.username, u.uuid, u.email, u.password, u.internal_bot,
        u.notoriety, u.verified, u.verification_token, u.verification_expires_at,
        p.first_name, p.last_name, p.birth_date, p.country_code, p.title,
-       p.about, p.avatar_url, p.ratings, p.stats
+       p.about, p.avatar_url, p.ratings
 FROM users u
 LEFT JOIN profiles p ON p.user_id = u.id
 WHERE lower(u.username) = lower(@username);
@@ -122,7 +137,7 @@ WHERE lower(u.username) = lower(@username);
 SELECT u.id, u.username, u.uuid, u.email, u.password, u.internal_bot,
        u.notoriety, u.verified, u.verification_token, u.verification_expires_at,
        p.first_name, p.last_name, p.birth_date, p.country_code, p.title,
-       p.about, p.avatar_url, p.ratings, p.stats
+       p.about, p.avatar_url, p.ratings
 FROM users u
 LEFT JOIN profiles p ON p.user_id = u.id
 WHERE u.verification_token = @verification_token;

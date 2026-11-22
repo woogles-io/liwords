@@ -895,3 +895,45 @@ func TestGetUsersOnEmailDomains(t *testing.T) {
 	is.NoErr(err)
 	is.Equal(len(rows), 0)
 }
+
+func TestProfileStats(t *testing.T) {
+	is := is.New(t)
+	ustore, _, ctx := recreateDB()
+	defer ustore.Disconnect()
+
+	cesar, err := ustore.Get(ctx, "cesar")
+	is.NoErr(err)
+	mina, err := ustore.Get(ctx, "mina")
+	is.NoErr(err)
+	variant := entity.VariantKey("burrito")
+	is.NoErr(ustore.SetRatings(ctx, cesar.UUID, mina.UUID, variant,
+		&entity.SingleRating{Rating: 1700, RatingDeviation: 60, Volatility: 0.06},
+		&entity.SingleRating{Rating: 1500, RatingDeviation: 60, Volatility: 0.06}))
+	is.NoErr(ustore.SetStats(ctx, cesar.UUID, mina.UUID, variant,
+		&entity.Stats{PlayerOneId: "cesar"}, &entity.Stats{PlayerOneId: "mina"}))
+
+	// The lookups have the ratings; the stats are read on their own.
+	u, err := ustore.GetByUUID(ctx, cesar.UUID)
+	is.NoErr(err)
+	is.True(commontest.WithinEpsilon(u.Profile.Ratings.Data[variant].Rating, 1700))
+	users, err := ustore.GetByUUIDs(ctx, []string{cesar.UUID, mina.UUID, "nobody"})
+	is.NoErr(err)
+	is.Equal(len(users), 2)
+	is.True(commontest.WithinEpsilon(users[mina.UUID].Profile.Ratings.Data[variant].Rating, 1500))
+
+	all, err := ustore.GetProfileStats(ctx, cesar.UUID)
+	is.NoErr(err)
+	is.Equal(all.Data[variant].PlayerOneId, "cesar")
+	_, err = ustore.GetProfileStats(ctx, "nobody")
+	is.True(err != nil)
+
+	// One variant's stats, nil for a variant with none.
+	st, err := ustore.GetProfileVariantStats(ctx, mina.UUID, variant)
+	is.NoErr(err)
+	is.Equal(st.PlayerOneId, "mina")
+	st, err = ustore.GetProfileVariantStats(ctx, mina.UUID, "taco")
+	is.NoErr(err)
+	is.True(st == nil)
+	_, err = ustore.GetProfileVariantStats(ctx, "nobody", variant)
+	is.True(err != nil)
+}

@@ -54,6 +54,12 @@ type Store interface {
 		p1Rating *entity.SingleRating, p2Rating *entity.SingleRating) error
 	SetStats(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey,
 		p0stats *entity.Stats, p1stats *entity.Stats) error
+	// GetProfileStats returns all of the user's profile stats, which the
+	// lookups above leave out.
+	GetProfileStats(ctx context.Context, uuid string) (entity.ProfileStats, error)
+	// GetProfileVariantStats returns the user's profile stats for one
+	// variant, or nil if they have none for it yet.
+	GetProfileVariantStats(ctx context.Context, uuid string, variant entity.VariantKey) (*entity.Stats, error)
 	SetNotoriety(ctx context.Context, uuid string, notoriety int) error
 	// SetRegistrationClient records the IP and client ID an account was created from.
 	SetRegistrationClient(ctx context.Context, uuid string, ip string, clientID string) error
