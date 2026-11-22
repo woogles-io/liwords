@@ -254,6 +254,9 @@
       The dog shows until the app renders: React's first render replaces
       everything inside #root. If it stays up, the page itself arrived and the
       app's own code is what never ran.
+      While it is petted, the app holds that render off (src/utils/boot_dog.ts)
+      by what the dog's handlers mark on it: "petted" while held, and the time
+      of each press and release in data-pet-at.
     -->
     <div id="root">
       <div class="boot-splash">
@@ -261,10 +264,10 @@
           src="/logo192.png"
           alt="Loading Woogles.io"
           draggable="false"
-          onpointerdown="this.classList.add('petted')"
-          onpointerup="this.classList.remove('petted')"
-          onpointercancel="this.classList.remove('petted')"
-          onpointerleave="this.classList.remove('petted')"
+          onpointerdown="this.classList.add('petted'); this.dataset.petAt = performance.now();"
+          onpointerup="if (this.classList.contains('petted')) this.dataset.petAt = performance.now(); this.classList.remove('petted');"
+          onpointercancel="if (this.classList.contains('petted')) this.dataset.petAt = performance.now(); this.classList.remove('petted');"
+          onpointerleave="if (this.classList.contains('petted')) this.dataset.petAt = performance.now(); this.classList.remove('petted');"
           oncontextmenu="return false;"
         />
       </div>
