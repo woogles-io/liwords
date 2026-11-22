@@ -116,3 +116,9 @@ func TestImportFromRedis(t *testing.T) {
 	is.True(on)
 	_, _ = conn.Do("FLUSHDB")
 }
+
+// Without Redis there is nothing to import.
+func TestImportFromNoRedis(t *testing.T) {
+	is := is.New(t)
+	is.NoErr(ImportFromRedis(context.Background(), setup(t), nil))
+}

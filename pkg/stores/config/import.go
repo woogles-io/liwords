@@ -15,6 +15,10 @@ import (
 // on startup, so the first deploy carries the settings over; once that has
 // happened everywhere, this and the Redis keys can go.
 func ImportFromRedis(ctx context.Context, s *DBStore, pool *redis.Pool) error {
+	if pool == nil {
+		// Tests and tools that run without Redis have nothing to import.
+		return nil
+	}
 	conn := pool.Get()
 	defer conn.Close()
 	for _, key := range []string{GamesDisabledKey, FEHashKey, AnnouncementsKey} {
