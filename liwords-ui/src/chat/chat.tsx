@@ -913,8 +913,17 @@ export const Chat = React.memo((props: Props) => {
         setCurrentChatChannel(newChannel);
         setChannelSelectedTime(Date.now());
 
-        // Clear unseen messages for this channel
+        // Clear unseen messages for this channel, and its count on the
+        // Chat tab: the user is reading it.
         setUnseenMessages((u) => u.filter((ch) => ch.channel !== newChannel));
+        setBadgeChannels((cur) => {
+          if (!cur.has(newChannel)) {
+            return cur;
+          }
+          const next = new Set(cur);
+          next.delete(newChannel);
+          return next;
+        });
         setUpdatedChannels((u) => {
           if (u) {
             const initialUpdated = Array.from(u);

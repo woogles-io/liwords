@@ -386,6 +386,48 @@ describe("a channel's history, a page at a time", () => {
     vi.unstubAllGlobals();
   });
 
+  it("drops a conversation from the Chat tab's count as it is opened", async () => {
+    vi.stubGlobal(
+      "IntersectionObserver",
+      class {
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+      },
+    );
+    socializeClient.getChatsForChannel.mockResolvedValue({
+      messages: [msg(1)],
+      hasOlder: false,
+      hasNewer: false,
+      lastReadId: id(1),
+    });
+    const unread = (name: string, displayName: string) => ({
+      name,
+      displayName,
+      lastUpdate: BigInt(1),
+      hasUpdate: true,
+      lastMessage: "hi",
+      lastMessageId: id(1),
+    });
+    socializeClient.getActiveChatChannels.mockResolvedValue({
+      channels: [
+        unread("chat.pm.me-id_p1-id", "pm:Me:Pat"),
+        unread("chat.pm.me-id_p2-id", "pm:Me:Sam"),
+      ],
+      hasMore: false,
+      unreadChannels: ["chat.pm.me-id_p1-id", "chat.pm.me-id_p2-id"],
+    });
+    const { findByText, container } = renderGame();
+    await findByText("message 1");
+    const badge = () =>
+      container.querySelector(".notification")?.textContent ?? "";
+    await waitFor(() => expect(badge()).toBe("2"));
+    fireEvent.click(await findByText(/All chats/));
+    fireEvent.click(await findByText("Pat"));
+    await waitFor(() => expect(badge()).toBe("1"));
+    vi.unstubAllGlobals();
+  });
+
   it("clears a conversation the user replies to, from here or elsewhere", async () => {
     vi.stubGlobal(
       "IntersectionObserver",
