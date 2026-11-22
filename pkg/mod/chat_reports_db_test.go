@@ -92,6 +92,10 @@ func TestChatReports(t *testing.T) {
 	// open: no one has handled it
 	is.Equal(r.HandledByUsername, "")
 	is.True(r.HandledAt == nil)
+	// chat review marks the reported message
+	page, err := ms.GetChannelChats(as(mina), connect.NewRequest(&mspb.GetChannelChatsRequest{Channel: lobby}))
+	is.NoErr(err)
+	is.Equal(page.Msg.ReportedIds, []string{rude.Id})
 
 	// anyone may report any message: one's own, a line the server posts, a
 	// private chat's; an id that is no message is refused

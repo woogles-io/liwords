@@ -1,5 +1,5 @@
 import React from "react";
-import { create } from "@bufbuild/protobuf";
+import { create, type MessageInitShape } from "@bufbuild/protobuf";
 import {
   cleanup,
   fireEvent,
@@ -8,6 +8,7 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { ChatMessageSchema } from "../gen/api/proto/ipc/chat_pb";
+import { ChannelChatsSchema } from "../gen/api/proto/mod_service/mod_service_pb";
 import { ChannelChats, markWords } from "./chat_review";
 
 // one client for the page's life, as useClient's memo gives
@@ -30,6 +31,10 @@ const msg = (n: number, text = `message ${n}`) =>
     timestamp: BigInt(n * 1000),
   });
 
+// a page of a channel, as the server makes it
+const page = (init: MessageInitShape<typeof ChannelChatsSchema>) =>
+  create(ChannelChatsSchema, init);
+
 afterEach(() => {
   cleanup();
   getChannelChats.mockReset();
@@ -40,8 +45,8 @@ it("loads the newest page, then each older page above it", async () => {
   getChannelChats.mockImplementation(({ before }: { before?: string }) =>
     Promise.resolve(
       !before
-        ? { messages: [msg(3), msg(4)], hasOlder: true }
-        : { messages: [msg(1), msg(2)], hasOlder: false },
+        ? page({ messages: [msg(3), msg(4)], hasOlder: true })
+        : page({ messages: [msg(1), msg(2)], hasOlder: false }),
     ),
   );
   render(<ChannelChats channel="chat.game.g1" />);
@@ -77,8 +82,8 @@ it("exports the whole channel, whatever is loaded", async () => {
   getChannelChats.mockImplementation(({ before }: { before?: string }) =>
     Promise.resolve(
       !before
-        ? { messages: [msg(3), msg(4)], hasOlder: true }
-        : { messages: [msg(1), msg(2)], hasOlder: false },
+        ? page({ messages: [msg(3), msg(4)], hasOlder: true })
+        : page({ messages: [msg(1), msg(2)], hasOlder: false }),
     ),
   );
   const files = saved();
@@ -103,8 +108,8 @@ it("exports every match of a word search, whatever is loaded", async () => {
   getChannelChats.mockImplementation(({ before }: { before?: string }) =>
     Promise.resolve(
       !before
-        ? { messages: [msg(7, "a rude one")], hasOlder: true }
-        : { messages: [msg(2, "rude too")], hasOlder: false },
+        ? page({ messages: [msg(7, "a rude one")], hasOlder: true })
+        : page({ messages: [msg(2, "rude too")], hasOlder: false }),
     ),
   );
   const files = saved();
@@ -146,18 +151,18 @@ it("shows the matches, and the messages around one on Context", async () => {
     (req: { containing?: string; around?: string; after?: string }) =>
       Promise.resolve(
         req.containing
-          ? {
+          ? page({
               messages: [msg(3, "you are a loser")],
               hasOlder: false,
               hasNewer: false,
-            }
+            })
           : req.around
-            ? {
+            ? page({
                 messages: [msg(2), msg(3, "you are a loser"), msg(4)],
                 hasOlder: true,
                 hasNewer: true,
-              }
-            : { messages: [msg(5)], hasOlder: false, hasNewer: false },
+              })
+            : page({ messages: [msg(5)], hasOlder: false, hasNewer: false }),
       ),
   );
   render(<ChannelChats channel="chat.game.g1" containing="loser" />);
@@ -190,4 +195,17 @@ it("shows the matches, and the messages around one on Context", async () => {
   fireEvent.click(screen.getByText("Back to the matches"));
   await waitFor(() => expect(screen.queryByText("message 2")).toBeNull());
   expect(screen.getByText("Context")).toBeInTheDocument();
+});
+
+it("marks the messages someone reported", async () => {
+  getChannelChats.mockResolvedValue(
+    page({ messages: [msg(1), msg(2)], reportedIds: ["id2"] }),
+  );
+  render(<ChannelChats channel="chat.game.g1" />);
+  fireEvent.click(screen.getByText("Load messages"));
+  await screen.findByText("message 2");
+  const tags = screen.getAllByText("reported");
+  expect(tags).toHaveLength(1);
+  // the table draws its rows as divs (virtual)
+  expect(tags[0].closest(".ant-table-row")).toHaveTextContent("message 2");
 });

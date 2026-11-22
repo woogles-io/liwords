@@ -129,3 +129,28 @@ func (q *Queries) ReopenChatReport(ctx context.Context, reportID int64) error {
 	_, err := q.db.Exec(ctx, reopenChatReport, reportID)
 	return err
 }
+
+const reportedMessages = `-- name: ReportedMessages :many
+SELECT DISTINCT message_id FROM chat_reports WHERE message_id = ANY($1::uuid[])
+`
+
+// Which of these messages someone reported.
+func (q *Queries) ReportedMessages(ctx context.Context, ids []uuid.UUID) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, reportedMessages, ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var message_id uuid.UUID
+		if err := rows.Scan(&message_id); err != nil {
+			return nil, err
+		}
+		items = append(items, message_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

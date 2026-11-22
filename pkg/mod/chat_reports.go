@@ -14,6 +14,28 @@ import (
 	pb "github.com/woogles-io/liwords/rpc/api/proto/mod_service"
 )
 
+// reportedOf lists which of msgs someone reported, for chat review to mark.
+func (ms *ModService) reportedOf(ctx context.Context, msgs []*ipc.ChatMessage) ([]string, error) {
+	ids := make([]uuid.UUID, 0, len(msgs))
+	for _, m := range msgs {
+		if id, err := uuid.Parse(m.Id); err == nil {
+			ids = append(ids, id)
+		}
+	}
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	rows, err := ms.queries.ReportedMessages(ctx, ids)
+	if err != nil {
+		return nil, apiserver.InternalErr(err)
+	}
+	reported := make([]string, 0, len(rows))
+	for _, id := range rows {
+		reported = append(reported, id.String())
+	}
+	return reported, nil
+}
+
 // ReportChatMessage puts a chat message in front of the moderators: anyone
 // signed in, any message. The same person's second report of a message is no
 // new report.

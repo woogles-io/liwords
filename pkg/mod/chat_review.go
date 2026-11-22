@@ -607,8 +607,13 @@ func (ms *ModService) GetChannelChats(ctx context.Context, req *connect.Request[
 	if !strings.HasPrefix(channel, "chat.") {
 		return nil, apiserver.InvalidArg("channel must start with chat.")
 	}
-	reply := func(page *user.ChatPage, msgs []*ipc.ChatMessage) *connect.Response[pb.ChannelChats] {
-		return connect.NewResponse(&pb.ChannelChats{Messages: msgs, HasOlder: page.HasOlder, HasNewer: page.HasNewer})
+	reply := func(page *user.ChatPage, msgs []*ipc.ChatMessage) (*connect.Response[pb.ChannelChats], error) {
+		reported, err := ms.reportedOf(ctx, msgs)
+		if err != nil {
+			return nil, err
+		}
+		return connect.NewResponse(&pb.ChannelChats{Messages: msgs, HasOlder: page.HasOlder,
+			HasNewer: page.HasNewer, ReportedIds: reported}), nil
 	}
 	// With words to find: only the messages that hold them, a page at a
 	// time, newest first.
@@ -617,7 +622,7 @@ func (ms *ModService) GetChannelChats(ctx context.Context, req *connect.Request[
 		if err != nil {
 			return nil, err
 		}
-		return reply(page, page.Messages), nil
+		return reply(page, page.Messages)
 	}
 	set := 0
 	for _, id := range []string{req.Msg.Before, req.Msg.After, req.Msg.Around} {
@@ -642,17 +647,17 @@ func (ms *ModService) GetChannelChats(ctx context.Context, req *connect.Request[
 		}
 		msgs := said(page.Messages)
 		if len(msgs) > 0 || len(page.Messages) == 0 || q.Around != "" {
-			return reply(page, msgs), nil
+			return reply(page, msgs)
 		}
 		if q.After != "" {
 			if !page.HasNewer {
-				return reply(page, msgs), nil
+				return reply(page, msgs)
 			}
 			q.After = page.Messages[len(page.Messages)-1].Id
 			continue
 		}
 		if !page.HasOlder {
-			return reply(page, msgs), nil
+			return reply(page, msgs)
 		}
 		q.Before = page.Messages[0].Id
 	}

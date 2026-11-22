@@ -297,6 +297,8 @@ export const ChannelChats = (props: {
   const [exported, setExported] = useState<number | null>(null);
   // the message whose context is shown, if one is
   const [around, setAround] = useState("");
+  // the loaded messages someone reported
+  const [reported, setReported] = useState<Set<string>>(new Set());
   const tableRef = useRef<GetRef<typeof Table>>(null);
   // only the messages holding the words, until a context is opened
   const matching = !!words && !around;
@@ -321,13 +323,16 @@ export const ChannelChats = (props: {
       if (place === "older") {
         setMsgs((m) => [...resp.messages, ...(m ?? [])]);
         setHasOlder(resp.hasOlder);
+        setReported((r) => new Set([...r, ...resp.reportedIds]));
       } else if (place === "newer") {
         setMsgs((m) => [...(m ?? []), ...resp.messages]);
         setHasNewer(resp.hasNewer);
+        setReported((r) => new Set([...r, ...resp.reportedIds]));
       } else {
         setMsgs(resp.messages);
         setHasOlder(resp.hasOlder);
         setHasNewer(resp.hasNewer);
+        setReported(new Set(resp.reportedIds));
       }
     } catch (e) {
       flashError(e);
@@ -489,14 +494,20 @@ export const ChannelChats = (props: {
           {
             title: "Message",
             key: "message",
-            render: (_, m) =>
-              m.id === around ? (
-                <Typography.Text strong>
-                  {markWords(m.message, words)}
-                </Typography.Text>
-              ) : (
-                markWords(m.message, words)
-              ),
+            render: (_, m) => (
+              <React.Fragment>
+                {m.id === around ? (
+                  <Typography.Text strong>
+                    {markWords(m.message, words)}
+                  </Typography.Text>
+                ) : (
+                  markWords(m.message, words)
+                )}
+                {reported.has(m.id) && (
+                  <Tag className="chat-review-reported">reported</Tag>
+                )}
+              </React.Fragment>
+            ),
           },
           ...(matching
             ? [

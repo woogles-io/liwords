@@ -1517,7 +1517,9 @@ type ChannelChats struct {
 	// whether the channel has messages older than this page's first
 	HasOlder bool `protobuf:"varint,2,opt,name=has_older,json=hasOlder,proto3" json:"has_older,omitempty"`
 	// whether it has messages newer than this page's last
-	HasNewer      bool `protobuf:"varint,3,opt,name=has_newer,json=hasNewer,proto3" json:"has_newer,omitempty"`
+	HasNewer bool `protobuf:"varint,3,opt,name=has_newer,json=hasNewer,proto3" json:"has_newer,omitempty"`
+	// which of this page's messages someone reported
+	ReportedIds   []string `protobuf:"bytes,4,rep,name=reported_ids,json=reportedIds,proto3" json:"reported_ids,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1571,6 +1573,13 @@ func (x *ChannelChats) GetHasNewer() bool {
 		return x.HasNewer
 	}
 	return false
+}
+
+func (x *ChannelChats) GetReportedIds() []string {
+	if x != nil {
+		return x.ReportedIds
+	}
+	return nil
 }
 
 type ReportChatMessageRequest struct {
@@ -2121,11 +2130,12 @@ const file_proto_mod_service_mod_service_proto_rawDesc = "" +
 	"\x06around\x18\x04 \x01(\tR\x06around\x12\x1e\n" +
 	"\n" +
 	"containing\x18\x05 \x01(\tR\n" +
-	"containing\"v\n" +
+	"containing\"\x99\x01\n" +
 	"\fChannelChats\x12,\n" +
 	"\bmessages\x18\x01 \x03(\v2\x10.ipc.ChatMessageR\bmessages\x12\x1b\n" +
 	"\thas_older\x18\x02 \x01(\bR\bhasOlder\x12\x1b\n" +
-	"\thas_newer\x18\x03 \x01(\bR\bhasNewer\"9\n" +
+	"\thas_newer\x18\x03 \x01(\bR\bhasNewer\x12!\n" +
+	"\freported_ids\x18\x04 \x03(\tR\vreportedIds\"9\n" +
 	"\x18ReportChatMessageRequest\x12\x1d\n" +
 	"\n" +
 	"message_id\x18\x01 \x01(\tR\tmessageId\"\x1b\n" +

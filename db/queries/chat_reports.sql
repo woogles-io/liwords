@@ -34,3 +34,7 @@ WHERE chat_reports.id = @report_id AND chat_reports.handled_at IS NULL;
 UPDATE chat_reports
 SET handled_by = NULL, handled_at = NULL
 WHERE id = @report_id AND handled_at IS NOT NULL;
+
+-- name: ReportedMessages :many
+-- Which of these messages someone reported.
+SELECT DISTINCT message_id FROM chat_reports WHERE message_id = ANY(@ids::uuid[]);

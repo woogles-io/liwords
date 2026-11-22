@@ -203,6 +203,8 @@ message ChannelChats {
   bool has_older = 2;
   // whether it has messages newer than this page's last
   bool has_newer = 3;
+  // which of this page's messages someone reported
+  repeated string reported_ids = 4;
 }
 
 message ReportChatMessageRequest {
