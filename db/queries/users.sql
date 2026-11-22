@@ -95,23 +95,12 @@ FROM users WHERE api_key = @api_key;
 SELECT u.id, u.username, u.uuid, u.email, u.password, u.internal_bot,
        u.notoriety, u.verified, u.verification_token, u.verification_expires_at,
        p.first_name, p.last_name, p.birth_date, p.country_code, p.title,
-       p.about, p.avatar_url, p.ratings, p.stats
-FROM users u
-LEFT JOIN profiles p ON p.user_id = u.id
-WHERE u.uuid = @uuid;
-
--- name: GetUserWithProfileNoStatsByUUID :one
--- The user and profile without profiles.stats, which runs to tens of KB of
--- JSON for active players: for the many lookups that don't need it.
-SELECT u.id, u.username, u.uuid, u.email, u.password, u.internal_bot,
-       u.notoriety, u.verified, u.verification_token, u.verification_expires_at,
-       p.first_name, p.last_name, p.birth_date, p.country_code, p.title,
        p.about, p.avatar_url, p.ratings
 FROM users u
 LEFT JOIN profiles p ON p.user_id = u.id
 WHERE u.uuid = @uuid;
 
--- name: GetUsersWithProfileNoStatsByUUIDs :many
+-- name: GetUsersWithProfileByUUIDs :many
 SELECT u.id, u.username, u.uuid, u.email, u.password, u.internal_bot,
        u.notoriety, u.verified, u.verification_token, u.verification_expires_at,
        p.first_name, p.last_name, p.birth_date, p.country_code, p.title,
@@ -119,6 +108,14 @@ SELECT u.id, u.username, u.uuid, u.email, u.password, u.internal_bot,
 FROM users u
 LEFT JOIN profiles p ON p.user_id = u.id
 WHERE u.uuid = ANY(@uuids::text[]);
+
+-- name: GetProfileStats :one
+-- A user's profile stats, which can run to tens of KB of JSON: the user
+-- lookups leave them out.
+SELECT p.stats
+FROM profiles p
+JOIN users u ON u.id = p.user_id
+WHERE u.uuid = @uuid;
 
 -- name: GetProfileVariantStats :one
 -- One variant's profile stats; NULL if the user has none for it.
@@ -131,7 +128,7 @@ WHERE u.uuid = @uuid;
 SELECT u.id, u.username, u.uuid, u.email, u.password, u.internal_bot,
        u.notoriety, u.verified, u.verification_token, u.verification_expires_at,
        p.first_name, p.last_name, p.birth_date, p.country_code, p.title,
-       p.about, p.avatar_url, p.ratings, p.stats
+       p.about, p.avatar_url, p.ratings
 FROM users u
 LEFT JOIN profiles p ON p.user_id = u.id
 WHERE lower(u.username) = lower(@username);
@@ -140,7 +137,7 @@ WHERE lower(u.username) = lower(@username);
 SELECT u.id, u.username, u.uuid, u.email, u.password, u.internal_bot,
        u.notoriety, u.verified, u.verification_token, u.verification_expires_at,
        p.first_name, p.last_name, p.birth_date, p.country_code, p.title,
-       p.about, p.avatar_url, p.ratings, p.stats
+       p.about, p.avatar_url, p.ratings
 FROM users u
 LEFT JOIN profiles p ON p.user_id = u.id
 WHERE u.verification_token = @verification_token;

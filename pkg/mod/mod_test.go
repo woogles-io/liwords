@@ -308,8 +308,10 @@ func TestMod(t *testing.T) {
 	is.Equal(deleterUser.Profile.LastName, "")
 	is.Equal(deleterUser.Profile.CountryCode, "")
 	is.Equal(deleterUser.Profile.Ratings.Data[variant], *deleterRating)
-	is.True(deleterUser.Profile.Stats.Data[variant] != nil)
-	is.Equal(deleterUser.Profile.Stats.Data[variant].PlayerOneId, "Deleter")
+	deleterStats, err := us.GetProfileVariantStats(ctx, "Deleter", variant)
+	is.NoErr(err)
+	is.True(deleterStats != nil)
+	is.Equal(deleterStats.PlayerOneId, "Deleter")
 
 	// Removing the suspension restores the account with its ratings and stats intact
 	err = RemoveActions(ctx, us, "Moderator", []*ms.ModAction{{UserId: "Deleter", Type: ms.ModActionType_SUSPEND_ACCOUNT}})
@@ -320,7 +322,9 @@ func TestMod(t *testing.T) {
 	deleterUser, err = us.GetByUUID(ctx, "Deleter")
 	is.NoErr(err)
 	is.Equal(deleterUser.Profile.Ratings.Data[variant], *deleterRating)
-	is.Equal(deleterUser.Profile.Stats.Data[variant].PlayerOneId, "Deleter")
+	deleterStats, err = us.GetProfileVariantStats(ctx, "Deleter", variant)
+	is.NoErr(err)
+	is.Equal(deleterStats.PlayerOneId, "Deleter")
 
 	// TEST UNIQUE TO DB ACTIONS
 

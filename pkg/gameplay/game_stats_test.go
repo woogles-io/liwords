@@ -228,8 +228,9 @@ func TestComputePlayerStats(t *testing.T) {
 	u1, err := stores.UserStore.GetByUUID(context.Background(), p1id)
 	is.NoErr(err)
 
-	stats0, ok := u0.Profile.Stats.Data["CSW19.classic.ultrablitz"]
-	is.True(ok)
+	stats0, err := stores.UserStore.GetProfileVariantStats(context.Background(), u0.UUID, "CSW19.classic.ultrablitz")
+	is.NoErr(err)
+	is.True(stats0 != nil)
 
 	err = pkgstats.Finalize(ctx, stats0, stores.ListStatStore, []string{"m5ktbp4qPVTqaAhg6HJMsb"},
 		"qUQkST8CendYA3baHNoPjk", "xjCWug7EZtDxDHX5fRZTLo",
@@ -253,8 +254,9 @@ func TestComputePlayerStats(t *testing.T) {
 
 	is.Equal(stats0.PlayerOneData[entity.WINS_STAT].Total, 1)
 
-	stats1, ok := u1.Profile.Stats.Data["CSW19.classic.ultrablitz"]
-	is.True(ok)
+	stats1, err := stores.UserStore.GetProfileVariantStats(context.Background(), u1.UUID, "CSW19.classic.ultrablitz")
+	is.NoErr(err)
+	is.True(stats1 != nil)
 	is.Equal(stats1.PlayerOneData[entity.WINS_STAT].Total, 0)
 }
 
@@ -287,8 +289,9 @@ func TestComputePlayerStatsMultipleGames(t *testing.T) {
 	u1, err := stores.UserStore.Get(context.Background(), "cesar4")
 	is.NoErr(err)
 
-	stats0, ok := u0.Profile.Stats.Data["CSW19.classic.ultrablitz"]
-	is.True(ok)
+	stats0, err := stores.UserStore.GetProfileVariantStats(context.Background(), u0.UUID, "CSW19.classic.ultrablitz")
+	is.NoErr(err)
+	is.True(stats0 != nil)
 	is.Equal(stats0.PlayerOneData[entity.GAMES_STAT].Total, 2)
 	is.Equal(stats0.PlayerOneData[entity.WINS_STAT].Total, 1)
 
@@ -322,8 +325,9 @@ func TestComputePlayerStatsMultipleGames(t *testing.T) {
 		},
 	})
 
-	stats1, ok := u1.Profile.Stats.Data["CSW19.classic.ultrablitz"]
-	is.True(ok)
+	stats1, err := stores.UserStore.GetProfileVariantStats(context.Background(), u1.UUID, "CSW19.classic.ultrablitz")
+	is.NoErr(err)
+	is.True(stats1 != nil)
 
 	err = pkgstats.Finalize(ctx, stats1, stores.ListStatStore, []string{
 		"m5ktbp4qPVTqaAhg6HJMsb", "ycj5de5gArFF3ap76JyiUA",

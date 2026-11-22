@@ -31,7 +31,7 @@ func (b *Bus) chat(ctx context.Context, userID string, evt *pb.ChatMessage) erro
 	// chat.a[.b]
 	// e.g. chat.gametv.abcdef, chat.pm.user1_user2, chat.lobby, chat.tournament.weto
 
-	sendingUser, err := b.stores.UserStore.GetByUUIDWithoutStats(ctx, userID)
+	sendingUser, err := b.stores.UserStore.GetByUUID(ctx, userID)
 	if err != nil {
 		return err
 	}
@@ -58,7 +58,7 @@ func (b *Bus) chat(ctx context.Context, userID string, evt *pb.ChatMessage) erro
 		if err != nil {
 			return err
 		}
-		recUser, err := b.stores.UserStore.GetByUUIDWithoutStats(ctx, receiver)
+		recUser, err := b.stores.UserStore.GetByUUID(ctx, receiver)
 		if err != nil {
 			return err
 		}

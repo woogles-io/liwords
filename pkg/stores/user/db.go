@@ -94,7 +94,7 @@ func userFromRow(id int32, username, uuid, email, password string, internalBot b
 // profileFromRow converts the LEFT JOIN profile fields to an entity.Profile.
 // Returns nil if the profile row doesn't exist (first_name is NULL).
 func profileFromRow(firstName, lastName, birthDate, countryCode, title, about, avatarURL pgtype.Text,
-	ratings entity.Ratings, stats entity.ProfileStats) *entity.Profile {
+	ratings entity.Ratings) *entity.Profile {
 	if !firstName.Valid {
 		return nil
 	}
@@ -107,7 +107,6 @@ func profileFromRow(firstName, lastName, birthDate, countryCode, title, about, a
 		About:       about.String,
 		AvatarUrl:   avatarURL.String,
 		Ratings:     ratings,
-		Stats:       stats,
 	}
 }
 
@@ -123,7 +122,7 @@ func (s *DBStore) Get(ctx context.Context, username string) (*entity.User, error
 	u := userFromRow(row.ID, row.Username, row.Uuid, row.Email, row.Password, row.InternalBot, row.Notoriety,
 		row.Verified, row.VerificationToken, row.VerificationExpiresAt)
 	u.Profile = profileFromRow(row.FirstName, row.LastName, row.BirthDate, row.CountryCode, row.Title,
-		row.About, row.AvatarUrl, row.Ratings, row.Stats)
+		row.About, row.AvatarUrl, row.Ratings)
 	if u.Profile == nil {
 		return nil, errors.New("profile not found")
 	}
@@ -184,47 +183,22 @@ func (s *DBStore) GetByUUID(ctx context.Context, uuid string) (*entity.User, err
 	u := userFromRow(row.ID, row.Username, row.Uuid, row.Email, row.Password, row.InternalBot, row.Notoriety,
 		row.Verified, row.VerificationToken, row.VerificationExpiresAt)
 	u.Profile = profileFromRow(row.FirstName, row.LastName, row.BirthDate, row.CountryCode, row.Title,
-		row.About, row.AvatarUrl, row.Ratings, row.Stats)
+		row.About, row.AvatarUrl, row.Ratings)
 	if u.Profile == nil {
 		return nil, errors.New("profile not found")
 	}
 	return u, nil
 }
 
-// GetByUUIDWithoutStats gets a user by UUID, with the profile but not its
-// stats, which can be tens of KB of JSON: most lookups never read them.
-// Profile.Stats is left empty. Profile stats are saved one variant at a time
-// (SetStats), so a user fetched this way can't clear them; for a variant's
-// stats, use GetProfileVariantStats.
-func (s *DBStore) GetByUUIDWithoutStats(ctx context.Context, uuid string) (*entity.User, error) {
-	row, err := s.queries.GetUserWithProfileNoStatsByUUID(ctx, uuid)
-	if err == pgx.ErrNoRows {
-		return nil, errors.New("user not found")
-	}
-	if err != nil {
-		return nil, err
-	}
-	u := userFromRow(row.ID, row.Username, row.Uuid, row.Email, row.Password, row.InternalBot, row.Notoriety,
-		row.Verified, row.VerificationToken, row.VerificationExpiresAt)
-	u.Profile = profileFromRow(row.FirstName, row.LastName, row.BirthDate, row.CountryCode, row.Title,
-		row.About, row.AvatarUrl, row.Ratings, entity.ProfileStats{})
-	if u.Profile == nil {
-		return nil, errors.New("profile not found")
-	}
-	return u, nil
-}
-
-// GetByUUIDsWithoutStats batch-fetches users (with profiles, but not their
-// stats, as GetByUUIDWithoutStats) by UUID in a single query, to avoid N+1
-// lookups when a caller needs several users at once (e.g. filtering a list of
-// seeks). Users with no profile row, or UUIDs with no matching user, are
-// silently omitted from the result rather than erroring, so callers should
-// look up by UUID in the returned map.
-func (s *DBStore) GetByUUIDsWithoutStats(ctx context.Context, uuids []string) (map[string]*entity.User, error) {
+// GetByUUIDs batch-fetches users (with profiles) by UUID in a single query, to avoid
+// N+1 lookups when a caller needs several users at once (e.g. filtering a list of seeks).
+// Users with no profile row, or UUIDs with no matching user, are silently omitted from
+// the result rather than erroring, so callers should look up by UUID in the returned map.
+func (s *DBStore) GetByUUIDs(ctx context.Context, uuids []string) (map[string]*entity.User, error) {
 	if len(uuids) == 0 {
 		return map[string]*entity.User{}, nil
 	}
-	rows, err := s.queries.GetUsersWithProfileNoStatsByUUIDs(ctx, uuids)
+	rows, err := s.queries.GetUsersWithProfileByUUIDs(ctx, uuids)
 	if err != nil {
 		return nil, err
 	}
@@ -233,13 +207,23 @@ func (s *DBStore) GetByUUIDsWithoutStats(ctx context.Context, uuids []string) (m
 		u := userFromRow(row.ID, row.Username, row.Uuid, row.Email, row.Password, row.InternalBot, row.Notoriety,
 			row.Verified, row.VerificationToken, row.VerificationExpiresAt)
 		u.Profile = profileFromRow(row.FirstName, row.LastName, row.BirthDate, row.CountryCode, row.Title,
-			row.About, row.AvatarUrl, row.Ratings, entity.ProfileStats{})
+			row.About, row.AvatarUrl, row.Ratings)
 		if u.Profile == nil {
 			continue
 		}
 		users[u.UUID] = u
 	}
 	return users, nil
+}
+
+// GetProfileStats returns all of the user's profile stats. They can run to
+// tens of KB of JSON, so the user lookups leave them out.
+func (s *DBStore) GetProfileStats(ctx context.Context, uuid string) (entity.ProfileStats, error) {
+	st, err := s.queries.GetProfileStats(ctx, uuid)
+	if err == pgx.ErrNoRows {
+		return entity.ProfileStats{}, errors.New("profile not found")
+	}
+	return st, err
 }
 
 // GetProfileVariantStats returns the user's profile stats for one variant, or
@@ -297,7 +281,7 @@ func (s *DBStore) GetByVerificationToken(ctx context.Context, token string) (*en
 	u := userFromRow(row.ID, row.Username, row.Uuid, row.Email, row.Password, row.InternalBot, row.Notoriety,
 		row.Verified, row.VerificationToken, row.VerificationExpiresAt)
 	u.Profile = profileFromRow(row.FirstName, row.LastName, row.BirthDate, row.CountryCode, row.Title,
-		row.About, row.AvatarUrl, row.Ratings, row.Stats)
+		row.About, row.AvatarUrl, row.Ratings)
 	if u.Profile == nil {
 		return nil, errors.New("profile not found")
 	}
@@ -348,7 +332,7 @@ func (s *DBStore) New(ctx context.Context, u *entity.User) error {
 	}
 
 	_, err = tx.Exec(ctx, `INSERT INTO profiles (user_id, first_name, last_name, country_code, title, about, ratings, stats, avatar_url, birth_date, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())`,
-		userId, prof.FirstName, prof.LastName, prof.CountryCode, prof.Title, prof.About, prof.Ratings, prof.Stats, prof.AvatarUrl, prof.BirthDate)
+		userId, prof.FirstName, prof.LastName, prof.CountryCode, prof.Title, prof.About, prof.Ratings, entity.ProfileStats{}, prof.AvatarUrl, prof.BirthDate)
 	if err != nil {
 		return err
 	}
@@ -652,7 +636,7 @@ func (s *DBStore) GetBot(ctx context.Context, botType macondopb.BotRequest_BotCo
 	u := userFromRow(row.ID, row.Username, row.Uuid, row.Email, row.Password, row.InternalBot, row.Notoriety,
 		row.Verified, row.VerificationToken, row.VerificationExpiresAt)
 	u.Profile = profileFromRow(row.FirstName, row.LastName, row.BirthDate, row.CountryCode, row.Title,
-		row.About, row.AvatarUrl, row.Ratings, row.Stats)
+		row.About, row.AvatarUrl, row.Ratings)
 	if u.Profile == nil {
 		return nil, errors.New("profile not found")
 	}

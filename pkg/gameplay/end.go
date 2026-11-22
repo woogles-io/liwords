@@ -207,11 +207,11 @@ func performEndgameDuties(ctx context.Context, g *entity.Game,
 	// occur between threads.
 	var users []*entity.User
 
-	u0, err := stores.UserStore.GetByUUIDWithoutStats(ctx, g.History().Players[0].UserId)
+	u0, err := stores.UserStore.GetByUUID(ctx, g.History().Players[0].UserId)
 	if err != nil {
 		return err
 	}
-	u1, err := stores.UserStore.GetByUUIDWithoutStats(ctx, g.History().Players[1].UserId)
+	u1, err := stores.UserStore.GetByUUID(ctx, g.History().Players[1].UserId)
 	if err != nil {
 		return err
 	}

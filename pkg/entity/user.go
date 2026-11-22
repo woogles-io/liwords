@@ -89,8 +89,10 @@ type Profile struct {
 	Title       string
 	About       string
 	Ratings     Ratings
-	Stats       ProfileStats
-	AvatarUrl   string
+	// The profile's stats aren't here: they can run to tens of KB of JSON,
+	// which most users of a profile never read. See the user store's
+	// GetProfileStats and GetProfileVariantStats.
+	AvatarUrl string
 }
 
 // If the RD is <= this number, the rating is "known"

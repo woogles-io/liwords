@@ -117,7 +117,7 @@ func (b *Bus) newSeekRequest(ctx context.Context, auth, userID, connID string,
 	}
 	req.RatingKey = string(ratingKey)
 
-	u, err := b.stores.UserStore.GetByUUIDWithoutStats(ctx, reqUser.UserId)
+	u, err := b.stores.UserStore.GetByUUID(ctx, reqUser.UserId)
 	if err != nil {
 		return err
 	}
@@ -148,7 +148,7 @@ func (b *Bus) newSeekRequest(ctx context.Context, auth, userID, connID string,
 			// No such user, most likely.
 			return err
 		}
-		requester, err := b.stores.UserStore.GetByUUIDWithoutStats(ctx, reqUser.UserId)
+		requester, err := b.stores.UserStore.GetByUUID(ctx, reqUser.UserId)
 		if err != nil {
 			return err
 		}
@@ -210,7 +210,7 @@ func (b *Bus) updateSeekRequest(ctx context.Context, auth, userID, connID string
 		// No such user, most likely.
 		return err
 	}
-	requester, err := b.stores.UserStore.GetByUUIDWithoutStats(ctx, seekerUserID)
+	requester, err := b.stores.UserStore.GetByUUID(ctx, seekerUserID)
 	if err != nil {
 		return err
 	}
@@ -429,7 +429,7 @@ func (b *Bus) newBotGame(ctx context.Context, req *pb.SeekRequest, botUserID str
 	if botUserID == "" {
 		accUser, err = b.stores.UserStore.GetBot(ctx, req.GameRequest.BotType)
 	} else {
-		accUser, err = b.stores.UserStore.GetByUUIDWithoutStats(ctx, botUserID)
+		accUser, err = b.stores.UserStore.GetByUUID(ctx, botUserID)
 	}
 	if err != nil {
 		return err
@@ -448,7 +448,7 @@ func (b *Bus) newBotGame(ctx context.Context, req *pb.SeekRequest, botUserID str
 			return errors.New("BestBot needs more time than that to play at its best.")
 		}
 
-		reqUser, err := b.stores.UserStore.GetByUUIDWithoutStats(ctx, req.User.UserId)
+		reqUser, err := b.stores.UserStore.GetByUUID(ctx, req.User.UserId)
 		if err != nil {
 			return err
 		}
@@ -548,7 +548,7 @@ func (b *Bus) acceptSeek(ctx context.Context, requestID, userID, connID string) 
 		return b.sendSoughtGameDeletion(ctx, sg)
 	}
 
-	accUser, err := b.stores.UserStore.GetByUUIDWithoutStats(ctx, userID)
+	accUser, err := b.stores.UserStore.GetByUUID(ctx, userID)
 	if err != nil {
 		return err
 	}
@@ -562,7 +562,7 @@ func (b *Bus) acceptSeek(ctx context.Context, requestID, userID, connID string) 
 			return err
 		}
 
-		reqUser, err := b.stores.UserStore.GetByUUIDWithoutStats(ctx, requester)
+		reqUser, err := b.stores.UserStore.GetByUUID(ctx, requester)
 		if err != nil {
 			return err
 		}
@@ -608,7 +608,7 @@ func (b *Bus) acceptSeek(ctx context.Context, requestID, userID, connID string) 
 
 	// If seek is only for followed players, verify acceptor is followed
 	if sg.SeekRequest.OnlyFollowedPlayers {
-		reqUser, err := b.stores.UserStore.GetByUUIDWithoutStats(ctx, requester)
+		reqUser, err := b.stores.UserStore.GetByUUID(ctx, requester)
 		if err != nil {
 			return err
 		}
@@ -623,7 +623,7 @@ func (b *Bus) acceptSeek(ctx context.Context, requestID, userID, connID string) 
 		}
 	}
 
-	reqUser, err := b.stores.UserStore.GetByUUIDWithoutStats(ctx, requester)
+	reqUser, err := b.stores.UserStore.GetByUUID(ctx, requester)
 	if err != nil {
 		return err
 	}
@@ -907,7 +907,7 @@ func (b *Bus) seekersByUUID(ctx context.Context, sgs []*entity.SoughtGame) (map[
 		seen[uid] = true
 		uuids = append(uuids, uid)
 	}
-	return b.stores.UserStore.GetByUUIDsWithoutStats(ctx, uuids)
+	return b.stores.UserStore.GetByUUIDs(ctx, uuids)
 }
 
 // shouldIncludeSeek filters a seek based on blocks, rating range, established rating, and followed players requirements.
@@ -1010,7 +1010,7 @@ func (b *Bus) openSeeks(ctx context.Context, receiverID string, tourneyID string
 	}
 
 	if receiver == nil && !userIsAnon(receiverID) {
-		receiver, err = b.stores.UserStore.GetByUUIDWithoutStats(ctx, receiverID)
+		receiver, err = b.stores.UserStore.GetByUUID(ctx, receiverID)
 		if err != nil {
 			return nil, err
 		}
