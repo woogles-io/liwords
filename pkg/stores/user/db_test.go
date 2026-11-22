@@ -286,7 +286,10 @@ func TestSet(t *testing.T) {
 		Volatility:        0.06,
 		LastGameTimestamp: 0,
 	}
-	err = ustore.SetRatings(ctx, cesar.UUID, mina.UUID, entity.VariantKey(variantKey), newCesarSingleRating, newMinaSingleRating)
+	err = ustore.UpdateRatings(ctx, cesar.UUID, mina.UUID, entity.VariantKey(variantKey),
+		func(_, _ *entity.SingleRating) (*entity.SingleRating, *entity.SingleRating, error) {
+			return newCesarSingleRating, newMinaSingleRating, nil
+		})
 	is.NoErr(err)
 	mina, err = ustore.Get(ctx, "mina")
 	is.NoErr(err)
@@ -310,7 +313,10 @@ func TestSet(t *testing.T) {
 	newMinaStats := &entity.Stats{
 		PlayerOneId: "mina",
 	}
-	err = ustore.SetStats(ctx, cesar.UUID, mina.UUID, entity.VariantKey(variantKey), newCesarStats, newMinaStats)
+	err = ustore.UpdateStats(ctx, cesar.UUID, mina.UUID, entity.VariantKey(variantKey),
+		func(_, _ *entity.Stats) (*entity.Stats, *entity.Stats, error) {
+			return newCesarStats, newMinaStats, nil
+		})
 	is.NoErr(err)
 	mina, err = ustore.Get(ctx, "mina")
 	is.NoErr(err)
@@ -907,11 +913,14 @@ func TestProfileStats(t *testing.T) {
 	mina, err := ustore.Get(ctx, "mina")
 	is.NoErr(err)
 	variant := entity.VariantKey("burrito")
-	is.NoErr(ustore.SetRatings(ctx, cesar.UUID, mina.UUID, variant,
-		&entity.SingleRating{Rating: 1700, RatingDeviation: 60, Volatility: 0.06},
-		&entity.SingleRating{Rating: 1500, RatingDeviation: 60, Volatility: 0.06}))
-	is.NoErr(ustore.SetStats(ctx, cesar.UUID, mina.UUID, variant,
-		&entity.Stats{PlayerOneId: "cesar"}, &entity.Stats{PlayerOneId: "mina"}))
+	is.NoErr(ustore.UpdateRatings(ctx, cesar.UUID, mina.UUID, variant,
+		func(_, _ *entity.SingleRating) (*entity.SingleRating, *entity.SingleRating, error) {
+			return &entity.SingleRating{Rating: 1700, RatingDeviation: 60, Volatility: 0.06}, &entity.SingleRating{Rating: 1500, RatingDeviation: 60, Volatility: 0.06}, nil
+		}))
+	is.NoErr(ustore.UpdateStats(ctx, cesar.UUID, mina.UUID, variant,
+		func(_, _ *entity.Stats) (*entity.Stats, *entity.Stats, error) {
+			return &entity.Stats{PlayerOneId: "cesar"}, &entity.Stats{PlayerOneId: "mina"}, nil
+		}))
 
 	// The lookups have the ratings; the stats are read on their own.
 	u, err := ustore.GetByUUID(ctx, cesar.UUID)

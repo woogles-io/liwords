@@ -283,10 +283,15 @@ func TestMod(t *testing.T) {
 	is.NoErr(err)
 	variant := entity.VariantKey("burrito")
 	deleterRating := &entity.SingleRating{Rating: 1777, RatingDeviation: 60, Volatility: 0.06}
-	err = us.SetRatings(ctx, "Deleter", "Sandbagger", variant, deleterRating, entity.NewDefaultRating(false))
+	err = us.UpdateRatings(ctx, "Deleter", "Sandbagger", variant,
+		func(_, _ *entity.SingleRating) (*entity.SingleRating, *entity.SingleRating, error) {
+			return deleterRating, entity.NewDefaultRating(false), nil
+		})
 	is.NoErr(err)
-	err = us.SetStats(ctx, "Deleter", "Sandbagger", variant,
-		&entity.Stats{PlayerOneId: "Deleter"}, &entity.Stats{PlayerOneId: "Sandbagger"})
+	err = us.UpdateStats(ctx, "Deleter", "Sandbagger", variant,
+		func(_, _ *entity.Stats) (*entity.Stats, *entity.Stats, error) {
+			return &entity.Stats{PlayerOneId: "Deleter"}, &entity.Stats{PlayerOneId: "Sandbagger"}, nil
+		})
 	is.NoErr(err)
 
 	deleterUser, err := us.GetByUUID(ctx, "Deleter")

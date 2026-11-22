@@ -553,37 +553,6 @@ func (s *DBStore) IsEmailOfSuspendedAccount(ctx context.Context, email string) (
 	return s.queries.IsEmailOfSuspendedAccount(ctx, email)
 }
 
-// SetRatings set the specific ratings for the given variant in a transaction.
-// SetRatings saves both players' ratings in the variant as given, without
-// reading them first. To change them from their current values, as a game
-// ending does, use UpdateRatings.
-func (s *DBStore) SetRatings(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey,
-	p0Rating *entity.SingleRating, p1Rating *entity.SingleRating) error {
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback(ctx)
-
-	qtx := s.queries.WithTx(tx)
-	p0id, err := qtx.GetUserDBIDFromUUID(ctx, p0uuid)
-	if err != nil {
-		return err
-	}
-	p1id, err := qtx.GetUserDBIDFromUUID(ctx, p1uuid)
-	if err != nil {
-		return err
-	}
-
-	if err = common.UpdateUserRating(ctx, tx, int64(p0id), variant, p0Rating); err != nil {
-		return err
-	}
-	if err = common.UpdateUserRating(ctx, tx, int64(p1id), variant, p1Rating); err != nil {
-		return err
-	}
-	return tx.Commit(ctx)
-}
-
 // lockProfiles locks the profile rows of the users with these UUIDs for the
 // rest of tx, and returns each one's user ID. Rows are locked in user ID
 // order, so that two transactions locking the same pair can't deadlock.
@@ -685,36 +654,6 @@ func (s *DBStore) UpdateStats(ctx context.Context, p0uuid string, p1uuid string,
 		return err
 	}
 	if err = common.UpdateUserStats(ctx, tx, ids[p1uuid], variant, n1); err != nil {
-		return err
-	}
-	return tx.Commit(ctx)
-}
-
-// SetStats saves both players' profile stats in the variant as given, without
-// reading them first. To change them from their current values, as a game
-// ending does, use UpdateStats.
-func (s *DBStore) SetStats(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey,
-	p0Stats *entity.Stats, p1Stats *entity.Stats) error {
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback(ctx)
-
-	qtx := s.queries.WithTx(tx)
-	p0id, err := qtx.GetUserDBIDFromUUID(ctx, p0uuid)
-	if err != nil {
-		return err
-	}
-	p1id, err := qtx.GetUserDBIDFromUUID(ctx, p1uuid)
-	if err != nil {
-		return err
-	}
-
-	if err = common.UpdateUserStats(ctx, tx, int64(p0id), variant, p0Stats); err != nil {
-		return err
-	}
-	if err = common.UpdateUserStats(ctx, tx, int64(p1id), variant, p1Stats); err != nil {
 		return err
 	}
 	return tx.Commit(ctx)

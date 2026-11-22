@@ -50,10 +50,6 @@ type Store interface {
 	// given UUID has an email reaching the same inbox, ignoring case and a
 	// +tag. The UUID is empty for a new account.
 	IsEmailKeyTaken(ctx context.Context, uuid string, email string) (bool, error)
-	SetRatings(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey,
-		p1Rating *entity.SingleRating, p2Rating *entity.SingleRating) error
-	SetStats(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey,
-		p0stats *entity.Stats, p1stats *entity.Stats) error
 	// UpdateRatings and UpdateStats change both players' ratings or profile
 	// stats in a variant from their current ones, with both profiles locked,
 	// so that concurrent updates for a player don't undo each other. The
