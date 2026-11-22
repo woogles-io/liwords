@@ -10,7 +10,7 @@ local ts = tonumber(ARGV[5])
 local setbefore = {}
 for _, simpleuserkey in ipairs(redis.call("ZRANGE", userpresencekey, 0, -1)) do
   -- simpleuserkey looks like conn_id#channel
-  local conn_id, chan = string.match(simpleuserkey, "^([%a%d]+)#([%a%.%d]+)$")
+  local conn_id, chan = string.match(simpleuserkey, "^([^#]+)#([^#]+)$")
   if conn_id and chan then
     setbefore[chan] = true
     if conn_id == ARGV[4] then
@@ -26,7 +26,7 @@ end
 local setafter = {}
 for _, simpleuserkey in ipairs(redis.call("ZRANGE", userpresencekey, 0, -1)) do
   -- simpleuserkey looks like conn_id#channel
-  local conn_id, chan = string.match(simpleuserkey, "^([%a%d]+)#([%a%.%d]+)$")
+  local conn_id, chan = string.match(simpleuserkey, "^([^#]+)#([^#]+)$")
   if conn_id and chan then
     setafter[chan] = true
   end

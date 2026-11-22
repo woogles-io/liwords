@@ -253,3 +253,58 @@ func TestUpdateFollower(t *testing.T) {
 	is.NoErr(ps.UpdateFollower(ctx, followee, follower, false))
 	is.Equal((<-evts).Audience(), []string{"user.uuid2", "follows.removed.uuid2.uuid1"})
 }
+
+// Some clients' connection IDs have hyphens. Their presence has to clear
+// like anyone's: entries the scripts couldn't parse were never renewed or
+// removed, and piled up.
+func TestHyphenatedConnID(t *testing.T) {
+	is := is.New(t)
+	redisPool := newPool(RedisURL)
+	ps := NewRedisPresenceStore(redisPool)
+	flushTestDB(redisPool)
+	ctx := context.Background()
+	conn := "123456789-1234567890-1234"
+
+	_, _, err := ps.SetPresence(ctx, "uuid1", "cesar", false, "chat.game.abc", conn)
+	is.NoErr(err)
+	channels, err := ps.GetPresence(ctx, "uuid1")
+	is.NoErr(err)
+	is.Equal(channels, []string{"chat.game.abc"})
+
+	_, _, err = ps.RenewPresence(ctx, "uuid1", "cesar", false, conn)
+	is.NoErr(err)
+
+	_, _, left, err := ps.ClearPresence(ctx, "uuid1", "cesar", false, conn)
+	is.NoErr(err)
+	is.Equal(left, []string{"chat.game.abc"})
+	ct, err := ps.CountInChannel(ctx, "chat.game.abc")
+	is.NoErr(err)
+	is.Equal(ct, 0)
+}
+
+// Entries that expired aren't counted or listed, and the next presence set
+// in their channel removes them.
+func TestExpiredPresenceDropped(t *testing.T) {
+	is := is.New(t)
+	redisPool := newPool(RedisURL)
+	ps := NewRedisPresenceStore(redisPool)
+	flushTestDB(redisPool)
+	ctx := context.Background()
+	c := redisPool.Get()
+	defer c.Close()
+	_, err := c.Do("ZADD", "channelpresence:lobby", time.Now().Unix()-1000, "uuid9#zed#auth#gone")
+	is.NoErr(err)
+
+	ct, err := ps.CountInChannel(ctx, "lobby")
+	is.NoErr(err)
+	is.Equal(ct, 0)
+	users, err := ps.GetInChannel(ctx, "lobby")
+	is.NoErr(err)
+	is.Equal(len(users), 0)
+
+	_, _, err = ps.SetPresence(ctx, "uuid1", "cesar", false, "lobby", "connx1")
+	is.NoErr(err)
+	n, err := redis.Int(c.Do("ZCARD", "channelpresence:lobby"))
+	is.NoErr(err)
+	is.Equal(n, 1)
+}

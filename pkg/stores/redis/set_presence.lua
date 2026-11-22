@@ -14,7 +14,7 @@ local expiry = 180
 local setbefore = {}
 for _, simpleuserkey in ipairs(redis.call("ZRANGE", userpresencekey, 0, -1)) do
   -- simpleuserkey looks like conn_id#channel
-  local conn_id, chan = string.match(simpleuserkey, "^([%a%d]+)#([%a%.%d]+)$")
+  local conn_id, chan = string.match(simpleuserkey, "^([^#]+)#([^#]+)$")
   if conn_id and chan then
     setbefore[chan] = true
   end
@@ -28,13 +28,17 @@ redis.call("EXPIRE", channelpresencekey, expiry)
 redis.call("ZADD", userpresencekey, ts + expiry, simpleuserkey)
 redis.call("EXPIRE", userpresencekey, expiry)
 redis.call("ZADD", "userpresences", ts + expiry, userkey.."#"..chan)
+-- Drop entries that have expired: ones whose connections went away without
+-- clearing them. Renewals purge only what they touch.
+redis.call("ZREMRANGEBYSCORE", channelpresencekey, "-inf", ts)
+redis.call("ZREMRANGEBYSCORE", userpresencekey, "-inf", ts)
 
 -- inefficient, but easier to write.
 -- an efficient algorithm just adds the new channel to setbefore.
 local setafter = {}
 for _, simpleuserkey in ipairs(redis.call("ZRANGE", userpresencekey, 0, -1)) do
   -- simpleuserkey looks like conn_id#channel
-  local conn_id, chan = string.match(simpleuserkey, "^([%a%d]+)#([%a%.%d]+)$")
+  local conn_id, chan = string.match(simpleuserkey, "^([^#]+)#([^#]+)$")
   if conn_id and chan then
     setafter[chan] = true
   end
