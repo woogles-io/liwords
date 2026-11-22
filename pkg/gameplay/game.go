@@ -1006,20 +1006,21 @@ func TimedOut(ctx context.Context, stores *stores.Stores, timedout string, gameI
 	return setTimedOut(ctx, entGame, onTurn, stores)
 }
 
-// profileStatsFor returns the user's profile stats for the variant, new ones
-// if they have none for it yet.
-func profileStatsFor(ctx context.Context, stores *stores.Stores, userID string,
-	variantKey entity.VariantKey) (*entity.Stats, error) {
-	userStats, err := stores.UserStore.GetProfileVariantStats(ctx, userID, variantKey)
-	if err != nil {
+// addToProfileStats returns a player's profile stats in a variant with a
+// game's stats added; profileStats is what they had before, nil if none.
+func addToProfileStats(userID string, profileStats, gameStats *entity.Stats) (*entity.Stats, error) {
+	newStats := stats.InstantiateNewStats(userID, "")
+	if profileStats == nil {
+		// The second user ID does not matter; this is the per user stat.
+		profileStats = stats.InstantiateNewStats(userID, "")
+	}
+	if err := stats.AddStats(newStats, profileStats); err != nil {
 		return nil, err
 	}
-	if userStats == nil {
-		log.Debug().Str("variantKey", string(variantKey)).Str("pid", userID).Msg("instantiating new; no data for variant")
-		// The second user ID does not matter; this is the per user stat.
-		userStats = stats.InstantiateNewStats(userID, "")
+	if err := stats.AddStats(newStats, gameStats); err != nil {
+		return nil, err
 	}
-	return userStats, nil
+	return newStats, nil
 }
 
 // PotentiallySendBotMoveRequest sends a request to the internal Macondo bot to move if user on turn is a bot.

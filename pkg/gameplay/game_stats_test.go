@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
@@ -347,4 +348,58 @@ func TestComputePlayerStatsMultipleGames(t *testing.T) {
 	is.Equal(stats1.PlayerOneData[entity.SCORE_STAT].Total, 307)
 	is.Equal(stats1.PlayerOneData[entity.WINS_STAT].Total, 1)
 
+}
+
+// Two games between the same players, ending at the same moment, both count
+// in their profile stats.
+func TestComputePlayerStatsGamesEndingAtOnce(t *testing.T) {
+	is := is.New(t)
+	_, stores, _ := recreateDB()
+	defer stores.Disconnect()
+	ctx := DefaultConfig.WithContext(context.Background())
+
+	type game struct {
+		hist *macondopb.GameHistory
+		req  *pb.GameRequest
+	}
+	var games []game
+	for _, g := range []string{"game1", "game2"} {
+		histjson, err := os.ReadFile("./testdata/" + g + "/history.json")
+		is.NoErr(err)
+		hist := &macondopb.GameHistory{}
+		is.NoErr(json.Unmarshal(histjson, hist))
+		reqjson, err := os.ReadFile("./testdata/" + g + "/game_request.json")
+		is.NoErr(err)
+		req := &pb.GameRequest{}
+		is.NoErr(json.Unmarshal(reqjson, req))
+		games = append(games, game{hist, req})
+	}
+
+	// Several rounds, as one might not happen to overlap.
+	const rounds = 5
+	var wg sync.WaitGroup
+	errs := make(chan error, rounds*len(games))
+	for r := 0; r < rounds; r++ {
+		for _, g := range games {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				_, err := gameplay.ComputeGameStats(ctx, g.hist, gameReq, variantKey(g.req), gameEndedEventObj, stores)
+				errs <- err
+			}()
+		}
+	}
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		is.NoErr(err)
+	}
+
+	for _, name := range []string{"Mina", "cesar4"} {
+		u, err := stores.UserStore.Get(context.Background(), name)
+		is.NoErr(err)
+		st, err := stores.UserStore.GetProfileVariantStats(context.Background(), u.UUID, "CSW19.classic.ultrablitz")
+		is.NoErr(err)
+		is.Equal(st.PlayerOneData[entity.GAMES_STAT].Total, rounds*len(games))
+	}
 }

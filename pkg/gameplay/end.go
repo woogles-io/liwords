@@ -201,10 +201,10 @@ func performEndgameDuties(ctx context.Context, g *entity.Game,
 
 	g.Quickdata.FinalScores = g.History().FinalScores
 
-	// Grab a lock on both users to ensure that the following
-	// ratings calculations are not interleaved across threads.
-	// Enforce an arbitrary locking order to ensure no deadlocks
-	// occur between threads.
+	// The users are locked below, but each game end loads its own copies,
+	// so that doesn't keep two game ends for a player apart. What does is
+	// the database: ratings and profile stats are changed with both
+	// profiles locked (UpdateRatings, UpdateStats).
 	var users []*entity.User
 
 	u0, err := stores.UserStore.GetByUUID(ctx, g.History().Players[0].UserId)
@@ -367,38 +367,20 @@ func ComputeGameStats(ctx context.Context, history *macondopb.GameHistory, req *
 	// and was not triple challenge.
 	if req.RatingMode == pb.RatingMode_RATED &&
 		history.ChallengeRule != macondopb.ChallengeRule_TRIPLE {
-		p0NewProfileStats := stats.InstantiateNewStats(p0id, "")
-		p1NewProfileStats := stats.InstantiateNewStats(p1id, "")
-
-		// Only this variant's stats, not the whole profile's.
-		p0ProfileStats, err := profileStatsFor(ctx, stores, p0id, variantKey)
-		if err != nil {
-			return nil, err
-		}
-		p1ProfileStats, err := profileStatsFor(ctx, stores, p1id, variantKey)
-		if err != nil {
-			return nil, err
-		}
-
-		err = stats.AddStats(p0NewProfileStats, p0ProfileStats)
-		if err != nil {
-			return nil, err
-		}
-		err = stats.AddStats(p1NewProfileStats, p1ProfileStats)
-		if err != nil {
-			return nil, err
-		}
-		err = stats.AddStats(p0NewProfileStats, gameStats)
-		if err != nil {
-			return nil, err
-		}
-		err = stats.AddStats(p1NewProfileStats, gameStats)
-		if err != nil {
-			return nil, err
-		}
-
-		// Save all stats back to the database.
-		err = stores.UserStore.SetStats(ctx, p0id, p1id, variantKey, p0NewProfileStats, p1NewProfileStats)
+		// Added to the players' saved stats with their profiles locked, so a
+		// game of theirs ending at the same time can't undo it.
+		err = stores.UserStore.UpdateStats(ctx, p0id, p1id, variantKey,
+			func(p0ProfileStats, p1ProfileStats *entity.Stats) (*entity.Stats, *entity.Stats, error) {
+				p0New, err := addToProfileStats(p0id, p0ProfileStats, gameStats)
+				if err != nil {
+					return nil, nil, err
+				}
+				p1New, err := addToProfileStats(p1id, p1ProfileStats, gameStats)
+				if err != nil {
+					return nil, nil, err
+				}
+				return p0New, p1New, nil
+			})
 		if err != nil {
 			return nil, err
 		}

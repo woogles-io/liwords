@@ -554,6 +554,9 @@ func (s *DBStore) IsEmailOfSuspendedAccount(ctx context.Context, email string) (
 }
 
 // SetRatings set the specific ratings for the given variant in a transaction.
+// SetRatings saves both players' ratings in the variant as given, without
+// reading them first. To change them from their current values, as a game
+// ending does, use UpdateRatings.
 func (s *DBStore) SetRatings(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey,
 	p0Rating *entity.SingleRating, p1Rating *entity.SingleRating) error {
 	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
@@ -581,6 +584,115 @@ func (s *DBStore) SetRatings(ctx context.Context, p0uuid string, p1uuid string, 
 	return tx.Commit(ctx)
 }
 
+// lockProfiles locks the profile rows of the users with these UUIDs for the
+// rest of tx, and returns each one's user ID. Rows are locked in user ID
+// order, so that two transactions locking the same pair can't deadlock.
+func lockProfiles(ctx context.Context, tx pgx.Tx, uuids ...string) (map[string]int64, error) {
+	rows, err := tx.Query(ctx, `SELECT u.uuid, u.id FROM users u
+		JOIN profiles p ON p.user_id = u.id
+		WHERE u.uuid = ANY($1)
+		ORDER BY u.id
+		FOR UPDATE OF p`, uuids)
+	if err != nil {
+		return nil, err
+	}
+	ids := map[string]int64{}
+	for rows.Next() {
+		var uuid string
+		var id int64
+		if err := rows.Scan(&uuid, &id); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		ids[uuid] = id
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	for _, uuid := range uuids {
+		if _, ok := ids[uuid]; !ok {
+			return nil, fmt.Errorf("profile not found: %s", uuid)
+		}
+	}
+	return ids, nil
+}
+
+// UpdateRatings changes both players' ratings in the variant, in one
+// transaction with both profiles locked: rate gets each one's current
+// rating (nil if they have none in the variant yet) and returns their new
+// ones, which are saved. Another update for either player waits for this
+// one to finish and then sees its result, so two games ending at once for
+// the same player both count.
+func (s *DBStore) UpdateRatings(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey,
+	rate func(r0, r1 *entity.SingleRating) (*entity.SingleRating, *entity.SingleRating, error)) error {
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	ids, err := lockProfiles(ctx, tx, p0uuid, p1uuid)
+	if err != nil {
+		return err
+	}
+	cur := [2]*entity.SingleRating{}
+	for i, uuid := range []string{p0uuid, p1uuid} {
+		if err := tx.QueryRow(ctx, "SELECT ratings->'Data'->$1 FROM profiles WHERE user_id = $2",
+			variant, ids[uuid]).Scan(&cur[i]); err != nil {
+			return err
+		}
+	}
+	n0, n1, err := rate(cur[0], cur[1])
+	if err != nil {
+		return err
+	}
+	if err = common.UpdateUserRating(ctx, tx, ids[p0uuid], variant, n0); err != nil {
+		return err
+	}
+	if err = common.UpdateUserRating(ctx, tx, ids[p1uuid], variant, n1); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+// UpdateStats changes both players' profile stats in the variant as
+// UpdateRatings does their ratings: add gets each one's current stats (nil
+// if they have none in the variant yet) and returns the new ones.
+func (s *DBStore) UpdateStats(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey,
+	add func(s0, s1 *entity.Stats) (*entity.Stats, *entity.Stats, error)) error {
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	ids, err := lockProfiles(ctx, tx, p0uuid, p1uuid)
+	if err != nil {
+		return err
+	}
+	cur := [2]*entity.Stats{}
+	for i, uuid := range []string{p0uuid, p1uuid} {
+		if err := tx.QueryRow(ctx, "SELECT stats->'Data'->$1 FROM profiles WHERE user_id = $2",
+			variant, ids[uuid]).Scan(&cur[i]); err != nil {
+			return err
+		}
+	}
+	n0, n1, err := add(cur[0], cur[1])
+	if err != nil {
+		return err
+	}
+	if err = common.UpdateUserStats(ctx, tx, ids[p0uuid], variant, n0); err != nil {
+		return err
+	}
+	if err = common.UpdateUserStats(ctx, tx, ids[p1uuid], variant, n1); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+// SetStats saves both players' profile stats in the variant as given, without
+// reading them first. To change them from their current values, as a game
+// ending does, use UpdateStats.
 func (s *DBStore) SetStats(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey,
 	p0Stats *entity.Stats, p1Stats *entity.Stats) error {
 	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
