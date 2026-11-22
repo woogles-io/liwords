@@ -248,7 +248,7 @@ func TestLatestChannels(t *testing.T) {
 	is.NoErr(err)
 	add(t, s, "chat.tournament.t1", 1) // not listed
 
-	ch, err := s.LatestChannels(ctx, 20, 0, "uuid-cesar")
+	ch, err := s.LatestChannels(ctx, 20, "", "uuid-cesar")
 	is.NoErr(err)
 	is.Equal(len(ch.Channels), 2)
 	is.Equal(ch.Channels[0].Name, cz)
@@ -259,20 +259,81 @@ func TestLatestChannels(t *testing.T) {
 	is.True(!ch.Channels[1].HasUpdate) // cesar's own message
 
 	is.NoErr(s.MarkRead(ctx, "uuid-cesar", cz, z.Id))
-	ch, err = s.LatestChannels(ctx, 20, 0, "uuid-cesar")
+	ch, err = s.LatestChannels(ctx, 20, "", "uuid-cesar")
 	is.NoErr(err)
 	is.True(!ch.Channels[0].HasUpdate)
 
 	// mina is a member of her chat with cesar, with it unread.
-	ch, err = s.LatestChannels(ctx, 20, 0, "uuid-mina")
+	ch, err = s.LatestChannels(ctx, 20, "", "uuid-mina")
 	is.NoErr(err)
 	is.Equal(len(ch.Channels), 1)
 	is.Equal(ch.Channels[0].DisplayName, "pm:cesar:mina")
 	is.True(ch.Channels[0].HasUpdate)
 
-	ch, err = s.LatestChannels(ctx, 1, 1, "uuid-cesar") // paging
+	ch, err = s.LatestChannels(ctx, 1, "", "uuid-cesar") // paging
 	is.NoErr(err)
+	is.Equal(len(ch.Channels), 1)
+	is.True(ch.HasMore)
+	ch, err = s.LatestChannels(ctx, 1, ch.Channels[0].LastMessageId, "uuid-cesar")
+	is.NoErr(err)
+	is.Equal(len(ch.Channels), 1)
 	is.Equal(ch.Channels[0].Name, cm)
+	is.True(!ch.HasMore)
+}
+
+// Pages follow on from each other by the newest message, and the first one
+// lists every unread chat, including those on later pages.
+func TestLatestChannelsPages(t *testing.T) {
+	is := is.New(t)
+	s, db := setup(t)
+	ctx := context.Background()
+	others := []string{"mina", "zed"}
+	for i := 0; i < 5; i++ {
+		u := fmt.Sprint("p", i)
+		_, err := db.Exec(ctx, `INSERT INTO users (username, uuid, email, password, created_at)
+			VALUES ($1::text, 'uuid-' || $1::text, $1::text || '@x.test', '', now())`, u)
+		is.NoErr(err)
+		others = append(others, u)
+	}
+	// One chat with each, oldest first; the first two are from the others,
+	// unread, and the rest from cesar.
+	var want []string
+	for i, o := range others {
+		ch := "chat.pm.uuid-cesar_uuid-" + o
+		if o < "cesar" {
+			ch = "chat.pm.uuid-" + o + "_uuid-cesar"
+		}
+		from, fromUID := "cesar", "uuid-cesar"
+		if i < 2 {
+			from, fromUID = o, "uuid-"+o
+		}
+		_, err := s.AddChat(ctx, from, fromUID, fmt.Sprint("m", i), ch, false)
+		is.NoErr(err)
+		want = append([]string{ch}, want...)
+		time.Sleep(2 * time.Millisecond)
+	}
+
+	var got []string
+	before := ""
+	for pages := 0; ; pages++ {
+		is.True(pages < len(others)) // ends
+		ch, err := s.LatestChannels(ctx, 3, before, "uuid-cesar")
+		is.NoErr(err)
+		if before == "" {
+			// The two unread chats are the oldest, past the first page.
+			is.Equal(ch.UnreadChannels, []string{want[len(want)-2], want[len(want)-1]})
+		} else {
+			is.Equal(len(ch.UnreadChannels), 0)
+		}
+		for _, c := range ch.Channels {
+			got = append(got, c.Name)
+		}
+		if !ch.HasMore {
+			break
+		}
+		before = ch.Channels[len(ch.Channels)-1].LastMessageId
+	}
+	is.Equal(got, want)
 }
 
 // The migration makes both people of each existing private chat members,
@@ -296,7 +357,7 @@ func TestPrivateChatMembersMigration(t *testing.T) {
 	is.NoErr(err)
 
 	for _, u := range []string{"uuid-mina", "uuid-zed"} {
-		ch, err := s.LatestChannels(ctx, 20, 0, u)
+		ch, err := s.LatestChannels(ctx, 20, "", u)
 		is.NoErr(err)
 		is.Equal(len(ch.Channels), 1)
 		is.Equal(ch.Channels[0].LastMessage, "old 1")

@@ -285,13 +285,14 @@ CROSS JOIN LATERAL (
     ORDER BY m.id DESC
     LIMIT 1) l
 WHERE me.uuid = $1::text AND r.channel LIKE 'chat.pm.%'
+  AND ($2::uuid IS NULL OR l.id < $2::uuid)
 ORDER BY l.id DESC
-LIMIT $3 OFFSET $2
+LIMIT $3
 `
 
 type ListPrivateChatsParams struct {
 	UserUuid string
-	Off      int32
+	BeforeID pgtype.UUID
 	Lim      int32
 }
 
@@ -307,8 +308,10 @@ type ListPrivateChatsRow struct {
 
 // The user's private chats with at least one message, most recent first,
 // with the newest message, the user's read position and both usernames.
+// Paged by the newest message: only chats whose newest message is older
+// than before_id, if given.
 func (q *Queries) ListPrivateChats(ctx context.Context, arg ListPrivateChatsParams) ([]ListPrivateChatsRow, error) {
-	rows, err := q.db.Query(ctx, listPrivateChats, arg.UserUuid, arg.Off, arg.Lim)
+	rows, err := q.db.Query(ctx, listPrivateChats, arg.UserUuid, arg.BeforeID, arg.Lim)
 	if err != nil {
 		return nil, err
 	}
@@ -328,6 +331,50 @@ func (q *Queries) ListPrivateChats(ctx context.Context, arg ListPrivateChatsPara
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listUnreadPrivateChats = `-- name: ListUnreadPrivateChats :many
+SELECT r.channel
+FROM chat_reads r
+JOIN users me ON me.id = r.user_id
+CROSS JOIN LATERAL (
+    SELECT m.id, m.sender_id
+    FROM chat_messages m
+    WHERE m.channel = r.channel AND m.deleted_at IS NULL
+    ORDER BY m.id DESC
+    LIMIT 1) l
+WHERE me.uuid = $1::text AND r.channel LIKE 'chat.pm.%'
+  AND l.sender_id IS DISTINCT FROM r.user_id
+  AND (r.last_read_message_id IS NULL OR l.id > r.last_read_message_id)
+ORDER BY l.id DESC
+LIMIT $2
+`
+
+type ListUnreadPrivateChatsParams struct {
+	UserUuid string
+	Lim      int32
+}
+
+// The user's private chats whose newest message is from someone else and
+// newer than the user's read position, most recent first.
+func (q *Queries) ListUnreadPrivateChats(ctx context.Context, arg ListUnreadPrivateChatsParams) ([]string, error) {
+	rows, err := q.db.Query(ctx, listUnreadPrivateChats, arg.UserUuid, arg.Lim)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var channel string
+		if err := rows.Scan(&channel); err != nil {
+			return nil, err
+		}
+		items = append(items, channel)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err

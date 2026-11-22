@@ -357,6 +357,35 @@ describe("a channel's history, a page at a time", () => {
     vi.unstubAllGlobals();
   });
 
+  it("counts unread conversations past the first page of the list", async () => {
+    vi.stubGlobal(
+      "IntersectionObserver",
+      class {
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+      },
+    );
+    socializeClient.getChatsForChannel.mockResolvedValue({
+      messages: [msg(1)],
+      hasOlder: false,
+      hasNewer: false,
+      lastReadId: id(1),
+    });
+    // Neither unread chat is on the first page.
+    socializeClient.getActiveChatChannels.mockResolvedValueOnce({
+      channels: [],
+      hasMore: true,
+      unreadChannels: ["chat.pm.me-id_p1-id", "chat.pm.me-id_p2-id"],
+    });
+    const { findByText, container } = renderGame();
+    await findByText("message 1");
+    await waitFor(() =>
+      expect(container.querySelector(".notification")?.textContent).toBe("2"),
+    );
+    vi.unstubAllGlobals();
+  });
+
   it("clears a conversation the user replies to, from here or elsewhere", async () => {
     vi.stubGlobal(
       "IntersectionObserver",

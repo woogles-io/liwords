@@ -2990,14 +2990,20 @@ func (x *BasicFollowedUser) GetChannel() []string {
 
 // The user's private chats, most recent first. Tournament, league, game and
 // lobby chats belong to their pages and are not listed.
+//
+// Paged: give the last_message_id of the last channel of one page as
+// before_id to get the next.
 type GetActiveChatChannelsRequest struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	Number int32                  `protobuf:"varint,1,opt,name=number,proto3" json:"number,omitempty"`
-	Offset int32                  `protobuf:"varint,2,opt,name=offset,proto3" json:"offset,omitempty"`
+	// Ignored: use before_id.
+	Offset int32 `protobuf:"varint,2,opt,name=offset,proto3" json:"offset,omitempty"`
 	// Ignored: tournament and league chats are no longer listed.
 	TournamentId string `protobuf:"bytes,3,opt,name=tournament_id,json=tournamentId,proto3" json:"tournament_id,omitempty"`
 	// Ignored: tournament and league chats are no longer listed.
-	LeagueId      string `protobuf:"bytes,4,opt,name=league_id,json=leagueId,proto3" json:"league_id,omitempty"`
+	LeagueId string `protobuf:"bytes,4,opt,name=league_id,json=leagueId,proto3" json:"league_id,omitempty"`
+	// Only the chats whose newest message is older than this one.
+	BeforeId      string `protobuf:"bytes,5,opt,name=before_id,json=beforeId,proto3" json:"before_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3060,11 +3066,23 @@ func (x *GetActiveChatChannelsRequest) GetLeagueId() string {
 	return ""
 }
 
+func (x *GetActiveChatChannelsRequest) GetBeforeId() string {
+	if x != nil {
+		return x.BeforeId
+	}
+	return ""
+}
+
 type ActiveChatChannels struct {
-	state         protoimpl.MessageState        `protogen:"open.v1"`
-	Channels      []*ActiveChatChannels_Channel `protobuf:"bytes,1,rep,name=channels,proto3" json:"channels,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state    protoimpl.MessageState        `protogen:"open.v1"`
+	Channels []*ActiveChatChannels_Channel `protobuf:"bytes,1,rep,name=channels,proto3" json:"channels,omitempty"`
+	// Whether the user has older chats than the ones listed.
+	HasMore bool `protobuf:"varint,2,opt,name=has_more,json=hasMore,proto3" json:"has_more,omitempty"`
+	// All the user's private chats with has_update, listed in this page or
+	// not, most recent first (at most 100). Only on the first page.
+	UnreadChannels []string `protobuf:"bytes,3,rep,name=unread_channels,json=unreadChannels,proto3" json:"unread_channels,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *ActiveChatChannels) Reset() {
@@ -3100,6 +3118,20 @@ func (*ActiveChatChannels) Descriptor() ([]byte, []int) {
 func (x *ActiveChatChannels) GetChannels() []*ActiveChatChannels_Channel {
 	if x != nil {
 		return x.Channels
+	}
+	return nil
+}
+
+func (x *ActiveChatChannels) GetHasMore() bool {
+	if x != nil {
+		return x.HasMore
+	}
+	return false
+}
+
+func (x *ActiveChatChannels) GetUnreadChannels() []string {
+	if x != nil {
+		return x.UnreadChannels
 	}
 	return nil
 }
@@ -6026,8 +6058,10 @@ type ActiveChatChannels_Channel struct {
 	LastUpdate int64 `protobuf:"varint,3,opt,name=last_update,json=lastUpdate,proto3" json:"last_update,omitempty"`
 	// Whether the channel has a message from someone else newer than the
 	// user's read position (see MarkChannelRead).
-	HasUpdate     bool   `protobuf:"varint,4,opt,name=has_update,json=hasUpdate,proto3" json:"has_update,omitempty"`
-	LastMessage   string `protobuf:"bytes,5,opt,name=last_message,json=lastMessage,proto3" json:"last_message,omitempty"`
+	HasUpdate   bool   `protobuf:"varint,4,opt,name=has_update,json=hasUpdate,proto3" json:"has_update,omitempty"`
+	LastMessage string `protobuf:"bytes,5,opt,name=last_message,json=lastMessage,proto3" json:"last_message,omitempty"`
+	// The newest message's ID: the cursor for the next page.
+	LastMessageId string `protobuf:"bytes,6,opt,name=last_message_id,json=lastMessageId,proto3" json:"last_message_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -6093,6 +6127,13 @@ func (x *ActiveChatChannels_Channel) GetHasUpdate() bool {
 func (x *ActiveChatChannels_Channel) GetLastMessage() string {
 	if x != nil {
 		return x.LastMessage
+	}
+	return ""
+}
+
+func (x *ActiveChatChannels_Channel) GetLastMessageId() string {
+	if x != nil {
+		return x.LastMessageId
 	}
 	return ""
 }
@@ -6289,14 +6330,17 @@ const file_proto_user_service_user_service_proto_rawDesc = "" +
 	"\x11BasicFollowedUser\x12\x12\n" +
 	"\x04uuid\x18\x01 \x01(\tR\x04uuid\x12\x1a\n" +
 	"\busername\x18\x02 \x01(\tR\busername\x12\x18\n" +
-	"\achannel\x18\x03 \x03(\tR\achannel\"\x90\x01\n" +
+	"\achannel\x18\x03 \x03(\tR\achannel\"\xad\x01\n" +
 	"\x1cGetActiveChatChannelsRequest\x12\x16\n" +
 	"\x06number\x18\x01 \x01(\x05R\x06number\x12\x16\n" +
 	"\x06offset\x18\x02 \x01(\x05R\x06offset\x12#\n" +
 	"\rtournament_id\x18\x03 \x01(\tR\ftournamentId\x12\x1b\n" +
-	"\tleague_id\x18\x04 \x01(\tR\bleagueId\"\x80\x02\n" +
+	"\tleague_id\x18\x04 \x01(\tR\bleagueId\x12\x1b\n" +
+	"\tbefore_id\x18\x05 \x01(\tR\bbeforeId\"\xec\x02\n" +
 	"\x12ActiveChatChannels\x12D\n" +
-	"\bchannels\x18\x01 \x03(\v2(.user_service.ActiveChatChannels.ChannelR\bchannels\x1a\xa3\x01\n" +
+	"\bchannels\x18\x01 \x03(\v2(.user_service.ActiveChatChannels.ChannelR\bchannels\x12\x19\n" +
+	"\bhas_more\x18\x02 \x01(\bR\ahasMore\x12'\n" +
+	"\x0funread_channels\x18\x03 \x03(\tR\x0eunreadChannels\x1a\xcb\x01\n" +
 	"\aChannel\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12!\n" +
 	"\fdisplay_name\x18\x02 \x01(\tR\vdisplayName\x12\x1f\n" +
@@ -6304,7 +6348,8 @@ const file_proto_user_service_user_service_proto_rawDesc = "" +
 	"lastUpdate\x12\x1d\n" +
 	"\n" +
 	"has_update\x18\x04 \x01(\bR\thasUpdate\x12!\n" +
-	"\flast_message\x18\x05 \x01(\tR\vlastMessage\"\xc0\x01\n" +
+	"\flast_message\x18\x05 \x01(\tR\vlastMessage\x12&\n" +
+	"\x0flast_message_id\x18\x06 \x01(\tR\rlastMessageId\"\xc0\x01\n" +
 	"\x0fGetChatsRequest\x12\x18\n" +
 	"\achannel\x18\x01 \x01(\tR\achannel\x12\x1b\n" +
 	"\tbefore_id\x18\x02 \x01(\tR\bbeforeId\x12\x19\n" +

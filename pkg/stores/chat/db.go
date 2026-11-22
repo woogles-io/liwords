@@ -315,27 +315,49 @@ func (s *DBStore) LastRead(ctx context.Context, uid, channel string) (string, bo
 	return uuid.UUID(id.Bytes).String(), true, nil
 }
 
-func (s *DBStore) LatestChannels(ctx context.Context, count, offset int, uid string) (*upb.ActiveChatChannels, error) {
-	rows, err := s.q.ListPrivateChats(ctx, models.ListPrivateChatsParams{UserUuid: uid, Lim: int32(count), Off: int32(offset)})
+func (s *DBStore) LatestChannels(ctx context.Context, count int, before, uid string) (*upb.ActiveChatChannels, error) {
+	p := models.ListPrivateChatsParams{UserUuid: uid, Lim: int32(count + 1)}
+	if before != "" {
+		id, err := uuid.Parse(before)
+		if err != nil {
+			return nil, fmt.Errorf("bad chat ID %q", before)
+		}
+		p.BeforeID = pgtype.UUID{Bytes: id, Valid: true}
+	}
+	rows, err := s.q.ListPrivateChats(ctx, p)
 	if err != nil {
 		return nil, err
 	}
-	chans := make([]*upb.ActiveChatChannels_Channel, len(rows))
+	resp := &upb.ActiveChatChannels{}
+	if len(rows) > count {
+		rows, resp.HasMore = rows[:count], true
+	}
+	resp.Channels = make([]*upb.ActiveChatChannels_Channel, len(rows))
 	for i, r := range rows {
 		names := slices.Clone(r.Usernames)
 		slices.Sort(names)
 		unread := !r.LastFromUser &&
 			(!r.LastReadMessageID.Valid || bytes.Compare(r.LastID[:], r.LastReadMessageID.Bytes[:]) > 0)
-		chans[i] = &upb.ActiveChatChannels_Channel{
-			Name:        r.Channel,
-			DisplayName: "pm:" + strings.Join(names, ":"),
-			LastUpdate:  r.LastAt.Time.Unix(),
-			LastMessage: r.LastMessage,
-			HasUpdate:   unread,
+		resp.Channels[i] = &upb.ActiveChatChannels_Channel{
+			Name:          r.Channel,
+			DisplayName:   "pm:" + strings.Join(names, ":"),
+			LastUpdate:    r.LastAt.Time.Unix(),
+			LastMessage:   r.LastMessage,
+			HasUpdate:     unread,
+			LastMessageId: r.LastID.String(),
 		}
 	}
-	return &upb.ActiveChatChannels{Channels: chans}, nil
+	if before == "" {
+		resp.UnreadChannels, err = s.q.ListUnreadPrivateChats(ctx, models.ListUnreadPrivateChatsParams{UserUuid: uid, Lim: maxUnreadChannels})
+		if err != nil {
+			return nil, err
+		}
+	}
+	return resp, nil
 }
+
+// maxUnreadChannels is the most unread private chats LatestChannels lists.
+const maxUnreadChannels = 100
 
 // ScanChannels returns up to count channels whose names start with prefix
 // (all chat channels if it is ""), in name order from cursor, and the cursor

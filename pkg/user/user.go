@@ -135,8 +135,10 @@ type ChatStore interface {
 	OldChats(ctx context.Context, channel string, n int) ([]*pb.ChatMessage, error)
 	// History returns a page of the channel's messages; see ChatQuery.
 	History(ctx context.Context, channel string, q ChatQuery) (*ChatPage, error)
-	// LatestChannels returns the user's private chats, most recent first.
-	LatestChannels(ctx context.Context, count, offset int, uid string) (*upb.ActiveChatChannels, error)
+	// LatestChannels returns up to count of the user's private chats, most
+	// recent first: those whose newest message is older than before, if it
+	// isn't "". The first page (no before) also lists all unread ones.
+	LatestChannels(ctx context.Context, count int, before, uid string) (*upb.ActiveChatChannels, error)
 
 	// MarkRead moves the user's read position in the channel forward to
 	// msgID. It never moves it back.
