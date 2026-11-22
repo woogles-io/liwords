@@ -218,7 +218,7 @@ const download = (filename: string, body: string, type: string) => {
 };
 
 // A user's name with the usual menu: profile, moderation, and the rest.
-const Name = (props: { username: string; userId: string }) =>
+export const Name = (props: { username: string; userId: string }) =>
   props.userId ? (
     <UsernameWithContext
       username={props.username || props.userId}
@@ -284,6 +284,8 @@ const ChannelCell = (props: { row: ReviewRow }) => {
 export const ChannelChats = (props: {
   channel: string;
   containing?: string;
+  // a message to open the channel at: it and the messages around it
+  around?: string;
 }) => {
   const modClient = useClient(ModService);
   const words = props.containing ?? "";
@@ -380,7 +382,11 @@ export const ChannelChats = (props: {
     return (
       <Button
         loading={loading}
-        onClick={() => ask(words ? { containing: words } : {}, "fresh")}
+        onClick={() =>
+          props.around
+            ? openContext(props.around)
+            : ask(words ? { containing: words } : {}, "fresh")
+        }
       >
         Load messages
       </Button>

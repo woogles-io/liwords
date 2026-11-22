@@ -29,3 +29,15 @@
 .chat-review td.chat-review-nowrap {
   white-space: nowrap;
 }
+
+// Open or handled, and Refresh, above the reports.
+.chat-reports .chat-reports-bar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+// A reported message a moderator deleted since; as for the played tag above.
+.chat-reports .ant-tag.chat-reports-deleted {
+  color: m($gray-extreme);
+}
