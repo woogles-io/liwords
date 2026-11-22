@@ -91,6 +91,8 @@ WHERE u.uuid = @user_uuid::text AND r.channel = @channel;
 -- name: ListPrivateChats :many
 -- The user's private chats with at least one message, most recent first,
 -- with the newest message, the user's read position and both usernames.
+-- Paged by the newest message: only chats whose newest message is older
+-- than before_id, if given.
 SELECT r.channel, r.last_read_message_id,
        l.id AS last_id, l.message AS last_message, l.created_at AS last_at,
        (l.sender_id IS NOT DISTINCT FROM r.user_id)::bool AS last_from_user,
@@ -105,8 +107,27 @@ CROSS JOIN LATERAL (
     ORDER BY m.id DESC
     LIMIT 1) l
 WHERE me.uuid = @user_uuid::text AND r.channel LIKE 'chat.pm.%'
+  AND (sqlc.narg(before_id)::uuid IS NULL OR l.id < sqlc.narg(before_id)::uuid)
 ORDER BY l.id DESC
-LIMIT @lim OFFSET @off;
+LIMIT @lim;
+
+-- name: ListUnreadPrivateChats :many
+-- The user's private chats whose newest message is from someone else and
+-- newer than the user's read position, most recent first.
+SELECT r.channel
+FROM chat_reads r
+JOIN users me ON me.id = r.user_id
+CROSS JOIN LATERAL (
+    SELECT m.id, m.sender_id
+    FROM chat_messages m
+    WHERE m.channel = r.channel AND m.deleted_at IS NULL
+    ORDER BY m.id DESC
+    LIMIT 1) l
+WHERE me.uuid = @user_uuid::text AND r.channel LIKE 'chat.pm.%'
+  AND l.sender_id IS DISTINCT FROM r.user_id
+  AND (r.last_read_message_id IS NULL OR l.id > r.last_read_message_id)
+ORDER BY l.id DESC
+LIMIT @lim;
 
 -- name: ScanChatChannels :many
 -- Channels whose names start with prefix, in name order after after, for

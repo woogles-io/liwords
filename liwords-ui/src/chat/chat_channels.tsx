@@ -1,4 +1,10 @@
-import React, { ReactNode, useCallback, useEffect, useState } from "react";
+import React, {
+  ReactNode,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { AutoComplete } from "antd";
 import {
   useChatStoreContext,
@@ -6,7 +12,10 @@ import {
   useLoginStateStoreContext,
 } from "../store/store";
 import { useDebounce } from "../utils/debounce";
-import { ActiveChatChannels_Channel } from "../gen/api/proto/user_service/user_service_pb";
+import {
+  ActiveChatChannels,
+  ActiveChatChannels_Channel,
+} from "../gen/api/proto/user_service/user_service_pb";
 import { PlayerAvatar } from "../shared/player_avatar";
 import { DisplayUserFlag } from "../shared/display_flag";
 import { TrophyOutlined, TeamOutlined, UserOutlined } from "@ant-design/icons";
@@ -22,6 +31,8 @@ type Props = {
   unseenMessages: Array<ChatEntityObj>;
   updatedChannels?: Set<string>;
   sendMessage?: (uuid: string, username: string) => void;
+  // Loads the next page of chats, if there is one.
+  loadOlder?: () => void;
   maxHeight?: number;
   suppressDefault?: boolean;
 };
@@ -42,6 +53,56 @@ export const listsChannel = (
   }
   return ch.name !== defaultChannel && ch.name.startsWith("chat.pm.");
 };
+
+// The private chats listed are loaded a page at a time, newest first; the
+// first page is fetched again as chats come and go. withFirstPage takes a
+// fresh first page in, keeping the older pages loaded after it; a chat that
+// moved up is listed once, where the first page has it.
+export const withFirstPage = (
+  cur: ActiveChatChannels | undefined,
+  first: ActiveChatChannels,
+): ActiveChatChannels => {
+  const last = first.channels[first.channels.length - 1]?.lastMessageId;
+  if (!cur || !first.hasMore || !last) {
+    return first;
+  }
+  const inFirst = new Set(first.channels.map((ch) => ch.name));
+  const older = cur.channels.filter(
+    (ch) =>
+      !inFirst.has(ch.name) && !!ch.lastMessageId && ch.lastMessageId < last,
+  );
+  if (!older.length) {
+    return first;
+  }
+  return {
+    ...first,
+    channels: [...first.channels, ...older],
+    hasMore: cur.hasMore,
+  };
+};
+
+// withOlderPage adds the page after the chats listed.
+export const withOlderPage = (
+  cur: ActiveChatChannels | undefined,
+  page: ActiveChatChannels,
+): ActiveChatChannels => {
+  if (!cur) {
+    return page;
+  }
+  const listed = new Set(cur.channels.map((ch) => ch.name));
+  return {
+    ...cur,
+    channels: [
+      ...cur.channels,
+      ...page.channels.filter((ch) => !listed.has(ch.name)),
+    ],
+    hasMore: page.hasMore,
+  };
+};
+
+// The cursor for the page after the chats listed; "" if there is none.
+export const nextChannelPage = (cur: ActiveChatChannels | undefined) =>
+  (cur?.hasMore && cur.channels[cur.channels.length - 1]?.lastMessageId) || "";
 
 export type ChatChannelLabel = {
   avatar?: ReactNode;
@@ -157,6 +218,32 @@ const extractUser = (
     return { uuid: chatUserId, username: chatUsername };
   }
   return {};
+};
+
+// The end of the chats listed while older ones remain: in view, it loads
+// them; it can be clicked too. It's watched afresh for each page, so a page
+// that leaves it in view loads the next.
+const OlderChats = (props: { cursor: string; onLoad: () => void }) => {
+  const ref = useRef<HTMLParagraphElement>(null);
+  const { cursor, onLoad } = props;
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof IntersectionObserver === "undefined") {
+      return;
+    }
+    const obs = new IntersectionObserver((entries) => {
+      if (entries.some((e) => e.isIntersecting)) {
+        onLoad();
+      }
+    });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [cursor, onLoad]);
+  return (
+    <p ref={ref} className="link plain older-chats" onClick={onLoad}>
+      Older chats
+    </p>
+  );
 };
 
 export const ChatChannels = React.memo((props: Props) => {
@@ -331,6 +418,12 @@ export const ChatChannels = React.memo((props: Props) => {
         </AutoComplete>
       )}
       {channelList}
+      {props.loadOlder && nextChannelPage(chatChannels) && (
+        <OlderChats
+          cursor={nextChannelPage(chatChannels)}
+          onLoad={props.loadOlder}
+        />
+      )}
     </div>
   );
 });

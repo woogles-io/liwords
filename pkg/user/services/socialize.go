@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"connectrpc.com/connect"
+	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 	"github.com/woogles-io/liwords/pkg/apiserver"
 	"github.com/woogles-io/liwords/pkg/auth/rbac"
@@ -275,12 +276,30 @@ func (ss *SocializeService) GetActiveChatChannels(ctx context.Context, req *conn
 		return nil, err
 	}
 
-	resp, err := ss.chatStore.LatestChannels(ctx, int(req.Msg.Number), int(req.Msg.Offset), sess.UserUUID)
+	n := int(req.Msg.Number)
+	if n <= 0 {
+		n = defaultChannelPage
+	} else if n > maxChannelPage {
+		n = maxChannelPage
+	}
+	if req.Msg.BeforeId != "" {
+		if _, err := uuid.Parse(req.Msg.BeforeId); err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("bad before_id"))
+		}
+	}
+	resp, err := ss.chatStore.LatestChannels(ctx, n, req.Msg.BeforeId, sess.UserUUID)
 	if err != nil {
 		return nil, err
 	}
 	return connect.NewResponse(resp), nil
 }
+
+// The number of private chats GetActiveChatChannels lists when not asked
+// for a number, and the most it lists.
+const (
+	defaultChannelPage = 20
+	maxChannelPage     = 100
+)
 
 func ChatChannelReceiver(uid, name string) (string, error) {
 	users := strings.Split(strings.TrimPrefix(name, "chat.pm."), "_")
@@ -403,9 +422,9 @@ func (ss *SocializeService) GetChatsForChannel(ctx context.Context, req *connect
 		}
 	}
 	return connect.NewResponse(&pb.ChatHistory{
-		Messages:   chats,
-		HasOlder:   page.HasOlder,
-		HasNewer:   page.HasNewer,
+		Messages:    chats,
+		HasOlder:    page.HasOlder,
+		HasNewer:    page.HasNewer,
 		LastReadId:  lastRead,
 		ReadNothing: readNothing,
 	}), nil

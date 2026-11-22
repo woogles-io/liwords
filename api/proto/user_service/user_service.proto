@@ -267,13 +267,19 @@ message BasicFollowedUser {
 
 // The user's private chats, most recent first. Tournament, league, game and
 // lobby chats belong to their pages and are not listed.
+//
+// Paged: give the last_message_id of the last channel of one page as
+// before_id to get the next.
 message GetActiveChatChannelsRequest {
   int32 number = 1;
+  // Ignored: use before_id.
   int32 offset = 2;
   // Ignored: tournament and league chats are no longer listed.
   string tournament_id = 3;
   // Ignored: tournament and league chats are no longer listed.
   string league_id = 4;
+  // Only the chats whose newest message is older than this one.
+  string before_id = 5;
 }
 
 message ActiveChatChannels {
@@ -286,8 +292,15 @@ message ActiveChatChannels {
     // user's read position (see MarkChannelRead).
     bool has_update = 4;
     string last_message = 5;
+    // The newest message's ID: the cursor for the next page.
+    string last_message_id = 6;
   }
   repeated Channel channels = 1;
+  // Whether the user has older chats than the ones listed.
+  bool has_more = 2;
+  // All the user's private chats with has_update, listed in this page or
+  // not, most recent first (at most 100). Only on the first page.
+  repeated string unread_channels = 3;
 }
 
 // A page of a channel's history, oldest first. Message IDs sort by time.

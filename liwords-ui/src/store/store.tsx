@@ -174,7 +174,9 @@ type ChatStoreData = {
   chatGeneration: number;
   currentChatChannel: string;
   setCurrentChatChannel: (channel: string) => void;
-  setChatChannels: (chatChannels: ActiveChatChannels) => void;
+  setChatChannels: React.Dispatch<
+    React.SetStateAction<ActiveChatChannels | undefined>
+  >;
 };
 
 type PresenceStoreData = {

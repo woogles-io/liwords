@@ -21,7 +21,13 @@ import {
 } from "../store/store";
 import "./chat.scss";
 import { Presences, useFirstSeen } from "./presences";
-import { ChatChannels, listsChannel } from "./chat_channels";
+import {
+  ChatChannels,
+  listsChannel,
+  nextChannelPage,
+  withFirstPage,
+  withOlderPage,
+} from "./chat_channels";
 import {
   ChatEntityObj,
   ChatEntityType,
@@ -30,7 +36,10 @@ import {
 import { Players } from "./players";
 import { ChatMessageSchema } from "../gen/api/proto/ipc/chat_pb";
 import { useClient } from "../utils/hooks/connect";
-import { SocializeService } from "../gen/api/proto/user_service/user_service_pb";
+import {
+  ActiveChatChannels,
+  SocializeService,
+} from "../gen/api/proto/user_service/user_service_pb";
 import { useTournamentCompetitorState } from "../hooks/use_tournament_competitor_state";
 import { useCollectionContext } from "../collections/useCollectionContext";
 import { CollectionNavigationTab } from "../collections/CollectionNavigationTab";
@@ -102,6 +111,16 @@ const topMessage = (list: HTMLElement) => {
 // drops one whose pings go unanswered for 15 seconds, and a phone app asleep
 // in the background answers none.
 const CATCH_UP_AFTER_HIDDEN_MS = 15000;
+
+// The private chats listed per page.
+const CHANNEL_PAGE = 20;
+
+// The user's unread private chats: the server lists all of them, loaded or
+// not. (One deployed before it did lists none, but marks those loaded.)
+const unreadOf = (resp: ActiveChatChannels) =>
+  resp.unreadChannels.length
+    ? resp.unreadChannels
+    : resp.channels.filter((ch) => ch.hasUpdate).map((ch) => ch.name);
 
 // Helper function to determine the correct default tab
 const getDefaultTab = (
@@ -269,6 +288,7 @@ export const Chat = React.memo((props: Props) => {
     mergeChats,
     insertChats,
     trimChats,
+    chatChannels,
     setChatChannels,
     setCurrentChatChannel,
   } = useChatStoreContext();
@@ -578,23 +598,24 @@ export const Chat = React.memo((props: Props) => {
         setChannelsFetched(true);
       }
       const resp = await socializeClient.getActiveChatChannels({
-        number: 20,
-        offset: 0,
+        number: CHANNEL_PAGE,
       });
 
-      setChatChannels(resp);
+      setChatChannels((cur) => withFirstPage(cur, resp));
       enableChatAutoScroll();
-      // The server keeps how far the user has read each private chat, so
-      // its hasUpdate is the unread dot. The channel shown is being read.
+      // The server keeps how far the user has read each private chat, and
+      // lists the unread ones, loaded or not: they get the unread dot. The
+      // channel shown is being read.
       const newUpdatedChannels = new Set(
-        resp?.channels
-          ?.filter(
-            (ch) =>
-              ch.hasUpdate &&
-              ch.name !== lastChannel.current &&
-              listsChannel(ch, props.defaultChannel, excludedPlayers),
-          )
-          ?.map((ch) => ch.name),
+        unreadOf(resp).filter(
+          (ch) =>
+            ch !== lastChannel.current &&
+            listsChannel(
+              { name: ch, displayName: "" },
+              props.defaultChannel,
+              excludedPlayers,
+            ),
+        ),
       );
       setUpdatedChannels(newUpdatedChannels);
       if (initial) {
@@ -892,8 +913,17 @@ export const Chat = React.memo((props: Props) => {
         setCurrentChatChannel(newChannel);
         setChannelSelectedTime(Date.now());
 
-        // Clear unseen messages for this channel
+        // Clear unseen messages for this channel, and its count on the
+        // Chat tab: the user is reading it.
         setUnseenMessages((u) => u.filter((ch) => ch.channel !== newChannel));
+        setBadgeChannels((cur) => {
+          if (!cur.has(newChannel)) {
+            return cur;
+          }
+          const next = new Set(cur);
+          next.delete(newChannel);
+          return next;
+        });
         setUpdatedChannels((u) => {
           if (u) {
             const initialUpdated = Array.from(u);
@@ -976,23 +1006,23 @@ export const Chat = React.memo((props: Props) => {
     let resp;
     try {
       resp = await socializeClient.getActiveChatChannels({
-        number: 20,
-        offset: 0,
+        number: CHANNEL_PAGE,
       });
     } catch (e) {
       console.log("chat channels catch-up failed", e);
       return;
     }
-    setChatChannels(resp);
-    const missed = resp.channels
-      .filter(
-        (ch) =>
-          ch.hasUpdate &&
-          ch.name !== channel &&
-          !unreadChannels.current.has(ch.name) &&
-          listsChannel(ch, props.defaultChannel, excludedPlayers),
-      )
-      .map((ch) => ch.name);
+    setChatChannels((cur) => withFirstPage(cur, resp));
+    const missed = unreadOf(resp).filter(
+      (ch) =>
+        ch !== channel &&
+        !unreadChannels.current.has(ch) &&
+        listsChannel(
+          { name: ch, displayName: "" },
+          props.defaultChannel,
+          excludedPlayers,
+        ),
+    );
     if (missed.length) {
       setUpdatedChannels((u) => new Set([...(u ?? []), ...missed]));
       addBadgeChannels(missed);
@@ -1007,6 +1037,29 @@ export const Chat = React.memo((props: Props) => {
     setChatChannels,
     socializeClient,
   ]);
+
+  // The next page of the chat list, as the user scrolls to its end.
+  const loadingChannels = useRef(false);
+  const loadOlderChannels = useCallback(async () => {
+    const before = nextChannelPage(chatChannels);
+    if (!before || loadingChannels.current) {
+      return;
+    }
+    loadingChannels.current = true;
+    try {
+      const page = await socializeClient.getActiveChatChannels({
+        number: CHANNEL_PAGE,
+        beforeId: before,
+      });
+      setChatChannels((cur) =>
+        nextChannelPage(cur) === before ? withOlderPage(cur, page) : cur,
+      );
+    } catch (e) {
+      console.log("loading older chats failed", e);
+    } finally {
+      loadingChannels.current = false;
+    }
+  }, [chatChannels, setChatChannels, socializeClient]);
 
   // The socket delivers chat only while connected. Back after being down (a
   // phone app asleep in the background, a dropped network), the chat fetches
@@ -1474,6 +1527,7 @@ export const Chat = React.memo((props: Props) => {
               setShowChannels(false);
             }}
             sendMessage={sendNewMessage}
+            loadOlder={loadOlderChannels}
             suppressDefault={props.suppressDefault}
           />
         ) : (
