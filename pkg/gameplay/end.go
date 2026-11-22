@@ -207,11 +207,11 @@ func performEndgameDuties(ctx context.Context, g *entity.Game,
 	// occur between threads.
 	var users []*entity.User
 
-	u0, err := stores.UserStore.GetByUUID(ctx, g.History().Players[0].UserId)
+	u0, err := stores.UserStore.GetByUUIDWithoutStats(ctx, g.History().Players[0].UserId)
 	if err != nil {
 		return err
 	}
-	u1, err := stores.UserStore.GetByUUID(ctx, g.History().Players[1].UserId)
+	u1, err := stores.UserStore.GetByUUIDWithoutStats(ctx, g.History().Players[1].UserId)
 	if err != nil {
 		return err
 	}
@@ -240,8 +240,8 @@ func performEndgameDuties(ctx context.Context, g *entity.Game,
 	if err != nil {
 		log.Err(err).Str("gid", g.GameID()).Msg("getting variant key")
 	} else {
-		gameStats, err := computeGameStats(ctx, g.History(), g.GameReq.GameRequest, variantKey,
-			evt, stores, users)
+		gameStats, err := ComputeGameStats(ctx, g.History(), g.GameReq.GameRequest, variantKey,
+			evt, stores)
 		if err != nil {
 			log.Err(err).Str("gid", g.GameID()).Msg("computing stats")
 		} else {
@@ -345,15 +345,6 @@ func sendProfileUpdate(ctx context.Context, g *entity.Game, users []*entity.User
 
 func ComputeGameStats(ctx context.Context, history *macondopb.GameHistory, req *pb.GameRequest,
 	variantKey entity.VariantKey, evt *pb.GameEndedEvent, stores *stores.Stores) (*entity.Stats, error) {
-	return computeGameStats(ctx, history, req, variantKey, evt, stores, nil)
-}
-
-// computeGameStats is ComputeGameStats with the players already loaded, so
-// their profile stats needn't be fetched again. users[i] must be the user for
-// history.Players[i]; if users is nil they are fetched.
-func computeGameStats(ctx context.Context, history *macondopb.GameHistory, req *pb.GameRequest,
-	variantKey entity.VariantKey, evt *pb.GameEndedEvent, stores *stores.Stores,
-	users []*entity.User) (*entity.Stats, error) {
 
 	// stats := entity.InstantiateNewStats(1, 2))
 
@@ -379,19 +370,15 @@ func computeGameStats(ctx context.Context, history *macondopb.GameHistory, req *
 		p0NewProfileStats := stats.InstantiateNewStats(p0id, "")
 		p1NewProfileStats := stats.InstantiateNewStats(p1id, "")
 
-		if users == nil {
-			u0, err := stores.UserStore.GetByUUID(ctx, p0id)
-			if err != nil {
-				return nil, err
-			}
-			u1, err := stores.UserStore.GetByUUID(ctx, p1id)
-			if err != nil {
-				return nil, err
-			}
-			users = []*entity.User{u0, u1}
+		// Only this variant's stats, not the whole profile's.
+		p0ProfileStats, err := profileStatsFor(ctx, stores, p0id, variantKey)
+		if err != nil {
+			return nil, err
 		}
-		p0ProfileStats := profileStatsFor(users[0], variantKey)
-		p1ProfileStats := profileStatsFor(users[1], variantKey)
+		p1ProfileStats, err := profileStatsFor(ctx, stores, p1id, variantKey)
+		if err != nil {
+			return nil, err
+		}
 
 		err = stats.AddStats(p0NewProfileStats, p0ProfileStats)
 		if err != nil {

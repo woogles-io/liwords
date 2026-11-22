@@ -12,6 +12,7 @@ import (
 	"github.com/woogles-io/liwords/pkg/auth/rbac"
 	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/mod"
+	"github.com/woogles-io/liwords/pkg/natstrace"
 	"github.com/woogles-io/liwords/pkg/stores/models"
 	userservices "github.com/woogles-io/liwords/pkg/user/services"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
@@ -30,7 +31,7 @@ func (b *Bus) chat(ctx context.Context, userID string, evt *pb.ChatMessage) erro
 	// chat.a[.b]
 	// e.g. chat.gametv.abcdef, chat.pm.user1_user2, chat.lobby, chat.tournament.weto
 
-	sendingUser, err := b.stores.UserStore.GetByUUID(ctx, userID)
+	sendingUser, err := b.stores.UserStore.GetByUUIDWithoutStats(ctx, userID)
 	if err != nil {
 		return err
 	}
@@ -57,7 +58,7 @@ func (b *Bus) chat(ctx context.Context, userID string, evt *pb.ChatMessage) erro
 		if err != nil {
 			return err
 		}
-		recUser, err := b.stores.UserStore.GetByUUID(ctx, receiver)
+		recUser, err := b.stores.UserStore.GetByUUIDWithoutStats(ctx, receiver)
 		if err != nil {
 			return err
 		}
@@ -128,5 +129,6 @@ func (b *Bus) chat(ctx context.Context, userID string, evt *pb.ChatMessage) erro
 	}
 
 	log.Debug().Interface("chat-message", chatMessage).Msg("publish-chat")
-	return b.natsconn.Publish(evt.Channel, data)
+	// In the message's trace, so the socket server records delivering it.
+	return natstrace.Publish(ctx, b.natsconn, evt.Channel, data)
 }

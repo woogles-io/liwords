@@ -895,3 +895,52 @@ func TestGetUsersOnEmailDomains(t *testing.T) {
 	is.NoErr(err)
 	is.Equal(len(rows), 0)
 }
+
+func TestGetWithoutStats(t *testing.T) {
+	is := is.New(t)
+	ustore, _, ctx := recreateDB()
+	defer ustore.Disconnect()
+
+	cesar, err := ustore.Get(ctx, "cesar")
+	is.NoErr(err)
+	mina, err := ustore.Get(ctx, "mina")
+	is.NoErr(err)
+	variant := entity.VariantKey("burrito")
+	is.NoErr(ustore.SetRatings(ctx, cesar.UUID, mina.UUID, variant,
+		&entity.SingleRating{Rating: 1700, RatingDeviation: 60, Volatility: 0.06},
+		&entity.SingleRating{Rating: 1500, RatingDeviation: 60, Volatility: 0.06}))
+	is.NoErr(ustore.SetStats(ctx, cesar.UUID, mina.UUID, variant,
+		&entity.Stats{PlayerOneId: "cesar"}, &entity.Stats{PlayerOneId: "mina"}))
+	is.NoErr(ustore.SetAvatarUrl(ctx, cesar.UUID, "https://example.com/a.png"))
+
+	// The user and profile, ratings included, but not the stats.
+	u, err := ustore.GetByUUIDWithoutStats(ctx, cesar.UUID)
+	is.NoErr(err)
+	is.Equal(u.Username, "cesar")
+	is.Equal(u.ID, cesar.ID)
+	is.Equal(u.AvatarUrl(), "https://example.com/a.png")
+	is.True(commontest.WithinEpsilon(u.Profile.Ratings.Data[variant].Rating, 1700))
+	is.Equal(len(u.Profile.Stats.Data), 0)
+	full, err := ustore.GetByUUID(ctx, cesar.UUID)
+	is.NoErr(err)
+	is.Equal(full.Profile.Stats.Data[variant].PlayerOneId, "cesar")
+
+	_, err = ustore.GetByUUIDWithoutStats(ctx, "nobody")
+	is.True(err != nil)
+
+	users, err := ustore.GetByUUIDsWithoutStats(ctx, []string{cesar.UUID, mina.UUID, "nobody"})
+	is.NoErr(err)
+	is.Equal(len(users), 2)
+	is.True(commontest.WithinEpsilon(users[mina.UUID].Profile.Ratings.Data[variant].Rating, 1500))
+	is.Equal(len(users[mina.UUID].Profile.Stats.Data), 0)
+
+	// One variant's stats, nil for a variant with none.
+	st, err := ustore.GetProfileVariantStats(ctx, mina.UUID, variant)
+	is.NoErr(err)
+	is.Equal(st.PlayerOneId, "mina")
+	st, err = ustore.GetProfileVariantStats(ctx, mina.UUID, "taco")
+	is.NoErr(err)
+	is.True(st == nil)
+	_, err = ustore.GetProfileVariantStats(ctx, "nobody", variant)
+	is.True(err != nil)
+}

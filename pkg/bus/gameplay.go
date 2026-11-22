@@ -43,7 +43,7 @@ func (b *Bus) errIfGamesDisabled(ctx context.Context) error {
 func (b *Bus) instantiateAndStartGame(ctx context.Context, accUser *entity.User, requester string,
 	gameReq *pb.GameRequest, sg *entity.SoughtGame, reqID, acceptingConnID string) error {
 
-	reqUser, err := b.stores.UserStore.GetByUUID(ctx, requester)
+	reqUser, err := b.stores.UserStore.GetByUUIDWithoutStats(ctx, requester)
 	if err != nil {
 		return err
 	}
@@ -209,7 +209,7 @@ func (b *Bus) goHandleBotMove(ctx context.Context, resp *macondo.BotResponse,
 		// A request can be answered twice (the bot watchdog resends ones it
 		// thinks were lost) or after the game has moved on. Without this a
 		// late answer would be played for whoever is on turn now.
-		onTurnUser, err := b.stores.UserStore.GetByUUID(ctx, userID)
+		onTurnUser, err := b.stores.UserStore.GetByUUIDWithoutStats(ctx, userID)
 		if err != nil {
 			log.Err(err).Str("gid", gid).Msg("cant-get-user-on-turn-for-bot-move")
 			return
@@ -314,7 +314,7 @@ func (b *Bus) readyForTournamentGame(ctx context.Context, evt *pb.ReadyForTourna
 		}
 	}
 
-	reqUser, err := b.stores.UserStore.GetByUUID(ctx, userID)
+	reqUser, err := b.stores.UserStore.GetByUUIDWithoutStats(ctx, userID)
 	if err != nil {
 		return err
 	}
@@ -420,7 +420,7 @@ func (b *Bus) readyForTournamentGame(ctx context.Context, evt *pb.ReadyForTourna
 	if otherUserIdx == -1 {
 		return errors.New("unexpected behavior; did not find other player")
 	}
-	users[otherUserIdx], err = b.stores.UserStore.GetByUUID(ctx, otherID)
+	users[otherUserIdx], err = b.stores.UserStore.GetByUUIDWithoutStats(ctx, otherID)
 	if err != nil {
 		return err
 	}

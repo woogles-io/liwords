@@ -630,7 +630,7 @@ func (b *Bus) handleNatsRequest(ctx context.Context, topic string,
 
 // followedUserIDs returns the IDs of the users that userID follows.
 func (b *Bus) followedUserIDs(ctx context.Context, userID string) ([]string, error) {
-	user, err := b.stores.UserStore.GetByUUID(ctx, userID)
+	user, err := b.stores.UserStore.GetByUUIDWithoutStats(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -1204,7 +1204,7 @@ func (b *Bus) correspondenceSeeksForUser(ctx context.Context, userID string, rec
 	}
 
 	if receiver == nil && !userIsAnon(userID) {
-		receiver, err = b.stores.UserStore.GetByUUID(ctx, userID)
+		receiver, err = b.stores.UserStore.GetByUUIDWithoutStats(ctx, userID)
 		if err != nil {
 			return nil, err
 		}
@@ -1298,7 +1298,7 @@ func (b *Bus) sendLobbyContext(ctx context.Context, userID, connID string) error
 	var blockedByReceiver map[string]bool
 	if !userIsAnon(userID) {
 		var err error
-		u, err = b.stores.UserStore.GetByUUID(ctx, userID)
+		u, err = b.stores.UserStore.GetByUUIDWithoutStats(ctx, userID)
 		if err != nil {
 			return err
 		}

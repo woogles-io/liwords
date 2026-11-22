@@ -2,6 +2,7 @@ package user
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -190,15 +191,40 @@ func (s *DBStore) GetByUUID(ctx context.Context, uuid string) (*entity.User, err
 	return u, nil
 }
 
-// GetByUUIDs batch-fetches users (with profiles) by UUID in a single query, to avoid
-// N+1 lookups when a caller needs several users at once (e.g. filtering a list of seeks).
-// Users with no profile row, or UUIDs with no matching user, are silently omitted from
-// the result rather than erroring, so callers should look up by UUID in the returned map.
-func (s *DBStore) GetByUUIDs(ctx context.Context, uuids []string) (map[string]*entity.User, error) {
+// GetByUUIDWithoutStats gets a user by UUID, with the profile but not its
+// stats, which can be tens of KB of JSON: most lookups never read them.
+// Profile.Stats is left empty. Profile stats are saved one variant at a time
+// (SetStats), so a user fetched this way can't clear them; for a variant's
+// stats, use GetProfileVariantStats.
+func (s *DBStore) GetByUUIDWithoutStats(ctx context.Context, uuid string) (*entity.User, error) {
+	row, err := s.queries.GetUserWithProfileNoStatsByUUID(ctx, uuid)
+	if err == pgx.ErrNoRows {
+		return nil, errors.New("user not found")
+	}
+	if err != nil {
+		return nil, err
+	}
+	u := userFromRow(row.ID, row.Username, row.Uuid, row.Email, row.Password, row.InternalBot, row.Notoriety,
+		row.Verified, row.VerificationToken, row.VerificationExpiresAt)
+	u.Profile = profileFromRow(row.FirstName, row.LastName, row.BirthDate, row.CountryCode, row.Title,
+		row.About, row.AvatarUrl, row.Ratings, entity.ProfileStats{})
+	if u.Profile == nil {
+		return nil, errors.New("profile not found")
+	}
+	return u, nil
+}
+
+// GetByUUIDsWithoutStats batch-fetches users (with profiles, but not their
+// stats, as GetByUUIDWithoutStats) by UUID in a single query, to avoid N+1
+// lookups when a caller needs several users at once (e.g. filtering a list of
+// seeks). Users with no profile row, or UUIDs with no matching user, are
+// silently omitted from the result rather than erroring, so callers should
+// look up by UUID in the returned map.
+func (s *DBStore) GetByUUIDsWithoutStats(ctx context.Context, uuids []string) (map[string]*entity.User, error) {
 	if len(uuids) == 0 {
 		return map[string]*entity.User{}, nil
 	}
-	rows, err := s.queries.GetUsersWithProfileByUUIDs(ctx, uuids)
+	rows, err := s.queries.GetUsersWithProfileNoStatsByUUIDs(ctx, uuids)
 	if err != nil {
 		return nil, err
 	}
@@ -207,13 +233,36 @@ func (s *DBStore) GetByUUIDs(ctx context.Context, uuids []string) (map[string]*e
 		u := userFromRow(row.ID, row.Username, row.Uuid, row.Email, row.Password, row.InternalBot, row.Notoriety,
 			row.Verified, row.VerificationToken, row.VerificationExpiresAt)
 		u.Profile = profileFromRow(row.FirstName, row.LastName, row.BirthDate, row.CountryCode, row.Title,
-			row.About, row.AvatarUrl, row.Ratings, row.Stats)
+			row.About, row.AvatarUrl, row.Ratings, entity.ProfileStats{})
 		if u.Profile == nil {
 			continue
 		}
 		users[u.UUID] = u
 	}
 	return users, nil
+}
+
+// GetProfileVariantStats returns the user's profile stats for one variant, or
+// nil if they have none for it yet.
+func (s *DBStore) GetProfileVariantStats(ctx context.Context, uuid string, variant entity.VariantKey) (*entity.Stats, error) {
+	data, err := s.queries.GetProfileVariantStats(ctx, models.GetProfileVariantStatsParams{
+		Variant: string(variant),
+		Uuid:    uuid,
+	})
+	if err == pgx.ErrNoRows {
+		return nil, errors.New("profile not found")
+	}
+	if err != nil {
+		return nil, err
+	}
+	if data == nil || string(data) == "null" {
+		return nil, nil
+	}
+	var st entity.Stats
+	if err := json.Unmarshal(data, &st); err != nil {
+		return nil, err
+	}
+	return &st, nil
 }
 
 // GetByAPIKey gets a user by api key. It does not try to fetch the profile. We only
@@ -851,7 +900,7 @@ func (s *DBStore) ResetAPIKey(ctx context.Context, uuid string) (string, error) 
 	return apikey, nil
 }
 
-func scanRowsIntoModActions(ctx context.Context, tx pgx.Tx, rows pgx.Rows) ([]*ms.ModAction, []*DBUniqueValues, error) {
+func scanRowsIntoModActions(ctx context.Context, tx models.DBTX, rows pgx.Rows) ([]*ms.ModAction, []*DBUniqueValues, error) {
 	defer rows.Close()
 	actions := []*ms.ModAction{}
 	dbUniqueValues := []*DBUniqueValues{}
@@ -953,7 +1002,7 @@ func getSingleActionDB(ctx context.Context, tx pgx.Tx, userUUID string, actionTy
 	return modActions[0], dbUniqueValues[0], nil
 }
 
-func getActionsDB(ctx context.Context, tx pgx.Tx, userUUID string) (map[string]*ms.ModAction, map[string]*DBUniqueValues, error) {
+func getActionsDB(ctx context.Context, tx models.DBTX, userUUID string) (map[string]*ms.ModAction, map[string]*DBUniqueValues, error) {
 	// Only get current actions that are in effect.
 	query := fmt.Sprintf(`SELECT DISTINCT ON (action_type) %s
 	FROM users JOIN user_actions ON users.id = user_actions.user_id
@@ -1090,15 +1139,11 @@ func addUserUUIDsToActions(ctx context.Context, qtx *models.Queries, actions []*
 }
 
 func (s *DBStore) GetActions(ctx context.Context, userUUID string) (map[string]*ms.ModAction, error) {
-	tx, err := s.dbPool.BeginTx(ctx, common.ReadOnlyTxOptions)
+	// Straight from the pool: a transaction would add a BEGIN and a COMMIT
+	// to a check run on every chat message, for a single query in the
+	// usual case of no actions.
+	actions, _, err := getActionsDB(ctx, s.dbPool, userUUID)
 	if err != nil {
-		return nil, err
-	}
-	defer tx.Rollback(ctx)
-
-	actions, _, err := getActionsDB(ctx, tx, userUUID)
-
-	if err := tx.Commit(ctx); err != nil {
 		return nil, err
 	}
 	return actions, nil

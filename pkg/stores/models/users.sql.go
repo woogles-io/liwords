@@ -353,6 +353,26 @@ func (q *Queries) GetMatchingEmails(ctx context.Context, lowercasedEmailLike str
 	return items, nil
 }
 
+const getProfileVariantStats = `-- name: GetProfileVariantStats :one
+SELECT (p.stats -> 'Data' -> $1::text)::jsonb AS stats
+FROM profiles p
+JOIN users u ON u.id = p.user_id
+WHERE u.uuid = $2
+`
+
+type GetProfileVariantStatsParams struct {
+	Variant string
+	Uuid    string
+}
+
+// One variant's profile stats; NULL if the user has none for it.
+func (q *Queries) GetProfileVariantStats(ctx context.Context, arg GetProfileVariantStatsParams) ([]byte, error) {
+	row := q.db.QueryRow(ctx, getProfileVariantStats, arg.Variant, arg.Uuid)
+	var stats []byte
+	err := row.Scan(&stats)
+	return stats, err
+}
+
 const getUserByAPIKey = `-- name: GetUserByAPIKey :one
 SELECT id, username, uuid, email, password, internal_bot, notoriety,
        verified, verification_token, verification_expires_at
@@ -746,6 +766,65 @@ func (q *Queries) GetUserWithProfileByVerificationToken(ctx context.Context, ver
 	return i, err
 }
 
+const getUserWithProfileNoStatsByUUID = `-- name: GetUserWithProfileNoStatsByUUID :one
+SELECT u.id, u.username, u.uuid, u.email, u.password, u.internal_bot,
+       u.notoriety, u.verified, u.verification_token, u.verification_expires_at,
+       p.first_name, p.last_name, p.birth_date, p.country_code, p.title,
+       p.about, p.avatar_url, p.ratings
+FROM users u
+LEFT JOIN profiles p ON p.user_id = u.id
+WHERE u.uuid = $1
+`
+
+type GetUserWithProfileNoStatsByUUIDRow struct {
+	ID                    int32
+	Username              string
+	Uuid                  string
+	Email                 string
+	Password              string
+	InternalBot           bool
+	Notoriety             int32
+	Verified              bool
+	VerificationToken     pgtype.Text
+	VerificationExpiresAt pgtype.Timestamptz
+	FirstName             pgtype.Text
+	LastName              pgtype.Text
+	BirthDate             pgtype.Text
+	CountryCode           pgtype.Text
+	Title                 pgtype.Text
+	About                 pgtype.Text
+	AvatarUrl             pgtype.Text
+	Ratings               entity.Ratings
+}
+
+// The user and profile without profiles.stats, which runs to tens of KB of
+// JSON for active players: for the many lookups that don't need it.
+func (q *Queries) GetUserWithProfileNoStatsByUUID(ctx context.Context, uuid string) (GetUserWithProfileNoStatsByUUIDRow, error) {
+	row := q.db.QueryRow(ctx, getUserWithProfileNoStatsByUUID, uuid)
+	var i GetUserWithProfileNoStatsByUUIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.Uuid,
+		&i.Email,
+		&i.Password,
+		&i.InternalBot,
+		&i.Notoriety,
+		&i.Verified,
+		&i.VerificationToken,
+		&i.VerificationExpiresAt,
+		&i.FirstName,
+		&i.LastName,
+		&i.BirthDate,
+		&i.CountryCode,
+		&i.Title,
+		&i.About,
+		&i.AvatarUrl,
+		&i.Ratings,
+	)
+	return i, err
+}
+
 const getUsernameFromUUID = `-- name: GetUsernameFromUUID :one
 SELECT username FROM users WHERE uuid = $1
 `
@@ -814,17 +893,17 @@ func (q *Queries) GetUsersOnEmailDomains(ctx context.Context, domains []string) 
 	return items, nil
 }
 
-const getUsersWithProfileByUUIDs = `-- name: GetUsersWithProfileByUUIDs :many
+const getUsersWithProfileNoStatsByUUIDs = `-- name: GetUsersWithProfileNoStatsByUUIDs :many
 SELECT u.id, u.username, u.uuid, u.email, u.password, u.internal_bot,
        u.notoriety, u.verified, u.verification_token, u.verification_expires_at,
        p.first_name, p.last_name, p.birth_date, p.country_code, p.title,
-       p.about, p.avatar_url, p.ratings, p.stats
+       p.about, p.avatar_url, p.ratings
 FROM users u
 LEFT JOIN profiles p ON p.user_id = u.id
 WHERE u.uuid = ANY($1::text[])
 `
 
-type GetUsersWithProfileByUUIDsRow struct {
+type GetUsersWithProfileNoStatsByUUIDsRow struct {
 	ID                    int32
 	Username              string
 	Uuid                  string
@@ -843,18 +922,17 @@ type GetUsersWithProfileByUUIDsRow struct {
 	About                 pgtype.Text
 	AvatarUrl             pgtype.Text
 	Ratings               entity.Ratings
-	Stats                 entity.ProfileStats
 }
 
-func (q *Queries) GetUsersWithProfileByUUIDs(ctx context.Context, uuids []string) ([]GetUsersWithProfileByUUIDsRow, error) {
-	rows, err := q.db.Query(ctx, getUsersWithProfileByUUIDs, uuids)
+func (q *Queries) GetUsersWithProfileNoStatsByUUIDs(ctx context.Context, uuids []string) ([]GetUsersWithProfileNoStatsByUUIDsRow, error) {
+	rows, err := q.db.Query(ctx, getUsersWithProfileNoStatsByUUIDs, uuids)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []GetUsersWithProfileByUUIDsRow
+	var items []GetUsersWithProfileNoStatsByUUIDsRow
 	for rows.Next() {
-		var i GetUsersWithProfileByUUIDsRow
+		var i GetUsersWithProfileNoStatsByUUIDsRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Username,
@@ -874,7 +952,6 @@ func (q *Queries) GetUsersWithProfileByUUIDs(ctx context.Context, uuids []string
 			&i.About,
 			&i.AvatarUrl,
 			&i.Ratings,
-			&i.Stats,
 		); err != nil {
 			return nil, err
 		}
