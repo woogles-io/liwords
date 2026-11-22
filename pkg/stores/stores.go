@@ -1,8 +1,11 @@
 package stores
 
 import (
+	"context"
+
 	redigoredis "github.com/gomodule/redigo/redis"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/rs/zerolog/log"
 
 	cfg "github.com/woogles-io/liwords/pkg/config"
 	owstores "github.com/woogles-io/liwords/pkg/omgwords/stores"
@@ -33,7 +36,7 @@ type Stores struct {
 	ListStatStore   *stats.DBStore
 	NotorietyStore  *mod.DBStore
 	TournamentStore *tournament.DBStore
-	ConfigStore     *config.RedisConfigStore
+	ConfigStore     *config.DBStore
 	SessionStore    *session.DBStore
 	PuzzleStore     *puzzles.DBStore
 	CommentsStore   *comments.DBStore
@@ -90,7 +93,11 @@ func NewInitializedStores(dbPool *pgxpool.Pool, redisPool *redigoredis.Pool, cfg
 	if err != nil {
 		return nil, err
 	}
-	stores.ConfigStore = config.NewRedisConfigStore(redisPool)
+	stores.ConfigStore = config.NewDBStore(dbPool)
+	if err := config.ImportFromRedis(context.Background(), stores.ConfigStore, redisPool); err != nil {
+		// The settings keep their defaults until they are set again.
+		log.Err(err).Msg("config-import-from-redis")
+	}
 	stores.ListStatStore, err = stats.NewDBStore(dbPool)
 	if err != nil {
 		return nil, err

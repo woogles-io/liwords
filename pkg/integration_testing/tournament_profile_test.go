@@ -222,7 +222,7 @@ func createBus() (context.Context, *bus.Bus, context.CancelFunc, bus.Stores, *co
 		panic(err)
 	}
 	stores.ChatStore = chat.NewDBStore(chatPool)
-	stores.ConfigStore = cfgstore.NewRedisConfigStore(redisPool)
+	stores.ConfigStore = cfgstore.NewDBStore(chatPool)
 
 	if err != nil {
 		panic(err)
