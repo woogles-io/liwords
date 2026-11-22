@@ -18,6 +18,9 @@ import (
 // startup, so the first deploy carries them over; once it has, this and the
 // Redis keys can go. Failure counts last minutes and aren't copied.
 func ImportKnownClientsFromRedis(ctx context.Context, q *models.Queries, pool *redis.Pool) error {
+	if pool == nil {
+		return nil
+	}
 	n, err := q.CountKnownLoginClients(ctx)
 	if err != nil || n > 0 {
 		return err

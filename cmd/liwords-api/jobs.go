@@ -86,7 +86,9 @@ func registerJobs(r *jobs.Runner, d jobDeps) error {
 	schedule("cancelled_games_cleanup", daily, d.maintenance.CancelledGamesCleanup)
 	schedule("monitoring_streams_cleanup", daily, d.maintenance.MonitoringStreamsCleanup)
 	schedule("expired_sessions_cleanup", daily, d.maintenance.ExpiredSessionsCleanup)
-	schedule("login_limits_cleanup", daily, auth.CleanupLoginLimits(d.stores.Queries))
+	schedule("login_limits_cleanup", daily, func(ctx context.Context) error {
+		return auth.CleanupLoginLimits(d.stores.Queries)(ctx)
+	})
 	schedule("unverified_users_cleanup", daily, d.maintenance.UnverifiedUsersCleanup)
 	schedule("league_unstarted_reminders", daily, d.maintenance.LeagueUnstartedReminders)
 
