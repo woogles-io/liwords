@@ -48,7 +48,6 @@ it("loads the newest page, then each older page above it", async () => {
   fireEvent.click(screen.getByText("Load messages"));
   expect(await screen.findByText("message 4")).toBeInTheDocument();
   expect(screen.queryByText("message 2")).toBeNull();
-  expect(screen.getByText(/not every message is loaded/i)).toBeInTheDocument();
 
   fireEvent.click(screen.getByText("Load older"));
   expect(await screen.findByText("message 1")).toBeInTheDocument();
@@ -60,7 +59,70 @@ it("loads the newest page, then each older page above it", async () => {
   expect(shown).toEqual(["message 1", "message 2", "message 3", "message 4"]);
   // all of it is loaded
   expect(screen.queryByText("Load older")).toBeNull();
-  expect(screen.queryByText(/not every message is loaded/i)).toBeNull();
+});
+
+// What an export saves: the file's text, caught where the page makes it.
+const saved = () => {
+  const files: Array<Blob> = [];
+  vi.spyOn(window.URL, "createObjectURL").mockImplementation((b) => {
+    files.push(b as Blob);
+    return "blob:export";
+  });
+  vi.spyOn(window.URL, "revokeObjectURL").mockImplementation(() => {});
+  vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+  return files;
+};
+
+it("exports the whole channel, whatever is loaded", async () => {
+  getChannelChats.mockImplementation(({ before }: { before?: string }) =>
+    Promise.resolve(
+      !before
+        ? { messages: [msg(3), msg(4)], hasOlder: true }
+        : { messages: [msg(1), msg(2)], hasOlder: false },
+    ),
+  );
+  const files = saved();
+  render(<ChannelChats channel="chat.game.g1" />);
+  fireEvent.click(screen.getByText("Load messages"));
+  await screen.findByText("message 4");
+  // only the newest page is shown; the export fetches the older one itself
+  fireEvent.click(screen.getByText("Export JSON"));
+  await waitFor(() => expect(files).toHaveLength(1));
+  const ids = JSON.parse(await files[0].text()).map(
+    (m: { id: string }) => m.id,
+  );
+  expect(ids).toEqual(["id1", "id2", "id3", "id4"]);
+  expect(getChannelChats).toHaveBeenLastCalledWith({
+    channel: "chat.game.g1",
+    before: "id3",
+  });
+  vi.restoreAllMocks();
+});
+
+it("exports every match of a word search, whatever is loaded", async () => {
+  getChannelChats.mockImplementation(({ before }: { before?: string }) =>
+    Promise.resolve(
+      !before
+        ? { messages: [msg(7, "a rude one")], hasOlder: true }
+        : { messages: [msg(2, "rude too")], hasOlder: false },
+    ),
+  );
+  const files = saved();
+  render(<ChannelChats channel="chat.game.g1" containing="rude" />);
+  fireEvent.click(screen.getByText("Load messages"));
+  // the newest match is shown (its word marked apart), with older ones to load
+  await screen.findByText("Load older");
+  fireEvent.click(screen.getByText("Export CSV"));
+  await waitFor(() => expect(files).toHaveLength(1));
+  const csv = await files[0].text();
+  expect(csv).toContain("rude too");
+  expect(csv.indexOf("rude too")).toBeLessThan(csv.indexOf("a rude one"));
+  expect(getChannelChats).toHaveBeenLastCalledWith({
+    channel: "chat.game.g1",
+    before: "id7",
+    containing: "rude",
+  });
+  vi.restoreAllMocks();
 });
 
 it("marks the words searched for, in any case", () => {

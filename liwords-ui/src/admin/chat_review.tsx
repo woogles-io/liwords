@@ -291,6 +291,8 @@ export const ChannelChats = (props: {
   const [hasOlder, setHasOlder] = useState(false);
   const [hasNewer, setHasNewer] = useState(false);
   const [loading, setLoading] = useState(false);
+  // how many messages an export has fetched so far, while one runs
+  const [exported, setExported] = useState<number | null>(null);
   // the message whose context is shown, if one is
   const [around, setAround] = useState("");
   const tableRef = useRef<GetRef<typeof Table>>(null);
@@ -338,6 +340,33 @@ export const ChannelChats = (props: {
   const backToMatches = () => {
     setAround("");
     ask({ containing: words }, "fresh");
+  };
+
+  // An export is the whole record, whatever is shown: every message of the
+  // channel or, with words, every one holding them, fetched a page at a time
+  // from the newest, oldest first in the file.
+  const exportAll = async (save: (all: Array<ChatMessage>) => void) => {
+    let all: Array<ChatMessage> = [];
+    let before = "";
+    setExported(0);
+    try {
+      for (;;) {
+        const resp = await modClient.getChannelChats({
+          channel: props.channel,
+          ...(before ? { before } : {}),
+          ...(words ? { containing: words } : {}),
+        });
+        all = [...resp.messages, ...all];
+        setExported(all.length);
+        if (!resp.hasOlder || resp.messages.length === 0) break;
+        before = resp.messages[0].id;
+      }
+      save(all);
+    } catch (e) {
+      flashError(e);
+    } finally {
+      setExported(null);
+    }
   };
 
   // the message whose context is shown, scrolled to once it is loaded
@@ -391,35 +420,43 @@ export const ChannelChats = (props: {
           <Button onClick={backToMatches}>Back to the matches</Button>
         )}
         <Button
-          onClick={() => download(`${base}.csv`, chatsToCSV(msgs), "text/csv")}
+          loading={exported !== null}
+          onClick={() =>
+            exportAll((all) =>
+              download(`${base}.csv`, chatsToCSV(all), "text/csv"),
+            )
+          }
         >
           Export CSV
         </Button>
         <Button
+          loading={exported !== null}
           onClick={() =>
-            download(
-              `${base}.json`,
-              JSON.stringify(
-                msgs.map((m) => ({
-                  timeUtc: formatTime(m.timestamp),
-                  channel: m.channel,
-                  username: m.username,
-                  userId: m.userId,
-                  id: m.id,
-                  message: m.message,
-                })),
-                null,
-                2,
+            exportAll((all) =>
+              download(
+                `${base}.json`,
+                JSON.stringify(
+                  all.map((m) => ({
+                    timeUtc: formatTime(m.timestamp),
+                    channel: m.channel,
+                    username: m.username,
+                    userId: m.userId,
+                    id: m.id,
+                    message: m.message,
+                  })),
+                  null,
+                  2,
+                ),
+                "application/json",
               ),
-              "application/json",
             )
           }
         >
           Export JSON
         </Button>
-        {(hasOlder || hasNewer) && (
+        {exported !== null && (
           <Typography.Text type="secondary">
-            Not every message is loaded; the exports hold the ones shown.
+            {exported} messages fetched
           </Typography.Text>
         )}
       </Space>
