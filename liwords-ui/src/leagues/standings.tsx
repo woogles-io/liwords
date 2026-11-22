@@ -141,6 +141,10 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
     userId: string;
     username: string;
   } | null>(null);
+  // The rank whose possible range shows (its tooltip open, by a hover or a
+  // tap): every row that can still finish at that rank is marked, the row now
+  // there too only if it can.
+  const [reachRank, setReachRank] = useState<number | null>(null);
 
   const handlePlayerClick = (userId: string, username: string) => {
     setSelectedPlayer({ userId, username });
@@ -370,6 +374,14 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
       sorter: (a: StandingRecord, b: StandingRecord) => a.rank - b.rank,
       sortDirections: ["descend", "ascend"] as SortOrder[],
       sortIcon: noSortIcon,
+      onCell: (record: StandingRecord) => {
+        if (reachRank === null) return {};
+        const idx = dataSource.findIndex((x) => x.rank === record.rank);
+        const { bestRank, worstRank } = possibleRanks[idx];
+        return bestRank <= reachRank && reachRank <= worstRank
+          ? { className: "can-reach" }
+          : {};
+      },
       render: (rank: number) => {
         // render's third argument is the index after local frontend sorting.
         // so we cannot do (rank, _, idx) => { ... }.
@@ -387,6 +399,12 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
           <Tooltip
             placement="left"
             title={rankIsKnown ? null : `${bestRank}-${worstRank}`}
+            // a rank already known shows no range, and so marks nothing
+            onOpenChange={(open) =>
+              setReachRank((shown) =>
+                open ? rank : shown === rank ? null : shown,
+              )
+            }
           >
             {cr && !noGamesPlayed ? cr.rank : rank}
             {suffix}
