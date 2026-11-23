@@ -138,3 +138,93 @@ FROM chat_messages m
 WHERE m.channel LIKE @prefix::text || '%' AND m.channel > @after::text
 ORDER BY m.channel
 LIMIT @lim;
+
+-- name: ChatChannelSenders :many
+-- Per channel and sender, for moderator chat review: how many messages, and
+-- when the first and the last were sent, without reading the messages, in
+-- the order of each one's last message. Deleted messages and the server's
+-- own lines (no sender) are left out.
+SELECT m.channel,
+       COALESCE(u.uuid, '')::text AS sender_uuid,
+       m.sender_username,
+       count(*)::int AS message_count,
+       min(m.created_at)::timestamptz AS first_at,
+       max(m.created_at)::timestamptz AS last_at
+FROM chat_messages m
+LEFT JOIN users u ON u.id = m.sender_id
+WHERE m.channel = ANY(@channels::text[])
+  AND m.deleted_at IS NULL
+  AND (m.sender_id IS NOT NULL OR m.sender_username <> '')
+GROUP BY m.channel, u.uuid, m.sender_username
+ORDER BY max(m.created_at);
+
+-- name: ChatChannelsBySender :many
+-- The channels whose names start with prefix that one user wrote in, by
+-- when they last wrote there, newest first, for moderator chat review: any
+-- age, through chat_messages_sender_id_idx. The prefix holds no LIKE
+-- wildcards (it is one of a fixed set).
+SELECT m.channel
+FROM chat_messages m
+JOIN users u ON u.id = m.sender_id
+WHERE u.uuid = @user_uuid::text AND m.deleted_at IS NULL
+  AND m.channel LIKE @prefix::text || '%'
+GROUP BY m.channel
+ORDER BY max(m.created_at) DESC, m.channel
+LIMIT @lim OFFSET @off;
+
+-- name: ChatPrivateChannelsOf :many
+-- The private chats one user is a party to, for moderator chat review, even
+-- ones they never wrote in: chat_reads holds both people of each.
+SELECT r.channel
+FROM chat_reads r
+JOIN users u ON u.id = r.user_id
+WHERE u.uuid = @user_uuid::text AND r.channel LIKE 'chat.pm.%'
+ORDER BY r.channel;
+
+-- name: GamesPlayedBy :many
+-- Which of the given games one user played, for moderator chat review.
+SELECT g.uuid::text AS uuid
+FROM games g
+JOIN users u ON u.id IN (g.player0_id, g.player1_id)
+WHERE u.uuid = @user_uuid::text AND g.uuid = ANY(@game_ids::text[]);
+
+-- name: ChatChannelMatches :many
+-- How many of each channel's messages hold pattern (an ILIKE pattern), for
+-- moderator chat review. Deleted messages and the server's own lines (no
+-- sender) are left out.
+SELECT m.channel, count(*)::int AS match_count
+FROM chat_messages m
+WHERE m.channel = ANY(@channels::text[])
+  AND m.deleted_at IS NULL
+  AND (m.sender_id IS NOT NULL OR m.sender_username <> '')
+  AND m.message ILIKE @pattern::text
+GROUP BY m.channel;
+
+-- name: ChatMessagesContainingBefore :many
+-- A channel's messages holding pattern (an ILIKE pattern), older than before
+-- (or the newest, if before is NULL), newest first, for moderator chat
+-- review. Deleted messages and the server's own lines are left out.
+SELECT m.id, m.sender_username, m.message, m.created_at, COALESCE(u.uuid, '')::text AS sender_uuid
+FROM chat_messages m
+LEFT JOIN users u ON u.id = m.sender_id
+WHERE m.channel = @channel AND m.deleted_at IS NULL
+  AND (m.sender_id IS NOT NULL OR m.sender_username <> '')
+  AND m.message ILIKE @pattern::text
+  AND (sqlc.narg('before')::uuid IS NULL OR m.id < sqlc.narg('before')::uuid)
+ORDER BY m.id DESC
+LIMIT @lim;
+
+-- name: RecentChatChannelMessages :many
+-- The messages of the channels whose names start with prefix, newest first,
+-- older than before (or the newest, if before is NULL), for moderator chat
+-- review to list those channels by their newest message. Deleted messages
+-- and the server's own lines are left out. The prefix holds no LIKE
+-- wildcards (it is one of a fixed set).
+SELECT m.id, m.channel
+FROM chat_messages m
+WHERE m.channel LIKE @prefix::text || '%'
+  AND m.deleted_at IS NULL
+  AND (m.sender_id IS NOT NULL OR m.sender_username <> '')
+  AND (sqlc.narg('before')::uuid IS NULL OR m.id < sqlc.narg('before')::uuid)
+ORDER BY m.id DESC
+LIMIT @lim;

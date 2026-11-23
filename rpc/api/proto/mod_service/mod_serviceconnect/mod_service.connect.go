@@ -8,7 +8,6 @@ import (
 	connect "connectrpc.com/connect"
 	context "context"
 	errors "errors"
-	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 	mod_service "github.com/woogles-io/liwords/rpc/api/proto/mod_service"
 	http "net/http"
 	strings "strings"
@@ -72,7 +71,7 @@ type ModServiceClient interface {
 	GetNotorietyReport(context.Context, *connect.Request[mod_service.GetNotorietyReportRequest]) (*connect.Response[mod_service.NotorietyReport], error)
 	ResetNotoriety(context.Context, *connect.Request[mod_service.ResetNotorietyRequest]) (*connect.Response[mod_service.ResetNotorietyResponse], error)
 	ListChatChannels(context.Context, *connect.Request[mod_service.ListChatChannelsRequest]) (*connect.Response[mod_service.ListChatChannelsResponse], error)
-	GetChannelChats(context.Context, *connect.Request[mod_service.GetChannelChatsRequest]) (*connect.Response[ipc.ChatMessages], error)
+	GetChannelChats(context.Context, *connect.Request[mod_service.GetChannelChatsRequest]) (*connect.Response[mod_service.ChannelChats], error)
 	ChangeEmail(context.Context, *connect.Request[mod_service.ChangeEmailRequest]) (*connect.Response[mod_service.ChangeEmailResponse], error)
 	ListEmailChanges(context.Context, *connect.Request[mod_service.ListEmailChangesRequest]) (*connect.Response[mod_service.ListEmailChangesResponse], error)
 }
@@ -130,7 +129,7 @@ func NewModServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...
 			connect.WithSchema(modServiceMethods.ByName("ListChatChannels")),
 			connect.WithClientOptions(opts...),
 		),
-		getChannelChats: connect.NewClient[mod_service.GetChannelChatsRequest, ipc.ChatMessages](
+		getChannelChats: connect.NewClient[mod_service.GetChannelChatsRequest, mod_service.ChannelChats](
 			httpClient,
 			baseURL+ModServiceGetChannelChatsProcedure,
 			connect.WithSchema(modServiceMethods.ByName("GetChannelChats")),
@@ -160,7 +159,7 @@ type modServiceClient struct {
 	getNotorietyReport *connect.Client[mod_service.GetNotorietyReportRequest, mod_service.NotorietyReport]
 	resetNotoriety     *connect.Client[mod_service.ResetNotorietyRequest, mod_service.ResetNotorietyResponse]
 	listChatChannels   *connect.Client[mod_service.ListChatChannelsRequest, mod_service.ListChatChannelsResponse]
-	getChannelChats    *connect.Client[mod_service.GetChannelChatsRequest, ipc.ChatMessages]
+	getChannelChats    *connect.Client[mod_service.GetChannelChatsRequest, mod_service.ChannelChats]
 	changeEmail        *connect.Client[mod_service.ChangeEmailRequest, mod_service.ChangeEmailResponse]
 	listEmailChanges   *connect.Client[mod_service.ListEmailChangesRequest, mod_service.ListEmailChangesResponse]
 }
@@ -201,7 +200,7 @@ func (c *modServiceClient) ListChatChannels(ctx context.Context, req *connect.Re
 }
 
 // GetChannelChats calls mod_service.ModService.GetChannelChats.
-func (c *modServiceClient) GetChannelChats(ctx context.Context, req *connect.Request[mod_service.GetChannelChatsRequest]) (*connect.Response[ipc.ChatMessages], error) {
+func (c *modServiceClient) GetChannelChats(ctx context.Context, req *connect.Request[mod_service.GetChannelChatsRequest]) (*connect.Response[mod_service.ChannelChats], error) {
 	return c.getChannelChats.CallUnary(ctx, req)
 }
 
@@ -224,7 +223,7 @@ type ModServiceHandler interface {
 	GetNotorietyReport(context.Context, *connect.Request[mod_service.GetNotorietyReportRequest]) (*connect.Response[mod_service.NotorietyReport], error)
 	ResetNotoriety(context.Context, *connect.Request[mod_service.ResetNotorietyRequest]) (*connect.Response[mod_service.ResetNotorietyResponse], error)
 	ListChatChannels(context.Context, *connect.Request[mod_service.ListChatChannelsRequest]) (*connect.Response[mod_service.ListChatChannelsResponse], error)
-	GetChannelChats(context.Context, *connect.Request[mod_service.GetChannelChatsRequest]) (*connect.Response[ipc.ChatMessages], error)
+	GetChannelChats(context.Context, *connect.Request[mod_service.GetChannelChatsRequest]) (*connect.Response[mod_service.ChannelChats], error)
 	ChangeEmail(context.Context, *connect.Request[mod_service.ChangeEmailRequest]) (*connect.Response[mod_service.ChangeEmailResponse], error)
 	ListEmailChanges(context.Context, *connect.Request[mod_service.ListEmailChangesRequest]) (*connect.Response[mod_service.ListEmailChangesResponse], error)
 }
@@ -355,7 +354,7 @@ func (UnimplementedModServiceHandler) ListChatChannels(context.Context, *connect
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mod_service.ModService.ListChatChannels is not implemented"))
 }
 
-func (UnimplementedModServiceHandler) GetChannelChats(context.Context, *connect.Request[mod_service.GetChannelChatsRequest]) (*connect.Response[ipc.ChatMessages], error) {
+func (UnimplementedModServiceHandler) GetChannelChats(context.Context, *connect.Request[mod_service.GetChannelChatsRequest]) (*connect.Response[mod_service.ChannelChats], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mod_service.ModService.GetChannelChats is not implemented"))
 }
 
