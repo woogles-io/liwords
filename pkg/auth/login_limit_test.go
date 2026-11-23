@@ -2,10 +2,8 @@ package auth
 
 import (
 	"context"
-	"os"
 	"testing"
 
-	"github.com/gomodule/redigo/redis"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/lithammer/shortuuid/v4"
 	"github.com/matryer/is"
@@ -116,46 +114,4 @@ func TestLoginLimitWindowEnds(t *testing.T) {
 	rows, err := q.GetLoginFailures(ctx, []string{"loginfail:user:" + user})
 	is.NoErr(err)
 	is.Equal(len(rows), 0)
-}
-
-// Remembered browsers come over from Redis, with their expiry, once.
-func TestImportKnownClientsFromRedis(t *testing.T) {
-	url := os.Getenv("REDIS_URL")
-	if url == "" {
-		t.Skip("REDIS_URL not set")
-	}
-	is := is.New(t)
-	ctx := context.Background()
-	q, _ := testQueries(t)
-	pool := &redis.Pool{Dial: func() (redis.Conn, error) {
-		c, err := redis.DialURL(url)
-		if err == nil {
-			_, err = c.Do("SELECT", 12)
-		}
-		return c, err
-	}}
-	conn := pool.Get()
-	defer conn.Close()
-	_, err := conn.Do("FLUSHDB")
-	is.NoErr(err)
-	defer conn.Do("FLUSHDB")
-	_, err = conn.Do("SET", "loginok:cesar:abc123", 1, "EX", 3600)
-	is.NoErr(err)
-	_, err = conn.Do("SET", "loginok:mina:", 1, "EX", 3600) // no client ID: skipped
-	is.NoErr(err)
-
-	is.NoErr(ImportKnownClientsFromRedis(ctx, q, pool))
-	known, err := q.IsKnownLoginClient(ctx, models.IsKnownLoginClientParams{Username: "cesar", ClientID: "abc123"})
-	is.NoErr(err)
-	is.True(known)
-	n, err := q.CountKnownLoginClients(ctx)
-	is.NoErr(err)
-	is.Equal(n, int64(1))
-
-	// Not again, once the table has rows.
-	_, err = conn.Do("SET", "loginok:zed:def456", 1, "EX", 3600)
-	is.NoErr(err)
-	is.NoErr(ImportKnownClientsFromRedis(ctx, q, pool))
-	n, _ = q.CountKnownLoginClients(ctx)
-	is.Equal(n, int64(1))
 }

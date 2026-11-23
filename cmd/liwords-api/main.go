@@ -333,9 +333,6 @@ func main() {
 	integrationService := integrations.NewIntegrationService(stores.Queries)
 	authenticationService := auth.NewAuthenticationService(stores.UserStore, stores.SessionStore, stores.ConfigStore,
 		cfg.SecretKey, cfg.EmailDebugMode, cfg.DiscordToken, cfg.ArgonConfig, cfg.SecureCookies, stores.Queries)
-	if err := auth.ImportKnownClientsFromRedis(ctx, stores.Queries, redisPool); err != nil {
-		log.Err(err).Msg("known-login-clients-import")
-	}
 	authorizationService := auth.NewAuthorizationService(stores.UserStore, stores.Queries)
 	// One copy of the disposable-email list, downloaded when first needed.
 	disposableEmails := disposableemail.NewList(disposableemail.ListURL)

@@ -59,17 +59,6 @@ func (q *Queries) ClearLoginFailures(ctx context.Context, key string) error {
 	return err
 }
 
-const countKnownLoginClients = `-- name: CountKnownLoginClients :one
-SELECT count(*) FROM login_known_clients
-`
-
-func (q *Queries) CountKnownLoginClients(ctx context.Context) (int64, error) {
-	row := q.db.QueryRow(ctx, countKnownLoginClients)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
-}
-
 const deleteExpiredKnownLoginClients = `-- name: DeleteExpiredKnownLoginClients :execrows
 DELETE FROM login_known_clients WHERE expires_at <= now()
 `
