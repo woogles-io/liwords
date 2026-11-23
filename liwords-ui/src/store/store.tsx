@@ -2,6 +2,7 @@ import React, {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -631,6 +632,13 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
         : [],
     [isExamining, whatIfMade, examinedTurn, numberOfTurns],
   );
+  // Let go for good: back on their turn, or examining again, they are not
+  // there anymore.
+  useEffect(() => {
+    if (whatIfMade.moves.length > 0 && whatIfMoves.length === 0) {
+      setWhatIfMade({ base: NaN, turns: NaN, moves: [] });
+    }
+  }, [whatIfMade, whatIfMoves]);
   const whatIf = useMemo(
     () => whatIfMoves.flatMap((m) => m.events),
     [whatIfMoves],
