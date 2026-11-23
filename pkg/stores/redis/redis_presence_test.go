@@ -576,3 +576,69 @@ func TestRenewAfterCloseRestoresNothing(t *testing.T) {
 	is.NoErr(err)
 	is.Equal(after, []string{"chat.lobby"})
 }
+
+// A refresh: the old tab's socket goes and the new page's socket, with a new
+// connection ID, joins the same channel. Whichever comes first, the closed
+// tab's tombstone doesn't touch the new one.
+func TestRefresh(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("new tab joins before the old one closes", func(t *testing.T) {
+		is := is.New(t)
+		ps, _, _ := clockedStore(t)
+		_, _, err := ps.SetPresence(ctx, "uuid1", "cesar", false, "chat.lobby", "old")
+		is.NoErr(err)
+		before, after, err := ps.SetPresence(ctx, "uuid1", "cesar", false, "chat.lobby", "new")
+		is.NoErr(err)
+		is.Equal(before, after) // followers hear nothing
+		before, after, removed, err := ps.ClearPresence(ctx, "uuid1", "cesar", false, "old")
+		is.NoErr(err)
+		is.Equal(before, after)
+		is.Equal(removed, []string{}) // no leave notice
+		_, after, restored, err := ps.RenewPresence(ctx, "uuid1", "cesar", false, "new", []string{"chat.lobby"})
+		is.NoErr(err)
+		is.Equal(after, []string{"chat.lobby"})
+		is.Equal(restored, []string{})
+	})
+
+	t.Run("old tab closes before the new one joins", func(t *testing.T) {
+		is := is.New(t)
+		ps, _, _ := clockedStore(t)
+		_, _, err := ps.SetPresence(ctx, "uuid1", "cesar", false, "chat.lobby", "old")
+		is.NoErr(err)
+		_, after, removed, err := ps.ClearPresence(ctx, "uuid1", "cesar", false, "old")
+		is.NoErr(err)
+		is.Equal(after, []string{})
+		is.Equal(removed, []string{"chat.lobby"}) // a leave notice, then a join
+		before, after, err := ps.SetPresence(ctx, "uuid1", "cesar", false, "chat.lobby", "new")
+		is.NoErr(err)
+		is.Equal(before, []string{})
+		is.Equal(after, []string{"chat.lobby"})
+		// The old tab's last pong, handled late, changes nothing.
+		_, after, restored, err := ps.RenewPresence(ctx, "uuid1", "cesar", false, "old", []string{"chat.lobby"})
+		is.NoErr(err)
+		is.Equal(after, []string{"chat.lobby"})
+		is.Equal(restored, []string{})
+		in, err := ps.GetInChannel(ctx, "chat.lobby")
+		is.NoErr(err)
+		is.Equal(len(in), 1)
+	})
+
+	t.Run("old socket dies without closing", func(t *testing.T) {
+		is := is.New(t)
+		ps, _, now := clockedStore(t)
+		_, _, err := ps.SetPresence(ctx, "uuid1", "cesar", false, "chat.lobby", "old")
+		is.NoErr(err)
+		_, _, err = ps.SetPresence(ctx, "uuid1", "cesar", false, "chat.lobby", "new")
+		is.NoErr(err)
+		*now = now.Add(2 * time.Minute)
+		_, _, _, err = ps.RenewPresence(ctx, "uuid1", "cesar", false, "new", []string{"chat.lobby"})
+		is.NoErr(err)
+		*now = now.Add(2 * time.Minute)
+		n, users, err := ps.SweepPresence(ctx, 100)
+		is.NoErr(err)
+		is.Equal(n, 1)
+		is.Equal(users[0].Removed, []string{}) // still here: no leave notice
+		is.Equal(users[0].Before, users[0].After)
+	})
+}
