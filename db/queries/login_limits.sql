@@ -28,9 +28,6 @@ VALUES (@username, @client_id, @expires_at)
 ON CONFLICT (username, client_id) DO UPDATE SET
     expires_at = GREATEST(login_known_clients.expires_at, EXCLUDED.expires_at);
 
--- name: CountKnownLoginClients :one
-SELECT count(*) FROM login_known_clients;
-
 -- name: DeleteExpiredLoginFailures :execrows
 DELETE FROM login_failures WHERE expires_at <= now();
 
