@@ -60,6 +60,11 @@ func registerJobs(r *jobs.Runner, d jobDeps) error {
 	schedule("adjudicate_realtime_games", "*/30 * * * * *", d.bus.AdjudicateRealtimeGames)
 	schedule("adjudicate_correspondence_games", "* * * * *", d.bus.AdjudicateCorrespondenceGames)
 	schedule("expire_seeks", "*/10 * * * *", d.bus.ExpireSeeks)
+	// Presence (pkg/bus/presence_jobs.go): clear the connections that went
+	// away without saying so, and keep who's playing which game in step with
+	// Postgres.
+	schedule("presence_sweep", "*/30 * * * * *", d.bus.SweepPresence)
+	schedule("active_games_reconcile", "*/10 * * * *", d.bus.ReconcileActiveGames)
 	schedule("reclaim_analysis_jobs", "*/30 * * * * *", d.analysis.ReclaimStaleJobs)
 	// A bot move request or its answer can be lost (NATS restarting, a bot
 	// dying mid-move); this asks again for games a bot has sat on too long.

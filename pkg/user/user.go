@@ -122,9 +122,6 @@ type PresenceStore interface {
 
 	CountInChannel(ctx context.Context, channel string) (int, error)
 	GetInChannel(ctx context.Context, channel string) ([]*entity.User, error)
-	// BatchGetPresence returns a list of the users with their presence.
-	// Can use for buddy/follower lists.
-	BatchGetPresence(ctx context.Context, users []*entity.User) ([]*entity.User, error)
 
 	SetEventChan(chan *entity.EventWrapper)
 	EventChan() chan *entity.EventWrapper

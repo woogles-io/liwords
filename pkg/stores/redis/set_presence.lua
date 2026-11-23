@@ -6,19 +6,26 @@ local userpresencekey = "userpresence:"..ARGV[1]
 local channelpresencekey = "channelpresence:"..ARGV[5]
 local userkey = ARGV[1].."#"..ARGV[2].."#"..ARGV[3].."#"..ARGV[4] -- uuid#username#auth#connID
 local ts = tonumber(ARGV[6])
+-- Each member's score is when it expires; it's live while that's after now.
+local live = "("..ts
 
 -- 3 minutes. We will renew these keys constantly.
 local expiry = 180
 
--- get current set of channels.
-local setbefore = {}
-for _, simpleuserkey in ipairs(redis.call("ZRANGE", userpresencekey, 0, -1)) do
-  -- simpleuserkey looks like conn_id#channel
-  local conn_id, chan = string.match(simpleuserkey, "^([^#]+)#([^#]+)$")
-  if conn_id and chan then
-    setbefore[chan] = true
+-- The user's channels, from their live entries.
+local function channels()
+  local set = {}
+  for _, simpleuserkey in ipairs(redis.call("ZRANGEBYSCORE", userpresencekey, live, "+inf")) do
+    -- simpleuserkey looks like conn_id#channel
+    local conn_id, chan = string.match(simpleuserkey, "^([^#]+)#([^#]+)$")
+    if conn_id and chan then
+      set[chan] = true
+    end
   end
+  return set
 end
+
+local setbefore = channels()
 
 -- set presence.
 local chan = ARGV[5]
@@ -33,19 +40,10 @@ redis.call("ZADD", "userpresences", ts + expiry, userkey.."#"..chan)
 redis.call("ZREMRANGEBYSCORE", channelpresencekey, "-inf", ts)
 redis.call("ZREMRANGEBYSCORE", userpresencekey, "-inf", ts)
 
--- inefficient, but easier to write.
--- an efficient algorithm just adds the new channel to setbefore.
-local setafter = {}
-for _, simpleuserkey in ipairs(redis.call("ZRANGE", userpresencekey, 0, -1)) do
-  -- simpleuserkey looks like conn_id#channel
-  local conn_id, chan = string.match(simpleuserkey, "^([^#]+)#([^#]+)$")
-  if conn_id and chan then
-    setafter[chan] = true
-  end
-end
+local setafter = channels()
 
 -- add active games to both sets.
-for _, gameuuid in ipairs(redis.call("ZRANGE", activeusergameskey, 0, -1)) do
+for _, gameuuid in ipairs(redis.call("ZRANGEBYSCORE", activeusergameskey, live, "+inf")) do
   local activegamepseudochan = "activegame:"..gameuuid
   setbefore[activegamepseudochan] = true
   setafter[activegamepseudochan] = true

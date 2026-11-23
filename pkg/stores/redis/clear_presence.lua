@@ -5,35 +5,36 @@ local activeusergameskey = "activeusergames:"..ARGV[1]
 local userpresencekey = "userpresence:"..ARGV[1]
 local userkey = ARGV[1].."#"..ARGV[2].."#"..ARGV[3].."#"..ARGV[4]  -- uuid#username#anon#conn_id
 local ts = tonumber(ARGV[5])
+-- Each member's score is when it expires; it's live while that's after now.
+local live = "("..ts
 
--- delete where conn_id matches.
-local setbefore = {}
-for _, simpleuserkey in ipairs(redis.call("ZRANGE", userpresencekey, 0, -1)) do
-  -- simpleuserkey looks like conn_id#channel
-  local conn_id, chan = string.match(simpleuserkey, "^([^#]+)#([^#]+)$")
-  if conn_id and chan then
-    setbefore[chan] = true
-    if conn_id == ARGV[4] then
-      redis.call("ZREM", "channelpresence:"..chan, userkey)
-      redis.call("ZREM", userpresencekey, simpleuserkey)
-      redis.call("ZREM", "userpresences", userkey.."#"..chan)
+-- The user's channels, from their live entries.
+local function channels()
+  local set = {}
+  for _, simpleuserkey in ipairs(redis.call("ZRANGEBYSCORE", userpresencekey, live, "+inf")) do
+    -- simpleuserkey looks like conn_id#channel
+    local conn_id, chan = string.match(simpleuserkey, "^([^#]+)#([^#]+)$")
+    if conn_id and chan then
+      set[chan] = true
     end
   end
+  return set
 end
 
--- inefficient, but easier to write.
--- an efficient algorithm sets setafter for kept keys during earlier iteration.
-local setafter = {}
+local setbefore = channels()
+
+-- delete where conn_id matches, expired or not.
 for _, simpleuserkey in ipairs(redis.call("ZRANGE", userpresencekey, 0, -1)) do
-  -- simpleuserkey looks like conn_id#channel
   local conn_id, chan = string.match(simpleuserkey, "^([^#]+)#([^#]+)$")
-  if conn_id and chan then
-    setafter[chan] = true
+  if conn_id == ARGV[4] and chan then
+    redis.call("ZREM", "channelpresence:"..chan, userkey)
+    redis.call("ZREM", userpresencekey, simpleuserkey)
+    redis.call("ZREM", "userpresences", userkey.."#"..chan)
   end
 end
 
--- inefficient, but easier to write.
--- an efficient algorithm is linear over arraybefore and arrayafter.
+local setafter = channels()
+
 local setremoved = {}
 for chan in pairs(setbefore) do
   if not setafter[chan] then
@@ -42,28 +43,21 @@ for chan in pairs(setbefore) do
 end
 
 -- add active games to both sets.
-for _, gameuuid in ipairs(redis.call("ZRANGE", activeusergameskey, 0, -1)) do
+for _, gameuuid in ipairs(redis.call("ZRANGEBYSCORE", activeusergameskey, live, "+inf")) do
   local activegamepseudochan = "activegame:"..gameuuid
   setbefore[activegamepseudochan] = true
   setafter[activegamepseudochan] = true
 end
 
 -- make sorted sets.
-local arraybefore = {}
-for chan in pairs(setbefore) do
-  table.insert(arraybefore, chan)
+local function sorted(set)
+  local arr = {}
+  for chan in pairs(set) do
+    table.insert(arr, chan)
+  end
+  table.sort(arr)
+  return arr
 end
-table.sort(arraybefore)
-local arrayafter = {}
-for chan in pairs(setafter) do
-  table.insert(arrayafter, chan)
-end
-table.sort(arrayafter)
-local arrayremoved = {}
-for chan in pairs(setremoved) do
-  table.insert(arrayremoved, chan)
-end
-table.sort(arrayremoved)
 
 -- return channels before, channels after, and channels removed.
-return { arraybefore, arrayafter, arrayremoved }
+return { sorted(setbefore), sorted(setafter), sorted(setremoved) }

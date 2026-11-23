@@ -667,6 +667,53 @@ func (q *Queries) ListLiveGamesWithoutOngoingRow(ctx context.Context) ([]string,
 	return items, nil
 }
 
+const listStartedRealtimeGamePlayers = `-- name: ListStartedRealtimeGamePlayers :many
+SELECT o.game_uuid,
+       u0.uuid AS player0_uuid, u0.username AS player0_username,
+       u1.uuid AS player1_uuid, u1.username AS player1_username
+FROM ongoing_games o
+JOIN users u0 ON u0.id = o.player0_id
+JOIN users u1 ON u1.id = o.player1_id
+WHERE o.game_mode != 1 -- Exclude CORRESPONDENCE games
+  AND o.started
+`
+
+type ListStartedRealtimeGamePlayersRow struct {
+	GameUuid        string
+	Player0Uuid     string
+	Player0Username string
+	Player1Uuid     string
+	Player1Username string
+}
+
+// The players of the started real-time games, for rebuilding the active-game
+// presence entries (pkg/bus, ReconcileActiveGames).
+func (q *Queries) ListStartedRealtimeGamePlayers(ctx context.Context) ([]ListStartedRealtimeGamePlayersRow, error) {
+	rows, err := q.db.Query(ctx, listStartedRealtimeGamePlayers)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListStartedRealtimeGamePlayersRow
+	for rows.Next() {
+		var i ListStartedRealtimeGamePlayersRow
+		if err := rows.Scan(
+			&i.GameUuid,
+			&i.Player0Uuid,
+			&i.Player0Username,
+			&i.Player1Uuid,
+			&i.Player1Username,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const setOngoingGameReady = `-- name: SetOngoingGameReady :one
 UPDATE ongoing_games
 SET ready_flag = ready_flag | (1 << $1::integer),

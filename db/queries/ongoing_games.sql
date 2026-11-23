@@ -247,3 +247,15 @@ WHERE o.started
                     ELSE @stale_seconds::float8 END)
     )
 RETURNING o.game_uuid;
+
+-- name: ListStartedRealtimeGamePlayers :many
+-- The players of the started real-time games, for rebuilding the active-game
+-- presence entries (pkg/bus, ReconcileActiveGames).
+SELECT o.game_uuid,
+       u0.uuid AS player0_uuid, u0.username AS player0_username,
+       u1.uuid AS player1_uuid, u1.username AS player1_username
+FROM ongoing_games o
+JOIN users u0 ON u0.id = o.player0_id
+JOIN users u1 ON u1.id = o.player1_id
+WHERE o.game_mode != 1 -- Exclude CORRESPONDENCE games
+  AND o.started;

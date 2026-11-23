@@ -5,71 +5,65 @@ local activeusergameskey = "activeusergames:"..ARGV[1]
 local userpresencekey = "userpresence:"..ARGV[1]
 local userkey = ARGV[1].."#"..ARGV[2].."#"..ARGV[3].."#"..ARGV[4] -- uuid#username#auth#connID
 local ts = tonumber(ARGV[5])
+-- Each member's score is when it expires; it's live while that's after now.
+local live = "("..ts
 
 -- 3 minutes. We will renew these keys constantly.
 local expiry = 180
 
--- renew where conn_id matches.
-local setbefore = {}
-local setpurged = {[activeusergameskey]=true}
-for _, simpleuserkey in ipairs(redis.call("ZRANGE", userpresencekey, 0, -1)) do
-  -- simpleuserkey looks like conn_id#channel
-  local conn_id, chan = string.match(simpleuserkey, "^([^#]+)#([^#]+)$")
-  if conn_id and chan then
-    setbefore[chan] = true
-    if conn_id == ARGV[4] then
-      local channelpresencekey = "channelpresence:"..chan
-      redis.call("ZADD", channelpresencekey, ts + expiry, userkey)
-      redis.call("EXPIRE", channelpresencekey, expiry)
-      setpurged[channelpresencekey] = true
-      redis.call("ZADD", userpresencekey, ts + expiry, simpleuserkey)
-      redis.call("EXPIRE", userpresencekey, expiry)
-      setpurged[userpresencekey] = true
-      redis.call("ZADD", "userpresences", ts + expiry, userkey.."#"..chan)
-      setpurged["userpresences"] = true
+-- The user's channels, from their live entries and active games.
+local function channels()
+  local set = {}
+  for _, simpleuserkey in ipairs(redis.call("ZRANGEBYSCORE", userpresencekey, live, "+inf")) do
+    -- simpleuserkey looks like conn_id#channel
+    local conn_id, chan = string.match(simpleuserkey, "^([^#]+)#([^#]+)$")
+    if conn_id and chan then
+      set[chan] = true
     end
   end
+  for _, gameuuid in ipairs(redis.call("ZRANGEBYSCORE", activeusergameskey, live, "+inf")) do
+    set["activegame:"..gameuuid] = true
+  end
+  return set
 end
 
--- add active games to setbefore.
-for _, gameuuid in ipairs(redis.call("ZRANGE", activeusergameskey, 0, -1)) do
-  local activegamepseudochan = "activegame:"..gameuuid
-  setbefore[activegamepseudochan] = true
-end
+local setbefore = channels()
 
--- remove all subkeys inside the zsets that have expired.
-for k in pairs(setpurged) do
-  redis.call("ZREMRANGEBYSCORE", k, -math.huge, ts)
-end
-
--- inefficient, but easier to write.
--- an efficient algorithm counts each channel and decrements those counts during purge.
-local setafter = {}
+-- renew where conn_id matches, including an entry that has just expired:
+-- the connection is still here.
+local setpurged = {[activeusergameskey]=true}
 for _, simpleuserkey in ipairs(redis.call("ZRANGE", userpresencekey, 0, -1)) do
-  -- simpleuserkey looks like conn_id#channel
   local conn_id, chan = string.match(simpleuserkey, "^([^#]+)#([^#]+)$")
-  if conn_id and chan then
-    setafter[chan] = true
+  if conn_id == ARGV[4] and chan then
+    local channelpresencekey = "channelpresence:"..chan
+    redis.call("ZADD", channelpresencekey, ts + expiry, userkey)
+    redis.call("EXPIRE", channelpresencekey, expiry)
+    setpurged[channelpresencekey] = true
+    redis.call("ZADD", userpresencekey, ts + expiry, simpleuserkey)
+    redis.call("EXPIRE", userpresencekey, expiry)
+    setpurged[userpresencekey] = true
+    redis.call("ZADD", "userpresences", ts + expiry, userkey.."#"..chan)
   end
 end
 
--- add active games to setafter.
-for _, gameuuid in ipairs(redis.call("ZRANGE", activeusergameskey, 0, -1)) do
-  local activegamepseudochan = "activegame:"..gameuuid
-  setafter[activegamepseudochan] = true
+-- remove all subkeys inside the zsets that have expired. The global
+-- userpresences is left to the sweep, which tells others about the
+-- connections that went away.
+for k in pairs(setpurged) do
+  redis.call("ZREMRANGEBYSCORE", k, "-inf", ts)
 end
+
+local setafter = channels()
 
 -- make sorted sets.
-local arraybefore = {}
-for chan in pairs(setbefore) do
-  table.insert(arraybefore, chan)
+local function sorted(set)
+  local arr = {}
+  for chan in pairs(set) do
+    table.insert(arr, chan)
+  end
+  table.sort(arr)
+  return arr
 end
-table.sort(arraybefore)
-local arrayafter = {}
-for chan in pairs(setafter) do
-  table.insert(arrayafter, chan)
-end
-table.sort(arrayafter)
 
 -- return channels before and channels after.
-return { arraybefore, arrayafter }
+return { sorted(setbefore), sorted(setafter) }
