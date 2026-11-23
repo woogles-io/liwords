@@ -118,7 +118,10 @@ type PresenceStore interface {
 	// RenewPresence prevents the presence store from expiring the relevant keys.
 	// Basically, we're telling the presence store "this user and connection are still here".
 	// Otherwise, missing a few of these events will destroy the relevant presences.
-	RenewPresence(ctx context.Context, uuid, username string, anon bool, connID string) ([]string, []string, error)
+	// Given the connection's channels, it also puts back missing entries and
+	// returns those channels as the third list.
+	RenewPresence(ctx context.Context, uuid, username string, anon bool, connID string,
+		channels []string) ([]string, []string, []string, error)
 
 	CountInChannel(ctx context.Context, channel string) (int, error)
 	GetInChannel(ctx context.Context, channel string) ([]*entity.User, error)

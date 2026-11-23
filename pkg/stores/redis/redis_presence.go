@@ -302,13 +302,17 @@ func (s *RedisPresenceStore) GetPresence(ctx context.Context, uuid string) ([]st
 	return ret, nil
 }
 
+// RenewPresence renews the connection's presence. Given the channels the
+// connection is in, it also puts back the entries it's missing, and returns
+// those channels as restored.
 func (s *RedisPresenceStore) RenewPresence(ctx context.Context, userID, username string,
-	anon bool, connID string) (oldChannels, newChannels []string, err error) {
+	anon bool, connID string, channels []string) (oldChannels, newChannels, restored []string, err error) {
 	// Renewals come with every tenth pong of every socket, the busiest
 	// presence call: no span of their own, just these on the pong's.
 	span := trace.SpanFromContext(ctx)
 	defer func() {
 		span.SetAttributes(channelChangeAttrs(oldChannels, newChannels)...)
+		span.SetAttributes(attribute.Int("presence.channels_restored", len(restored)))
 		if err != nil {
 			span.RecordError(err)
 		}
@@ -317,11 +321,26 @@ func (s *RedisPresenceStore) RenewPresence(ctx context.Context, userID, username
 	conn := s.redisPool.Get()
 	defer conn.Close()
 
-	ret, err := s.renewPresenceScript.Do(conn, userID, username, authOrAnon(anon), connID, s.now().Unix())
-	if err != nil {
-		return nil, nil, err
+	args := make([]interface{}, 0, 5+len(channels))
+	args = append(args, userID, username, authOrAnon(anon), connID, s.now().Unix())
+	for _, c := range channels {
+		args = append(args, c)
 	}
-	return beforeAfter(ret)
+	ret, err := s.renewPresenceScript.Do(conn, args...)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	arr, err := fromRedisToArrayOfLengthN(ret, 3)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	if oldChannels, newChannels, err = beforeAfter(arr[:2]); err != nil {
+		return nil, nil, nil, err
+	}
+	if restored, err = fromRedisArrayToArrayOfString(arr[2]); err != nil {
+		return nil, nil, nil, err
+	}
+	return oldChannels, newChannels, restored, nil
 }
 
 // CountInChannel counts the live connections in channel.

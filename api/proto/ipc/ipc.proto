@@ -126,7 +126,15 @@ message InitRealmInfo {
 
 message LagMeasurement { int32 lag_ms = 1; }
 
-message Pong { string ips = 1; }
+// Pong is sent to the API (ipc.pb.pongReceived) every tenth pong of a socket,
+// to renew its presence.
+message Pong {
+  string ips = 1;
+  // The socket's realms and its user's name: with them the API can put back
+  // presence that was lost (Redis restarted, say), not just extend it.
+  repeated string realms = 2;
+  string username = 3;
+}
 
 message ServerMessage { string message = 1; }
 

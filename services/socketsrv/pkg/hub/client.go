@@ -89,6 +89,9 @@ type Client struct {
 	realms []Realm
 	// tempRealms is a temporary holding variable for the user realms.
 	tempRealms []string
+	// pongRealms are the realms too, set before the socket's goroutines
+	// start and never changed, for readPump to send with pongs.
+	pongRealms []string
 	// follows holds whom the user follows, loaded when the socket connects,
 	// until the hub records it.
 	follows   []string
@@ -177,7 +180,9 @@ func (c *Client) readPump() {
 			// Let's do this every 10 pings instead of every ping. We don't need
 			// to stress Redis that often.
 			req := &pb.Pong{
-				Ips: c.forwardedFor,
+				Ips:      c.forwardedFor,
+				Realms:   c.pongRealms,
+				Username: c.username,
 			}
 
 			data, err := proto.Marshal(req)

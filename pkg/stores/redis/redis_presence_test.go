@@ -272,7 +272,7 @@ func TestHyphenatedConnID(t *testing.T) {
 	is.NoErr(err)
 	is.Equal(channels, []string{"chat.game.abc"})
 
-	_, _, err = ps.RenewPresence(ctx, "uuid1", "cesar", false, conn)
+	_, _, _, err = ps.RenewPresence(ctx, "uuid1", "cesar", false, conn, nil)
 	is.NoErr(err)
 
 	_, _, left, err := ps.ClearPresence(ctx, "uuid1", "cesar", false, conn)
@@ -424,7 +424,7 @@ func TestSweepPresenceRenewedAndBatched(t *testing.T) {
 		is.NoErr(err)
 	}
 	*now = now.Add(2 * time.Minute)
-	_, _, err = ps.RenewPresence(ctx, "uuid1", "cesar", false, "alive")
+	_, _, _, err = ps.RenewPresence(ctx, "uuid1", "cesar", false, "alive", nil)
 	is.NoErr(err)
 
 	*now = now.Add(2 * time.Minute)
@@ -499,4 +499,49 @@ func TestClearIgnoresExpiredEntries(t *testing.T) {
 	is.Equal(before, []string{"chat.lobby"})
 	is.Equal(after, []string{})
 	is.Equal(removed, []string{"chat.lobby"})
+}
+
+// Given its channels, a renewal puts back a connection's presence that was
+// lost, and says where; without them, it can only extend what's there.
+func TestRenewRestoresLostPresence(t *testing.T) {
+	is := is.New(t)
+	ps, pool, now := clockedStore(t)
+	ctx := context.Background()
+
+	_, _, err := ps.SetPresence(ctx, "uuid1", "cesar", false, "chat.lobby", "conn1")
+	is.NoErr(err)
+	// Renewing what's there restores nothing.
+	before, after, restored, err := ps.RenewPresence(ctx, "uuid1", "cesar", false, "conn1", []string{"chat.lobby"})
+	is.NoErr(err)
+	is.Equal(before, []string{"chat.lobby"})
+	is.Equal(after, []string{"chat.lobby"})
+	is.Equal(restored, []string{})
+
+	// Redis loses its data.
+	flushTestDB(pool)
+	*now = now.Add(time.Minute)
+
+	// An older socket server sends no channels: nothing to renew.
+	_, after, restored, err = ps.RenewPresence(ctx, "uuid1", "cesar", false, "conn1", nil)
+	is.NoErr(err)
+	is.Equal(after, []string{})
+	is.Equal(restored, []string{})
+
+	before, after, restored, err = ps.RenewPresence(ctx, "uuid1", "cesar", false, "conn1",
+		[]string{"chat.lobby", "chat.tournament.t1"})
+	is.NoErr(err)
+	is.Equal(before, []string{})
+	is.Equal(after, []string{"chat.lobby", "chat.tournament.t1"})
+	is.Equal(restored, []string{"chat.lobby", "chat.tournament.t1"})
+	in, err := ps.GetInChannel(ctx, "chat.tournament.t1")
+	is.NoErr(err)
+	is.Equal(len(in), 1)
+	is.Equal(in[0].Username, "cesar")
+
+	// The sweep's index has it too: it goes if the tab does.
+	*now = now.Add(4 * time.Minute)
+	n, users, err := ps.SweepPresence(ctx, 100)
+	is.NoErr(err)
+	is.Equal(n, 2)
+	is.Equal(users[0].Removed, []string{"chat.lobby", "chat.tournament.t1"})
 }

@@ -201,3 +201,34 @@ func TestSweepPresenceAnnounces(t *testing.T) {
 		is.Equal(n, 0)
 	}
 }
+
+// A pong from a socket server that sends the tab's realms puts back the
+// tab's presence if Redis lost it, announces it to the chat and to the
+// user's followers, and takes the name from the pong.
+func TestPongRestoresLostPresence(t *testing.T) {
+	is := is.New(t)
+	ctx := context.Background()
+	b, _, _, msgs := presenceBus(t, "chat.>", "presence.changed.>")
+
+	// No such user in the database: the name must come from the pong.
+	pong := &pb.Pong{Realms: []string{"lobby", "chat-lobby"}, Username: "zed"}
+	is.NoErr(b.pongReceived(ctx, "uuid-z", "conn-z", pong))
+
+	in, err := b.stores.PresenceStore.GetInChannel(ctx, "chat.lobby")
+	is.NoErr(err)
+	is.Equal(len(in), 1)
+	is.Equal(in[0].Username, "zed")
+
+	sent := drain(msgs)
+	data := sent["chat.lobby"][0].Data
+	is.Equal(data[2], byte(pb.MessageType_USER_PRESENCE))
+	joined := &pb.UserPresence{}
+	is.NoErr(proto.Unmarshal(data[3:], joined))
+	is.Equal(joined.Username, "zed")
+	is.True(!joined.Deleting)
+	is.Equal(presenceEntry(t, sent["presence.changed.uuid-z"][0]).Channel, []string{"chat.lobby"})
+
+	// The next pong only renews: nobody is told anything.
+	is.NoErr(b.pongReceived(ctx, "uuid-z", "conn-z", pong))
+	is.Equal(len(drain(msgs)), 0)
+}
