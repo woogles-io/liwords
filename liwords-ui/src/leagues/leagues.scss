@@ -554,6 +554,15 @@
           background: d(loss-hover) !important;
         }
 
+        // The rows that can still finish at the rank whose range shows: their
+        // rank in the theme's blue, at the points column's weight. A color on
+        // the text, not the cell, so that neither a zone's color nor the
+        // hover over the row whose range shows can hide it.
+        .ant-table-tbody > tr > td.can-reach {
+          color: m($primary-dark);
+          font-weight: 600;
+        }
+
         // Clickable player names. The username itself is a context-menu
         // trigger (UsernameWithContext); the decoration icons are siblings.
         .standings-player {
