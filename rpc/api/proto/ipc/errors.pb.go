@@ -410,8 +410,11 @@ func (WooglesError) EnumDescriptor() ([]byte, []int) {
 }
 
 type ErrorMessage struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Message       string                 `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Message string                 `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
+	// a chat message that was refused (sent too soon, say), as it was sent, so
+	// its sender can have it back to send again
+	RefusedChat   *ChatMessage `protobuf:"bytes,2,opt,name=refused_chat,json=refusedChat,proto3" json:"refused_chat,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -453,13 +456,21 @@ func (x *ErrorMessage) GetMessage() string {
 	return ""
 }
 
+func (x *ErrorMessage) GetRefusedChat() *ChatMessage {
+	if x != nil {
+		return x.RefusedChat
+	}
+	return nil
+}
+
 var File_proto_ipc_errors_proto protoreflect.FileDescriptor
 
 const file_proto_ipc_errors_proto_rawDesc = "" +
 	"\n" +
-	"\x16proto/ipc/errors.proto\x12\x03ipc\"(\n" +
+	"\x16proto/ipc/errors.proto\x12\x03ipc\x1a\x14proto/ipc/chat.proto\"]\n" +
 	"\fErrorMessage\x12\x18\n" +
-	"\amessage\x18\x01 \x01(\tR\amessage*\xf2#\n" +
+	"\amessage\x18\x01 \x01(\tR\amessage\x123\n" +
+	"\frefused_chat\x18\x02 \x01(\v2\x10.ipc.ChatMessageR\vrefusedChat*\xf2#\n" +
 	"\fWooglesError\x12\v\n" +
 	"\aDEFAULT\x10\x00\x12*\n" +
 	"%TOURNAMENT_NEGATIVE_MAX_BYE_PLACEMENT\x10\xe9\a\x12&\n" +
@@ -596,13 +607,15 @@ var file_proto_ipc_errors_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_proto_ipc_errors_proto_goTypes = []any{
 	(WooglesError)(0),    // 0: ipc.WooglesError
 	(*ErrorMessage)(nil), // 1: ipc.ErrorMessage
+	(*ChatMessage)(nil),  // 2: ipc.ChatMessage
 }
 var file_proto_ipc_errors_proto_depIdxs = []int32{
-	0, // [0:0] is the sub-list for method output_type
-	0, // [0:0] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	2, // 0: ipc.ErrorMessage.refused_chat:type_name -> ipc.ChatMessage
+	1, // [1:1] is the sub-list for method output_type
+	1, // [1:1] is the sub-list for method input_type
+	1, // [1:1] is the sub-list for extension type_name
+	1, // [1:1] is the sub-list for extension extendee
+	0, // [0:1] is the sub-list for field type_name
 }
 
 func init() { file_proto_ipc_errors_proto_init() }
@@ -610,6 +623,7 @@ func file_proto_ipc_errors_proto_init() {
 	if File_proto_ipc_errors_proto != nil {
 		return
 	}
+	file_proto_ipc_chat_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

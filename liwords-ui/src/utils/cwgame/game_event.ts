@@ -73,6 +73,42 @@ export const tilesetToMoveEvent = (
   return evt;
 };
 
+// A tile play as the confirm before playing it shows it: its position, then
+// its word with the letters already on the board in parentheses, as in
+// "A1 OX(Y)P(HEN)B(UT)AZ(ON)E". Null when the tiles placed make no play.
+export const tilesetToMoveDisplay = (
+  tiles: Set<EphemeralTile>,
+  board: Board,
+  alphabet: Alphabet,
+): string | null => {
+  const ret = contiguousTilesFromTileSet(tiles, board);
+  if (ret === null) {
+    return null;
+  }
+  const [wordTiles, wordDir] = ret;
+  if (wordTiles.some((t) => t.fresh && t.letter === BlankMachineLetter)) {
+    return null;
+  }
+  const row = String(wordTiles[0].row + 1);
+  const col = String.fromCharCode(wordTiles[0].col + "A".charCodeAt(0));
+  let word = "";
+  let openParen = false;
+  for (const t of wordTiles) {
+    if (!t.fresh && !openParen) {
+      word += "(";
+      openParen = true;
+    } else if (t.fresh && openParen) {
+      word += ")";
+      openParen = false;
+    }
+    word += machineLetterToRune(t.letter, alphabet, false, true);
+  }
+  if (openParen) {
+    word += ")";
+  }
+  return `${wordDir === Direction.Horizontal ? row + col : col + row} ${word}`;
+};
+
 export const exchangeMoveEvent = (
   rack: Array<MachineLetter>,
   gameID: string,

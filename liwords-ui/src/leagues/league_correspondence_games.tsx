@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Card, Empty, Tooltip, Typography } from "antd";
 import { useNavigate } from "react-router";
 import { timestampDate } from "@bufbuild/protobuf/wkt";
@@ -68,7 +68,8 @@ export const justEndedGames = (
       (g) =>
         (g.result === "win" || g.result === "loss" || g.result === "draw") &&
         g.gameDate !== undefined &&
-        nowMs - timestampDate(g.gameDate).getTime() <= JUST_ENDED_MS,
+        // gone the moment its day is up, when the box's timer redraws it
+        nowMs - timestampDate(g.gameDate).getTime() < JUST_ENDED_MS,
     )
     .sort(
       (a, b) =>
@@ -168,25 +169,38 @@ export const LeagueCorrespondenceGames: React.FC<
   );
 
   // The viewer's games this season, for those that just ended.
-  const { data: seasonGamesData } = useQuery(
+  const { data: seasonGamesData, refetch: refetchSeasonGames } = useQuery(
     getPlayerSeasonGames,
     { userId: userID || "", seasonId: seasonId || "" },
     { enabled: !!userID && !!seasonId },
   );
-  const justEnded = useMemo(
-    () => justEndedGames(seasonGamesData?.games ?? [], Date.now()),
-    [seasonGamesData?.games],
-  );
+  // Chosen at each render, as each row's "ago" is, so a game leaves once a
+  // day has passed though the page stays open.
+  const justEnded = justEndedGames(seasonGamesData?.games ?? [], Date.now());
   // And in the season that closed last, for its results decided at closing.
-  const { data: closedGamesData } = useQuery(
+  const { data: closedGamesData, refetch: refetchClosedGames } = useQuery(
     getPlayerSeasonGames,
     { userId: userID || "", seasonId: closedSeason?.uuid || "" },
     { enabled: !!userID && !!closedSeason },
   );
-  const justClosed = useMemo(
-    () => justEndedGames(closedGamesData?.games ?? [], Date.now()),
-    [closedGamesData?.games],
+  const justClosed = justEndedGames(closedGamesData?.games ?? [], Date.now());
+  // Nothing else may redraw the box when a listed game reaches a day (a turn
+  // clock redraws only itself), so it redraws itself then. A timer never
+  // fires early, and a game a day old no longer counts.
+  const [, setRedraws] = useState(0);
+  const nextLeaving = Math.min(
+    ...[...justEnded, ...justClosed].map(
+      (g) => timestampDate(g.gameDate!).getTime() + JUST_ENDED_MS,
+    ),
   );
+  useEffect(() => {
+    if (!Number.isFinite(nextLeaving)) return;
+    const timer = setTimeout(
+      () => setRedraws((n) => n + 1),
+      Math.max(nextLeaving - Date.now(), 0),
+    );
+    return () => clearTimeout(timer);
+  }, [nextLeaving]);
 
   // Build a map of opponent UUID -> H2HRecord
   const h2hMap = useMemo(() => {
@@ -244,6 +258,28 @@ export const LeagueCorrespondenceGames: React.FC<
       return (a.lastUpdate ?? Infinity) - (b.lastUpdate ?? Infinity);
     });
   }, [correspondenceGames, leagueSlug, userID]);
+
+  // A game leaving the live list has ended (played out, timed out,
+  // forfeited, or closed with its season): the season's games are asked for
+  // again, so it shows under "Just ended" at once, not at the next load.
+  const liveIDs = leagueGames.map((g) => g.gameID).join(" ");
+  const shownIDs = useRef(liveIDs);
+  useEffect(() => {
+    const gone = shownIDs.current
+      .split(" ")
+      .some((id) => id !== "" && !liveIDs.split(" ").includes(id));
+    shownIDs.current = liveIDs;
+    if (!gone) return;
+    if (userID && seasonId) refetchSeasonGames();
+    if (userID && closedSeason) refetchClosedGames();
+  }, [
+    liveIDs,
+    userID,
+    seasonId,
+    closedSeason,
+    refetchSeasonGames,
+    refetchClosedGames,
+  ]);
 
   const handleGameClick = (gameID: string, event: React.MouseEvent) => {
     // Same technique as lobby correspondence games:

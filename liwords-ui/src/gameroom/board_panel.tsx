@@ -40,6 +40,7 @@ import {
 } from "../utils/cwgame/tile_placement";
 
 import {
+  tilesetToMoveDisplay,
   tilesetToMoveEvent,
   exchangeMoveEvent,
   passMoveEvent,
@@ -82,6 +83,7 @@ import { GameMetadataService } from "../gen/api/proto/game_service/game_service_
 
 import { RackEditor } from "./rack_editor";
 import { ANALYZER_LAB_KEY, ANALYZER_LAB_WHAT_IF_KEY } from "./analyzer_lab";
+import { CONFIRM_PLAY_KEY } from "./play_prefs";
 import { whatIfRack, whatIfRackRefusal, whatIfSideOf } from "./what_if";
 import { useExamineStoreContext } from "../store/store";
 import {
@@ -117,6 +119,8 @@ type Props = {
   puzzleMode?: boolean;
   puzzleSolved?: number;
   boardEditingMode?: boolean;
+  // a player examining their own game while it is in play
+  examiningOwnGameInPlay?: boolean;
   tournamentSlug?: string;
   tournamentID?: string;
   tournamentPairedMode?: boolean;
@@ -172,6 +176,8 @@ export const BoardPanel = React.memo((props: Props) => {
     setHandlePassShortcut,
     handleChallengeShortcut,
     setHandleChallengeShortcut,
+    handlePlayShortcut,
+    setHandlePlayShortcut,
     handleNeitherShortcut,
     setHandleNeitherShortcut,
     boardContainer,
@@ -744,8 +750,13 @@ export const BoardPanel = React.memo((props: Props) => {
   const [analyzerLab] = useLocalStorageBool(ANALYZER_LAB_KEY);
   const [labWhatIf] = useLocalStorageBool(ANALYZER_LAB_WHAT_IF_KEY);
   const { setRackWhatIf } = useExamineStoreContext();
+  // Never in one's own game in play, which shows no analysis.
   const whatIfRackEditing =
-    !props.boardEditingMode && isExamining && analyzerLab && labWhatIf;
+    !props.boardEditingMode &&
+    isExamining &&
+    analyzerLab &&
+    labWhatIf &&
+    !props.examiningOwnGameInPlay;
   const [rackEditorPrefill, setRackEditorPrefill] =
     useState<MachineWord | null>(null);
 
@@ -939,7 +950,9 @@ export const BoardPanel = React.memo((props: Props) => {
         }
         if (key === EnterKey) {
           evt.preventDefault();
-          makeMove("commit");
+          // as a tap on Play, which may ask first (game_controls.tsx)
+          if (handlePlayShortcut.current) handlePlayShortcut.current();
+          else makeMove("commit");
           return;
         }
         if (key === "?") {
@@ -1011,6 +1024,7 @@ export const BoardPanel = React.memo((props: Props) => {
       handlePassShortcut,
       handleNeitherShortcut,
       handleChallengeShortcut,
+      handlePlayShortcut,
     ],
   );
 
@@ -1339,6 +1353,39 @@ export const BoardPanel = React.memo((props: Props) => {
   const handleResign = useCallback(() => makeMove("resign"), [makeMove]);
   const handleChallenge = useCallback(() => makeMove("challenge"), [makeMove]);
   const handleCommit = useCallback(() => makeMove("commit"), [makeMove]);
+  // What Play (or Enter) asks first, when the setting is on: wherever tiles
+  // are played, a game, a puzzle, or the editor (which examines, but plays),
+  // and only for tiles that make a play, so anything else gets the warning it
+  // always has. No score while scoring is practiced by hand, as the tentative
+  // score is hidden then (tentative_score.tsx).
+  const [confirmPlay] = useLocalStorageBool(CONFIRM_PLAY_KEY);
+  const [hidePool] = useLocalStorageBool("hidePool");
+  const playConfirm = useMemo(() => {
+    if (
+      !confirmPlay ||
+      (isExamining && !boardEditingMode) ||
+      pendingExchangeTiles
+    ) {
+      return undefined;
+    }
+    const play = tilesetToMoveDisplay(placedTiles, board, props.alphabet);
+    if (!play) {
+      return undefined;
+    }
+    return placedTilesTempScore === undefined || hidePool
+      ? `Play ${play}?`
+      : `Play ${play} for ${placedTilesTempScore}?`;
+  }, [
+    confirmPlay,
+    hidePool,
+    boardEditingMode,
+    isExamining,
+    pendingExchangeTiles,
+    placedTiles,
+    board,
+    props.alphabet,
+    placedTilesTempScore,
+  ]);
   const handleExportGCG = useCallback(
     () => gcgExport(props.gameID, props.playerMeta, metadataClient),
     [props.gameID, props.playerMeta, metadataClient],
@@ -1392,6 +1439,9 @@ export const BoardPanel = React.memo((props: Props) => {
   let gameMetaMessage;
   if (examinableGameEndMessage) {
     gameMetaMessage = examinableGameEndMessage;
+  } else if (correspondenceSpectator && whatIfRackEditing) {
+    // no message: the rack row stays, empty, so a what-if rack can be set
+    // for the hidden one
   } else if (correspondenceSpectator) {
     gameMetaMessage = "Tiles are hidden for correspondence game spectators";
   } else if (anonymousTourneyViewer) {
@@ -1461,6 +1511,7 @@ export const BoardPanel = React.memo((props: Props) => {
         }
         onChallenge={handleChallenge}
         onCommit={handleCommit}
+        playConfirm={playConfirm}
         onRematch={props.handleAcceptRematch ?? rematch}
         onExamine={() => handleExamineStart(props.gameDone)}
         onExportGCG={handleExportGCG}
@@ -1484,6 +1535,7 @@ export const BoardPanel = React.memo((props: Props) => {
         lexicon={props.lexicon}
         challengeRule={props.challengeRule}
         setHandlePassShortcut={setHandlePassShortcut}
+        setHandlePlayShortcut={setHandlePlayShortcut}
         setHandleChallengeShortcut={setHandleChallengeShortcut}
         setHandleNeitherShortcut={setHandleNeitherShortcut}
         exitableExaminer={props.exitableExaminer}

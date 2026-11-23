@@ -5,6 +5,7 @@
 @use "sass:color";
 @use "sass:list";
 @use "sass:map";
+@use "sass:meta";
 
 // Theming system by Katie McTigue https://medium.com/@katiemctigue/how-to-create-a-dark-mode-in-sass-609f131a3995
 
@@ -252,8 +253,19 @@ $modes: (
 // build inherits rsbuild's default targets, and color.scale($lightness: -10%)
 // is HSL-space scaling (L -> L * 0.9) which color-mix() cannot express at all.
 //
-// Each entry is (operation, token-a, token-b-or-null, amount).
+// Each entry is (operation, token-a, token-b-or-null, amount). The amount may
+// be a map by mode, for a step that goes one way in one mode and the other way
+// in the other.
 // ---------------------------------------------------------------------------
+
+// The league zones' row hover keeps the zone's color: darker on the light
+// theme's pale zones, lighter on the dark theme's deep ones (lighter on a pale
+// zone was white, the color of a row in neither zone).
+$zone-hover-step: (
+  default: -5%,
+  dark: 5%,
+);
+
 $derived: (
   // gameroom: bonus-square labels and selected states
   qws-label: (mix, "color-board-qws", "color-gray-extreme", 30%),
@@ -278,8 +290,8 @@ $derived: (
   ),
   off-on-card: (mix, "color-off-background", "color-card-background", 30%),
   // leagues: promotion/relegation row hover and border
-  win-hover: (adjust, "color-profile-game-win", null, 5%),
-  loss-hover: (adjust, "color-profile-game-loss", null, 5%),
+  win-hover: (adjust, "color-profile-game-win", null, $zone-hover-step),
+  loss-hover: (adjust, "color-profile-game-loss", null, $zone-hover-step),
   win-border: (adjust, "color-profile-game-win", null, -20%),
   loss-border: (adjust, "color-profile-game-loss", null, -20%),
   // lobby: announcement hover
@@ -295,6 +307,9 @@ $derived: (
   $a: -raw($mode, list.nth($spec, 2));
   $b: list.nth($spec, 3);
   $amount: list.nth($spec, 4);
+  @if meta.type-of($amount) == map {
+    $amount: map.get($amount, $mode);
+  }
 
   @if $op == scale {
     @return color.scale($a, $lightness: $amount);

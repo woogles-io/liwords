@@ -61,6 +61,9 @@ const (
 	// GameMetadataServiceUnfreezeBotProcedure is the fully-qualified name of the GameMetadataService's
 	// UnfreezeBot RPC.
 	GameMetadataServiceUnfreezeBotProcedure = "/game_service.GameMetadataService/UnfreezeBot"
+	// GameMetadataServiceCheckWordProcedure is the fully-qualified name of the GameMetadataService's
+	// CheckWord RPC.
+	GameMetadataServiceCheckWordProcedure = "/game_service.GameMetadataService/CheckWord"
 )
 
 // GameMetadataServiceClient is a client for the game_service.GameMetadataService service.
@@ -83,6 +86,9 @@ type GameMetadataServiceClient interface {
 	GetRecentCorrespondenceGames(context.Context, *connect.Request[game_service.RecentCorrespondenceGamesRequest]) (*connect.Response[ipc.GameInfoResponses], error)
 	// UnfreezeBot re-sends bot move requests for stuck games (admin only)
 	UnfreezeBot(context.Context, *connect.Request[game_service.UnfreezeBotRequest]) (*connect.Response[game_service.UnfreezeBotResponse], error)
+	// CheckWord tells one of a VOID game's players, while the game is in
+	// play, whether a word is valid in it. Every check is logged.
+	CheckWord(context.Context, *connect.Request[game_service.CheckWordRequest]) (*connect.Response[game_service.CheckWordResponse], error)
 }
 
 // NewGameMetadataServiceClient constructs a client for the game_service.GameMetadataService
@@ -150,6 +156,12 @@ func NewGameMetadataServiceClient(httpClient connect.HTTPClient, baseURL string,
 			connect.WithSchema(gameMetadataServiceMethods.ByName("UnfreezeBot")),
 			connect.WithClientOptions(opts...),
 		),
+		checkWord: connect.NewClient[game_service.CheckWordRequest, game_service.CheckWordResponse](
+			httpClient,
+			baseURL+GameMetadataServiceCheckWordProcedure,
+			connect.WithSchema(gameMetadataServiceMethods.ByName("CheckWord")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -164,6 +176,7 @@ type gameMetadataServiceClient struct {
 	getActiveCorrespondenceGames *connect.Client[game_service.ActiveCorrespondenceGamesRequest, ipc.GameInfoResponses]
 	getRecentCorrespondenceGames *connect.Client[game_service.RecentCorrespondenceGamesRequest, ipc.GameInfoResponses]
 	unfreezeBot                  *connect.Client[game_service.UnfreezeBotRequest, game_service.UnfreezeBotResponse]
+	checkWord                    *connect.Client[game_service.CheckWordRequest, game_service.CheckWordResponse]
 }
 
 // GetMetadata calls game_service.GameMetadataService.GetMetadata.
@@ -211,6 +224,11 @@ func (c *gameMetadataServiceClient) UnfreezeBot(ctx context.Context, req *connec
 	return c.unfreezeBot.CallUnary(ctx, req)
 }
 
+// CheckWord calls game_service.GameMetadataService.CheckWord.
+func (c *gameMetadataServiceClient) CheckWord(ctx context.Context, req *connect.Request[game_service.CheckWordRequest]) (*connect.Response[game_service.CheckWordResponse], error) {
+	return c.checkWord.CallUnary(ctx, req)
+}
+
 // GameMetadataServiceHandler is an implementation of the game_service.GameMetadataService service.
 type GameMetadataServiceHandler interface {
 	GetMetadata(context.Context, *connect.Request[game_service.GameInfoRequest]) (*connect.Response[ipc.GameInfoResponse], error)
@@ -231,6 +249,9 @@ type GameMetadataServiceHandler interface {
 	GetRecentCorrespondenceGames(context.Context, *connect.Request[game_service.RecentCorrespondenceGamesRequest]) (*connect.Response[ipc.GameInfoResponses], error)
 	// UnfreezeBot re-sends bot move requests for stuck games (admin only)
 	UnfreezeBot(context.Context, *connect.Request[game_service.UnfreezeBotRequest]) (*connect.Response[game_service.UnfreezeBotResponse], error)
+	// CheckWord tells one of a VOID game's players, while the game is in
+	// play, whether a word is valid in it. Every check is logged.
+	CheckWord(context.Context, *connect.Request[game_service.CheckWordRequest]) (*connect.Response[game_service.CheckWordResponse], error)
 }
 
 // NewGameMetadataServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -294,6 +315,12 @@ func NewGameMetadataServiceHandler(svc GameMetadataServiceHandler, opts ...conne
 		connect.WithSchema(gameMetadataServiceMethods.ByName("UnfreezeBot")),
 		connect.WithHandlerOptions(opts...),
 	)
+	gameMetadataServiceCheckWordHandler := connect.NewUnaryHandler(
+		GameMetadataServiceCheckWordProcedure,
+		svc.CheckWord,
+		connect.WithSchema(gameMetadataServiceMethods.ByName("CheckWord")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/game_service.GameMetadataService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case GameMetadataServiceGetMetadataProcedure:
@@ -314,6 +341,8 @@ func NewGameMetadataServiceHandler(svc GameMetadataServiceHandler, opts ...conne
 			gameMetadataServiceGetRecentCorrespondenceGamesHandler.ServeHTTP(w, r)
 		case GameMetadataServiceUnfreezeBotProcedure:
 			gameMetadataServiceUnfreezeBotHandler.ServeHTTP(w, r)
+		case GameMetadataServiceCheckWordProcedure:
+			gameMetadataServiceCheckWordHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -357,4 +386,8 @@ func (UnimplementedGameMetadataServiceHandler) GetRecentCorrespondenceGames(cont
 
 func (UnimplementedGameMetadataServiceHandler) UnfreezeBot(context.Context, *connect.Request[game_service.UnfreezeBotRequest]) (*connect.Response[game_service.UnfreezeBotResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("game_service.GameMetadataService.UnfreezeBot is not implemented"))
+}
+
+func (UnimplementedGameMetadataServiceHandler) CheckWord(context.Context, *connect.Request[game_service.CheckWordRequest]) (*connect.Response[game_service.CheckWordResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("game_service.GameMetadataService.CheckWord is not implemented"))
 }

@@ -26,6 +26,11 @@ vi.mock("@connectrpc/connect-query", () => ({
   useQuery: () => ({ data: mockedGameOwner() }),
 }));
 
+// the Check button itself is word_check.test.tsx's; here only where it goes
+vi.mock("./word_check", () => ({
+  WordCheck: () => <button>Check</button>,
+}));
+
 const mockedGameContext = vi.fn();
 
 vi.mock("../store/store", async (importOriginal) => {
@@ -170,6 +175,18 @@ it("ignores 2 while examining a game outside the editor", () => {
   expect(screen.queryByText("Are you sure you wish to pass?")).toBeNull();
 });
 
+it("puts Check where Challenge is in a VOID game, for a player in play", () => {
+  renderGameControls({ myTurn: true, challengeRule: ChallengeRule.VOID });
+  expect(screen.getByText("Check")).toBeInTheDocument();
+  expect(screen.queryByText("Challenge")).toBeNull();
+});
+
+it("keeps Challenge and no Check in a game that can be challenged", () => {
+  renderGameControls({ myTurn: true, challengeRule: ChallengeRule.DOUBLE });
+  expect(screen.queryByText("Check")).toBeNull();
+  expect(screen.getByText("Challenge")).toBeInTheDocument();
+});
+
 // A game in play, two moves in, with "me" as a player.
 const inPlay = () =>
   mockedGameContext.mockImplementation((store) => ({
@@ -203,4 +220,87 @@ it("does not let a player examine other games in play", async () => {
   fireEvent.click(screen.getByText("Options"));
   expect(await screen.findByText("PNG")).toBeInTheDocument();
   expect(screen.queryByText("Examine")).toBeNull();
+});
+
+it("plays at once when Play does not ask first", () => {
+  const onCommit = vi.fn();
+  renderGameControls({ myTurn: true, onCommit });
+  fireEvent.click(screen.getByText("Play"));
+  expect(onCommit).toHaveBeenCalledTimes(1);
+});
+
+it("asks first, showing the play, and a second tap on Play plays", async () => {
+  const onCommit = vi.fn();
+  renderGameControls({
+    myTurn: true,
+    onCommit,
+    playConfirm: "Play 8H ZA for 22?",
+  });
+  fireEvent.click(screen.getByText("Play"));
+  expect(await screen.findByText("Play 8H ZA for 22?")).toBeInTheDocument();
+  expect(onCommit).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByText("Play"));
+  expect(onCommit).toHaveBeenCalledTimes(1);
+});
+
+function capturePlayShortcut(props: Partial<Props>) {
+  let shortcut: (() => void) | null = null;
+  renderGameControls({
+    myTurn: true,
+    setHandlePlayShortcut: (v) => {
+      shortcut = typeof v === "function" ? v(shortcut) : v;
+    },
+    ...props,
+  });
+  return () => act(() => shortcut?.());
+}
+
+it("plays at once on Enter when Play does not ask first", () => {
+  const onCommit = vi.fn();
+  const pressEnter = capturePlayShortcut({ onCommit });
+  pressEnter();
+  expect(onCommit).toHaveBeenCalledTimes(1);
+});
+
+it("asks on Enter as on Play, and a second Enter plays", async () => {
+  const onCommit = vi.fn();
+  const pressEnter = capturePlayShortcut({
+    onCommit,
+    playConfirm: "Play 8H ZA for 22?",
+  });
+  pressEnter();
+  expect(await screen.findByText("Play 8H ZA for 22?")).toBeInTheDocument();
+  expect(onCommit).not.toHaveBeenCalled();
+  pressEnter();
+  expect(onCommit).toHaveBeenCalledTimes(1);
+});
+
+it("asks before a puzzle's answer too", async () => {
+  const onCommit = vi.fn();
+  renderGameControls({
+    myTurn: true,
+    puzzleMode: true,
+    onCommit,
+    playConfirm: "Play 8H ZA?",
+  });
+  fireEvent.click(screen.getByText("Solve"));
+  expect(await screen.findByText("Play 8H ZA?")).toBeInTheDocument();
+  expect(onCommit).not.toHaveBeenCalled();
+  fireEvent.click(await screen.findByText("Yes"));
+  expect(onCommit).toHaveBeenCalledTimes(1);
+});
+
+it("plays on Yes and not on No", async () => {
+  const onCommit = vi.fn();
+  renderGameControls({
+    myTurn: true,
+    onCommit,
+    playConfirm: "Play 8H ZA for 22?",
+  });
+  fireEvent.click(screen.getByText("Play"));
+  fireEvent.click(await screen.findByText("No"));
+  expect(onCommit).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByText("Play"));
+  fireEvent.click(await screen.findByText("Yes"));
+  expect(onCommit).toHaveBeenCalledTimes(1);
 });

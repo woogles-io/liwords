@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router";
 import App from "./App";
 import { Store as LegacyStore } from "./store/store";
+import { drawWhenDogLeftAlone } from "./utils/boot_dog";
 import { BriefProfiles } from "./utils/brief_profiles";
 
 import "@ant-design/v5-patch-for-react-19";
@@ -78,21 +79,24 @@ const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: shouldRetryQuery } },
 });
 
-root.render(
-  <React.StrictMode>
-    <BrowserRouter>
-      {/* legacy context store will be slowly decommissioned */}
-      <LegacyStore>
-        <TransportProvider transport={transport}>
-          <QueryClientProvider client={queryClient}>
-            <BriefProfiles>
-              <App />
-            </BriefProfiles>
-          </QueryClientProvider>
-        </TransportProvider>
-      </LegacyStore>
-    </BrowserRouter>
-  </React.StrictMode>,
+// Not while someone pets the loading dog: see boot_dog.ts.
+drawWhenDogLeftAlone(() =>
+  root.render(
+    <React.StrictMode>
+      <BrowserRouter>
+        {/* legacy context store will be slowly decommissioned */}
+        <LegacyStore>
+          <TransportProvider transport={transport}>
+            <QueryClientProvider client={queryClient}>
+              <BriefProfiles>
+                <App />
+              </BriefProfiles>
+            </QueryClientProvider>
+          </TransportProvider>
+        </LegacyStore>
+      </BrowserRouter>
+    </React.StrictMode>,
+  ),
 );
 
 // Register service worker for PWA support

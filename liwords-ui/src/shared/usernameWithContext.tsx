@@ -32,6 +32,8 @@ type UsernameWithContextProps = {
   showDeleteMessage?: boolean;
   moderate?: (modal: HookAPI, uuid: string, username: string) => void;
   deleteMessage?: () => void;
+  // "Report this message", for a name on a chat message
+  reportMessage?: () => void;
   iconOnly?: boolean;
   currentActiveGames?: Array<string>;
   currentWatchedGames?: Array<string>;
@@ -204,6 +206,13 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
       ),
     });
   }
+  // Anyone signed in can report any chat message they see.
+  if (props.reportMessage && loggedIn) {
+    userMenuOptions.push({
+      key: `report-${props.userID}`,
+      label: "Report this message",
+    });
+  }
   if (props.showModTools && hasPermission(permissions, Perm.CanModerateUsers)) {
     userMenuOptions.push({
       key: `mod-${props.userID}`,
@@ -267,6 +276,9 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
           switch (key) {
             case `delete-${props.userID}`:
               if (props.deleteMessage) props.deleteMessage();
+              break;
+            case `report-${props.userID}`:
+              props.reportMessage?.();
               break;
             case `mod-${props.userID}`:
               if (props.moderate && props.userID)

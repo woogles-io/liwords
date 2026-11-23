@@ -10,6 +10,8 @@ import {
   ifEndedNow,
   onTurnCounts,
   scoreType,
+  sortedByRank,
+  tilesToPlay,
 } from "./crosstable";
 
 const game = (
@@ -118,6 +120,85 @@ describe("onTurnCounts", () => {
     expect(n.get("a")).toBe(2);
     expect(n.get("b")).toBe(1);
     expect(n.get("c")).toBe(0);
+  });
+});
+
+describe("tilesToPlay", () => {
+  const live = { gameEndReason: GameEndReason.NONE, winnerIndex: -1 };
+  it("adds up the tiles left in each player's games in progress", () => {
+    const cells = buildCrosstable(
+      ["a", "b", "c"],
+      [
+        // finished: counts none
+        game({ gameId: "ab" }),
+        game({
+          ...live,
+          gameId: "ac",
+          player1UserId: "c",
+          playerOnTurn: 0,
+          tilesUnplayed: 100,
+        }),
+        game({
+          ...live,
+          gameId: "bc",
+          player0UserId: "b",
+          player1UserId: "c",
+          playerOnTurn: 1,
+          tilesUnplayed: 37,
+        }),
+      ],
+    );
+    const n = tilesToPlay(["a", "b", "c"], cells);
+    expect(n.get("a")).toBe(100);
+    expect(n.get("b")).toBe(37);
+    expect(n.get("c")).toBe(137);
+  });
+
+  it("is unknown when a game in progress came without its count", () => {
+    const cells = buildCrosstable(
+      ["a", "b", "c"],
+      [
+        game({ ...live, gameId: "ab", playerOnTurn: 0, tilesUnplayed: 50 }),
+        game({ ...live, gameId: "ac", player1UserId: "c", playerOnTurn: 0 }),
+      ],
+    );
+    const n = tilesToPlay(["a", "b", "c"], cells);
+    expect(n.get("a")).toBeNull();
+    expect(n.get("b")).toBe(50);
+    expect(n.get("c")).toBeNull();
+  });
+});
+
+describe("sortedByRank", () => {
+  const rows = [
+    { rank: 3, name: "c", n: 5 },
+    { rank: 1, name: "a", n: 2 },
+    { rank: 2, name: "b", n: 5 },
+  ];
+  const byN = (x: { n: number }, y: { n: number }) => x.n - y.n;
+  it("keeps rank order with no sort", () => {
+    expect(sortedByRank(rows, null, undefined).map((r) => r.name)).toEqual([
+      "a",
+      "b",
+      "c",
+    ]);
+    expect(sortedByRank(rows, byN, undefined).map((r) => r.name)).toEqual([
+      "a",
+      "b",
+      "c",
+    ]);
+  });
+  it("sorts either way, ties by rank", () => {
+    expect(sortedByRank(rows, byN, "descend").map((r) => r.name)).toEqual([
+      "b",
+      "c",
+      "a",
+    ]);
+    expect(sortedByRank(rows, byN, "ascend").map((r) => r.name)).toEqual([
+      "a",
+      "b",
+      "c",
+    ]);
   });
 });
 

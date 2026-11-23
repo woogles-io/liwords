@@ -265,6 +265,37 @@ func (s *DBStore) History(ctx context.Context, channel string, cq user.ChatQuery
 	return page, nil
 }
 
+// likeEscaper keeps a typed % or _ from acting as a LIKE wildcard.
+var likeEscaper = strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
+
+func (s *DBStore) Containing(ctx context.Context, channel, text, before string) (*user.ChatPage, error) {
+	p := models.ChatMessagesContainingBeforeParams{
+		Channel: channel,
+		Pattern: "%" + likeEscaper.Replace(text) + "%",
+		Lim:     int32(defaultPage + 1),
+	}
+	if before != "" {
+		id, err := ParseMessageID(channel, before)
+		if err != nil {
+			return nil, err
+		}
+		p.Before = pgtype.UUID{Bytes: id, Valid: true}
+	}
+	rows, err := s.q.ChatMessagesContainingBefore(ctx, p)
+	if err != nil {
+		return nil, err
+	}
+	page := &user.ChatPage{HasOlder: len(rows) > defaultPage, HasNewer: before != ""}
+	if page.HasOlder {
+		rows = rows[:defaultPage]
+	}
+	page.Messages = make([]*pb.ChatMessage, len(rows))
+	for i, r := range rows {
+		page.Messages[len(rows)-1-i] = toMessage(channel, chatRow(r))
+	}
+	return page, nil
+}
+
 func (s *DBStore) GetChat(ctx context.Context, channel, msgID string) (*pb.ChatMessage, error) {
 	id, err := ParseMessageID(channel, msgID)
 	if err != nil {

@@ -787,6 +787,113 @@ func (x *UnfreezeBotResponse) GetErrors() int32 {
 	return 0
 }
 
+type CheckWordRequest struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	GameId string                 `protobuf:"bytes,1,opt,name=game_id,json=gameId,proto3" json:"game_id,omitempty"`
+	// a word as typed, in the letters of the game's tiles
+	Word          string `protobuf:"bytes,2,opt,name=word,proto3" json:"word,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CheckWordRequest) Reset() {
+	*x = CheckWordRequest{}
+	mi := &file_proto_game_service_game_service_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CheckWordRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CheckWordRequest) ProtoMessage() {}
+
+func (x *CheckWordRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_game_service_game_service_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CheckWordRequest.ProtoReflect.Descriptor instead.
+func (*CheckWordRequest) Descriptor() ([]byte, []int) {
+	return file_proto_game_service_game_service_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *CheckWordRequest) GetGameId() string {
+	if x != nil {
+		return x.GameId
+	}
+	return ""
+}
+
+func (x *CheckWordRequest) GetWord() string {
+	if x != nil {
+		return x.Word
+	}
+	return ""
+}
+
+type CheckWordResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// whether the game's lexicon takes the word, as its variant reads words
+	Valid bool `protobuf:"varint,1,opt,name=valid,proto3" json:"valid,omitempty"`
+	// the word as it was read and checked: its tiles, each by its own label
+	Word          string `protobuf:"bytes,2,opt,name=word,proto3" json:"word,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CheckWordResponse) Reset() {
+	*x = CheckWordResponse{}
+	mi := &file_proto_game_service_game_service_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CheckWordResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CheckWordResponse) ProtoMessage() {}
+
+func (x *CheckWordResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_game_service_game_service_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CheckWordResponse.ProtoReflect.Descriptor instead.
+func (*CheckWordResponse) Descriptor() ([]byte, []int) {
+	return file_proto_game_service_game_service_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *CheckWordResponse) GetValid() bool {
+	if x != nil {
+		return x.Valid
+	}
+	return false
+}
+
+func (x *CheckWordResponse) GetWord() string {
+	if x != nil {
+		return x.Word
+	}
+	return ""
+}
+
 type StreakInfoResponse_SingleGameInfo struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	GameId        string                 `protobuf:"bytes,1,opt,name=game_id,json=gameId,proto3" json:"game_id,omitempty"`
@@ -797,7 +904,7 @@ type StreakInfoResponse_SingleGameInfo struct {
 
 func (x *StreakInfoResponse_SingleGameInfo) Reset() {
 	*x = StreakInfoResponse_SingleGameInfo{}
-	mi := &file_proto_game_service_game_service_proto_msgTypes[14]
+	mi := &file_proto_game_service_game_service_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -809,7 +916,7 @@ func (x *StreakInfoResponse_SingleGameInfo) String() string {
 func (*StreakInfoResponse_SingleGameInfo) ProtoMessage() {}
 
 func (x *StreakInfoResponse_SingleGameInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_game_service_game_service_proto_msgTypes[14]
+	mi := &file_proto_game_service_game_service_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -849,7 +956,7 @@ type StreakInfoResponse_PlayerInfo struct {
 
 func (x *StreakInfoResponse_PlayerInfo) Reset() {
 	*x = StreakInfoResponse_PlayerInfo{}
-	mi := &file_proto_game_service_game_service_proto_msgTypes[15]
+	mi := &file_proto_game_service_game_service_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -861,7 +968,7 @@ func (x *StreakInfoResponse_PlayerInfo) String() string {
 func (*StreakInfoResponse_PlayerInfo) ProtoMessage() {}
 
 func (x *StreakInfoResponse_PlayerInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_game_service_game_service_proto_msgTypes[15]
+	mi := &file_proto_game_service_game_service_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -942,12 +1049,18 @@ const file_proto_game_service_game_service_proto_rawDesc = "" +
 	"\x13UnfreezeBotResponse\x12'\n" +
 	"\x0fgames_processed\x18\x01 \x01(\x05R\x0egamesProcessed\x12#\n" +
 	"\rrequests_sent\x18\x02 \x01(\x05R\frequestsSent\x12\x16\n" +
-	"\x06errors\x18\x03 \x01(\x05R\x06errors*\xa7\x01\n" +
+	"\x06errors\x18\x03 \x01(\x05R\x06errors\"?\n" +
+	"\x10CheckWordRequest\x12\x17\n" +
+	"\agame_id\x18\x01 \x01(\tR\x06gameId\x12\x12\n" +
+	"\x04word\x18\x02 \x01(\tR\x04word\"=\n" +
+	"\x11CheckWordResponse\x12\x14\n" +
+	"\x05valid\x18\x01 \x01(\bR\x05valid\x12\x12\n" +
+	"\x04word\x18\x02 \x01(\tR\x04word*\xa7\x01\n" +
 	"\x0fUnfreezeBotMode\x12!\n" +
 	"\x1dUNFREEZE_BOT_MODE_UNSPECIFIED\x10\x00\x12(\n" +
 	"$UNFREEZE_BOT_MODE_ALL_CORRESPONDENCE\x10\x01\x12\"\n" +
 	"\x1eUNFREEZE_BOT_MODE_ALL_REALTIME\x10\x02\x12#\n" +
-	"\x1fUNFREEZE_BOT_MODE_SPECIFIC_GAME\x10\x032\x94\x06\n" +
+	"\x1fUNFREEZE_BOT_MODE_SPECIFIC_GAME\x10\x032\xe2\x06\n" +
 	"\x13GameMetadataService\x12C\n" +
 	"\vGetMetadata\x12\x1d.game_service.GameInfoRequest\x1a\x15.ipc.GameInfoResponse\x12=\n" +
 	"\x06GetGCG\x12\x18.game_service.GCGRequest\x1a\x19.game_service.GCGResponse\x12U\n" +
@@ -957,7 +1070,8 @@ const file_proto_game_service_game_service_proto_rawDesc = "" +
 	"\x0fGetGameDocument\x12!.game_service.GameDocumentRequest\x1a\".game_service.GameDocumentResponse\x12f\n" +
 	"\x1cGetActiveCorrespondenceGames\x12..game_service.ActiveCorrespondenceGamesRequest\x1a\x16.ipc.GameInfoResponses\x12f\n" +
 	"\x1cGetRecentCorrespondenceGames\x12..game_service.RecentCorrespondenceGamesRequest\x1a\x16.ipc.GameInfoResponses\x12R\n" +
-	"\vUnfreezeBot\x12 .game_service.UnfreezeBotRequest\x1a!.game_service.UnfreezeBotResponseB\xaa\x01\n" +
+	"\vUnfreezeBot\x12 .game_service.UnfreezeBotRequest\x1a!.game_service.UnfreezeBotResponse\x12L\n" +
+	"\tCheckWord\x12\x1e.game_service.CheckWordRequest\x1a\x1f.game_service.CheckWordResponseB\xaa\x01\n" +
 	"\x10com.game_serviceB\x10GameServiceProtoP\x01Z8github.com/woogles-io/liwords/rpc/api/proto/game_service\xa2\x02\x03GXX\xaa\x02\vGameService\xca\x02\vGameService\xe2\x02\x17GameService\\GPBMetadata\xea\x02\vGameServiceb\x06proto3"
 
 var (
@@ -973,7 +1087,7 @@ func file_proto_game_service_game_service_proto_rawDescGZIP() []byte {
 }
 
 var file_proto_game_service_game_service_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_proto_game_service_game_service_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
+var file_proto_game_service_game_service_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
 var file_proto_game_service_game_service_proto_goTypes = []any{
 	(UnfreezeBotMode)(0),                      // 0: game_service.UnfreezeBotMode
 	(*GameInfoRequest)(nil),                   // 1: game_service.GameInfoRequest
@@ -990,18 +1104,20 @@ var file_proto_game_service_game_service_proto_goTypes = []any{
 	(*RecentCorrespondenceGamesRequest)(nil),  // 12: game_service.RecentCorrespondenceGamesRequest
 	(*UnfreezeBotRequest)(nil),                // 13: game_service.UnfreezeBotRequest
 	(*UnfreezeBotResponse)(nil),               // 14: game_service.UnfreezeBotResponse
-	(*StreakInfoResponse_SingleGameInfo)(nil), // 15: game_service.StreakInfoResponse.SingleGameInfo
-	(*StreakInfoResponse_PlayerInfo)(nil),     // 16: game_service.StreakInfoResponse.PlayerInfo
-	(*macondo.GameHistory)(nil),               // 17: macondo.GameHistory
-	(*ipc.GameDocument)(nil),                  // 18: ipc.GameDocument
-	(*ipc.GameInfoResponse)(nil),              // 19: ipc.GameInfoResponse
-	(*ipc.GameInfoResponses)(nil),             // 20: ipc.GameInfoResponses
+	(*CheckWordRequest)(nil),                  // 15: game_service.CheckWordRequest
+	(*CheckWordResponse)(nil),                 // 16: game_service.CheckWordResponse
+	(*StreakInfoResponse_SingleGameInfo)(nil), // 17: game_service.StreakInfoResponse.SingleGameInfo
+	(*StreakInfoResponse_PlayerInfo)(nil),     // 18: game_service.StreakInfoResponse.PlayerInfo
+	(*macondo.GameHistory)(nil),               // 19: macondo.GameHistory
+	(*ipc.GameDocument)(nil),                  // 20: ipc.GameDocument
+	(*ipc.GameInfoResponse)(nil),              // 21: ipc.GameInfoResponse
+	(*ipc.GameInfoResponses)(nil),             // 22: ipc.GameInfoResponses
 }
 var file_proto_game_service_game_service_proto_depIdxs = []int32{
-	17, // 0: game_service.GameHistoryResponse.history:type_name -> macondo.GameHistory
-	18, // 1: game_service.GameDocumentResponse.document:type_name -> ipc.GameDocument
-	15, // 2: game_service.StreakInfoResponse.streak:type_name -> game_service.StreakInfoResponse.SingleGameInfo
-	16, // 3: game_service.StreakInfoResponse.playersInfo:type_name -> game_service.StreakInfoResponse.PlayerInfo
+	19, // 0: game_service.GameHistoryResponse.history:type_name -> macondo.GameHistory
+	20, // 1: game_service.GameDocumentResponse.document:type_name -> ipc.GameDocument
+	17, // 2: game_service.StreakInfoResponse.streak:type_name -> game_service.StreakInfoResponse.SingleGameInfo
+	18, // 3: game_service.StreakInfoResponse.playersInfo:type_name -> game_service.StreakInfoResponse.PlayerInfo
 	0,  // 4: game_service.UnfreezeBotRequest.mode:type_name -> game_service.UnfreezeBotMode
 	1,  // 5: game_service.GameMetadataService.GetMetadata:input_type -> game_service.GameInfoRequest
 	2,  // 6: game_service.GameMetadataService.GetGCG:input_type -> game_service.GCGRequest
@@ -1012,17 +1128,19 @@ var file_proto_game_service_game_service_proto_depIdxs = []int32{
 	11, // 11: game_service.GameMetadataService.GetActiveCorrespondenceGames:input_type -> game_service.ActiveCorrespondenceGamesRequest
 	12, // 12: game_service.GameMetadataService.GetRecentCorrespondenceGames:input_type -> game_service.RecentCorrespondenceGamesRequest
 	13, // 13: game_service.GameMetadataService.UnfreezeBot:input_type -> game_service.UnfreezeBotRequest
-	19, // 14: game_service.GameMetadataService.GetMetadata:output_type -> ipc.GameInfoResponse
-	5,  // 15: game_service.GameMetadataService.GetGCG:output_type -> game_service.GCGResponse
-	6,  // 16: game_service.GameMetadataService.GetGameHistory:output_type -> game_service.GameHistoryResponse
-	20, // 17: game_service.GameMetadataService.GetRecentGames:output_type -> ipc.GameInfoResponses
-	9,  // 18: game_service.GameMetadataService.GetRematchStreak:output_type -> game_service.StreakInfoResponse
-	7,  // 19: game_service.GameMetadataService.GetGameDocument:output_type -> game_service.GameDocumentResponse
-	20, // 20: game_service.GameMetadataService.GetActiveCorrespondenceGames:output_type -> ipc.GameInfoResponses
-	20, // 21: game_service.GameMetadataService.GetRecentCorrespondenceGames:output_type -> ipc.GameInfoResponses
-	14, // 22: game_service.GameMetadataService.UnfreezeBot:output_type -> game_service.UnfreezeBotResponse
-	14, // [14:23] is the sub-list for method output_type
-	5,  // [5:14] is the sub-list for method input_type
+	15, // 14: game_service.GameMetadataService.CheckWord:input_type -> game_service.CheckWordRequest
+	21, // 15: game_service.GameMetadataService.GetMetadata:output_type -> ipc.GameInfoResponse
+	5,  // 16: game_service.GameMetadataService.GetGCG:output_type -> game_service.GCGResponse
+	6,  // 17: game_service.GameMetadataService.GetGameHistory:output_type -> game_service.GameHistoryResponse
+	22, // 18: game_service.GameMetadataService.GetRecentGames:output_type -> ipc.GameInfoResponses
+	9,  // 19: game_service.GameMetadataService.GetRematchStreak:output_type -> game_service.StreakInfoResponse
+	7,  // 20: game_service.GameMetadataService.GetGameDocument:output_type -> game_service.GameDocumentResponse
+	22, // 21: game_service.GameMetadataService.GetActiveCorrespondenceGames:output_type -> ipc.GameInfoResponses
+	22, // 22: game_service.GameMetadataService.GetRecentCorrespondenceGames:output_type -> ipc.GameInfoResponses
+	14, // 23: game_service.GameMetadataService.UnfreezeBot:output_type -> game_service.UnfreezeBotResponse
+	16, // 24: game_service.GameMetadataService.CheckWord:output_type -> game_service.CheckWordResponse
+	15, // [15:25] is the sub-list for method output_type
+	5,  // [5:15] is the sub-list for method input_type
 	5,  // [5:5] is the sub-list for extension type_name
 	5,  // [5:5] is the sub-list for extension extendee
 	0,  // [0:5] is the sub-list for field type_name
@@ -1039,7 +1157,7 @@ func file_proto_game_service_game_service_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_game_service_game_service_proto_rawDesc), len(file_proto_game_service_game_service_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   16,
+			NumMessages:   18,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

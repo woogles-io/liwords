@@ -1226,16 +1226,88 @@ export const runesToRuneArray = (
   return arr;
 };
 
-// used for keypresses.
+// The labels a rack's tile is written with, as a map: each tile's own, and
+// the one it takes on a blank (its own in lowercase, as a blank is written);
+// "?" is the blank. What is typed is looked up as it is, never changed in
+// case: a label is either in the map or names no tile.
+const labelMaps = new WeakMap<Alphabet, Map<string, MachineLetter>>();
+export const tileLabels = (alphabet: Alphabet): Map<string, MachineLetter> => {
+  const known = labelMaps.get(alphabet);
+  if (known) {
+    return known;
+  }
+  const labels = new Map<string, MachineLetter>();
+  alphabet.letters.forEach((letter, ml) => labels.set(letter.rune, ml));
+  alphabet.letters.forEach((letter, ml) => {
+    const onBlank = letter.rune.toLowerCase();
+    if (!labels.has(onBlank)) {
+      labels.set(onBlank, ml);
+    }
+  });
+  labelMaps.set(alphabet, labels);
+  return labels;
+};
+
+// The rack tiles text names, each by a label of tileLabels, the longest that
+// fits first, a "." the blank and a space an empty slot, as runesToMachineWord
+// reads them; null if some of it names no tile.
+export const labelsToTiles = (
+  text: string,
+  alphabet: Alphabet,
+): Array<MachineLetter> | null => {
+  const labels = tileLabels(alphabet);
+  const chars = Array.from(text);
+  const tiles: Array<MachineLetter> = [];
+  for (let i = 0; i < chars.length; ) {
+    let read = false;
+    for (
+      let j = Math.min(chars.length, i + alphabet.longestPossibleTileRune);
+      j > i;
+      j--
+    ) {
+      const ml = labels.get(chars.slice(i, j).join(""));
+      if (ml !== undefined) {
+        tiles.push(ml);
+        i = j;
+        read = true;
+        break;
+      }
+    }
+    if (read) {
+      continue;
+    }
+    if (chars[i] === ThroughTileMarker) {
+      tiles.push(0);
+    } else if (chars[i] === EmptySpace) {
+      tiles.push(EmptyRackSpaceMachineLetter);
+    } else {
+      return null;
+    }
+    i++;
+  }
+  return tiles;
+};
+
+// used for keypresses: the rack tile a key names, by a label of tileLabels,
+// or by the shortcut key the board types it with (a Spanish game's K for its
+// CH), that one in either case as a letter's label is.
 export const getMachineLetterForKey = (
   key: string,
   alphabet: Alphabet,
 ): MachineLetter | null => {
-  let foundML = alphabet.machineLetterMap[key];
-  if (foundML == null) {
-    foundML = alphabet.shortcutMap[key];
+  const ml = tileLabels(alphabet).get(key);
+  if (ml !== undefined) {
+    return ml;
   }
-  return foundML;
+  if (key in alphabet.shortcutMap) {
+    return alphabet.shortcutMap[key];
+  }
+  for (const [shortcut, sml] of Object.entries(alphabet.shortcutMap)) {
+    if (shortcut.toLowerCase() === key) {
+      return sml;
+    }
+  }
+  return null;
 };
 
 // this function is more of a helper function for tests.

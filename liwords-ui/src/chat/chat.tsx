@@ -82,6 +82,20 @@ export type Props = {
 // userid -> channel -> string
 let globalUnsentChatCache: { [key: string]: { [key: string]: string } } = {};
 
+// A channel's unsent message is kept under this key: one for the players' chat
+// of any game, one for the viewers' chat of any game, and the channel for the
+// rest.
+const draftKey = (channel: string | undefined) => {
+  switch (channel?.split(".")[1]) {
+    case "gametv":
+      return "gametv";
+    case "game":
+      return "game";
+    default:
+      return channel;
+  }
+};
+
 const MAX_MESSAGE_LENGTH = 500;
 const MAX_WEBSOCKET_MESSAGE_SIZE = 1800; // Conservative limit (backend is 2048)
 
@@ -291,6 +305,8 @@ export const Chat = React.memo((props: Props) => {
     chatChannels,
     setChatChannels,
     setCurrentChatChannel,
+    refusedChat,
+    setRefusedChat,
   } = useChatStoreContext();
   // As a page joins or leaves the list: the message at the top of the view,
   // how far it was below the top, and when. A page loaded at one end can drop
@@ -349,16 +365,7 @@ export const Chat = React.memo((props: Props) => {
   const chatDisabled =
     defaultChannel === "chat.lobby" && channel === "chat.lobby";
 
-  const canonicalizedChannel = useMemo(() => {
-    switch (channelType) {
-      case "gametv":
-        return "gametv";
-      case "game":
-        return "game";
-      default:
-        return channel;
-    }
-  }, [channelType, channel]);
+  const canonicalizedChannel = useMemo(() => draftKey(channel), [channel]);
 
   const setCurMsg = useCallback(
     (x: string) => {
@@ -385,6 +392,22 @@ export const Chat = React.memo((props: Props) => {
       canonicalizedChannel &&
       globalUnsentChatCache[userID]?.[canonicalizedChannel]) ||
     "";
+
+  // A message the server refused (sent too soon, say) goes back to its
+  // channel's box, unless something was typed there since.
+  useEffect(() => {
+    if (!refusedChat || !loggedIn || !userID) return;
+    setRefusedChat(undefined);
+    const key = draftKey(refusedChat.channel);
+    if (!key) return;
+    if (!(userID in globalUnsentChatCache)) {
+      globalUnsentChatCache = { [userID]: {} };
+    }
+    if (!globalUnsentChatCache[userID][key]) {
+      globalUnsentChatCache[userID][key] = refusedChat.message;
+      setRefreshCurMsg((n) => (n + 1) | 0);
+    }
+  }, [refusedChat, setRefusedChat, loggedIn, userID]);
   const [maxEntitiesHeight, setMaxEntitiesHeight] = useState<
     number | undefined
   >(undefined);

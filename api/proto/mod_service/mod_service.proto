@@ -130,6 +130,10 @@ message ListChatChannelsRequest {
   // or its page's address or path, then always the tournaments, clubs and
   // leagues whose name or slug contains it.
   string find = 5;
+  // containing, if set, keeps only channels with a message (one a person sent,
+  // not deleted) holding these words, in any case; each summary then says
+  // how many do.
+  string containing = 6;
 }
 
 message ChatSenderCount {
@@ -166,6 +170,8 @@ message ChatChannelSummary {
   // user_last_timestamp is when the requested user last wrote here (0 if
   // never), so channels can be ordered by the user's own last word.
   int64 user_last_timestamp = 8;
+  // with a search for words, how many of its messages hold them.
+  int32 match_count = 9;
 }
 
 message ListChatChannelsResponse {
@@ -174,7 +180,77 @@ message ListChatChannelsResponse {
   string next_cursor = 2;
 }
 
-message GetChannelChatsRequest { string channel = 1; }
+message GetChannelChatsRequest {
+  string channel = 1;
+  // a message's id: the page of messages older than it. Empty for the
+  // newest page.
+  string before = 2;
+  // a message's id: the page of messages newer than it.
+  string after = 3;
+  // a message's id: the page around it, the message with older and newer
+  // ones on either side. At most one of before, after and around is set.
+  string around = 4;
+  // if set, only the messages holding these words, in any case, a page at a
+  // time, newest first (with before).
+  string containing = 5;
+}
+
+// A page of a channel's chats, oldest first. Its field 1 is
+// ipc.ChatMessages' own, so either side may be the older one.
+message ChannelChats {
+  repeated ipc.ChatMessage messages = 1;
+  // whether the channel has messages older than this page's first
+  bool has_older = 2;
+  // whether it has messages newer than this page's last
+  bool has_newer = 3;
+  // which of this page's messages someone reported
+  repeated string reported_ids = 4;
+}
+
+message ReportChatMessageRequest {
+  // the reported message's id
+  string message_id = 1;
+}
+
+message ReportChatMessageResponse {}
+
+message GetChatReportsRequest {
+  // the handled reports, the most recently handled first, instead of the
+  // open ones
+  bool handled = 1;
+}
+
+// A report of a chat message, open or handled.
+message ChatReport {
+  int64 id = 1;
+  // the reported message: its channel, sender, words and time
+  ipc.ChatMessage message = 2;
+  // whether a moderator has deleted the message since
+  bool deleted = 3;
+  string reporter_id = 4;
+  string reporter_username = 5;
+  google.protobuf.Timestamp reported_at = 6;
+  // the moderator who marked it handled, and when; empty while it is open
+  string handled_by_id = 7;
+  string handled_by_username = 8;
+  google.protobuf.Timestamp handled_at = 9;
+}
+
+message ChatReports { repeated ChatReport reports = 1; }
+
+message HandleChatReportRequest {
+  // the report to mark handled
+  int64 report_id = 1;
+}
+
+message HandleChatReportResponse {}
+
+message ReopenChatReportRequest {
+  // the handled report to open again
+  int64 report_id = 1;
+}
+
+message ReopenChatReportResponse {}
 
 service ModService {
   rpc ApplyActions(ModActionsList) returns (ModActionResponse);
@@ -185,8 +261,20 @@ service ModService {
   rpc ResetNotoriety(ResetNotorietyRequest) returns (ResetNotorietyResponse);
   rpc ListChatChannels(ListChatChannelsRequest)
       returns (ListChatChannelsResponse);
-  rpc GetChannelChats(GetChannelChatsRequest) returns (ipc.ChatMessages);
+  rpc GetChannelChats(GetChannelChatsRequest) returns (ChannelChats);
   rpc ChangeEmail(ChangeEmailRequest) returns (ChangeEmailResponse);
   rpc ListEmailChanges(ListEmailChangesRequest)
       returns (ListEmailChangesResponse);
+  // Reports a chat message to the moderators: anyone signed in, any message.
+  rpc ReportChatMessage(ReportChatMessageRequest)
+      returns (ReportChatMessageResponse);
+  // The open reports, newest first, or the handled ones, the most recently
+  // handled first (moderators).
+  rpc GetChatReports(GetChatReportsRequest) returns (ChatReports);
+  // Marks a report handled (moderators).
+  rpc HandleChatReport(HandleChatReportRequest)
+      returns (HandleChatReportResponse);
+  // Opens a handled report again (moderators).
+  rpc ReopenChatReport(ReopenChatReportRequest)
+      returns (ReopenChatReportResponse);
 }

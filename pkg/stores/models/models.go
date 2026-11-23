@@ -186,6 +186,15 @@ type ChatRead struct {
 	UpdatedAt         pgtype.Timestamptz
 }
 
+type ChatReport struct {
+	ID         int64
+	MessageID  uuid.UUID
+	ReporterID int32
+	CreatedAt  pgtype.Timestamptz
+	HandledBy  pgtype.Int4
+	HandledAt  pgtype.Timestamptz
+}
+
 type Collection struct {
 	ID          int32
 	Uuid        uuid.UUID

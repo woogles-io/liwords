@@ -238,6 +238,20 @@ describe("the moves made up while examining", () => {
     expect(result.current.examine.whatIf).toEqual([]);
   });
 
+  it("lets them go for good: back on their turn, or examining again, they stay gone", () => {
+    const { result } = renderHook(useWhatIfStores, { wrapper: Store });
+    act(() => load(result.current.game.dispatchGameContext));
+    act(() => result.current.examine.handleExamineStart());
+    act(() => result.current.examine.playWhatIf([play]));
+    act(() => result.current.examine.handleExamineFirst());
+    act(() => result.current.examine.handleExamineLast());
+    expect(result.current.examine.whatIf).toEqual([]);
+    act(() => result.current.examine.playWhatIf([play]));
+    act(() => result.current.examine.handleExamineEnd());
+    act(() => result.current.examine.handleExamineStart());
+    expect(result.current.examine.whatIf).toEqual([]);
+  });
+
   it("adds the tiles drawn, and an emptied bag leaves the other the rest", () => {
     const { result } = renderHook(useWhatIfStores, { wrapper: Store });
     act(() => load(result.current.game.dispatchGameContext));

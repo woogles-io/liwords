@@ -1503,6 +1503,7 @@ export const Table = React.memo((props: Props) => {
               )
             }
             gameDone={gameDone}
+            examiningOwnGameInPlay={examiningOwnGameInPlay}
             playerMeta={gameInfo.players}
             tournamentID={gameInfo.tournamentId}
             leagueID={gameInfo.leagueId}

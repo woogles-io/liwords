@@ -66,6 +66,28 @@
           animation: none;
         }
       }
+      /* A press on the dog pets it: it squishes down onto its feet while held
+         (the dog's pointer handlers mark it .petted, a touch or a mouse
+         alike), and springs back when let go. A long press is a pet too, not
+         a call for the image's menu. */
+      .boot-splash img {
+        cursor: pointer;
+        touch-action: none;
+        transform-origin: bottom center;
+        transition: transform 0.12s ease-out;
+        user-select: none;
+        -webkit-tap-highlight-color: transparent;
+        -webkit-touch-callout: none;
+        -webkit-user-select: none;
+      }
+      .boot-splash img.petted {
+        transform: scale(1.12, 0.85);
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .boot-splash img {
+          transition: none;
+        }
+      }
     </style>
     <link rel="icon" href="/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -232,10 +254,22 @@
       The dog shows until the app renders: React's first render replaces
       everything inside #root. If it stays up, the page itself arrived and the
       app's own code is what never ran.
+      While it is petted, the app holds that render off (src/utils/boot_dog.ts)
+      by what the dog's handlers mark on it: "petted" while held, and the time
+      of each press and release in data-pet-at.
     -->
     <div id="root">
       <div class="boot-splash">
-        <img src="/logo192.png" alt="Loading Woogles.io" />
+        <img
+          src="/logo192.png"
+          alt="Loading Woogles.io"
+          draggable="false"
+          onpointerdown="this.classList.add('petted'); this.dataset.petAt = performance.now();"
+          onpointerup="if (this.classList.contains('petted')) this.dataset.petAt = performance.now(); this.classList.remove('petted');"
+          onpointercancel="if (this.classList.contains('petted')) this.dataset.petAt = performance.now(); this.classList.remove('petted');"
+          onpointerleave="if (this.classList.contains('petted')) this.dataset.petAt = performance.now(); this.classList.remove('petted');"
+          oncontextmenu="return false;"
+        />
       </div>
     </div>
     <!--

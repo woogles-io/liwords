@@ -1,17 +1,13 @@
 package mod
 
-import "time"
-
 // UserGameIDs exposes userGameIDs to the mod_test package.
 var UserGameIDs = (*ModService).userGameIDs
 
-// SetChatReviewNow replaces the clock behind the recent-game window and
-// returns a function that restores it.
-func SetChatReviewNow(now func() time.Time) func() {
-	old := chatReviewNow
-	chatReviewNow = now
-	return func() { chatReviewNow = old }
-}
+// Summaries exposes summaries to the mod_test package.
+var Summaries = (*ModService).summaries
+
+// UserChannels exposes userChannels to the mod_test package.
+var UserChannels = (*ModService).userChannels
 
 // ChannelContext exposes channelContext to the mod_test package.
 var ChannelContext = (*ModService).channelContext

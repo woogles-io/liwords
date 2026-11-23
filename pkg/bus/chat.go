@@ -22,6 +22,27 @@ import (
 // chat-related functionality should be here. Messages are stored by the chat
 // store (Postgres) and published on NATS for the socket server to deliver.
 
+// refusedChat is a chat message that was not sent, with why. Its sender is
+// told why, and given the message back, to send again.
+type refusedChat struct {
+	err  error
+	chat *pb.ChatMessage
+}
+
+func (r *refusedChat) Error() string { return r.err.Error() }
+func (r *refusedChat) Unwrap() error { return r.err }
+
+// errorMessage is what the sender of a request that failed is told: why, and
+// for a chat message refused, the message as it was sent.
+func errorMessage(err error) *pb.ErrorMessage {
+	em := &pb.ErrorMessage{Message: err.Error()}
+	var refused *refusedChat
+	if errors.As(err, &refused) {
+		em.RefusedChat = refused.chat
+	}
+	return em
+}
+
 func (b *Bus) chat(ctx context.Context, userID string, evt *pb.ChatMessage) error {
 	if utf8.RuneCountInString(evt.Message) > MaxMessageLength {
 		return errors.New("message-too-long")

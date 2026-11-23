@@ -1,4 +1,13 @@
-import { Button, Input, Select, Space, Table, Tag, Typography } from "antd";
+import {
+  Button,
+  GetRef,
+  Input,
+  Select,
+  Space,
+  Table,
+  Tag,
+  Typography,
+} from "antd";
 import React, { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { ChatMessage } from "../gen/api/proto/ipc/chat_pb";
@@ -20,11 +29,24 @@ const channelTypes = [
   { value: "chat.lobby", label: "Lobby" },
 ];
 
-// between the requests of one search.
-const SEARCH_PAUSE_MS = 300;
-
 export const formatTime = (ms: bigint): string =>
   ms ? new Date(Number(ms)).toISOString() : "";
+
+const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+// The words searched for, marked wherever they are in a message, in any case.
+export const markWords = (text: string, words: string): React.ReactNode =>
+  words
+    ? text.split(new RegExp(`(${escapeRegExp(words)})`, "gi")).map((part, i) =>
+        i % 2 ? (
+          <Typography.Text mark key={i}>
+            {part}
+          </Typography.Text>
+        ) : (
+          part
+        ),
+      )
+    : text;
 
 // Adds a later page of channels, skipping any already listed.
 export const mergeRows = (
@@ -89,7 +111,7 @@ export const sortRows = (
   );
 
 // One table row: a channel, or a game's players' and viewers' chats together
-// (each expires on its own, so either may be missing).
+// (a chat with nothing in it is not listed, so either may be missing).
 export type ReviewRow = { key: string; parts: Array<ChatChannelSummary> };
 
 const gameChannel = /^chat\.(game|gametv)\.(.+)$/;
@@ -196,7 +218,7 @@ const download = (filename: string, body: string, type: string) => {
 };
 
 // A user's name with the usual menu: profile, moderation, and the rest.
-const Name = (props: { username: string; userId: string }) =>
+export const Name = (props: { username: string; userId: string }) =>
   props.userId ? (
     <UsernameWithContext
       username={props.username || props.userId}
@@ -254,59 +276,210 @@ const ChannelCell = (props: { row: ReviewRow }) => {
   );
 };
 
-const ChannelChats = (props: { channel: string }) => {
+// A channel's messages, a page at a time: the newest first, then older or
+// newer pages on request. With words searched for, only the messages that
+// hold them, the words marked, each with Context, which shows the messages
+// around it, it in bold, from where older and newer ones load as well. A
+// channel keeps every message, so it may hold more than a page.
+export const ChannelChats = (props: {
+  channel: string;
+  containing?: string;
+  // a message to open the channel at: it and the messages around it
+  around?: string;
+}) => {
   const modClient = useClient(ModService);
+  const words = props.containing ?? "";
   const [msgs, setMsgs] = useState<Array<ChatMessage> | null>(null);
+  const [hasOlder, setHasOlder] = useState(false);
+  const [hasNewer, setHasNewer] = useState(false);
+  const [loading, setLoading] = useState(false);
+  // how many messages an export has fetched so far, while one runs
+  const [exported, setExported] = useState<number | null>(null);
+  // the message whose context is shown, if one is
+  const [around, setAround] = useState("");
+  // the loaded messages someone reported
+  const [reported, setReported] = useState<Set<string>>(new Set());
+  const tableRef = useRef<GetRef<typeof Table>>(null);
+  // only the messages holding the words, until a context is opened
+  const matching = !!words && !around;
 
-  const load = async () => {
+  // A fresh page replaces what is shown; an older one goes above it, a
+  // newer one below.
+  const ask = async (
+    req: {
+      before?: string;
+      after?: string;
+      around?: string;
+      containing?: string;
+    },
+    place: "fresh" | "older" | "newer",
+  ) => {
+    setLoading(true);
     try {
-      const resp = await modClient.getChannelChats({ channel: props.channel });
-      setMsgs(resp.messages);
+      const resp = await modClient.getChannelChats({
+        channel: props.channel,
+        ...req,
+      });
+      if (place === "older") {
+        setMsgs((m) => [...resp.messages, ...(m ?? [])]);
+        setHasOlder(resp.hasOlder);
+        setReported((r) => new Set([...r, ...resp.reportedIds]));
+      } else if (place === "newer") {
+        setMsgs((m) => [...(m ?? []), ...resp.messages]);
+        setHasNewer(resp.hasNewer);
+        setReported((r) => new Set([...r, ...resp.reportedIds]));
+      } else {
+        setMsgs(resp.messages);
+        setHasOlder(resp.hasOlder);
+        setHasNewer(resp.hasNewer);
+        setReported(new Set(resp.reportedIds));
+      }
     } catch (e) {
       flashError(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+  const openContext = (id: string) => {
+    setAround(id);
+    ask({ around: id }, "fresh");
+  };
+  const backToMatches = () => {
+    setAround("");
+    ask({ containing: words }, "fresh");
+  };
+
+  // An export is the whole record, whatever is shown: every message of the
+  // channel or, with words, every one holding them, fetched a page at a time
+  // from the newest, oldest first in the file.
+  const exportAll = async (save: (all: Array<ChatMessage>) => void) => {
+    let all: Array<ChatMessage> = [];
+    let before = "";
+    setExported(0);
+    try {
+      for (;;) {
+        const resp = await modClient.getChannelChats({
+          channel: props.channel,
+          ...(before ? { before } : {}),
+          ...(words ? { containing: words } : {}),
+        });
+        all = [...resp.messages, ...all];
+        setExported(all.length);
+        if (!resp.hasOlder || resp.messages.length === 0) break;
+        before = resp.messages[0].id;
+      }
+      save(all);
+    } catch (e) {
+      flashError(e);
+    } finally {
+      setExported(null);
     }
   };
 
+  // the message whose context is shown, scrolled to once it is loaded
+  useEffect(() => {
+    if (around && msgs?.some((m) => m.id === around)) {
+      tableRef.current?.scrollTo({ key: around });
+    }
+  }, [around, msgs]);
+
   if (msgs === null) {
-    return <Button onClick={load}>Load messages</Button>;
+    return (
+      <Button
+        loading={loading}
+        onClick={() =>
+          props.around
+            ? openContext(props.around)
+            : ask(words ? { containing: words } : {}, "fresh")
+        }
+      >
+        Load messages
+      </Button>
+    );
   }
   const base = props.channel.replace(/[^\w.-]/g, "_");
   return (
     <React.Fragment>
-      <Space style={{ marginBottom: 8 }}>
+      <Space wrap style={{ marginBottom: 8 }}>
+        {hasOlder && (
+          <Button
+            loading={loading}
+            onClick={() =>
+              ask(
+                {
+                  before: msgs[0]?.id ?? "",
+                  ...(matching ? { containing: words } : {}),
+                },
+                "older",
+              )
+            }
+          >
+            Load older
+          </Button>
+        )}
+        {hasNewer && (
+          <Button
+            loading={loading}
+            onClick={() =>
+              ask({ after: msgs[msgs.length - 1]?.id ?? "" }, "newer")
+            }
+          >
+            Load newer
+          </Button>
+        )}
+        {words && around && (
+          <Button onClick={backToMatches}>Back to the matches</Button>
+        )}
         <Button
-          onClick={() => download(`${base}.csv`, chatsToCSV(msgs), "text/csv")}
+          loading={exported !== null}
+          onClick={() =>
+            exportAll((all) =>
+              download(`${base}.csv`, chatsToCSV(all), "text/csv"),
+            )
+          }
         >
           Export CSV
         </Button>
         <Button
+          loading={exported !== null}
           onClick={() =>
-            download(
-              `${base}.json`,
-              JSON.stringify(
-                msgs.map((m) => ({
-                  timeUtc: formatTime(m.timestamp),
-                  channel: m.channel,
-                  username: m.username,
-                  userId: m.userId,
-                  id: m.id,
-                  message: m.message,
-                })),
-                null,
-                2,
+            exportAll((all) =>
+              download(
+                `${base}.json`,
+                JSON.stringify(
+                  all.map((m) => ({
+                    timeUtc: formatTime(m.timestamp),
+                    channel: m.channel,
+                    username: m.username,
+                    userId: m.userId,
+                    id: m.id,
+                    message: m.message,
+                  })),
+                  null,
+                  2,
+                ),
+                "application/json",
               ),
-              "application/json",
             )
           }
         >
           Export JSON
         </Button>
+        {exported !== null && (
+          <Typography.Text type="secondary">
+            {exported} messages fetched
+          </Typography.Text>
+        )}
       </Space>
+      {/* Only the rows in view are drawn, however many pages are loaded. */}
       <Table
+        ref={tableRef}
         dataSource={msgs}
         rowKey="id"
         size="small"
         pagination={false}
+        virtual
+        scroll={{ y: 600 }}
         columns={[
           {
             title: "Time (UTC)",
@@ -318,16 +491,46 @@ const ChannelChats = (props: { channel: string }) => {
             key: "username",
             render: (_, m) => <Name username={m.username} userId={m.userId} />,
           },
-          { title: "Message", dataIndex: "message", key: "message" },
+          {
+            title: "Message",
+            key: "message",
+            render: (_, m) => (
+              <React.Fragment>
+                {m.id === around ? (
+                  <Typography.Text strong>
+                    {markWords(m.message, words)}
+                  </Typography.Text>
+                ) : (
+                  markWords(m.message, words)
+                )}
+                {reported.has(m.id) && (
+                  <Tag className="chat-review-reported">reported</Tag>
+                )}
+              </React.Fragment>
+            ),
+          },
+          ...(matching
+            ? [
+                {
+                  title: "",
+                  key: "context",
+                  render: (_: unknown, m: ChatMessage) => (
+                    <Button size="small" onClick={() => openContext(m.id)}>
+                      Context
+                    </Button>
+                  ),
+                },
+              ]
+            : []),
         ]}
       />
     </React.Fragment>
   );
 };
 
-// Review the chats Redis still holds (up to 14 days): find the channels by
-// type and user, see who spoke, read and export a channel's messages. A
-// user's menu links here with ?username=, which searches all channels at once.
+// Review the chats: find the channels by type and user, see who spoke, read
+// and export a channel's messages. A user's menu links here with ?username=,
+// which searches all channels at once.
 export const ChatReview = () => {
   const modClient = useClient(ModService);
   const [searchParams] = useSearchParams();
@@ -336,10 +539,14 @@ export const ChatReview = () => {
   const [username, setUsername] = useState(linkedUsername);
   // the user the rows were searched for, which the input may no longer say.
   const [searchedUser, setSearchedUser] = useState("");
+  // words a message must hold, and those the rows were searched for
+  const [containing, setContaining] = useState("");
+  const [searchedContaining, setSearchedContaining] = useState("");
   const [rows, setRows] = useState<Array<ChatChannelSummary>>([]);
   const [searching, setSearching] = useState(false);
-  const [complete, setComplete] = useState(false);
-  const stopRef = useRef(false);
+  // where the search goes on from with More; "0" once all is found
+  const [nextCursor, setNextCursor] = useState("0");
+  const [searchedPrefix, setSearchedPrefix] = useState("");
   // bumped by each search or lookup, so an older search's late replies are
   // dropped instead of mixed in.
   const runRef = useRef(0);
@@ -347,39 +554,52 @@ export const ChatReview = () => {
   // what the rows were looked up by, if they were.
   const [lookedUp, setLookedUp] = useState("");
 
-  // Redis is searched a batch of keys per request; keep asking until it has
-  // all been searched or Stop is pressed, pausing between batches so a long
-  // search does not keep the live Redis busy.
-  const search = async (forUser: string, forPrefix: string) => {
-    const run = ++runRef.current;
-    stopRef.current = false;
+  // A search shows its first page, newest first where it can, and More each
+  // next one, so a user who chatted in a great many channels, or a type with a
+  // great many, costs only what is looked at.
+  const fetchPage = async (
+    run: number,
+    forUser: string,
+    forPrefix: string,
+    words: string,
+    cursor: string,
+  ) => {
     setSearching(true);
-    setComplete(false);
-    setSearchedUser(forUser.trim());
-    setLookedUp("");
-    setRows([]);
-    let cursor = "";
     try {
-      do {
-        const resp = await modClient.listChatChannels({
-          channelPrefix: forPrefix,
-          username: forUser,
-          cursor,
-        });
-        if (run !== runRef.current) return;
-        setRows((prev) => mergeRows(prev, resp.channels));
-        cursor = resp.nextCursor;
-        if (cursor !== "0" && !stopRef.current) {
-          await new Promise((r) => setTimeout(r, SEARCH_PAUSE_MS));
-        }
-      } while (cursor !== "0" && !stopRef.current);
-      setComplete(cursor === "0");
+      const resp = await modClient.listChatChannels({
+        channelPrefix: forPrefix,
+        username: forUser,
+        cursor,
+        containing: words,
+      });
+      if (run !== runRef.current) return;
+      setRows((prev) => mergeRows(prev, resp.channels));
+      setNextCursor(resp.nextCursor);
     } catch (e) {
       if (run === runRef.current) flashError(e);
     } finally {
       if (run === runRef.current) setSearching(false);
     }
   };
+  const search = (forUser: string, forPrefix: string) => {
+    const run = ++runRef.current;
+    const words = containing.trim();
+    setSearchedUser(forUser.trim());
+    setSearchedContaining(words);
+    setSearchedPrefix(forPrefix);
+    setLookedUp("");
+    setRows([]);
+    setNextCursor("0");
+    fetchPage(run, forUser, forPrefix, words, "");
+  };
+  const more = () =>
+    fetchPage(
+      runRef.current,
+      searchedUser,
+      searchedPrefix,
+      searchedContaining,
+      nextCursor,
+    );
 
   const searchedLinked = useRef(false);
   useEffect(() => {
@@ -399,13 +619,18 @@ export const ChatReview = () => {
     }
     const run = ++runRef.current;
     setSearching(false);
+    const words = containing.trim();
     try {
-      const resp = await modClient.listChatChannels({ find });
+      const resp = await modClient.listChatChannels({
+        find,
+        containing: words,
+      });
       if (run !== runRef.current) return;
       setSearchedUser("");
+      setSearchedContaining(words);
       setLookedUp(find);
       setRows(resp.channels);
-      setComplete(true);
+      setNextCursor("0");
     } catch (e) {
       flashError(e);
     }
@@ -418,8 +643,7 @@ export const ChatReview = () => {
     <div className="chat-review">
       <h3>Chat review</h3>
       <p>
-        Only chats from the last 14 days, and not deleted ones. A game with no
-        chat at all is not listed.
+        Deleted messages are left out. A game with no chat at all is not listed.
       </p>
       <h4>Search</h4>
       <Space wrap style={{ marginBottom: 4 }}>
@@ -430,25 +654,32 @@ export const ChatReview = () => {
           onPressEnter={() => search(username, prefix)}
           style={{ width: 200 }}
         />
+        <Input
+          placeholder="Words a message holds (blank: any)"
+          value={containing}
+          onChange={(e) => setContaining(e.target.value)}
+          onPressEnter={() => search(username, prefix)}
+          style={{ width: 260 }}
+        />
         <Select
           value={prefix}
           onChange={setPrefix}
           options={channelTypes}
           style={{ width: 200 }}
         />
-        {searching ? (
-          <Button onClick={() => (stopRef.current = true)}>Stop</Button>
-        ) : (
-          <Button type="primary" onClick={() => search(username, prefix)}>
-            Search
-          </Button>
-        )}
+        <Button type="primary" onClick={() => search(username, prefix)}>
+          Search
+        </Button>
       </Space>
       <p>
         <Typography.Text type="secondary">
-          With a user: every game they played (marked &quot;played&quot;),
-          whoever wrote in it, plus the other channels they wrote in and their
-          private chats, by when they last wrote there.
+          With a user: the games they played (marked &quot;played&quot;: those
+          in progress and the latest ones that ended), whoever wrote in them,
+          plus the other channels they wrote in and their private chats, by when
+          they last wrote there. With words: only the channels with a message
+          that holds them, in any case, counted; opening one shows those
+          messages, each with Context for the messages around it. The words go
+          with a find below as well.
         </Typography.Text>
       </p>
       <h4>Or find a game, tournament, club or league</h4>
@@ -471,14 +702,17 @@ export const ChatReview = () => {
       </p>
       <Space wrap style={{ marginBottom: 8 }}>
         <span>
-          {searching
-            ? `Searching... ${rows.length} channels found so far`
-            : lookedUp && rows.length === 0
-              ? `Nothing found for "${lookedUp}"`
-              : `${rows.length} channel${rows.length === 1 ? "" : "s"}${
-                  rows.length > 0 && !complete ? " (search stopped early)" : ""
-                }`}
+          {lookedUp && rows.length === 0 && !searching
+            ? `Nothing found for "${lookedUp}"`
+            : `${rows.length} channel${rows.length === 1 ? "" : "s"}${
+                searching ? ", searching..." : ""
+              }`}
         </span>
+        {nextCursor !== "0" && !lookedUp && (
+          <Button loading={searching} onClick={more}>
+            More
+          </Button>
+        )}
         <Button
           disabled={rows.length === 0}
           onClick={() =>
@@ -499,7 +733,10 @@ export const ChatReview = () => {
               {r.parts.map((s) => (
                 <div key={s.channel} style={{ marginBottom: 12 }}>
                   {r.parts.length > 1 && <h4>{partKind(s)}' chat</h4>}
-                  <ChannelChats channel={s.channel} />
+                  <ChannelChats
+                    channel={s.channel}
+                    containing={searchedContaining}
+                  />
                 </div>
               ))}
             </React.Fragment>
@@ -530,6 +767,18 @@ export const ChatReview = () => {
               <PerPart r={r} render={(s) => String(s.messageCount)} />
             ),
           },
+          ...(searchedContaining
+            ? [
+                {
+                  title: `Holding "${searchedContaining}"`,
+                  key: "matchCount",
+                  className: "chat-review-nowrap",
+                  render: (_: unknown, r: ReviewRow) => (
+                    <PerPart r={r} render={(s) => String(s.matchCount)} />
+                  ),
+                },
+              ]
+            : []),
           {
             title: "Who spoke",
             key: "speakers",

@@ -71,6 +71,152 @@ func (q *Queries) AddChatMessages(ctx context.Context, arg AddChatMessagesParams
 	return result.RowsAffected(), nil
 }
 
+const chatChannelMatches = `-- name: ChatChannelMatches :many
+SELECT m.channel, count(*)::int AS match_count
+FROM chat_messages m
+WHERE m.channel = ANY($1::text[])
+  AND m.deleted_at IS NULL
+  AND (m.sender_id IS NOT NULL OR m.sender_username <> '')
+  AND m.message ILIKE $2::text
+GROUP BY m.channel
+`
+
+type ChatChannelMatchesParams struct {
+	Channels []string
+	Pattern  string
+}
+
+type ChatChannelMatchesRow struct {
+	Channel    string
+	MatchCount int32
+}
+
+// How many of each channel's messages hold pattern (an ILIKE pattern), for
+// moderator chat review. Deleted messages and the server's own lines (no
+// sender) are left out.
+func (q *Queries) ChatChannelMatches(ctx context.Context, arg ChatChannelMatchesParams) ([]ChatChannelMatchesRow, error) {
+	rows, err := q.db.Query(ctx, chatChannelMatches, arg.Channels, arg.Pattern)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ChatChannelMatchesRow
+	for rows.Next() {
+		var i ChatChannelMatchesRow
+		if err := rows.Scan(&i.Channel, &i.MatchCount); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const chatChannelSenders = `-- name: ChatChannelSenders :many
+SELECT m.channel,
+       COALESCE(u.uuid, '')::text AS sender_uuid,
+       m.sender_username,
+       count(*)::int AS message_count,
+       min(m.created_at)::timestamptz AS first_at,
+       max(m.created_at)::timestamptz AS last_at
+FROM chat_messages m
+LEFT JOIN users u ON u.id = m.sender_id
+WHERE m.channel = ANY($1::text[])
+  AND m.deleted_at IS NULL
+  AND (m.sender_id IS NOT NULL OR m.sender_username <> '')
+GROUP BY m.channel, u.uuid, m.sender_username
+ORDER BY max(m.created_at)
+`
+
+type ChatChannelSendersRow struct {
+	Channel        string
+	SenderUuid     string
+	SenderUsername string
+	MessageCount   int32
+	FirstAt        pgtype.Timestamptz
+	LastAt         pgtype.Timestamptz
+}
+
+// Per channel and sender, for moderator chat review: how many messages, and
+// when the first and the last were sent, without reading the messages, in
+// the order of each one's last message. Deleted messages and the server's
+// own lines (no sender) are left out.
+func (q *Queries) ChatChannelSenders(ctx context.Context, channels []string) ([]ChatChannelSendersRow, error) {
+	rows, err := q.db.Query(ctx, chatChannelSenders, channels)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ChatChannelSendersRow
+	for rows.Next() {
+		var i ChatChannelSendersRow
+		if err := rows.Scan(
+			&i.Channel,
+			&i.SenderUuid,
+			&i.SenderUsername,
+			&i.MessageCount,
+			&i.FirstAt,
+			&i.LastAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const chatChannelsBySender = `-- name: ChatChannelsBySender :many
+SELECT m.channel
+FROM chat_messages m
+JOIN users u ON u.id = m.sender_id
+WHERE u.uuid = $1::text AND m.deleted_at IS NULL
+  AND m.channel LIKE $2::text || '%'
+GROUP BY m.channel
+ORDER BY max(m.created_at) DESC, m.channel
+LIMIT $4 OFFSET $3
+`
+
+type ChatChannelsBySenderParams struct {
+	UserUuid string
+	Prefix   string
+	Off      int32
+	Lim      int32
+}
+
+// The channels whose names start with prefix that one user wrote in, by
+// when they last wrote there, newest first, for moderator chat review: any
+// age, through chat_messages_sender_id_idx. The prefix holds no LIKE
+// wildcards (it is one of a fixed set).
+func (q *Queries) ChatChannelsBySender(ctx context.Context, arg ChatChannelsBySenderParams) ([]string, error) {
+	rows, err := q.db.Query(ctx, chatChannelsBySender,
+		arg.UserUuid,
+		arg.Prefix,
+		arg.Off,
+		arg.Lim,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var channel string
+		if err := rows.Scan(&channel); err != nil {
+			return nil, err
+		}
+		items = append(items, channel)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const chatMessagesAfter = `-- name: ChatMessagesAfter :many
 SELECT m.id, m.sender_username, m.message, m.created_at, COALESCE(u.uuid, '')::text AS sender_uuid
 FROM chat_messages m
@@ -173,6 +319,97 @@ func (q *Queries) ChatMessagesBefore(ctx context.Context, arg ChatMessagesBefore
 	return items, nil
 }
 
+const chatMessagesContainingBefore = `-- name: ChatMessagesContainingBefore :many
+SELECT m.id, m.sender_username, m.message, m.created_at, COALESCE(u.uuid, '')::text AS sender_uuid
+FROM chat_messages m
+LEFT JOIN users u ON u.id = m.sender_id
+WHERE m.channel = $1 AND m.deleted_at IS NULL
+  AND (m.sender_id IS NOT NULL OR m.sender_username <> '')
+  AND m.message ILIKE $2::text
+  AND ($3::uuid IS NULL OR m.id < $3::uuid)
+ORDER BY m.id DESC
+LIMIT $4
+`
+
+type ChatMessagesContainingBeforeParams struct {
+	Channel string
+	Pattern string
+	Before  pgtype.UUID
+	Lim     int32
+}
+
+type ChatMessagesContainingBeforeRow struct {
+	ID             uuid.UUID
+	SenderUsername string
+	Message        string
+	CreatedAt      pgtype.Timestamptz
+	SenderUuid     string
+}
+
+// A channel's messages holding pattern (an ILIKE pattern), older than before
+// (or the newest, if before is NULL), newest first, for moderator chat
+// review. Deleted messages and the server's own lines are left out.
+func (q *Queries) ChatMessagesContainingBefore(ctx context.Context, arg ChatMessagesContainingBeforeParams) ([]ChatMessagesContainingBeforeRow, error) {
+	rows, err := q.db.Query(ctx, chatMessagesContainingBefore,
+		arg.Channel,
+		arg.Pattern,
+		arg.Before,
+		arg.Lim,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ChatMessagesContainingBeforeRow
+	for rows.Next() {
+		var i ChatMessagesContainingBeforeRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.SenderUsername,
+			&i.Message,
+			&i.CreatedAt,
+			&i.SenderUuid,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const chatPrivateChannelsOf = `-- name: ChatPrivateChannelsOf :many
+SELECT r.channel
+FROM chat_reads r
+JOIN users u ON u.id = r.user_id
+WHERE u.uuid = $1::text AND r.channel LIKE 'chat.pm.%'
+ORDER BY r.channel
+`
+
+// The private chats one user is a party to, for moderator chat review, even
+// ones they never wrote in: chat_reads holds both people of each.
+func (q *Queries) ChatPrivateChannelsOf(ctx context.Context, userUuid string) ([]string, error) {
+	rows, err := q.db.Query(ctx, chatPrivateChannelsOf, userUuid)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var channel string
+		if err := rows.Scan(&channel); err != nil {
+			return nil, err
+		}
+		items = append(items, channel)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const deleteChatMessage = `-- name: DeleteChatMessage :execrows
 UPDATE chat_messages
 SET deleted_at = now(),
@@ -194,6 +431,39 @@ func (q *Queries) DeleteChatMessage(ctx context.Context, arg DeleteChatMessagePa
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const gamesPlayedBy = `-- name: GamesPlayedBy :many
+SELECT g.uuid::text AS uuid
+FROM games g
+JOIN users u ON u.id IN (g.player0_id, g.player1_id)
+WHERE u.uuid = $1::text AND g.uuid = ANY($2::text[])
+`
+
+type GamesPlayedByParams struct {
+	UserUuid string
+	GameIds  []string
+}
+
+// Which of the given games one user played, for moderator chat review.
+func (q *Queries) GamesPlayedBy(ctx context.Context, arg GamesPlayedByParams) ([]string, error) {
+	rows, err := q.db.Query(ctx, gamesPlayedBy, arg.UserUuid, arg.GameIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var uuid string
+		if err := rows.Scan(&uuid); err != nil {
+			return nil, err
+		}
+		items = append(items, uuid)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getChatMessage = `-- name: GetChatMessage :one
@@ -419,6 +689,53 @@ func (q *Queries) MarkChatRead(ctx context.Context, arg MarkChatReadParams) (int
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const recentChatChannelMessages = `-- name: RecentChatChannelMessages :many
+SELECT m.id, m.channel
+FROM chat_messages m
+WHERE m.channel LIKE $1::text || '%'
+  AND m.deleted_at IS NULL
+  AND (m.sender_id IS NOT NULL OR m.sender_username <> '')
+  AND ($2::uuid IS NULL OR m.id < $2::uuid)
+ORDER BY m.id DESC
+LIMIT $3
+`
+
+type RecentChatChannelMessagesParams struct {
+	Prefix string
+	Before pgtype.UUID
+	Lim    int32
+}
+
+type RecentChatChannelMessagesRow struct {
+	ID      uuid.UUID
+	Channel string
+}
+
+// The messages of the channels whose names start with prefix, newest first,
+// older than before (or the newest, if before is NULL), for moderator chat
+// review to list those channels by their newest message. Deleted messages
+// and the server's own lines are left out. The prefix holds no LIKE
+// wildcards (it is one of a fixed set).
+func (q *Queries) RecentChatChannelMessages(ctx context.Context, arg RecentChatChannelMessagesParams) ([]RecentChatChannelMessagesRow, error) {
+	rows, err := q.db.Query(ctx, recentChatChannelMessages, arg.Prefix, arg.Before, arg.Lim)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []RecentChatChannelMessagesRow
+	for rows.Next() {
+		var i RecentChatChannelMessagesRow
+		if err := rows.Scan(&i.ID, &i.Channel); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const scanChatChannels = `-- name: ScanChatChannels :many
