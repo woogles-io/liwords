@@ -64,3 +64,11 @@ export const getRecentCorrespondenceGames = GameMetadataService.method.getRecent
  * @generated from rpc game_service.GameMetadataService.UnfreezeBot
  */
 export const unfreezeBot = GameMetadataService.method.unfreezeBot;
+
+/**
+ * CheckWord tells one of a VOID game's players, while the game is in
+ * play, whether a word is valid in it. Every check is logged.
+ *
+ * @generated from rpc game_service.GameMetadataService.CheckWord
+ */
+export const checkWord = GameMetadataService.method.checkWord;

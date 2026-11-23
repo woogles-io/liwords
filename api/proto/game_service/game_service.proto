@@ -75,6 +75,19 @@ message UnfreezeBotResponse {
   int32 errors = 3;
 }
 
+message CheckWordRequest {
+  string game_id = 1;
+  // a word as typed, in the letters of the game's tiles
+  string word = 2;
+}
+
+message CheckWordResponse {
+  // whether the game's lexicon takes the word, as its variant reads words
+  bool valid = 1;
+  // the word as it was read and checked: its tiles, each by its own label
+  string word = 2;
+}
+
 service GameMetadataService {
   rpc GetMetadata(GameInfoRequest) returns (ipc.GameInfoResponse);
   // GetGCG gets a GCG string for the given game ID.
@@ -94,4 +107,7 @@ service GameMetadataService {
   rpc GetRecentCorrespondenceGames(RecentCorrespondenceGamesRequest) returns (ipc.GameInfoResponses);
   // UnfreezeBot re-sends bot move requests for stuck games (admin only)
   rpc UnfreezeBot(UnfreezeBotRequest) returns (UnfreezeBotResponse);
+  // CheckWord tells one of a VOID game's players, while the game is in
+  // play, whether a word is valid in it. Every check is logged.
+  rpc CheckWord(CheckWordRequest) returns (CheckWordResponse);
 }
