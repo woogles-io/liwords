@@ -141,10 +141,7 @@ export const Secret = React.memo(() => {
           <div className="toggle-section">
             <div className="title">Turn the board around</div>
             <div>
-              <div>
-                In your own games, flip the board to face whoever is on turn.
-                Flip it by hand any time with Options &gt; Flip or the 6 key
-              </div>
+              <div>In your games, it faces whoever is on turn</div>
               <Switch
                 checked={flipBoardOffTurn}
                 onChange={setFlipBoardOffTurn}
