@@ -3,6 +3,11 @@
   "base": "https://woogles.io/wasm/",
   "files": [
     {
+      "name": "CGL.kwg",
+      "size": 467208,
+      "sha256": "937df5017e6b2b475e0ff18e3a5450c8d80c5a952ddc8c65c978c1aa3ac5f228"
+    },
+    {
       "name": "CSW15.kad",
       "size": 855148,
       "sha256": "15419cf0a67027657759fb1cabc82e20f812f55ed58ad16e0b8d8dc24af56067"
