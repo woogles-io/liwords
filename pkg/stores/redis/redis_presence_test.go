@@ -545,3 +545,34 @@ func TestRenewRestoresLostPresence(t *testing.T) {
 	is.Equal(n, 2)
 	is.Equal(users[0].Removed, []string{"chat.lobby", "chat.tournament.t1"})
 }
+
+// A renewal handled after its tab closed (a pong sent just before the close,
+// handled later by another goroutine or server) doesn't put the tab back.
+func TestRenewAfterCloseRestoresNothing(t *testing.T) {
+	is := is.New(t)
+	ps, _, _ := clockedStore(t)
+	ctx := context.Background()
+
+	_, _, err := ps.SetPresence(ctx, "uuid1", "cesar", false, "chat.lobby", "conn1")
+	is.NoErr(err)
+	_, _, _, err = ps.ClearPresence(ctx, "uuid1", "cesar", false, "conn1")
+	is.NoErr(err)
+
+	for _, chans := range [][]string{{"chat.lobby"}, nil} {
+		before, after, restored, err := ps.RenewPresence(ctx, "uuid1", "cesar", false, "conn1", chans)
+		is.NoErr(err)
+		is.Equal(before, []string{})
+		is.Equal(after, []string{})
+		is.Equal(restored, []string{})
+	}
+	ct, err := ps.CountInChannel(ctx, "chat.lobby")
+	is.NoErr(err)
+	is.Equal(ct, 0)
+
+	// Another tab of the same user is unaffected.
+	_, _, err = ps.SetPresence(ctx, "uuid1", "cesar", false, "chat.lobby", "conn2")
+	is.NoErr(err)
+	_, after, _, err := ps.RenewPresence(ctx, "uuid1", "cesar", false, "conn2", []string{"chat.lobby"})
+	is.NoErr(err)
+	is.Equal(after, []string{"chat.lobby"})
+}

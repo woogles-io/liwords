@@ -232,3 +232,23 @@ func TestPongRestoresLostPresence(t *testing.T) {
 	is.NoErr(b.pongReceived(ctx, "uuid-z", "conn-z", pong))
 	is.Equal(len(drain(msgs)), 0)
 }
+
+// A pong handled after its tab's close announces nothing and restores
+// nothing.
+func TestPongAfterLeaveTab(t *testing.T) {
+	is := is.New(t)
+	ctx := context.Background()
+	b, _, _, msgs := presenceBus(t, "chat.>", "presence.changed.>")
+
+	pong := &pb.Pong{Realms: []string{"lobby", "chat-lobby"}}
+	_, _, err := b.stores.PresenceStore.SetPresence(ctx, "anon-z", "anon-z", true, "chat.lobby", "conn-z")
+	is.NoErr(err)
+	is.NoErr(b.leaveTab(ctx, "anon-z", "conn-z"))
+	drain(msgs)
+
+	is.NoErr(b.pongReceived(ctx, "anon-z", "conn-z", pong))
+	is.Equal(len(drain(msgs)), 0)
+	in, err := b.stores.PresenceStore.GetInChannel(ctx, "chat.lobby")
+	is.NoErr(err)
+	is.Equal(len(in), 0)
+}

@@ -14,6 +14,7 @@ import (
 	"os"
 	"reflect"
 	"sort"
+	"strings"
 	"testing"
 	"time"
 
@@ -58,6 +59,10 @@ func dump(t *testing.T, c redis.Conn) map[string]map[string]float64 {
 	}
 	out := map[string]map[string]float64{}
 	for _, k := range keys {
+		if strings.HasPrefix(k, "closedconn:") {
+			// New: closed tabs' tombstones (checked where tabs close).
+			continue
+		}
 		typ, err := redis.String(c.Do("TYPE", k))
 		if err != nil {
 			t.Fatal(err)
@@ -166,6 +171,7 @@ func runEquivalence(t *testing.T, r *rand.Rand, old, cur presenceScripts, oc, nc
 	// What each connection has joined, to renew it with its channels the way
 	// a socket server sending them does.
 	joined := map[string]map[string]bool{}
+	closed := map[string]bool{}
 
 	t0 := time.Now().Unix()
 	const ops = 1200
@@ -174,6 +180,9 @@ func runEquivalence(t *testing.T, r *rand.Rand, old, cur presenceScripts, oc, nc
 		ts := t0 + int64(step)/8
 		u := users[r.Intn(len(users))]
 		conn := fmt.Sprintf("%s-c%d", u.uuid, r.Intn(3))
+		for closed[conn] {
+			conn += "x"
+		}
 		var desc string
 		var ov, nv interface{}
 		var oerr, nerr error
@@ -213,6 +222,14 @@ func runEquivalence(t *testing.T, r *rand.Rand, old, cur presenceScripts, oc, nc
 			ov, oerr = old.clear.Do(oc, u.uuid, u.name, u.auth, conn, ts)
 			nv, nerr = cur.clear.Do(nc, u.uuid, u.name, u.auth, conn, ts)
 			delete(joined, conn)
+			// The new script leaves a tombstone, for as long as an entry
+			// lasts.
+			if ttl, err := redis.Int(nc.Do("TTL", "closedconn:"+conn)); err != nil || ttl <= 0 || ttl > 180 {
+				t.Fatalf("step %d %s: tombstone TTL %d, %v", step, desc, ttl, err)
+			}
+			// A tab never comes back once closed; use a fresh connection ID
+			// from here on, as the API issues one per socket.
+			closed[conn] = true
 		case op < 87:
 			desc = fmt.Sprintf("get channels %s", u.uuid)
 			ov, oerr = old.getChannels.Do(oc, u.uuid)

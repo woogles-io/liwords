@@ -20,6 +20,9 @@ that have expired.
 - `activeusergames:<uuid>`: the real-time games a user is playing. Members are
   game IDs, each expiring 12 hours after it starts unless the game ends
   first. The key expires with its last game.
+- `closedconn:<connID>`: a string set for 3 minutes when a tab closes.
+  Renewals skip such connections, so a pong handled after the close (in
+  another goroutine, or on another API server) can't put the tab back.
 
 Channels are only the `chat.*` ones (lobby, tournament, game and spectator
 chat). A user's channels as followers see them also hold

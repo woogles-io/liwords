@@ -41,7 +41,9 @@ local setbefore = channels()
 -- The channels to renew: those given, or else those the connection has
 -- entries for, live or just expired (the connection is still here).
 local renew = {}
-if #ARGV > 5 then
+if redis.call("EXISTS", "closedconn:"..connID) == 1 then
+  -- The tab has closed (clear_presence): nothing to renew.
+elseif #ARGV > 5 then
   for idx = 6, #ARGV do
     renew[ARGV[idx]] = true
   end

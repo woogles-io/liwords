@@ -152,9 +152,16 @@ func simulatePresence(t *testing.T, r *rand.Rand, withChannels bool) {
 	}
 	*now = now.Add(4 * time.Minute)
 	sweep()
+	// All that's left are closed tabs' tombstones, which expire on their
+	// own (in real time, which this test doesn't wait for).
 	keys, err := redis.Strings(c.Do("KEYS", "*"))
 	is.NoErr(err)
-	is.Equal(keys, []string{})
+	for _, k := range keys {
+		is.True(strings.HasPrefix(k, "closedconn:"))
+		ttl, err := redis.Int(c.Do("TTL", k))
+		is.NoErr(err)
+		is.True(ttl > 0 && ttl <= 180)
+	}
 }
 
 func activeGameEntry(id string, ttl int64, players []string) *pb.ActiveGameEntry {
@@ -192,6 +199,9 @@ func checkNoLeaks(t *testing.T, c redis.Conn, now time.Time, tabs []*simTab) {
 			if ttl < 0 {
 				t.Fatalf("%v: %s has no TTL", now, k)
 			}
+		}
+		if strings.HasPrefix(k, "closedconn:") {
+			continue // a string, with its TTL checked above
 		}
 		stale, err := redis.Int(c.Do("ZCOUNT", k, "-inf", now.Unix()))
 		if err != nil {

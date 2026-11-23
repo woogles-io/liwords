@@ -33,6 +33,11 @@ for _, simpleuserkey in ipairs(redis.call("ZRANGE", userpresencekey, 0, -1)) do
   end
 end
 
+-- Mark the connection closed for as long as an entry would last: a renewal
+-- handled after this (a pong sent just before the tab closed, handled by
+-- another goroutine or server) must not put the tab back.
+redis.call("SET", "closedconn:"..ARGV[4], 1, "EX", 180)
+
 local setafter = channels()
 
 local setremoved = {}
