@@ -1,7 +1,14 @@
 syntax = "proto3";
 package ipc;
 
-message ErrorMessage { string message = 1; }
+import "proto/ipc/chat.proto";
+
+message ErrorMessage {
+  string message = 1;
+  // a chat message that was refused (sent too soon, say), as it was sent, so
+  // its sender can have it back to send again
+  ChatMessage refused_chat = 2;
+}
 
 enum WooglesError {
   DEFAULT = 0;

@@ -34,6 +34,7 @@ import {
   PlayedTiles,
   PlayerOfTiles,
 } from "../utils/cwgame/common";
+import { ChatMessage } from "../gen/api/proto/ipc/chat_pb";
 import { ActiveChatChannels } from "../gen/api/proto/user_service/user_service_pb";
 import { mergeChatHistory } from "../chat/chat_history";
 import { isMessageID } from "../chat/use_chat_history";
@@ -178,6 +179,9 @@ type ChatStoreData = {
   setChatChannels: React.Dispatch<
     React.SetStateAction<ActiveChatChannels | undefined>
   >;
+  // a chat message the server refused, back for its sender's box
+  refusedChat: ChatMessage | undefined;
+  setRefusedChat: (chat: ChatMessage | undefined) => void;
 };
 
 type PresenceStoreData = {
@@ -403,6 +407,8 @@ const ChatContext = createContext<ChatStoreData>({
   currentChatChannel: "",
   setCurrentChatChannel: defaultFunction,
   setChatChannels: defaultFunction,
+  refusedChat: undefined,
+  setRefusedChat: defaultFunction,
 });
 
 const PresenceContext = createContext<PresenceStoreData>({
@@ -1238,6 +1244,7 @@ const RealStore = ({ children, ...props }: Props) => {
   // The channel the chat panel shows, set as soon as it starts loading one,
   // so a history request that fails cannot leave it unset.
   const [currentChatChannel, setCurrentChatChannel] = useState("");
+  const [refusedChat, setRefusedChat] = useState<ChatMessage | undefined>();
   const [chatChannels, setChatChannels] = useState<
     ActiveChatChannels | undefined
   >(undefined);
@@ -1552,6 +1559,8 @@ const RealStore = ({ children, ...props }: Props) => {
       currentChatChannel,
       setChatChannels,
       setCurrentChatChannel,
+      refusedChat,
+      setRefusedChat,
     }),
     [
       addChat,
@@ -1567,6 +1576,7 @@ const RealStore = ({ children, ...props }: Props) => {
       currentChatChannel,
       setChatChannels,
       setCurrentChatChannel,
+      refusedChat,
     ],
   );
   const presenceStore = useMemo(
