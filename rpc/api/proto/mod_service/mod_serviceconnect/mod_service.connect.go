@@ -60,6 +60,18 @@ const (
 	// ModServiceListEmailChangesProcedure is the fully-qualified name of the ModService's
 	// ListEmailChanges RPC.
 	ModServiceListEmailChangesProcedure = "/mod_service.ModService/ListEmailChanges"
+	// ModServiceReportChatMessageProcedure is the fully-qualified name of the ModService's
+	// ReportChatMessage RPC.
+	ModServiceReportChatMessageProcedure = "/mod_service.ModService/ReportChatMessage"
+	// ModServiceGetChatReportsProcedure is the fully-qualified name of the ModService's GetChatReports
+	// RPC.
+	ModServiceGetChatReportsProcedure = "/mod_service.ModService/GetChatReports"
+	// ModServiceHandleChatReportProcedure is the fully-qualified name of the ModService's
+	// HandleChatReport RPC.
+	ModServiceHandleChatReportProcedure = "/mod_service.ModService/HandleChatReport"
+	// ModServiceReopenChatReportProcedure is the fully-qualified name of the ModService's
+	// ReopenChatReport RPC.
+	ModServiceReopenChatReportProcedure = "/mod_service.ModService/ReopenChatReport"
 )
 
 // ModServiceClient is a client for the mod_service.ModService service.
@@ -74,6 +86,15 @@ type ModServiceClient interface {
 	GetChannelChats(context.Context, *connect.Request[mod_service.GetChannelChatsRequest]) (*connect.Response[mod_service.ChannelChats], error)
 	ChangeEmail(context.Context, *connect.Request[mod_service.ChangeEmailRequest]) (*connect.Response[mod_service.ChangeEmailResponse], error)
 	ListEmailChanges(context.Context, *connect.Request[mod_service.ListEmailChangesRequest]) (*connect.Response[mod_service.ListEmailChangesResponse], error)
+	// Reports a chat message to the moderators: anyone signed in, any message.
+	ReportChatMessage(context.Context, *connect.Request[mod_service.ReportChatMessageRequest]) (*connect.Response[mod_service.ReportChatMessageResponse], error)
+	// The open reports, newest first, or the handled ones, the most recently
+	// handled first (moderators).
+	GetChatReports(context.Context, *connect.Request[mod_service.GetChatReportsRequest]) (*connect.Response[mod_service.ChatReports], error)
+	// Marks a report handled (moderators).
+	HandleChatReport(context.Context, *connect.Request[mod_service.HandleChatReportRequest]) (*connect.Response[mod_service.HandleChatReportResponse], error)
+	// Opens a handled report again (moderators).
+	ReopenChatReport(context.Context, *connect.Request[mod_service.ReopenChatReportRequest]) (*connect.Response[mod_service.ReopenChatReportResponse], error)
 }
 
 // NewModServiceClient constructs a client for the mod_service.ModService service. By default, it
@@ -147,6 +168,30 @@ func NewModServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...
 			connect.WithSchema(modServiceMethods.ByName("ListEmailChanges")),
 			connect.WithClientOptions(opts...),
 		),
+		reportChatMessage: connect.NewClient[mod_service.ReportChatMessageRequest, mod_service.ReportChatMessageResponse](
+			httpClient,
+			baseURL+ModServiceReportChatMessageProcedure,
+			connect.WithSchema(modServiceMethods.ByName("ReportChatMessage")),
+			connect.WithClientOptions(opts...),
+		),
+		getChatReports: connect.NewClient[mod_service.GetChatReportsRequest, mod_service.ChatReports](
+			httpClient,
+			baseURL+ModServiceGetChatReportsProcedure,
+			connect.WithSchema(modServiceMethods.ByName("GetChatReports")),
+			connect.WithClientOptions(opts...),
+		),
+		handleChatReport: connect.NewClient[mod_service.HandleChatReportRequest, mod_service.HandleChatReportResponse](
+			httpClient,
+			baseURL+ModServiceHandleChatReportProcedure,
+			connect.WithSchema(modServiceMethods.ByName("HandleChatReport")),
+			connect.WithClientOptions(opts...),
+		),
+		reopenChatReport: connect.NewClient[mod_service.ReopenChatReportRequest, mod_service.ReopenChatReportResponse](
+			httpClient,
+			baseURL+ModServiceReopenChatReportProcedure,
+			connect.WithSchema(modServiceMethods.ByName("ReopenChatReport")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -162,6 +207,10 @@ type modServiceClient struct {
 	getChannelChats    *connect.Client[mod_service.GetChannelChatsRequest, mod_service.ChannelChats]
 	changeEmail        *connect.Client[mod_service.ChangeEmailRequest, mod_service.ChangeEmailResponse]
 	listEmailChanges   *connect.Client[mod_service.ListEmailChangesRequest, mod_service.ListEmailChangesResponse]
+	reportChatMessage  *connect.Client[mod_service.ReportChatMessageRequest, mod_service.ReportChatMessageResponse]
+	getChatReports     *connect.Client[mod_service.GetChatReportsRequest, mod_service.ChatReports]
+	handleChatReport   *connect.Client[mod_service.HandleChatReportRequest, mod_service.HandleChatReportResponse]
+	reopenChatReport   *connect.Client[mod_service.ReopenChatReportRequest, mod_service.ReopenChatReportResponse]
 }
 
 // ApplyActions calls mod_service.ModService.ApplyActions.
@@ -214,6 +263,26 @@ func (c *modServiceClient) ListEmailChanges(ctx context.Context, req *connect.Re
 	return c.listEmailChanges.CallUnary(ctx, req)
 }
 
+// ReportChatMessage calls mod_service.ModService.ReportChatMessage.
+func (c *modServiceClient) ReportChatMessage(ctx context.Context, req *connect.Request[mod_service.ReportChatMessageRequest]) (*connect.Response[mod_service.ReportChatMessageResponse], error) {
+	return c.reportChatMessage.CallUnary(ctx, req)
+}
+
+// GetChatReports calls mod_service.ModService.GetChatReports.
+func (c *modServiceClient) GetChatReports(ctx context.Context, req *connect.Request[mod_service.GetChatReportsRequest]) (*connect.Response[mod_service.ChatReports], error) {
+	return c.getChatReports.CallUnary(ctx, req)
+}
+
+// HandleChatReport calls mod_service.ModService.HandleChatReport.
+func (c *modServiceClient) HandleChatReport(ctx context.Context, req *connect.Request[mod_service.HandleChatReportRequest]) (*connect.Response[mod_service.HandleChatReportResponse], error) {
+	return c.handleChatReport.CallUnary(ctx, req)
+}
+
+// ReopenChatReport calls mod_service.ModService.ReopenChatReport.
+func (c *modServiceClient) ReopenChatReport(ctx context.Context, req *connect.Request[mod_service.ReopenChatReportRequest]) (*connect.Response[mod_service.ReopenChatReportResponse], error) {
+	return c.reopenChatReport.CallUnary(ctx, req)
+}
+
 // ModServiceHandler is an implementation of the mod_service.ModService service.
 type ModServiceHandler interface {
 	ApplyActions(context.Context, *connect.Request[mod_service.ModActionsList]) (*connect.Response[mod_service.ModActionResponse], error)
@@ -226,6 +295,15 @@ type ModServiceHandler interface {
 	GetChannelChats(context.Context, *connect.Request[mod_service.GetChannelChatsRequest]) (*connect.Response[mod_service.ChannelChats], error)
 	ChangeEmail(context.Context, *connect.Request[mod_service.ChangeEmailRequest]) (*connect.Response[mod_service.ChangeEmailResponse], error)
 	ListEmailChanges(context.Context, *connect.Request[mod_service.ListEmailChangesRequest]) (*connect.Response[mod_service.ListEmailChangesResponse], error)
+	// Reports a chat message to the moderators: anyone signed in, any message.
+	ReportChatMessage(context.Context, *connect.Request[mod_service.ReportChatMessageRequest]) (*connect.Response[mod_service.ReportChatMessageResponse], error)
+	// The open reports, newest first, or the handled ones, the most recently
+	// handled first (moderators).
+	GetChatReports(context.Context, *connect.Request[mod_service.GetChatReportsRequest]) (*connect.Response[mod_service.ChatReports], error)
+	// Marks a report handled (moderators).
+	HandleChatReport(context.Context, *connect.Request[mod_service.HandleChatReportRequest]) (*connect.Response[mod_service.HandleChatReportResponse], error)
+	// Opens a handled report again (moderators).
+	ReopenChatReport(context.Context, *connect.Request[mod_service.ReopenChatReportRequest]) (*connect.Response[mod_service.ReopenChatReportResponse], error)
 }
 
 // NewModServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -295,6 +373,30 @@ func NewModServiceHandler(svc ModServiceHandler, opts ...connect.HandlerOption) 
 		connect.WithSchema(modServiceMethods.ByName("ListEmailChanges")),
 		connect.WithHandlerOptions(opts...),
 	)
+	modServiceReportChatMessageHandler := connect.NewUnaryHandler(
+		ModServiceReportChatMessageProcedure,
+		svc.ReportChatMessage,
+		connect.WithSchema(modServiceMethods.ByName("ReportChatMessage")),
+		connect.WithHandlerOptions(opts...),
+	)
+	modServiceGetChatReportsHandler := connect.NewUnaryHandler(
+		ModServiceGetChatReportsProcedure,
+		svc.GetChatReports,
+		connect.WithSchema(modServiceMethods.ByName("GetChatReports")),
+		connect.WithHandlerOptions(opts...),
+	)
+	modServiceHandleChatReportHandler := connect.NewUnaryHandler(
+		ModServiceHandleChatReportProcedure,
+		svc.HandleChatReport,
+		connect.WithSchema(modServiceMethods.ByName("HandleChatReport")),
+		connect.WithHandlerOptions(opts...),
+	)
+	modServiceReopenChatReportHandler := connect.NewUnaryHandler(
+		ModServiceReopenChatReportProcedure,
+		svc.ReopenChatReport,
+		connect.WithSchema(modServiceMethods.ByName("ReopenChatReport")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/mod_service.ModService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ModServiceApplyActionsProcedure:
@@ -317,6 +419,14 @@ func NewModServiceHandler(svc ModServiceHandler, opts ...connect.HandlerOption) 
 			modServiceChangeEmailHandler.ServeHTTP(w, r)
 		case ModServiceListEmailChangesProcedure:
 			modServiceListEmailChangesHandler.ServeHTTP(w, r)
+		case ModServiceReportChatMessageProcedure:
+			modServiceReportChatMessageHandler.ServeHTTP(w, r)
+		case ModServiceGetChatReportsProcedure:
+			modServiceGetChatReportsHandler.ServeHTTP(w, r)
+		case ModServiceHandleChatReportProcedure:
+			modServiceHandleChatReportHandler.ServeHTTP(w, r)
+		case ModServiceReopenChatReportProcedure:
+			modServiceReopenChatReportHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -364,4 +474,20 @@ func (UnimplementedModServiceHandler) ChangeEmail(context.Context, *connect.Requ
 
 func (UnimplementedModServiceHandler) ListEmailChanges(context.Context, *connect.Request[mod_service.ListEmailChangesRequest]) (*connect.Response[mod_service.ListEmailChangesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mod_service.ModService.ListEmailChanges is not implemented"))
+}
+
+func (UnimplementedModServiceHandler) ReportChatMessage(context.Context, *connect.Request[mod_service.ReportChatMessageRequest]) (*connect.Response[mod_service.ReportChatMessageResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mod_service.ModService.ReportChatMessage is not implemented"))
+}
+
+func (UnimplementedModServiceHandler) GetChatReports(context.Context, *connect.Request[mod_service.GetChatReportsRequest]) (*connect.Response[mod_service.ChatReports], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mod_service.ModService.GetChatReports is not implemented"))
+}
+
+func (UnimplementedModServiceHandler) HandleChatReport(context.Context, *connect.Request[mod_service.HandleChatReportRequest]) (*connect.Response[mod_service.HandleChatReportResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mod_service.ModService.HandleChatReport is not implemented"))
+}
+
+func (UnimplementedModServiceHandler) ReopenChatReport(context.Context, *connect.Request[mod_service.ReopenChatReportRequest]) (*connect.Response[mod_service.ReopenChatReportResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mod_service.ModService.ReopenChatReport is not implemented"))
 }

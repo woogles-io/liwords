@@ -14,7 +14,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file proto/mod_service/mod_service.proto.
  */
 export const file_proto_mod_service_mod_service: GenFile = /*@__PURE__*/
-  fileDesc("CiNwcm90by9tb2Rfc2VydmljZS9tb2Rfc2VydmljZS5wcm90bxILbW9kX3NlcnZpY2UijAMKCU1vZEFjdGlvbhIPCgd1c2VyX2lkGAEgASgJEigKBHR5cGUYAiABKA4yGi5tb2Rfc2VydmljZS5Nb2RBY3Rpb25UeXBlEhAKCGR1cmF0aW9uGAMgASgFEi4KCnN0YXJ0X3RpbWUYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEiwKCGVuZF90aW1lGAUgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIwCgxyZW1vdmVkX3RpbWUYBiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEg8KB2NoYW5uZWwYByABKAkSEgoKbWVzc2FnZV9pZBgIIAEoCRIXCg9hcHBsaWVyX3VzZXJfaWQYCSABKAkSFwoPcmVtb3Zlcl91c2VyX2lkGAogASgJEhEKCWNoYXRfdGV4dBgLIAEoCRIMCgRub3RlGAwgASgJEioKCmVtYWlsX3R5cGUYDSABKA4yFi5tb2Rfc2VydmljZS5FbWFpbFR5cGUikQEKDU1vZEFjdGlvbnNNYXASOAoHYWN0aW9ucxgBIAMoCzInLm1vZF9zZXJ2aWNlLk1vZEFjdGlvbnNNYXAuQWN0aW9uc0VudHJ5GkYKDEFjdGlvbnNFbnRyeRILCgNrZXkYASABKAkSJQoFdmFsdWUYAiABKAsyFi5tb2Rfc2VydmljZS5Nb2RBY3Rpb246AjgBIjkKDk1vZEFjdGlvbnNMaXN0EicKB2FjdGlvbnMYASADKAsyFi5tb2Rfc2VydmljZS5Nb2RBY3Rpb24iJAoRR2V0QWN0aW9uc1JlcXVlc3QSDwoHdXNlcl9pZBgBIAEoCSITChFNb2RBY3Rpb25SZXNwb25zZSI0ChJDaGFuZ2VFbWFpbFJlcXVlc3QSDwoHdXNlcl9pZBgBIAEoCRINCgVlbWFpbBgCIAEoCSIVChNDaGFuZ2VFbWFpbFJlc3BvbnNlIpwBCgtFbWFpbENoYW5nZRIRCglvbGRfZW1haWwYASABKAkSEQoJbmV3X2VtYWlsGAIgASgJEi4KCmNoYW5nZWRfYXQYAyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhoKEmNoYW5nZWRfYnlfdXNlcl9pZBgEIAEoCRIbChNjaGFuZ2VkX2J5X3VzZXJuYW1lGAUgASgJIioKF0xpc3RFbWFpbENoYW5nZXNSZXF1ZXN0Eg8KB3VzZXJfaWQYASABKAkiRQoYTGlzdEVtYWlsQ2hhbmdlc1Jlc3BvbnNlEikKB2NoYW5nZXMYASADKAsyGC5tb2Rfc2VydmljZS5FbWFpbENoYW5nZSJ5Cg1Ob3RvcmlvdXNHYW1lEgoKAmlkGAEgASgJEiwKBHR5cGUYAiABKA4yHi5tb2Rfc2VydmljZS5Ob3RvcmlvdXNHYW1lVHlwZRIuCgpjcmVhdGVkX2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCIoChVSZXNldE5vdG9yaWV0eVJlcXVlc3QSDwoHdXNlcl9pZBgBIAEoCSIYChZSZXNldE5vdG9yaWV0eVJlc3BvbnNlIiwKGUdldE5vdG9yaWV0eVJlcG9ydFJlcXVlc3QSDwoHdXNlcl9pZBgBIAEoCSJLCg9Ob3RvcmlldHlSZXBvcnQSDQoFc2NvcmUYASABKAUSKQoFZ2FtZXMYAiADKAsyGi5tb2Rfc2VydmljZS5Ob3RvcmlvdXNHYW1lIocBChdMaXN0Q2hhdENoYW5uZWxzUmVxdWVzdBIWCg5jaGFubmVsX3ByZWZpeBgBIAEoCRIQCgh1c2VybmFtZRgCIAEoCRIOCgZjdXJzb3IYAyABKAkSEAoIY2hhbm5lbHMYBCADKAkSDAoEZmluZBgFIAEoCRISCgpjb250YWluaW5nGAYgASgJIkMKD0NoYXRTZW5kZXJDb3VudBIPCgd1c2VyX2lkGAEgASgJEhAKCHVzZXJuYW1lGAIgASgJEg0KBWNvdW50GAMgASgFIpIBChJDaGF0Q2hhbm5lbENvbnRleHQSDQoFbGFiZWwYASABKAkSDAoEbGluaxgCIAEoCRItCgdwYXJ0aWVzGAMgAygLMhwubW9kX3NlcnZpY2UuQ2hhdFNlbmRlckNvdW50EhcKD2dhbWVfY3JlYXRlZF9hdBgEIAEoAxIXCg9nYW1lX3VwZGF0ZWRfYXQYBSABKAMilQIKEkNoYXRDaGFubmVsU3VtbWFyeRIPCgdjaGFubmVsGAEgASgJEhUKDW1lc3NhZ2VfY291bnQYAiABKAUSFwoPZmlyc3RfdGltZXN0YW1wGAMgASgDEhYKDmxhc3RfdGltZXN0YW1wGAQgASgDEi0KB3NlbmRlcnMYBSADKAsyHC5tb2Rfc2VydmljZS5DaGF0U2VuZGVyQ291bnQSEwoLdXNlcl9wbGF5ZWQYBiABKAgSMAoHY29udGV4dBgHIAEoCzIfLm1vZF9zZXJ2aWNlLkNoYXRDaGFubmVsQ29udGV4dBIbChN1c2VyX2xhc3RfdGltZXN0YW1wGAggASgDEhMKC21hdGNoX2NvdW50GAkgASgFImIKGExpc3RDaGF0Q2hhbm5lbHNSZXNwb25zZRIxCghjaGFubmVscxgBIAMoCzIfLm1vZF9zZXJ2aWNlLkNoYXRDaGFubmVsU3VtbWFyeRITCgtuZXh0X2N1cnNvchgCIAEoCSJsChZHZXRDaGFubmVsQ2hhdHNSZXF1ZXN0Eg8KB2NoYW5uZWwYASABKAkSDgoGYmVmb3JlGAIgASgJEg0KBWFmdGVyGAMgASgJEg4KBmFyb3VuZBgEIAEoCRISCgpjb250YWluaW5nGAUgASgJIlgKDENoYW5uZWxDaGF0cxIiCghtZXNzYWdlcxgBIAMoCzIQLmlwYy5DaGF0TWVzc2FnZRIRCgloYXNfb2xkZXIYAiABKAgSEQoJaGFzX25ld2VyGAMgASgIKqQCCg1Nb2RBY3Rpb25UeXBlEggKBE1VVEUQABITCg9TVVNQRU5EX0FDQ09VTlQQARIXChNTVVNQRU5EX1JBVEVEX0dBTUVTEAISEQoNU1VTUEVORF9HQU1FUxADEhEKDVJFU0VUX1JBVElOR1MQBBIPCgtSRVNFVF9TVEFUUxAFEhsKF1JFU0VUX1NUQVRTX0FORF9SQVRJTkdTEAYSDwoLUkVNT1ZFX0NIQVQQBxISCg5ERUxFVEVfQUNDT1VOVBAIEhUKEVJFTU9WRV9GSVJTVF9OQU1FEAkSFAoQUkVNT1ZFX0xBU1RfTkFNRRAKEhAKDFJFTU9WRV9BQk9VVBALEhEKDVJFTU9WRV9BVkFUQVIQDBIQCgxDSEFOR0VfRU1BSUwQDSo0CglFbWFpbFR5cGUSCwoHREVGQVVMVBAAEgwKCENIRUFUSU5HEAESDAoIREVMRVRJT04QAip1ChFOb3RvcmlvdXNHYW1lVHlwZRIICgRHT09EEAASCwoHTk9fUExBWRABEgsKB1NJVFRJTkcQAhILCgdTQU5EQkFHEAMSGAoUTk9fUExBWV9ERU5JRURfTlVER0UQBBIVChFFWENFU1NJVkVfUEhPTklFUxAFMuAGCgpNb2RTZXJ2aWNlEksKDEFwcGx5QWN0aW9ucxIbLm1vZF9zZXJ2aWNlLk1vZEFjdGlvbnNMaXN0Gh4ubW9kX3NlcnZpY2UuTW9kQWN0aW9uUmVzcG9uc2USTAoNUmVtb3ZlQWN0aW9ucxIbLm1vZF9zZXJ2aWNlLk1vZEFjdGlvbnNMaXN0Gh4ubW9kX3NlcnZpY2UuTW9kQWN0aW9uUmVzcG9uc2USSAoKR2V0QWN0aW9ucxIeLm1vZF9zZXJ2aWNlLkdldEFjdGlvbnNSZXF1ZXN0GhoubW9kX3NlcnZpY2UuTW9kQWN0aW9uc01hcBJPChBHZXRBY3Rpb25IaXN0b3J5Eh4ubW9kX3NlcnZpY2UuR2V0QWN0aW9uc1JlcXVlc3QaGy5tb2Rfc2VydmljZS5Nb2RBY3Rpb25zTGlzdBJaChJHZXROb3RvcmlldHlSZXBvcnQSJi5tb2Rfc2VydmljZS5HZXROb3RvcmlldHlSZXBvcnRSZXF1ZXN0GhwubW9kX3NlcnZpY2UuTm90b3JpZXR5UmVwb3J0ElkKDlJlc2V0Tm90b3JpZXR5EiIubW9kX3NlcnZpY2UuUmVzZXROb3RvcmlldHlSZXF1ZXN0GiMubW9kX3NlcnZpY2UuUmVzZXROb3RvcmlldHlSZXNwb25zZRJfChBMaXN0Q2hhdENoYW5uZWxzEiQubW9kX3NlcnZpY2UuTGlzdENoYXRDaGFubmVsc1JlcXVlc3QaJS5tb2Rfc2VydmljZS5MaXN0Q2hhdENoYW5uZWxzUmVzcG9uc2USUQoPR2V0Q2hhbm5lbENoYXRzEiMubW9kX3NlcnZpY2UuR2V0Q2hhbm5lbENoYXRzUmVxdWVzdBoZLm1vZF9zZXJ2aWNlLkNoYW5uZWxDaGF0cxJQCgtDaGFuZ2VFbWFpbBIfLm1vZF9zZXJ2aWNlLkNoYW5nZUVtYWlsUmVxdWVzdBogLm1vZF9zZXJ2aWNlLkNoYW5nZUVtYWlsUmVzcG9uc2USXwoQTGlzdEVtYWlsQ2hhbmdlcxIkLm1vZF9zZXJ2aWNlLkxpc3RFbWFpbENoYW5nZXNSZXF1ZXN0GiUubW9kX3NlcnZpY2UuTGlzdEVtYWlsQ2hhbmdlc1Jlc3BvbnNlQqMBCg9jb20ubW9kX3NlcnZpY2VCD01vZFNlcnZpY2VQcm90b1ABWjdnaXRodWIuY29tL3dvb2dsZXMtaW8vbGl3b3Jkcy9ycGMvYXBpL3Byb3RvL21vZF9zZXJ2aWNlogIDTVhYqgIKTW9kU2VydmljZcoCCk1vZFNlcnZpY2XiAhZNb2RTZXJ2aWNlXEdQQk1ldGFkYXRh6gIKTW9kU2VydmljZWIGcHJvdG8z", [file_proto_ipc_chat, file_google_protobuf_timestamp]);
+  fileDesc("CiNwcm90by9tb2Rfc2VydmljZS9tb2Rfc2VydmljZS5wcm90bxILbW9kX3NlcnZpY2UijAMKCU1vZEFjdGlvbhIPCgd1c2VyX2lkGAEgASgJEigKBHR5cGUYAiABKA4yGi5tb2Rfc2VydmljZS5Nb2RBY3Rpb25UeXBlEhAKCGR1cmF0aW9uGAMgASgFEi4KCnN0YXJ0X3RpbWUYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEiwKCGVuZF90aW1lGAUgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIwCgxyZW1vdmVkX3RpbWUYBiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEg8KB2NoYW5uZWwYByABKAkSEgoKbWVzc2FnZV9pZBgIIAEoCRIXCg9hcHBsaWVyX3VzZXJfaWQYCSABKAkSFwoPcmVtb3Zlcl91c2VyX2lkGAogASgJEhEKCWNoYXRfdGV4dBgLIAEoCRIMCgRub3RlGAwgASgJEioKCmVtYWlsX3R5cGUYDSABKA4yFi5tb2Rfc2VydmljZS5FbWFpbFR5cGUikQEKDU1vZEFjdGlvbnNNYXASOAoHYWN0aW9ucxgBIAMoCzInLm1vZF9zZXJ2aWNlLk1vZEFjdGlvbnNNYXAuQWN0aW9uc0VudHJ5GkYKDEFjdGlvbnNFbnRyeRILCgNrZXkYASABKAkSJQoFdmFsdWUYAiABKAsyFi5tb2Rfc2VydmljZS5Nb2RBY3Rpb246AjgBIjkKDk1vZEFjdGlvbnNMaXN0EicKB2FjdGlvbnMYASADKAsyFi5tb2Rfc2VydmljZS5Nb2RBY3Rpb24iJAoRR2V0QWN0aW9uc1JlcXVlc3QSDwoHdXNlcl9pZBgBIAEoCSITChFNb2RBY3Rpb25SZXNwb25zZSI0ChJDaGFuZ2VFbWFpbFJlcXVlc3QSDwoHdXNlcl9pZBgBIAEoCRINCgVlbWFpbBgCIAEoCSIVChNDaGFuZ2VFbWFpbFJlc3BvbnNlIpwBCgtFbWFpbENoYW5nZRIRCglvbGRfZW1haWwYASABKAkSEQoJbmV3X2VtYWlsGAIgASgJEi4KCmNoYW5nZWRfYXQYAyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhoKEmNoYW5nZWRfYnlfdXNlcl9pZBgEIAEoCRIbChNjaGFuZ2VkX2J5X3VzZXJuYW1lGAUgASgJIioKF0xpc3RFbWFpbENoYW5nZXNSZXF1ZXN0Eg8KB3VzZXJfaWQYASABKAkiRQoYTGlzdEVtYWlsQ2hhbmdlc1Jlc3BvbnNlEikKB2NoYW5nZXMYASADKAsyGC5tb2Rfc2VydmljZS5FbWFpbENoYW5nZSJ5Cg1Ob3RvcmlvdXNHYW1lEgoKAmlkGAEgASgJEiwKBHR5cGUYAiABKA4yHi5tb2Rfc2VydmljZS5Ob3RvcmlvdXNHYW1lVHlwZRIuCgpjcmVhdGVkX2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCIoChVSZXNldE5vdG9yaWV0eVJlcXVlc3QSDwoHdXNlcl9pZBgBIAEoCSIYChZSZXNldE5vdG9yaWV0eVJlc3BvbnNlIiwKGUdldE5vdG9yaWV0eVJlcG9ydFJlcXVlc3QSDwoHdXNlcl9pZBgBIAEoCSJLCg9Ob3RvcmlldHlSZXBvcnQSDQoFc2NvcmUYASABKAUSKQoFZ2FtZXMYAiADKAsyGi5tb2Rfc2VydmljZS5Ob3RvcmlvdXNHYW1lIocBChdMaXN0Q2hhdENoYW5uZWxzUmVxdWVzdBIWCg5jaGFubmVsX3ByZWZpeBgBIAEoCRIQCgh1c2VybmFtZRgCIAEoCRIOCgZjdXJzb3IYAyABKAkSEAoIY2hhbm5lbHMYBCADKAkSDAoEZmluZBgFIAEoCRISCgpjb250YWluaW5nGAYgASgJIkMKD0NoYXRTZW5kZXJDb3VudBIPCgd1c2VyX2lkGAEgASgJEhAKCHVzZXJuYW1lGAIgASgJEg0KBWNvdW50GAMgASgFIpIBChJDaGF0Q2hhbm5lbENvbnRleHQSDQoFbGFiZWwYASABKAkSDAoEbGluaxgCIAEoCRItCgdwYXJ0aWVzGAMgAygLMhwubW9kX3NlcnZpY2UuQ2hhdFNlbmRlckNvdW50EhcKD2dhbWVfY3JlYXRlZF9hdBgEIAEoAxIXCg9nYW1lX3VwZGF0ZWRfYXQYBSABKAMilQIKEkNoYXRDaGFubmVsU3VtbWFyeRIPCgdjaGFubmVsGAEgASgJEhUKDW1lc3NhZ2VfY291bnQYAiABKAUSFwoPZmlyc3RfdGltZXN0YW1wGAMgASgDEhYKDmxhc3RfdGltZXN0YW1wGAQgASgDEi0KB3NlbmRlcnMYBSADKAsyHC5tb2Rfc2VydmljZS5DaGF0U2VuZGVyQ291bnQSEwoLdXNlcl9wbGF5ZWQYBiABKAgSMAoHY29udGV4dBgHIAEoCzIfLm1vZF9zZXJ2aWNlLkNoYXRDaGFubmVsQ29udGV4dBIbChN1c2VyX2xhc3RfdGltZXN0YW1wGAggASgDEhMKC21hdGNoX2NvdW50GAkgASgFImIKGExpc3RDaGF0Q2hhbm5lbHNSZXNwb25zZRIxCghjaGFubmVscxgBIAMoCzIfLm1vZF9zZXJ2aWNlLkNoYXRDaGFubmVsU3VtbWFyeRITCgtuZXh0X2N1cnNvchgCIAEoCSJsChZHZXRDaGFubmVsQ2hhdHNSZXF1ZXN0Eg8KB2NoYW5uZWwYASABKAkSDgoGYmVmb3JlGAIgASgJEg0KBWFmdGVyGAMgASgJEg4KBmFyb3VuZBgEIAEoCRISCgpjb250YWluaW5nGAUgASgJIm4KDENoYW5uZWxDaGF0cxIiCghtZXNzYWdlcxgBIAMoCzIQLmlwYy5DaGF0TWVzc2FnZRIRCgloYXNfb2xkZXIYAiABKAgSEQoJaGFzX25ld2VyGAMgASgIEhQKDHJlcG9ydGVkX2lkcxgEIAMoCSIuChhSZXBvcnRDaGF0TWVzc2FnZVJlcXVlc3QSEgoKbWVzc2FnZV9pZBgBIAEoCSIbChlSZXBvcnRDaGF0TWVzc2FnZVJlc3BvbnNlIigKFUdldENoYXRSZXBvcnRzUmVxdWVzdBIPCgdoYW5kbGVkGAEgASgIIpECCgpDaGF0UmVwb3J0EgoKAmlkGAEgASgDEiEKB21lc3NhZ2UYAiABKAsyEC5pcGMuQ2hhdE1lc3NhZ2USDwoHZGVsZXRlZBgDIAEoCBITCgtyZXBvcnRlcl9pZBgEIAEoCRIZChFyZXBvcnRlcl91c2VybmFtZRgFIAEoCRIvCgtyZXBvcnRlZF9hdBgGIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASFQoNaGFuZGxlZF9ieV9pZBgHIAEoCRIbChNoYW5kbGVkX2J5X3VzZXJuYW1lGAggASgJEi4KCmhhbmRsZWRfYXQYCSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIjcKC0NoYXRSZXBvcnRzEigKB3JlcG9ydHMYASADKAsyFy5tb2Rfc2VydmljZS5DaGF0UmVwb3J0IiwKF0hhbmRsZUNoYXRSZXBvcnRSZXF1ZXN0EhEKCXJlcG9ydF9pZBgBIAEoAyIaChhIYW5kbGVDaGF0UmVwb3J0UmVzcG9uc2UiLAoXUmVvcGVuQ2hhdFJlcG9ydFJlcXVlc3QSEQoJcmVwb3J0X2lkGAEgASgDIhoKGFJlb3BlbkNoYXRSZXBvcnRSZXNwb25zZSqkAgoNTW9kQWN0aW9uVHlwZRIICgRNVVRFEAASEwoPU1VTUEVORF9BQ0NPVU5UEAESFwoTU1VTUEVORF9SQVRFRF9HQU1FUxACEhEKDVNVU1BFTkRfR0FNRVMQAxIRCg1SRVNFVF9SQVRJTkdTEAQSDwoLUkVTRVRfU1RBVFMQBRIbChdSRVNFVF9TVEFUU19BTkRfUkFUSU5HUxAGEg8KC1JFTU9WRV9DSEFUEAcSEgoOREVMRVRFX0FDQ09VTlQQCBIVChFSRU1PVkVfRklSU1RfTkFNRRAJEhQKEFJFTU9WRV9MQVNUX05BTUUQChIQCgxSRU1PVkVfQUJPVVQQCxIRCg1SRU1PVkVfQVZBVEFSEAwSEAoMQ0hBTkdFX0VNQUlMEA0qNAoJRW1haWxUeXBlEgsKB0RFRkFVTFQQABIMCghDSEVBVElORxABEgwKCERFTEVUSU9OEAIqdQoRTm90b3Jpb3VzR2FtZVR5cGUSCAoER09PRBAAEgsKB05PX1BMQVkQARILCgdTSVRUSU5HEAISCwoHU0FOREJBRxADEhgKFE5PX1BMQVlfREVOSUVEX05VREdFEAQSFQoRRVhDRVNTSVZFX1BIT05JRVMQBTLWCQoKTW9kU2VydmljZRJLCgxBcHBseUFjdGlvbnMSGy5tb2Rfc2VydmljZS5Nb2RBY3Rpb25zTGlzdBoeLm1vZF9zZXJ2aWNlLk1vZEFjdGlvblJlc3BvbnNlEkwKDVJlbW92ZUFjdGlvbnMSGy5tb2Rfc2VydmljZS5Nb2RBY3Rpb25zTGlzdBoeLm1vZF9zZXJ2aWNlLk1vZEFjdGlvblJlc3BvbnNlEkgKCkdldEFjdGlvbnMSHi5tb2Rfc2VydmljZS5HZXRBY3Rpb25zUmVxdWVzdBoaLm1vZF9zZXJ2aWNlLk1vZEFjdGlvbnNNYXASTwoQR2V0QWN0aW9uSGlzdG9yeRIeLm1vZF9zZXJ2aWNlLkdldEFjdGlvbnNSZXF1ZXN0GhsubW9kX3NlcnZpY2UuTW9kQWN0aW9uc0xpc3QSWgoSR2V0Tm90b3JpZXR5UmVwb3J0EiYubW9kX3NlcnZpY2UuR2V0Tm90b3JpZXR5UmVwb3J0UmVxdWVzdBocLm1vZF9zZXJ2aWNlLk5vdG9yaWV0eVJlcG9ydBJZCg5SZXNldE5vdG9yaWV0eRIiLm1vZF9zZXJ2aWNlLlJlc2V0Tm90b3JpZXR5UmVxdWVzdBojLm1vZF9zZXJ2aWNlLlJlc2V0Tm90b3JpZXR5UmVzcG9uc2USXwoQTGlzdENoYXRDaGFubmVscxIkLm1vZF9zZXJ2aWNlLkxpc3RDaGF0Q2hhbm5lbHNSZXF1ZXN0GiUubW9kX3NlcnZpY2UuTGlzdENoYXRDaGFubmVsc1Jlc3BvbnNlElEKD0dldENoYW5uZWxDaGF0cxIjLm1vZF9zZXJ2aWNlLkdldENoYW5uZWxDaGF0c1JlcXVlc3QaGS5tb2Rfc2VydmljZS5DaGFubmVsQ2hhdHMSUAoLQ2hhbmdlRW1haWwSHy5tb2Rfc2VydmljZS5DaGFuZ2VFbWFpbFJlcXVlc3QaIC5tb2Rfc2VydmljZS5DaGFuZ2VFbWFpbFJlc3BvbnNlEl8KEExpc3RFbWFpbENoYW5nZXMSJC5tb2Rfc2VydmljZS5MaXN0RW1haWxDaGFuZ2VzUmVxdWVzdBolLm1vZF9zZXJ2aWNlLkxpc3RFbWFpbENoYW5nZXNSZXNwb25zZRJiChFSZXBvcnRDaGF0TWVzc2FnZRIlLm1vZF9zZXJ2aWNlLlJlcG9ydENoYXRNZXNzYWdlUmVxdWVzdBomLm1vZF9zZXJ2aWNlLlJlcG9ydENoYXRNZXNzYWdlUmVzcG9uc2USTgoOR2V0Q2hhdFJlcG9ydHMSIi5tb2Rfc2VydmljZS5HZXRDaGF0UmVwb3J0c1JlcXVlc3QaGC5tb2Rfc2VydmljZS5DaGF0UmVwb3J0cxJfChBIYW5kbGVDaGF0UmVwb3J0EiQubW9kX3NlcnZpY2UuSGFuZGxlQ2hhdFJlcG9ydFJlcXVlc3QaJS5tb2Rfc2VydmljZS5IYW5kbGVDaGF0UmVwb3J0UmVzcG9uc2USXwoQUmVvcGVuQ2hhdFJlcG9ydBIkLm1vZF9zZXJ2aWNlLlJlb3BlbkNoYXRSZXBvcnRSZXF1ZXN0GiUubW9kX3NlcnZpY2UuUmVvcGVuQ2hhdFJlcG9ydFJlc3BvbnNlQqMBCg9jb20ubW9kX3NlcnZpY2VCD01vZFNlcnZpY2VQcm90b1ABWjdnaXRodWIuY29tL3dvb2dsZXMtaW8vbGl3b3Jkcy9ycGMvYXBpL3Byb3RvL21vZF9zZXJ2aWNlogIDTVhYqgIKTW9kU2VydmljZcoCCk1vZFNlcnZpY2XiAhZNb2RTZXJ2aWNlXEdQQk1ldGFkYXRh6gIKTW9kU2VydmljZWIGcHJvdG8z", [file_proto_ipc_chat, file_google_protobuf_timestamp]);
 
 /**
  * @generated from message mod_service.ModAction
@@ -674,6 +674,13 @@ export type ChannelChats = Message<"mod_service.ChannelChats"> & {
    * @generated from field: bool has_newer = 3;
    */
   hasNewer: boolean;
+
+  /**
+   * which of this page's messages someone reported
+   *
+   * @generated from field: repeated string reported_ids = 4;
+   */
+  reportedIds: string[];
 };
 
 /**
@@ -682,6 +689,204 @@ export type ChannelChats = Message<"mod_service.ChannelChats"> & {
  */
 export const ChannelChatsSchema: GenMessage<ChannelChats> = /*@__PURE__*/
   messageDesc(file_proto_mod_service_mod_service, 21);
+
+/**
+ * @generated from message mod_service.ReportChatMessageRequest
+ */
+export type ReportChatMessageRequest = Message<"mod_service.ReportChatMessageRequest"> & {
+  /**
+   * the reported message's id
+   *
+   * @generated from field: string message_id = 1;
+   */
+  messageId: string;
+};
+
+/**
+ * Describes the message mod_service.ReportChatMessageRequest.
+ * Use `create(ReportChatMessageRequestSchema)` to create a new message.
+ */
+export const ReportChatMessageRequestSchema: GenMessage<ReportChatMessageRequest> = /*@__PURE__*/
+  messageDesc(file_proto_mod_service_mod_service, 22);
+
+/**
+ * @generated from message mod_service.ReportChatMessageResponse
+ */
+export type ReportChatMessageResponse = Message<"mod_service.ReportChatMessageResponse"> & {
+};
+
+/**
+ * Describes the message mod_service.ReportChatMessageResponse.
+ * Use `create(ReportChatMessageResponseSchema)` to create a new message.
+ */
+export const ReportChatMessageResponseSchema: GenMessage<ReportChatMessageResponse> = /*@__PURE__*/
+  messageDesc(file_proto_mod_service_mod_service, 23);
+
+/**
+ * @generated from message mod_service.GetChatReportsRequest
+ */
+export type GetChatReportsRequest = Message<"mod_service.GetChatReportsRequest"> & {
+  /**
+   * the handled reports, the most recently handled first, instead of the
+   * open ones
+   *
+   * @generated from field: bool handled = 1;
+   */
+  handled: boolean;
+};
+
+/**
+ * Describes the message mod_service.GetChatReportsRequest.
+ * Use `create(GetChatReportsRequestSchema)` to create a new message.
+ */
+export const GetChatReportsRequestSchema: GenMessage<GetChatReportsRequest> = /*@__PURE__*/
+  messageDesc(file_proto_mod_service_mod_service, 24);
+
+/**
+ * A report of a chat message, open or handled.
+ *
+ * @generated from message mod_service.ChatReport
+ */
+export type ChatReport = Message<"mod_service.ChatReport"> & {
+  /**
+   * @generated from field: int64 id = 1;
+   */
+  id: bigint;
+
+  /**
+   * the reported message: its channel, sender, words and time
+   *
+   * @generated from field: ipc.ChatMessage message = 2;
+   */
+  message?: ChatMessage | undefined;
+
+  /**
+   * whether a moderator has deleted the message since
+   *
+   * @generated from field: bool deleted = 3;
+   */
+  deleted: boolean;
+
+  /**
+   * @generated from field: string reporter_id = 4;
+   */
+  reporterId: string;
+
+  /**
+   * @generated from field: string reporter_username = 5;
+   */
+  reporterUsername: string;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp reported_at = 6;
+   */
+  reportedAt?: Timestamp | undefined;
+
+  /**
+   * the moderator who marked it handled, and when; empty while it is open
+   *
+   * @generated from field: string handled_by_id = 7;
+   */
+  handledById: string;
+
+  /**
+   * @generated from field: string handled_by_username = 8;
+   */
+  handledByUsername: string;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp handled_at = 9;
+   */
+  handledAt?: Timestamp | undefined;
+};
+
+/**
+ * Describes the message mod_service.ChatReport.
+ * Use `create(ChatReportSchema)` to create a new message.
+ */
+export const ChatReportSchema: GenMessage<ChatReport> = /*@__PURE__*/
+  messageDesc(file_proto_mod_service_mod_service, 25);
+
+/**
+ * @generated from message mod_service.ChatReports
+ */
+export type ChatReports = Message<"mod_service.ChatReports"> & {
+  /**
+   * @generated from field: repeated mod_service.ChatReport reports = 1;
+   */
+  reports: ChatReport[];
+};
+
+/**
+ * Describes the message mod_service.ChatReports.
+ * Use `create(ChatReportsSchema)` to create a new message.
+ */
+export const ChatReportsSchema: GenMessage<ChatReports> = /*@__PURE__*/
+  messageDesc(file_proto_mod_service_mod_service, 26);
+
+/**
+ * @generated from message mod_service.HandleChatReportRequest
+ */
+export type HandleChatReportRequest = Message<"mod_service.HandleChatReportRequest"> & {
+  /**
+   * the report to mark handled
+   *
+   * @generated from field: int64 report_id = 1;
+   */
+  reportId: bigint;
+};
+
+/**
+ * Describes the message mod_service.HandleChatReportRequest.
+ * Use `create(HandleChatReportRequestSchema)` to create a new message.
+ */
+export const HandleChatReportRequestSchema: GenMessage<HandleChatReportRequest> = /*@__PURE__*/
+  messageDesc(file_proto_mod_service_mod_service, 27);
+
+/**
+ * @generated from message mod_service.HandleChatReportResponse
+ */
+export type HandleChatReportResponse = Message<"mod_service.HandleChatReportResponse"> & {
+};
+
+/**
+ * Describes the message mod_service.HandleChatReportResponse.
+ * Use `create(HandleChatReportResponseSchema)` to create a new message.
+ */
+export const HandleChatReportResponseSchema: GenMessage<HandleChatReportResponse> = /*@__PURE__*/
+  messageDesc(file_proto_mod_service_mod_service, 28);
+
+/**
+ * @generated from message mod_service.ReopenChatReportRequest
+ */
+export type ReopenChatReportRequest = Message<"mod_service.ReopenChatReportRequest"> & {
+  /**
+   * the handled report to open again
+   *
+   * @generated from field: int64 report_id = 1;
+   */
+  reportId: bigint;
+};
+
+/**
+ * Describes the message mod_service.ReopenChatReportRequest.
+ * Use `create(ReopenChatReportRequestSchema)` to create a new message.
+ */
+export const ReopenChatReportRequestSchema: GenMessage<ReopenChatReportRequest> = /*@__PURE__*/
+  messageDesc(file_proto_mod_service_mod_service, 29);
+
+/**
+ * @generated from message mod_service.ReopenChatReportResponse
+ */
+export type ReopenChatReportResponse = Message<"mod_service.ReopenChatReportResponse"> & {
+};
+
+/**
+ * Describes the message mod_service.ReopenChatReportResponse.
+ * Use `create(ReopenChatReportResponseSchema)` to create a new message.
+ */
+export const ReopenChatReportResponseSchema: GenMessage<ReopenChatReportResponse> = /*@__PURE__*/
+  messageDesc(file_proto_mod_service_mod_service, 30);
 
 /**
  * @generated from enum mod_service.ModActionType
@@ -917,6 +1122,47 @@ export const ModService: GenService<{
     methodKind: "unary";
     input: typeof ListEmailChangesRequestSchema;
     output: typeof ListEmailChangesResponseSchema;
+  },
+  /**
+   * Reports a chat message to the moderators: anyone signed in, any message.
+   *
+   * @generated from rpc mod_service.ModService.ReportChatMessage
+   */
+  reportChatMessage: {
+    methodKind: "unary";
+    input: typeof ReportChatMessageRequestSchema;
+    output: typeof ReportChatMessageResponseSchema;
+  },
+  /**
+   * The open reports, newest first, or the handled ones, the most recently
+   * handled first (moderators).
+   *
+   * @generated from rpc mod_service.ModService.GetChatReports
+   */
+  getChatReports: {
+    methodKind: "unary";
+    input: typeof GetChatReportsRequestSchema;
+    output: typeof ChatReportsSchema;
+  },
+  /**
+   * Marks a report handled (moderators).
+   *
+   * @generated from rpc mod_service.ModService.HandleChatReport
+   */
+  handleChatReport: {
+    methodKind: "unary";
+    input: typeof HandleChatReportRequestSchema;
+    output: typeof HandleChatReportResponseSchema;
+  },
+  /**
+   * Opens a handled report again (moderators).
+   *
+   * @generated from rpc mod_service.ModService.ReopenChatReport
+   */
+  reopenChatReport: {
+    methodKind: "unary";
+    input: typeof ReopenChatReportRequestSchema;
+    output: typeof ReopenChatReportResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_proto_mod_service_mod_service, 0);

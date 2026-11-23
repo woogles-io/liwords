@@ -5,13 +5,16 @@ import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { UsernameWithContext } from "./usernameWithContext";
 
-const login = vi.hoisted(() => ({ permissions: [] as string[] }));
+const login = vi.hoisted(() => ({
+  permissions: [] as string[],
+  loggedIn: true,
+}));
 
 vi.mock("../store/store", () => ({
   useContextMatchContext: () => ({ handleContextMatches: [] }),
   useLoginStateStoreContext: () => ({
     loginState: {
-      loggedIn: true,
+      loggedIn: login.loggedIn,
       userID: "me-id",
       permissions: login.permissions,
     },
@@ -80,5 +83,56 @@ describe("the user menu's User details entry", () => {
     login.permissions = ["can_moderate_users"];
     await openMenu();
     expect(screen.queryByRole("link", { name: "User details" })).toBeNull();
+  });
+});
+
+describe("the user menu's Report this message entry", () => {
+  beforeEach(() => {
+    const root = document.createElement("div");
+    root.id = "root";
+    document.body.replaceChildren(root);
+    login.permissions = [];
+    login.loggedIn = true;
+  });
+
+  const openMenuOf = async (userID: string, reportMessage?: () => void) => {
+    render(
+      <MemoryRouter>
+        <UsernameWithContext
+          username="cesar"
+          userID={userID}
+          omitFriend
+          omitBlock
+          reportMessage={reportMessage}
+        />
+      </MemoryRouter>,
+    );
+    await userEvent.click(screen.getByText("cesar"));
+    await screen.findByRole("link", { name: "View profile" });
+  };
+
+  it("reports another person's chat message", async () => {
+    const report = vi.fn();
+    await openMenuOf("cesar-id", report);
+    await userEvent.click(screen.getByText("Report this message"));
+    expect(report).toHaveBeenCalledTimes(1);
+  });
+
+  it("is not on a name that is not on a chat message", async () => {
+    await openMenuOf("cesar-id");
+    expect(screen.queryByText("Report this message")).toBeNull();
+  });
+
+  it("is on one's own message too", async () => {
+    const report = vi.fn();
+    await openMenuOf("me-id", report);
+    await userEvent.click(screen.getByText("Report this message"));
+    expect(report).toHaveBeenCalledTimes(1);
+  });
+
+  it("is not there for those not signed in", async () => {
+    login.loggedIn = false;
+    await openMenuOf("cesar-id", vi.fn());
+    expect(screen.queryByText("Report this message")).toBeNull();
   });
 });
