@@ -95,11 +95,11 @@ jobs:
     services:
       # Label used to access the service container
       redis:
-        # Docker Hub image
-        image: redis
-        # Set health checks to wait until redis has started
+        # Docker Hub image; the Valkey version installed for production
+        image: valkey/valkey:9.0.7
+        # Set health checks to wait until Valkey has started
         options: >-
-          --health-cmd "redis-cli ping"
+          --health-cmd "valkey-cli ping"
           --health-interval 3s
           --health-timeout 5s
           --health-retries 5
