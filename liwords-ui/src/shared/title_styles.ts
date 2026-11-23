@@ -18,10 +18,11 @@ const titleStyles: Record<
     color: "#8E24AA",
   },
   NM: {
-    // SG
-    background: "#E1BEE7", // Purple/Light
-    border: "#8E24AA", // Purple/Dark
-    color: "#8E24AA",
+    // SG; Navy, as each title's color starts with its letter (Green GM,
+    // Indigo IM, Scarlet SM, Mustard M)
+    background: "#C9D6FF", // Navy/Light
+    border: "#001F7A", // Navy/Dark
+    color: "#001F7A",
   },
   SM: {
     // NASPA & SG
