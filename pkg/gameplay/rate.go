@@ -29,16 +29,6 @@ func Rate(ctx context.Context, scores map[string]int32, g *entity.Game,
 		g.GameEndReason == pb.GameEndReason_FORCE_FORFEIT ||
 		g.GameEndReason == pb.GameEndReason_TRIPLE_CHALLENGE
 
-	// Get the user ratings
-	rat0, err := users[0].GetRating(ratingKey)
-	if err != nil {
-		return nil, err
-	}
-	rat1, err := users[1].GetRating(ratingKey)
-	if err != nil {
-		return nil, err
-	}
-
 	// What is the spread from the point of view of users[0]?
 	var spread int
 	if maxPenalty {
@@ -61,44 +51,57 @@ func Rate(ctx context.Context, scores map[string]int32, g *entity.Game,
 		log.Debug().Str("p0", usernames[0]).Str("p1", usernames[1]).Int("spread", spread).Msg("rating")
 	}
 
-	if rat0.LastGameTimestamp == 0 {
-		rat0.LastGameTimestamp = now
+	// Rated from the ratings saved now, not the ones loaded with the users:
+	// a game of theirs that ended since has changed them.
+	var rat0, rat1, p0SingleRating, p1SingleRating *entity.SingleRating
+	err = userStore.UpdateRatings(ctx, users[0].UUID, users[1].UUID, ratingKey,
+		func(r0, r1 *entity.SingleRating) (*entity.SingleRating, *entity.SingleRating, error) {
+			rat0, rat1 = r0, r1
+			if rat0 == nil {
+				rat0 = entity.NewDefaultRating(false)
+			}
+			if rat1 == nil {
+				rat1 = entity.NewDefaultRating(false)
+			}
+			if rat0.LastGameTimestamp == 0 {
+				rat0.LastGameTimestamp = now
+			}
+			if rat1.LastGameTimestamp == 0 {
+				rat1.LastGameTimestamp = now
+			}
+			// Rate for each player separately.
+			p0rat, p0rd, p0v := glicko.Rate(
+				rat0.Rating, rat0.RatingDeviation, rat0.Volatility,
+				rat1.Rating, rat1.RatingDeviation,
+				spread, int(now-rat0.LastGameTimestamp),
+			)
+			p1rat, p1rd, p1v := glicko.Rate(
+				rat1.Rating, rat1.RatingDeviation, rat1.Volatility,
+				rat0.Rating, rat0.RatingDeviation,
+				-spread, int(now-rat1.LastGameTimestamp),
+			)
+			p0SingleRating = &entity.SingleRating{
+				Rating:            p0rat,
+				RatingDeviation:   p0rd,
+				Volatility:        p0v,
+				LastGameTimestamp: now,
+			}
+			p1SingleRating = &entity.SingleRating{
+				Rating:            p1rat,
+				RatingDeviation:   p1rd,
+				Volatility:        p1v,
+				LastGameTimestamp: now,
+			}
+			return p0SingleRating, p1SingleRating, nil
+		})
+	if err != nil {
+		return nil, err
 	}
-	if rat1.LastGameTimestamp == 0 {
-		rat1.LastGameTimestamp = now
-	}
-	// Rate for each player separately.
-	p0rat, p0rd, p0v := glicko.Rate(
-		rat0.Rating, rat0.RatingDeviation, rat0.Volatility,
-		rat1.Rating, rat1.RatingDeviation,
-		spread, int(now-rat0.LastGameTimestamp),
-	)
-	p1rat, p1rd, p1v := glicko.Rate(
-		rat1.Rating, rat1.RatingDeviation, rat1.Volatility,
-		rat0.Rating, rat0.RatingDeviation,
-		-spread, int(now-rat1.LastGameTimestamp),
-	)
+	p0rat, p1rat := p0SingleRating.Rating, p1SingleRating.Rating
 
 	g.Quickdata.OriginalRatings = []float64{rat0.Rating, rat1.Rating}
 	g.Quickdata.NewRatings = []float64{p0rat, p1rat}
 
-	p0SingleRating := &entity.SingleRating{
-		Rating:            p0rat,
-		RatingDeviation:   p0rd,
-		Volatility:        p0v,
-		LastGameTimestamp: now,
-	}
-	p1SingleRating := &entity.SingleRating{
-		Rating:            p1rat,
-		RatingDeviation:   p1rd,
-		Volatility:        p1v,
-		LastGameTimestamp: now,
-	}
-
-	err = userStore.SetRatings(ctx, users[0].UUID, users[1].UUID, ratingKey, p0SingleRating, p1SingleRating)
-	if err != nil {
-		return nil, err
-	}
 	for i, r := range []*entity.SingleRating{p0SingleRating, p1SingleRating} {
 		if users[i].Profile.Ratings.Data == nil {
 			users[i].Profile.Ratings.Data = map[entity.VariantKey]entity.SingleRating{}

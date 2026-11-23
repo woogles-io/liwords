@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"sync"
 	"testing"
 	"time"
 
@@ -285,7 +286,10 @@ func TestSet(t *testing.T) {
 		Volatility:        0.06,
 		LastGameTimestamp: 0,
 	}
-	err = ustore.SetRatings(ctx, cesar.UUID, mina.UUID, entity.VariantKey(variantKey), newCesarSingleRating, newMinaSingleRating)
+	err = ustore.UpdateRatings(ctx, cesar.UUID, mina.UUID, entity.VariantKey(variantKey),
+		func(_, _ *entity.SingleRating) (*entity.SingleRating, *entity.SingleRating, error) {
+			return newCesarSingleRating, newMinaSingleRating, nil
+		})
 	is.NoErr(err)
 	mina, err = ustore.Get(ctx, "mina")
 	is.NoErr(err)
@@ -309,7 +313,10 @@ func TestSet(t *testing.T) {
 	newMinaStats := &entity.Stats{
 		PlayerOneId: "mina",
 	}
-	err = ustore.SetStats(ctx, cesar.UUID, mina.UUID, entity.VariantKey(variantKey), newCesarStats, newMinaStats)
+	err = ustore.UpdateStats(ctx, cesar.UUID, mina.UUID, entity.VariantKey(variantKey),
+		func(_, _ *entity.Stats) (*entity.Stats, *entity.Stats, error) {
+			return newCesarStats, newMinaStats, nil
+		})
 	is.NoErr(err)
 	mina, err = ustore.Get(ctx, "mina")
 	is.NoErr(err)
@@ -906,11 +913,14 @@ func TestProfileStats(t *testing.T) {
 	mina, err := ustore.Get(ctx, "mina")
 	is.NoErr(err)
 	variant := entity.VariantKey("burrito")
-	is.NoErr(ustore.SetRatings(ctx, cesar.UUID, mina.UUID, variant,
-		&entity.SingleRating{Rating: 1700, RatingDeviation: 60, Volatility: 0.06},
-		&entity.SingleRating{Rating: 1500, RatingDeviation: 60, Volatility: 0.06}))
-	is.NoErr(ustore.SetStats(ctx, cesar.UUID, mina.UUID, variant,
-		&entity.Stats{PlayerOneId: "cesar"}, &entity.Stats{PlayerOneId: "mina"}))
+	is.NoErr(ustore.UpdateRatings(ctx, cesar.UUID, mina.UUID, variant,
+		func(_, _ *entity.SingleRating) (*entity.SingleRating, *entity.SingleRating, error) {
+			return &entity.SingleRating{Rating: 1700, RatingDeviation: 60, Volatility: 0.06}, &entity.SingleRating{Rating: 1500, RatingDeviation: 60, Volatility: 0.06}, nil
+		}))
+	is.NoErr(ustore.UpdateStats(ctx, cesar.UUID, mina.UUID, variant,
+		func(_, _ *entity.Stats) (*entity.Stats, *entity.Stats, error) {
+			return &entity.Stats{PlayerOneId: "cesar"}, &entity.Stats{PlayerOneId: "mina"}, nil
+		}))
 
 	// The lookups have the ratings; the stats are read on their own.
 	u, err := ustore.GetByUUID(ctx, cesar.UUID)
@@ -936,4 +946,134 @@ func TestProfileStats(t *testing.T) {
 	is.True(st == nil)
 	_, err = ustore.GetProfileVariantStats(ctx, "nobody", variant)
 	is.True(err != nil)
+}
+
+// Updates for the same players, at once, all count: each waits for the one
+// before and builds on its result, instead of reading the same old values and
+// saving over each other.
+func TestUpdatesForSamePlayersAllCount(t *testing.T) {
+	is := is.New(t)
+	ustore, _, ctx := recreateDB()
+	defer ustore.Disconnect()
+	cesar, err := ustore.Get(ctx, "cesar")
+	is.NoErr(err)
+	mina, err := ustore.Get(ctx, "mina")
+	is.NoErr(err)
+	variant := entity.VariantKey("burrito")
+
+	games := func(st *entity.Stats) int {
+		if st == nil || st.PlayerOneData["Games"] == nil {
+			return 0
+		}
+		return st.PlayerOneData["Games"].Total
+	}
+	oneMore := func(st *entity.Stats) *entity.Stats {
+		return &entity.Stats{PlayerOneData: map[string]*entity.StatItem{"Games": {Total: games(st) + 1}}}
+	}
+	rating := func(r *entity.SingleRating) float64 {
+		if r == nil {
+			return 0
+		}
+		return r.Rating
+	}
+
+	const n = 20
+	var wg sync.WaitGroup
+	errs := make(chan error, 2*n)
+	for i := 0; i < n; i++ {
+		wg.Add(2)
+		// Half with the players one way round, half the other, as two
+		// games between them could be.
+		p0, p1 := cesar.UUID, mina.UUID
+		if i%2 == 1 {
+			p0, p1 = p1, p0
+		}
+		go func() {
+			defer wg.Done()
+			errs <- ustore.UpdateStats(ctx, p0, p1, variant,
+				func(s0, s1 *entity.Stats) (*entity.Stats, *entity.Stats, error) {
+					time.Sleep(time.Millisecond) // widen the window between read and save
+					return oneMore(s0), oneMore(s1), nil
+				})
+		}()
+		go func() {
+			defer wg.Done()
+			errs <- ustore.UpdateRatings(ctx, p0, p1, variant,
+				func(r0, r1 *entity.SingleRating) (*entity.SingleRating, *entity.SingleRating, error) {
+					time.Sleep(time.Millisecond)
+					return &entity.SingleRating{Rating: rating(r0) + 1},
+						&entity.SingleRating{Rating: rating(r1) + 1}, nil
+				})
+		}()
+	}
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		is.NoErr(err)
+	}
+
+	for _, uuid := range []string{cesar.UUID, mina.UUID} {
+		st, err := ustore.GetProfileVariantStats(ctx, uuid, variant)
+		is.NoErr(err)
+		is.Equal(games(st), n)
+		u, err := ustore.GetByUUID(ctx, uuid)
+		is.NoErr(err)
+		is.Equal(u.Profile.Ratings.Data[variant].Rating, float64(n))
+	}
+}
+
+// An update waits while another for one of the same players is between
+// reading and saving, then starts from what that one saved.
+func TestUpdateWaitsForTheOneBefore(t *testing.T) {
+	is := is.New(t)
+	ustore, _, ctx := recreateDB()
+	defer ustore.Disconnect()
+	cesar, err := ustore.Get(ctx, "cesar")
+	is.NoErr(err)
+	mina, err := ustore.Get(ctx, "mina")
+	is.NoErr(err)
+	jesse, err := ustore.Get(ctx, "jesse")
+	is.NoErr(err)
+	variant := entity.VariantKey("burrito")
+	r := func(v float64) *entity.SingleRating { return &entity.SingleRating{Rating: v} }
+
+	inFirst := make(chan struct{})
+	release := make(chan struct{})
+	firstDone := make(chan error, 1)
+	go func() {
+		firstDone <- ustore.UpdateRatings(ctx, cesar.UUID, mina.UUID, variant,
+			func(r0, r1 *entity.SingleRating) (*entity.SingleRating, *entity.SingleRating, error) {
+				close(inFirst)
+				<-release
+				return r(1600), r(1400), nil
+			})
+	}()
+	<-inFirst
+
+	// Mina's next game, against someone else, starts while the first is
+	// still open.
+	var sawMina *entity.SingleRating
+	secondRan := make(chan struct{})
+	secondDone := make(chan error, 1)
+	go func() {
+		secondDone <- ustore.UpdateRatings(ctx, jesse.UUID, mina.UUID, variant,
+			func(r0, r1 *entity.SingleRating) (*entity.SingleRating, *entity.SingleRating, error) {
+				sawMina = r1
+				close(secondRan)
+				return r(1500), r(r1.Rating - 10), nil
+			})
+	}()
+	select {
+	case <-secondRan:
+		t.Fatal("the second update read Mina's rating while the first was still changing it")
+	case <-time.After(300 * time.Millisecond):
+	}
+
+	close(release)
+	is.NoErr(<-firstDone)
+	is.NoErr(<-secondDone)
+	is.Equal(sawMina.Rating, 1400.0)
+	u, err := ustore.GetByUUID(ctx, mina.UUID)
+	is.NoErr(err)
+	is.Equal(u.Profile.Ratings.Data[variant].Rating, 1390.0)
 }

@@ -1,0 +1,2504 @@
+{
+  "Games": [
+    {
+      "Game": "game1#1",
+      "EndReason": "STANDARD",
+      "Ratings": {
+        "Mina": [
+          1500,
+          1801
+        ],
+        "cesar4": [
+          1700,
+          1683
+        ]
+      },
+      "OriginalRatings": [
+        1500,
+        1700
+      ],
+      "NewRatings": [
+        1801.2673793873296,
+        1683.420417988883
+      ],
+      "GameStats": {
+        "i1": "qUQkST8CendYA3baHNoPjk",
+        "i2": "xjCWug7EZtDxDHX5fRZTLo",
+        "d1": {
+          "Bingos": {
+            "t": 2,
+            "l": null,
+            "s": null
+          },
+          "Challenged Phonies": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Challenges Lost": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Challenges Won": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Comments": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Draws": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Exchanges": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Firsts": {
+            "t": 1,
+            "l": null,
+            "s": null
+          },
+          "Games": {
+            "t": 1,
+            "l": null,
+            "s": {
+              "CASUAL": 0,
+              "DOUBLE": 0,
+              "FIVE_POINT": 1,
+              "RATED": 1,
+              "SINGLE": 0,
+              "TEN_POINT": 0,
+              "TRIPLE": 0,
+              "VOID": 0
+            }
+          },
+          "Games with no Bingos": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "High Game": {
+            "t": 183,
+            "l": [
+              {
+                "GameId": "m5ktbp4qPVTqaAhg6HJMsb",
+                "PlayerId": "qUQkST8CendYA3baHNoPjk",
+                "Time": 0,
+                "Item": {
+                  "s": 183
+                }
+              }
+            ],
+            "s": null
+          },
+          "High Turn": {
+            "t": 91,
+            "l": [
+              {
+                "GameId": "m5ktbp4qPVTqaAhg6HJMsb",
+                "PlayerId": "qUQkST8CendYA3baHNoPjk",
+                "Time": 0,
+                "Item": {
+                  "s": 91
+                }
+              }
+            ],
+            "s": null
+          },
+          "Losses": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Low Game": {
+            "t": 183,
+            "l": [
+              {
+                "GameId": "m5ktbp4qPVTqaAhg6HJMsb",
+                "PlayerId": "qUQkST8CendYA3baHNoPjk",
+                "Time": 0,
+                "Item": {
+                  "s": 183
+                }
+              }
+            ],
+            "s": null
+          },
+          "Mistakes": {
+            "t": 0,
+            "l": null,
+            "s": {
+              "endgame": 0,
+              "finding": 0,
+              "knowledge": 0,
+              "large": 0,
+              "medium": 0,
+              "small": 0,
+              "strategy": 0,
+              "tactics": 0,
+              "time": 0,
+              "unspecified": 0,
+              "vision": 0
+            }
+          },
+          "Ratings": {
+            "t": 1,
+            "l": null,
+            "s": null
+          },
+          "Score": {
+            "t": 183,
+            "l": null,
+            "s": null
+          },
+          "Tiles Played": {
+            "t": 18,
+            "l": null,
+            "s": {
+              "?": 0,
+              "A": 3,
+              "B": 0,
+              "C": 0,
+              "D": 1,
+              "E": 3,
+              "F": 0,
+              "G": 0,
+              "H": 1,
+              "I": 1,
+              "J": 0,
+              "K": 1,
+              "L": 1,
+              "M": 0,
+              "N": 2,
+              "O": 0,
+              "P": 1,
+              "Q": 0,
+              "R": 2,
+              "S": 0,
+              "T": 1,
+              "U": 1,
+              "V": 0,
+              "W": 0,
+              "X": 0,
+              "Y": 0,
+              "Z": 0
+            }
+          },
+          "Time Taken": {
+            "t": 4443084,
+            "l": null,
+            "s": null
+          },
+          "Triple Triples": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Turns": {
+            "t": 3,
+            "l": null,
+            "s": null
+          },
+          "Turns With Blank": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Unchallenged Phonies": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Valid Plays That Were Challenged": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Vertical Openings": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Wins": {
+            "t": 1,
+            "l": null,
+            "s": null
+          }
+        },
+        "d2": {
+          "Bingos": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Challenged Phonies": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Challenges Lost": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Challenges Won": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Comments": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Draws": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Exchanges": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Firsts": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Games": {
+            "t": 1,
+            "l": null,
+            "s": {
+              "CASUAL": 0,
+              "DOUBLE": 0,
+              "FIVE_POINT": 1,
+              "RATED": 1,
+              "SINGLE": 0,
+              "TEN_POINT": 0,
+              "TRIPLE": 0,
+              "VOID": 0
+            }
+          },
+          "Games with no Bingos": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "High Game": {
+            "t": 34,
+            "l": [
+              {
+                "GameId": "m5ktbp4qPVTqaAhg6HJMsb",
+                "PlayerId": "xjCWug7EZtDxDHX5fRZTLo",
+                "Time": 0,
+                "Item": {
+                  "s": 34
+                }
+              }
+            ],
+            "s": null
+          },
+          "High Turn": {
+            "t": 22,
+            "l": [
+              {
+                "GameId": "m5ktbp4qPVTqaAhg6HJMsb",
+                "PlayerId": "xjCWug7EZtDxDHX5fRZTLo",
+                "Time": 0,
+                "Item": {
+                  "s": 22
+                }
+              }
+            ],
+            "s": null
+          },
+          "Losses": {
+            "t": 1,
+            "l": null,
+            "s": null
+          },
+          "Low Game": {
+            "t": 34,
+            "l": [
+              {
+                "GameId": "m5ktbp4qPVTqaAhg6HJMsb",
+                "PlayerId": "xjCWug7EZtDxDHX5fRZTLo",
+                "Time": 0,
+                "Item": {
+                  "s": 34
+                }
+              }
+            ],
+            "s": null
+          },
+          "Mistakes": {
+            "t": 0,
+            "l": null,
+            "s": {
+              "endgame": 0,
+              "finding": 0,
+              "knowledge": 0,
+              "large": 0,
+              "medium": 0,
+              "small": 0,
+              "strategy": 0,
+              "tactics": 0,
+              "time": 0,
+              "unspecified": 0,
+              "vision": 0
+            }
+          },
+          "Ratings": {
+            "t": 1,
+            "l": null,
+            "s": null
+          },
+          "Score": {
+            "t": 34,
+            "l": null,
+            "s": null
+          },
+          "Tiles Played": {
+            "t": 10,
+            "l": null,
+            "s": {
+              "?": 0,
+              "A": 3,
+              "B": 0,
+              "C": 0,
+              "D": 0,
+              "E": 3,
+              "F": 0,
+              "G": 1,
+              "H": 0,
+              "I": 0,
+              "J": 0,
+              "K": 0,
+              "L": 0,
+              "M": 0,
+              "N": 1,
+              "O": 0,
+              "P": 0,
+              "Q": 0,
+              "R": 1,
+              "S": 0,
+              "T": 0,
+              "U": 0,
+              "V": 0,
+              "W": 1,
+              "X": 0,
+              "Y": 0,
+              "Z": 0
+            }
+          },
+          "Time Taken": {
+            "t": 2982702,
+            "l": null,
+            "s": null
+          },
+          "Triple Triples": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Turns": {
+            "t": 2,
+            "l": null,
+            "s": null
+          },
+          "Turns With Blank": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Unchallenged Phonies": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Valid Plays That Were Challenged": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Vertical Openings": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Wins": {
+            "t": 0,
+            "l": null,
+            "s": null
+          }
+        },
+        "n": {
+          "All Triple Letter Squares Covered": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "All Triple Word Squares Covered": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Combined High Scoring": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Combined Low Scoring": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Four or More Consecutive Bingos": {
+            "t": 0,
+            "l": null,
+            "s": {
+              "player_one_streak": 1,
+              "player_two_streak": 0
+            }
+          },
+          "Many Challenges": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Many Double Letter Squares Covered": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Many Double Word Squares Covered": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "No Blanks Played": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "One Player Plays Every E": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "One Player Plays Every Power Tile": {
+            "t": 0,
+            "l": null,
+            "s": null
+          }
+        }
+      }
+    },
+    {
+      "Game": "game2#2",
+      "EndReason": "STANDARD",
+      "Ratings": {
+        "Mina": [
+          1801,
+          1626
+        ],
+        "cesar4": [
+          1683,
+          1700
+        ]
+      },
+      "OriginalRatings": [
+        1683.420417988883,
+        1801.2673793873296
+      ],
+      "NewRatings": [
+        1700.2508236416083,
+        1625.769473717325
+      ],
+      "GameStats": {
+        "i1": "xjCWug7EZtDxDHX5fRZTLo",
+        "i2": "qUQkST8CendYA3baHNoPjk",
+        "d1": {
+          "Bingos": {
+            "t": 1,
+            "l": null,
+            "s": null
+          },
+          "Challenged Phonies": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Challenges Lost": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Challenges Won": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Comments": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Draws": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Exchanges": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Firsts": {
+            "t": 1,
+            "l": null,
+            "s": null
+          },
+          "Games": {
+            "t": 1,
+            "l": null,
+            "s": {
+              "CASUAL": 0,
+              "DOUBLE": 0,
+              "FIVE_POINT": 1,
+              "RATED": 1,
+              "SINGLE": 0,
+              "TEN_POINT": 0,
+              "TRIPLE": 0,
+              "VOID": 0
+            }
+          },
+          "Games with no Bingos": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "High Game": {
+            "t": 273,
+            "l": [
+              {
+                "GameId": "ycj5de5gArFF3ap76JyiUA",
+                "PlayerId": "xjCWug7EZtDxDHX5fRZTLo",
+                "Time": 0,
+                "Item": {
+                  "s": 273
+                }
+              }
+            ],
+            "s": null
+          },
+          "High Turn": {
+            "t": 70,
+            "l": [
+              {
+                "GameId": "ycj5de5gArFF3ap76JyiUA",
+                "PlayerId": "xjCWug7EZtDxDHX5fRZTLo",
+                "Time": 0,
+                "Item": {
+                  "s": 70
+                }
+              }
+            ],
+            "s": null
+          },
+          "Losses": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Low Game": {
+            "t": 273,
+            "l": [
+              {
+                "GameId": "ycj5de5gArFF3ap76JyiUA",
+                "PlayerId": "xjCWug7EZtDxDHX5fRZTLo",
+                "Time": 0,
+                "Item": {
+                  "s": 273
+                }
+              }
+            ],
+            "s": null
+          },
+          "Mistakes": {
+            "t": 0,
+            "l": null,
+            "s": {
+              "endgame": 0,
+              "finding": 0,
+              "knowledge": 0,
+              "large": 0,
+              "medium": 0,
+              "small": 0,
+              "strategy": 0,
+              "tactics": 0,
+              "time": 0,
+              "unspecified": 0,
+              "vision": 0
+            }
+          },
+          "Ratings": {
+            "t": 1,
+            "l": null,
+            "s": null
+          },
+          "Score": {
+            "t": 273,
+            "l": null,
+            "s": null
+          },
+          "Tiles Played": {
+            "t": 33,
+            "l": null,
+            "s": {
+              "?": 2,
+              "A": 4,
+              "B": 1,
+              "C": 0,
+              "D": 1,
+              "E": 3,
+              "F": 0,
+              "G": 1,
+              "H": 1,
+              "I": 3,
+              "J": 1,
+              "K": 0,
+              "L": 1,
+              "M": 1,
+              "N": 2,
+              "O": 4,
+              "P": 1,
+              "Q": 1,
+              "R": 0,
+              "S": 0,
+              "T": 1,
+              "U": 1,
+              "V": 2,
+              "W": 0,
+              "X": 1,
+              "Y": 1,
+              "Z": 0
+            }
+          },
+          "Time Taken": {
+            "t": 13197078,
+            "l": null,
+            "s": null
+          },
+          "Triple Triples": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Turns": {
+            "t": 8,
+            "l": null,
+            "s": null
+          },
+          "Turns With Blank": {
+            "t": 2,
+            "l": null,
+            "s": null
+          },
+          "Unchallenged Phonies": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Valid Plays That Were Challenged": {
+            "t": 1,
+            "l": null,
+            "s": null
+          },
+          "Vertical Openings": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Wins": {
+            "t": 1,
+            "l": null,
+            "s": null
+          }
+        },
+        "d2": {
+          "Bingos": {
+            "t": 1,
+            "l": null,
+            "s": null
+          },
+          "Challenged Phonies": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Challenges Lost": {
+            "t": 1,
+            "l": null,
+            "s": null
+          },
+          "Challenges Won": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Comments": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Draws": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Exchanges": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Firsts": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Games": {
+            "t": 1,
+            "l": null,
+            "s": {
+              "CASUAL": 0,
+              "DOUBLE": 0,
+              "FIVE_POINT": 1,
+              "RATED": 1,
+              "SINGLE": 0,
+              "TEN_POINT": 0,
+              "TRIPLE": 0,
+              "VOID": 0
+            }
+          },
+          "Games with no Bingos": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "High Game": {
+            "t": 131,
+            "l": [
+              {
+                "GameId": "ycj5de5gArFF3ap76JyiUA",
+                "PlayerId": "qUQkST8CendYA3baHNoPjk",
+                "Time": 0,
+                "Item": {
+                  "s": 131
+                }
+              }
+            ],
+            "s": null
+          },
+          "High Turn": {
+            "t": 68,
+            "l": [
+              {
+                "GameId": "ycj5de5gArFF3ap76JyiUA",
+                "PlayerId": "qUQkST8CendYA3baHNoPjk",
+                "Time": 0,
+                "Item": {
+                  "s": 68
+                }
+              }
+            ],
+            "s": null
+          },
+          "Losses": {
+            "t": 1,
+            "l": null,
+            "s": null
+          },
+          "Low Game": {
+            "t": 131,
+            "l": [
+              {
+                "GameId": "ycj5de5gArFF3ap76JyiUA",
+                "PlayerId": "qUQkST8CendYA3baHNoPjk",
+                "Time": 0,
+                "Item": {
+                  "s": 131
+                }
+              }
+            ],
+            "s": null
+          },
+          "Mistakes": {
+            "t": 0,
+            "l": null,
+            "s": {
+              "endgame": 0,
+              "finding": 0,
+              "knowledge": 0,
+              "large": 0,
+              "medium": 0,
+              "small": 0,
+              "strategy": 0,
+              "tactics": 0,
+              "time": 0,
+              "unspecified": 0,
+              "vision": 0
+            }
+          },
+          "Ratings": {
+            "t": 1,
+            "l": null,
+            "s": null
+          },
+          "Score": {
+            "t": 131,
+            "l": null,
+            "s": null
+          },
+          "Tiles Played": {
+            "t": 26,
+            "l": null,
+            "s": {
+              "?": 0,
+              "A": 1,
+              "B": 1,
+              "C": 1,
+              "D": 2,
+              "E": 3,
+              "F": 1,
+              "G": 2,
+              "H": 0,
+              "I": 2,
+              "J": 0,
+              "K": 0,
+              "L": 1,
+              "M": 0,
+              "N": 3,
+              "O": 0,
+              "P": 0,
+              "Q": 0,
+              "R": 3,
+              "S": 2,
+              "T": 3,
+              "U": 1,
+              "V": 0,
+              "W": 0,
+              "X": 0,
+              "Y": 0,
+              "Z": 0
+            }
+          },
+          "Time Taken": {
+            "t": 10291644,
+            "l": null,
+            "s": null
+          },
+          "Triple Triples": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Turns": {
+            "t": 7,
+            "l": null,
+            "s": null
+          },
+          "Turns With Blank": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Unchallenged Phonies": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Valid Plays That Were Challenged": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Vertical Openings": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Wins": {
+            "t": 0,
+            "l": null,
+            "s": null
+          }
+        },
+        "n": {
+          "All Triple Letter Squares Covered": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "All Triple Word Squares Covered": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Combined High Scoring": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Combined Low Scoring": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Four or More Consecutive Bingos": {
+            "t": 0,
+            "l": null,
+            "s": {
+              "player_one_streak": 0,
+              "player_two_streak": 0
+            }
+          },
+          "Many Challenges": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Many Double Letter Squares Covered": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Many Double Word Squares Covered": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "No Blanks Played": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "One Player Plays Every E": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "One Player Plays Every Power Tile": {
+            "t": 0,
+            "l": null,
+            "s": null
+          }
+        }
+      }
+    },
+    {
+      "Game": "game1#3",
+      "EndReason": "RESIGNED",
+      "Ratings": {
+        "Mina": [
+          1626,
+          1744
+        ],
+        "cesar4": [
+          1700,
+          1683
+        ]
+      },
+      "OriginalRatings": [
+        1625.769473717325,
+        1700.2508236416083
+      ],
+      "NewRatings": [
+        1744.4169080104582,
+        1683.4495377593514
+      ],
+      "GameStats": {
+        "i1": "qUQkST8CendYA3baHNoPjk",
+        "i2": "xjCWug7EZtDxDHX5fRZTLo",
+        "d1": {
+          "Bingos": {
+            "t": 2,
+            "l": null,
+            "s": null
+          },
+          "Challenged Phonies": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Challenges Lost": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Challenges Won": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Comments": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Draws": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Exchanges": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Firsts": {
+            "t": 1,
+            "l": null,
+            "s": null
+          },
+          "Games": {
+            "t": 1,
+            "l": null,
+            "s": {
+              "CASUAL": 0,
+              "DOUBLE": 0,
+              "FIVE_POINT": 1,
+              "RATED": 1,
+              "SINGLE": 0,
+              "TEN_POINT": 0,
+              "TRIPLE": 0,
+              "VOID": 0
+            }
+          },
+          "Games with no Bingos": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "High Game": {
+            "t": 183,
+            "l": [
+              {
+                "GameId": "m5ktbp4qPVTqaAhg6HJMsb",
+                "PlayerId": "qUQkST8CendYA3baHNoPjk",
+                "Time": 0,
+                "Item": {
+                  "s": 183
+                }
+              }
+            ],
+            "s": null
+          },
+          "High Turn": {
+            "t": 91,
+            "l": [
+              {
+                "GameId": "m5ktbp4qPVTqaAhg6HJMsb",
+                "PlayerId": "qUQkST8CendYA3baHNoPjk",
+                "Time": 0,
+                "Item": {
+                  "s": 91
+                }
+              }
+            ],
+            "s": null
+          },
+          "Losses": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Low Game": {
+            "t": 183,
+            "l": [
+              {
+                "GameId": "m5ktbp4qPVTqaAhg6HJMsb",
+                "PlayerId": "qUQkST8CendYA3baHNoPjk",
+                "Time": 0,
+                "Item": {
+                  "s": 183
+                }
+              }
+            ],
+            "s": null
+          },
+          "Mistakes": {
+            "t": 0,
+            "l": null,
+            "s": {
+              "endgame": 0,
+              "finding": 0,
+              "knowledge": 0,
+              "large": 0,
+              "medium": 0,
+              "small": 0,
+              "strategy": 0,
+              "tactics": 0,
+              "time": 0,
+              "unspecified": 0,
+              "vision": 0
+            }
+          },
+          "Ratings": {
+            "t": 1,
+            "l": null,
+            "s": null
+          },
+          "Score": {
+            "t": 183,
+            "l": null,
+            "s": null
+          },
+          "Tiles Played": {
+            "t": 18,
+            "l": null,
+            "s": {
+              "?": 0,
+              "A": 3,
+              "B": 0,
+              "C": 0,
+              "D": 1,
+              "E": 3,
+              "F": 0,
+              "G": 0,
+              "H": 1,
+              "I": 1,
+              "J": 0,
+              "K": 1,
+              "L": 1,
+              "M": 0,
+              "N": 2,
+              "O": 0,
+              "P": 1,
+              "Q": 0,
+              "R": 2,
+              "S": 0,
+              "T": 1,
+              "U": 1,
+              "V": 0,
+              "W": 0,
+              "X": 0,
+              "Y": 0,
+              "Z": 0
+            }
+          },
+          "Time Taken": {
+            "t": 4443084,
+            "l": null,
+            "s": null
+          },
+          "Triple Triples": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Turns": {
+            "t": 3,
+            "l": null,
+            "s": null
+          },
+          "Turns With Blank": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Unchallenged Phonies": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Valid Plays That Were Challenged": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Vertical Openings": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Wins": {
+            "t": 1,
+            "l": null,
+            "s": null
+          }
+        },
+        "d2": {
+          "Bingos": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Challenged Phonies": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Challenges Lost": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Challenges Won": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Comments": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Draws": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Exchanges": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Firsts": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Games": {
+            "t": 1,
+            "l": null,
+            "s": {
+              "CASUAL": 0,
+              "DOUBLE": 0,
+              "FIVE_POINT": 1,
+              "RATED": 1,
+              "SINGLE": 0,
+              "TEN_POINT": 0,
+              "TRIPLE": 0,
+              "VOID": 0
+            }
+          },
+          "Games with no Bingos": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "High Game": {
+            "t": 34,
+            "l": [
+              {
+                "GameId": "m5ktbp4qPVTqaAhg6HJMsb",
+                "PlayerId": "xjCWug7EZtDxDHX5fRZTLo",
+                "Time": 0,
+                "Item": {
+                  "s": 34
+                }
+              }
+            ],
+            "s": null
+          },
+          "High Turn": {
+            "t": 22,
+            "l": [
+              {
+                "GameId": "m5ktbp4qPVTqaAhg6HJMsb",
+                "PlayerId": "xjCWug7EZtDxDHX5fRZTLo",
+                "Time": 0,
+                "Item": {
+                  "s": 22
+                }
+              }
+            ],
+            "s": null
+          },
+          "Losses": {
+            "t": 1,
+            "l": null,
+            "s": null
+          },
+          "Low Game": {
+            "t": 34,
+            "l": [
+              {
+                "GameId": "m5ktbp4qPVTqaAhg6HJMsb",
+                "PlayerId": "xjCWug7EZtDxDHX5fRZTLo",
+                "Time": 0,
+                "Item": {
+                  "s": 34
+                }
+              }
+            ],
+            "s": null
+          },
+          "Mistakes": {
+            "t": 0,
+            "l": null,
+            "s": {
+              "endgame": 0,
+              "finding": 0,
+              "knowledge": 0,
+              "large": 0,
+              "medium": 0,
+              "small": 0,
+              "strategy": 0,
+              "tactics": 0,
+              "time": 0,
+              "unspecified": 0,
+              "vision": 0
+            }
+          },
+          "Ratings": {
+            "t": 1,
+            "l": null,
+            "s": null
+          },
+          "Score": {
+            "t": 34,
+            "l": null,
+            "s": null
+          },
+          "Tiles Played": {
+            "t": 10,
+            "l": null,
+            "s": {
+              "?": 0,
+              "A": 3,
+              "B": 0,
+              "C": 0,
+              "D": 0,
+              "E": 3,
+              "F": 0,
+              "G": 1,
+              "H": 0,
+              "I": 0,
+              "J": 0,
+              "K": 0,
+              "L": 0,
+              "M": 0,
+              "N": 1,
+              "O": 0,
+              "P": 0,
+              "Q": 0,
+              "R": 1,
+              "S": 0,
+              "T": 0,
+              "U": 0,
+              "V": 0,
+              "W": 1,
+              "X": 0,
+              "Y": 0,
+              "Z": 0
+            }
+          },
+          "Time Taken": {
+            "t": 2982702,
+            "l": null,
+            "s": null
+          },
+          "Triple Triples": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Turns": {
+            "t": 2,
+            "l": null,
+            "s": null
+          },
+          "Turns With Blank": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Unchallenged Phonies": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Valid Plays That Were Challenged": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Vertical Openings": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Wins": {
+            "t": 0,
+            "l": null,
+            "s": null
+          }
+        },
+        "n": {
+          "All Triple Letter Squares Covered": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "All Triple Word Squares Covered": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Combined High Scoring": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Combined Low Scoring": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Four or More Consecutive Bingos": {
+            "t": 0,
+            "l": null,
+            "s": {
+              "player_one_streak": 1,
+              "player_two_streak": 0
+            }
+          },
+          "Many Challenges": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Many Double Letter Squares Covered": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "Many Double Word Squares Covered": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "No Blanks Played": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "One Player Plays Every E": {
+            "t": 0,
+            "l": null,
+            "s": null
+          },
+          "One Player Plays Every Power Tile": {
+            "t": 0,
+            "l": null,
+            "s": null
+          }
+        }
+      }
+    }
+  ],
+  "Players": {
+    "Mina": {
+      "Ratings": {
+        "Data": {
+          "CSW19.classic.ultrablitz": {
+            "r": 1744.4169080104582,
+            "rd": 187.738731733228,
+            "v": 0.060001885691751716,
+            "ts": 1700500000
+          }
+        }
+      },
+      "Stats": {
+        "Data": {
+          "CSW19.classic.ultrablitz": {
+            "i1": "qUQkST8CendYA3baHNoPjk",
+            "i2": "",
+            "d1": {
+              "Bingos": {
+                "t": 5,
+                "l": null,
+                "s": null
+              },
+              "Challenged Phonies": {
+                "t": 0,
+                "l": null,
+                "s": null
+              },
+              "Challenges Lost": {
+                "t": 1,
+                "l": null,
+                "s": null
+              },
+              "Challenges Won": {
+                "t": 0,
+                "l": null,
+                "s": null
+              },
+              "Comments": {
+                "t": 0,
+                "l": null,
+                "s": null
+              },
+              "Draws": {
+                "t": 0,
+                "l": null,
+                "s": null
+              },
+              "Exchanges": {
+                "t": 0,
+                "l": null,
+                "s": null
+              },
+              "Firsts": {
+                "t": 2,
+                "l": null,
+                "s": null
+              },
+              "Games": {
+                "t": 3,
+                "l": null,
+                "s": {
+                  "CASUAL": 0,
+                  "DOUBLE": 0,
+                  "FIVE_POINT": 3,
+                  "RATED": 3,
+                  "SINGLE": 0,
+                  "TEN_POINT": 0,
+                  "TRIPLE": 0,
+                  "VOID": 0
+                }
+              },
+              "Games with no Bingos": {
+                "t": 0,
+                "l": null,
+                "s": null
+              },
+              "High Game": {
+                "t": 183,
+                "l": [
+                  {
+                    "GameId": "m5ktbp4qPVTqaAhg6HJMsb",
+                    "PlayerId": "qUQkST8CendYA3baHNoPjk",
+                    "Time": 0,
+                    "Item": {
+                      "s": 183
+                    }
+                  }
+                ],
+                "s": null
+              },
+              "High Turn": {
+                "t": 91,
+                "l": [
+                  {
+                    "GameId": "m5ktbp4qPVTqaAhg6HJMsb",
+                    "PlayerId": "qUQkST8CendYA3baHNoPjk",
+                    "Time": 0,
+                    "Item": {
+                      "s": 91
+                    }
+                  }
+                ],
+                "s": null
+              },
+              "Losses": {
+                "t": 1,
+                "l": null,
+                "s": null
+              },
+              "Low Game": {
+                "t": 131,
+                "l": [
+                  {
+                    "GameId": "ycj5de5gArFF3ap76JyiUA",
+                    "PlayerId": "qUQkST8CendYA3baHNoPjk",
+                    "Time": 0,
+                    "Item": {
+                      "s": 131
+                    }
+                  }
+                ],
+                "s": null
+              },
+              "Mistakes": {
+                "t": 0,
+                "l": null,
+                "s": {
+                  "endgame": 0,
+                  "finding": 0,
+                  "knowledge": 0,
+                  "large": 0,
+                  "medium": 0,
+                  "small": 0,
+                  "strategy": 0,
+                  "tactics": 0,
+                  "time": 0,
+                  "unspecified": 0,
+                  "vision": 0
+                }
+              },
+              "Ratings": {
+                "t": 3,
+                "l": null,
+                "s": null
+              },
+              "Score": {
+                "t": 497,
+                "l": null,
+                "s": null
+              },
+              "Tiles Played": {
+                "t": 62,
+                "l": null,
+                "s": {
+                  "?": 0,
+                  "A": 7,
+                  "B": 1,
+                  "C": 1,
+                  "D": 4,
+                  "E": 9,
+                  "F": 1,
+                  "G": 2,
+                  "H": 2,
+                  "I": 4,
+                  "J": 0,
+                  "K": 2,
+                  "L": 3,
+                  "M": 0,
+                  "N": 7,
+                  "O": 0,
+                  "P": 2,
+                  "Q": 0,
+                  "R": 7,
+                  "S": 2,
+                  "T": 5,
+                  "U": 3,
+                  "V": 0,
+                  "W": 0,
+                  "X": 0,
+                  "Y": 0,
+                  "Z": 0
+                }
+              },
+              "Time Taken": {
+                "t": 19177812,
+                "l": null,
+                "s": null
+              },
+              "Triple Triples": {
+                "t": 0,
+                "l": null,
+                "s": null
+              },
+              "Turns": {
+                "t": 13,
+                "l": null,
+                "s": null
+              },
+              "Turns With Blank": {
+                "t": 0,
+                "l": null,
+                "s": null
+              },
+              "Unchallenged Phonies": {
+                "t": 0,
+                "l": null,
+                "s": null
+              },
+              "Valid Plays That Were Challenged": {
+                "t": 0,
+                "l": null,
+                "s": null
+              },
+              "Vertical Openings": {
+                "t": 0,
+                "l": null,
+                "s": null
+              },
+              "Wins": {
+                "t": 2,
+                "l": null,
+                "s": null
+              }
+            },
+            "d2": {
+              "Bingos": {
+                "t": 1,
+                "l": null,
+                "s": null
+              },
+              "Challenged Phonies": {
+                "t": 0,
+                "l": null,
+                "s": null
+              },
+              "Challenges Lost": {
+                "t": 0,
+                "l": null,
+                "s": null
+              },
+              "Challenges Won": {
+                "t": 0,
+                "l": null,
+                "s": null
+              },
+              "Comments": {
+                "t": 0,
+                "l": null,
+                "s": null
+              },
+              "Draws": {
+                "t": 0,
+                "l": null,
+                "s": null
+              },
+              "Exchanges": {
+                "t": 0,
+                "l": null,
+                "s": null
+              },
+              "Firsts": {
+                "t": 1,
+                "l": null,
+                "s": null
+              },
+              "Games": {
+                "t": 3,
+                "l": null,
+                "s": {
+                  "CASUAL": 0,
+                  "DOUBLE": 0,
+                  "FIVE_POINT": 3,
+                  "RATED": 3,
+                  "SINGLE": 0,
+                  "TEN_POINT": 0,
+                  "TRIPLE": 0,
+                  "VOID": 0
+                }
+              },
+              "Games with no Bingos": {
+                "t": 0,
+                "l": null,
+                "s": null
+              },
+              "High Game": {
+                "t": 273,
+                "l": [
+                  {
+                    "GameId": "ycj5de5gArFF3ap76JyiUA",
+                    "PlayerId": "xjCWug7EZtDxDHX5fRZTLo",
+                    "Time": 0,
+                    "Item": {
+                      "s": 273
+                    }
+                  }
+                ],
+                "s": null
+              },
+              "High Turn": {
+                "t": 70,
+                "l": [
+                  {
+                    "GameId": "ycj5de5gArFF3ap76JyiUA",
+                    "PlayerId": "xjCWug7EZtDxDHX5fRZTLo",
+                    "Time": 0,
+                    "Item": {
+                      "s": 70
+                    }
+                  }
+                ],
+                "s": null
+              },
+              "Losses": {
+                "t": 2,
+                "l": null,
+                "s": null
+              },
+              "Low Game": {
+                "t": 34,
+                "l": [
+                  {
+                    "GameId": "m5ktbp4qPVTqaAhg6HJMsb",
+                    "PlayerId": "xjCWug7EZtDxDHX5fRZTLo",
+                    "Time": 0,
+                    "Item": {
+                      "s": 34
+                    }
+                  }
+                ],
+                "s": null
+              },
+              "Mistakes": {
+                "t": 0,
+                "l": null,
+                "s": {
+                  "endgame": 0,
+                  "finding": 0,
+                  "knowledge": 0,
+                  "large": 0,
+                  "medium": 0,
+                  "small": 0,
+                  "strategy": 0,
+                  "tactics": 0,
+                  "time": 0,
+                  "unspecified": 0,
+                  "vision": 0
+                }
+              },
+              "Ratings": {
+                "t": 3,
+                "l": null,
+                "s": null
+              },
+              "Score": {
+                "t": 341,
+                "l": null,
+                "s": null
+              },
+              "Tiles Played": {
+                "t": 53,
+                "l": null,
+                "s": {
+                  "?": 2,
+                  "A": 10,
+                  "B": 1,
+                  "C": 0,
+                  "D": 1,
+                  "E": 9,
+                  "F": 0,
+                  "G": 3,
+                  "H": 1,
+                  "I": 3,
+                  "J": 1,
+                  "K": 0,
+                  "L": 1,
+                  "M": 1,
+                  "N": 4,
+                  "O": 4,
+                  "P": 1,
+                  "Q": 1,
+                  "R": 2,
+                  "S": 0,
+                  "T": 1,
+                  "U": 1,
+                  "V": 2,
+                  "W": 2,
+                  "X": 1,
+                  "Y": 1,
+                  "Z": 0
+                }
+              },
+              "Time Taken": {
+                "t": 19162482,
+                "l": null,
+                "s": null
+              },
+              "Triple Triples": {
+                "t": 0,
+                "l": null,
+                "s": null
+              },
+              "Turns": {
+                "t": 12,
+                "l": null,
+                "s": null
+              },
+              "Turns With Blank": {
+                "t": 2,
+                "l": null,
+                "s": null
+              },
+              "Unchallenged Phonies": {
+                "t": 0,
+                "l": null,
+                "s": null
+              },
+              "Valid Plays That Were Challenged": {
+                "t": 1,
+                "l": null,
+                "s": null
+              },
+              "Vertical Openings": {
+                "t": 0,
+                "l": null,
+                "s": null
+              },
+              "Wins": {
+                "t": 1,
+                "l": null,
+                "s": null
+              }
+            },
+            "n": {
+              "All Triple Letter Squares Covered": {
+                "t": 0,
+                "l": null,
+                "s": null
+              },
+              "All Triple Word Squares Covered": {
+                "t": 0,
+                "l": null,
+                "s": null
+              },
+              "Combined High Scoring": {
+                "t": 0,
+                "l": null,
+                "s": null
+              },
+              "Combined Low Scoring": {
+                "t": 0,
+                "l": null,
+                "s": null
+              },
+              "Four or More Consecutive Bingos": {
+                "t": 0,
+                "l": null,
+                "s": {
+                  "player_one_streak": 2,
+                  "player_two_streak": 0
+                }
+              },
+              "Many Challenges": {
+                "t": 0,
+                "l": null,
+                "s": null
+              },
+              "Many Double Letter Squares Covered": {
+                "t": 0,
+                "l": null,
+                "s": null
+              },
+              "Many Double Word Squares Covered": {
+                "t": 0,
+                "l": null,
+                "s": null
+              },
+              "No Blanks Played": {
+                "t": 0,
+                "l": null,
+                "s": null
+              },
+              "One Player Plays Every E": {
+                "t": 0,
+                "l": null,
+                "s": null
+              },
+              "One Player Plays Every Power Tile": {
+                "t": 0,
+                "l": null,
+                "s": null
+              }
+            }
+          }
+        }
+      }
+    },
+    "cesar4": {
+      "Ratings": {
+        "Data": {
+          "CSW19.classic.ultrablitz": {
+            "r": 1683.4495377593514,
+            "rd": 77.77167682462185,
+            "v": 0.06000335625934443,
+            "ts": 1700500000
+          }
+        }
+      },
+      "Stats": {
+        "Data": {
+          "CSW19.classic.ultrablitz": {
+            "i1": "xjCWug7EZtDxDHX5fRZTLo",
+            "i2": "",
+            "d1": {
+              "Bingos": {
+                "t": 1,
+                "l": null,
+                "s": null
+              },
+              "Challenged Phonies": {
+                "t": 0,
+                "l": null,
+                "s": null
+              },
+              "Challenges Lost": {
+                "t": 0,
+                "l": null,
+                "s": null
+              },
+              "Challenges Won": {
+                "t": 0,
+                "l": null,
+                "s": null
+              },
+              "Comments": {
+                "t": 0,
+                "l": null,
+                "s": null
+              },
+              "Draws": {
+                "t": 0,
+                "l": null,
+                "s": null
+              },
+              "Exchanges": {
+                "t": 0,
+                "l": null,
+                "s": null
+              },
+              "Firsts": {
+                "t": 1,
+                "l": null,
+                "s": null
+              },
+              "Games": {
+                "t": 3,
+                "l": null,
+                "s": {
+                  "CASUAL": 0,
+                  "DOUBLE": 0,
+                  "FIVE_POINT": 3,
+                  "RATED": 3,
+                  "SINGLE": 0,
+                  "TEN_POINT": 0,
+                  "TRIPLE": 0,
+                  "VOID": 0
+                }
+              },
+              "Games with no Bingos": {
+                "t": 0,
+                "l": null,
+                "s": null
+              },
+              "High Game": {
+                "t": 273,
+                "l": [
+                  {
+                    "GameId": "ycj5de5gArFF3ap76JyiUA",
+                    "PlayerId": "xjCWug7EZtDxDHX5fRZTLo",
+                    "Time": 0,
+                    "Item": {
+                      "s": 273
+                    }
+                  }
+                ],
+                "s": null
+              },
+              "High Turn": {
+                "t": 70,
+                "l": [
+                  {
+                    "GameId": "ycj5de5gArFF3ap76JyiUA",
+                    "PlayerId": "xjCWug7EZtDxDHX5fRZTLo",
+                    "Time": 0,
+                    "Item": {
+                      "s": 70
+                    }
+                  }
+                ],
+                "s": null
+              },
+              "Losses": {
+                "t": 2,
+                "l": null,
+                "s": null
+              },
+              "Low Game": {
+                "t": 34,
+                "l": [
+                  {
+                    "GameId": "m5ktbp4qPVTqaAhg6HJMsb",
+                    "PlayerId": "xjCWug7EZtDxDHX5fRZTLo",
+                    "Time": 0,
+                    "Item": {
+                      "s": 34
+                    }
+                  }
+                ],
+                "s": null
+              },
+              "Mistakes": {
+                "t": 0,
+                "l": null,
+                "s": {
+                  "endgame": 0,
+                  "finding": 0,
+                  "knowledge": 0,
+                  "large": 0,
+                  "medium": 0,
+                  "small": 0,
+                  "strategy": 0,
+                  "tactics": 0,
+                  "time": 0,
+                  "unspecified": 0,
+                  "vision": 0
+                }
+              },
+              "Ratings": {
+                "t": 3,
+                "l": null,
+                "s": null
+              },
+              "Score": {
+                "t": 341,
+                "l": null,
+                "s": null
+              },
+              "Tiles Played": {
+                "t": 53,
+                "l": null,
+                "s": {
+                  "?": 2,
+                  "A": 10,
+                  "B": 1,
+                  "C": 0,
+                  "D": 1,
+                  "E": 9,
+                  "F": 0,
+                  "G": 3,
+                  "H": 1,
+                  "I": 3,
+                  "J": 1,
+                  "K": 0,
+                  "L": 1,
+                  "M": 1,
+                  "N": 4,
+                  "O": 4,
+                  "P": 1,
+                  "Q": 1,
+                  "R": 2,
+                  "S": 0,
+                  "T": 1,
+                  "U": 1,
+                  "V": 2,
+                  "W": 2,
+                  "X": 1,
+                  "Y": 1,
+                  "Z": 0
+                }
+              },
+              "Time Taken": {
+                "t": 19162482,
+                "l": null,
+                "s": null
+              },
+              "Triple Triples": {
+                "t": 0,
+                "l": null,
+                "s": null
+              },
+              "Turns": {
+                "t": 12,
+                "l": null,
+                "s": null
+              },
+              "Turns With Blank": {
+                "t": 2,
+                "l": null,
+                "s": null
+              },
+              "Unchallenged Phonies": {
+                "t": 0,
+                "l": null,
+                "s": null
+              },
+              "Valid Plays That Were Challenged": {
+                "t": 1,
+                "l": null,
+                "s": null
+              },
+              "Vertical Openings": {
+                "t": 0,
+                "l": null,
+                "s": null
+              },
+              "Wins": {
+                "t": 1,
+                "l": null,
+                "s": null
+              }
+            },
+            "d2": {
+              "Bingos": {
+                "t": 5,
+                "l": null,
+                "s": null
+              },
+              "Challenged Phonies": {
+                "t": 0,
+                "l": null,
+                "s": null
+              },
+              "Challenges Lost": {
+                "t": 1,
+                "l": null,
+                "s": null
+              },
+              "Challenges Won": {
+                "t": 0,
+                "l": null,
+                "s": null
+              },
+              "Comments": {
+                "t": 0,
+                "l": null,
+                "s": null
+              },
+              "Draws": {
+                "t": 0,
+                "l": null,
+                "s": null
+              },
+              "Exchanges": {
+                "t": 0,
+                "l": null,
+                "s": null
+              },
+              "Firsts": {
+                "t": 2,
+                "l": null,
+                "s": null
+              },
+              "Games": {
+                "t": 3,
+                "l": null,
+                "s": {
+                  "CASUAL": 0,
+                  "DOUBLE": 0,
+                  "FIVE_POINT": 3,
+                  "RATED": 3,
+                  "SINGLE": 0,
+                  "TEN_POINT": 0,
+                  "TRIPLE": 0,
+                  "VOID": 0
+                }
+              },
+              "Games with no Bingos": {
+                "t": 0,
+                "l": null,
+                "s": null
+              },
+              "High Game": {
+                "t": 183,
+                "l": [
+                  {
+                    "GameId": "m5ktbp4qPVTqaAhg6HJMsb",
+                    "PlayerId": "qUQkST8CendYA3baHNoPjk",
+                    "Time": 0,
+                    "Item": {
+                      "s": 183
+                    }
+                  }
+                ],
+                "s": null
+              },
+              "High Turn": {
+                "t": 91,
+                "l": [
+                  {
+                    "GameId": "m5ktbp4qPVTqaAhg6HJMsb",
+                    "PlayerId": "qUQkST8CendYA3baHNoPjk",
+                    "Time": 0,
+                    "Item": {
+                      "s": 91
+                    }
+                  }
+                ],
+                "s": null
+              },
+              "Losses": {
+                "t": 1,
+                "l": null,
+                "s": null
+              },
+              "Low Game": {
+                "t": 131,
+                "l": [
+                  {
+                    "GameId": "ycj5de5gArFF3ap76JyiUA",
+                    "PlayerId": "qUQkST8CendYA3baHNoPjk",
+                    "Time": 0,
+                    "Item": {
+                      "s": 131
+                    }
+                  }
+                ],
+                "s": null
+              },
+              "Mistakes": {
+                "t": 0,
+                "l": null,
+                "s": {
+                  "endgame": 0,
+                  "finding": 0,
+                  "knowledge": 0,
+                  "large": 0,
+                  "medium": 0,
+                  "small": 0,
+                  "strategy": 0,
+                  "tactics": 0,
+                  "time": 0,
+                  "unspecified": 0,
+                  "vision": 0
+                }
+              },
+              "Ratings": {
+                "t": 3,
+                "l": null,
+                "s": null
+              },
+              "Score": {
+                "t": 497,
+                "l": null,
+                "s": null
+              },
+              "Tiles Played": {
+                "t": 62,
+                "l": null,
+                "s": {
+                  "?": 0,
+                  "A": 7,
+                  "B": 1,
+                  "C": 1,
+                  "D": 4,
+                  "E": 9,
+                  "F": 1,
+                  "G": 2,
+                  "H": 2,
+                  "I": 4,
+                  "J": 0,
+                  "K": 2,
+                  "L": 3,
+                  "M": 0,
+                  "N": 7,
+                  "O": 0,
+                  "P": 2,
+                  "Q": 0,
+                  "R": 7,
+                  "S": 2,
+                  "T": 5,
+                  "U": 3,
+                  "V": 0,
+                  "W": 0,
+                  "X": 0,
+                  "Y": 0,
+                  "Z": 0
+                }
+              },
+              "Time Taken": {
+                "t": 19177812,
+                "l": null,
+                "s": null
+              },
+              "Triple Triples": {
+                "t": 0,
+                "l": null,
+                "s": null
+              },
+              "Turns": {
+                "t": 13,
+                "l": null,
+                "s": null
+              },
+              "Turns With Blank": {
+                "t": 0,
+                "l": null,
+                "s": null
+              },
+              "Unchallenged Phonies": {
+                "t": 0,
+                "l": null,
+                "s": null
+              },
+              "Valid Plays That Were Challenged": {
+                "t": 0,
+                "l": null,
+                "s": null
+              },
+              "Vertical Openings": {
+                "t": 0,
+                "l": null,
+                "s": null
+              },
+              "Wins": {
+                "t": 2,
+                "l": null,
+                "s": null
+              }
+            },
+            "n": {
+              "All Triple Letter Squares Covered": {
+                "t": 0,
+                "l": null,
+                "s": null
+              },
+              "All Triple Word Squares Covered": {
+                "t": 0,
+                "l": null,
+                "s": null
+              },
+              "Combined High Scoring": {
+                "t": 0,
+                "l": null,
+                "s": null
+              },
+              "Combined Low Scoring": {
+                "t": 0,
+                "l": null,
+                "s": null
+              },
+              "Four or More Consecutive Bingos": {
+                "t": 0,
+                "l": null,
+                "s": {
+                  "player_one_streak": 2,
+                  "player_two_streak": 0
+                }
+              },
+              "Many Challenges": {
+                "t": 0,
+                "l": null,
+                "s": null
+              },
+              "Many Double Letter Squares Covered": {
+                "t": 0,
+                "l": null,
+                "s": null
+              },
+              "Many Double Word Squares Covered": {
+                "t": 0,
+                "l": null,
+                "s": null
+              },
+              "No Blanks Played": {
+                "t": 0,
+                "l": null,
+                "s": null
+              },
+              "One Player Plays Every E": {
+                "t": 0,
+                "l": null,
+                "s": null
+              },
+              "One Player Plays Every Power Tile": {
+                "t": 0,
+                "l": null,
+                "s": null
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

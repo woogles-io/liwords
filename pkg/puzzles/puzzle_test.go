@@ -716,15 +716,18 @@ func TestPuzzlesNextClosestRating(t *testing.T) {
 
 	playerRating := 10000.0
 
-	dbc.us.SetRatings(ctx, PuzzlerUUID, PuzzleCreatorUUID, "CSW19.puzzle.corres", &entity.SingleRating{
-		Volatility:      glicko.InitialVolatility,
-		Rating:          playerRating,
-		RatingDeviation: 40.0,
-	}, &entity.SingleRating{
-		Volatility:      glicko.InitialVolatility,
-		Rating:          playerRating,
-		RatingDeviation: 40.0,
-	})
+	dbc.us.UpdateRatings(ctx, PuzzlerUUID, PuzzleCreatorUUID, "CSW19.puzzle.corres",
+		func(_, _ *entity.SingleRating) (*entity.SingleRating, *entity.SingleRating, error) {
+			return &entity.SingleRating{
+				Volatility:      glicko.InitialVolatility,
+				Rating:          playerRating,
+				RatingDeviation: 40.0,
+			}, &entity.SingleRating{
+				Volatility:      glicko.InitialVolatility,
+				Rating:          playerRating,
+				RatingDeviation: 40.0,
+			}, nil
+		})
 
 	puzzleRatingDiffs := []int{
 		50,
