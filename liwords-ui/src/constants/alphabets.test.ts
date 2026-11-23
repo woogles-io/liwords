@@ -1,8 +1,12 @@
 import {
   StandardCatalanAlphabet,
   StandardEnglishAlphabet,
+  StandardGermanAlphabet,
+  StandardSpanishAlphabet,
   SuperCatalanAlphabet,
   alphabetFromName,
+  getMachineLetterForKey,
+  labelsToTiles,
   runesToRuneArray,
   runesToMachineWord,
   machineWordToRunes,
@@ -92,4 +96,54 @@ it("has the super Catalan set: the Catalan letters, 200 of them", () => {
   expect(runesToMachineWord("AL·LOQUIMIQUES", SuperCatalanAlphabet)).toEqual(
     runesToMachineWord("AL·LOQUIMIQUES", StandardCatalanAlphabet),
   );
+});
+
+describe("tiles read by their labels", () => {
+  const ml = (rune: string, alphabet = StandardEnglishAlphabet) =>
+    alphabet.machineLetterMap[rune];
+
+  it("reads each tile's label, and the one it takes on a blank", () => {
+    expect(labelsToTiles("Ab?", StandardEnglishAlphabet)).toEqual([
+      ml("A"),
+      ml("B"),
+      0,
+    ]);
+    const es = StandardSpanishAlphabet;
+    expect(labelsToTiles("[ch]i", es)).toEqual([ml("[CH]", es), ml("I", es)]);
+    // a C and an H are another spelling
+    expect(labelsToTiles("chi", es)).toEqual([
+      ml("C", es),
+      ml("H", es),
+      ml("I", es),
+    ]);
+    const ca = StandardCatalanAlphabet;
+    expect(labelsToTiles("l·l", ca)).toEqual([ml("L·L", ca)]);
+    const de = StandardGermanAlphabet;
+    expect(labelsToTiles("äÜ", de)).toEqual([ml("Ä", de), ml("Ü", de)]);
+  });
+
+  it("finds no tile where none is named, case never changed", () => {
+    // upper-cased, ß would read as two S tiles
+    expect(labelsToTiles("ß", StandardGermanAlphabet)).toBeNull();
+    // a label as written, or as a blank writes it: never in other case
+    expect(labelsToTiles("[Ch]", StandardSpanishAlphabet)).toBeNull();
+    expect(labelsToTiles("a1", StandardEnglishAlphabet)).toBeNull();
+    expect(labelsToTiles("", StandardEnglishAlphabet)).toEqual([]);
+  });
+
+  it("reads a '.' as the blank and a space as an empty slot, as before", () => {
+    expect(labelsToTiles("a. b", StandardEnglishAlphabet)).toEqual(
+      runesToMachineWord("A. B", StandardEnglishAlphabet),
+    );
+  });
+
+  it("finds a key's tile by its labels, or the board's shortcut in either case", () => {
+    expect(getMachineLetterForKey("a", StandardEnglishAlphabet)).toBe(ml("A"));
+    expect(getMachineLetterForKey("A", StandardEnglishAlphabet)).toBe(ml("A"));
+    expect(getMachineLetterForKey("?", StandardEnglishAlphabet)).toBe(0);
+    expect(getMachineLetterForKey("1", StandardEnglishAlphabet)).toBeNull();
+    const es = StandardSpanishAlphabet;
+    expect(getMachineLetterForKey("K", es)).toBe(ml("[CH]", es));
+    expect(getMachineLetterForKey("k", es)).toBe(ml("[CH]", es));
+  });
 });

@@ -193,7 +193,9 @@ export const ExchangeTiles = React.memo((props: Props) => {
         }
         return;
       }
-      const key = e.key.toLocaleUpperCase();
+      // the key as typed: a tile is found by its labels, never by changing
+      // the key's case
+      const key = e.key;
 
       // Toggle all. To keep selected tiles, toggle just before exchanging.
       if (key === "-") {
