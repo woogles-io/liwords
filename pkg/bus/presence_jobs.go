@@ -23,8 +23,11 @@ func endSpan(span trace.Span, err error) {
 	span.End()
 }
 
+// The sweep goes in batches because Redis does nothing else while a script
+// runs: 100 dead tabs take about 1.5 ms (Redis 6.0.8). After a socket
+// server restarts, all its old connections die at once.
 const (
-	sweepBatch      = 500
+	sweepBatch      = 100
 	sweepMaxBatches = 20
 )
 
