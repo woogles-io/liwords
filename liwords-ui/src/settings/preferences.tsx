@@ -10,6 +10,7 @@ import {
   CHAT_FONT_SCALE_OPTIONS,
 } from "../chat/chat_prefs";
 import { ABSOLUTE_TIMES_KEY } from "../profile/history_prefs";
+import { CONFIRM_PLAY_KEY } from "../gameroom/play_prefs";
 import {
   preferredSortOrder,
   setPreferredSortOrder,
@@ -200,6 +201,7 @@ export const Preferences = React.memo(() => {
     useLocalStorageBool(CHAT_ALWAYS_TIMESTAMPS_KEY);
   const [gameHistoryDates, setGameHistoryDates] =
     useLocalStorageBool(ABSOLUTE_TIMES_KEY);
+  const [confirmPlay, setConfirmPlay] = useLocalStorageBool(CONFIRM_PLAY_KEY);
 
   const initialPuzzleLexicon =
     localStorage?.getItem("puzzleLexicon") || undefined;
@@ -508,6 +510,21 @@ export const Preferences = React.memo(() => {
           </div>
         </Col>
       </Row>
+      <div className="toggles-section">
+        <div className="toggle-fill">
+          <div className="toggle-section">
+            <div className="title">Confirm plays</div>
+            <div>
+              <div>Ask before each play</div>
+              <Switch
+                checked={confirmPlay}
+                onChange={setConfirmPlay}
+                className="confirm-play-toggle"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
       <div className="section-header">OMGWords Puzzle Mode settings</div>
       <Row>
         <Col span={12}>
