@@ -271,8 +271,11 @@ services:
     volumes:
       - .:/opt/code/liwords:rw
       - ../macondo:/opt/code/macondo
-    networks:
-      - aeronet
+    # Code generation talks to no other service. On Docker's default bridge
+    # it doesn't create a network per checkout: each worktree's directory is
+    # its own Compose project, and `run --rm` leaves that project's network
+    # behind, which uses up Docker's address pools.
+    network_mode: bridge
 
 networks:
   aeronet:
