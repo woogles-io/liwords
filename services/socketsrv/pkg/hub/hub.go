@@ -470,13 +470,11 @@ func (h *Hub) socketLogin(c *Client) error {
 		}
 
 		c.userID = claims["uid"].(string)
-		// The connection ID is the token's. Tokens issued before it was
-		// put in them keep the one in the URL, if it's a valid one.
-		if cid, ok := claims["cid"].(string); ok && cid != "" {
-			if c.connID != cid {
-				log.Debug().Str("url-cid", c.connID).Str("cid", cid).Msg("conn-id-from-token")
-			}
-			c.connID = cid
+		// The connection ID is the token's: the API picks it, so a client
+		// can't choose it (or take another connection's).
+		c.connID, ok = claims["cid"].(string)
+		if !ok || c.connID == "" {
+			return errors.New("malformed token - cid")
 		}
 		log.Debug().Str("username", c.username).Str("userID", c.userID).
 			Bool("auth", c.authenticated).Msg("socket connection")

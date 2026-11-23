@@ -344,9 +344,6 @@ func ServeWS(hub *Hub, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Only used with a token that doesn't carry its connection ID.
-	connID := r.URL.Query().Get("cid")
-
 	token := tokens[0]
 	path := paths[0]
 
@@ -360,7 +357,6 @@ func ServeWS(hub *Hub, w http.ResponseWriter, r *http.Request) {
 		hub:          hub,
 		conn:         conn,
 		send:         make(chan outMsg, 256),
-		connID:       connID,
 		connToken:    token,
 		forwardedFor: strings.Join(fwd, ","),
 		clientID:     clientID,
@@ -401,7 +397,7 @@ func ServeWS(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	// new goroutines.
 	go client.writePump()
 	go client.readPump()
-	log.Debug().Str("connID", connID).Msg("leaving-servews")
+	log.Debug().Str("connID", client.connID).Msg("leaving-servews")
 }
 
 // needsExtendedLength reports whether a frame's message is too long for the

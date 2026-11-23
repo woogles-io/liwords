@@ -79,7 +79,8 @@ describe("LiwordsSocket", () => {
       earlierUrl = await earlier;
     });
     expect(result.current).toBe("cid-later");
-    expect(laterUrl).toContain("cid=cid-later");
+    expect(laterUrl).toContain("token=");
+    expect(laterUrl).not.toContain("cid=");
     expect(earlierUrl).toBe("");
   });
 });

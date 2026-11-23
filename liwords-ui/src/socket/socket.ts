@@ -125,7 +125,7 @@ if (typeof window !== "undefined") {
     return socketDebugCounters;
   };
   window.testSocketConnection = async () => {
-    const testUrl = `${socketUrl}?token=test&path=/test&cid=test-${Date.now()}`;
+    const testUrl = `${socketUrl}?token=test&path=/test`;
     await testWebSocketConnectivity(testUrl);
   };
   console.log(
@@ -236,7 +236,6 @@ export const LiwordsSocket = (props: {
       const ret = `${socketUrl}?${new URLSearchParams({
         token,
         path: pathname,
-        cid,
       })}`;
 
       const decoded = jwtDecode<DecodedToken>(token);
