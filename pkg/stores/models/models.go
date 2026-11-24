@@ -433,14 +433,6 @@ type LeagueStanding struct {
 	GamesAnalyzed            pgtype.Int4
 }
 
-type Liststat struct {
-	GameID    pgtype.Text
-	PlayerID  pgtype.Text
-	Timestamp pgtype.Int8
-	StatType  pgtype.Int4
-	Item      []byte
-}
-
 type LoginFailure struct {
 	Key       string
 	Failures  int32
