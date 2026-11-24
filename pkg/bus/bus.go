@@ -767,7 +767,7 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 		if err != nil {
 			return err
 		}
-		return b.pongReceived(ctx, userID, wsConnID, evt.Ips)
+		return b.pongReceived(ctx, userID, wsConnID, evt)
 
 	default:
 		return fmt.Errorf("unhandled-publish-topic: %v", subtopics)
@@ -945,11 +945,7 @@ func (b *Bus) initRealmInfo(ctx context.Context, evt *pb.InitRealmInfo, connID s
 
 	for _, realm := range evt.Realms {
 
-		presenceChan := strings.ReplaceAll(realm, "-", ".")
-		if !strings.HasPrefix(presenceChan, "chat.") {
-			// presenceChan / presenceStore is only used for chat purposes for now.
-			presenceChan = ""
-		}
+		presenceChan := presenceChannel(realm)
 
 		if presenceChan != "" {
 			log.Debug().Str("presence-chan", presenceChan).Str("username", username).Msg("SetPresence")
@@ -1145,29 +1141,49 @@ func (b *Bus) leaveSite(ctx context.Context, userID string) error {
 	return nil
 }
 
-func (b *Bus) pongReceived(ctx context.Context, userID, connID, ips string) error {
-	var anon bool
-	var username string
-	var err error
-	if userIsAnon(userID) {
-		anon = true
-		username = userID
-	} else {
-		username, err = b.stores.UserStore.Username(ctx, userID)
-		if err != nil {
-			return err
+// presenceChannel is the presence channel of a socket realm, or "" if it has
+// none: only chat realms have presence.
+func presenceChannel(realm string) string {
+	c := strings.ReplaceAll(realm, "-", ".")
+	if !strings.HasPrefix(c, "chat.") {
+		return ""
+	}
+	return c
+}
+
+func (b *Bus) pongReceived(ctx context.Context, userID, connID string, pong *pb.Pong) error {
+	anon := userIsAnon(userID)
+	username := userID
+	if !anon {
+		// Socket servers send the name from the socket's token; older ones
+		// don't.
+		username = pong.Username
+		if username == "" {
+			var err error
+			if username, err = b.stores.UserStore.Username(ctx, userID); err != nil {
+				return err
+			}
 		}
 	}
-	log.Debug().Str("username", username).Str("connID", connID).Str("ips", ips).Msg("pong-received")
+	log.Debug().Str("username", username).Str("connID", connID).Str("ips", pong.Ips).Msg("pong-received")
 
-	oldChannels, newChannels, err := b.stores.PresenceStore.RenewPresence(ctx, userID, username, anon, connID)
+	var channels []string
+	for _, r := range pong.Realms {
+		if c := presenceChannel(r); c != "" {
+			channels = append(channels, c)
+		}
+	}
+	oldChannels, newChannels, restored, err := b.stores.PresenceStore.RenewPresence(ctx, userID, username, anon, connID, channels)
 	if err != nil {
 		return err
 	}
-	if err = b.broadcastChannelChanges(ctx, oldChannels, newChannels, userID, username); err != nil {
-		return err
+	if len(restored) > 0 {
+		// Back in the rooms' lists, as when the tab joined.
+		if err := b.broadcastPresence(username, userID, anon, restored, false); err != nil {
+			return err
+		}
 	}
-	return nil
+	return b.broadcastChannelChanges(ctx, oldChannels, newChannels, userID, username)
 }
 
 func (b *Bus) activeGames(ctx context.Context, tourneyID string) (*entity.EventWrapper, error) {

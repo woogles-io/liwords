@@ -527,6 +527,7 @@ func registerRealm(c *Client, path string, h *Hub) error {
 	log.Debug().Interface("realms", realms).Msg("setting-realms")
 
 	c.tempRealms = realms
+	c.pongRealms = append([]string(nil), realms...)
 	return nil
 }
 

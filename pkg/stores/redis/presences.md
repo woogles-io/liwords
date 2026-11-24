@@ -1,47 +1,66 @@
-Types of ZSET
+# Presence
 
-channelpresence:channelname ZSET for every channel. A ZSET is essentially a sorted set. The keys of the set are going to be the player presences: userid#username#connid and the values of the set are the last updated timestamp. Every couple minutes we can run a job that’ll clear out old timestamps for all channels. (easy to do this with ZREMBYRANGE or something). This clears out timestamps when the socket server goes down or crashes. We also clear them out whenever a user leaves a channel. I think this works and avoids using the KEYS command. To get all presences in a channel it’s just ZRANGEBYSCORE channelpresence:channelname -inf +inf .
+Presence says who is in which chat channel (the lists beside each chat) and
+which channels and games each user is in, which their followers see.
 
-- this ZSET has an expiry of ~1 minute
-- every time we get a ping, we extend the expiry
-- we also call ZREMBYRANGE every Xth ping (maybe this could be a probabilistic function) or we can do it every ping as well
+Every member of these sorted sets has its expiry time as its score. A member
+is live while that time is after now. Everything that reads skips members
+that have expired.
 
-<!--
-channelpresences is a single ZSET with the channel as the key and the timestamp as the value. Same as userpresences, this contains the master list of all active channels. -->
+## Keys
 
-userpresence:userid is a ZSET that contains presence info for each user. Keys are connid#channel, values are timestamp. To get all channels for a user it’s ZRANGEBYSCORE userpresence:userid -inf +inf
--- this ZSET has a TTL that gets updated whenever we ping
+- `channelpresence:<channel>`: who is in a chat channel. Members are
+  `uuid#username#auth|anon#connID`. The key expires 3 minutes after its
+  last write.
+- `userpresence:<uuid>`: the channels a user's connections are in. Members
+  are `connID#channel`. Same TTL.
+- `userpresences`: every connection in every channel, site-wide. Members are
+  `uuid#username#auth|anon#connID#channel`. This is the index the sweep reads.
+  It could later give a "who's online" count or list.
+- `activeusergames:<uuid>`: the real-time games a user is playing. Members are
+  game IDs, each expiring 12 hours after it starts unless the game ends
+  first. The key expires with its last game.
+- `closedconn:<connID>`: a string set for 3 minutes when a tab closes.
+  Renewals skip such connections, so a pong handled after the close (in
+  another goroutine, or on another API server) can't put the tab back.
 
-- same as the other zset, we also call ZREMBYRANGE every Xth ping.
+Channels are only the `chat.*` ones (lobby, tournament, game and spectator
+chat). A user's channels as followers see them also hold
+`activegame:<gameID>` for each game they're playing.
 
-userpresences is a single ZSET with the userid as the key and timestamp as the value. This lets us find all users that are online. We can call ZCARD to get count of all users. We can call ZREMBYRANGE to expire old users.
+## Scripts
 
-The front end will ping the backend with the userID and connID. The backend will then update the TTL of the key userpresence:userid, scan the set for all elements starting with connid#, and update their timestamps, and then update the timestamps for all these channels (in channelpresence:channelname) that user is in (i.e. the key named userid#connid in each relevant ZSET will be updated with the current timestamp). It also updates the userpresences and channelpresences keys.
+Each script runs atomically and returns the user's channels before and
+after, so the API can tell followers (`presence.changed.<uuid>` on NATS)
+when they change.
 
-AddPresence: same as ping function above essentially.
+- `set_presence.lua`: a tab joins a channel. Called when a socket connects
+  (`initRealmInfo`).
+- `renew_presence.lua`: a tab is still there. Called every tenth pong, about
+  every 50 s; entries last 3 minutes.
+- `clear_presence.lua`: a tab closed (`leaveTab`). Also returns the channels
+  the user has left altogether.
+- `get_channels.lua`: the channels of any number of users, for the follows
+  list.
+- `update_active_game.lua`: a game starts or ends.
+- `sweep_presence.lua`: removes the entries of connections that went away
+  without clearing them (a socket server that crashed or was redeployed, a
+  network that dropped).
 
-ClearPresence: go into userpresence:userid and delete all starting with connid#
+## Jobs (pkg/bus/presence_jobs.go)
 
-- then go into these channels in channelpresence:channelname and delete userid#username#connid for each channel
+- **`presence_sweep`, every 30 s:** sweeps expired `userpresences` entries,
+  then announces that those users left the chats no other tab of theirs is
+  in, and tells their followers.
+  - Span `presence.sweep`; attributes `presence.swept`, `presence.users`,
+    `presence.left_notices`, `presence.batches`.
+- **`active_games_reconcile`, every 10 min:** makes `activeusergames` match
+  the started real-time games in Postgres (`ongoing_games`).
+  - Adds missing entries, for example after Redis lost its data.
+  - Removes those of games that ended without removing theirs.
+  - Span `presence.reconcile_active_games`; attributes `presence.games`,
+    `presence.entries`, `presence.added`, `presence.removed`.
 
----
-
-<!--
-presences, ZSET all with timestamps.
-
-- ucc:userid:connid:channel
-- u:userid
-- uc:userid:connid
-- c:channel
-
-userpresences, ZSET
-
-- u:userid -->
-
----
-
-requirements:
-
-- channel presence should tell us which users are in that channel
-- user presence should tell us what channels this user is in across their different connections
-- a hard crash of the socket server (or a deploy) should invalidate/expire these presences eventually.
+The store's calls have spans named `presence.*` (scope `presence-store`).
+Renewals, the busiest call, add their attributes to the pong's span instead
+of making one.

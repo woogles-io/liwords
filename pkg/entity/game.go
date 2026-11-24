@@ -705,15 +705,18 @@ func (g *Game) SendChange(ctx context.Context, e *EventWrapper) {
 	log.Debug().Msg("change sent")
 }
 
+// ActiveGameTTL is how long a real-time game counts as being played (in
+// presence) after it starts, unless it ends first.
+// - Both players start with 60 mins each.
+// - Game lasts 600 turns (5 passes, play one tile, repeat 100 times).
+const ActiveGameTTL = 12 * time.Hour
+
 func (g *Game) NewActiveGameEntry(gameStillActive bool) *EventWrapper {
 	ttl := int64(0) // seconds
 	if gameStillActive {
 		// Ideally we would set this based on time remaining (and round it up).
-		// But since we don't want to refresh every turn, we can just set a very long expiry here.
-		// A 60min + 60sec increment game can take 12 hours.
-		// - Both players start with 60 mins each.
-		// - Game lasts 600 turns (5 passes, play one tile, repeat 100 times).
-		ttl = 12 * 60 * 60
+		// But since we don't want to refresh every turn, we set a long expiry.
+		ttl = int64(ActiveGameTTL / time.Second)
 	}
 	players := g.History().Players
 	activeGamePlayers := make([]*pb.ActiveGamePlayer, 0, len(players))

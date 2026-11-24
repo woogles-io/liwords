@@ -664,9 +664,15 @@ func (x *LagMeasurement) GetLagMs() int32 {
 	return 0
 }
 
+// Pong is sent to the API (ipc.pb.pongReceived) every tenth pong of a socket,
+// to renew its presence.
 type Pong struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Ips           string                 `protobuf:"bytes,1,opt,name=ips,proto3" json:"ips,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Ips   string                 `protobuf:"bytes,1,opt,name=ips,proto3" json:"ips,omitempty"`
+	// The socket's realms and its user's name: with them the API can put back
+	// presence that was lost (Redis restarted, say), not just extend it.
+	Realms        []string `protobuf:"bytes,2,rep,name=realms,proto3" json:"realms,omitempty"`
+	Username      string   `protobuf:"bytes,3,opt,name=username,proto3" json:"username,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -704,6 +710,20 @@ func (*Pong) Descriptor() ([]byte, []int) {
 func (x *Pong) GetIps() string {
 	if x != nil {
 		return x.Ips
+	}
+	return ""
+}
+
+func (x *Pong) GetRealms() []string {
+	if x != nil {
+		return x.Realms
+	}
+	return nil
+}
+
+func (x *Pong) GetUsername() string {
+	if x != nil {
+		return x.Username
 	}
 	return ""
 }
@@ -864,9 +884,11 @@ const file_proto_ipc_ipc_proto_rawDesc = "" +
 	"\auser_id\x18\x02 \x01(\tR\x06userId\x12\x16\n" +
 	"\x06realms\x18\x03 \x03(\tR\x06realms\"'\n" +
 	"\x0eLagMeasurement\x12\x15\n" +
-	"\x06lag_ms\x18\x01 \x01(\x05R\x05lagMs\"\x18\n" +
+	"\x06lag_ms\x18\x01 \x01(\x05R\x05lagMs\"L\n" +
 	"\x04Pong\x12\x10\n" +
-	"\x03ips\x18\x01 \x01(\tR\x03ips\")\n" +
+	"\x03ips\x18\x01 \x01(\tR\x03ips\x12\x16\n" +
+	"\x06realms\x18\x02 \x03(\tR\x06realms\x12\x1a\n" +
+	"\busername\x18\x03 \x01(\tR\busername\")\n" +
 	"\rServerMessage\x12\x18\n" +
 	"\amessage\x18\x01 \x01(\tR\amessage\"\x1e\n" +
 	"\bJoinPath\x12\x12\n" +
