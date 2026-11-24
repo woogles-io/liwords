@@ -105,7 +105,7 @@ Resources:
             - { Name: DB_USER, Value: liwords }
             - { Name: DB_SSL_MODE, Value: disable }
             - { Name: DB_MIGRATIONS_PATH, Value: "file:///opt/db/migrations" }
-            - { Name: REDIS_URL, Value: "redis://10.0.0.70:6379" }
+            - { Name: REDIS_URL, Value: "redis://valkey.woogles.io:6379" }
             - { Name: NATS_URL, Value: "nats://nats.woogles.io:4222" }
             - { Name: OTEL_EXPORTER_OTLP_ENDPOINT, Value: "http://10.0.0.164:4318" }
             - { Name: OTEL_RESOURCE_ATTRIBUTES, Value: "service.name=liwords,service.version=0.1.0" }
