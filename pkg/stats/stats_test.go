@@ -11,19 +11,15 @@ import (
 	"github.com/domino14/macondo/gcgio"
 	pb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/domino14/word-golib/tilemapping"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog"
 
 	"github.com/woogles-io/liwords/pkg/config"
 	"github.com/woogles-io/liwords/pkg/entity"
-	"github.com/woogles-io/liwords/pkg/stores/common"
-	statstore "github.com/woogles-io/liwords/pkg/stores/stats"
 	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
 var DefaultConfig = config.DefaultConfig()
-var pkg = "stats"
 
 func TestMain(m *testing.M) {
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
@@ -31,21 +27,9 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-func recreateDB() *pgxpool.Pool {
-	// Create a database.
-	err := common.RecreateTestDB(pkg)
-	if err != nil {
-		panic(err)
-	}
-
-	pool, err := common.OpenTestingDB(pkg)
-	if err != nil {
-		panic(err)
-	}
-	return pool
-}
-
-func InstantiateNewStatsWithHistory(ctx context.Context, filename string, listStatStore ListStatStore) (*entity.Stats, error) {
+// InstantiateNewStatsWithHistory returns the stats of one GCG file, and the
+// notable stats it met.
+func InstantiateNewStatsWithHistory(ctx context.Context, filename string) (*entity.Stats, []string, error) {
 
 	history, err := gcgio.ParseGCG(DefaultConfig.MacondoConfig(), filename)
 	if err != nil {
@@ -59,9 +43,6 @@ func InstantiateNewStatsWithHistory(ctx context.Context, filename string, listSt
 		playerTwoId = "1"
 	}
 	stats := InstantiateNewStats(playerOneId, playerTwoId)
-	if err != nil {
-		return nil, err
-	}
 
 	req := &ipc.GameRequest{Lexicon: "CSW19",
 		Rules: &ipc.GameRules{BoardLayoutName: entity.CrosswordGame,
@@ -88,27 +69,33 @@ func InstantiateNewStatsWithHistory(ctx context.Context, filename string, listSt
 		Tie:       history.FinalScores[0] != history.FinalScores[1],
 	}
 
-	AddGame(ctx, stats, listStatStore, history, req, DefaultConfig.WGLConfig(), gameEndedEvent, filename)
-
-	return stats, nil
+	notables, err := addGame(ctx, stats, history, req, DefaultConfig.WGLConfig(), gameEndedEvent, filename)
+	if err != nil {
+		return nil, nil, err
+	}
+	return stats, notables, nil
 }
 
-func JoshNationalsFromGames(ctx context.Context, useJSON bool, listStatStore ListStatStore) (*entity.Stats, []string, error) {
+// JoshNationalsFromGames returns the stats of 31 games added together, and how
+// many games met each notable stat.
+func JoshNationalsFromGames(ctx context.Context, useJSON bool) (*entity.Stats, map[string]int, error) {
 	annotatedGamePrefix := "josh_nationals_round_"
 	stats := InstantiateNewStats("1", "2")
-	files := []string{}
+	notables := map[string]int{}
 	for i := 1; i <= 31; i++ {
 		annotatedGame := fmt.Sprintf("./testdata/%s%d.gcg", annotatedGamePrefix, i)
-		otherStats, err := InstantiateNewStatsWithHistory(ctx, annotatedGame, listStatStore)
+		otherStats, gameNotables, err := InstantiateNewStatsWithHistory(ctx, annotatedGame)
 		if err != nil {
 			return nil, nil, err
 		}
-		files = append(files, annotatedGame)
+		for _, n := range gameNotables {
+			notables[n]++
+		}
 		if useJSON {
 			bytes, err := json.Marshal(otherStats)
 			if err != nil {
 				fmt.Println(err)
-				return otherStats, files, err
+				return otherStats, notables, err
 			}
 			// It is assumed that in production the json is stored in a database
 			// and remains untouched until it is retrieved later for stats
@@ -116,46 +103,31 @@ func JoshNationalsFromGames(ctx context.Context, useJSON bool, listStatStore Lis
 			var otherStatsFromJSON entity.Stats
 			err = json.Unmarshal(bytes, &otherStatsFromJSON)
 			if err != nil {
-				return otherStats, files, err
+				return otherStats, notables, err
 			}
 			otherStats = &otherStatsFromJSON
 		}
 		AddStats(stats, otherStats)
 	}
-	return stats, files, nil
+	return stats, notables, nil
 }
 
 func TestStatsFromJson(t *testing.T) {
 	is := is.New(t)
 
-	pool := recreateDB()
 	ctx := context.Background()
-	listStatStore, err := statstore.NewDBStore(pool)
+	stats, _, err := JoshNationalsFromGames(ctx, false)
 	is.NoErr(err)
-	stats, _, err := JoshNationalsFromGames(ctx, false, listStatStore)
-	is.NoErr(err)
-	statsJSON, gameIds, err := JoshNationalsFromGames(ctx, true, listStatStore)
-	is.NoErr(err)
-
-	err = Finalize(ctx, stats, listStatStore, gameIds, "", "")
-	is.NoErr(err)
-	err = Finalize(ctx, statsJSON, listStatStore, gameIds, "", "")
+	statsJSON, _, err := JoshNationalsFromGames(ctx, true)
 	is.NoErr(err)
 	is.True(isEqual(stats, statsJSON))
-	listStatStore.Disconnect()
 }
 
 func TestStats(t *testing.T) {
 	is := is.New(t)
 
-	pool := recreateDB()
 	ctx := context.Background()
-	listStatStore, err := statstore.NewDBStore(pool)
-	is.NoErr(err)
-	stats, gameIds, err := JoshNationalsFromGames(ctx, false, listStatStore)
-	is.NoErr(err)
-
-	err = Finalize(ctx, stats, listStatStore, gameIds, "", "")
+	stats, notables, err := JoshNationalsFromGames(ctx, false)
 	is.NoErr(err)
 
 	// fmt.Println(StatsToString(stats))
@@ -218,48 +190,17 @@ func TestStats(t *testing.T) {
 	is.True(stats.PlayerOneData[entity.TILES_PLAYED_STAT].Subitems["Z"] == 19)
 	is.True(stats.PlayerOneData[entity.TILES_PLAYED_STAT].Subitems[string(tilemapping.BlankToken)] == 39)
 
-	is.True(len(stats.NotableData[entity.MANY_DOUBLE_WORDS_COVERED_STAT].List) == 0)
-	is.True(len(stats.NotableData[entity.ALL_TRIPLE_LETTERS_COVERED_STAT].List) == 0)
-	is.True(len(stats.NotableData[entity.ALL_TRIPLE_WORDS_COVERED_STAT].List) == 0)
-	is.True(len(stats.NotableData[entity.COMBINED_HIGH_SCORING_STAT].List) == 0)
-	is.True(len(stats.NotableData[entity.COMBINED_LOW_SCORING_STAT].List) == 0)
-	is.True(len(stats.NotableData[entity.MANY_CHALLENGES_STAT].List) == 1)
-	is.True(len(stats.NotableData[entity.ONE_PLAYER_PLAYS_EVERY_POWER_TILE_STAT].List) == 0)
-	is.True(len(stats.NotableData[entity.ONE_PLAYER_PLAYS_EVERY_E_STAT].List) == 0)
-	is.True(len(stats.NotableData[entity.FOUR_OR_MORE_CONSECUTIVE_BINGOS_STAT].List) == 0)
-	listStatStore.Disconnect()
+	// Only one of the 31 games is notable: it had many challenges.
+	is.Equal(notables, map[string]int{entity.MANY_CHALLENGES_STAT: 1})
 }
 
 func TestNotable(t *testing.T) {
 	is := is.New(t)
-	pool := recreateDB()
 	ctx := context.Background()
 
-	stats := InstantiateNewStats("1", "2")
-	listStatStore, err := statstore.NewDBStore(pool)
-	is.NoErr(err)
-
-	manyDoubleWordsCoveredStats, _ := InstantiateNewStatsWithHistory(ctx, "./testdata/many_double_words_covered.gcg", listStatStore)
-	allTripleLettersCoveredStats, _ := InstantiateNewStatsWithHistory(ctx, "./testdata/all_triple_letters_covered.gcg", listStatStore)
-	allTripleWordsCoveredStats, _ := InstantiateNewStatsWithHistory(ctx, "./testdata/all_triple_words_covered.gcg", listStatStore)
-	combinedHighScoringStats, _ := InstantiateNewStatsWithHistory(ctx, "./testdata/combined_high_scoring.gcg", listStatStore)
-	combinedLowScoringStats, _ := InstantiateNewStatsWithHistory(ctx, "./testdata/combined_low_scoring.gcg", listStatStore)
-	everyPowerTileStats, _ := InstantiateNewStatsWithHistory(ctx, "./testdata/every_power_tile.gcg", listStatStore)
-	everyEStats, _ := InstantiateNewStatsWithHistory(ctx, "./testdata/every_e.gcg", listStatStore)
-	manyChallengesStats, _ := InstantiateNewStatsWithHistory(ctx, "./testdata/many_challenges.gcg", listStatStore)
-	fourOrMoreConsecutiveBingosStats, _ := InstantiateNewStatsWithHistory(ctx, "./testdata/four_or_more_consecutive_bingos.gcg", listStatStore)
-
-	AddStats(stats, manyDoubleWordsCoveredStats)
-	AddStats(stats, allTripleLettersCoveredStats)
-	AddStats(stats, allTripleWordsCoveredStats)
-	AddStats(stats, combinedHighScoringStats)
-	AddStats(stats, combinedLowScoringStats)
-	AddStats(stats, manyChallengesStats)
-	AddStats(stats, fourOrMoreConsecutiveBingosStats)
-	AddStats(stats, everyPowerTileStats)
-	AddStats(stats, everyEStats)
-
-	err = Finalize(ctx, stats, listStatStore, []string{
+	// How many games met each notable stat, over all the files.
+	notables := map[string]int{}
+	for _, f := range []string{
 		"./testdata/many_double_words_covered.gcg",
 		"./testdata/all_triple_letters_covered.gcg",
 		"./testdata/all_triple_words_covered.gcg",
@@ -269,46 +210,39 @@ func TestNotable(t *testing.T) {
 		"./testdata/every_e.gcg",
 		"./testdata/many_challenges.gcg",
 		"./testdata/four_or_more_consecutive_bingos.gcg",
-	}, "", "")
-	is.NoErr(err)
+	} {
+		_, gameNotables, err := InstantiateNewStatsWithHistory(ctx, f)
+		is.NoErr(err)
+		for _, n := range gameNotables {
+			notables[n]++
+		}
+	}
 
-	is.True(len(stats.NotableData[entity.MANY_DOUBLE_WORDS_COVERED_STAT].List) == 1)
-	is.True(len(stats.NotableData[entity.ALL_TRIPLE_LETTERS_COVERED_STAT].List) == 1)
-	is.True(len(stats.NotableData[entity.ALL_TRIPLE_WORDS_COVERED_STAT].List) == 1)
-	is.True(len(stats.NotableData[entity.COMBINED_HIGH_SCORING_STAT].List) == 1)
-	is.True(len(stats.NotableData[entity.COMBINED_LOW_SCORING_STAT].List) == 1)
-	is.True(len(stats.NotableData[entity.MANY_CHALLENGES_STAT].List) == 2)
-	is.True(len(stats.NotableData[entity.ONE_PLAYER_PLAYS_EVERY_POWER_TILE_STAT].List) == 1)
-	is.True(len(stats.NotableData[entity.ONE_PLAYER_PLAYS_EVERY_E_STAT].List) == 1)
-	is.True(len(stats.NotableData[entity.FOUR_OR_MORE_CONSECUTIVE_BINGOS_STAT].List) == 1)
-	listStatStore.Disconnect()
-
+	is.Equal(notables[entity.MANY_DOUBLE_WORDS_COVERED_STAT], 1)
+	is.Equal(notables[entity.ALL_TRIPLE_LETTERS_COVERED_STAT], 1)
+	is.Equal(notables[entity.ALL_TRIPLE_WORDS_COVERED_STAT], 1)
+	is.Equal(notables[entity.COMBINED_HIGH_SCORING_STAT], 1)
+	is.Equal(notables[entity.COMBINED_LOW_SCORING_STAT], 1)
+	is.Equal(notables[entity.MANY_CHALLENGES_STAT], 2)
+	is.Equal(notables[entity.ONE_PLAYER_PLAYS_EVERY_POWER_TILE_STAT], 1)
+	is.Equal(notables[entity.ONE_PLAYER_PLAYS_EVERY_E_STAT], 1)
+	is.Equal(notables[entity.FOUR_OR_MORE_CONSECUTIVE_BINGOS_STAT], 1)
 }
 
 func TestPhonyHooks(t *testing.T) {
 	is := is.New(t)
 
-	pool := recreateDB()
 	ctx := context.Background()
-	listStatStore, err := statstore.NewDBStore(pool)
-	is.NoErr(err)
 	stats := InstantiateNewStats("1", "2")
 
-	phonyHooks, err := InstantiateNewStatsWithHistory(ctx, "./testdata/phonies_formed.gcg", listStatStore)
+	phonyHooks, _, err := InstantiateNewStatsWithHistory(ctx, "./testdata/phonies_formed.gcg")
 	is.NoErr(err)
 
 	AddStats(stats, phonyHooks)
 
-	err = Finalize(ctx, stats, listStatStore, []string{
-		"./testdata/phonies_formed.gcg",
-	}, "", "")
-	is.NoErr(err)
-
 	// fmt.Println(StatsToString(stats))
 	is.True(stats.PlayerOneData[entity.UNCHALLENGED_PHONIES_STAT].Total == 2)
 	is.True(stats.PlayerTwoData[entity.UNCHALLENGED_PHONIES_STAT].Total == 2)
-
-	listStatStore.Disconnect()
 }
 
 func isEqual(statsOne *entity.Stats, statsTwo *entity.Stats) bool {
