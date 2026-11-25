@@ -73,9 +73,14 @@ func (ls *LeagueService) BootstrapSeason(
 	ctx context.Context,
 	req *connect.Request[pb.BootstrapSeasonRequest],
 ) (*connect.Response[pb.SeasonResponse], error) {
+	// Authenticate - requires can_manage_leagues permission
+	_, err := apiserver.AuthenticateWithPermission(ctx, ls.userStore, ls.queries, rbac.CanManageLeagues)
+	if err != nil {
+		return nil, err
+	}
+
 	// Parse league ID (could be UUID or slug)
 	var leagueID uuid.UUID
-	var err error
 
 	// Try parsing as UUID first
 	leagueID, err = uuid.Parse(req.Msg.LeagueId)
