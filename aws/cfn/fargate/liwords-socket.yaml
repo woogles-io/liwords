@@ -17,12 +17,6 @@ Parameters:
   DesiredCount:
     Type: Number
     Default: 1
-  # /ws itself can't be reached this way (the existing /ws rule comes first),
-  # but other paths can: curl -H 'X-Woogles-Target: socket-fargate'
-  # https://woogles.io/ping
-  TestRulePriority:
-    Type: Number
-    Default: 2
 
 Resources:
   # Imported (it predates this stack). Retained so deleting or replacing the
@@ -94,23 +88,11 @@ Resources:
       Tags:
         - { Key: app, Value: liwords }
 
-  TestRule:
-    Type: AWS::ElasticLoadBalancingV2::ListenerRule
-    Properties:
-      ListenerArn: { "Fn::ImportValue": !Sub "${BaseStackName}-ListenerArn" }
-      Priority: !Ref TestRulePriority
-      Conditions:
-        - Field: http-header
-          HttpHeaderConfig:
-            HttpHeaderName: X-Woogles-Target
-            Values: [socket-fargate]
-      Actions:
-        - Type: forward
-          TargetGroupArn: !Ref TargetGroup
+  # The /ws listener rule, set up by hand, sends traffic to this target group
+  # and keeps it attached to the load balancer, as ECS needs.
 
   Service:
     Type: AWS::ECS::Service
-    DependsOn: TestRule
     Properties:
       ServiceName: liwords-socket
       Cluster: { "Fn::ImportValue": !Sub "${BaseStackName}-ClusterName" }

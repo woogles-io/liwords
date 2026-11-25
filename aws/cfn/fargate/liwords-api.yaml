@@ -21,11 +21,6 @@ Parameters:
   DesiredCount:
     Type: Number
     Default: 1
-  # Header that sends a request to this service regardless of weights:
-  # curl -H 'X-Woogles-Target: api-fargate' https://woogles.io/ping
-  TestRulePriority:
-    Type: Number
-    Default: 3
   # COPPairJobFunction once #2291 is deployed; empty runs COP in-process.
   COPPairJobLambdaFunctionName:
     Type: String
@@ -308,26 +303,13 @@ Resources:
       Tags:
         - { Key: app, Value: liwords }
 
-  # ECS needs the target group attached to the load balancer. This rule only
-  # matches requests carrying the header, so it moves no ordinary traffic,
-  # and lets you try the Fargate API before shifting weight to it.
-  TestRule:
-    Type: AWS::ElasticLoadBalancingV2::ListenerRule
-    Properties:
-      ListenerArn: { "Fn::ImportValue": !Sub "${BaseStackName}-ListenerArn" }
-      Priority: !Ref TestRulePriority
-      Conditions:
-        - Field: http-header
-          HttpHeaderConfig:
-            HttpHeaderName: X-Woogles-Target
-            Values: [api-fargate]
-      Actions:
-        - Type: forward
-          TargetGroupArn: !Ref TargetGroup
+  # The load balancer's listener rules, set up by hand, send traffic to this
+  # target group; they also keep it attached to the load balancer, as ECS
+  # needs. They only forward requests that come through our CloudFront
+  # distribution (it adds a secret header).
 
   Service:
     Type: AWS::ECS::Service
-    DependsOn: TestRule
     Properties:
       ServiceName: liwords-api
       Cluster: { "Fn::ImportValue": !Sub "${BaseStackName}-ClusterName" }

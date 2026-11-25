@@ -58,6 +58,9 @@ curl -s -H 'X-Woogles-Target: api-fargate'    https://woogles.io/ping
 curl -s -H 'X-Woogles-Target: socket-fargate' https://woogles.io/ping
 ```
 
+(These header rules were removed after the migration. The load balancer now
+forwards only requests from our CloudFront distribution.)
+
 ## Moving traffic
 
 ```bash
