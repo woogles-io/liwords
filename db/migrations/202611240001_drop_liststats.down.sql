@@ -1,4 +1,4 @@
--- Recreates the empty table. Its rows are in the S3 dump, not here.
+-- Recreates the empty table. The rows are not restored.
 CREATE TABLE IF NOT EXISTS public.liststats (
     game_id text,
     player_id text,
