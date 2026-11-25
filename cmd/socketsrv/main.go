@@ -14,6 +14,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
+	"github.com/woogles-io/liwords/pkg/debugserver"
 	"github.com/woogles-io/liwords/pkg/otelsetup"
 	"github.com/woogles-io/liwords/services/socketsrv/pkg/config"
 	sockets "github.com/woogles-io/liwords/services/socketsrv/pkg/hub"
@@ -81,7 +82,8 @@ func main() {
 		sockets.ServeWS(h, w, r)
 	}))
 
-	router.Handle("/debug/vars", http.DefaultServeMux)
+	// expvar (and pprof) listen apart from the public router.
+	debugserver.Start(cfg.DebugAddr)
 
 	srv := &http.Server{
 		Addr:         cfg.WebsocketAddress,
