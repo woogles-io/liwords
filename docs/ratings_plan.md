@@ -57,23 +57,25 @@ by verified NASPA link or unique full name.
   JSON. Profiles still show them.
 
 **Seeding.** When a player has no rating in a pool (for example, their first
-correspondence game), start them at their rating from their most established
-other pool of the same variant, preferring the same lexicon family, with RD
-max(250, that pool's RD). With no established pool, start at 1200 / 600.
+correspondence game), look at their other pools of the same variant with RD at
+most 300. Prefer the same lexicon family, then the lowest RD. Start them at that
+pool's rating, with RD max(250, that pool's RD). If no pool qualifies, start at
+1200 / 600.
 
 - Why: pools that are almost all human-vs-human (correspondence, rapid, blitz)
   are anchored by where newcomers start, not by the bots. Without seeding,
   strong players arriving at 1200 drag the pool down: correspondence sat about
   130 below NASPA. With seeding, about 35.
-- The replay picked the source pool by most games played (10+). Profiles don't
-  store a game count, so the Go version picks by lowest RD. Check on the replay
-  that this gives the same results.
+- The RD 300 cutoff was tested against 100, 150 and 200 and against picking by
+  games played. Looser was better: at RD 100 (close to the provisional cutoff),
+  most second pools don't qualify and correspondence sits 76 below NASPA, against
+  28 at RD 300. Log loss 0.6300 at RD 100, 0.6281 at RD 300.
 
 **Replay results** (last 30 days, human vs human):
 
 | | Today (v1) | v2 |
 |---|---|---|
-| Log loss (lower is better) | 0.6386 | 0.6286 |
+| Log loss (lower is better) | 0.6386 | 0.6281 |
 | Calibration (1.0 is perfect) | 0.86 | 0.93 |
 | Correlation with NASPA (NWL, 118 players) | 0.69 | 0.82 |
 | Average vs NASPA's 1513 | 1671 | 1518 |
@@ -81,11 +83,11 @@ max(250, that pool's RD). With no established pool, start at 1200 / 600.
 | Established CSW players at 2000+ | 321 | 90 |
 | 5th percentile, established CSW | about 1125 | about −150 |
 
-- Average site minus NASPA, NWL: regular +30, rapid +7, blitz −128,
-  correspondence −32. Lower blitz ratings are expected.
+- Average site minus NASPA, NWL: regular +27, rapid +10, blitz −126,
+  correspondence −28. Lower blitz ratings are expected.
 - Some players will be below zero, mostly heavy quitters against BeginnerBot.
   Accepted for now. Counting quits as a minimum-margin loss instead keeps the
-  5th percentile near 70 and predicts slightly better (0.6274); it was
+  5th percentile near 70 and predicts slightly better (about 0.627); it was
   considered and not chosen.
 - Newcomers' first bot games are predicted worse than today (0.64 against 0.57):
   a 1200 newcomer is expected to beat BeginnerBot easily, and many quit. The
