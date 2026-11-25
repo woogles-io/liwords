@@ -54,6 +54,8 @@ type Store interface {
 	// stats in a variant from their current ones, with both profiles locked,
 	// so that concurrent updates for a player don't undo each other. The
 	// function gets the current values (nil if none yet) and returns the new.
+	// UpdateRatings leaves a player's rating as it is if rate returns nil for
+	// them.
 	UpdateRatings(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey,
 		rate func(r0, r1 *entity.SingleRating) (*entity.SingleRating, *entity.SingleRating, error)) error
 	UpdateStats(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey,
