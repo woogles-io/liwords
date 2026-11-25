@@ -1,5 +1,6 @@
 -- liststats has not been written since #2380, and nothing ever read it.
--- Its rows (77M, ~12 GB) were dumped to S3 before this ran.
+-- Its rows (77M, ~12 GB) aren't kept: all but the ratings can be recomputed
+-- from game histories, and the ratings are also in games.quickdata.
 --
 -- No lock_timeout on purpose. Once #2380 is deployed, the only lock on
 -- liststats this can wait for is the daily pg_dump's, and waiting there
