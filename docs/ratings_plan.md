@@ -33,6 +33,7 @@ by verified NASPA link or unique full name.
 | `InitialRating` | **1200** | 1500 |
 | `InitialRatingDeviation` / `MaximumRatingDeviation` | **600 / 600** | 350 / 350 |
 | `MinimumRatingDeviation` | 60 | 60 |
+| Established cutoff (no `?`, can join "established only" seeks) | **RD 160** | RD 90 |
 | Volatility, tau, rating period, `SpreadScaling`, `MinimumWinBoost` | unchanged | |
 | Bots | **fixed ratings, never written** (below) | floating |
 | Quits (resign, timeout, forfeit, triple challenge) | count as the maximum spread, ±125 | same |
@@ -70,6 +71,17 @@ pool's rating, with RD max(250, that pool's RD). If no pool qualifies, start at
   games played. Looser was better: at RD 100 (close to the provisional cutoff),
   most second pools don't qualify and correspondence sits 76 below NASPA, against
   28 at RD 300. Log loss 0.6300 at RD 100, 0.6281 at RD 300.
+
+**Established cutoff.** Today a rating loses its `?` at RD 90 (the floor plus
+30). On the wider v2 scale RD 90 is much stricter: in the replay, most players
+would need over 100 games to reach it. RD 160 is today's 90 scaled to the new
+curve, and players reach it after about as many games as they reach 90 today
+(more than half of players with 20–30 games, nearly all with 50+). The cutoff
+is part of each rating system and also sets which ratings count as stable for
+league placement.
+
+**Puzzles stay on v1.** Puzzle ratings use the same Glicko code but always
+with v1's settings and cutoff; nothing in this plan changes them.
 
 **Replay results** (last 30 days, human vs human):
 
@@ -209,6 +221,16 @@ PRIMARY KEY (game_uuid, user_id, system_version)
    switch to v2.
 5. Record the switch time; ClickHouse's `rating_systems` table uses it as v2's
    go-live date.
+
+Also on switch day:
+
+- The rerate writes only game rating keys. Puzzle keys
+  (`<lexicon>.puzzle.corres`) in the same profile JSON stay as they are.
+- The frontend's `hasEstablishedRating` (`lobby_reducer.ts`) hardcodes 90;
+  change it to 160 in the same release.
+- League placement averages every rating in the profile, puzzle ratings
+  included. After the switch those are on different scales; skip puzzle keys
+  there first.
 
 ### 6. Remove the old copies
 
