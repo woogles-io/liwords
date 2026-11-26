@@ -25,5 +25,7 @@ Resources:
 For anyone who's better at AWS my ears are open.
 
 - Upload `cloudfront.yaml`. Copy cert Arn created in last step.
+  (That template was removed in 2026: the live distributions had long since
+  been changed by hand. See `cloudfront-functions/README.md`.)
   - Domain name is `xword.club`
   - OriginDomainName is `xword.club.s3.amazonaws.com` (the bucket + .s3.amazonaws.com)
