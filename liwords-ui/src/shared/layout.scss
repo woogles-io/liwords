@@ -232,9 +232,9 @@ span.user-context-menu.ant-dropdown-trigger {
   }
 }
 
-// Wide phones and small tablets (unfolded foldables, iPad mini): the lobby
-// and header use the whole width instead of a phone-width column.
-@media (min-width: base.$screen-mobile-min) and (max-width: base.$screen-tablet-min - 1) {
+// Wider than a phone (unfolded foldables, tablets): the lobby and header use
+// the whole width instead of a phone-width column.
+@media (min-width: base.$screen-two-pane-min) and (max-width: base.$screen-tablet-min - 1) {
   .lobby,
   .top-header .container {
     max-width: none;
@@ -251,13 +251,17 @@ span.user-context-menu.ant-dropdown-trigger {
   }
 }
 
-// Foldables: the board on the left, the scoresheet and tile tracking on the
-// right, the timers across the top, and chat and notepad below.
-@include base.fold {
+// Two panes, one per half of a foldable: the board on the left and the
+// scoresheet and tile tracking on the right, with the timers across the top
+// and chat and notepad below.
+@include base.two-pane {
   .game-table {
+    // Half the width, less the page padding, the gap between the panes and
+    // the board's coordinates, shared by 15 squares.
+    --mobile-tile-size: calc((50vw - 18px - 36px) / 15);
     max-width: none;
     display: grid;
-    grid-template-columns: base.$main-container-width-mobile minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     grid-template-areas:
       "cards cards"
       "play data"
@@ -273,6 +277,55 @@ span.user-context-menu.ant-dropdown-trigger {
     }
     > .play-area {
       grid-area: play;
+      min-width: 0;
+      max-width: none;
+      // The rack's tiles, sized so that they and the two round buttons
+      // beside them fit across the pane, but never above the desktop size.
+      --rack-tile-size: min(44px, calc((50vw - 18px - 12px - 96px - 32px) / 8));
+
+      // Small panes have squares under the phone board's 24px minimum.
+      .board-spaces,
+      .tiles {
+        min-width: 0;
+      }
+      // Row numbers and column letters shrink with the squares, so that
+      // they stay beside their rows.
+      .coord-labels .coord-label {
+        font-size: min(14px, calc(var(--mobile-tile-size) * 0.6));
+        line-height: 1;
+      }
+      .rack-container {
+        left: 0;
+
+        .rack {
+          width: auto;
+          height: var(--rack-tile-size);
+          min-height: var(--rack-tile-size);
+        }
+        .ant-btn.ant-btn-primary.ant-btn-circle {
+          width: 36px;
+          height: 36px;
+        }
+      }
+      .rack .tile,
+      .tile.preview:not(.over-board) {
+        width: var(--rack-tile-size);
+        height: var(--rack-tile-size);
+
+        p.rune {
+          font-size: calc(var(--rack-tile-size) * 0.68);
+        }
+        .point-value {
+          font-size: calc(var(--rack-tile-size) * 0.24);
+        }
+      }
+      // The buttons use the pane's whole width.
+      .game-controls {
+        left: 0;
+        width: 100%;
+        max-width: none;
+        padding: 12px 0;
+      }
     }
     // As tall as the board column; the scoresheet takes whatever room the
     // other cards leave, and scrolls inside itself.
