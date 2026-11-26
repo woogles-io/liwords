@@ -19,17 +19,11 @@ import (
 	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
-type ListStatStore interface {
-	AddListItem(ctx context.Context, gameId string, playerId string, statType int, time int64, item entity.ListDatum) error
-	GetListItems(ctx context.Context, statType int, gameIds []string, playerId string) ([]*entity.ListItem, error)
-}
-
 type IncrementInfo struct {
 	Ctx                 context.Context
 	Cfg                 *wglconfig.Config
 	Req                 *ipc.GameRequest
 	Evt                 *ipc.GameEndedEvent
-	Lss                 ListStatStore
 	StatName            string
 	StatItem            *entity.StatItem
 	OtherPlayerStatItem *entity.StatItem
@@ -135,8 +129,16 @@ func InstantiateNewStats(playerOneId string, playerTwoId string) *entity.Stats {
 		NotableData:   instantiateNotableData()}
 }
 
-func AddGame(ctx context.Context, stats *entity.Stats, lss ListStatStore, history *pb.GameHistory, req *ipc.GameRequest,
+func AddGame(ctx context.Context, stats *entity.Stats, history *pb.GameHistory, req *ipc.GameRequest,
 	cfg *wglconfig.Config, gameEndedEvent *ipc.GameEndedEvent, gameId string) error {
+	_, err := addGame(ctx, stats, history, req, cfg, gameEndedEvent, gameId)
+	return err
+}
+
+// addGame is AddGame, also returning the notable stats the game met. Nothing
+// stores them any more; they are returned for tests.
+func addGame(ctx context.Context, stats *entity.Stats, history *pb.GameHistory, req *ipc.GameRequest,
+	cfg *wglconfig.Config, gameEndedEvent *ipc.GameEndedEvent, gameId string) ([]string, error) {
 	// Josh, plz fix these asinine calls to incrementStatItem
 	events := history.GetEvents()
 
@@ -144,7 +146,6 @@ func AddGame(ctx context.Context, stats *entity.Stats, lss ListStatStore, histor
 		Cfg:     cfg,
 		Req:     req,
 		Evt:     gameEndedEvent,
-		Lss:     lss,
 		History: history,
 		GameId:  gameId}
 
@@ -153,37 +154,36 @@ func AddGame(ctx context.Context, stats *entity.Stats, lss ListStatStore, histor
 		if event.PlayerIndex == 0 {
 			err := incrementStatItems(info, stats.PlayerOneData, stats.PlayerTwoData, i, true)
 			if err != nil {
-				return err
+				return nil, err
 			}
 		} else {
 			err := incrementStatItems(info, stats.PlayerTwoData, stats.PlayerOneData, i, false)
 			if err != nil {
-				return err
+				return nil, err
 			}
 		}
 		err := incrementStatItems(info, stats.NotableData, nil, i, false)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 
 	err := incrementStatItems(info, stats.PlayerOneData, stats.PlayerTwoData, -1, true)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	err = incrementStatItems(info, stats.PlayerTwoData, stats.PlayerOneData, -1, false)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	err = incrementStatItems(info, stats.NotableData, nil, -1, false)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	confirmNotableItems(info.Ctx, lss, gameId, gameEndedEvent.Time, stats.NotableData)
-	return nil
+	return confirmNotableItems(stats.NotableData), nil
 }
 
 func AddStats(stats *entity.Stats, otherStats *entity.Stats) error {
@@ -219,44 +219,6 @@ func AddStats(stats *entity.Stats, otherStats *entity.Stats) error {
 		return err
 	}
 
-	return nil
-}
-
-// Finalize will be needed in the future when we want to retrieve stats.
-func Finalize(ctx context.Context, stats *entity.Stats, lss ListStatStore, gameIDs []string,
-	playerOneID string, playerTwoID string) error {
-	err := finalize(ctx, stats.PlayerOneData, lss, gameIDs, playerOneID)
-	if err != nil {
-		return err
-	}
-
-	err = finalize(ctx, stats.PlayerTwoData, lss, gameIDs, playerTwoID)
-
-	if err != nil {
-		return err
-	}
-
-	err = finalize(ctx, stats.NotableData, lss, gameIDs, "")
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func finalize(ctx context.Context, statItems map[string]*entity.StatItem, lss ListStatStore,
-	gameIDs []string, playerID string) error {
-	for statName, statItem := range statItems {
-		if StatNameToDataType[statName] == entity.ListType {
-			newList, err := lss.GetListItems(ctx, entity.StatName_value[statName], gameIDs, playerID)
-			if err != nil {
-				return err
-			}
-			if len(newList) > 0 {
-				statItem.List = newList
-			}
-		}
-	}
 	return nil
 }
 
@@ -300,30 +262,11 @@ func incrementStatItems(info *IncrementInfo,
 	return nil
 }
 
-func incrementStatItem(ctx context.Context,
-	statItem *entity.StatItem,
-	lss ListStatStore,
-	event *pb.GameEvent,
-	gameId string,
-	playerId string,
-	time int64) {
-
-	if StatNameToDataType[statItem.Name] == entity.SingleType || event == nil {
-		statItem.Total++
-	} else if StatNameToDataType[statItem.Name] == entity.ListType {
-		statItem.Total++
-		word := event.PlayedTiles
-		if len(event.WordsFormed) > 0 {
-			// We can have played tiles with words formed being empty
-			// for phony_tiles_returned events, for example.
-			word = event.WordsFormed[0]
-		}
-		lss.AddListItem(ctx,
-			gameId,
-			playerId,
-			entity.StatName_value[statItem.Name],
-			time, entity.ListDatum{Word: word, Probability: 1, Score: int(event.Score)})
-	}
+// incrementStatItem counts one occurrence of a stat. List stats used to also
+// write each occurrence (its word and score) to the liststats table, which
+// nothing read.
+func incrementStatItem(statItem *entity.StatItem) {
+	statItem.Total++
 }
 
 func combineStatItemMaps(statItems map[string]*entity.StatItem,
@@ -337,7 +280,10 @@ func combineStatItemMaps(statItems map[string]*entity.StatItem,
 	return nil
 }
 
-func confirmNotableItems(ctx context.Context, lss ListStatStore, gameId string, time int64, statItems map[string]*entity.StatItem) {
+// confirmNotableItems returns the notable stats the game met, and resets them.
+// They used to be written to the liststats table, which nothing read.
+func confirmNotableItems(statItems map[string]*entity.StatItem) []string {
+	var confirmed []string
 	for key, item := range statItems {
 		// For one player plays every _ stats
 		// Player one adds to the total, player two subtracts
@@ -347,10 +293,11 @@ func confirmNotableItems(ctx context.Context, lss ListStatStore, gameId string, 
 		}
 		if item.Total >= item.Minimum && item.Total <= item.Maximum {
 			log.Debug().Msgf("Notable confirmed: %s", key)
-			lss.AddListItem(ctx, gameId, "", entity.StatName_value[key], time, entity.ListDatum{})
+			confirmed = append(confirmed, key)
 		}
 		item.Total = 0
 	}
+	return confirmed
 }
 
 func combineItems(statItem *entity.StatItem, otherStatItem *entity.StatItem) {
@@ -383,7 +330,7 @@ func addBingos(info *IncrementInfo) error {
 	}
 	if event.IsBingo && (succEvent == nil || succEvent.Type != pb.GameEvent_PHONY_TILES_RETURNED) {
 		log.Debug().Interface("evt", event).Interface("statitem", info.StatItem).Interface("otherstat", info.OtherPlayerStatItem).Msg("Add bing")
-		incrementStatItem(info.Ctx, info.StatItem, info.Lss, event, info.GameId, info.PlayerId, info.Evt.Time)
+		incrementStatItem(info.StatItem)
 	}
 	return nil
 }
@@ -442,7 +389,7 @@ func addExchanges(info *IncrementInfo) error {
 	events := info.History.GetEvents()
 	event := events[info.EventIndex]
 	if event.Type == pb.GameEvent_EXCHANGE {
-		incrementStatItem(info.Ctx, info.StatItem, info.Lss, event, info.GameId, info.PlayerId, info.Evt.Time)
+		incrementStatItem(info.StatItem)
 	}
 	return nil
 }
@@ -451,7 +398,7 @@ func addChallengedPhonies(info *IncrementInfo) error {
 	events := info.History.GetEvents()
 	event := events[info.EventIndex]
 	if event.Type == pb.GameEvent_PHONY_TILES_RETURNED {
-		incrementStatItem(info.Ctx, info.StatItem, info.Lss, event, info.GameId, info.PlayerId, info.Evt.Time)
+		incrementStatItem(info.StatItem)
 	}
 	return nil
 }
@@ -466,14 +413,13 @@ func addUnchallengedPhonies(info *IncrementInfo) error {
 	if (info.EventIndex+1 >= len(events) ||
 		events[info.EventIndex+1].Type != pb.GameEvent_PHONY_TILES_RETURNED) &&
 		isUnchallengedPhony {
-		incrementStatItem(info.Ctx, info.StatItem, info.Lss, event, info.GameId, info.PlayerId, info.Evt.Time)
+		incrementStatItem(info.StatItem)
 	}
 	return nil
 }
 
 func addValidPlaysThatWereChallenged(info *IncrementInfo) error {
 	events := info.History.GetEvents()
-	event := events[info.EventIndex]
 	var succEvent *pb.GameEvent
 	if info.EventIndex+1 < len(events) {
 		succEvent = events[info.EventIndex+1]
@@ -481,7 +427,7 @@ func addValidPlaysThatWereChallenged(info *IncrementInfo) error {
 	if succEvent != nil &&
 		(succEvent.Type == pb.GameEvent_CHALLENGE_BONUS ||
 			succEvent.Type == pb.GameEvent_UNSUCCESSFUL_CHALLENGE_TURN_LOSS) {
-		incrementStatItem(info.Ctx, info.StatItem, info.Lss, event, info.GameId, info.PlayerId, info.Evt.Time)
+		incrementStatItem(info.StatItem)
 		// Need to increment opp's challengesLost stat
 	}
 	return nil
@@ -491,12 +437,7 @@ func addChallengesWon(info *IncrementInfo) error {
 	events := info.History.GetEvents()
 	event := events[info.EventIndex]
 	if event.Type == pb.GameEvent_PHONY_TILES_RETURNED { // Opp's phony tiles returned
-		incrementStatItem(info.Ctx, info.OtherPlayerStatItem,
-			info.Lss,
-			events[info.EventIndex-1],
-			info.GameId,
-			info.OtherPlayerId,
-			info.Evt.Time)
+		incrementStatItem(info.OtherPlayerStatItem)
 	}
 	return nil
 }
@@ -505,18 +446,9 @@ func addChallengesLost(info *IncrementInfo) error {
 	events := info.History.GetEvents()
 	event := events[info.EventIndex]
 	if event.Type == pb.GameEvent_CHALLENGE_BONUS { // Opp's bonus
-		incrementStatItem(info.Ctx, info.OtherPlayerStatItem,
-			info.Lss,
-			events[info.EventIndex-1],
-			info.GameId,
-			info.OtherPlayerId,
-			info.Evt.Time)
+		incrementStatItem(info.OtherPlayerStatItem)
 	} else if event.Type == pb.GameEvent_UNSUCCESSFUL_CHALLENGE_TURN_LOSS { // Player's turn loss
-		incrementStatItem(info.Ctx, info.StatItem,
-			info.Lss, events[info.EventIndex-1],
-			info.GameId,
-			info.PlayerId,
-			info.Evt.Time)
+		incrementStatItem(info.StatItem)
 	}
 	return nil
 }
@@ -525,7 +457,7 @@ func addComments(info *IncrementInfo) error {
 	events := info.History.GetEvents()
 	event := events[info.EventIndex]
 	if event.Note != "" {
-		incrementStatItem(info.Ctx, info.StatItem, info.Lss, event, info.GameId, info.PlayerId, info.Evt.Time)
+		incrementStatItem(info.StatItem)
 	}
 	return nil
 }
@@ -554,7 +486,7 @@ func addConsecutiveBingos(info *IncrementInfo) error {
 
 func addDraws(info *IncrementInfo) error {
 	if info.History.Winner == -1 {
-		incrementStatItem(info.Ctx, info.StatItem, info.Lss, nil, info.GameId, info.PlayerId, info.Evt.Time)
+		incrementStatItem(info.StatItem)
 	}
 	return nil
 }
@@ -612,13 +544,13 @@ func addEveryPowerTile(info *IncrementInfo) error {
 
 func addFirsts(info *IncrementInfo) error {
 	if info.IsPlayerOne {
-		incrementStatItem(info.Ctx, info.StatItem, info.Lss, nil, info.GameId, info.PlayerId, info.Evt.Time)
+		incrementStatItem(info.StatItem)
 	}
 	return nil
 }
 
 func addGames(info *IncrementInfo) error {
-	incrementStatItem(info.Ctx, info.StatItem, info.Lss, nil, info.GameId, info.PlayerId, info.Evt.Time)
+	incrementStatItem(info.StatItem)
 	info.StatItem.Subitems[ipc.RatingMode_name[int32(info.Req.RatingMode)]]++
 	info.StatItem.Subitems[pb.ChallengeRule_name[int32(info.Req.ChallengeRule)]]++
 	return nil
@@ -626,7 +558,7 @@ func addGames(info *IncrementInfo) error {
 
 func addLosses(info *IncrementInfo) error {
 	if (info.History.Winner == 1 && info.IsPlayerOne) || (info.History.Winner == 0 && !info.IsPlayerOne) {
-		incrementStatItem(info.Ctx, info.StatItem, info.Lss, nil, info.GameId, info.PlayerId, info.Evt.Time)
+		incrementStatItem(info.StatItem)
 	}
 	return nil
 }
@@ -661,7 +593,6 @@ func addMistakes(info *IncrementInfo) error {
 	if event.Note != "" {
 		note := strings.ToLower(event.Note) + " "
 		for _, mType := range mistakeTypes {
-			totalOccurences := 0
 			for i := 0; i < len(mistakeMagnitudes); i++ {
 				mMagnitude := mistakeMagnitudes[i]
 				substring := "#" + mType + mMagnitude
@@ -671,29 +602,12 @@ func addMistakes(info *IncrementInfo) error {
 				info.StatItem.Total += occurences
 				info.StatItem.Subitems[mType] += occurences
 				info.StatItem.Subitems[unaliasedMistakeM] += occurences
-				totalOccurences += occurences
-				for k := 0; k < occurences; k++ {
-					info.Lss.AddListItem(info.Ctx, info.GameId,
-						info.PlayerId,
-						entity.StatName_value[entity.MISTAKES_STAT],
-						info.Evt.Time,
-						entity.ListDatum{MistakeType: entity.MistakeTypeMapping[mType],
-							MistakeSize: entity.MistakeMagnitudeMapping[unaliasedMistakeM]})
-				}
 			}
 			unspecifiedOccurences := strings.Count(note, "#"+mType)
 			note = strings.ReplaceAll(note, "#"+mType, "")
 			info.StatItem.Total += unspecifiedOccurences
 			info.StatItem.Subitems[mType] += unspecifiedOccurences
 			info.StatItem.Subitems[entity.UnspecifiedMistakeMagnitude] += unspecifiedOccurences
-			for i := 0; i < unspecifiedOccurences-totalOccurences; i++ {
-				info.Lss.AddListItem(info.Ctx, info.GameId,
-					info.PlayerId,
-					entity.StatName_value[entity.MISTAKES_STAT],
-					info.Evt.Time,
-					entity.ListDatum{MistakeType: entity.MistakeTypeMapping[mType],
-						MistakeSize: entity.MistakeMagnitudeMapping[entity.UnspecifiedMistakeMagnitude]})
-			}
 		}
 	}
 	return nil
@@ -712,29 +626,16 @@ func addNoBingos(info *IncrementInfo) error {
 		}
 	}
 	if !atLeastOneBingo {
-		incrementStatItem(info.Ctx, info.StatItem, info.Lss, nil, info.GameId, info.PlayerId, info.Evt.Time)
+		incrementStatItem(info.StatItem)
 	}
 	return nil
 }
 
+// addRatings counts rated games. The rating after each game used to be
+// written to the liststats table; games.quickdata keeps it (OriginalRatings,
+// NewRatings).
 func addRatings(info *IncrementInfo) error {
-	var rating int32
-	if info.IsPlayerOne {
-		rating = info.Evt.NewRatings[info.History.Players[0].Nickname]
-	} else {
-		rating = info.Evt.NewRatings[info.History.Players[1].Nickname]
-	}
 	info.StatItem.Total++
-	timeControl, variant, err := entity.VariantFromGameReq(info.Req)
-	if err != nil {
-		return err
-	}
-	variantKey := entity.ToVariantKey(info.Req.Lexicon, variant, timeControl)
-	info.Lss.AddListItem(info.Ctx, info.GameId,
-		info.PlayerId,
-		entity.StatName_value[entity.RATINGS_STAT],
-		info.Evt.Time,
-		entity.ListDatum{Rating: int(rating), Variant: string(variantKey)})
 	return nil
 }
 
@@ -813,7 +714,7 @@ func addTripleTriples(info *IncrementInfo) error {
 			return err
 		}
 		if bonuses >= 2 {
-			incrementStatItem(info.Ctx, info.StatItem, info.Lss, event, info.GameId, info.PlayerId, info.Evt.Time)
+			incrementStatItem(info.StatItem)
 		}
 	}
 	return nil
@@ -826,7 +727,7 @@ func addTurns(info *IncrementInfo) error {
 		event.Type == pb.GameEvent_PASS ||
 		event.Type == pb.GameEvent_EXCHANGE ||
 		event.Type == pb.GameEvent_UNSUCCESSFUL_CHALLENGE_TURN_LOSS { // Do we want this last one?
-		incrementStatItem(info.Ctx, info.StatItem, info.Lss, event, info.GameId, info.PlayerId, info.Evt.Time)
+		incrementStatItem(info.StatItem)
 	}
 	return nil
 }
@@ -840,7 +741,7 @@ func addTurnsWithBlank(info *IncrementInfo) error {
 		event.Type == pb.GameEvent_UNSUCCESSFUL_CHALLENGE_TURN_LOSS { // Do we want this last one?
 		for _, char := range event.Rack {
 			if char == tilemapping.BlankToken {
-				incrementStatItem(info.Ctx, info.StatItem, info.Lss, event, info.GameId, info.PlayerId, info.Evt.Time)
+				incrementStatItem(info.StatItem)
 				break
 			}
 		}
@@ -850,16 +751,15 @@ func addTurnsWithBlank(info *IncrementInfo) error {
 
 func addVerticalOpenings(info *IncrementInfo) error {
 	events := info.History.GetEvents()
-	event := events[0]
 	if info.IsPlayerOne && events[0].Direction == pb.GameEvent_VERTICAL {
-		incrementStatItem(info.Ctx, info.StatItem, info.Lss, event, info.GameId, info.PlayerId, info.Evt.Time)
+		incrementStatItem(info.StatItem)
 	}
 	return nil
 }
 
 func addWins(info *IncrementInfo) error {
 	if (info.History.Winner == 0 && info.IsPlayerOne) || (info.History.Winner == 1 && !info.IsPlayerOne) {
-		incrementStatItem(info.Ctx, info.StatItem, info.Lss, nil, info.GameId, info.PlayerId, info.Evt.Time)
+		incrementStatItem(info.StatItem)
 	}
 	return nil
 }

@@ -17,7 +17,6 @@ import (
 	"github.com/woogles-io/liwords/pkg/config"
 	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/gameplay"
-	pkgstats "github.com/woogles-io/liwords/pkg/stats"
 	"github.com/woogles-io/liwords/pkg/stores"
 	"github.com/woogles-io/liwords/pkg/stores/common"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
@@ -126,35 +125,9 @@ func TestComputeGameStats(t *testing.T) {
 	ctx := DefaultConfig.WithContext(context.Background())
 	s, err := gameplay.ComputeGameStats(ctx, hist, gameReq, variantKey(req), gameEndedEventObj, stores)
 	is.NoErr(err)
-	pkgstats.Finalize(ctx, s, stores.ListStatStore, []string{"m5ktbp4qPVTqaAhg6HJMsb"},
-		"qUQkST8CendYA3baHNoPjk", "xjCWug7EZtDxDHX5fRZTLo",
-	)
-
-	is.Equal(s.PlayerOneData[entity.BINGOS_STAT].List, []*entity.ListItem{
-		{
-			GameId:   "m5ktbp4qPVTqaAhg6HJMsb",
-			PlayerId: "qUQkST8CendYA3baHNoPjk",
-			Time:     0,
-			Item:     entity.ListDatum{Word: "PARDINE", Score: 76, Probability: 1},
-		},
-		{
-			GameId:   "m5ktbp4qPVTqaAhg6HJMsb",
-			PlayerId: "qUQkST8CendYA3baHNoPjk",
-			Time:     0,
-			Item:     entity.ListDatum{Word: "HETAERA", Score: 91, Probability: 1},
-		},
-	})
-	log.Info().Interface("ratings", s.PlayerOneData[entity.RATINGS_STAT].List).Msg("player rating")
-
-	is.Equal(s.PlayerOneData[entity.RATINGS_STAT].List, []*entity.ListItem{
-		{
-			GameId:   "m5ktbp4qPVTqaAhg6HJMsb",
-			PlayerId: "qUQkST8CendYA3baHNoPjk",
-			Time:     0,
-			Item:     entity.ListDatum{Rating: 1800, Variant: "CSW19.classic.regular"},
-		},
-	})
-
+	// PARDINE and HETAERA.
+	is.Equal(s.PlayerOneData[entity.BINGOS_STAT].Total, 2)
+	is.Equal(s.PlayerOneData[entity.RATINGS_STAT].Total, 1)
 }
 
 func TestComputeGameStats2(t *testing.T) {
@@ -178,28 +151,9 @@ func TestComputeGameStats2(t *testing.T) {
 	s, err := gameplay.ComputeGameStats(ctx, hist, gameReq, variantKey(req), gameEndedEventObj, stores)
 	is.NoErr(err)
 
-	pkgstats.Finalize(ctx, s, stores.ListStatStore, []string{"ycj5de5gArFF3ap76JyiUA"},
-		"xjCWug7EZtDxDHX5fRZTLo", "qUQkST8CendYA3baHNoPjk",
-	)
-	log.Info().Interface("bingos", s.PlayerOneData[entity.BINGOS_STAT].List).Msg("player one bingos")
-
-	is.Equal(s.PlayerOneData[entity.BINGOS_STAT].List, []*entity.ListItem{
-		{
-			GameId:   "ycj5de5gArFF3ap76JyiUA",
-			PlayerId: "xjCWug7EZtDxDHX5fRZTLo",
-			Time:     0,
-			Item:     entity.ListDatum{Word: "STYMING", Score: 70, Probability: 1},
-		},
-	})
-
-	is.Equal(s.PlayerTwoData[entity.BINGOS_STAT].List, []*entity.ListItem{
-		{
-			GameId:   "ycj5de5gArFF3ap76JyiUA",
-			PlayerId: "qUQkST8CendYA3baHNoPjk",
-			Time:     0,
-			Item:     entity.ListDatum{Word: "UNITERS", Score: 68, Probability: 1},
-		},
-	})
+	// STYMING, and UNITERS.
+	is.Equal(s.PlayerOneData[entity.BINGOS_STAT].Total, 1)
+	is.Equal(s.PlayerTwoData[entity.BINGOS_STAT].Total, 1)
 }
 
 func TestComputePlayerStats(t *testing.T) {
@@ -233,25 +187,8 @@ func TestComputePlayerStats(t *testing.T) {
 	is.NoErr(err)
 	is.True(stats0 != nil)
 
-	err = pkgstats.Finalize(ctx, stats0, stores.ListStatStore, []string{"m5ktbp4qPVTqaAhg6HJMsb"},
-		"qUQkST8CendYA3baHNoPjk", "xjCWug7EZtDxDHX5fRZTLo",
-	)
-	is.NoErr(err)
-
-	is.Equal(stats0.PlayerOneData[entity.BINGOS_STAT].List, []*entity.ListItem{
-		{
-			GameId:   "m5ktbp4qPVTqaAhg6HJMsb",
-			PlayerId: "qUQkST8CendYA3baHNoPjk",
-			Time:     0,
-			Item:     entity.ListDatum{Word: "PARDINE", Score: 76, Probability: 1},
-		},
-		{
-			GameId:   "m5ktbp4qPVTqaAhg6HJMsb",
-			PlayerId: "qUQkST8CendYA3baHNoPjk",
-			Time:     0,
-			Item:     entity.ListDatum{Word: "HETAERA", Score: 91, Probability: 1},
-		},
-	})
+	// PARDINE and HETAERA.
+	is.Equal(stats0.PlayerOneData[entity.BINGOS_STAT].Total, 2)
 
 	is.Equal(stats0.PlayerOneData[entity.WINS_STAT].Total, 1)
 
@@ -264,7 +201,6 @@ func TestComputePlayerStats(t *testing.T) {
 func TestComputePlayerStatsMultipleGames(t *testing.T) {
 	is := is.New(t)
 	_, stores, _ := recreateDB()
-	ctx := context.Background()
 	defer stores.Disconnect()
 	for _, g := range []string{"game1", "game2"} {
 		histjson, err := os.ReadFile("./testdata/" + g + "/history.json")
@@ -296,55 +232,15 @@ func TestComputePlayerStatsMultipleGames(t *testing.T) {
 	is.Equal(stats0.PlayerOneData[entity.GAMES_STAT].Total, 2)
 	is.Equal(stats0.PlayerOneData[entity.WINS_STAT].Total, 1)
 
-	log.Debug().Interface("li", stats0.PlayerOneData[entity.BINGOS_STAT].List).Msg("--")
-	err = pkgstats.Finalize(ctx, stats0, stores.ListStatStore, []string{
-		// Aggregate across two games
-		"m5ktbp4qPVTqaAhg6HJMsb", "ycj5de5gArFF3ap76JyiUA"},
-		// Mina then cesar4
-		"qUQkST8CendYA3baHNoPjk", "xjCWug7EZtDxDHX5fRZTLo",
-	)
-	is.NoErr(err)
-
-	is.Equal(stats0.PlayerOneData[entity.BINGOS_STAT].List, []*entity.ListItem{
-		{
-			GameId:   "m5ktbp4qPVTqaAhg6HJMsb",
-			PlayerId: "qUQkST8CendYA3baHNoPjk",
-			Time:     0,
-			Item:     entity.ListDatum{Word: "PARDINE", Score: 76, Probability: 1},
-		},
-		{
-			GameId:   "m5ktbp4qPVTqaAhg6HJMsb",
-			PlayerId: "qUQkST8CendYA3baHNoPjk",
-			Time:     0,
-			Item:     entity.ListDatum{Word: "HETAERA", Score: 91, Probability: 1},
-		},
-		{
-			GameId:   "ycj5de5gArFF3ap76JyiUA",
-			PlayerId: "qUQkST8CendYA3baHNoPjk",
-			Time:     0,
-			Item:     entity.ListDatum{Word: "UNITERS", Score: 68, Probability: 1},
-		},
-	})
+	// PARDINE and HETAERA, then UNITERS.
+	is.Equal(stats0.PlayerOneData[entity.BINGOS_STAT].Total, 3)
 
 	stats1, err := stores.UserStore.GetProfileVariantStats(context.Background(), u1.UUID, "CSW19.classic.ultrablitz")
 	is.NoErr(err)
 	is.True(stats1 != nil)
 
-	err = pkgstats.Finalize(ctx, stats1, stores.ListStatStore, []string{
-		"m5ktbp4qPVTqaAhg6HJMsb", "ycj5de5gArFF3ap76JyiUA",
-	},
-		// cesar4 then mina
-		"xjCWug7EZtDxDHX5fRZTLo", "qUQkST8CendYA3baHNoPjk")
-	is.NoErr(err)
-	is.Equal(stats1.PlayerOneData[entity.BINGOS_STAT].List, []*entity.ListItem{
-		{
-			GameId:   "ycj5de5gArFF3ap76JyiUA",
-			PlayerId: "xjCWug7EZtDxDHX5fRZTLo",
-			Time:     0,
-			Item:     entity.ListDatum{Word: "STYMING", Score: 70, Probability: 1},
-		},
-	})
-
+	// STYMING.
+	is.Equal(stats1.PlayerOneData[entity.BINGOS_STAT].Total, 1)
 	is.Equal(stats1.PlayerOneData[entity.SCORE_STAT].Total, 307)
 	is.Equal(stats1.PlayerOneData[entity.WINS_STAT].Total, 1)
 

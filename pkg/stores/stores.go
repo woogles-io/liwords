@@ -18,7 +18,6 @@ import (
 	"github.com/woogles-io/liwords/pkg/stores/redis"
 	"github.com/woogles-io/liwords/pkg/stores/session"
 	"github.com/woogles-io/liwords/pkg/stores/soughtgame"
-	"github.com/woogles-io/liwords/pkg/stores/stats"
 	"github.com/woogles-io/liwords/pkg/stores/tournament"
 	"github.com/woogles-io/liwords/pkg/stores/user"
 	pkguser "github.com/woogles-io/liwords/pkg/user"
@@ -30,7 +29,6 @@ type Stores struct {
 	SoughtGameStore *soughtgame.DBStore
 	PresenceStore   *redis.RedisPresenceStore
 	ChatStore       pkguser.ChatStore
-	ListStatStore   *stats.DBStore
 	NotorietyStore  *mod.DBStore
 	TournamentStore *tournament.DBStore
 	ConfigStore     *config.DBStore
@@ -91,10 +89,6 @@ func NewInitializedStores(dbPool *pgxpool.Pool, redisPool *redigoredis.Pool, cfg
 		return nil, err
 	}
 	stores.ConfigStore = config.NewDBStore(dbPool)
-	stores.ListStatStore, err = stats.NewDBStore(dbPool)
-	if err != nil {
-		return nil, err
-	}
 
 	stores.NotorietyStore, err = mod.NewDBStore(dbPool)
 	if err != nil {
@@ -153,9 +147,6 @@ func (s *Stores) Disconnect() {
 	}
 	if s.SoughtGameStore != nil {
 		s.SoughtGameStore.Disconnect()
-	}
-	if s.ListStatStore != nil {
-		s.ListStatStore.Disconnect()
 	}
 	if s.NotorietyStore != nil {
 		s.NotorietyStore.Disconnect()
