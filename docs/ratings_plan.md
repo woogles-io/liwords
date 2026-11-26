@@ -1,165 +1,227 @@
-# Ratings plan: fixed bot ratings, rating history, recalculation
+# Ratings plan: new rating system, fixed bot ratings, rating history
 
-Status: plan, nothing built yet (2026-11-16). This work replaces PR #2276
-("Store each player's starting rating with the game"), which should be closed.
+Status: plan, nothing built yet. First written 2026-11-16; rewritten
+2026-11-24 with the rating system chosen from a replay of a year of games.
 
 ## Why
 
-Bot ratings move. Bots play 70–80% of rated games, and Glicko treats them as
-well-measured opponents, so their drift spreads into every human rating.
+Ratings today are wrong in three ways:
 
-Bot ratings on prod that changed during the week before 2026-11-16:
+- **Bots float, and they drift.** Bots play 70–80% of rated games, and Glicko
+  treats them as well-measured opponents (every bot sits at the RD floor, 60), so
+  their drift spreads into every human rating. A bot random-walks 50–130 points
+  a week, and the same bot sits at very different levels in different rating
+  pools. BeginnerBot reached 2255 in CSW ultrablitz.
+- **The curve is too steep.** The site predicts ten-to-one odds at 400 points
+  apart. Real human-vs-human results show ten-to-one at about 505. NASPA's curve
+  is ten-to-one at 722.
+- **The field is squeezed.** NASPA 1100 and NASPA 2000 players end up about 500
+  points apart on the site, so intermediate players sit near 2000.
 
-| Bot | Rating key | Rating | RD |
+## The rating system (v2)
+
+Chosen by replaying every rated game from the last year (2.6M) under each
+candidate and scoring predictions on the last 30 days (36,700 games between
+established humans). Players were also matched to NASPA ratings: 246 accounts,
+by verified NASPA link or unique full name.
+
+| Setting | v2 | Today (v1) |
+|---|---|---|
+| Rating formula | Glicko-2 with the spread-based score, unchanged | same |
+| Curve (`GlickoToGlicko225Conversion`) | **315** | 173.7178 |
+| `Steepness` (win boost) | **0.00276**, rescaled for the new curve | 0.005 |
+| `InitialRating` | **1200** | 1500 |
+| `InitialRatingDeviation` / `MaximumRatingDeviation` | **600 / 600** | 350 / 350 |
+| `MinimumRatingDeviation` | 60 | 60 |
+| Volatility, tau, rating period, `SpreadScaling`, `MinimumWinBoost` | unchanged | |
+| Bots | **fixed ratings, never written** (below) | floating |
+| Quits (resign, timeout, forfeit, triple challenge) | count as the maximum spread, ±125 | same |
+| A player's first game in a new rating pool | **seeded from their other ratings** (below) | starts at 1500 |
+
+**Fixed bot ratings.** One ladder for every lexicon and time control:
+
+| BeginnerBot | BasicBot | BetterBot | STEEBot | HastyBot | BestBot |
+|---|---|---|---|---|---|
+| 600 | 1000 | 1400 | 1800 | 2050 | 2200 |
+
+- The human is rated against the bot's fixed rating with RD 0. The bot's rating
+  is never written. Bot-vs-bot games are not rated.
+- The gaps come from what humans actually score against each bot: players who
+  played both bots of a pair, over a year. Macondo self-play (2.8M games) gave
+  much wider gaps, because bots barely vary from game to game; it was used only
+  as a check.
+- HastyBot's level comes from the site-to-NASPA fit (about NASPA 1960–2130),
+  rounded to 2050 by decision. Moving it moves every bot by the same amount, so
+  it can be adjusted up to the switch.
+- The fixed ratings live in code or a small table, not in the bots' profile
+  JSON. Profiles still show them.
+
+**Seeding.** When a player has no rating in a pool (for example, their first
+correspondence game), look at their other pools of the same variant with RD at
+most 300. Prefer the same lexicon family, then the lowest RD. Start them at that
+pool's rating, with RD max(250, that pool's RD). If no pool qualifies, start at
+1200 / 600.
+
+- Why: pools that are almost all human-vs-human (correspondence, rapid, blitz)
+  are anchored by where newcomers start, not by the bots. Without seeding,
+  strong players arriving at 1200 drag the pool down: correspondence sat about
+  130 below NASPA. With seeding, about 35.
+- The RD 300 cutoff was tested against 100, 150 and 200 and against picking by
+  games played. Looser was better: at RD 100 (close to the provisional cutoff),
+  most second pools don't qualify and correspondence sits 76 below NASPA, against
+  28 at RD 300. Log loss 0.6300 at RD 100, 0.6281 at RD 300.
+
+**Replay results** (last 30 days, human vs human):
+
+| | Today (v1) | v2 |
+|---|---|---|
+| Log loss (lower is better) | 0.6386 | 0.6281 |
+| Calibration (1.0 is perfect) | 0.86 | 0.93 |
+| Correlation with NASPA (NWL, 118 players) | 0.69 | 0.82 |
+| Average vs NASPA's 1513 | 1671 | 1518 |
+| Spread (SD) vs NASPA's 295 | 146 | 280 |
+| Established CSW players at 2000+ | 321 | 90 |
+| 5th percentile, established CSW | about 1125 | about −150 |
+
+- Average site minus NASPA, NWL: regular +27, rapid +10, blitz −126,
+  correspondence −28. Lower blitz ratings are expected.
+- Some players will be below zero, mostly heavy quitters against BeginnerBot.
+  Accepted for now. Counting quits as a minimum-margin loss instead keeps the
+  5th percentile near 70 and predicts slightly better (about 0.627); it was
+  considered and not chosen.
+- Newcomers' first bot games are predicted worse than today (0.64 against 0.57):
+  a 1200 newcomer is expected to beat BeginnerBot easily, and many quit. The
+  high starting RD corrects them within a few games.
+- Tried and rejected: curves of 360 and 400; starting at 800 or 1000 (worse
+  NASPA match); starting at 1400 or 1500 (predicts worse, more players at
+  2000+); RD floor 50 or 70 (no difference); starting RD 350; higher bot ratings
+  for correspondence only.
+- Open: the BetterBot → STEEBot gap is about 490 in CSW and 340 in NWL against
+  400 on the ladder. Split the ladder by lexicon only if it matters after the
+  switch.
+
+## Rating history: v1 and v2
+
+Ratings are **derived from game results**. Results are immutable facts; a
+rating system is a function over them. Each system gets a version number, and
+history keeps both.
+
+| | What it is | Source | Can it change? |
 |---|---|---|---|
-| BestBot | CSW19.classic.regular | 2456 | 60 |
-| HastyBot | CSW19.classic.regular | 2408 | 60 |
-| BeginnerBot | CSW19.classic.ultrablitz | **2255** | 60 |
-| BetterBot | CSW19.classic.ultrablitz | 2168 | 60 |
-| BestBot | NWL18.classic.regular | 2154 | 60 |
-| HastyBot | NWL18.classic.regular | 2138 | 60 |
+| v1 | the ratings players saw before the switch | quickdata `OriginalRatings`/`NewRatings`, imported once | never |
+| v2 before the switch | a recalculation | the rerate tool | can be regenerated |
+| v2 after the switch | the ratings players see | written at game end | never |
 
-- **Every bot sits at the RD floor (60).** So each update against a bot is large
-  and confident, even when the bot's number is wrong.
-- **A resignation or timeout counts as the maximum spread.** That's
-  `glicko.SpreadScaling`, applied in `pkg/gameplay/rate.go` (the `maxPenalty`
-  branch). New players who quit against BeginnerBot push its rating up, which is
-  how it reached 2255.
+All of it goes in one table, `rating_changes`, in Postgres:
 
-Rating history is also scattered, and none of it is complete:
-- **`liststats`** (stat_type 20, `RATINGS_STAT`, written by `addRatings` in
-  `pkg/stats/stats.go`) holds the rating *after* each rated game. It stores no
-  rating before the game and no RD, and the rows sit in a 70M-row, 12 GB table
-  of mixed stats.
-- **Quickdata** has `OriginalRatings`/`NewRatings` (written in `rate.go`) and
-  `pi[].rating`, the display string such as `"1650?"`. Quickdata is being
-  removed; see `project_quickdata_removal` in memory and
-  `docs/mikado/xwordgame_remaining.md`.
+```
+game_uuid text, user_id int, system_version smallint,
+rating_key text, ended_at timestamptz,
+rating_before real, rd_before real, vol_before real,
+rating_after real,  rd_after real,  vol_after real,
+PRIMARY KEY (game_uuid, user_id, system_version)
+-- index (user_id, rating_key, system_version, ended_at) for profile graphs
+```
 
-## The idea
-
-Make a rating a **function of game results**. Results are immutable facts.
-Ratings, and the history of rating changes, come from replaying those results
-through the rating rules, so a rule change is a rerun rather than a migration.
-This is also the ClickHouse shape: game results and rating changes are
-append-only rows.
+- **Append-only.** Rows are never updated. Pre-switch v2 rows may be deleted and
+  regenerated as a whole by the rerate tool; nothing else is ever deleted.
+- **v1 has no RD or volatility.** Quickdata doesn't store them, so those columns
+  are null.
+- **Bots get no rows.** Their v2 rating is fixed. (Store `opponent_rating` on
+  the human's row if game lists need it without a lookup.)
+- **Size:** about 25M rows per version. Check the disk cost before importing v1
+  (likely 3–5 GB with indexes for both versions).
+- **ClickHouse copies it.** `docs/stats_redesign_plan.md` owns ClickHouse, its
+  `rating_history` table, the rating graph and the old/new toggle. That plan
+  reads `rating_changes`; this plan doesn't touch ClickHouse.
+- **Game lists** (replacing quickdata `pi[].rating`): a finished rated game
+  shows `rating_before` from the version that was live when the game ended, with
+  `?` when `rd_before` is above the provisional threshold (`RelevantRating` in
+  `pkg/entity/user.go`). v1 rows have no RD, so v1 games show the number without
+  `?`. Games in progress show the current profile rating. Casual games show none.
+- **Game records are never rewritten.** An old game keeps showing the v1 rating
+  it was played at.
 
 ## Steps
 
-### 1. Fixed bot ratings (small, ship first)
+### 1. v2 behind a switch
 
-- **The change in `rate.go`:** when one player is a bot
-  (`users.internal_bot`), rate only the human against the bot's fixed rating,
-  and never write the bot's rating. Bot vs. bot games are not rated.
-- **The bot's RD:** use a low, fixed RD for the human's update, such as the
-  current floor.
-- **Where the fixed ratings live** (bot, rating key) → rating:
-  - a small table, or config, rather than the bot's profile JSON, which the code
-    rewrites;
-  - the profile should still *show* the fixed number.
-- **Choosing the values: fit them from data, or set them by judgment and use
-  the data to check.** The user hasn't decided. To fit them:
-  - use only humans with enough games and a low RD;
-  - leave out games ending in resignation or timeout;
-  - fit per bot, per lexicon family and time control. The key comes from
-    `entity.ToVariantKey`, which maps lexicons into families: `CSW19`, `NWL18`
-    and so on.
-- **Optional rule:** don't rate games where a human resigns or times out
-  against a bot within their first move or two. Those mostly measure new players
-  leaving, not skill. This needs the user's decision.
+- New constants and rules in `pkg/glicko` and `pkg/gameplay/rate.go` behind a
+  rating-system switch, default v1. With the switch off, production behavior
+  doesn't change.
+- Fixed bot ratings, seeding and the bot-vs-bot rule as above.
+- Tests: the Go code must match the Python replay to within rounding on the same
+  inputs. The Python port of `pkg/glicko` matched today's Go code to 5×10⁻¹⁰ on
+  2,000 random cases, so the same check works for v2.
 
-### 2. `rating_changes` table
+### 2. `rating_changes` table and v1 import
 
-Append-only, one row per player per rated game, written in `rate.go` as part of
-the game-end work:
-
-```
-game_uuid text, user_id int, rating_key text, ended_at timestamptz,
-rating_before real, rd_before real, vol_before real,
-rating_after real,  rd_after real,  vol_after real,
-PRIMARY KEY (game_uuid, user_id)
--- index (user_id, rating_key, ended_at) for profile graphs
-```
-
-- **No updates, ever.** Rows are only appended, and the table moves to ClickHouse
-  as-is when that exists.
-- **Bots get no rows.** Their rating doesn't change, so the opponent's
-  `rating_before` / `rd_before` come from the fixed table. (Store
-  `opponent_rating` on the human's row if game lists need it without a lookup.)
-- **The display rating in game lists** (replacing quickdata `pi[].rating`):
-  - finished rated games show `rating_before`, with `?` when `rd_before` is above
-    the provisional threshold (see `RelevantRatingValue` in `pkg/entity/user.go`
-    on the #2276 branch, or `RelevantRating` on master);
-  - games in progress show the player's current profile rating;
-  - casual games show none.
-- **Migrations:** check master's latest migration number first, set
+- Migration for the table. Check master's latest migration number first, set
   `SET LOCAL lock_timeout = '10s'`, and merge outside 18:00–22:00 UTC, when the
   daily pg_dump runs.
+- `rate.go` writes a row for each human in each rated game, with the version
+  that's live, as part of the game-end work.
+- A one-off import writes v1 rows for every past rated game from quickdata.
+  Run it after `rate.go` writes rows, so no game falls between the import and
+  the live writes.
+- After the import, quickdata's ratings are no longer needed; see
+  `project_quickdata_removal` and `docs/mikado/xwordgame_remaining.md`.
 
-### 3. Replay tool (`cmd/rerate` or similar)
+### 3. Rerate tool (`cmd/rerate`)
 
-- **Input:** every finished, rated game, in end-time order, with:
-  - both player ids;
-  - the rating key (lexicon + variant + time control, from
-    `games.game_request`);
-  - the end reason;
-  - both scores, or the spread;
-  - the end time.
-- **Output:**
-  - new profile ratings, for every human and every rating key;
-  - a full `rating_changes` table.
-- **Rules:** step 1's rules, with the fixed bot ratings.
-- **Size:** about 12.7M games in `games`, about 25.8M rows in `game_players`. A
-  Go replay of per-game Glicko should run in minutes. Read in batches, keep the
-  ratings in memory, and write with COPY.
-- **Process:**
-  1. Run it against a copy first, not prod.
-  2. Compare the distributions per rating key: before and after, how many players
-     move more than 100 points, top lists.
-  3. Show the results to the user before switching over.
-- **Switching over:**
-  1. Replay up to a cutoff T.
-  2. Pause rating writes briefly.
-  3. Replay the games that ended after T.
-  4. Swap the profile ratings and `rating_changes` in.
-- **Announce it to users.** Everyone's rating will move.
+- **Input:** every finished, rated game, in end-time order: both player ids,
+  the rating key (lexicon, variant and time control from `games.game_request`),
+  the end reason, both scores, the end time.
+- **Output:** every human's current v2 rating for every rating key, and the v2
+  `rating_changes` rows. A `--cutoff` time makes runs repeatable.
+- **Size:** about 12.7M games. A Go replay should take minutes. Read in
+  batches, keep ratings in memory, write with COPY.
+- **Check it against the Python replay** on the same year of games.
+- **Check these before building:**
+  - `game_players` has scores, `won`, `game_end_reason`, `created_at`
+    (creation, not end) and `game_mode`, back to 2020-08-15, but no lexicon or
+    variant; those come from `games.game_request`.
+  - The end time probably comes from `games.updated_at`. Check that nothing
+    updates finished games afterward (annotations, rematch bookkeeping, admin
+    edits).
+  - Older games may store their request in the old bytea `request` column.
+  - `rate.go`'s git history: changes to which games are rated (aborts,
+    adjudications, tournament games).
+  - Manual rating changes (admin resets, penalties) aren't in the game results.
+    Find out whether any exist.
+  - Bots got stronger over the years. The fixed ladder reflects today's bots, so
+    ratings from games against older versions will be slightly off. If the bot
+    change dates are known, the ladder could be dated.
 
-**Check this before building:** does each historical game have every replay
-input?
-- **`game_players`** has scores, `won`, `game_end_reason`, `created_at`
-  (creation, not end) and `game_mode`. It has rows back to 2020-08-15. It has no
-  rating mode, lexicon or variant, so those come from `games.game_request`
-  (JSON: `rating_mode`, `lexicon`, `rules`, `initial_time_seconds`,
-  `increment_seconds`, `max_overtime_minutes`).
-- **The end time** probably comes from `games.updated_at`. Check that nothing
-  updates finished games afterward; annotations, rematch bookkeeping and admin
-  edits might. If something does, find a better source.
-- **Old formats:** check how older games stored their request; there was a
-  bytea `request` column before `game_request`.
-- **`rate.go` history:** check git history for changes to which games are
-  rated (aborts, adjudications, tournament games).
+### 4. Dry run
 
-Keep prod queries light: `bin/proddb` is read-only, use a
-`statement_timeout`, and let the replay read from a copy or replica.
+- Run against a copy or replica, never prod directly.
+- Compare per rating pool: distributions before and after, how many players move
+  more than 100 points, top lists.
+- Write the announcement. Everyone's rating moves, some by a lot.
 
-### 4. Remove the old copies
+### 5. Switch
 
-Once the profile and game lists read `rating_changes`:
-- stop writing the `liststats` Ratings rows;
-- remove quickdata's `OriginalRatings`/`NewRatings`.
+1. Pick a cutoff T and rerate up to T.
+2. Pause rating writes briefly.
+3. Rerate the games that ended after T.
+4. Write every player's new current ratings and the v2 rows, and turn the
+   switch to v2.
+5. Record the switch time; ClickHouse's `rating_systems` table uses it as v2's
+   go-live date.
 
-The profile's rating graph, if it uses `liststats`, moves to `rating_changes`.
+### 6. Remove the old copies
+
+- Stop writing the `liststats` Ratings rows (stat_type 20) if they still exist.
+- Remove quickdata's `OriginalRatings`/`NewRatings` once v1 is imported (step 2).
 
 ## Later, not part of this plan
 
 - **Correspondence:** rated per game at the end, against an opponent whose
-  rating has drifted since the game began. Glicko was designed for rating
-  periods, so try weekly periods for the `corres` pool. With the replay tool,
-  that can be tried on past data before deciding.
-- **Puzzle ratings** (`LexiconToPuzzleVariantKey`) are separate; this plan
-  doesn't touch them.
-- **ClickHouse:** game results and `rating_changes` both go there with the
-  stats.
+  rating has drifted since the game began. Weekly rating periods could be tried
+  on past data with the rerate tool.
+- **Puzzle ratings** (`LexiconToPuzzleVariantKey`) are separate.
+- **Future versions:** a v3 is another rerate run with a new version number.
 
 ## Constraints for whoever picks this up
 
@@ -171,6 +233,7 @@ The profile's rating graph, if it uses `liststats`, moves to `rating_changes`.
   - never apply them by hand; the app applies them on restart;
   - check version collisions with master.
 - **Code generation:** use `go generate` for sqlc and protos.
-- **Production:** AWS and prod DB access is read-only.
+- **Production:** AWS and prod DB access is read-only. Keep queries light, with
+  a `statement_timeout`.
 - **Writing:** American spelling; generic wording in commits and PRs (this is an
-  open-source repo).
+  open-source repo). No player names in docs or reports.
