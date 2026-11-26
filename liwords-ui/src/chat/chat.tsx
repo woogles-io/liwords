@@ -1552,6 +1552,7 @@ export const Chat = React.memo((props: Props) => {
             sendMessage={sendNewMessage}
             loadOlder={loadOlderChannels}
             suppressDefault={props.suppressDefault}
+            tournamentID={props.tournamentID}
           />
         ) : (
           channel && (

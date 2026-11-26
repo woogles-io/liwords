@@ -10,6 +10,7 @@ import {
   useChatStoreContext,
   useExcludedPlayersStoreContext,
   useLoginStateStoreContext,
+  useTournamentStoreContext,
 } from "../store/store";
 import { useDebounce } from "../utils/debounce";
 import {
@@ -35,6 +36,9 @@ type Props = {
   loadOlder?: () => void;
   maxHeight?: number;
   suppressDefault?: boolean;
+  // The club or tournament the page belongs to, whose chat is listed when it
+  // is not the page's own.
+  tournamentID?: string;
 };
 
 // Whether the channel list shows a channel. The unread count in chat.tsx uses
@@ -252,6 +256,7 @@ export const ChatChannels = React.memo((props: Props) => {
   const { sendMessage } = props;
   const { loginState } = useLoginStateStoreContext();
   const { username, userID } = loginState;
+  const { tournamentContext } = useTournamentStoreContext();
   const [showSearch, setShowSearch] = useState(false);
   const [maxHeight, setMaxHeight] = useState<number | undefined>(0);
   const [usernameOptions, setUsernameOptions] = useState<Array<user>>([]);
@@ -355,6 +360,28 @@ export const ChatChannels = React.memo((props: Props) => {
       props.updatedChannels.has(props.defaultChannel)) ||
     props.unseenMessages.some((uc) => uc.channel === props.defaultChannel);
   const locationLabel = getLocationLabel(props.defaultChannel);
+  // The server lists only private chats, so the club's chat is listed here
+  // while the page is one of its games.
+  const clubChannel = props.tournamentID
+    ? `chat.tournament.${props.tournamentID}`
+    : "";
+  const showClub = !!clubChannel && clubChannel !== props.defaultChannel;
+  const clubDescription =
+    (tournamentContext.metadata.id === props.tournamentID &&
+      tournamentContext.metadata.name) ||
+    "Club chat";
+  const clubLastUnread = props.unseenMessages.reduce(
+    (acc: ChatEntityObj | undefined, m) =>
+      m.channel === clubChannel &&
+      m.timestamp &&
+      (acc === undefined || (acc.timestamp && m.timestamp > acc.timestamp))
+        ? m
+        : acc,
+    undefined,
+  );
+  const clubUnread =
+    showClub &&
+    (props.updatedChannels?.has(clubChannel) || clubLastUnread !== undefined);
   return (
     <div
       className="channel-list"
@@ -384,6 +411,27 @@ export const ChatChannels = React.memo((props: Props) => {
               {defaultUnread && <span className="unread-marker">•</span>}
             </p>
             <p className="listing-preview">{props.defaultLastMessage}</p>
+          </div>
+        </div>
+      )}
+      {showClub && (
+        <div
+          className={`channel-listing club${clubUnread ? " unread" : ""}`}
+          onClick={() => {
+            props.onChannelSelect(clubChannel, clubDescription);
+          }}
+        >
+          {getChannelIcon("tournament")}
+          <div>
+            <p className="listing-name">
+              {clubDescription}
+              {clubUnread && <span className="unread-marker">•</span>}
+            </p>
+            <p className="listing-preview">
+              {clubLastUnread
+                ? `${clubLastUnread.sender}: ${clubLastUnread.message}`
+                : ""}
+            </p>
           </div>
         </div>
       )}
