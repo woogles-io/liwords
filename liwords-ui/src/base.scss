@@ -17,6 +17,15 @@ $screen-laptop-min: 1280px;
 $screen-desktop-min: 1440px;
 $screen-desktop-l-min: 1600px;
 
+// Unfolded foldables (and small tablets held sideways): wider than a phone,
+// narrower than the desktop layout, and not much taller than wide. Tablets
+// in portrait (taller than 4:3) keep the stacked phone layout.
+@mixin fold {
+  @media (min-width: $screen-mobile-min) and (max-width: $screen-tablet-min - 1) and (min-aspect-ratio: 3/4) {
+    @content;
+  }
+}
+
 @function strip-unit($number) {
   @if meta.type-of($number) == "number" and not math.is-unitless($number) {
     @return math.div($number, $number * 0 + 1);

@@ -231,3 +231,91 @@ span.user-context-menu.ant-dropdown-trigger {
     padding-top: 0px;
   }
 }
+
+// Wide phones and small tablets (unfolded foldables, iPad mini): the lobby
+// and header use the whole width instead of a phone-width column.
+@media (min-width: base.$screen-mobile-min) and (max-width: base.$screen-tablet-min - 1) {
+  .lobby,
+  .top-header .container {
+    max-width: none;
+  }
+  .lobby {
+    .game-lists,
+    .chat-area,
+    .announcements,
+    .tournament-info {
+      width: 100%;
+      min-width: 0;
+      max-width: none;
+    }
+  }
+}
+
+// Foldables: the board on the left, the scoresheet and tile tracking on the
+// right, the timers across the top, and chat and notepad below.
+@include base.fold {
+  .game-table {
+    max-width: none;
+    display: grid;
+    grid-template-columns: base.$main-container-width-mobile minmax(0, 1fr);
+    grid-template-areas:
+      "cards cards"
+      "play data"
+      "chat chat";
+    column-gap: 12px;
+    align-items: start;
+
+    > .sticky-player-card-container {
+      grid-area: cards;
+      width: auto;
+      margin: -12px 0 0;
+      padding: 12px 0 0;
+    }
+    > .play-area {
+      grid-area: play;
+    }
+    // As tall as the board column; the scoresheet takes whatever room the
+    // other cards leave, and scrolls inside itself.
+    > .data-area {
+      grid-area: data;
+      align-self: stretch;
+      min-width: 0;
+      max-width: none;
+
+      .score-card {
+        order: 1;
+        flex: 1 1 0;
+        min-height: 200px;
+        display: flex;
+        flex-direction: column;
+
+        .ant-card-body {
+          flex: 1 1 0;
+          min-height: 0;
+          display: flex;
+          flex-direction: column;
+
+          > div:not(.two-col-header) {
+            flex: 1 1 0;
+            min-height: 0;
+            max-height: none;
+          }
+        }
+      }
+      .pool {
+        order: 2;
+      }
+      .game-info {
+        order: 3;
+      }
+      .left-menu {
+        order: 4;
+      }
+    }
+    > .chat-area {
+      grid-area: chat;
+      min-width: 0;
+      max-width: none;
+    }
+  }
+}
