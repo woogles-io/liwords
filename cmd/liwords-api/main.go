@@ -72,6 +72,7 @@ import (
 	pkgprofile "github.com/woogles-io/liwords/pkg/profile"
 	"github.com/woogles-io/liwords/pkg/push"
 	"github.com/woogles-io/liwords/pkg/puzzles"
+	"github.com/woogles-io/liwords/pkg/ratelimit"
 	"github.com/woogles-io/liwords/pkg/registration"
 	"github.com/woogles-io/liwords/pkg/sessions"
 	"github.com/woogles-io/liwords/pkg/stores"
@@ -285,6 +286,16 @@ func main() {
 				Msg("")
 		})),
 		// WithTiming("errorLogging", ErrorReqResLoggingMiddleware), // disabled: blocks on reading entire request body upfront
+		// Last, so the access log records the requests it refuses.
+		WithTiming("ratelimit", ratelimit.Middleware(
+			ratelimit.NewLimiter(cfg.RedisURL),
+			ratelimit.CachedAPIKeyUser(func(ctx context.Context, key string) (string, error) {
+				u, err := stores.UserStore.GetByAPIKey(ctx, key)
+				if err != nil {
+					return "", err
+				}
+				return u.UUID, nil
+			}))),
 	)
 
 	// s3 config
