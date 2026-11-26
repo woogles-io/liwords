@@ -38,9 +38,9 @@ var (
 	// rendered images. A person reading games stays far below this.
 	heavyBucket = bucket{
 		Name:      "heavy",
-		Anon:      Limit{Rate: 60, Per: time.Minute, Burst: 60},
-		IPCeiling: Limit{Rate: 300, Per: time.Minute, Burst: 150},
-		User:      Limit{Rate: 240, Per: time.Minute, Burst: 120},
+		Anon:      Limit{Rate: 30, Per: time.Minute, Burst: 30},
+		IPCeiling: Limit{Rate: 150, Per: time.Minute, Burst: 75},
+		User:      Limit{Rate: 120, Per: time.Minute, Burst: 60},
 	}
 	// Endpoints that send an email. The ceiling leaves room for a class
 	// signing up together.
