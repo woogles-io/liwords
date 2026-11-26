@@ -2,9 +2,14 @@
 
 `page-gate.js` is the viewer-request function `woogles-page-gate`. It runs on
 the production distribution's `/game/*`, `/profile/*` and `/anno/*` cache
-behaviors. Those behaviors and the function association were set up by hand
-and are not in `cfn/cloudfront.yaml`, so redeploying that template would
-drop them.
+behaviors. Those behaviors and the function association were set up by hand.
+
+The distribution still belongs to the 2020 CloudFormation stack
+`woogles-prod-cloudfront`, but has been edited by hand ever since: the backend
+origin and its secret header, these behaviors, logging. The stack's template
+no longer matches, so **never update that stack**; it would wipe all of that.
+Read the live config with `aws cloudfront get-distribution-config --id
+E2FYSPAB7W8UDX`.
 
 The function checks the `wg_ok` cookie that `/api/human-check`
 (`pkg/humancheck`) sets. Both sides need the same key: the API reads it from
