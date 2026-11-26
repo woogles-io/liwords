@@ -6,7 +6,6 @@ import (
 	"expvar"
 	"fmt"
 	"net/http"
-	"net/http/pprof"
 	"os"
 	"os/signal"
 	"runtime"
@@ -54,6 +53,7 @@ import (
 	"github.com/woogles-io/liwords/pkg/collections"
 	"github.com/woogles-io/liwords/pkg/comments"
 	"github.com/woogles-io/liwords/pkg/config"
+	"github.com/woogles-io/liwords/pkg/debugserver"
 	"github.com/woogles-io/liwords/pkg/disposableemail"
 	"github.com/woogles-io/liwords/pkg/embed"
 	"github.com/woogles-io/liwords/pkg/gameplay"
@@ -517,21 +517,8 @@ func main() {
 		"api",
 		otelhttp.WithSpanNameFormatter(customHTTPSpanNameFormatter)))
 
-	router.Handle("/debug/pprof/", http.HandlerFunc(pprof.Index))
-	router.Handle(
-		"/debug/pprof/profile", http.HandlerFunc(pprof.Profile))
-	router.Handle(
-		"/debug/pprof/trace", pprof.Handler("trace"),
-	)
-	router.Handle(
-		"/debug/pprof/goroutine", pprof.Handler("goroutine"),
-	)
-	router.Handle(
-		"/debug/pprof/heap", pprof.Handler("heap"),
-	)
-	router.Handle(
-		"/debug/vars", http.DefaultServeMux,
-	)
+	// pprof and expvar listen apart from the public router.
+	debugserver.Start(cfg.DebugAddr)
 
 	expvar.Publish("goroutines", expvar.Func(func() interface{} {
 		return fmt.Sprintf("%d", runtime.NumGoroutine())

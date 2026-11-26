@@ -10,6 +10,7 @@ import (
 
 	macondoconfig "github.com/domino14/macondo/config"
 	wglconfig "github.com/domino14/word-golib/config"
+	"github.com/woogles-io/liwords/pkg/debugserver"
 	"github.com/woogles-io/liwords/pkg/stores/common"
 )
 
@@ -35,6 +36,7 @@ type Config struct {
 	DBConnDSN        string
 
 	ListenAddr         string
+	DebugAddr          string
 	SecretKey          string
 	NatsURL            string
 	EmailDebugMode     bool
@@ -129,6 +131,7 @@ func (c *Config) Load(args []string) error {
 	fs.StringVar(&c.DBSSLMode, "db-ssl-mode", "", "the database SSL mode")
 	fs.StringVar(&c.DBName, "db-name", "", "the database name")
 	fs.StringVar(&c.ListenAddr, "listen-addr", ":8001", "listen on this address")
+	fs.StringVar(&c.DebugAddr, "debug-addr", debugserver.DefaultAddr, "serve pprof and expvar on this address (empty: off)")
 	fs.StringVar(&c.SecretKey, "secret-key", "", "secret key must be a random unguessable string")
 	fs.StringVar(&c.NatsURL, "nats-url", "nats://localhost:4222", "the NATS server URL")
 	fs.BoolVar(&c.EmailDebugMode, "email-debug", false, "print emails to stdout instead of sending via SES")
