@@ -226,6 +226,13 @@ export const ComponentGallery = React.memo(() => {
       <Specimen
         name="Card"
         note="189 .ant-card selectors in SCSS"
+        measure={[
+          {
+            label: "card root",
+            antd: ".ant-card",
+            mantine: ".mantine-Card-root",
+          },
+        ]}
         antd={
           <AntCard title="Card title" extra={<a href="#gallery">More</a>}>
             Card body content.
@@ -245,21 +252,35 @@ export const ComponentGallery = React.memo(() => {
       <Specimen
         name="Text inputs"
         measure={[
-          { label: "text input", antd: "input.ant-input", mantine: "input" },
+          {
+            label: "text",
+            antd: 'input[data-cmp="text"]',
+            mantine: 'input[data-cmp="text"]',
+          },
+          {
+            label: "number",
+            antd: '[data-cmp="number"] input, input[data-cmp="number"]',
+            mantine: 'input[data-cmp="number"]',
+          },
+          {
+            label: "password",
+            antd: '[data-cmp="password"] input, input[data-cmp="password"]',
+            mantine: 'input[data-cmp="password"]',
+          },
         ]}
         antd={
           <>
-            <AntInput placeholder="Text" />
-            <AntInputNumber placeholder="Number" />
-            <AntInput.Password placeholder="Password" />
+            <AntInput placeholder="Text" data-cmp="text" />
+            <AntInputNumber placeholder="Number" data-cmp="number" />
+            <AntInput.Password placeholder="Password" data-cmp="password" />
             <AntInput.TextArea placeholder="Textarea" rows={2} />
           </>
         }
         mantine={
           <>
-            <TextInput placeholder="Text" />
-            <NumberInput placeholder="Number" />
-            <PasswordInput placeholder="Password" />
+            <TextInput placeholder="Text" data-cmp="text" />
+            <NumberInput placeholder="Number" data-cmp="number" />
+            <PasswordInput placeholder="Password" data-cmp="password" />
             <Textarea placeholder="Textarea" rows={2} />
           </>
         }
