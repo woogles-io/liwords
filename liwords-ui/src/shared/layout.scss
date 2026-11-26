@@ -256,9 +256,15 @@ span.user-context-menu.ant-dropdown-trigger {
 // and chat and notepad below.
 @include base.two-pane {
   .game-table {
-    // Half the width, less the page padding, the gap between the panes and
-    // the board's coordinates, shared by 15 squares.
-    --mobile-tile-size: calc((50vw - 18px - 36px) / 15);
+    // The board fills its half of the width (less the page padding, the gap
+    // between the panes and the board's coordinates), unless the screen is
+    // too short to show the timers, board, rack and buttons all at once
+    // (about 300px besides the board). dvh is the height left once the
+    // browser's own toolbars are showing.
+    --mobile-tile-size: min(
+      calc((50vw - 18px - 36px) / 15),
+      calc((100dvh - 300px) / 15)
+    );
     max-width: none;
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -296,8 +302,10 @@ span.user-context-menu.ant-dropdown-trigger {
       }
       .rack-container {
         left: 0;
+        margin: 6px 0;
 
         .rack {
+          margin: 6px 0;
           width: auto;
           height: var(--rack-tile-size);
           min-height: var(--rack-tile-size);
@@ -319,12 +327,35 @@ span.user-context-menu.ant-dropdown-trigger {
           font-size: calc(var(--rack-tile-size) * 0.24);
         }
       }
-      // The buttons use the pane's whole width.
+      // The buttons sit in one row, as on desktop, across the pane's whole
+      // width, so that they fit on the screen below the rack.
+      // (and the unnamed wrapper around them, which would shrink to them)
+      .board-container > div:has(> .game-controls) {
+        align-self: stretch;
+      }
       .game-controls {
         left: 0;
-        width: 100%;
+        width: auto;
         max-width: none;
-        padding: 12px 0;
+        padding: 6px 0 0;
+        gap: 6px;
+
+        .secondary-controls {
+          display: contents;
+        }
+        button.ant-btn,
+        button.ant-btn.play {
+          flex: 1 1 auto;
+          min-width: 0;
+          width: auto;
+          height: 40px;
+          margin: 0;
+          padding: 0 6px;
+          font-size: 15px;
+        }
+        button.ant-btn.play {
+          flex-grow: 1.5;
+        }
       }
     }
     // As tall as the board column; the scoresheet takes whatever room the

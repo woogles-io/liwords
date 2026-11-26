@@ -20,7 +20,7 @@ $screen-desktop-l-min: 1600px;
 // Two panes: unfolded foldables and tablets held upright. Wider and taller
 // than any phone (phones held sideways are wide but short), narrower than
 // the desktop layout.
-$screen-two-pane-min: 600px;
+$screen-two-pane-min: 700px;
 $screen-two-pane-min-height: 500px;
 @mixin two-pane {
   @media (min-width: $screen-two-pane-min) and (max-width: $screen-tablet-min - 1) and (min-height: $screen-two-pane-min-height) {
