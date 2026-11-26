@@ -256,16 +256,19 @@ span.user-context-menu.ant-dropdown-trigger {
 // and chat and notepad below.
 @include base.two-pane {
   .game-table {
-    // The board fills its half of the width (less the page padding, the gap
-    // between the panes and the board's coordinates), unless the screen is
+    // The board fills its half of the width (less the 8px page padding, half
+    // the 12px gap between the panes, and the 18px gutter for the row
+    // numbers), unless the screen is
     // too short to show the timers, board, rack and buttons all at once
-    // (about 300px besides the board). dvh is the height left once the
+    // (about 275px besides the board). dvh is the height left once the
     // browser's own toolbars are showing.
     --mobile-tile-size: min(
-      calc((50vw - 18px - 36px) / 15),
-      calc((100dvh - 300px) / 15)
+      calc((50vw - 14px - 18px) / 15),
+      calc((100dvh - 275px) / 15)
     );
     max-width: none;
+    padding-left: 8px;
+    padding-right: 8px;
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     grid-template-areas:
@@ -285,9 +288,12 @@ span.user-context-menu.ant-dropdown-trigger {
       grid-area: play;
       min-width: 0;
       max-width: none;
+      margin: 0;
+      // The gutter for the row numbers: about 16px of digits and 2px of space.
+      padding: 6px 0 0 18px;
       // The rack's tiles, sized so that they and the two round buttons
       // beside them fit across the pane, but never above the desktop size.
-      --rack-tile-size: min(44px, calc((50vw - 18px - 12px - 96px - 32px) / 8));
+      --rack-tile-size: min(44px, calc((50vw - 14px - 18px - 96px - 32px) / 8));
 
       // Small panes have squares under the phone board's 24px minimum.
       .board-spaces,
@@ -299,6 +305,20 @@ span.user-context-menu.ant-dropdown-trigger {
       .coord-labels .coord-label {
         font-size: min(14px, calc(var(--mobile-tile-size) * 0.6));
         line-height: 1;
+      }
+      // The board starts at the gutter, with the row numbers 2px from it.
+      // On a screen short enough to shrink the board, it stays against the
+      // gutter, leaving the room by the hinge; the rack stays centered.
+      .board-container {
+        left: 0;
+        align-items: flex-start;
+      }
+      .rack-container {
+        align-self: stretch;
+      }
+      .coord-labels.vert {
+        left: auto;
+        right: calc(100% + 2px);
       }
       .rack-container {
         left: 0;
