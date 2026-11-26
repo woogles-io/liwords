@@ -121,7 +121,7 @@ func (b *Bus) newSeekRequest(ctx context.Context, auth, userID, connID string,
 	if err != nil {
 		return err
 	}
-	reqUser.RelevantRating = u.GetRelevantRating(ratingKey)
+	reqUser.RelevantRating = gameplay.LiveRatingSystem(ctx).DisplayRating(u, ratingKey)
 	reqUser.DisplayName = u.Username
 
 	req.SeekerConnectionId = connID
@@ -601,7 +601,7 @@ func (b *Bus) acceptSeek(ctx context.Context, requestID, userID, connID string) 
 			return err
 		}
 
-		if accRating.RatingDeviation > entity.RatingDeviationConfidence {
+		if !gameplay.LiveRatingSystem(ctx).Established(*accRating) {
 			return errors.New("this seek requires an established rating")
 		}
 	}
@@ -780,17 +780,18 @@ func (b *Bus) broadcastSeekDeletion(sg *entity.SoughtGame) error {
 
 }
 
-func (b *Bus) broadcastGameCreation(g *entity.Game, acceptor, requester *entity.User) error {
+func (b *Bus) broadcastGameCreation(ctx context.Context, g *entity.Game, acceptor, requester *entity.User) error {
 	timefmt, variant, err := entity.VariantFromGameReq(g.GameReq.GameRequest)
 	if err != nil {
 		return err
 	}
 	ratingKey := entity.ToVariantKey(g.GameReq.Lexicon, variant, timefmt)
+	sys := gameplay.LiveRatingSystem(ctx)
 	players := []*pb.PlayerInfo{
-		{Rating: acceptor.GetRelevantRating(ratingKey),
+		{Rating: sys.DisplayRating(acceptor, ratingKey),
 			UserId:   acceptor.UUID,
 			Nickname: acceptor.Username},
-		{Rating: requester.GetRelevantRating(ratingKey),
+		{Rating: sys.DisplayRating(requester, ratingKey),
 			UserId:   requester.UUID,
 			Nickname: requester.Username},
 	}
@@ -976,7 +977,7 @@ func (b *Bus) shouldIncludeSeek(ctx context.Context, sg *entity.SoughtGame, rece
 			return false
 		}
 		rating, err := receiver.GetRating(ratingKey)
-		if err != nil || rating.RatingDeviation > entity.RatingDeviationConfidence {
+		if err != nil || !gameplay.LiveRatingSystem(ctx).Established(*rating) {
 			return false
 		}
 	}

@@ -96,3 +96,46 @@ func TestNewRatingV2(t *testing.T) {
 	got := RatingSystemV1.newRating(map[entity.VariantKey]entity.SingleRating{"NWL18.classic.regular": sr(1700, 60)}, corres, 99)
 	is.Equal(got.Rating, 1500.0)
 }
+
+// V1 shows ratings as entity.RelevantRating did before the rating systems
+// were split: 1500? for no rating, "?" above RD 90, the bot's own rating.
+func TestDisplayRatingV1(t *testing.T) {
+	is := is.New(t)
+	s := RatingSystemV1
+	is.Equal(s.DisplayRating(&entity.User{Username: "anon"}, nwlRegular), "UnratedAnon")
+	is.Equal(s.DisplayRating(human("a", nil), nwlRegular), "1500?")
+	u := human("a", map[entity.VariantKey]entity.SingleRating{
+		nwlRegular:              {Rating: 1712.6, RatingDeviation: 90},
+		"NWL18.classic.blitz":   {Rating: 1600.4, RatingDeviation: 90.1},
+		"CSW19.classic.regular": {Rating: 1800, RatingDeviation: 60},
+	})
+	is.Equal(s.DisplayRating(u, nwlRegular), "1713")
+	is.Equal(s.DisplayRating(u, "NWL18.classic.blitz"), "1600?")
+	is.Equal(s.DisplayRating(u, "NWL18.classic.rapid"), "1500?")
+	b := bot("HastyBot")
+	b.Profile.Ratings.Data = map[entity.VariantKey]entity.SingleRating{nwlRegular: {Rating: 1987, RatingDeviation: 60}}
+	is.Equal(s.DisplayRating(b, nwlRegular), "1987")
+	is.True(s.Established(entity.SingleRating{RatingDeviation: 90}))
+	is.True(!s.Established(entity.SingleRating{RatingDeviation: 90.1}))
+}
+
+// V2 shows a bot's fixed rating, the seeded start for a pool the player hasn't
+// played, and drops the "?" at RD 160.
+func TestDisplayRatingV2(t *testing.T) {
+	is := is.New(t)
+	s := RatingSystemV2
+	is.Equal(s.DisplayRating(human("a", nil), nwlRegular), "1200?")
+	u := human("a", map[entity.VariantKey]entity.SingleRating{
+		nwlRegular:            {Rating: 1650, RatingDeviation: 160},
+		"NWL18.classic.blitz": {Rating: 1600, RatingDeviation: 161},
+	})
+	is.Equal(s.DisplayRating(u, nwlRegular), "1650")
+	is.Equal(s.DisplayRating(u, "NWL18.classic.blitz"), "1600?")
+	// Seeded from NWL regular, the lowest RD in the variant.
+	is.Equal(s.DisplayRating(u, "NWL18.classic.corres"), "1650?")
+	b := bot("BeginnerBot")
+	b.Profile.Ratings.Data = map[entity.VariantKey]entity.SingleRating{nwlRegular: {Rating: 1361, RatingDeviation: 60}}
+	is.Equal(s.DisplayRating(b, nwlRegular), "600")
+	is.True(s.Established(entity.SingleRating{RatingDeviation: 160}))
+	is.True(!s.Established(entity.SingleRating{RatingDeviation: 160.5}))
+}

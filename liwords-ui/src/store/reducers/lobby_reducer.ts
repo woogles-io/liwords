@@ -217,7 +217,9 @@ export const hasEstablishedRating = (
 ): boolean => {
   const rating = ratings[ratingKey];
   if (!rating) return false;
-  // RatingDeviationConfidence = MinimumRatingDeviation(60) + 30 = 90
+  // Matches the live rating system's EstablishedRatingDeviation in
+  // pkg/glicko (90 today; 160 when rating system 2 goes live, see
+  // docs/ratings_plan.md). The server enforces it; this only filters seeks.
   return rating.deviation <= 90;
 };
 

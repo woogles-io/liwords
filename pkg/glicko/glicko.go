@@ -38,42 +38,50 @@ type Params struct {
 	Steepness              float64 // how fast the win boost rises with rating
 	WinBoostCenter         float64 // the rating where the win boost is halfway
 	RatingPeriodSeconds    int
+	// EstablishedRatingDeviation is the highest RD at which a rating counts
+	// as established. Above it the rating shows with a "?", and seeks that
+	// require an established rating are closed to the player.
+	EstablishedRatingDeviation float64
 }
 
 var V1 = Params{
-	InitialRating:          float64(InitialRating),
-	InitialRatingDeviation: float64(InitialRatingDeviation),
-	MinimumRatingDeviation: float64(MinimumRatingDeviation),
-	MaximumRatingDeviation: float64(MaximumRatingDeviation),
-	InitialVolatility:      InitialVolatility,
-	MaximumVolatility:      MaximumVolatility,
-	VolatilityConstraint:   VolatilityDeltaConstraint,
-	Conversion:             GlickoToGlicko225Conversion,
-	SpreadScaling:          SpreadScaling,
-	MinimumWinBoost:        MinimumWinBoost,
-	Steepness:              Steepness,
-	WinBoostCenter:         float64(InitialRating),
-	RatingPeriodSeconds:    RatingPeriodinSeconds,
+	InitialRating:              float64(InitialRating),
+	InitialRatingDeviation:     float64(InitialRatingDeviation),
+	MinimumRatingDeviation:     float64(MinimumRatingDeviation),
+	MaximumRatingDeviation:     float64(MaximumRatingDeviation),
+	InitialVolatility:          InitialVolatility,
+	MaximumVolatility:          MaximumVolatility,
+	VolatilityConstraint:       VolatilityDeltaConstraint,
+	Conversion:                 GlickoToGlicko225Conversion,
+	SpreadScaling:              SpreadScaling,
+	MinimumWinBoost:            MinimumWinBoost,
+	Steepness:                  Steepness,
+	WinBoostCenter:             float64(InitialRating),
+	RatingPeriodSeconds:        RatingPeriodinSeconds,
+	EstablishedRatingDeviation: float64(MinimumRatingDeviation + 30),
 }
 
 // V2 flattens the curve to about NASPA's (ten-to-one odds at about 725 points
 // apart instead of 400), starts new players lower and less certain, and
 // rescales the win boost's steepness to the new curve. Its center stays at
-// 1500.
+// 1500. The established cutoff is V1's 90 scaled to the wider curve (about
+// 90 × 315 / 174); left at 90, most players would need over 100 games to lose
+// the "?".
 var V2 = Params{
-	InitialRating:          1200,
-	InitialRatingDeviation: 600,
-	MinimumRatingDeviation: 60,
-	MaximumRatingDeviation: 600,
-	InitialVolatility:      InitialVolatility,
-	MaximumVolatility:      MaximumVolatility,
-	VolatilityConstraint:   VolatilityDeltaConstraint,
-	Conversion:             315,
-	SpreadScaling:          SpreadScaling,
-	MinimumWinBoost:        MinimumWinBoost,
-	Steepness:              0.00276,
-	WinBoostCenter:         1500,
-	RatingPeriodSeconds:    RatingPeriodinSeconds,
+	InitialRating:              1200,
+	InitialRatingDeviation:     600,
+	MinimumRatingDeviation:     60,
+	MaximumRatingDeviation:     600,
+	InitialVolatility:          InitialVolatility,
+	MaximumVolatility:          MaximumVolatility,
+	VolatilityConstraint:       VolatilityDeltaConstraint,
+	Conversion:                 315,
+	SpreadScaling:              SpreadScaling,
+	MinimumWinBoost:            MinimumWinBoost,
+	Steepness:                  0.00276,
+	WinBoostCenter:             1500,
+	RatingPeriodSeconds:        RatingPeriodinSeconds,
+	EstablishedRatingDeviation: 160,
 }
 
 // Rate rates a player under V1.

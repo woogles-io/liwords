@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
+	"strconv"
 	"strings"
 
 	"github.com/woogles-io/liwords/pkg/config"
@@ -45,12 +47,39 @@ var RatingSystemV2 = RatingSystem{
 	SeedMinRD: 250,
 }
 
-// ratingSystemFor returns the rating system the config picks, or V1.
-func ratingSystemFor(ctx context.Context) RatingSystem {
+// LiveRatingSystem returns the rating system the config picks, or V1.
+func LiveRatingSystem(ctx context.Context) RatingSystem {
 	if cfg, err := config.Ctx(ctx); err == nil && cfg.RatingSystem == 2 {
 		return RatingSystemV2
 	}
 	return RatingSystemV1
+}
+
+// Established reports whether a rating is settled enough to show without a
+// "?" and to meet a seek's established-rating requirement.
+func (s RatingSystem) Established(r entity.SingleRating) bool {
+	return r.RatingDeviation <= s.Glicko.EstablishedRatingDeviation
+}
+
+// DisplayRating is the rating shown for a user in a rating pool, with a "?"
+// if it isn't established. A bot with a fixed rating shows that rating. A user
+// with no rating in the pool shows the rating they would start it at.
+func (s RatingSystem) DisplayRating(u *entity.User, key entity.VariantKey) string {
+	if r, ok := s.FixedBotRatings[u.Username]; ok && u.IsBot {
+		return strconv.Itoa(int(math.Round(r)))
+	}
+	if u.Profile == nil {
+		return "UnratedAnon"
+	}
+	r, ok := u.Profile.Ratings.Data[key]
+	if !ok {
+		r = *s.newRating(u.Profile.Ratings.Data, key, 0)
+	}
+	q := "?"
+	if ok && s.Established(r) {
+		q = ""
+	}
+	return strconv.Itoa(int(math.Round(r.Rating))) + q
 }
 
 // newRating is the rating a player starts a pool with.
