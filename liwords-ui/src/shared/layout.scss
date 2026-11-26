@@ -251,26 +251,35 @@ span.user-context-menu.ant-dropdown-trigger {
   }
 }
 
-// Two panes, one per half of a foldable: the board on the left and the
-// scoresheet and tile tracking on the right, with the timers across the top
-// and chat and notepad below.
+// Two panes, for foldables and tablets held upright: the board on the left
+// and the scoresheet and tile tracking on the right, with the timers across
+// the top and chat and notepad below.
 @include base.two-pane {
   .game-table {
-    // The board fills its half of the width (less the 8px page padding, half
-    // the 12px gap between the panes, and the 18px gutter for the row
-    // numbers), unless the screen is
-    // too short to show the timers, board, rack and buttons all at once
-    // (about 275px besides the board). dvh is the height left once the
+    // The board's pane. On a foldable it is half the screen, one per side of
+    // the hinge: half the width less the 8px page padding and half the 12px
+    // gap between the panes. A tablet held upright has height to spare, so
+    // its board takes more of the width, and the narrower scoresheet column
+    // makes up for it in height.
+    --board-pane: calc(50vw - 14px);
+    @include base.two-pane-tall {
+      --board-pane: calc(62vw - 14px);
+    }
+    // The board fills its pane, less the 18px gutter for the row numbers,
+    // unless the screen is too short to show the timers, board, rack and
+    // buttons all at once (about 275px besides the board), and never above
+    // the phone board's 34px squares. dvh is the height left once the
     // browser's own toolbars are showing.
     --mobile-tile-size: min(
-      calc((50vw - 14px - 18px) / 15),
+      34px,
+      calc((var(--board-pane) - 18px) / 15),
       calc((100dvh - 275px) / 15)
     );
     max-width: none;
     padding-left: 8px;
     padding-right: 8px;
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-columns: var(--board-pane) minmax(0, 1fr);
     grid-template-areas:
       "cards cards"
       "play data"
@@ -293,7 +302,10 @@ span.user-context-menu.ant-dropdown-trigger {
       padding: 6px 0 0 18px;
       // The rack's tiles, sized so that they and the two round buttons
       // beside them fit across the pane, but never above the desktop size.
-      --rack-tile-size: min(44px, calc((50vw - 14px - 18px - 96px - 32px) / 8));
+      --rack-tile-size: min(
+        44px,
+        calc((var(--board-pane) - 18px - 96px - 32px) / 8)
+      );
 
       // Small panes have squares under the phone board's 24px minimum.
       .board-spaces,

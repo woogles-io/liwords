@@ -17,17 +17,23 @@ $screen-laptop-min: 1280px;
 $screen-desktop-min: 1440px;
 $screen-desktop-l-min: 1600px;
 
-// Two panes, one per half of an unfolded foldable. Browsers can't reliably
-// say a device is a foldable (a fully opened one reports one plain screen),
-// so this goes by the screen's shape instead: wider than any phone, narrower
-// than the desktop layout, and nearly square (at least 4 wide for every 5
-// tall). In practice only unfolded foldables are all three: phones held
-// sideways are too short, and tablets held upright are too tall (an iPad is
-// 3:4), so they keep the stacked layout and its bigger board.
+// Two panes: the board on the left, the scoresheet and tile tracking on the
+// right. For screens wider than any phone and narrower than the desktop
+// layout, and tall enough (phones held sideways are wide but short).
 $screen-two-pane-min: 700px;
 $screen-two-pane-min-height: 500px;
 @mixin two-pane {
-  @media (min-width: $screen-two-pane-min) and (max-width: $screen-tablet-min - 1) and (min-height: $screen-two-pane-min-height) and (min-aspect-ratio: 4/5) {
+  @media (min-width: $screen-two-pane-min) and (max-width: $screen-tablet-min - 1) and (min-height: $screen-two-pane-min-height) {
+    @content;
+  }
+}
+// Within two-pane, screens clearly taller than wide (at least 5 tall for
+// every 4 wide): tablets held upright (an iPad is 3:4). Unfolded foldables
+// are nearly square, in either orientation. Browsers can't reliably say a
+// device is a foldable (a fully opened one reports one plain screen), so the
+// shape tells them apart.
+@mixin two-pane-tall {
+  @media (max-aspect-ratio: 4/5) {
     @content;
   }
 }
