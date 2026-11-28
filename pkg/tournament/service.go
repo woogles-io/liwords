@@ -711,8 +711,20 @@ func (ts *TournamentService) CreateClubSession(ctx context.Context, req *connect
 
 }
 
+// The most rows GetPastTournaments and GetRecentClubSessions return. Each past
+// tournament is loaded in full.
+const (
+	maxPastTournaments = 100
+	maxClubSessions    = 100
+)
+
 func (ts *TournamentService) GetRecentClubSessions(ctx context.Context, req *connect.Request[pb.RecentClubSessionsRequest]) (*connect.Response[pb.ClubSessionsResponse], error) {
-	response, err := ts.tournamentStore.GetRecentClubSessions(ctx, req.Msg.Id, int(req.Msg.Count), int(req.Msg.Offset))
+	count := req.Msg.Count
+	if count <= 0 || count > maxClubSessions {
+		count = maxClubSessions
+	}
+	offset := max(req.Msg.Offset, 0)
+	response, err := ts.tournamentStore.GetRecentClubSessions(ctx, req.Msg.Id, int(count), int(offset))
 	if err != nil {
 		return nil, apiserver.InternalErr(err)
 	}
@@ -742,8 +754,8 @@ func (ts *TournamentService) GetRecentAndUpcomingTournaments(ctx context.Context
 
 func (ts *TournamentService) GetPastTournaments(ctx context.Context, req *connect.Request[pb.GetPastTournamentsRequest]) (*connect.Response[pb.GetPastTournamentsResponse], error) {
 	limit := req.Msg.Limit
-	if limit == 0 {
-		limit = 100 // default limit
+	if limit <= 0 || limit > maxPastTournaments {
+		limit = maxPastTournaments
 	}
 	tournaments, err := ts.tournamentStore.GetPastTournaments(ctx, limit)
 	if err != nil {

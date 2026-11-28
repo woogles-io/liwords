@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 
@@ -377,6 +378,10 @@ func (ps *ProfileService) RemoveAvatar(ctx context.Context, r *connect.Request[p
 	return connect.NewResponse(&pb.RemoveAvatarResponse{}), nil
 }
 
+// MaxBriefProfiles is the most users GetBriefProfiles looks up at once. The
+// frontend sends at most 100.
+const MaxBriefProfiles = 500
+
 func (ps *ProfileService) GetBriefProfiles(ctx context.Context, r *connect.Request[pb.BriefProfilesRequest],
 ) (*connect.Response[pb.BriefProfilesResponse], error) {
 	// this endpoint should work without login
@@ -392,6 +397,9 @@ func (ps *ProfileService) GetBriefProfiles(ctx context.Context, r *connect.Reque
 	// 	defer span.End()
 	// }
 	// span.AddEvent("fetching-profiles")
+	if len(r.Msg.UserIds) > MaxBriefProfiles {
+		return nil, apiserver.InvalidArg(fmt.Sprintf("at most %d users per request", MaxBriefProfiles))
+	}
 	response, err := ps.userStore.GetBriefProfiles(ctx, r.Msg.UserIds)
 	if err != nil {
 		return nil, err

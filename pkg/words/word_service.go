@@ -2,11 +2,13 @@ package words
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
+	"unicode/utf8"
 
 	"connectrpc.com/connect"
 	macondoconfig "github.com/domino14/macondo/config"
@@ -72,8 +74,23 @@ var daPool = sync.Pool{
 	},
 }
 
+// The most words DefineWords takes at once, and the longest word. A game's
+// words come to well under the limit, and the longest board is 21 squares.
+const (
+	maxDefineWords   = 500
+	maxDefineWordLen = 32
+)
+
 func (ws *WordService) DefineWords(ctx context.Context, req *connect.Request[pb.DefineWordsRequest],
 ) (*connect.Response[pb.DefineWordsResponse], error) {
+	if len(req.Msg.Words) > maxDefineWords {
+		return nil, apiserver.InvalidArg(fmt.Sprintf("at most %d words per request", maxDefineWords))
+	}
+	for _, w := range req.Msg.Words {
+		if utf8.RuneCountInString(w) > maxDefineWordLen {
+			return nil, apiserver.InvalidArg(fmt.Sprintf("words can have at most %d letters", maxDefineWordLen))
+		}
+	}
 	definer, hasDefiner := ws.definitionSources[req.Msg.Lexicon]
 	if !hasDefiner {
 		return nil, apiserver.InvalidArg("no such lexicon: " + req.Msg.Lexicon)
