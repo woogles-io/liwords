@@ -430,6 +430,44 @@ describe("a channel's history, a page at a time", () => {
     vi.unstubAllGlobals();
   });
 
+  it("lists the club's chat in one of its games, and opens it", async () => {
+    vi.stubGlobal(
+      "IntersectionObserver",
+      class {
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+      },
+    );
+    socializeClient.getChatsForChannel.mockResolvedValue({
+      messages: [msg(1)],
+      hasOlder: false,
+      hasNewer: false,
+      lastReadId: id(1),
+    });
+    const { findByText } = render(
+      <Store>
+        <BlockListKnown />
+        <Harness />
+        <Chat
+          defaultChannel="chat.game.789"
+          defaultDescription="Zed"
+          sendChat={() => {}}
+          tournamentID="club-1"
+        />
+      </Store>,
+    );
+    await findByText("message 1");
+    fireEvent.click(await findByText(/All chats/));
+    fireEvent.click(await findByText("Club chat"));
+    await waitFor(() =>
+      expect(socializeClient.getChatsForChannel).toHaveBeenCalledWith(
+        expect.objectContaining({ channel: "chat.tournament.club-1" }),
+      ),
+    );
+    vi.unstubAllGlobals();
+  });
+
   it("clears a conversation the user replies to, from here or elsewhere", async () => {
     vi.stubGlobal(
       "IntersectionObserver",
