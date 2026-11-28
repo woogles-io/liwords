@@ -50,6 +50,15 @@ var (
 		IPCeiling:  Limit{Rate: 60, Per: time.Hour, Burst: 40},
 		AlwaysAnon: true,
 	}
+	// Signing up. Looser than the email bucket because people retry: a taken
+	// username or a mistyped email is refused without sending anything, and
+	// each retry counts.
+	signupBucket = bucket{
+		Name:       "signup",
+		Anon:       Limit{Rate: 20, Per: time.Hour, Burst: 10},
+		IPCeiling:  Limit{Rate: 60, Per: time.Hour, Burst: 40},
+		AlwaysAnon: true,
+	}
 	// Endpoints that hash a password (argon2, 64 MB each).
 	passwordHashBucket = bucket{
 		Name:       "password-hash",
@@ -78,7 +87,7 @@ var procedureBuckets = map[string][]bucket{
 	"/league_service.LeagueService/GetPlayerLeagueHistory":      {heavyBucket},
 	"/league_service.LeagueService/GetPlayerLeagueH2H":          {heavyBucket},
 	"/league_service.LeagueService/GetPlayerSeasonGames":        {heavyBucket},
-	"/user_service.RegistrationService/Register":                {emailBucket, passwordHashBucket},
+	"/user_service.RegistrationService/Register":                {signupBucket, passwordHashBucket},
 	"/user_service.RegistrationService/ResendVerificationEmail": {emailBucket},
 	"/user_service.RegistrationService/ConfirmEmailChange":      {emailBucket},
 	"/user_service.AuthenticationService/ResetPasswordStep1":    {emailBucket},

@@ -180,3 +180,32 @@ func TestMiddlewareWithValkey(t *testing.T) {
 	is.Equal(status(kidA), http.StatusTooManyRequests)
 	is.Equal(status(kidB), http.StatusOK) // another browser on the same IP
 }
+
+// Someone who retries a refused sign-up gets ten tries before waiting, and
+// the retries don't use up the email bucket that resending verification
+// emails draws from.
+func TestSignupRetriesWithValkey(t *testing.T) {
+	is := is.New(t)
+	l, _ := testLimiter(t)
+	ip := fmt.Sprintf("10.%d.%d.%d", rand.Intn(250), rand.Intn(250), rand.Intn(250)) // fresh keys
+	t.Cleanup(func() {
+		conn := l.pool.Get()
+		defer conn.Close()
+		keys, _ := redis.Strings(conn.Do("KEYS", "rl:*"+ip+"*"))
+		for _, k := range keys {
+			conn.Do("DEL", k)
+		}
+	})
+	h := apiserverClientInfo(Middleware(l, nil)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})))
+	status := func(path string) int {
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, withBrowser(request(path, ip), kidA))
+		return w.Code
+	}
+	const register = "/user_service.RegistrationService/Register"
+	for i := 0; i < signupBucket.Anon.Burst; i++ {
+		is.Equal(status(register), http.StatusOK) // retry i
+	}
+	is.Equal(status(register), http.StatusTooManyRequests)
+	is.Equal(status("/user_service.RegistrationService/ResendVerificationEmail"), http.StatusOK)
+}
