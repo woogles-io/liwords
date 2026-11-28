@@ -1,7 +1,8 @@
 # Ratings plan: new rating system, fixed bot ratings, rating history
 
-Status: plan, nothing built yet. First written 2026-11-16; rewritten
-2026-11-24 with the rating system chosen from a replay of a year of games.
+Status: step 1 merged (#2386, the v2 rules behind a switch). First written
+2026-11-16; rewritten 2026-11-24 with the rating system chosen from a replay
+of a year of games; history moved to ClickHouse 2026-11-27.
 
 ## Why
 
@@ -33,6 +34,7 @@ by verified NASPA link or unique full name.
 | `InitialRating` | **1200** | 1500 |
 | `InitialRatingDeviation` / `MaximumRatingDeviation` | **600 / 600** | 350 / 350 |
 | `MinimumRatingDeviation` | 60 | 60 |
+| Established cutoff (no `?`, can join "established only" seeks) | **RD 160** | RD 90 |
 | Volatility, tau, rating period, `SpreadScaling`, `MinimumWinBoost` | unchanged | |
 | Bots | **fixed ratings, never written** (below) | floating |
 | Quits (resign, timeout, forfeit, triple challenge) | count as the maximum spread, ±125 | same |
@@ -71,6 +73,17 @@ pool's rating, with RD max(250, that pool's RD). If no pool qualifies, start at
   most second pools don't qualify and correspondence sits 76 below NASPA, against
   28 at RD 300. Log loss 0.6300 at RD 100, 0.6281 at RD 300.
 
+**Established cutoff.** Today a rating loses its `?` at RD 90 (the floor plus
+30). On the wider v2 scale RD 90 is much stricter: in the replay, most players
+would need over 100 games to reach it. RD 160 is today's 90 scaled to the new
+curve, and players reach it after about as many games as they reach 90 today
+(more than half of players with 20–30 games, nearly all with 50+). The cutoff
+is part of each rating system and also sets which ratings count as stable for
+league placement.
+
+**Puzzles stay on v1.** Puzzle ratings use the same Glicko code but always
+with v1's settings and cutoff; nothing in this plan changes them.
+
 **Replay results** (last 30 days, human vs human):
 
 | | Today (v1) | v2 |
@@ -108,90 +121,73 @@ history keeps both.
 
 | | What it is | Source | Can it change? |
 |---|---|---|---|
-| v1 | the ratings players saw before the switch | quickdata `OriginalRatings`/`NewRatings`, imported once | never |
-| v2 before the switch | a recalculation | the rerate tool | can be regenerated |
-| v2 after the switch | the ratings players see | written at game end | never |
+| v1 | the ratings players saw before the switch | quickdata `OriginalRatings`/`NewRatings` | never |
+| v2 | a from-scratch recalculation of every rated game, before and after the switch | the rerate tool | can be regenerated |
 
-All of it goes in one table, `rating_changes`, in Postgres:
-
-```
-game_uuid text, user_id int, system_version smallint,
-rating_key text, ended_at timestamptz,
-rating_before real, rd_before real, vol_before real,
-rating_after real,  rd_after real,  vol_after real,
-PRIMARY KEY (game_uuid, user_id, system_version)
--- index (user_id, rating_key, system_version, ended_at) for profile graphs
-```
-
-- **Append-only.** Rows are never updated. Pre-switch v2 rows may be deleted and
-  regenerated as a whole by the rerate tool; nothing else is ever deleted.
-- **v1 has no RD or volatility.** Quickdata doesn't store them, so those columns
-  are null.
-- **Bots get no rows.** Their v2 rating is fixed. (Store `opponent_rating` on
-  the human's row if game lists need it without a lookup.)
-- **Size:** about 25M rows per version. Check the disk cost before importing v1
-  (likely 3–5 GB with indexes for both versions).
-- **ClickHouse copies it.** `docs/stats_redesign_plan.md` owns ClickHouse, its
-  `rating_history` table, the rating graph and the old/new toggle. That plan
-  reads `rating_changes`; this plan doesn't touch ClickHouse.
-- **Game lists** (replacing quickdata `pi[].rating`): a finished rated game
-  shows `rating_before` from the version that was live when the game ended, with
-  `?` when `rd_before` is above the provisional threshold (`RelevantRating` in
-  `pkg/entity/user.go`). v1 rows have no RD, so v1 games show the number without
-  `?`. Games in progress show the current profile rating. Casual games show none.
+- **ClickHouse owns rating history.** `docs/stats_redesign_plan.md` owns its
+  `rating_history` and `rating_systems` tables, the profile rating graph and
+  the old/new toggle. There is no history table in Postgres.
+- **v1** is loaded once from quickdata for games that ended before the switch.
+  Quickdata doesn't store RD or volatility, so v1 has none. Quickdata's rating
+  fields must stay until that load is done.
+- **v2** is a deterministic function of game results, so it doesn't need to be
+  recorded as games end. The rerate tool replays every rated game and writes the
+  v2 rows, with RD and volatility, once `rating_history` exists. Quickdata's
+  ratings on games after the switch (v2 numbers) are a check on that replay.
+- **Bots get no v2 rows.** Their rating is fixed.
 - **Game records are never rewritten.** An old game keeps showing the v1 rating
   it was played at.
 
 ## Steps
 
-### 1. v2 behind a switch
+### 1. v2 behind a switch (done: #2386, #2393)
 
-- New constants and rules in `pkg/glicko` and `pkg/gameplay/rate.go` behind a
-  rating-system switch, default v1. With the switch off, production behavior
-  doesn't change.
-- Fixed bot ratings, seeding and the bot-vs-bot rule as above.
-- Tests: the Go code must match the Python replay to within rounding on the same
-  inputs. The Python port of `pkg/glicko` matched today's Go code to 5×10⁻¹⁰ on
-  2,000 random cases, so the same check works for v2.
+- The v2 rules in `pkg/glicko` (`glicko.V2`) and `pkg/gameplay/rating_system.go`:
+  fixed bot ratings, seeding, the bot-vs-bot rule, the established cutoff. The
+  Go code matches the Python replay to 1e-6; V1 matches the old code to 1e-8.
+- The switch is the `config_settings` value `config:rating-system`: `1`
+  (default when unset), `2`, or `paused`. While paused, games end normally but
+  nobody's rating changes; nothing waits or holds a lock. Game end reads the
+  setting fresh; displayed ratings and seek checks cache it for 5 seconds.
 
-### 2. `rating_changes` table and v1 import
+### 2. (dropped) Postgres history table
 
-- Migration for the table. Check master's latest migration number first, set
-  `SET LOCAL lock_timeout = '10s'`, and merge outside 18:00–22:00 UTC, when the
-  daily pg_dump runs.
-- `rate.go` writes a row for each human in each rated game, with the version
-  that's live, as part of the game-end work.
-- A one-off import writes v1 rows for every past rated game from quickdata.
-  Run it after `rate.go` writes rows, so no game falls between the import and
-  the live writes.
-- After the import, quickdata's ratings are no longer needed; see
-  `project_quickdata_removal` and `docs/mikado/xwordgame_remaining.md`.
+A `rating_changes` table in Postgres was planned here. History goes to
+ClickHouse instead (above), so the switch doesn't wait for it.
 
 ### 3. Rerate tool (`cmd/rerate`)
 
-- **Input:** every finished, rated game, in end-time order: both player ids,
-  the rating key (lexicon, variant and time control from `games.game_request`),
-  the end reason, both scores, the end time.
-- **Output:** every human's current v2 rating for every rating key, and the v2
-  `rating_changes` rows. A `--cutoff` time makes runs repeatable.
-- **Size:** about 12.7M games. A Go replay should take minutes. Read in
-  batches, keep ratings in memory, write with COPY.
-- **Check it against the Python replay** on the same year of games.
-- **Check these before building:**
-  - `game_players` has scores, `won`, `game_end_reason`, `created_at`
-    (creation, not end) and `game_mode`, back to 2020-08-15, but no lexicon or
-    variant; those come from `games.game_request`.
-  - The end time probably comes from `games.updated_at`. Check that nothing
-    updates finished games afterward (annotations, rematch bookkeeping, admin
-    edits).
-  - Older games may store their request in the old bytea `request` column.
-  - `rate.go`'s git history: changes to which games are rated (aborts,
-    adjudications, tournament games).
-  - Manual rating changes (admin resets, penalties) aren't in the game results.
-    Find out whether any exist.
-  - Bots got stronger over the years. The fixed ladder reflects today's bots, so
-    ratings from games against older versions will be slightly off. If the bot
-    change dates are known, the ladder could be dated.
+- `rerate extract` reads, read-only, every finished rated game (about 13M,
+  from `games`, by id range), users, moderator rating resets and saved
+  ratings into a local file. Given an earlier file, it reads only games that
+  ended since: new ids, and games that were unfinished then.
+- `rerate replay` replays them under v1 or v2 in end-time order, from the first
+  game, with the same code that rates games at game end
+  (`gameplay.RatingSpread`, `RatingSystem.RateGame`), and writes a dry-run
+  report. Nothing writes to the database yet; writing profiles on switch day
+  and ClickHouse rows come later.
+- **Checked against the Python replay** on the same games (to 1e-6).
+- What the data turned out to need:
+  - **End time** is `games.updated_at`. Finished games aren't touched
+    afterward (checked back to 2021), and for games that ended on time it is
+    the real end, unlike the timers' last move.
+  - **Which games count:** rated mode and not aborted, cancelled or unfinished.
+    This matches exactly the games that got ratings, in samples from 2020 to
+    now. Older requests are stored in camelCase JSON (`ratingMode`,
+    `initialTimeSeconds`), so requests are parsed with protojson, not by key.
+  - **Players** come from quickdata `pi[].user_id`. Until about 2022,
+    `player0_id`/`player1_id` are swapped relative to the game's own order (which
+    scores and `winner_idx` follow) in about half of games.
+  - **Early bots:** MacondoBot1–5 played about 5,000 games in August–September
+    2020. They're flagged as bots only in the game record and aren't on the
+    ladder, so those games aren't rated under v2.
+  - **Moderator rating resets** (6, in 2021–2022) are applied at their time.
+  - **No recorded v1 ratings before about late October 2020** (roughly the
+    first 20,000 games): quickdata has no `NewRatings` there. v1 history in
+    ClickHouse starts then; v2 covers them.
+  - Bots got stronger over the years. The fixed ladder reflects today's bots,
+    so ratings from games against older versions are slightly off; recent
+    games outweigh them.
 
 ### 4. Dry run
 
@@ -202,18 +198,30 @@ PRIMARY KEY (game_uuid, user_id, system_version)
 
 ### 5. Switch
 
-1. Pick a cutoff T and rerate up to T.
-2. Pause rating writes briefly.
-3. Rerate the games that ended after T.
-4. Write every player's new current ratings and the v2 rows, and turn the
-   switch to v2.
-5. Record the switch time; ClickHouse's `rating_systems` table uses it as v2's
+The full replay runs while the site runs normally; ratings stop changing only
+for about a minute.
+
+1. Run the full replay up to now from prod, read-only, in batches. Games keep
+   ending and getting v1 ratings meanwhile; those are kept in quickdata.
+2. Set `config:rating-system` to `paused`.
+3. Catch up on every game that ended since the replay's last game.
+4. In one transaction, write every player's v2 ratings into their profile and
+   set the setting to `2`. Replace only game rating keys inside the ratings
+   JSON, so a puzzle rating written at the same moment isn't lost.
+5. Rate any game that ended between the catch-up's read and the switch (a
+   few seconds' worth) under v2.
+6. Record the switch time; ClickHouse's `rating_systems` table uses it as v2's
    go-live date.
+
+Games in progress keep going. One that ends after the switch is rated under
+v2, as if it had been part of the replay; its header still shows the v1
+rating it started with.
 
 ### 6. Remove the old copies
 
 - Stop writing the `liststats` Ratings rows (stat_type 20) if they still exist.
-- Remove quickdata's `OriginalRatings`/`NewRatings` once v1 is imported (step 2).
+- Remove quickdata's `OriginalRatings`/`NewRatings` once ClickHouse has loaded
+  v1.
 
 ## Later, not part of this plan
 

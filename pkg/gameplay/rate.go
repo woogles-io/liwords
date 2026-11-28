@@ -22,34 +22,18 @@ func Rate(ctx context.Context, scores map[string]int32, g *entity.Game,
 	if err != nil {
 		return nil, err
 	}
-	// We have two users. Rate them.
-	// If the game ended because of the following, apply the maximum spread.
-	maxPenalty := g.GameEndReason == pb.GameEndReason_RESIGNED ||
-		g.GameEndReason == pb.GameEndReason_TIME ||
-		g.GameEndReason == pb.GameEndReason_FORCE_FORFEIT ||
-		g.GameEndReason == pb.GameEndReason_TRIPLE_CHALLENGE
-
-	// What is the spread from the point of view of users[0]?
-	var spread int
-	if maxPenalty {
-		if winner == usernames[0] {
-			spread = glicko.SpreadScaling
-		} else if winner == usernames[1] {
-			spread = -glicko.SpreadScaling
-		} else {
-			return nil, errors.New("no winner, but maximum penalty?")
-		}
-		log.Debug().Str("p0", usernames[0]).Str("p1", usernames[1]).Int("spread", spread).Msg("rating-max-penalty")
-	} else {
-		// The winner is the person with the higher points. Calculate
-		// from the point of view of users[0] again. We will negate this
-		// when rating in the other direction.
-		spread = int(scores[usernames[0]] - scores[usernames[1]])
-		if spread > 0 && winner != usernames[0] || spread < 0 && winner != usernames[1] {
-			return nil, errors.New("winner does not match spread")
-		}
-		log.Debug().Str("p0", usernames[0]).Str("p1", usernames[1]).Int("spread", spread).Msg("rating")
+	winnerIdx := -1
+	if winner == usernames[0] {
+		winnerIdx = 0
+	} else if winner == usernames[1] {
+		winnerIdx = 1
 	}
+	spread, err := RatingSpread(g.GameEndReason, winnerIdx,
+		scores[usernames[0]], scores[usernames[1]])
+	if err != nil {
+		return nil, err
+	}
+	log.Debug().Str("p0", usernames[0]).Str("p1", usernames[1]).Int("spread", spread).Msg("rating")
 
 	sys, err := ratingSystemForGameEnd(ctx)
 	if err != nil {
@@ -65,13 +49,13 @@ func Rate(ctx context.Context, scores map[string]int32, g *entity.Game,
 	err = userStore.UpdateRatings(ctx, users[0].UUID, users[1].UUID, ratingKey,
 		func(r0, r1 *entity.SingleRating) (*entity.SingleRating, *entity.SingleRating, error) {
 			var err error
-			before, after, err = sys.rateGame([2]*entity.SingleRating{r0, r1}, users, ratingKey, spread, now)
+			before, after, err = sys.RateGame([2]*entity.SingleRating{r0, r1}, users, ratingKey, spread, now)
 			if err != nil {
 				return nil, nil, err
 			}
 			return after[0], after[1], nil
 		})
-	if errors.Is(err, errBotsNotRated) {
+	if errors.Is(err, ErrBotsNotRated) {
 		return map[string][2]int32{}, nil
 	}
 	if err != nil {
@@ -104,4 +88,28 @@ func Rate(ctx context.Context, scores map[string]int32, g *entity.Game,
 		usernames[0]: [2]int32{int32(math.Round(before[0].Rating)), int32(math.Round(newRat[0]))},
 		usernames[1]: [2]int32{int32(math.Round(before[1].Rating)), int32(math.Round(newRat[1]))},
 	}, nil
+}
+
+// RatingSpread is the spread a game is rated with, from player 0's point of
+// view. winnerIdx is the winner's index, or -1 if there is none. Games that
+// end by resignation, time, forfeit or triple challenge count as the maximum
+// spread; otherwise it's the score difference, which must agree with the
+// winner.
+func RatingSpread(reason pb.GameEndReason, winnerIdx int, score0, score1 int32) (int, error) {
+	switch reason {
+	case pb.GameEndReason_RESIGNED, pb.GameEndReason_TIME,
+		pb.GameEndReason_FORCE_FORFEIT, pb.GameEndReason_TRIPLE_CHALLENGE:
+		switch winnerIdx {
+		case 0:
+			return glicko.SpreadScaling, nil
+		case 1:
+			return -glicko.SpreadScaling, nil
+		}
+		return 0, errors.New("no winner, but maximum penalty?")
+	}
+	spread := int(score0 - score1)
+	if spread > 0 && winnerIdx != 0 || spread < 0 && winnerIdx != 1 {
+		return 0, errors.New("winner does not match spread")
+	}
+	return spread, nil
 }

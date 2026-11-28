@@ -164,7 +164,8 @@ func (s RatingSystem) DisplayRating(u *entity.User, key entity.VariantKey) strin
 //
 // With seeding on, it's their rating from another pool of the same variant
 // whose RD is at most SeedMaxRD: the same lexicon family if they have one,
-// then the lowest RD. Its RD is at least SeedMinRD. Pools that are mostly
+// then the lowest RD, then the most recently played. Its RD is at least
+// SeedMinRD. Pools that are mostly
 // human-vs-human (correspondence, for example) are anchored by where newcomers
 // start, so starting a strong player at the initial rating drags the pool down.
 // Otherwise it's the initial rating.
@@ -194,7 +195,8 @@ func (s RatingSystem) newRating(others map[entity.VariantKey]entity.SingleRating
 		better := best == nil ||
 			(sameLex && !bestSameLex) ||
 			(sameLex == bestSameLex && (r.RatingDeviation < best.RatingDeviation ||
-				(r.RatingDeviation == best.RatingDeviation && k < bestKey)))
+				(r.RatingDeviation == best.RatingDeviation && (r.LastGameTimestamp > best.LastGameTimestamp ||
+					(r.LastGameTimestamp == best.LastGameTimestamp && k < bestKey)))))
 		if better {
 			r := r
 			best, bestKey, bestSameLex = &r, k, sameLex
@@ -218,14 +220,18 @@ func splitKey(key entity.VariantKey) (lex, variant string, ok bool) {
 	return parts[0], parts[1], true
 }
 
-var errBotsNotRated = errors.New("games between bots with fixed ratings are not rated")
+// ErrBotsNotRated: games between two bots with fixed ratings aren't rated.
+var ErrBotsNotRated = errors.New("games between bots with fixed ratings are not rated")
 
-// rateGame rates one game. cur holds the players' saved ratings in the pool
+// ErrNoFixedRating: a bot without a fixed rating can't be rated against.
+var ErrNoFixedRating = errors.New("bot has no fixed rating")
+
+// RateGame rates one game. cur holds the players' saved ratings in the pool
 // (nil if they have none yet), spread is from player 0's point of view, and
 // users[i] is player i. It returns the ratings the game was played at and the
 // new ratings; a nil new rating means that player's rating doesn't change
 // (a bot with a fixed rating).
-func (s RatingSystem) rateGame(cur [2]*entity.SingleRating, users []*entity.User,
+func (s RatingSystem) RateGame(cur [2]*entity.SingleRating, users []*entity.User,
 	key entity.VariantKey, spread int, now int64) (before, after [2]*entity.SingleRating, err error) {
 
 	fixed := [2]bool{}
@@ -235,14 +241,14 @@ func (s RatingSystem) rateGame(cur [2]*entity.SingleRating, users []*entity.User
 		}
 		r, ok := s.FixedBotRatings[users[i].Username]
 		if !ok {
-			return before, after, fmt.Errorf("bot %s has no fixed rating", users[i].Username)
+			return before, after, fmt.Errorf("%w: %s", ErrNoFixedRating, users[i].Username)
 		}
 		fixed[i] = true
 		before[i] = &entity.SingleRating{Rating: r, RatingDeviation: 0,
 			Volatility: s.Glicko.InitialVolatility, LastGameTimestamp: now}
 	}
 	if fixed[0] && fixed[1] {
-		return before, after, errBotsNotRated
+		return before, after, ErrBotsNotRated
 	}
 	for i := range 2 {
 		if fixed[i] {
