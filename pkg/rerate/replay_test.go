@@ -14,6 +14,7 @@ import (
 const (
 	alice, bob, carol = 1, 2, 3
 	hasty, oldBot     = 10, 11
+	oddBot            = 12
 	nwl               = entity.VariantKey("NWL18.classic.regular")
 	nwlCorres         = entity.VariantKey("NWL18.classic.corres")
 )
@@ -27,6 +28,7 @@ func testData() *Data {
 			carol:  {UUID: "c", Username: "carol"},
 			hasty:  {UUID: "h", Username: "HastyBot", Bot: true},
 			oldBot: {UUID: "o", Username: "MacondoBot1"},
+			oddBot: {UUID: "x", Username: "OddBot"},
 		},
 		Skipped: map[string]int{},
 	}
@@ -92,14 +94,14 @@ func TestReplaySkips(t *testing.T) {
 	d.Games = []Game{
 		game(1, 1000, 0, hasty, hasty, pb.GameEndReason_STANDARD, 0, 400, 300),
 		// Flagged a bot only in the game's record, and not on the ladder.
-		{ID: 2, End: 2000, Players: [2]int64{alice, oldBot}, QuickdataBot: [2]bool{false, true},
+		{ID: 2, End: 2000, Players: [2]int64{alice, oddBot}, QuickdataBot: [2]bool{false, true},
 			Reason: pb.GameEndReason_STANDARD, Winner: 1, Scores: [2]int32{300, 400}},
-		game(3, 3000, 0, alice, bob, pb.GameEndReason_STANDARD, 1, 400, 300), // winner disagrees
+		game(3, 3000, 0, alice, bob, pb.GameEndReason_RESIGNED, -1, 400, 300), // a quit with no winner
 	}
 	res := Replay(gameplay.RatingSystemV2, d, ReplayOptions{})
 	is.Equal(res.Rated, 0)
 	is.Equal(res.Skipped, map[string]int{"bot vs bot": 1, "bot without a fixed rating": 1,
-		"winner does not match result": 1})
+		"quit without a winner": 1})
 	is.Equal(len(res.Ratings), 0)
 }
 
@@ -150,4 +152,52 @@ func TestSaveLoad(t *testing.T) {
 	got, err := Load(path)
 	is.NoErr(err)
 	is.Equal(got, d)
+}
+
+// A game's result follows its scores unless it ended by a quit, and a league
+// penalty for cheating replaces the result and moves the game back to when
+// it really ended.
+func TestResult(t *testing.T) {
+	is := is.New(t)
+	d := testData()
+	d.Penalties = map[int64]Penalty{
+		2: {Loser: 0, Scores: [2]int32{350, 450}, End: 1500},
+		3: {Loser: 1, Scores: [2]int32{500, 300}, End: 1500},
+	}
+	type r struct {
+		end    int64
+		scores [2]int32
+		winner int8
+	}
+	for _, c := range []struct {
+		g    Game
+		want r
+	}{
+		// The recorded winner disagrees with the scores.
+		{game(1, 2000, 0, alice, bob, pb.GameEndReason_STANDARD, 1, 400, 300), r{2000, [2]int32{400, 300}, 0}},
+		{game(4, 2000, 0, alice, bob, pb.GameEndReason_STANDARD, 0, 300, 300), r{2000, [2]int32{300, 300}, -1}},
+		{game(5, 2000, 0, alice, bob, pb.GameEndReason_RESIGNED, 1, 400, 300), r{2000, [2]int32{400, 300}, 1}},
+		// Penalized: alice won 450-350 on the board.
+		{game(2, 2000, 0, alice, bob, pb.GameEndReason_STANDARD, 1, 450, 350), r{1500, [2]int32{350, 450}, 1}},
+		// Forfeited by the penalty: it ended when the penalty was given.
+		{game(3, 2000, 0, alice, bob, pb.GameEndReason_FORCE_FORFEIT, 0, 300, 200), r{2000, [2]int32{500, 300}, 0}},
+	} {
+		end, scores, winner := d.Result(&c.g)
+		is.Equal(r{end, scores, winner}, c.want)
+	}
+}
+
+// The early MacondoBots are rated as HastyBot.
+func TestReplayMacondoBot(t *testing.T) {
+	is := is.New(t)
+	d := testData()
+	d.Games = []Game{
+		{ID: 1, End: 1000, Players: [2]int64{alice, oldBot}, QuickdataBot: [2]bool{false, true},
+			Reason: pb.GameEndReason_STANDARD, Winner: 1, Scores: [2]int32{300, 400}},
+		game(2, 1000, 0, bob, hasty, pb.GameEndReason_STANDARD, 1, 300, 400),
+	}
+	res := Replay(gameplay.RatingSystemV2, d, ReplayOptions{})
+	is.Equal(res.Rated, 2)
+	is.Equal(res.Ratings[alice][nwl], res.Ratings[bob][nwl])
+	is.Equal(len(res.Ratings[oldBot]), 0)
 }

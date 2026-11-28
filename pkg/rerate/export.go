@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/woogles-io/liwords/pkg/gameplay"
-	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
 // WriteGamesTSV writes the games that ended in [since, until) for checking a
@@ -21,10 +20,11 @@ func WriteGamesTSV(w io.Writer, d *Data, since, until int64) error {
 	bw := bufio.NewWriter(w)
 	for i := range d.Games {
 		g := &d.Games[i]
-		if (since != 0 && g.End < since) || (until != 0 && g.End >= until) {
+		end, scores, winner := d.Result(g)
+		if (since != 0 && end < since) || (until != 0 && end >= until) {
 			continue
 		}
-		spread, err := gameplay.RatingSpread(g.Reason, int(g.Winner), g.Scores[0], g.Scores[1])
+		spread, err := gameplay.RatingSpread(g.Reason, int(winner), scores[0], scores[1])
 		if err != nil {
 			continue
 		}
@@ -32,13 +32,11 @@ func WriteGamesTSV(w io.Writer, d *Data, since, until int64) error {
 		if len(parts) != 3 {
 			continue
 		}
-		quit := g.Reason == pb.GameEndReason_RESIGNED || g.Reason == pb.GameEndReason_TIME ||
-			g.Reason == pb.GameEndReason_FORCE_FORFEIT || g.Reason == pb.GameEndReason_TRIPLE_CHALLENGE
 		u0, u1 := d.Users[g.Players[0]], d.Users[g.Players[1]]
 		fmt.Fprintf(bw, "%s\t%d\t%s\t%s\t%s\t%d\t%d\t%s\t%s\t%t\t%t\t%d\t%t\n",
-			time.Unix(g.End, 0).UTC().Format("2006-01-02T15:04:05"), g.ID, parts[0], parts[1], parts[2],
-			g.Players[0], g.Players[1], u0.Username, u1.Username,
-			u0.Bot || g.QuickdataBot[0], u1.Bot || g.QuickdataBot[1], spread, quit)
+			time.Unix(end, 0).UTC().Format("2006-01-02T15:04:05"), g.ID, parts[0], parts[1], parts[2],
+			g.Players[0], g.Players[1], RatedAs(u0.Username), RatedAs(u1.Username),
+			u0.Bot || g.QuickdataBot[0], u1.Bot || g.QuickdataBot[1], spread, quit(g.Reason))
 	}
 	return bw.Flush()
 }

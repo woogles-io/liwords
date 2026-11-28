@@ -60,8 +60,23 @@ type Data struct {
 	MaxID      int64
 	Unfinished []int64
 	ReadAt     int64
-	// Skipped counts finished rated games left out, by reason.
-	Skipped map[string]int
+	// Skipped counts finished rated games left out, by reason, and
+	// SkippedIDs lists them.
+	Skipped    map[string]int
+	SkippedIDs map[string][]int64
+	// Penalties are league results cancelled for cheating, by game id.
+	Penalties map[int64]Penalty
+}
+
+// Penalty is a game whose result a league cancelled for cheating
+// (CancelPlayerResults): the cheater loses by 100 points more than the
+// opponent's score. The penalty rewrites the game's winner and end time
+// (games.updated_at) but not its recorded scores, so the penalized scores
+// come from game_players and the real end time from the game's timers.
+type Penalty struct {
+	Loser  int8     // the cheater, in the game's own player order
+	Scores [2]int32 // after the penalty
+	End    int64    // when the game really ended; 0 if unknown
 }
 
 func (d *Data) keyIndex(k entity.VariantKey, idx map[entity.VariantKey]uint16) uint16 {

@@ -55,6 +55,7 @@ func WriteReport(w io.Writer, sys gameplay.RatingSystem, d *Data, extraSkipped m
 		}
 	}
 	p("Moderator rating resets applied: %d\n", len(d.Resets))
+	p("League results cancelled for cheating, applied: %d games\n", len(d.Penalties))
 	below := 0
 	for _, rs := range res.Ratings {
 		for _, r := range rs {

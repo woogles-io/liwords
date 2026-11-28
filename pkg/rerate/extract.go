@@ -40,12 +40,15 @@ func Extract(ctx context.Context, pool *pgxpool.Pool, prev *Data, opts ExtractOp
 	if opts.BatchSize <= 0 {
 		opts.BatchSize = 20000
 	}
-	d := &Data{Skipped: map[string]int{}}
+	d := &Data{Skipped: map[string]int{}, SkippedIDs: map[string][]int64{}}
 	if prev != nil {
 		d.Games = prev.Games
 		d.Keys = prev.Keys
 		for k, v := range prev.Skipped {
 			d.Skipped[k] = v
+		}
+		for k, v := range prev.SkippedIDs {
+			d.SkippedIDs[k] = v
 		}
 	}
 	d.ReadAt = time.Now().Unix()
@@ -104,6 +107,10 @@ func Extract(ctx context.Context, pool *pgxpool.Pool, prev *Data, opts ExtractOp
 	}
 	d.MaxID = maxID
 
+	// Read every time: a penalty can come after the game was read.
+	if d.Penalties, err = readPenalties(ctx, pool); err != nil {
+		return nil, fmt.Errorf("penalties: %w", err)
+	}
 	if d.Current, err = readCurrentRatings(ctx, pool); err != nil {
 		return nil, fmt.Errorf("current ratings: %w", err)
 	}
@@ -113,7 +120,7 @@ func Extract(ctx context.Context, pool *pgxpool.Pool, prev *Data, opts ExtractOp
 func (d *Data) addGame(r gameRow, byUUID map[string]int64, keyIdx map[entity.VariantKey]uint16) {
 	req := &pb.GameRequest{}
 	if err := (protojson.UnmarshalOptions{DiscardUnknown: true}).Unmarshal([]byte(r.request), req); err != nil {
-		d.Skipped["unreadable request"]++
+		d.skip("unreadable request", r.id)
 		return
 	}
 	if req.RatingMode != pb.RatingMode_RATED {
@@ -121,13 +128,13 @@ func (d *Data) addGame(r gameRow, byUUID map[string]int64, keyIdx map[entity.Var
 	}
 	timefmt, variant, err := entity.VariantFromGameReq(req)
 	if err != nil {
-		d.Skipped["no rating key"]++
+		d.skip("no rating key", r.id)
 		return
 	}
 	p0, ok0 := byUUID[r.uuid0]
 	p1, ok1 := byUUID[r.uuid1]
 	if !ok0 || !ok1 || len(r.scores) != 2 {
-		d.Skipped["players or scores missing"]++
+		d.skip("players or scores missing", r.id)
 		return
 	}
 	d.Games = append(d.Games, Game{
@@ -175,6 +182,44 @@ func queryGames(ctx context.Context, pool *pgxpool.Pool, where string, args ...a
 		out = append(out, r)
 	}
 	return out, unfinished, rows.Err()
+}
+
+func (d *Data) skip(reason string, id int64) {
+	d.Skipped[reason]++
+	d.SkippedIDs[reason] = append(d.SkippedIDs[reason], id)
+}
+
+// readPenalties finds league games whose result was cancelled for cheating:
+// the cheater's score in game_players no longer matches the game's own
+// record, which the penalty leaves alone.
+func readPenalties(ctx context.Context, pool *pgxpool.Pool) (map[int64]Penalty, error) {
+	rows, err := pool.Query(ctx, `
+		SELECT g.id, gp.player_index, gp.score, gp.opponent_score,
+		       coalesce((g.timers->>'lu')::bigint / 1000, 0)
+		FROM game_players gp JOIN games g ON g.uuid = gp.game_uuid
+		WHERE gp.league_season_id IS NOT NULL AND gp.won = false
+		  AND g.game_end_reason NOT IN (0, 5, 7)
+		  AND gp.score <> (g.quickdata->'s'->>(gp.player_index::int))::int`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[int64]Penalty{}
+	for rows.Next() {
+		var id, end int64
+		var idx int16
+		var score, opp int32
+		if err := rows.Scan(&id, &idx, &score, &opp, &end); err != nil {
+			return nil, err
+		}
+		if idx != 0 && idx != 1 {
+			continue
+		}
+		p := Penalty{Loser: int8(idx), End: end}
+		p.Scores[idx], p.Scores[1-idx] = score, opp
+		out[id] = p
+	}
+	return out, rows.Err()
 }
 
 func readUsers(ctx context.Context, pool *pgxpool.Pool) (map[int64]User, error) {
