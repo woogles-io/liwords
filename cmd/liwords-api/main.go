@@ -259,6 +259,9 @@ func main() {
 		panic(err)
 	}
 
+	// Finished games are rated under the rating system set in config_settings.
+	gameplay.SetRatingSystemSettings(stores.ConfigStore)
+
 	// Wire up the league standings updater to avoid circular dependencies
 	stores.SetLeagueStandingsUpdater(league.NewStandingsUpdaterImpl(stores.LeagueStore))
 

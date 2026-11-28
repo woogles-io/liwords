@@ -98,10 +98,6 @@ type Config struct {
 	// says whether the turns read path could be turned on, and it also counts
 	// how often the AppendTurns/Set race actually tears a read.
 	ShadowTurnsLoad bool
-
-	// RatingSystem picks the rules that rate finished games: 1 is today's,
-	// 2 is the one in docs/ratings_plan.md. Any other value means 1.
-	RatingSystem int
 }
 
 type ctxKey string
@@ -126,7 +122,6 @@ func (c *Config) Load(args []string) error {
 	fs.BoolVar(&c.QuitAfterMigration, "quit-after-migration", false, "quit after running migrations (for dedicated migration tasks)")
 	fs.BoolVar(&c.DualWriteTurns, "dual-write-turns", false, "dual-write game events to game_turns alongside history bytea (migration phase 2)")
 	fs.BoolVar(&c.ShadowTurnsLoad, "shadow-turns-load", false, "on every live-game load, also rebuild from game_turns and compare; never served (migration phase 3)")
-	fs.IntVar(&c.RatingSystem, "rating-system", 1, "rating system for finished games: 1 (current) or 2 (fixed bot ratings, flatter curve; docs/ratings_plan.md)")
 	fs.BoolVar(&c.ShadowTurns, "shadow-turns", false, "shadow-compare turns-based reconstruction against history bytea on every Get (migration phase 2)")
 
 	fs.StringVar(&c.DBHost, "db-host", "", "the database host")

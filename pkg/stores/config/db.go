@@ -20,6 +20,10 @@ const (
 	// Front-page announcements. Some of these could later be dynamically
 	// updated from a blog or something.
 	AnnouncementsKey = "config:static-announcements"
+	// RatingSystemKey picks the rating system for finished games: "1", "2"
+	// or "paused" (games end without changing ratings). Missing means "1".
+	// See docs/ratings_plan.md.
+	RatingSystemKey = "config:rating-system"
 )
 
 // DBStore keeps the site settings in Postgres.
@@ -65,6 +69,19 @@ func (s *DBStore) GamesEnabled(ctx context.Context) (bool, error) {
 		return true, nil
 	}
 	return !ok || v != "1", nil
+}
+
+// RatingSystemSetting is the rating-system setting; "1" if it was never set.
+func (s *DBStore) RatingSystemSetting(ctx context.Context) (string, error) {
+	v, ok, err := s.get(ctx, RatingSystemKey)
+	if err != nil || !ok {
+		return "1", err
+	}
+	return v, nil
+}
+
+func (s *DBStore) SetRatingSystemSetting(ctx context.Context, value string) error {
+	return s.set(ctx, RatingSystemKey, value)
 }
 
 func (s *DBStore) SetFEHash(ctx context.Context, hash string) error {

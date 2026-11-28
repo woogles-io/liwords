@@ -7,8 +7,11 @@ import (
 	"math"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 
-	"github.com/woogles-io/liwords/pkg/config"
+	"github.com/rs/zerolog/log"
+
 	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/glicko"
 )
@@ -28,6 +31,10 @@ type RatingSystem struct {
 	SeedMaxRD float64
 	// SeedMinRD is the lowest RD a seeded rating starts with.
 	SeedMinRD float64
+	// Paused means finished games aren't rated. The switch to a new system
+	// pauses ratings while it writes everyone's new ratings; it rates the
+	// games that ended meanwhile from their saved results.
+	Paused bool
 }
 
 var RatingSystemV1 = RatingSystem{Version: 1, Glicko: glicko.V1}
@@ -47,12 +54,83 @@ var RatingSystemV2 = RatingSystem{
 	SeedMinRD: 250,
 }
 
-// LiveRatingSystem returns the rating system the config picks, or V1.
+// RatingSystemSettings reads the live rating-system setting: "1", "2" or
+// "paused". The config store implements it.
+type RatingSystemSettings interface {
+	RatingSystemSetting(ctx context.Context) (string, error)
+}
+
+// liveSetting caches the setting for displayed ratings and seek checks, which
+// run often. Rating a finished game always reads it fresh.
+var liveSetting struct {
+	sync.Mutex
+	src     RatingSystemSettings
+	value   string
+	fetched time.Time
+}
+
+const liveSettingTTL = 5 * time.Second
+
+// SetRatingSystemSettings sets where the live rating system is read from.
+// Without it (in tests and tools), the live system is V1.
+func SetRatingSystemSettings(src RatingSystemSettings) {
+	liveSetting.Lock()
+	defer liveSetting.Unlock()
+	liveSetting.src, liveSetting.value, liveSetting.fetched = src, "", time.Time{}
+}
+
+// LiveRatingSystem returns the live rating system, read from the setting at
+// most every few seconds. While ratings are paused it returns V1 with Paused
+// set: profiles still hold V1 ratings until the switch writes V2 ones.
 func LiveRatingSystem(ctx context.Context) RatingSystem {
-	if cfg, err := config.Ctx(ctx); err == nil && cfg.RatingSystem == 2 {
-		return RatingSystemV2
+	liveSetting.Lock()
+	defer liveSetting.Unlock()
+	if liveSetting.src == nil {
+		return RatingSystemV1
 	}
-	return RatingSystemV1
+	if time.Since(liveSetting.fetched) >= liveSettingTTL {
+		v, err := liveSetting.src.RatingSystemSetting(ctx)
+		if err != nil {
+			// Keep the last value rather than guess.
+			log.Err(err).Msg("read-rating-system-setting")
+		} else {
+			liveSetting.value, liveSetting.fetched = v, time.Now()
+		}
+	}
+	return ratingSystemFromSetting(liveSetting.value)
+}
+
+// ratingSystemForGameEnd reads the setting fresh, so a game that ends right
+// after a change is rated under the new setting.
+func ratingSystemForGameEnd(ctx context.Context) (RatingSystem, error) {
+	liveSetting.Lock()
+	src := liveSetting.src
+	liveSetting.Unlock()
+	if src == nil {
+		return RatingSystemV1, nil
+	}
+	v, err := src.RatingSystemSetting(ctx)
+	if err != nil {
+		return RatingSystem{}, err
+	}
+	return ratingSystemFromSetting(v), nil
+}
+
+// ratingSystemFromSetting maps a setting value to a rating system. An unknown
+// value pauses ratings rather than rate games under the wrong system.
+func ratingSystemFromSetting(v string) RatingSystem {
+	switch v {
+	case "", "1":
+		return RatingSystemV1
+	case "2":
+		return RatingSystemV2
+	case "paused":
+	default:
+		log.Error().Str("value", v).Msg("unknown-rating-system-setting")
+	}
+	s := RatingSystemV1
+	s.Paused = true
+	return s
 }
 
 // Established reports whether a rating is settled enough to show without a

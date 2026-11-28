@@ -51,7 +51,14 @@ func Rate(ctx context.Context, scores map[string]int32, g *entity.Game,
 		log.Debug().Str("p0", usernames[0]).Str("p1", usernames[1]).Int("spread", spread).Msg("rating")
 	}
 
-	sys := LiveRatingSystem(ctx)
+	sys, err := ratingSystemForGameEnd(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if sys.Paused {
+		log.Info().Str("gid", g.GameID()).Msg("ratings-paused-not-rating")
+		return map[string][2]int32{}, nil
+	}
 	// Rated from the ratings saved now, not the ones loaded with the users:
 	// a game of theirs that ended since has changed them.
 	var before, after [2]*entity.SingleRating

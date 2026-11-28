@@ -63,8 +63,10 @@ var V1 = Params{
 
 // V2 flattens the curve to about NASPA's (ten-to-one odds at about 725 points
 // apart instead of 400), starts new players lower and less certain, and
-// rescales the win boost's steepness to the new curve. Its center stays at
-// 1500. The established cutoff is V1's 90 scaled to the wider curve (about
+// rescales the win boost's steepness to the new curve. The win boost's center
+// is still the number 1500, which on the wider scale is a stronger player
+// than V1's 1500 (about NASPA 1500 against 900); centers of 1000 and 2000
+// made almost no difference in the replay. The established cutoff is V1's 90 scaled to the wider curve (about
 // 90 × 315 / 174); left at 90, most players would need over 100 games to lose
 // the "?".
 var V2 = Params{
