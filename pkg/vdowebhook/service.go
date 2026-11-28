@@ -3,6 +3,7 @@ package vdowebhook
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"math/rand"
@@ -28,6 +29,9 @@ func NewVDOWebhookService(ts tournament.TournamentStore, pollingIntervalSeconds 
 		pollingIntervalSeconds: pollingIntervalSeconds,
 	}
 }
+
+// maxBodyBytes is the largest webhook body read.
+const maxBodyBytes = 64 << 10
 
 // VDOWebhookPayload represents the JSON payload sent by VDO.Ninja
 type VDOWebhookPayload struct {
@@ -55,20 +59,25 @@ func (s *VDOWebhookService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	body, err := io.ReadAll(r.Body)
+	// VDO.Ninja sends small JSON updates. Anyone can post here, so
+	// don't read (or log) more than that.
+	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxBodyBytes))
 	if err != nil {
+		var tooBig *http.MaxBytesError
+		if errors.As(err, &tooBig) {
+			log.Warn().Int64("limit", tooBig.Limit).Msg("vdo-webhook-body-too-large")
+			http.Error(w, "Request body too large", http.StatusRequestEntityTooLarge)
+			return
+		}
 		log.Error().Err(err).Msg("vdo-webhook-read-body-error")
 		http.Error(w, "Failed to read request body", http.StatusBadRequest)
 		return
 	}
 	defer r.Body.Close()
 
-	// Log raw request body for debugging
-	log.Info().Str("raw_body", string(body)).Msg("vdo-webhook-raw-request")
-
 	var payload VDOWebhookPayload
 	if err := json.Unmarshal(body, &payload); err != nil {
-		log.Error().Err(err).Str("body", string(body)).Msg("vdo-webhook-parse-error")
+		log.Error().Err(err).Int("body_bytes", len(body)).Msg("vdo-webhook-parse-error")
 		http.Error(w, "Failed to parse JSON", http.StatusBadRequest)
 		return
 	}
