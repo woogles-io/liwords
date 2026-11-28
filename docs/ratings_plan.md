@@ -157,30 +157,37 @@ ClickHouse instead (above), so the switch doesn't wait for it.
 
 ### 3. Rerate tool (`cmd/rerate`)
 
-- **Input:** every finished, rated game, in end-time order: both player ids,
-  the rating key (lexicon, variant and time control from `games.game_request`),
-  the end reason, both scores, the end time.
-- **Output:** every human's current v2 rating for every rating key; a dry-run
-  report; later, v2 rows for ClickHouse. A `--cutoff` time makes runs
-  repeatable, and a run can continue from where an earlier one stopped.
-- **Size:** about 12.7M games. A Go replay should take minutes. Read in
-  batches, keep ratings in memory, write with COPY.
-- **Check it against the Python replay** on the same year of games.
-- **Check these before building:**
-  - `game_players` has scores, `won`, `game_end_reason`, `created_at`
-    (creation, not end) and `game_mode`, back to 2020-08-15, but no lexicon or
-    variant; those come from `games.game_request`.
-  - The end time probably comes from `games.updated_at`. Check that nothing
-    updates finished games afterward (annotations, rematch bookkeeping, admin
-    edits).
-  - Older games may store their request in the old bytea `request` column.
-  - `rate.go`'s git history: changes to which games are rated (aborts,
-    adjudications, tournament games).
-  - Manual rating changes (admin resets, penalties) aren't in the game results.
-    Find out whether any exist.
-  - Bots got stronger over the years. The fixed ladder reflects today's bots, so
-    ratings from games against older versions will be slightly off. If the bot
-    change dates are known, the ladder could be dated.
+- `rerate extract` reads, read-only, every finished rated game (about 13M,
+  from `games`, by id range), users, moderator rating resets and saved
+  ratings into a local file. Given an earlier file, it reads only games that
+  ended since: new ids, and games that were unfinished then.
+- `rerate replay` replays them under v1 or v2 in end-time order, from the first
+  game, with the same code that rates games at game end
+  (`gameplay.RatingSpread`, `RatingSystem.RateGame`), and writes a dry-run
+  report. Nothing writes to the database yet; writing profiles on switch day
+  and ClickHouse rows come later.
+- **Checked against the Python replay** on the same games (to 1e-6).
+- What the data turned out to need:
+  - **End time** is `games.updated_at`. Finished games aren't touched
+    afterward (checked back to 2021), and for games that ended on time it is
+    the real end, unlike the timers' last move.
+  - **Which games count:** rated mode and not aborted, cancelled or unfinished.
+    This matches exactly the games that got ratings, in samples from 2020 to
+    now. Older requests are stored in camelCase JSON (`ratingMode`,
+    `initialTimeSeconds`), so requests are parsed with protojson, not by key.
+  - **Players** come from quickdata `pi[].user_id`. Until about 2022,
+    `player0_id`/`player1_id` are swapped relative to the game's own order (which
+    scores and `winner_idx` follow) in about half of games.
+  - **Early bots:** MacondoBot1–5 played about 5,000 games in August–September
+    2020. They're flagged as bots only in the game record and aren't on the
+    ladder, so those games aren't rated under v2.
+  - **Moderator rating resets** (6, in 2021–2022) are applied at their time.
+  - **No recorded v1 ratings before about late October 2020** (roughly the
+    first 20,000 games): quickdata has no `NewRatings` there. v1 history in
+    ClickHouse starts then; v2 covers them.
+  - Bots got stronger over the years. The fixed ladder reflects today's bots,
+    so ratings from games against older versions are slightly off; recent
+    games outweigh them.
 
 ### 4. Dry run
 

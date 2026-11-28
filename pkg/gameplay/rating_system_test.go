@@ -9,6 +9,7 @@ import (
 
 	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/glicko"
+	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
 func human(name string, ratings map[entity.VariantKey]entity.SingleRating) *entity.User {
@@ -28,7 +29,7 @@ func TestRateGameV1(t *testing.T) {
 	is := is.New(t)
 	r0 := &entity.SingleRating{Rating: 1700, RatingDeviation: 80, Volatility: 0.06, LastGameTimestamp: 1000}
 	users := []*entity.User{human("a", nil), bot("HastyBot")}
-	before, after, err := RatingSystemV1.rateGame([2]*entity.SingleRating{r0, nil}, users, nwlRegular, 40, 5000)
+	before, after, err := RatingSystemV1.RateGame([2]*entity.SingleRating{r0, nil}, users, nwlRegular, 40, 5000)
 	is.NoErr(err)
 
 	// A player with no rating starts at 1500 / 350, last played now.
@@ -48,7 +49,7 @@ func TestRateGameV2Bot(t *testing.T) {
 	r1 := &entity.SingleRating{Rating: 1650, RatingDeviation: 70, Volatility: 0.06, LastGameTimestamp: 1000}
 	saved := &entity.SingleRating{Rating: 2400, RatingDeviation: 60, Volatility: 0.06}
 	users := []*entity.User{bot("HastyBot"), human("a", nil)}
-	before, after, err := RatingSystemV2.rateGame([2]*entity.SingleRating{saved, r1}, users, nwlRegular, 125, 5000)
+	before, after, err := RatingSystemV2.RateGame([2]*entity.SingleRating{saved, r1}, users, nwlRegular, 125, 5000)
 	is.NoErr(err)
 	is.Equal(before[0].Rating, 2050.0) // the fixed rating, not the saved one
 	is.True(after[0] == nil)
@@ -59,9 +60,9 @@ func TestRateGameV2Bot(t *testing.T) {
 
 func TestRateGameV2BotErrors(t *testing.T) {
 	is := is.New(t)
-	_, _, err := RatingSystemV2.rateGame([2]*entity.SingleRating{}, []*entity.User{bot("HastyBot"), bot("BestBot")}, nwlRegular, 10, 5000)
-	is.True(errors.Is(err, errBotsNotRated))
-	_, _, err = RatingSystemV2.rateGame([2]*entity.SingleRating{}, []*entity.User{human("a", nil), bot("NewBot")}, nwlRegular, 10, 5000)
+	_, _, err := RatingSystemV2.RateGame([2]*entity.SingleRating{}, []*entity.User{bot("HastyBot"), bot("BestBot")}, nwlRegular, 10, 5000)
+	is.True(errors.Is(err, ErrBotsNotRated))
+	_, _, err = RatingSystemV2.RateGame([2]*entity.SingleRating{}, []*entity.User{human("a", nil), bot("NewBot")}, nwlRegular, 10, 5000)
 	is.True(err != nil)
 }
 
@@ -181,4 +182,44 @@ func TestLiveRatingSystemReads(t *testing.T) {
 	is.NoErr(err)
 	is.Equal(s.Version, 1)
 	is.Equal(f.reads, 2)
+}
+
+func TestRatingSpread(t *testing.T) {
+	is := is.New(t)
+	for _, c := range []struct {
+		reason ipc.GameEndReason
+		winner int
+		s0, s1 int32
+		want   int
+		err    bool
+	}{
+		{ipc.GameEndReason_STANDARD, 0, 400, 350, 50, false},
+		{ipc.GameEndReason_STANDARD, 1, 300, 450, -150, false},
+		{ipc.GameEndReason_STANDARD, -1, 400, 400, 0, false},
+		{ipc.GameEndReason_STANDARD, 1, 400, 350, 0, true}, // winner disagrees with the score
+		{ipc.GameEndReason_CONSECUTIVE_ZEROES, 0, 300, 290, 10, false},
+		{ipc.GameEndReason_ADJUDICATED, 0, 300, 290, 10, false},
+		{ipc.GameEndReason_RESIGNED, 0, 10, 300, 125, false},
+		{ipc.GameEndReason_TIME, 1, 400, 100, -125, false},
+		{ipc.GameEndReason_FORCE_FORFEIT, 1, 0, 0, -125, false},
+		{ipc.GameEndReason_TRIPLE_CHALLENGE, 0, 0, 30, 125, false},
+		{ipc.GameEndReason_RESIGNED, -1, 0, 0, 0, true},
+	} {
+		got, err := RatingSpread(c.reason, c.winner, c.s0, c.s1)
+		is.Equal(err != nil, c.err)
+		is.Equal(got, c.want)
+	}
+}
+
+// Pools tied on RD seed from the one played most recently.
+func TestNewRatingV2TieBreak(t *testing.T) {
+	is := is.New(t)
+	others := map[entity.VariantKey]entity.SingleRating{
+		"NWL18.classic.blitz":   {Rating: 1500, RatingDeviation: 60, LastGameTimestamp: 100},
+		"NWL18.classic.regular": {Rating: 1700, RatingDeviation: 60, LastGameTimestamp: 200},
+		"NWL18.classic.rapid":   {Rating: 1600, RatingDeviation: 60, LastGameTimestamp: 150},
+	}
+	r := RatingSystemV2.newRating(others, "NWL18.classic.corres", 1000)
+	is.Equal(r.Rating, 1700.0)
+	is.Equal(r.RatingDeviation, 250.0)
 }
