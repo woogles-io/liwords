@@ -1,6 +1,7 @@
 package gameplay
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -138,4 +139,46 @@ func TestDisplayRatingV2(t *testing.T) {
 	is.Equal(s.DisplayRating(b, nwlRegular), "600")
 	is.True(s.Established(entity.SingleRating{RatingDeviation: 160}))
 	is.True(!s.Established(entity.SingleRating{RatingDeviation: 160.5}))
+}
+
+type fakeSetting struct {
+	value string
+	reads int
+}
+
+func (f *fakeSetting) RatingSystemSetting(context.Context) (string, error) {
+	f.reads++
+	return f.value, nil
+}
+
+func TestRatingSystemFromSetting(t *testing.T) {
+	is := is.New(t)
+	is.Equal(ratingSystemFromSetting("").Version, 1)
+	is.Equal(ratingSystemFromSetting("1").Version, 1)
+	is.True(!ratingSystemFromSetting("1").Paused)
+	is.Equal(ratingSystemFromSetting("2").Version, 2)
+	is.True(!ratingSystemFromSetting("2").Paused)
+	is.True(ratingSystemFromSetting("paused").Paused)
+	// An unknown value pauses rather than guess.
+	is.True(ratingSystemFromSetting("3").Paused)
+}
+
+// Displayed ratings read the setting at most every few seconds; game end
+// reads it every time.
+func TestLiveRatingSystemReads(t *testing.T) {
+	is := is.New(t)
+	ctx := context.Background()
+	is.Equal(LiveRatingSystem(ctx).Version, 1)
+
+	f := &fakeSetting{value: "2"}
+	SetRatingSystemSettings(f)
+	defer SetRatingSystemSettings(nil)
+	is.Equal(LiveRatingSystem(ctx).Version, 2)
+	f.value = "1"
+	is.Equal(LiveRatingSystem(ctx).Version, 2) // cached
+	is.Equal(f.reads, 1)
+	s, err := ratingSystemForGameEnd(ctx)
+	is.NoErr(err)
+	is.Equal(s.Version, 1)
+	is.Equal(f.reads, 2)
 }
