@@ -866,6 +866,10 @@ func runInfoForJob(job models.GetJobByGameIDRow) *pb.AnalysisRunInfo {
 	return info
 }
 
+// maxAnalysisStatusGames is the most games GetGamesAnalysisStatus checks at
+// once. The profile page sends the games it has loaded, a few pages' worth.
+const maxAnalysisStatusGames = 500
+
 func (s *AnalysisService) GetGamesAnalysisStatus(
 	ctx context.Context,
 	req *connect.Request[pb.GetGamesAnalysisStatusRequest],
@@ -873,6 +877,9 @@ func (s *AnalysisService) GetGamesAnalysisStatus(
 
 	if len(req.Msg.GameIds) == 0 {
 		return connect.NewResponse(&pb.GetGamesAnalysisStatusResponse{}), nil
+	}
+	if len(req.Msg.GameIds) > maxAnalysisStatusGames {
+		return nil, apiserver.InvalidArg(fmt.Sprintf("at most %d games per request", maxAnalysisStatusGames))
 	}
 
 	gameIDs, err := s.queries.GetAnalyzedGameIds(ctx, req.Msg.GameIds)

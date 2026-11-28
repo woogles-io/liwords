@@ -17,6 +17,9 @@ import { useClient } from "./hooks/connect";
 import { ProfileService } from "../gen/api/proto/user_service/user_service_pb";
 import { create } from "@bufbuild/protobuf";
 
+// The server refuses more than 500 users in one request.
+const MAX_PER_REQUEST = 100;
+
 type CacheType = Map<string, { data: BriefProfile | null; expires: number }>;
 
 const BriefProfilesContext = createContext<{
@@ -53,11 +56,23 @@ export const BriefProfiles = (props: {
       if (toRequestHere !== toRequest.current) return;
       if (toRequestHere.size === 0) return;
       toRequest.current = new Set();
-      const req = create(BriefProfilesRequestSchema, {});
-      req.userIds = Array.from(toRequestHere);
+      const userIds = Array.from(toRequestHere);
+      const chunks: Array<Array<string>> = [];
+      for (let i = 0; i < userIds.length; i += MAX_PER_REQUEST) {
+        chunks.push(userIds.slice(i, i + MAX_PER_REQUEST));
+      }
       try {
-        const respObj = await profileClient.getBriefProfiles(req);
-        const respMap = respObj.response;
+        const resps = await Promise.all(
+          chunks.map((ids) =>
+            profileClient.getBriefProfiles(
+              create(BriefProfilesRequestSchema, { userIds: ids }),
+            ),
+          ),
+        );
+        const respMap: Record<string, BriefProfile> = Object.assign(
+          {},
+          ...resps.map((r) => r.response),
+        );
         // because of the await, toRequest.current may have accumulated more items
         const expires = performance.now() + 300000; // 5 minutes
         toRequestHere.forEach((k) => {

@@ -2,6 +2,7 @@ package memento
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io/ioutil"
 	"testing"
@@ -352,7 +353,7 @@ func BenchmarkRenderAGif(b *testing.B) {
 	// benchmark runs around 250ms per render on my M1 Mac but it's significantly
 	// slower when run within Docker for Mac. why?
 	for i := 0; i < b.N; i++ {
-		_, err := RenderImage(hist, wf)
+		_, err := RenderImage(context.Background(), hist, wf)
 		is.NoErr(err)
 	}
 }
@@ -371,7 +372,7 @@ func BenchmarkRenderBigAGif(b *testing.B) {
 	}
 	// Around 550ms on "themonolith" - 12th Gen Intel Linux computer.
 	for i := 0; i < b.N; i++ {
-		_, err := RenderImage(hist, wf)
+		_, err := RenderImage(context.Background(), hist, wf)
 		is.NoErr(err)
 	}
 }
@@ -390,7 +391,7 @@ func BenchmarkRenderPNG(b *testing.B) {
 	}
 	// benchmark runs around 109 ms
 	for i := 0; i < b.N; i++ {
-		_, err := RenderImage(hist, wf)
+		_, err := RenderImage(context.Background(), hist, wf)
 		is.NoErr(err)
 	}
 }

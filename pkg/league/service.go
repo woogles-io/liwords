@@ -882,6 +882,9 @@ func (ls *LeagueService) GetAllSeasons(
 	return connect.NewResponse(&pb.AllSeasonsResponse{Seasons: protoSeasons}), nil
 }
 
+// maxRecentSeasons is the most seasons GetRecentSeasons returns.
+const maxRecentSeasons int32 = 50
+
 func (ls *LeagueService) GetRecentSeasons(
 	ctx context.Context,
 	req *connect.Request[pb.GetRecentSeasonsRequest],
@@ -904,6 +907,9 @@ func (ls *LeagueService) GetRecentSeasons(
 	limit := req.Msg.Limit
 	if limit <= 0 {
 		limit = 2
+	}
+	if limit > maxRecentSeasons {
+		limit = maxRecentSeasons
 	}
 
 	// Get recent seasons

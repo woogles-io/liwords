@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"context"
 	_ "embed"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
@@ -22,7 +22,17 @@ import (
 	"github.com/woogles-io/liwords/pkg/user"
 )
 
-var RenderMutex sync.Mutex
+// renderSlot lets one image render at a time. An animated GIF takes about a
+// second of CPU, and the API hosts have two vCPUs that also serve everything
+// else.
+var renderSlot = make(chan struct{}, 1)
+
+// renderWait is how long a request waits for the render slot before giving up.
+// Without a limit, a flood of GIF requests queues up in front of every other
+// image, and each waiting request holds a loaded game.
+const renderWait = 10 * time.Second
+
+var errRenderBusy = errors.New("too many images are rendering")
 
 type MementoService struct {
 	userStore user.Store
@@ -138,13 +148,12 @@ func determineWhichFile(s string) (WhichFile, error) {
 	}, nil
 }
 
-func (ms *MementoService) loadAndRender(name string) ([]byte, error) {
+func (ms *MementoService) loadAndRender(ctx context.Context, name string) ([]byte, error) {
 	wf, err := determineWhichFile(name)
 	if err != nil {
 		return nil, err
 	}
 
-	ctx := context.Background()
 	hist, err := ms.gameStore.GetHistory(ctx, wf.GameId)
 	if err != nil {
 		return nil, err
@@ -170,14 +179,43 @@ func (ms *MementoService) loadAndRender(name string) ([]byte, error) {
 	if wf.HasNextEventNum && (wf.NextEventNum <= 0 || wf.NextEventNum > len(hist.Events)+1) {
 		return nil, fmt.Errorf("game only has %d events", len(hist.Events))
 	}
-	RenderMutex.Lock()
-	defer RenderMutex.Unlock()
 
-	return RenderImage(hist, wf)
+	release, err := acquireRenderSlot(ctx, renderWait)
+	if err != nil {
+		return nil, err
+	}
+	defer release()
+
+	return RenderImage(ctx, hist, wf)
+}
+
+// acquireRenderSlot waits up to wait for the render slot. It gives up early if
+// ctx is done.
+func acquireRenderSlot(ctx context.Context, wait time.Duration) (func(), error) {
+	timer := time.NewTimer(wait)
+	defer timer.Stop()
+	select {
+	case renderSlot <- struct{}{}:
+		return func() { <-renderSlot }, nil
+	case <-timer.C:
+		return nil, errRenderBusy
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
 }
 
 func (ms *MementoService) GameimgEndpoint(w http.ResponseWriter, r *http.Request, name string) {
-	b, err := ms.loadAndRender(name)
+	b, err := ms.loadAndRender(r.Context(), name)
+	if errors.Is(err, errRenderBusy) {
+		log.Warn().Str("name", name).Msg("memento-render-busy")
+		w.Header().Set("Retry-After", "5")
+		http.Error(w, err.Error(), http.StatusServiceUnavailable)
+		return
+	}
+	if r.Context().Err() != nil {
+		// The client went away; nobody is waiting for an answer.
+		return
+	}
 	if err != nil {
 		log.Err(err).Str("name", name).Msg("memento-action-gameimg")
 	} else {
