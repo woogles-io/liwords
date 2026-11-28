@@ -1,7 +1,8 @@
 # Ratings plan: new rating system, fixed bot ratings, rating history
 
-Status: plan, nothing built yet. First written 2026-11-16; rewritten
-2026-11-24 with the rating system chosen from a replay of a year of games.
+Status: step 1 merged (#2386, the v2 rules behind a switch). First written
+2026-11-16; rewritten 2026-11-24 with the rating system chosen from a replay
+of a year of games; history moved to ClickHouse 2026-11-27.
 
 ## Why
 
@@ -120,72 +121,48 @@ history keeps both.
 
 | | What it is | Source | Can it change? |
 |---|---|---|---|
-| v1 | the ratings players saw before the switch | quickdata `OriginalRatings`/`NewRatings`, imported once | never |
-| v2 before the switch | a recalculation | the rerate tool | can be regenerated |
-| v2 after the switch | the ratings players see | written at game end | never |
+| v1 | the ratings players saw before the switch | quickdata `OriginalRatings`/`NewRatings` | never |
+| v2 | a from-scratch recalculation of every rated game, before and after the switch | the rerate tool | can be regenerated |
 
-All of it goes in one table, `rating_changes`, in Postgres:
-
-```
-game_uuid text, user_id int, system_version smallint,
-rating_key text, ended_at timestamptz,
-rating_before real, rd_before real, vol_before real,
-rating_after real,  rd_after real,  vol_after real,
-PRIMARY KEY (game_uuid, user_id, system_version)
--- index (user_id, rating_key, system_version, ended_at) for profile graphs
-```
-
-- **Append-only.** Rows are never updated. Pre-switch v2 rows may be deleted and
-  regenerated as a whole by the rerate tool; nothing else is ever deleted.
-- **v1 has no RD or volatility.** Quickdata doesn't store them, so those columns
-  are null.
-- **Bots get no rows.** Their v2 rating is fixed. (Store `opponent_rating` on
-  the human's row if game lists need it without a lookup.)
-- **Size:** about 25M rows per version. Check the disk cost before importing v1
-  (likely 3–5 GB with indexes for both versions).
-- **ClickHouse copies it.** `docs/stats_redesign_plan.md` owns ClickHouse, its
-  `rating_history` table, the rating graph and the old/new toggle. That plan
-  reads `rating_changes`; this plan doesn't touch ClickHouse.
-- **Game lists** (replacing quickdata `pi[].rating`): a finished rated game
-  shows `rating_before` from the version that was live when the game ended, with
-  `?` when `rd_before` is above the provisional threshold (`RelevantRating` in
-  `pkg/entity/user.go`). v1 rows have no RD, so v1 games show the number without
-  `?`. Games in progress show the current profile rating. Casual games show none.
+- **ClickHouse owns rating history.** `docs/stats_redesign_plan.md` owns its
+  `rating_history` and `rating_systems` tables, the profile rating graph and
+  the old/new toggle. There is no history table in Postgres.
+- **v1** is loaded once from quickdata for games that ended before the switch.
+  Quickdata doesn't store RD or volatility, so v1 has none. Quickdata's rating
+  fields must stay until that load is done.
+- **v2** is a deterministic function of game results, so it doesn't need to be
+  recorded as games end. The rerate tool replays every rated game and writes the
+  v2 rows, with RD and volatility, once `rating_history` exists. Quickdata's
+  ratings on games after the switch (v2 numbers) are a check on that replay.
+- **Bots get no v2 rows.** Their rating is fixed.
 - **Game records are never rewritten.** An old game keeps showing the v1 rating
   it was played at.
 
 ## Steps
 
-### 1. v2 behind a switch
+### 1. v2 behind a switch (done: #2386, #2393)
 
-- New constants and rules in `pkg/glicko` and `pkg/gameplay/rate.go` behind a
-  rating-system switch, default v1. With the switch off, production behavior
-  doesn't change.
-- Fixed bot ratings, seeding and the bot-vs-bot rule as above.
-- Tests: the Go code must match the Python replay to within rounding on the same
-  inputs. The Python port of `pkg/glicko` matched today's Go code to 5×10⁻¹⁰ on
-  2,000 random cases, so the same check works for v2.
+- The v2 rules in `pkg/glicko` (`glicko.V2`) and `pkg/gameplay/rating_system.go`:
+  fixed bot ratings, seeding, the bot-vs-bot rule, the established cutoff. The
+  Go code matches the Python replay to 1e-6; V1 matches the old code to 1e-8.
+- The switch is the `config_settings` value `config:rating-system`: `1`
+  (default when unset), `2`, or `paused`. While paused, games end normally but
+  nobody's rating changes; nothing waits or holds a lock. Game end reads the
+  setting fresh; displayed ratings and seek checks cache it for 5 seconds.
 
-### 2. `rating_changes` table and v1 import
+### 2. (dropped) Postgres history table
 
-- Migration for the table. Check master's latest migration number first, set
-  `SET LOCAL lock_timeout = '10s'`, and merge outside 18:00–22:00 UTC, when the
-  daily pg_dump runs.
-- `rate.go` writes a row for each human in each rated game, with the version
-  that's live, as part of the game-end work.
-- A one-off import writes v1 rows for every past rated game from quickdata.
-  Run it after `rate.go` writes rows, so no game falls between the import and
-  the live writes.
-- After the import, quickdata's ratings are no longer needed; see
-  `project_quickdata_removal` and `docs/mikado/xwordgame_remaining.md`.
+A `rating_changes` table in Postgres was planned here. History goes to
+ClickHouse instead (above), so the switch doesn't wait for it.
 
 ### 3. Rerate tool (`cmd/rerate`)
 
 - **Input:** every finished, rated game, in end-time order: both player ids,
   the rating key (lexicon, variant and time control from `games.game_request`),
   the end reason, both scores, the end time.
-- **Output:** every human's current v2 rating for every rating key, and the v2
-  `rating_changes` rows. A `--cutoff` time makes runs repeatable.
+- **Output:** every human's current v2 rating for every rating key; a dry-run
+  report; later, v2 rows for ClickHouse. A `--cutoff` time makes runs
+  repeatable, and a run can continue from where an earlier one stopped.
 - **Size:** about 12.7M games. A Go replay should take minutes. Read in
   batches, keep ratings in memory, write with COPY.
 - **Check it against the Python replay** on the same year of games.
@@ -214,28 +191,30 @@ PRIMARY KEY (game_uuid, user_id, system_version)
 
 ### 5. Switch
 
-1. Pick a cutoff T and rerate up to T.
-2. Pause rating writes briefly.
-3. Rerate the games that ended after T.
-4. Write every player's new current ratings and the v2 rows, and turn the
-   switch to v2.
-5. Record the switch time; ClickHouse's `rating_systems` table uses it as v2's
+The full replay runs while the site runs normally; ratings stop changing only
+for about a minute.
+
+1. Run the full replay up to now from prod, read-only, in batches. Games keep
+   ending and getting v1 ratings meanwhile; those are kept in quickdata.
+2. Set `config:rating-system` to `paused`.
+3. Catch up on every game that ended since the replay's last game.
+4. In one transaction, write every player's v2 ratings into their profile and
+   set the setting to `2`. Replace only game rating keys inside the ratings
+   JSON, so a puzzle rating written at the same moment isn't lost.
+5. Rate any game that ended between the catch-up's read and the switch (a
+   few seconds' worth) under v2.
+6. Record the switch time; ClickHouse's `rating_systems` table uses it as v2's
    go-live date.
 
-Also on switch day:
-
-- The rerate writes only game rating keys. Puzzle keys
-  (`<lexicon>.puzzle.corres`) in the same profile JSON stay as they are.
-- The frontend's `hasEstablishedRating` (`lobby_reducer.ts`) hardcodes 90;
-  change it to 160 in the same release.
-- League placement averages every rating in the profile, puzzle ratings
-  included. After the switch those are on different scales; skip puzzle keys
-  there first.
+Games in progress keep going. One that ends after the switch is rated under
+v2, as if it had been part of the replay; its header still shows the v1
+rating it started with.
 
 ### 6. Remove the old copies
 
 - Stop writing the `liststats` Ratings rows (stat_type 20) if they still exist.
-- Remove quickdata's `OriginalRatings`/`NewRatings` once v1 is imported (step 2).
+- Remove quickdata's `OriginalRatings`/`NewRatings` once ClickHouse has loaded
+  v1.
 
 ## Later, not part of this plan
 
