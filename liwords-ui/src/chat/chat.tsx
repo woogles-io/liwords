@@ -184,6 +184,10 @@ export const roomAboveInput = (list: HTMLElement, input: HTMLElement): number =>
 // about two short messages.
 export const MIN_CHAT_LIST_PX = 64;
 
+// Message-list height the chat keeps when it gives up height to a card below
+// it: about five short messages.
+export const MIN_GIVING_CHAT_LIST_PX = 160;
+
 // The most the input may grow to: from its bottom up to the list's top, less
 // the list height kept visible.
 export const inputMaxHeight = (list: HTMLElement, input: HTMLElement): number =>
@@ -222,7 +226,7 @@ export const roomToGive = (chat: HTMLElement): number => {
   if (!list || !input) {
     return (
       lastRoomToGive.get(chat) ??
-      Math.max(0, layoutListCap(chat.clientHeight, 0) - MIN_CHAT_LIST_PX)
+      Math.max(0, layoutListCap(chat.clientHeight, 0) - MIN_GIVING_CHAT_LIST_PX)
     );
   }
   const context = chat.querySelector<HTMLElement>("#chat-context");
@@ -230,7 +234,7 @@ export const roomToGive = (chat: HTMLElement): number => {
   const cap = context?.clientHeight
     ? layoutListCap(chat.clientHeight, context.clientHeight)
     : room;
-  const give = Math.max(0, Math.min(room, cap) - MIN_CHAT_LIST_PX);
+  const give = Math.max(0, Math.min(room, cap) - MIN_GIVING_CHAT_LIST_PX);
   lastRoomToGive.set(chat, give);
   return give;
 };
