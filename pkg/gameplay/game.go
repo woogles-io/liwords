@@ -171,7 +171,7 @@ func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Co
 		playerinfos[idx] = &pb.PlayerInfo{
 			Nickname: u.Username,
 			UserId:   u.UUID,
-			Rating:   u.GetRelevantRating(ratingKey),
+			Rating:   LiveRatingSystem(ctx).DisplayRating(u, ratingKey),
 			IsBot:    u.IsBot,
 			First:    idx == 0,
 		}

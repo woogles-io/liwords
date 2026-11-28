@@ -1,0 +1,141 @@
+package gameplay
+
+import (
+	"errors"
+	"testing"
+
+	"github.com/matryer/is"
+
+	"github.com/woogles-io/liwords/pkg/entity"
+	"github.com/woogles-io/liwords/pkg/glicko"
+)
+
+func human(name string, ratings map[entity.VariantKey]entity.SingleRating) *entity.User {
+	return &entity.User{Username: name, Profile: &entity.Profile{Ratings: entity.Ratings{Data: ratings}}}
+}
+
+func bot(name string) *entity.User {
+	u := human(name, nil)
+	u.IsBot = true
+	return u
+}
+
+const nwlRegular = entity.VariantKey("NWL18.classic.regular")
+
+// V1 rates both players, bots included, exactly as glicko.Rate does.
+func TestRateGameV1(t *testing.T) {
+	is := is.New(t)
+	r0 := &entity.SingleRating{Rating: 1700, RatingDeviation: 80, Volatility: 0.06, LastGameTimestamp: 1000}
+	users := []*entity.User{human("a", nil), bot("HastyBot")}
+	before, after, err := RatingSystemV1.rateGame([2]*entity.SingleRating{r0, nil}, users, nwlRegular, 40, 5000)
+	is.NoErr(err)
+
+	// A player with no rating starts at 1500 / 350, last played now.
+	is.Equal(*before[1], entity.SingleRating{Rating: 1500, RatingDeviation: 350, Volatility: 0.06, LastGameTimestamp: 5000})
+	r, rd, v := glicko.Rate(1700, 80, 0.06, 1500, 350, 40, 4000)
+	is.Equal(*after[0], entity.SingleRating{Rating: r, RatingDeviation: rd, Volatility: v, LastGameTimestamp: 5000})
+	r, rd, v = glicko.Rate(1500, 350, 0.06, 1700, 80, -40, 0)
+	is.Equal(*after[1], entity.SingleRating{Rating: r, RatingDeviation: rd, Volatility: v, LastGameTimestamp: 5000})
+	// The saved rating isn't changed in place.
+	is.Equal(r0.Rating, 1700.0)
+}
+
+// V2 rates the human against the bot's fixed rating with RD 0, and leaves the
+// bot alone.
+func TestRateGameV2Bot(t *testing.T) {
+	is := is.New(t)
+	r1 := &entity.SingleRating{Rating: 1650, RatingDeviation: 70, Volatility: 0.06, LastGameTimestamp: 1000}
+	saved := &entity.SingleRating{Rating: 2400, RatingDeviation: 60, Volatility: 0.06}
+	users := []*entity.User{bot("HastyBot"), human("a", nil)}
+	before, after, err := RatingSystemV2.rateGame([2]*entity.SingleRating{saved, r1}, users, nwlRegular, 125, 5000)
+	is.NoErr(err)
+	is.Equal(before[0].Rating, 2050.0) // the fixed rating, not the saved one
+	is.True(after[0] == nil)
+	r, rd, v := glicko.V2.Rate(1650, 70, 0.06, 2050, 0, -125, 4000)
+	is.Equal(*after[1], entity.SingleRating{Rating: r, RatingDeviation: rd, Volatility: v, LastGameTimestamp: 5000})
+	is.True(r < 1650)
+}
+
+func TestRateGameV2BotErrors(t *testing.T) {
+	is := is.New(t)
+	_, _, err := RatingSystemV2.rateGame([2]*entity.SingleRating{}, []*entity.User{bot("HastyBot"), bot("BestBot")}, nwlRegular, 10, 5000)
+	is.True(errors.Is(err, errBotsNotRated))
+	_, _, err = RatingSystemV2.rateGame([2]*entity.SingleRating{}, []*entity.User{human("a", nil), bot("NewBot")}, nwlRegular, 10, 5000)
+	is.True(err != nil)
+}
+
+func TestNewRatingV2(t *testing.T) {
+	is := is.New(t)
+	sr := func(r, rd float64) entity.SingleRating {
+		return entity.SingleRating{Rating: r, RatingDeviation: rd, Volatility: 0.07, LastGameTimestamp: 1}
+	}
+	corres := entity.VariantKey("NWL18.classic.corres")
+	for _, tc := range []struct {
+		name   string
+		others map[entity.VariantKey]entity.SingleRating
+		r, rd  float64
+	}{
+		{"no other ratings", nil, 1200, 600},
+		{"only uncertain ratings", map[entity.VariantKey]entity.SingleRating{
+			"NWL18.classic.regular": sr(1800, 301)}, 1200, 600},
+		{"other variants don't count", map[entity.VariantKey]entity.SingleRating{
+			"NWL18.wordsmog.regular": sr(1800, 60), "NWL18.puzzle.corres": sr(1900, 60)}, 1200, 600},
+		{"lowest RD, kept above the minimum", map[entity.VariantKey]entity.SingleRating{
+			"NWL18.classic.regular": sr(1700, 290), "NWL18.classic.rapid": sr(1600, 270)}, 1600, 270},
+		{"RD raised to the minimum", map[entity.VariantKey]entity.SingleRating{
+			"NWL18.classic.regular": sr(1700, 60)}, 1700, 250},
+		{"same lexicon family first", map[entity.VariantKey]entity.SingleRating{
+			"CSW19.classic.regular": sr(2000, 60), "NWL18.classic.blitz": sr(1500, 200)}, 1500, 250},
+		{"another lexicon if needed", map[entity.VariantKey]entity.SingleRating{
+			"CSW19.classic.regular": sr(2000, 60)}, 2000, 250},
+	} {
+		got := RatingSystemV2.newRating(tc.others, corres, 99)
+		is.Equal(*got, entity.SingleRating{Rating: tc.r, RatingDeviation: tc.rd, Volatility: glicko.InitialVolatility, LastGameTimestamp: 99}) // tc.name
+	}
+	// V1 never seeds.
+	got := RatingSystemV1.newRating(map[entity.VariantKey]entity.SingleRating{"NWL18.classic.regular": sr(1700, 60)}, corres, 99)
+	is.Equal(got.Rating, 1500.0)
+}
+
+// V1 shows ratings as entity.RelevantRating did before the rating systems
+// were split: 1500? for no rating, "?" above RD 90, the bot's own rating.
+func TestDisplayRatingV1(t *testing.T) {
+	is := is.New(t)
+	s := RatingSystemV1
+	is.Equal(s.DisplayRating(&entity.User{Username: "anon"}, nwlRegular), "UnratedAnon")
+	is.Equal(s.DisplayRating(human("a", nil), nwlRegular), "1500?")
+	u := human("a", map[entity.VariantKey]entity.SingleRating{
+		nwlRegular:              {Rating: 1712.6, RatingDeviation: 90},
+		"NWL18.classic.blitz":   {Rating: 1600.4, RatingDeviation: 90.1},
+		"CSW19.classic.regular": {Rating: 1800, RatingDeviation: 60},
+	})
+	is.Equal(s.DisplayRating(u, nwlRegular), "1713")
+	is.Equal(s.DisplayRating(u, "NWL18.classic.blitz"), "1600?")
+	is.Equal(s.DisplayRating(u, "NWL18.classic.rapid"), "1500?")
+	b := bot("HastyBot")
+	b.Profile.Ratings.Data = map[entity.VariantKey]entity.SingleRating{nwlRegular: {Rating: 1987, RatingDeviation: 60}}
+	is.Equal(s.DisplayRating(b, nwlRegular), "1987")
+	is.True(s.Established(entity.SingleRating{RatingDeviation: 90}))
+	is.True(!s.Established(entity.SingleRating{RatingDeviation: 90.1}))
+}
+
+// V2 shows a bot's fixed rating, the seeded start for a pool the player hasn't
+// played, and drops the "?" at RD 160.
+func TestDisplayRatingV2(t *testing.T) {
+	is := is.New(t)
+	s := RatingSystemV2
+	is.Equal(s.DisplayRating(human("a", nil), nwlRegular), "1200?")
+	u := human("a", map[entity.VariantKey]entity.SingleRating{
+		nwlRegular:            {Rating: 1650, RatingDeviation: 160},
+		"NWL18.classic.blitz": {Rating: 1600, RatingDeviation: 161},
+	})
+	is.Equal(s.DisplayRating(u, nwlRegular), "1650")
+	is.Equal(s.DisplayRating(u, "NWL18.classic.blitz"), "1600?")
+	// Seeded from NWL regular, the lowest RD in the variant.
+	is.Equal(s.DisplayRating(u, "NWL18.classic.corres"), "1650?")
+	b := bot("BeginnerBot")
+	b.Profile.Ratings.Data = map[entity.VariantKey]entity.SingleRating{nwlRegular: {Rating: 1361, RatingDeviation: 60}}
+	is.Equal(s.DisplayRating(b, nwlRegular), "600")
+	is.True(s.Established(entity.SingleRating{RatingDeviation: 160}))
+	is.True(!s.Established(entity.SingleRating{RatingDeviation: 160.5}))
+}

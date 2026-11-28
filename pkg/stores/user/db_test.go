@@ -1077,3 +1077,31 @@ func TestUpdateWaitsForTheOneBefore(t *testing.T) {
 	is.NoErr(err)
 	is.Equal(u.Profile.Ratings.Data[variant].Rating, 1390.0)
 }
+
+// A nil rating from the rate function leaves that player's rating alone: the
+// way a bot with a fixed rating is skipped.
+func TestUpdateRatingsSkipsNil(t *testing.T) {
+	is := is.New(t)
+	ustore, _, ctx := recreateDB()
+	defer ustore.Disconnect()
+
+	cesar, err := ustore.Get(ctx, "cesar")
+	is.NoErr(err)
+	mina, err := ustore.Get(ctx, "mina")
+	is.NoErr(err)
+	variant := entity.VariantKey("NWL18.classic.regular")
+	set := func(r0, r1 *entity.SingleRating) {
+		is.NoErr(ustore.UpdateRatings(ctx, cesar.UUID, mina.UUID, variant,
+			func(_, _ *entity.SingleRating) (*entity.SingleRating, *entity.SingleRating, error) {
+				return r0, r1, nil
+			}))
+	}
+	set(&entity.SingleRating{Rating: 1700, RatingDeviation: 60, Volatility: 0.06},
+		&entity.SingleRating{Rating: 2050, RatingDeviation: 60, Volatility: 0.06})
+	set(&entity.SingleRating{Rating: 1720, RatingDeviation: 60, Volatility: 0.06}, nil)
+
+	users, err := ustore.GetByUUIDs(ctx, []string{cesar.UUID, mina.UUID})
+	is.NoErr(err)
+	is.True(commontest.WithinEpsilon(users[cesar.UUID].Profile.Ratings.Data[variant].Rating, 1720))
+	is.True(commontest.WithinEpsilon(users[mina.UUID].Profile.Ratings.Data[variant].Rating, 2050))
+}

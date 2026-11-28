@@ -2,14 +2,11 @@ package entity
 
 import (
 	"errors"
-	"math"
-	"strconv"
 	"sync"
 	"time"
 
 	"github.com/rs/zerolog/log"
 
-	"github.com/woogles-io/liwords/pkg/glicko"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 	ms "github.com/woogles-io/liwords/rpc/api/proto/mod_service"
 )
@@ -93,38 +90,6 @@ type Profile struct {
 	// which most users of a profile never read. See the user store's
 	// GetProfileStats and GetProfileVariantStats.
 	AvatarUrl string
-}
-
-// If the RD is <= this number, the rating is "known"
-const RatingDeviationConfidence = float64(glicko.MinimumRatingDeviation + 30)
-
-// RelevantRating returns the rating from a Ratings object given a rating key.
-func RelevantRating(ratings Ratings, ratingKey VariantKey) string {
-
-	unknownRating := "?"
-
-	if ratings.Data == nil {
-		// This is an unrated user. Use default rating.
-		return strconv.Itoa(glicko.InitialRating) + unknownRating
-	}
-	ratdict, ok := ratings.Data[ratingKey]
-	if ok {
-		if ratdict.RatingDeviation <= RatingDeviationConfidence {
-			unknownRating = ""
-		}
-		return strconv.Itoa(int(math.Round(ratdict.Rating))) + unknownRating
-	}
-	// User has no rating in this particular variant.
-	return strconv.Itoa(glicko.InitialRating) + unknownRating
-}
-
-// GetRelevantRating gets a displayable rating for this user, based on the passed-in
-// rating key (encoding variant, time control, etc)
-func (u *User) GetRelevantRating(ratingKey VariantKey) string {
-	if u.Profile == nil {
-		return "UnratedAnon"
-	}
-	return RelevantRating(u.Profile.Ratings, ratingKey)
 }
 
 // GetRating gets a full Glicko-225 rating for this user, based on the

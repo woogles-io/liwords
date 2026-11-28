@@ -124,7 +124,7 @@ func (b *Bus) instantiateAndStartGame(ctx context.Context, accUser *entity.User,
 		}
 	}
 
-	err = b.broadcastGameCreation(g, accUser, reqUser)
+	err = b.broadcastGameCreation(ctx, g, accUser, reqUser)
 	if err != nil {
 		log.Err(err).Str("gid", g.GameID()).Msg("broadcasting-game-creation")
 	}
@@ -460,7 +460,7 @@ func (b *Bus) readyForTournamentGame(ctx context.Context, evt *pb.ReadyForTourna
 		Int32("round", evt.Round).
 		Msg("tournament-game-created")
 
-	err = b.broadcastGameCreation(g, reqUser, users[otherUserIdx])
+	err = b.broadcastGameCreation(ctx, g, reqUser, users[otherUserIdx])
 	if err != nil {
 		log.Err(err).Str("gid", g.GameID()).Msg("broadcasting-game-creation")
 	}

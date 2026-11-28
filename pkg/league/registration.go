@@ -8,16 +8,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/woogles-io/liwords/pkg/entity"
+	"github.com/woogles-io/liwords/pkg/gameplay"
 	"github.com/woogles-io/liwords/pkg/stores"
 	"github.com/woogles-io/liwords/pkg/stores/league"
 	"github.com/woogles-io/liwords/pkg/stores/models"
-)
-
-const (
-	// StableRatingDeviation is the threshold for considering a rating "stable"
-	// Ratings with RD below this value will be included in the average
-	StableRatingDeviation = entity.RatingDeviationConfidence // 90
 )
 
 // RegistrationManager handles player registration for league seasons
@@ -113,8 +107,11 @@ func (rm *RegistrationManager) calculateAverageRating(ctx context.Context, userU
 	var stableRatings []float64
 	var unstableRatings []float64
 
+	// Ratings with an RD below the live rating system's established cutoff
+	// are stable and go into the average.
+	stableRD := gameplay.LiveRatingSystem(ctx).Glicko.EstablishedRatingDeviation
 	for _, rating := range user.Profile.Ratings.Data {
-		if rating.RatingDeviation < StableRatingDeviation {
+		if rating.RatingDeviation < stableRD {
 			stableRatings = append(stableRatings, rating.Rating)
 		} else {
 			unstableRatings = append(unstableRatings, rating.Rating)

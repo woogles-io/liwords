@@ -615,11 +615,13 @@ func (s *DBStore) UpdateRatings(ctx context.Context, p0uuid string, p1uuid strin
 	if err != nil {
 		return err
 	}
-	if err = common.UpdateUserRating(ctx, tx, ids[p0uuid], variant, n0); err != nil {
-		return err
-	}
-	if err = common.UpdateUserRating(ctx, tx, ids[p1uuid], variant, n1); err != nil {
-		return err
+	for i, n := range []*entity.SingleRating{n0, n1} {
+		if n == nil {
+			continue // not rerated: a bot with a fixed rating
+		}
+		if err = common.UpdateUserRating(ctx, tx, ids[[]string{p0uuid, p1uuid}[i]], variant, n); err != nil {
+			return err
+		}
 	}
 	return tx.Commit(ctx)
 }
