@@ -2,6 +2,7 @@ package memento
 
 import (
 	"bytes"
+	"context"
 	_ "embed"
 	"fmt"
 	"image"
@@ -1664,7 +1665,9 @@ func sortRack(rack string, tm *tilemapping.TileMapping) ([]tilemapping.MachineLe
 	return mls, nil
 }
 
-func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
+// RenderImage draws a PNG or GIF of the game. It stops between frames once ctx
+// is done.
+func RenderImage(ctx context.Context, history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 	ver2Board := wf.Version == 2
 	if ver2Board && history.PlayState != macondopb.PlayState_GAME_OVER {
 		return nil, fmt.Errorf("game is not over yet")
@@ -2124,6 +2127,9 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 	if ver2Board {
 		lastPlaceIndex := -1
 		for i, evt := range evts {
+			if err := ctx.Err(); err != nil {
+				return nil, err
+			}
 			flyingSpritesBuf = buildHomeRack(i, flyingSpritesBuf[:0])
 			lenRack := len(flyingSpritesBuf)
 			hasAnimation := true
@@ -2342,6 +2348,9 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 		// In the original version, only TILE_PLACEMENT_MOVE and PHONY_TILES_RETURNED generate a frame.
 		lastPlaceIndex := -1
 		for i, evt := range evts {
+			if err := ctx.Err(); err != nil {
+				return nil, err
+			}
 			switch evt.Type {
 			case macondopb.GameEvent_TILE_PLACEMENT_MOVE:
 				addFrame(rect, thisDelay)
@@ -2400,6 +2409,9 @@ func RenderImage(history *macondopb.GameHistory, wf WhichFile) ([]byte, error) {
 		agif.Delay = delays
 	}
 
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	var buf bytes.Buffer
 	err := gif.EncodeAll(&buf, agif)
 	if err != nil {

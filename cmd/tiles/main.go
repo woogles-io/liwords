@@ -140,7 +140,7 @@ params can be prefixed with these flags:
 
 	t1 := time.Now()
 
-	outputBytes, err := memento.RenderImage(hist, wf)
+	outputBytes, err := memento.RenderImage(context.Background(), hist, wf)
 	if err != nil {
 		panic(err)
 	}
