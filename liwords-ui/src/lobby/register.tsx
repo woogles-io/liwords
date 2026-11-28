@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Link, useNavigate } from "react-router";
 import { TopBar } from "../navigation/topbar";
 import {
@@ -190,6 +196,10 @@ const birthDateValidator = async (rule: Rule, value: string) => {
 export const Register = () => {
   const [err, setErr] = useState("");
   const [signedUp, setSignedUp] = useState(false);
+  // One sign-up at a time. Each attempt counts against a per-browser limit,
+  // so repeated clicks while a request is out would use it up.
+  const [submitting, setSubmitting] = useState(false);
+  const submittingRef = useRef(false);
 
   const [loginModalVisible, setLoginModalVisible] = useState(false);
   const { loginState } = useLoginStateStoreContext();
@@ -204,6 +214,10 @@ export const Register = () => {
   const registrationClient = useClient(RegistrationService);
 
   const onFinish = async (values: { [key: string]: string }) => {
+    if (submittingRef.current) return;
+    submittingRef.current = true;
+    setSubmitting(true);
+    setErr("");
     try {
       await registrationClient.register({
         username: values.username,
@@ -257,6 +271,9 @@ export const Register = () => {
     } catch (e) {
       // Registration itself failed
       setErr(connectErrorMessage(e));
+    } finally {
+      submittingRef.current = false;
+      setSubmitting(false);
     }
   };
 
@@ -572,7 +589,7 @@ export const Register = () => {
             </span>
 
             <Form.Item>
-              <Button type="primary" htmlType="submit">
+              <Button type="primary" htmlType="submit" loading={submitting}>
                 Continue
               </Button>
             </Form.Item>

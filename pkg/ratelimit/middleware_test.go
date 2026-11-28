@@ -139,8 +139,11 @@ func TestAlwaysAnonBuckets(t *testing.T) {
 	f := &fakeChecker{result: Result{Allowed: true}}
 	serve(f, withBrowser(withSession(request("/user_service.RegistrationService/Register", "1.2.3.4"), "abc"), kidA))
 	is.Equal(keys(f.got), []string{"rl:general:u:abc",
-		"rl:email:ip:1.2.3.4:c:" + kidA, "rl:email:ipmax:1.2.3.4",
+		"rl:signup:ip:1.2.3.4:c:" + kidA, "rl:signup:ipmax:1.2.3.4",
 		"rl:password-hash:ip:1.2.3.4:c:" + kidA, "rl:password-hash:ipmax:1.2.3.4"})
+	serve(f, withBrowser(request("/user_service.RegistrationService/ResendVerificationEmail", "1.2.3.4"), kidA))
+	is.Equal(keys(f.got), []string{"rl:general:ip:1.2.3.4:c:" + kidA, "rl:general:ipmax:1.2.3.4",
+		"rl:email:ip:1.2.3.4:c:" + kidA, "rl:email:ipmax:1.2.3.4"})
 	// Tournament registration is a different Register.
 	serve(f, request("/tournament_service.TournamentService/Register", "1.2.3.4"))
 	is.Equal(keys(f.got), []string{"rl:general:ip:1.2.3.4", "rl:general:ipmax:1.2.3.4"})
@@ -217,7 +220,7 @@ func TestCachedAPIKeyUser(t *testing.T) {
 // ceiling above the per-browser limit.
 func TestBucketLimits(t *testing.T) {
 	is := is.New(t)
-	for _, b := range []bucket{generalBucket, heavyBucket, emailBucket, passwordHashBucket} {
+	for _, b := range []bucket{generalBucket, heavyBucket, emailBucket, signupBucket, passwordHashBucket} {
 		is.True(b.Anon.Rate > 0 && b.Anon.Burst > 0)
 		is.True(b.IPCeiling.Rate > b.Anon.Rate)   // b.Name
 		is.True(b.IPCeiling.Burst > b.Anon.Burst) // b.Name
@@ -231,5 +234,6 @@ func TestLimitIntervals(t *testing.T) {
 	is := is.New(t)
 	is.Equal(generalBucket.Anon.intervalMs(), int64(100))
 	is.Equal(emailBucket.Anon.intervalMs(), int64(720000))                         // 5 an hour
+	is.Equal(signupBucket.Anon.intervalMs(), int64(180000))                        // 20 an hour
 	is.Equal(Limit{Rate: 5000, Per: time.Second, Burst: 1}.intervalMs(), int64(1)) // never 0
 }
